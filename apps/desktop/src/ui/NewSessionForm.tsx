@@ -10,51 +10,27 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { ModelOptions } from "../features/sessions/index.ts";
+import {
+  choicesToKeep,
+  createPayload,
+  joinPath,
+  ModelOptions,
+  opensMoreOptions,
+  promptMissing,
+  sessionModes,
+  startChoices,
+  startFolder,
+  underRoot,
+} from "../features/sessions/index.ts";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { CLAUDE_MODELS } from "../lib/new-session-prefs.ts";
-import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 
-const MODES: PermissionMode[] = [
-  "default",
-  "acceptEdits",
-  "plan",
-  "auto",
-  "dontAsk",
-  "bypassPermissions",
-];
-
-const MODELS = CLAUDE_MODELS;
-
-/** Phase 39: what an OpenCode session can start in (Flightdeck's own two agents, and bypass). */
-const OPENCODE_MODES: PermissionMode[] = ["default", "plan", "bypassPermissions"];
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 type Runtime = "claude" | "opencode";
-
-export function joinPath(root: string, sub: string): string {
-  const sep = root.includes("\\") ? "\\" : "/";
-  const clean = sub.trim().replace(/^[\\/]+/, "");
-  return clean ? `${trimTrailingSeparators(root)}${sep}${clean}` : root;
-}
-
-/** The configured root that holds `path` (the longest one) and the rest of it as a subfolder; null when none holds it. */
-function underRoot(path: string, roots: string[]): { root: string; sub: string } | null {
-  const holder = roots.filter((r) => isInside(path, r)).sort((a, b) => b.length - a.length)[0];
-  if (!holder) return null;
-  return {
-    root: holder,
-    sub: path.slice(trimTrailingSeparators(holder).length).replace(/^[\\/]+/, ""),
-  };
-}
-
-/** What the last session chose, while it is still a choice the form offers; else the default. */
-function rememberedOr<T>(value: T | undefined, offered: readonly T[], fallback: T): T {
-  return value !== undefined && offered.includes(value) ? value : fallback;
-}
 
 /** `onCreate` may answer with a promise: the button stays busy until it settles. */
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
@@ -90,12 +66,14 @@ export function NewSessionForm(
   const [picked, setPicked] = useState<string | null>(null);
   // The folder the last session here started in (issue #1135), while the host still allows it.
   const prefs = props.store?.newSessionPrefs;
-  const kept = prefs?.folderOf(props.host.id);
-  const keptHere = kept && roots.includes(kept.root) ? kept : undefined;
-  const root = picked ?? keptHere?.root ?? roots[0] ?? "";
   // The subfolder typed; before that, the remembered one (only with the remembered folder).
   const [typedSub, setTypedSub] = useState<string | null>(null);
-  const sub = typedSub ?? (picked === null && keptHere ? keptHere.sub : "");
+  const { root, sub } = startFolder({
+    roots,
+    picked,
+    typedSub,
+    kept: prefs?.folderOf(props.host.id),
+  });
   // The person's own click on More options; until then it follows `wanted` (below).
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null);
   const [latched, setLatched] = useState(false);
@@ -124,17 +102,16 @@ export function NewSessionForm(
   const cwd = joinPath(root, sub);
   useEffect(() => onFolder?.(cwd), [onFolder, cwd]);
   const [name, setName] = useState("");
-  const [mode, setMode] = useState<PermissionMode>(
-    rememberedOr(prefs?.value.mode, MODES, "default"),
-  );
-  const [model, setModel] = useState(rememberedOr<string>(prefs?.value.model, MODELS, ""));
+  const start = startChoices(prefs?.value);
+  const [mode, setMode] = useState<PermissionMode>(start.mode);
+  const [model, setModel] = useState(start.model);
   /** Phase 39: the agent, offered when the host has OpenCode on; its models come from the host. */
   const [runtime, setRuntime] = useState<Runtime>("claude");
   const opencode = runtime === "opencode";
   // More options is folded, except that it opens by itself for what would otherwise act unseen: a
   // subfolder, OpenCode, or a setting of the screen's own. Once open for that it stays open, so
   // the field being edited never disappears from under the cursor.
-  const wanted = sub !== "" || opencode || props.extraSet === true;
+  const wanted = opensMoreOptions(sub, opencode, props.extraSet === true);
   if (wanted && !latched) setLatched(true);
   const more = moreOpen ?? latched;
   const hasOpenCode =
@@ -160,18 +137,16 @@ export function NewSessionForm(
   };
   const [prompt, setPrompt] = useState(props.prompt ?? "");
   /** A required prompt is still empty; OpenCode sessions are not started in the background. */
-  const promptMissing = props.promptRequired === true && !opencode && prompt.trim() === "";
+  const missingPrompt = promptMissing(props.promptRequired === true, opencode, prompt);
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
   /** Bypass asks again each time the session is created. */
   const [asking, setAsking] = useState(false);
   const allowBypass = props.host.hostInfo?.allowBypassPermissions === true;
-  const modes = (opencode ? OPENCODE_MODES : MODES).filter(
-    (m) => allowBypass || m !== "bypassPermissions",
-  );
-  const models = opencode ? openCodeModels : MODELS;
+  const modes = sessionModes(opencode, allowBypass);
+  const models = opencode ? openCodeModels : CLAUDE_MODELS;
   const submit = (confirmed = false) => {
-    if (!root || creating || promptMissing) return;
+    if (!root || creating || missingPrompt) return;
     if (mode === "bypassPermissions" && !confirmed) {
       setAsking(true);
       return;
@@ -182,18 +157,12 @@ export function NewSessionForm(
       prefs.remember(props.host.id, {
         root,
         sub,
-        mode: opencode ? prefs.value.mode : mode,
-        model: opencode ? prefs.value.model : model,
+        ...choicesToKeep({ opencode, last: prefs.value, mode, model }),
       });
     }
-    const done = props.onCreate({
-      cwd,
-      ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
-      permissionMode: mode,
-      ...(model ? { model } : {}),
-      ...(name.trim() ? { name: name.trim() } : {}),
-      ...(opencode ? { runtime: "opencode" as const, ...(effort ? { effort } : {}) } : {}),
-    });
+    const done = props.onCreate(
+      createPayload({ cwd, prompt, mode, model, name, opencode, effort }),
+    );
     if (isThenable(done)) {
       setCreating(true);
       const finished = () => setCreating(false);
@@ -409,7 +378,7 @@ export function NewSessionForm(
           sticky
           submit={t("newSession.create")}
           busy={creating}
-          disabled={!root || promptMissing}
+          disabled={!root || missingPrompt}
           disabledReason={
             root ? (
               t("newSession.needPrompt")
