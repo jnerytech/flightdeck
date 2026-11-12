@@ -60,7 +60,7 @@ function storeWithGateFirst() {
   hidden.respondTo = async (hostId, requestId, decision) => {
     answered.push([hostId, requestId, decision]);
   };
-  store.onOpenRequest((item) => opened.push(item.requestId));
+  store.permissions.onOpen((item) => opened.push(item.requestId));
   return { store, answered, opened };
 }
 
@@ -69,8 +69,8 @@ describe("oldest-gate: approve or deny the oldest request from the palette", () 
   // permission.respond with "gate:run/step/attempt", which the host refuses, and the gate stayed.
   test("when the oldest is a workflow gate it is opened to be answered there, never sent as a permission", () => {
     const { store, answered, opened } = storeWithGateFirst();
-    store.decideOldest("approve", "h1/gate:run1/review-plan/1");
-    store.decideOldest("deny", "h1/gate:run1/review-plan/1");
+    store.permissions.decideOldest("approve", "h1/gate:run1/review-plan/1");
+    store.permissions.decideOldest("deny", "h1/gate:run1/review-plan/1");
     expect(answered).toEqual([]);
     expect(opened).toEqual(["gate:run1/review-plan/1", "gate:run1/review-plan/1"]);
   });
@@ -101,7 +101,7 @@ describe("oldest-gate: approve or deny the oldest request from the palette", () 
         },
       ],
     };
-    store.decideOldest("approve", "h1/v1");
+    store.permissions.decideOldest("approve", "h1/v1");
     expect([answered, granted, opened]).toEqual([[], [], ["v1"]]);
   });
 });

@@ -1,4 +1,4 @@
-import type { AccountReaders } from "./account.ts";
+import type { AccountReaders } from "./readers.ts";
 
 /** The account the fake runtime (`--runtime fake`, the demo) answers: fixed, and nobody's. */
 export function demoAccountReaders(now: () => number = Date.now): AccountReaders {

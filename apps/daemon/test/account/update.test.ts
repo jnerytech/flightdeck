@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AccountState } from "@flightdeck/protocol";
-import { Account, type AccountReaders } from "../../src/account/account.ts";
-import type { AuthStatus } from "../../src/account/readers.ts";
+import { Account } from "../../src/account/account.ts";
+import type { AccountReaders, AuthStatus } from "../../src/account/readers.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { Quota, type Timers } from "../../src/quota/quota.ts";
 
