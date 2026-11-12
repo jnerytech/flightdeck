@@ -8,11 +8,10 @@ import { createVault } from "./actions/wiring.ts";
 import { activitySince } from "./activity/since.ts";
 import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
-import { Automations } from "./automations/automations.ts";
+import { createBoardWork } from "./automations/wiring.ts";
 import { createBgService } from "./bg/wiring.ts";
 import { readSpecText } from "./board/spec.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
-import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
 import { Forker } from "./checkpoints/fork.ts";
@@ -38,7 +37,6 @@ import { runGh, runGhIn } from "./github/gh.ts";
 import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { createHistory } from "./history/wiring.ts";
-import { Issues } from "./issues/issues.ts";
 import { createKnowledge } from "./knowledge/wiring.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
 import type { Logger } from "./logger.ts";
@@ -92,7 +90,6 @@ import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { readWatchSettings } from "./watch/watch.ts";
-import { createWatch } from "./watch/wiring.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
@@ -396,35 +393,26 @@ export async function startDaemon(
     scanner: snippetScanner,
     dataDir: config.dataDir,
   });
-  const issues = new Issues({ board, autoApprove });
-  // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
-  const boardSync = createBoardSync({ db: store.db, board, autoApprove, gh: runGh });
-  // Phase 22: the PRs of the cards are watched and fixed, inside their limits (before the
-  // automations: a watched PR is the watch's alone, #77).
+  // The issues, the GitHub Projects' boards, the PR watch and the automations around the cards.
   const {
+    issues,
+    boardSync,
     watcher: prWatcher,
-    fixer: prFixer,
     watch: prWatch,
-  } = createWatch({
+    automations,
+  } = createBoardWork({
     store,
     board,
+    autoApprove,
+    gh: runGh,
     manager,
     costs,
     snapshots,
     history,
     scanner: snippetScanner,
     checks: boundedCheckRunner(),
-  });
-  // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.
-  const automations = new Automations({
-    db: store.db,
-    board,
-    issues,
-    autoApprove,
-    pollMs: config.automations.issuePollIntervalMs,
+    config,
     log: logger.log.bind(logger),
-    // Issue #77: a card whose PR is watched is fixed by the watch alone.
-    prWatch: prFixer,
   });
   automations.start();
   // Retention at boot and every 24 h (backups join it in the same daily pass).
