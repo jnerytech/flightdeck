@@ -52,10 +52,6 @@ export const GATES = {
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
-  // The three teleport services name one feature.
-  teleport: "teleport",
-  teleportInbox: "teleport",
-  teleportImport: "teleport",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;
@@ -129,6 +125,12 @@ export const GROUP_GATES = {
   sessionSettings: {
     bypass: "bypass",
     sleep: "sleep",
+  },
+  // The three teleport services name one feature.
+  teleport: {
+    packages: "teleport",
+    inbox: "teleport",
+    imports: "teleport",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<

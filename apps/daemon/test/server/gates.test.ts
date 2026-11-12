@@ -62,11 +62,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
-  // The teleport gates moved out of the switch with the teleport domain (issue #1288): the three
-  // services name one feature.
-  teleport: "teleport",
-  teleportInbox: "teleport",
-  teleportImport: "teleport",
 };
 
 /**
@@ -141,6 +136,13 @@ const GROUPED: Record<string, Record<string, string>> = {
     bypass: "bypass",
     sleep: "sleep",
   },
+  // The teleport gates moved out of the switch with the teleport domain (issue #1288): the three
+  // services name one feature.
+  teleport: {
+    packages: "teleport",
+    inbox: "teleport",
+    imports: "teleport",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -194,6 +196,7 @@ describe("server-gates", () => {
       agentSetup: {},
       messaging: {},
       sessionSettings: {},
+      teleport: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),

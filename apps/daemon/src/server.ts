@@ -171,6 +171,16 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** Issue #100, #1593: the teleport's part of the server, each service optional. */
+interface TeleportServer {
+  /** The packages of the sessions this host teleports to another. */
+  packages?: TeleportPackages;
+  /** The packages other hosts send to this one. */
+  inbox?: TeleportInbox;
+  /** What an import on this host reads (none without a history root). */
+  imports?: TeleportImportDeps;
+}
+
 /** #1593: the session settings' part of the server, each switch optional. */
 interface SessionSettingsServer {
   /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
@@ -374,12 +384,8 @@ export interface ServerOptions {
   board?: Board;
   /** Phase 40: the AI assistant on this host's `claude`; announced in `host.info` when present. */
   assistant?: AssistantService;
-  /** Issue #100: the packages of the sessions this host teleports to another. */
-  teleport?: TeleportPackages;
-  /** Issue #100: the packages other hosts send to this one. */
-  teleportInbox?: TeleportInbox;
-  /** Issue #100: what an import on this host reads. */
-  teleportImport?: TeleportImportDeps;
+  /** Issue #100, #1593: the teleport between hosts. */
+  teleport?: TeleportServer;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */

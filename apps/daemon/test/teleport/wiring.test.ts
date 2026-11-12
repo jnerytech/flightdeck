@@ -159,7 +159,7 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       token: TOKEN,
       allowedRoots: [],
     };
-    const server = startServer({ ...base, teleport: packages });
+    const server = startServer({ ...base, teleport: { packages } });
     const off = startServer(base);
     const client = new FrameClient(server.url);
     const bare = new FrameClient(off.url);
@@ -215,7 +215,7 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       token: TOKEN,
       allowedRoots: [],
     };
-    const server = startServer({ ...base, teleportInbox: inbox });
+    const server = startServer({ ...base, teleport: { inbox } });
     const off = startServer(base);
     const client = new FrameClient(server.url);
     const bare = new FrameClient(off.url);
@@ -389,15 +389,17 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
     };
     const server = startServer({
       ...base,
-      teleportInbox: inbox,
-      teleportImport: teleportImportDeps({
+      teleport: {
         inbox,
-        allowedRoots: [],
-        historyRoots: [tempDir("fd-history-")],
-        indexer: undefined,
-        manager,
-        meta: undefined,
-      }),
+        imports: teleportImportDeps({
+          inbox,
+          allowedRoots: [],
+          historyRoots: [tempDir("fd-history-")],
+          indexer: undefined,
+          manager,
+          meta: undefined,
+        }),
+      },
     });
     const off = startServer(base);
     const client = new FrameClient(server.url);

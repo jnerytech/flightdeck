@@ -535,12 +535,14 @@ export function daemon(
       fsDirs: true,
       ...(options.teleport
         ? {
-            teleportInbox: new TeleportInbox({
-              dir: join(root, "teleport-in"),
-              now: Date.now,
-              newId: () => crypto.randomUUID(),
-              timers: globalThis,
-            }),
+            teleport: {
+              inbox: new TeleportInbox({
+                dir: join(root, "teleport-in"),
+                now: Date.now,
+                newId: () => crypto.randomUUID(),
+                timers: globalThis,
+              }),
+            },
           }
         : {}),
       ...firstRunOptions,
