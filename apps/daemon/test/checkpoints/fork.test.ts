@@ -82,7 +82,7 @@ describe("bifurcar", () => {
     const { forker, manager, repo } = setup();
     const server = startServer({
       manager,
-      forker,
+      checkpoints: { forker },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
