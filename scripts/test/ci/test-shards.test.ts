@@ -12,7 +12,7 @@ import {
   splitShards,
   type Timings,
   testFiles,
-} from "../../lib/test-shards.ts";
+} from "../../lib/tests/test-shards.ts";
 
 const sumOf = (shard: string[], timings: Timings) =>
   shard.reduce((total, file) => total + (timings[file] ?? 0), 0);

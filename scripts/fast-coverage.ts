@@ -3,7 +3,7 @@
  * `bun run fast-coverage [--write]` (#309): runs only the unit and component tiers with coverage
  * and checks that every source in fast-coverage-baseline.json is still at the coverage gate (80%) from them alone.
  * `--write` adds the newly covered sources, and refuses while a listed one dropped (the list only
- * grows). The logic is in lib/fast-coverage.ts; the tiers come from lib/test-tiers.ts.
+ * grows). The logic is in lib/tests/fast-coverage.ts; the tiers come from lib/tests/test-tiers.ts.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -11,8 +11,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
 import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-gate/check.ts";
-import { fastCoverageVerdict, fullyCovered } from "./lib/fast-coverage.ts";
-import { testTiers } from "./lib/test-tiers.ts";
+import { fastCoverageVerdict, fullyCovered } from "./lib/tests/fast-coverage.ts";
+import { testTiers } from "./lib/tests/test-tiers.ts";
 import { testArgs } from "./test/timeout.ts";
 
 const ROOT = resolve(import.meta.dir, "..");

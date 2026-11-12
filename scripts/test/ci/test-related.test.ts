@@ -7,7 +7,7 @@ import {
   planRelated,
   resolveImport,
   selectRelated,
-} from "../../lib/test-related.ts";
+} from "../../lib/tests/test-related.ts";
 
 const sources = (files: Record<string, string>) => new Map(Object.entries(files));
 

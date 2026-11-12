@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { mergeShards, type ShardMarker } from "../../lib/shard-gate.ts";
-import type { Tier } from "../../lib/test-tiers.ts";
+import { mergeShards, type ShardMarker } from "../../lib/tests/shard-gate.ts";
+import type { Tier } from "../../lib/tests/test-tiers.ts";
 
 // The fast-coverage ratchet reads the unit + component shards' own coverage (#1854): those tests
 // no longer run a third time just to get a lcov of the base of the pyramid.

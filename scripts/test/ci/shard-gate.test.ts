@@ -13,8 +13,8 @@ import {
   selectionOf,
   shardGate,
   shardRun,
-} from "../../lib/shard-gate.ts";
-import { importsOf } from "../../lib/test-related.ts";
+} from "../../lib/tests/shard-gate.ts";
+import { importsOf } from "../../lib/tests/test-related.ts";
 
 // repo-wide (#1108): reads the tracked file list, so CI's quick job runs it on every PR.
 
