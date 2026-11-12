@@ -1,4 +1,4 @@
-import { QuotaBarList } from "@/components/shell/quota-bars";
+import { QuotaBarList } from "@/features/shell/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { onSubscription } from "@/lib/quota";
