@@ -117,7 +117,7 @@ prefix. Tests move with their file in the same PR.
 | `home-*.ts`, `simple-*.ts` | `features/home/` |
 | `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`) |
 | `inbox.ts` | `features/inbox/` (**moved**) |
-| `issues.ts` | `features/issues/` |
+| `issues.ts` | `features/issues/` (**moved**) |
 | `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` |
 | `github-session.ts` | `features/hosts/` (the GitHub panel) |
 | `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/` (`board-shortcut.ts` stays with the board) |
