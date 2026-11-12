@@ -106,7 +106,7 @@
   "apps/desktop/src/features/hosts/hosts.ts",
   "apps/desktop/src/features/hosts/probe-host.ts",
   "apps/desktop/src/features/hosts/rename-host-dialog.tsx",
-  "apps/desktop/src/features/hosts/request-link.ts",
+  "apps/desktop/src/features/permissions/request-link.ts",
   "apps/desktop/src/features/hosts/use-now.ts",
   "apps/desktop/src/features/inbox/inbox.ts",
   "apps/desktop/src/features/inbox/notification-bell.tsx",

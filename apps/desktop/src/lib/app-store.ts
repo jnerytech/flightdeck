@@ -94,7 +94,6 @@ import {
   loadHosts,
   type NewHost,
   type OnlineStep,
-  parseRequestLink,
   RequestError,
   saveHosts,
   statusLine,
@@ -110,7 +109,11 @@ import {
 import { AwayClock } from "../features/needs-you/away.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
-import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
+import {
+  type PermissionsSlice,
+  parseRequestLink,
+  wirePermissions,
+} from "../features/permissions/index.ts";
 import {
   initialPersonasState,
   type PersonasSlice,
