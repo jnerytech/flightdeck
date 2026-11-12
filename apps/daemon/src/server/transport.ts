@@ -35,8 +35,8 @@ import type { ServerWebSocket } from "bun";
 import type { FlightdeckError } from "../errors.ts";
 import { parseJsonText } from "../json-text.ts";
 import type { TerminalSink } from "../terminal/terminal-manager.ts";
-import { sendFrame } from "../ws-send.ts";
 import type { DeltaCoalescer } from "./delta-coalescer.ts";
+import { sendFrame } from "./ws-send.ts";
 
 export interface Connection {
   authed: boolean;

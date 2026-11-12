@@ -99,7 +99,7 @@ for (const [lang, t] of [
     });
 
     test("the tray lists a gate by its step, not by the internal tool name", async () => {
-      const { trayMenu } = await import("../src/lib/tray.ts");
+      const { trayMenu } = await import("../src/features/tray/tray.ts");
       const { needsYou } = await import("../src/lib/app-store.ts");
       const store = await withGate(lang);
       const labels = trayMenu(needsYou(store.getState()), translator(lang)).items.map(

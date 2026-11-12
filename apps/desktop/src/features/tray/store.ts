@@ -1,7 +1,7 @@
 import type { T } from "../../i18n/index.ts";
 import type { AppState, PendingItem } from "../../lib/app-store.ts";
-import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "../../lib/tray.ts";
 import type { Platform, TrayAction, TrayStatus } from "../../platform/types.ts";
+import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 
 /** The part of the platform the tray and the window title need. */
 export type TrayPlatform = Pick<
