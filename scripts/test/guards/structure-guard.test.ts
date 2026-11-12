@@ -55,6 +55,9 @@ const STORE_BEFORE = [
   "  await act(() => store.checkClientBudgets());",
   "  store.addCard(card); store.refresh();",
   "  expect(store.clientBudgets.length).toBe(1);",
+  "  expect(r.total).toBe(3);",
+  '  expect(file).toBe("config.json");',
+  "  await expect(p).toThrow();",
   "});",
 ].join("\n");
 
@@ -72,6 +75,31 @@ describe("structure-guard: a store member moved under a slice (#1732)", () => {
       pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: STORE_SLICED }, change),
     );
     expect(verdict).toEqual({ structural: true, problems: [] });
+  });
+
+  test("a slice move whose longer line the formatter wraps, with a trailing comma, passes", () => {
+    const wrapped = STORE_SLICED.replace(
+      "  await act(() => store.clientBudgets.check());",
+      "  await act(() =>\n    store.clientBudgets.check(),\n  );",
+    );
+    const verdict = structureVerdict(
+      pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: wrapped }, change),
+    );
+    expect(verdict).toEqual({ structural: true, problems: [] });
+  });
+
+  test("a segment put before a member of something that is not the store, or inside a string, still fails", () => {
+    const heads = [
+      STORE_BEFORE.replace("expect(file).toBe(", "expect(file).not.toBe("),
+      STORE_BEFORE.replace("expect(p).toThrow()", "expect(p).rejects.toThrow()"),
+      STORE_BEFORE.replace("expect(r.total)", "expect(r.other.total)"),
+      STORE_BEFORE.replace('"config.json"', '"config.backup.json"'),
+    ];
+    const verdicts = heads.map(
+      (head) =>
+        structureVerdict(pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: head }, change)).problems,
+    );
+    expect(verdicts).toEqual(heads.map(() => [`${TEST}: changed beyond its import paths`]));
   });
 
   test("a slice move next to a changed assertion, or a member that is not the old one, still fails", () => {
