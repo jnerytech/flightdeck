@@ -12,6 +12,8 @@ export type ArchInputs = {
   /** `.dependency-cruiser-known-violations.json` at the merge-base with main, and in the working copy. */
   knownBase: string | null;
   knownHead: string | null;
+  /** The rules `.dependency-cruiser.cjs` declares on main; a rule not in it is new, and today is its first baseline (#1624). */
+  baseRules?: ReadonlySet<string> | null;
   /** Source files over the size limit today and in src-size-baseline.json. */
   srcOversized: Record<string, number>;
   srcBaseline: Record<string, number>;
@@ -49,7 +51,8 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
     for (const rule of new Set([...Object.keys(base), ...Object.keys(head)]))
       rows.push({
         ratchet: `depcruise ${rule}`,
-        baseline: base[rule] ?? 0,
+        baseline:
+          inputs.baseRules && !inputs.baseRules.has(rule) ? (head[rule] ?? 0) : (base[rule] ?? 0),
         today: head[rule] ?? 0,
       });
   }

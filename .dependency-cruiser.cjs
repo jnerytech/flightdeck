@@ -7,6 +7,7 @@
  */
 const DAEMON = "^apps/daemon/src/";
 const PROTOCOL = "^packages/protocol/src/";
+const DESKTOP = "^apps/desktop/src/";
 
 module.exports = {
   forbidden: [
@@ -23,6 +24,25 @@ module.exports = {
       severity: "error",
       from: { path: `${DAEMON}([^/]+)/` },
       to: { path: `${DAEMON}([^/]+)/(?!index\\.ts$)`, pathNot: `${DAEMON}$1/` },
+    },
+    {
+      name: "desktop-no-cycle",
+      comment:
+        "No import cycle in the desktop either (ADP); its own rule, so the daemon's count in the baseline stays what it was (#1624).",
+      severity: "error",
+      from: { path: DESKTOP },
+      to: { circular: true },
+    },
+    {
+      name: "desktop-no-deep-cross-domain",
+      comment:
+        "A desktop feature reaches another feature through its public entry (index.ts) only (#1624, folder map: docs/decisions/2026-11-12-desktop-folder-map.md).",
+      severity: "error",
+      from: { path: `${DESKTOP}features/([^/]+)/` },
+      to: {
+        path: `${DESKTOP}features/([^/]+)/(?!index\\.ts$)`,
+        pathNot: `${DESKTOP}features/$1/`,
+      },
     },
     {
       name: "protocol-context-not-from-entry",

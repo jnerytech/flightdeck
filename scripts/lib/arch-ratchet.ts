@@ -6,6 +6,7 @@
  */
 
 export const KNOWN = ".dependency-cruiser-known-violations.json";
+export const CONFIG = ".dependency-cruiser.cjs";
 
 /** How many known violations each rule has; an unreadable or missing file has none. */
 export function ruleCounts(known: string | null): Record<string, number> {
@@ -30,6 +31,15 @@ export function grownRules(base: Record<string, number>, head: Record<string, nu
     .map(([rule, count]) => `${rule}: ${base[rule] ?? 0} -> ${count}`);
 }
 
+/**
+ * The names of the rules a `.dependency-cruiser.cjs` declares (`name: "<rule>"`), or null when the
+ * file is unreadable, so a rule that main does not have yet can bring its first baseline (#1624).
+ */
+export function ruleNames(config: string | null): Set<string> | null {
+  if (config === null) return null;
+  return new Set([...config.matchAll(/\bname:\s*"([^"]+)"/g)].map((found) => found[1] as string));
+}
+
 /** The ratchet over git: the baseline at the merge-base with main against the working copy. */
 export function runArchRatchet(deps: {
   git: (args: string[]) => string | null;
@@ -48,7 +58,12 @@ export function runArchRatchet(deps: {
       code: 0,
       output: `arch-ratchet: no ${KNOWN} on main yet; this one is the first baseline (${counts})`,
     };
-  const grown = grownRules(ruleCounts(onMain), head);
+  // A rule main does not declare has no baseline to grow: the PR that adds it records its first one.
+  const onMainRules = ruleNames(base ? deps.git(["show", `${base}:${CONFIG}`]) : null);
+  const known = Object.fromEntries(
+    Object.entries(head).filter(([rule]) => !onMainRules || onMainRules.has(rule)),
+  );
+  const grown = grownRules(ruleCounts(onMain), known);
   if (grown.length > 0)
     return {
       code: 1,
