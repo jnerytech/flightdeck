@@ -58,7 +58,11 @@ import { UsageLedger } from "./quota/usage.ts";
 import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
-import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
+import {
+  createMemoryGate,
+  createResourcesModule,
+  type MemoryGateDeps,
+} from "./resources/wiring.ts";
 import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
@@ -76,20 +80,20 @@ import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
 import { EventStore } from "./store/event-store.ts";
-import { SummaryService } from "./summary/service.ts";
+import { createSummary } from "./summary/wiring.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
-import { TraceService } from "./trace/service.ts";
+import { createTrace } from "./trace/wiring.ts";
 import { createProjects, createProjectTrust } from "./trust/wiring.ts";
 import { createUi } from "./ui/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
 import { readWatchSettings } from "./watch/watch.ts";
-import { WebhookSender } from "./webhook/sender.ts";
+import { createWebhook } from "./webhook/wiring.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
-import { createWorktrees } from "./worktrees/wiring.ts";
+import { createWorktreesModule } from "./worktrees/wiring.ts";
 import { createWsl, type WslItem } from "./wsl/index.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
@@ -418,6 +422,11 @@ export async function startDaemon(
       log: logger,
     }),
   );
+  await domains.add(
+    createTrace({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
+  );
+  await domains.add(createSummary({ db: store.db, scanner: snippetScanner }));
+  await domains.add(createWebhook({ log: logger.log.bind(logger) }));
   const central = new Central({
     risk,
     autoApprove,
@@ -562,6 +571,26 @@ export async function startDaemon(
       options,
     }),
   );
+  await domains.add(
+    await createResourcesModule({
+      dataDir: config.dataDir,
+      sessions: manager.list.bind(manager),
+      // With the terminal off there are none to list, and the read must not fail on it (#937).
+      terminals: () => (terminals.enabled ? terminals.list() : []),
+      pidOf: terminals.pidOf.bind(terminals),
+      ...present({ proc: options.resourcesProc }),
+    }),
+  );
+  await domains.add(
+    createWorktreesModule({
+      board,
+      sessions: manager,
+      runs,
+      terminals,
+      externals: central.external,
+      locks: folderLocks,
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -609,31 +638,12 @@ export async function startDaemon(
       self: selfCommand,
       configFile,
     }),
-    trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
-    summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
-    webhook: new WebhookSender({ log: logger.log.bind(logger) }),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
-    resources: await createResources({
-      dataDir: config.dataDir,
-      sessions: manager.list.bind(manager),
-      // With the terminal off there are none to list, and the read must not fail on it (#937).
-      terminals: () => (terminals.enabled ? terminals.list() : []),
-      pidOf: terminals.pidOf.bind(terminals),
-      ...present({ proc: options.resourcesProc }),
-    }),
-    worktrees: createWorktrees({
-      board,
-      sessions: manager,
-      runs,
-      terminals,
-      externals: central.external,
-      locks: folderLocks,
-    }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
