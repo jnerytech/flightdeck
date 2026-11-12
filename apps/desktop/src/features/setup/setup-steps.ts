@@ -1,4 +1,6 @@
 import type { DepResult, Project } from "@flightdeck/protocol";
+import { z } from "zod";
+import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 export type SetupStepId =
@@ -228,14 +230,7 @@ export class SetupSettings {
 
   /** The missing tools the person dismissed, as `tool@host`. */
   dismissedTools(): string[] {
-    try {
-      const stored: unknown = JSON.parse(this.storage.getItem(SETUP_TOOLS_KEY) ?? "[]");
-      return Array.isArray(stored)
-        ? stored.filter((id): id is string => typeof id === "string")
-        : [];
-    } catch {
-      return [];
-    }
+    return readStored(this.storage, SETUP_TOOLS_KEY, validItems(z.string()), []);
   }
 
   dismissTool(id: string): void {

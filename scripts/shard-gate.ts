@@ -19,7 +19,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-check.ts";
+import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-gate/check.ts";
 import {
   mergeShards,
   runShard,
