@@ -79,7 +79,7 @@ import { createTelemetry } from "./telemetry/wiring.ts";
 import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { createProjectTrust, trustServer } from "./trust/wiring.ts";
+import { createProjects, createProjectTrust } from "./trust/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { readWatchSettings } from "./watch/watch.ts";
@@ -291,6 +291,7 @@ export async function startDaemon(
     snapshots,
   });
   await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
+  await domains.add(createProjects({ keys, projectTrust, manager }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
   const { history } = await domains.add(
@@ -563,12 +564,6 @@ export async function startDaemon(
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
     ...present({ assistant }),
-    projects: serverGroup<"projects">()({
-      warmKey: (cwd) => keys.resolve(cwd),
-      keyOf: (cwd) => keys.resolve(cwd),
-      trust: trustServer({ projectTrust, manager }),
-      find: true,
-    }),
     roots: serverGroup<"roots", "platform">()({
       ...present({ platform: options.rootsPlatform }),
       persist: (roots) =>
