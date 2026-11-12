@@ -6,7 +6,7 @@ import { memoryPlatform } from "./fixtures.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { AdrDraftDialog } = await import("../src/components/session/adr-draft-dialog.tsx");
+const { AdrDraftDialog } = await import("../src/features/sessions/adr-draft-dialog.tsx");
 const { RecapPanel } = await import("../src/features/summary/recap-panel.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 

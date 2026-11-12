@@ -5,7 +5,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { ComposerDock, RecapSlot, SessionHeader, SessionPane } = await import(
-  "../../src/components/session/parts.tsx"
+  "../../src/features/sessions/parts.tsx"
 );
 
 /** Reports a width to every box that is observed, as a real layout would. */

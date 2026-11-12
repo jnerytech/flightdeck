@@ -18,7 +18,7 @@ const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { hostDotView } = await import("../src/lib/host-status.ts");
 const { HostsBanner } = await import("../src/features/hosts/hosts-banner.tsx");
-const { Timeline } = await import("../src/components/session/parts.tsx");
+const { Timeline } = await import("../src/features/sessions/parts.tsx");
 
 setDefaultTimeout(20_000);
 

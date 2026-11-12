@@ -6,7 +6,7 @@ import { fakeAssistant } from "../fixtures.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SessionFinish } = await import("../../src/components/session/session-finish.tsx");
+const { SessionFinish } = await import("../../src/features/sessions/session-finish.tsx");
 const { AssistantController } = await import("../../src/lib/assistant.ts");
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");

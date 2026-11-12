@@ -1,9 +1,9 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { Copy, History } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
-import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
+import { Message, SessionHeader, SessionPane, Timeline } from "@/features/sessions/parts";
+import { ToolRow } from "@/features/sessions/tool-row";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";

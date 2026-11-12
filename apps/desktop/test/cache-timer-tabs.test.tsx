@@ -11,7 +11,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { CacheTimer } = await import("../src/features/sessions/cache-timer.tsx");
-const { SessionStatusLine } = await import("../src/components/session/status-line.tsx");
+const { SessionStatusLine } = await import("../src/features/sessions/status-line.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
