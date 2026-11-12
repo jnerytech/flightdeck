@@ -1,15 +1,4 @@
 import type { T } from "../../i18n/index.ts";
-import {
-  addEntry,
-  type InboxEntry,
-  loadInbox,
-  markAllRead,
-  markRead,
-  markUnread,
-  saveInbox,
-  unreadRows,
-} from "../../lib/inbox.ts";
-import type { AboutNotification } from "../../lib/notify.ts";
 import { parseRequestLink } from "../../lib/request-link.ts";
 import type { Route } from "../../lib/router.ts";
 import type { Notification } from "../../platform/types.ts";
@@ -20,6 +9,17 @@ import {
   type NotifySource,
   playNotifySound,
 } from "../notifications/index.ts";
+import {
+  addEntry,
+  type InboxEntry,
+  loadInbox,
+  markAllRead,
+  markRead,
+  markUnread,
+  saveInbox,
+  unreadRows,
+} from "./inbox.ts";
+import type { AboutNotification } from "./notify.ts";
 
 /** What the notification center reads and does through the app's store. */
 export interface InboxCore {
