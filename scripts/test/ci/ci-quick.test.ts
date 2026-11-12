@@ -46,7 +46,7 @@ describe("ci-quick", () => {
       quickTests(
         [
           "scripts/test/guards/wait-ratchet.test.ts",
-          "apps/desktop/test/layout-ratchet.test.ts",
+          "apps/desktop/test/layout/layout-ratchet.test.ts",
           "scripts/test/guards/protocol-surface.test.ts",
           "scripts/test/ci/ci-quick.test.ts",
           "scripts/lib/wait-ratchet.ts",
@@ -56,7 +56,7 @@ describe("ci-quick", () => {
         () => "",
       ),
     ).toEqual([
-      "apps/desktop/test/layout-ratchet.test.ts",
+      "apps/desktop/test/layout/layout-ratchet.test.ts",
       "apps/desktop/test/x-ratchet.test.tsx",
       "scripts/test/guards/protocol-surface.test.ts",
       "scripts/test/guards/wait-ratchet.test.ts",

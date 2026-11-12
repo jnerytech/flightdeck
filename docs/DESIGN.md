@@ -146,7 +146,7 @@ should rely on them.
 
 | Guard | Where | What a failure says |
 |---|---|---|
-| Layout ratchet | `apps/desktop/test/layout-ratchet.test.ts` | `src/ui/X.tsx: 12 > 11`: the screen gained a raw layout utility. Use a primitive or a named style. |
+| Layout ratchet | `apps/desktop/test/layout/layout-ratchet.test.ts` | `src/ui/X.tsx: 12 > 11`: the screen gained a raw layout utility. Use a primitive or a named style. |
 | Style lint | `scripts/lib/style-lint.ts` | A palette colour or a fixed measure in `style`. |
 | One definition per named style | `apps/desktop/test/css-utilities.test.ts` | The names defined twice. |
 | Contrast | `scripts/test/demo/theme-contrast.test.ts` | The token pair and theme under its ratio. Also any field that draws a border without `border-input`. |

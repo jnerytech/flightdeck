@@ -149,12 +149,16 @@ async function lint(paths: string[], code: string) {
     writeFileSync(file, code);
   }
   try {
-    // One run for every probe: a spawn of biome takes seconds on a loaded Windows runner.
-    const proc = Bun.spawn([process.execPath, "x", "biome", "lint", ...paths], {
-      cwd: root,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+    // One run for every probe: a spawn of biome takes seconds on a loaded Windows runner. Only the
+    // rule under test runs: every rule on three files took 5 to 6 s on CI, this one takes 0.4 s.
+    const proc = Bun.spawn(
+      [process.execPath, "x", "biome", "lint", "--only=style/noRestrictedImports", ...paths],
+      {
+        cwd: root,
+        stdout: "pipe",
+        stderr: "pipe",
+      },
+    );
     const [out, err, exit] = await Promise.all([
       new Response(proc.stdout).text(),
       new Response(proc.stderr).text(),

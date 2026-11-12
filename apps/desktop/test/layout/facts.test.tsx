@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Facts } = await import("../src/shared/layout/facts.tsx");
+const { Facts } = await import("../../src/shared/layout/facts.tsx");
 
 afterEach(cleanup);
 
