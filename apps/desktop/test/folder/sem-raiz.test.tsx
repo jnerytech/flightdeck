@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { FolderPicker } = await import("../src/features/hosts/folder-picker.tsx");
-const { ActionButton } = await import("../src/shared/feedback/index.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { FolderPicker } = await import("../../src/features/hosts/folder-picker.tsx");
+const { ActionButton } = await import("../../src/shared/feedback/index.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 afterEach(cleanup);
 
