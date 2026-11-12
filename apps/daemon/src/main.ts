@@ -76,17 +76,17 @@ import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
 import { EventStore } from "./store/event-store.ts";
-import { SummaryService } from "./summary/service.ts";
+import { createSummary } from "./summary/wiring.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
-import { TraceService } from "./trace/service.ts";
+import { createTrace } from "./trace/wiring.ts";
 import { createProjects, createProjectTrust } from "./trust/wiring.ts";
 import { createUi } from "./ui/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
 import { readWatchSettings } from "./watch/watch.ts";
-import { WebhookSender } from "./webhook/sender.ts";
+import { createWebhook } from "./webhook/wiring.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
@@ -418,6 +418,11 @@ export async function startDaemon(
       log: logger,
     }),
   );
+  await domains.add(
+    createTrace({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
+  );
+  await domains.add(createSummary({ db: store.db, scanner: snippetScanner }));
+  await domains.add(createWebhook({ log: logger.log.bind(logger) }));
   const central = new Central({
     risk,
     autoApprove,
@@ -609,9 +614,6 @@ export async function startDaemon(
       self: selfCommand,
       configFile,
     }),
-    trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
-    summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
-    webhook: new WebhookSender({ log: logger.log.bind(logger) }),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
