@@ -185,6 +185,23 @@ describe("arch-report: narrow entries (#1624)", () => {
     ]);
   });
 
+  test("a value and a type sharing one name are one export, as the schema-plus-type pairs of the protocol are", () => {
+    const text = [
+      "export const Ack = z.object({});",
+      "export type Ack = z.infer<typeof Ack>;",
+      "export { Ack as Pong, other };",
+      "export type { Pong };",
+    ].join("\n");
+    expect(entryRows(new Map([[ENTRY, text]]), new Map())[0]?.today).toBe(3);
+  });
+
+  test("the growth note never prints a percentage that is not over the threshold", () => {
+    const base = new Map([[ENTRY, names(300)]]);
+    expect(formatEntries(entryRows(new Map([[ENTRY, names(361)]]), base))).toContain(
+      "grew 21% (over 20%)",
+    );
+  });
+
   test("an entry with a bare export-star is reported as broad", () => {
     const rows = entryRows(new Map([[ENTRY, `${names(2)}export * from "./all.ts";\n`]]), new Map());
     expect(rows).toEqual([{ entry: ENTRY, base: null, today: 2, broad: true }]);
