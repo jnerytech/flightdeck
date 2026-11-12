@@ -32,6 +32,7 @@ import { NeedsYou } from "../features/needs-you/page.tsx";
 import { QuotaPanel } from "../features/quota/index.ts";
 import { NewSessionForm } from "../features/sessions/new-session-form.tsx";
 import { SessionTabs } from "../features/sessions/session-tabs.tsx";
+import { SessionsHub } from "../features/sessions/sessions-hub.tsx";
 import { SetupPage } from "../features/setup/index.ts";
 import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
 import {
@@ -53,7 +54,6 @@ import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { lazyScreen } from "./lazy-screen.ts";
-import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StartScreen } from "./StartScreen.tsx";
 
