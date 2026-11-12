@@ -1,7 +1,7 @@
 /**
  * Issue #248: the costs domain: costs, budgets, the plan quota, the account, usage and telemetry.
  */
-import { featureOff } from "../../errors.ts";
+import { featureOff } from "../../kernel/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const costsHandlers = {

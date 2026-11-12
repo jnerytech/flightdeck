@@ -1,7 +1,7 @@
 import { lstat, mkdir, readdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { KnowledgeEntry, KnowledgeKind } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { samePath } from "../paths.ts";
 import { shownHash } from "./list.ts";
 import { parseKnowledge } from "./parse.ts";

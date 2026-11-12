@@ -6,8 +6,13 @@
  */
 import { appendFile, mkdir, readFile, realpath } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr, parseJsonWith, whichOnPath, writeFileAtomic } from "../kernel/index.ts";
+import {
+  FlightdeckError,
+  parseJsonOr,
+  parseJsonWith,
+  whichOnPath,
+  writeFileAtomic,
+} from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 import { inspectPlugin, type PluginInventory } from "./inventory.ts";
 import { AnyJson, JsonObject, PinsJson } from "./json-reads.ts";

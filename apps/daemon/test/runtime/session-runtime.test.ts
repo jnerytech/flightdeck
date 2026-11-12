@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionEvent } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
 import { AsyncQueue } from "../../src/kernel/async-queue.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import type {
   AgentRun,
   AgentRuntime,

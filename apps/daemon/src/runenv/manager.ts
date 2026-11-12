@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { RunConfig, RunConfigs } from "./config.ts";
 import { type CardPorts, interpolatePorts, type PortMap, portEnv } from "./ports.ts";
 import { type ReadyResult, waitForServer } from "./preview.ts";

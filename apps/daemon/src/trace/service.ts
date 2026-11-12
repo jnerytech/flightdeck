@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { SecretScanner, SessionTrace, TraceExport, TraceNode } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { TelemetryStore } from "../telemetry/store.ts";
 import { buildTrace } from "./model.ts";
 

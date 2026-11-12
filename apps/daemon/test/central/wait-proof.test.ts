@@ -5,7 +5,7 @@ import { ExternalSessions } from "../../src/central/external.ts";
 import { ExternalPermissions } from "../../src/central/external-permissions.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
 import { SessionMetaStore } from "../../src/central/session-meta.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import type { PermissionDecision } from "../../src/runtime/types.ts";
 import { startServer } from "../../src/server.ts";

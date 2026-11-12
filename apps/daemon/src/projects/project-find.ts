@@ -1,7 +1,7 @@
 import { lstat, readdir, realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { ProjectsCloneResult, ProjectsScanResult } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 
 export interface ScanOptions {

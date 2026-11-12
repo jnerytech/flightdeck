@@ -4,7 +4,7 @@ import { type core, z } from "zod";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { referencesIn, replaceReferences } from "../workflows/index.ts";
 import { hashOf } from "../workflows/repo.ts";
 

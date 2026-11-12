@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { normalizePersona, parsePersona } from "../../src/personas/model.ts";
 import { OpenSessionPersonas } from "../../src/personas/open-session.ts";
 import { packPersonas } from "../../src/personas/pack.ts";

@@ -1,5 +1,5 @@
 import { PermissionUpdate } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { RANK, type RiskLevel } from "./risk.ts";
 import {
   type ClassifyCall,

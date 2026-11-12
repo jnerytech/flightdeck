@@ -15,8 +15,7 @@ import type {
   SessionIdentity,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr, ulid } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { slug } from "../names/format.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import { formatSessionMessage, formatSystemMessage } from "./header.ts";

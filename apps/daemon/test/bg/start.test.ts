@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { BgService } from "../../src/bg/service.ts";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { whichOnPath } from "../../src/kernel/which.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";

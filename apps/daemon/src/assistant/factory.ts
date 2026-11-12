@@ -2,7 +2,7 @@
 import type { SecretScanner } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import type { UsageIndexer } from "../costs/usage-indexer.ts";
-import { FlightdeckError, featureOff } from "../errors.ts";
+import { FlightdeckError, featureOff } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { AgentRuntime, CompleteOptions, CompleteResult } from "../runtime/types.ts";

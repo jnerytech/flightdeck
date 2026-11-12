@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { PermissionUpdate } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import { RiskClassifier } from "../../src/permissions/risk.ts";
 import type { PathKind } from "../../src/permissions/rule-risk.ts";

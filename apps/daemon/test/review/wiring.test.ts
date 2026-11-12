@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { DiffFile } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { createChanges, createReview, type ReviewDeps } from "../../src/review/wiring.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 
