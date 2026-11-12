@@ -56,7 +56,6 @@ const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awai
  * Owns the sessions: starts agent runs, assigns every event a `seq` through the store before
  * fanning it out to subscribers, drives the status machine and the per-session message queue.
  */
-
 export class SessionManager {
   private readonly store: EventStore;
   private readonly broker: PermissionBroker;
