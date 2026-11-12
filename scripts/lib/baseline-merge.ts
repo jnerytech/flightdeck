@@ -16,12 +16,12 @@ export const DRIVER_NAME = "baseline-json";
 
 /**
  * The driver's command line; git runs it through the shell in the worktree's top folder. The script
- * exits 0 (merged) or 2 (refused, markers written: a conflict for git); any other status (no `bun`
- * on the PATH, a crash, which exits 1) and a worktree whose branch predates the driver get git's
- * line merge, as with no driver.
+ * exits 0 (merged) or 2 (refused, markers written). Any other status (no `bun` on the PATH, a crash,
+ * which exits 1) gets git's line merge and still a conflict, so a raise never merges unseen. A
+ * worktree whose branch predates the driver has no script: git's line merge, as with no driver.
  */
 export const DRIVER_COMMAND =
-  "if [ -f scripts/merge-baseline.ts ]; then bun scripts/merge-baseline.ts %O %A %B; s=$?; if [ $s -eq 0 ]; then exit 0; fi; if [ $s -eq 2 ]; then exit 1; fi; fi; git merge-file -L ours -L base -L theirs %A %O %B";
+  "if [ -f scripts/merge-baseline.ts ]; then bun scripts/merge-baseline.ts %O %A %B; s=$?; if [ $s -eq 0 ]; then exit 0; fi; if [ $s -eq 2 ]; then exit 1; fi; git merge-file -L ours -L base -L theirs %A %O %B; exit 1; fi; git merge-file -L ours -L base -L theirs %A %O %B";
 
 /**
  * What the driver writes when it refuses: both versions whole between conflict markers, so a raise
