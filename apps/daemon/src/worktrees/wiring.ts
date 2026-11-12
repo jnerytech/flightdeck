@@ -1,6 +1,7 @@
 import { statfs } from "node:fs/promises";
 import { type CommandResult, runCommand } from "../board/command.ts";
 import { isInside, whichOnPath } from "../kernel/index.ts";
+import type { DomainModule } from "../server/index.ts";
 import type { FolderLocks } from "./locks.ts";
 import { duSize, type WorktreeCard, type WorktreeProject, Worktrees } from "./worktrees.ts";
 
@@ -103,4 +104,10 @@ export function createWorktrees(deps: WorktreesDeps): Worktrees {
     },
     now: () => Date.now(),
   });
+}
+
+/** The worktrees panel, as the module the server takes its `worktrees` key from. */
+export function createWorktreesModule(deps: WorktreesDeps) {
+  const module: DomainModule<"worktrees"> = { server: { worktrees: createWorktrees(deps) } };
+  return { modules: [module] as const };
 }
