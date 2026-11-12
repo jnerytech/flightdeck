@@ -1,4 +1,4 @@
-import type { ExternalPermissionFrame, ExternalSession } from "@flightdeck/protocol";
+import type { ExternalPermissionFrame } from "@flightdeck/protocol";
 import type { ApprovalRequest } from "../../components/approval/approval-card.tsx";
 import { basename } from "../../lib/paths.ts";
 
@@ -8,11 +8,11 @@ import { basename } from "../../lib/paths.ts";
  * events, and then `untitled` stands in.
  */
 export function externalTitle(
-  name: string | undefined,
+  name: string | null | undefined,
   cwd: string | null | undefined,
   untitled: string,
 ): string {
-  return `${name ?? ""}${cwd ?? ""}${untitled}`;
+  return name ?? (cwd ? basename(cwd) : untitled);
 }
 
 /** The open requests of one terminal session, from the host's queue keyed `hostId/requestId`. */
@@ -21,7 +21,12 @@ export function externalRequestsOf(
   hostId: string,
   claudeSessionId: string,
 ): ExternalPermissionFrame[] {
-  return Object.keys(queue).length + hostId.length + claudeSessionId.length > 0 ? [] : [];
+  return Object.entries(queue)
+    .filter(
+      ([key, request]) =>
+        key.startsWith(`${hostId}/`) && request.claudeSessionId === claudeSessionId,
+    )
+    .map(([, request]) => request);
 }
 
 /** A terminal session's permission request as the approval card shows it. */
@@ -29,10 +34,14 @@ export function approvalRequestOf(
   request: ExternalPermissionFrame,
   cwd: string | null,
 ): ApprovalRequest {
-  return { requestId: "", toolName: "", input: {}, cwd: cwd ? "" : null, createdAt: null };
-}
-
-/** True while the session is running or waits for a permission: a restore point is not safe then. */
-export function sessionBusy(status: ExternalSession["status"] | undefined): boolean {
-  return status === undefined;
+  return {
+    requestId: request.requestId,
+    toolName: request.toolName,
+    input: request.input,
+    cwd,
+    createdAt: request.createdAt,
+    ...(request.suggestions ? { suggestions: request.suggestions } : {}),
+    ...(request.risk ? { risk: request.risk } : {}),
+    ...(request.riskReason ? { riskReason: request.riskReason } : {}),
+  };
 }

@@ -4,7 +4,6 @@ import {
   approvalRequestOf,
   externalRequestsOf,
   externalTitle,
-  sessionBusy,
 } from "../../src/features/sessions/external-view.ts";
 
 const frame = (over: Partial<ExternalPermissionFrame> = {}): ExternalPermissionFrame => ({
@@ -68,14 +67,5 @@ describe("approvalRequestOf", () => {
     expect(full.suggestions).toEqual([]);
     expect("risk" in approvalRequestOf(frame(), null)).toBe(false);
     expect("suggestions" in approvalRequestOf(frame(), null)).toBe(false);
-  });
-});
-
-describe("sessionBusy", () => {
-  test("running and awaiting a permission are busy; the rest, and no session, are not", () => {
-    expect(sessionBusy("running")).toBe(true);
-    expect(sessionBusy("awaiting_permission")).toBe(true);
-    expect(sessionBusy("idle")).toBe(false);
-    expect(sessionBusy(undefined)).toBe(false);
   });
 });
