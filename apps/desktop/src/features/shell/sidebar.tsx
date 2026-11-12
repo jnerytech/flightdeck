@@ -35,6 +35,8 @@ import {
   hostRailLabel,
   hostVersionText,
   RenameHostDialog,
+  useSwitcherHostId,
+  useSwitcherHosts,
 } from "@/features/hosts/index.ts";
 import { pendingCount } from "@/features/needs-you/index.ts";
 import {
@@ -46,7 +48,6 @@ import {
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { setupProgress, setupSteps } from "@/features/setup/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
-import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import type { Key, T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
 import type { Route } from "@/lib/router.ts";
