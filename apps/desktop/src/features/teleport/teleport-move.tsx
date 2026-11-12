@@ -94,7 +94,7 @@ export const TeleportMove = memo(function TeleportMove(
       targets={targets}
       repoField={repoFieldFor(store, state.hosts)}
       run={(args) =>
-        store.moveSession(props.hostId, props.sessionId, args).then(
+        store.mover.move(props.hostId, props.sessionId, args).then(
           (outcome) => {
             if (closed.current && outcome.kind === "moved") {
               const host = state.hosts.find((h) => h.id === args.target)?.name ?? "";
