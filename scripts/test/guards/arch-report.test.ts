@@ -143,6 +143,25 @@ describe("arch-report: narrow entries (#1624)", () => {
     expect(isEntry("apps/desktop/src/features/board/board.ts")).toBe(false);
     expect(isEntry("apps/desktop/test/board/index.ts")).toBe(false);
     expect(isEntry("scripts/lib/index.ts")).toBe(false);
+    // a path that would break a markdown table row or inject a link is no entry
+    expect(isEntry("apps/desktop/src/x|y/index.ts")).toBe(false);
+    expect(isEntry("apps/desktop/src/x`y/index.ts")).toBe(false);
+    expect(isEntry("apps/desktop/src/x<b>/index.ts")).toBe(false);
+  });
+
+  test("an entry written to stall a regex is counted in linear time (a PR author controls it)", () => {
+    const unterminatedComments = "/* ".repeat(40_000);
+    const unclosedBlocks = "export {\n".repeat(12_000);
+    const started = performance.now();
+    const rows = entryRows(
+      new Map([
+        [ENTRY, `${names(2)}${unterminatedComments}`],
+        ["apps/daemon/src/x/index.ts", `${names(3)}${unclosedBlocks}`],
+      ]),
+      new Map(),
+    );
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(rows.map((row) => row.today)).toEqual([3, 2]);
   });
 
   test("the export count of an entry counts every name it lists, whatever the form, and skips comments", () => {
