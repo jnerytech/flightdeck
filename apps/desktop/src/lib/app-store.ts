@@ -35,6 +35,7 @@ import {
   initialAppUpdateState,
   wireAppUpdates,
 } from "../features/appupdate/index.ts";
+import { WhatsNew } from "../features/appupdate/whats-new.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -201,7 +202,6 @@ import { VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
-import { WhatsNew } from "./whats-new.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
 export type {
