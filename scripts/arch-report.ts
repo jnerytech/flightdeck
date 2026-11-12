@@ -10,7 +10,13 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cruise } from "dependency-cruiser";
 import { CONFIG, KNOWN, newRules } from "./lib/arch-ratchet.ts";
-import { formatTable, growing, ratchetRows, shapeShares } from "./lib/arch-report.ts";
+import {
+  cycleBaseline,
+  formatTable,
+  growing,
+  ratchetRows,
+  shapeShares,
+} from "./lib/arch-report.ts";
 import { type CruiseModule, cycleFiles } from "./lib/cycle-files.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
@@ -52,6 +58,7 @@ async function desktopCycleCount(): Promise<number> {
   return cycleFiles((result.output as { modules: CruiseModule[] }).modules).length;
 }
 
+const CYCLES = "desktop-cycles-baseline.json";
 const mergeBase = ["origin/main", "main"]
   .map((main) => git(["merge-base", "HEAD", main])?.trim())
   .find((found) => found);
@@ -83,7 +90,10 @@ const rows = ratchetRows({
   newRules: newRules(mergeBase ? git(["show", `${mergeBase}:${CONFIG}`]) : null, read(CONFIG)),
   desktopCycles: {
     today: await desktopCycleCount(),
-    baseline: json("desktop-cycles-baseline.json").files ?? 0,
+    baseline: cycleBaseline(
+      mergeBase ? git(["show", `${mergeBase}:${CYCLES}`]) : null,
+      read(CYCLES),
+    ),
   },
   srcOversized: oversizedSources(sources.filter(({ path }) => isMeasured(path))),
   srcBaseline: json("src-size-baseline.json"),

@@ -44,8 +44,19 @@ export function shapeShares(filesByTier: Record<string, number>): Record<string,
 }
 
 /** The desktop cycle baseline (`{ "files": n }`): the head's file may lower main's, never raise it (#1624). */
-export function cycleBaseline(_onMain: string | null, _head: string | null): number {
-  return -1;
+export function cycleBaseline(onMain: string | null, head: string | null): number {
+  const files = (text: string | null): number | null => {
+    try {
+      const value = (JSON.parse(text ?? "{}") as { files?: unknown }).files;
+      return typeof value === "number" ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const own = files(head);
+  const base = files(onMain);
+  if (own === null) return 0; // unreadable: nothing is allowed
+  return base === null ? own : Math.min(base, own);
 }
 
 /** One row per ratchet figure, sorted by name. */
