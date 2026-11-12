@@ -18,6 +18,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { PaletteSlice } from "@/features/palette/palette-store.ts";
 import { DensityController } from "@/features/shell/density.ts";
 import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
 import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
@@ -263,9 +264,7 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
   }
 }
 
-export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
-/** How many used palette entries are kept (the palette shows five). */
-const PALETTE_RECENTS_KEPT = 12;
+export { PALETTE_RECENTS_KEY } from "@/features/palette/palette-store.ts";
 
 export { sessionKey };
 
@@ -595,6 +594,17 @@ export class AppStore {
       settings: () => this.roi,
     });
     this.projectList = wireProjects(this.kernel);
+    this.palette = new PaletteSlice({
+      hosts: () => this.state.hosts,
+      storage: platform.storage,
+      loadProjects: (hostId) => this.projectList.load(hostId),
+      loadBoard: (hostId, projectId) => this.loadBoard(hostId, projectId),
+      loadSshTargets: (hostId) => this.ssh.loadTargets(hostId),
+      loadPersonas: (hostId) => this.personas.load(hostId),
+      listSnippets: (hostId) => quiet(this.dispatch(hostId, "snippets.list", {})),
+      keepSnippets: (hostId, snippets) => this.snippets.keep(hostId, snippets),
+      refreshHub: () => this.refreshHub(),
+    });
     this.prWatch = wireWatch(this.kernel, {
       feed: (host, title, before, watch) => this.webhookFeed.watch(host, title, before, watch),
       notify: (notification, route, fallbackUrl, source) =>
@@ -659,6 +669,7 @@ export class AppStore {
       stop: (hostId) => this.link.stop(hostId),
       detach: (hostId) => {
         this.hostTabs.removeHost(hostId);
+        this.vaultApprovals.hostGone(hostId);
         this.link.remove(hostId);
       },
       forget: (hostId) => {
@@ -1041,23 +1052,12 @@ export class AppStore {
 
   /** What the palette was used for lately, most recent first. */
   paletteRecents(): string[] {
-    try {
-      const stored = JSON.parse(this.platform.storage.getItem(PALETTE_RECENTS_KEY) ?? "[]");
-      return Array.isArray(stored)
-        ? stored.filter((id): id is string => typeof id === "string")
-        : [];
-    } catch {
-      return [];
-    }
+    return this.palette.recents();
   }
 
   /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
   recordPaletteUse(id: string): void {
-    const next = [id, ...this.paletteRecents().filter((other) => other !== id)].slice(
-      0,
-      PALETTE_RECENTS_KEPT,
-    );
-    this.platform.storage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(next));
+    this.palette.recordUse(id);
   }
 
   private openRequest(item: PendingItem): void {
@@ -1245,10 +1245,6 @@ export class AppStore {
     this.update({ worktreeFilter: filter });
   }
 
-  /**
-   * What the palette lists besides live state: the Sessões lists, each host's projects and their
-   * cards. Quiet: a host without a board (or offline) just lists less.
-   */
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
   async loadBoard(hostId: string, projectId: string): Promise<void> {
     const conn = this.link.connection(hostId);
@@ -1257,36 +1253,12 @@ export class AppStore {
     for (const card of cardsIn(board)) this.onCard(hostId, card);
   }
 
-  async loadPalette(): Promise<void> {
-    const boards = this.state.hosts
-      .filter((host) => host.status === "online")
-      .map(async (host) => {
-        const projects = await this.projectList.load(host.id);
-        await inSequence(projects ?? [], (project) => this.loadBoard(host.id, project.id));
-      });
-    const targets = this.state.hosts
-      .filter(
-        (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "ssh", false),
-      )
-      .map(async (host) => {
-        await this.ssh.loadTargets(host.id);
-      });
-    const personas = this.state.hosts
-      .filter(
-        (host) =>
-          host.status === "online" && hasFeature(host.hostInfo?.features, "personas", false),
-      )
-      .map((host) => this.personas.load(host.id));
-    const snippets = this.state.hosts
-      .filter(
-        (host) =>
-          host.status === "online" && hasFeature(host.hostInfo?.features, "snippets", false),
-      )
-      .map(async (host) => {
-        const listed = await quiet(this.dispatch(host.id, "snippets.list", {}));
-        if (listed) this.snippets.keep(host.id, listed.snippets);
-      });
-    await Promise.all([this.refreshHub(), ...boards, ...targets, ...snippets, ...personas]);
+  /**
+   * What the palette lists besides live state: the Sessões lists, each host's projects and their
+   * cards. Quiet: a host without a board (or offline) just lists less.
+   */
+  loadPalette(): Promise<void> {
+    return this.palette.load();
   }
 
   /** The run.yaml of a project on its base branch, with its validation and trust. */
@@ -1840,7 +1812,12 @@ export class AppStore {
       );
     }
     if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") this.stream.dropPartialText(hostId);
+    if (status === "connecting") {
+      this.stream.dropPartialText(hostId);
+      // The cards that waited on the old connection leave the queue: the new one never saw them.
+      // The deny may not reach the daemon; it ends the request at its own deadline.
+      this.vaultApprovals.hostGone(hostId);
+    }
   }
 
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
@@ -1907,6 +1884,8 @@ export class AppStore {
   readonly scan: VaultScanSlice;
   /** The machine's dialogs, clipboard, log file and a local host's files (#1596). */
   readonly system: SystemSlice;
+  /** What the command palette loads and the entries it used lately (#1596). */
+  readonly palette: PaletteSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
