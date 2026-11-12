@@ -88,7 +88,7 @@
   "apps/desktop/test/primeira-execucao.test.tsx": 1,
   "apps/desktop/test/projects/busca-app.test.tsx": 1,
   "apps/desktop/test/question-card-ui.test.tsx": 1,
-  "apps/desktop/test/recusas-daemon.test.ts": 1,
+  "apps/desktop/test/refusals/daemon.test.ts": 1,
   "apps/desktop/test/relay-store.test.ts": 1,
   "apps/desktop/test/retomada-turnos.test.tsx": 1,
   "apps/desktop/test/risco-ui-fluxo.test.tsx": 1,
