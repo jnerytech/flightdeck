@@ -3,11 +3,11 @@
  * `bun run scripts/tests-removed.ts`: the removed-tests guard (issue #2176). On the PR's net diff
  * from the merge-base with main, it fails when a test file has fewer tests or `expect(` calls than
  * at the base, or was deleted, unless a commit's `Tests-Removed: <path> — <why>` trailer names it.
- * The logic is scripts/lib/tests-removed.ts.
+ * The logic is scripts/lib/guards/tests-removed.ts.
  */
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { runTestsRemoved } from "./lib/tests-removed.ts";
+import { runTestsRemoved } from "./lib/guards/tests-removed.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const result = runTestsRemoved({

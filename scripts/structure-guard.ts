@@ -3,11 +3,11 @@
  * `bun run scripts/structure-guard.ts`: the structure-only PR guard (issue #1602). On a PR whose
  * commits are all `refactor(...)`, or that has the `structure` label (`PR_LABELS`, comma-separated,
  * set by CI), it fails when a test changed beyond its import paths, a test file was added or
- * deleted, or a dictionary text changed. The logic is scripts/lib/structure-guard.ts.
+ * deleted, or a dictionary text changed. The logic is scripts/lib/guards/structure-guard.ts.
  */
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { runStructureGuard } from "./lib/structure-guard.ts";
+import { runStructureGuard } from "./lib/guards/structure-guard.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const result = runStructureGuard({

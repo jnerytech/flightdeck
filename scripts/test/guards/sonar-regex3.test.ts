@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { lintSpec, SECTIONS } from "../../lib/guards/spec-lint.ts";
 import { FIELD_WORDS, MONEY_WORDS } from "../../lib/no-money.ts";
 import { fixedSleeps as countSleeps } from "../../lib/ratchets/sleep.ts";
-import { lintSpec, SECTIONS } from "../../lib/spec-lint.ts";
 
 const LIMIT_MS = 250;
 

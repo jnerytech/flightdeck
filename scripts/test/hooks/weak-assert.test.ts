@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { assertionCounts, weakensAssertions } from "../../lib/weak-assert.ts";
+import { assertionCounts, weakensAssertions } from "../../lib/guards/weak-assert.ts";
 
 // Built by concatenation so the matchers read here are the fixtures' only.
 const m = (name: string, arg = "") => `.${name}(${arg})`;

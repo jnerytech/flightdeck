@@ -1,4 +1,7 @@
 import type { Config } from "../config.ts";
+import type { DomainModule } from "../server/index.ts";
+import { listAlerts } from "./alerts.ts";
+import { runGhIn } from "./gh.ts";
 import { GithubService, type GithubServiceOptions } from "./service.ts";
 
 /** What the daemon hands the `github.*` commands (issue #1593). */
@@ -26,7 +29,16 @@ export function githubOptions({
   };
 }
 
-/** The `github.*` commands, wired to this daemon's board, issues and sessions. */
-export function createGithub(deps: GithubDeps): GithubService {
-  return new GithubService(githubOptions(deps));
+/**
+ * The `github.*` commands, wired to this daemon's board, issues and sessions, and the open alerts
+ * of a folder's repository (issue #79), as the module the server takes `github` and `alerts` from.
+ */
+export function createGithub(deps: GithubDeps) {
+  const module: DomainModule<"github" | "alerts"> = {
+    server: {
+      github: new GithubService(githubOptions(deps)),
+      alerts: (cwd) => listAlerts(runGhIn, cwd),
+    },
+  };
+  return { modules: [module] as const };
 }

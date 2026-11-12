@@ -7,7 +7,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { specAreas } from "./lib/spec-lint.ts";
+import { specAreas } from "./lib/guards/spec-lint.ts";
 import { parseWaivers, runAudit } from "./lib/tdd-audit.ts";
 
 const ROOT = resolve(import.meta.dir, "..");

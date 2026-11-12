@@ -3,13 +3,18 @@
  * `bun run scripts/src-size.ts [--baseline]`: the source files over 800 lines and the shallow
  * modules (issue #1592). Prints the report for a move's PR summary; `--baseline` rewrites
  * src-size-baseline.json, which only goes down (the src-size test fails on a file that grew or a
- * new one over the limit). The logic is scripts/lib/src-size.ts.
+ * new one over the limit). The logic is scripts/lib/guards/src-size.ts.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import {
+  crowdedDomains,
+  isMeasured,
+  oversizedSources,
+  shallowModules,
+} from "./lib/guards/src-size.ts";
 import { tightened } from "./lib/ratchets/layout.ts";
-import { crowdedDomains, isMeasured, oversizedSources, shallowModules } from "./lib/src-size.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const LIST = ["ls-files", "apps/*/src/**", "packages/*/src/**"];

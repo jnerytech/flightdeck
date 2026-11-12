@@ -83,18 +83,18 @@ async function setup() {
 describe("run-ui: o estado do Run na loja", () => {
   test("o run.yaml do projeto vem com o hash, e só se confia no hash revisado", async () => {
     const { store, hostId, projectId } = await setup();
-    const info = await store.runEnvConfig(hostId, projectId);
+    const info = await store.runEnv.config(hostId, projectId);
     expect(info).toMatchObject({ exists: true, hash: sha256(YAML), trusted: false, errors: [] });
     expect(info?.config?.ports).toEqual(["web"]);
-    const trusted = await store.runTrust(hostId, projectId, sha256(YAML));
+    const trusted = await store.runEnv.trust(hostId, projectId, sha256(YAML));
     expect(trusted?.trusted).toBe(true);
   });
 
   test("Run sobe o setup e os processos, e a loja guarda o estado de cada mudança até o Stop", async () => {
     const { store, hostId, projectId, cardId, key, runHost } = await setup();
-    await store.runTrust(hostId, projectId, sha256(YAML));
+    await store.runEnv.trust(hostId, projectId, sha256(YAML));
     expect(store.getState().runEnvs[key]).toBeUndefined();
-    await store.runStart(hostId, cardId);
+    await store.runEnv.start(hostId, cardId);
     expect(await until(() => store.getState().runEnvs[key]?.status === "setup")).toBe(true);
     runHost?.finish("term-1", 0);
     expect(await until(() => store.getState().runEnvs[key]?.status === "running")).toBe(true);
@@ -105,14 +105,14 @@ describe("run-ui: o estado do Run na loja", () => {
     expect(await until(() => store.getState().runEnvs[key]?.processes[0]?.ready === "ready")).toBe(
       true,
     );
-    await store.runStop(hostId, cardId);
+    await store.runEnv.stop(hostId, cardId);
     expect(await until(() => store.getState().runEnvs[key]?.status === "ended")).toBe(true);
     expect(runHost?.spawned.at(-1)?.killed).toBe(true);
   });
 
   test("um Run recusado (run.yaml não confiado) vai para o aviso e não deixa estado", async () => {
     const { store, hostId, cardId, key } = await setup();
-    await store.runStart(hostId, cardId);
+    await store.runEnv.start(hostId, cardId);
     expect(store.getState().runEnvs[key]).toBeUndefined();
     expect(store.getState().error ?? "").toContain("is not trusted");
   });
@@ -196,7 +196,7 @@ describe("run-ui: Run e Stop no card", () => {
   /** The card's screen of a host whose project has the committed run.yaml. */
   async function cardScreen(trusted = false) {
     const ctx = await setup();
-    if (trusted) await ctx.store.runTrust(ctx.hostId, ctx.projectId, sha256(YAML));
+    if (trusted) await ctx.store.runEnv.trust(ctx.hostId, ctx.projectId, sha256(YAML));
     render(<App store={ctx.store} />);
     await act(async () => {
       ctx.store.router.push({

@@ -9,8 +9,8 @@ import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
-import { budgetLines, stepDuration, stepUsage } from "../../lib/runs.ts";
 import { usd } from "../costs/index.ts";
+import { budgetLines, stepDuration, stepUsage } from "./runs.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 

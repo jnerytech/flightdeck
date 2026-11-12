@@ -7,7 +7,7 @@ import {
   domainFolders,
   glossaryDomains,
   LAYER_FOLDERS,
-} from "../../lib/domain-glossary.ts";
+} from "../../lib/guards/domain-glossary.ts";
 
 const ROOT = join(import.meta.dir, "../../..");
 

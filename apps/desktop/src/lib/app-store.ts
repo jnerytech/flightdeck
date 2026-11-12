@@ -7,7 +7,6 @@ import type {
   HistoryGetResult,
   HistoryListResult,
   MessageInfo,
-  RunConfigInfo,
   SessionImage,
   SessionMeta,
   SessionRecap,
@@ -1134,26 +1133,6 @@ export class AppStore {
    */
   loadPalette(): Promise<void> {
     return this.palette.load();
-  }
-
-  /** The run.yaml of a project on its base branch, with its validation and trust. */
-  runEnvConfig(hostId: string, projectId: string): Promise<RunConfigInfo | null> {
-    return this.runEnv.config(hostId, projectId);
-  }
-
-  /** Trusts the run.yaml the user reviewed. */
-  runTrust(hostId: string, projectId: string, hash: string): Promise<RunConfigInfo | null> {
-    return this.runEnv.trust(hostId, projectId, hash);
-  }
-
-  /** Run: the card's setup (once) and processes. A refusal goes to the banner. */
-  runStart(hostId: string, cardId: string): Promise<void> {
-    return this.runEnv.start(hostId, cardId);
-  }
-
-  /** Stop: ends the card's processes and everything they started. */
-  runStop(hostId: string, cardId: string): Promise<void> {
-    return this.runEnv.stop(hostId, cardId);
   }
 
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
