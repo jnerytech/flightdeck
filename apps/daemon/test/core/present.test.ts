@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { present } from "../../src/present.ts";
+import { present } from "../../src/kernel/present.ts";
 
 describe("present", () => {
   test("leaves out a key whose value is undefined or null", () => {

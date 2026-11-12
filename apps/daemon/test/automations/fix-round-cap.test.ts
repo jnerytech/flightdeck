@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Automations } from "../../src/automations/automations.ts";
-import { ulid } from "../../src/ulid.ts";
+import { ulid } from "../../src/kernel/ulid.ts";
 import { cleanups, fixture } from "../support/watch-helpers.ts";
 
 afterEach(async () => {

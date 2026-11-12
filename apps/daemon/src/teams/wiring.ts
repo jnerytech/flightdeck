@@ -1,10 +1,10 @@
 import type { Database } from "bun:sqlite";
 import type { Central, ProjectKeys } from "../central/index.ts";
 import type { Config } from "../config.ts";
+import { present } from "../kernel/index.ts";
 import { Idle, LocalEndpoints, type LocalEndpointsOptions, Messaging } from "../messaging/index.ts";
 import { type Names, type TrackOptions, trackNames, warmKnown } from "../names/index.ts";
 import { OpenSessionPersonas, type Personas, type Prepare } from "../personas/index.ts";
-import { present } from "../present.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
 import { Teams, type TeamsOptions } from "./teams.ts";
 

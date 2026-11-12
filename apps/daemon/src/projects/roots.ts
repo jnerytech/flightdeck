@@ -2,7 +2,7 @@ import { realpath, stat } from "node:fs/promises";
 import { posix, resolve, win32 } from "node:path";
 import { type Config, userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
-import type { Logger } from "../logger.ts";
+import type { Logger } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 
 async function realFolder(path: string): Promise<string | null> {

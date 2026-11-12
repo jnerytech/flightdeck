@@ -6,6 +6,10 @@
 export { AsyncQueue } from "./async-queue.ts";
 export { API_KEY_VARS, buildChildEnv } from "./env.ts";
 export { linesOf } from "./lines.ts";
+export type { Logger } from "./logger.ts";
 export { ntfsName } from "./ntfs-name.ts";
+export { present } from "./present.ts";
 export { settled } from "./settled.ts";
 export { trimEndOf, trimStartOf } from "./trim.ts";
+export { ulid } from "./ulid.ts";
+export { DAEMON_VERSION } from "./version.ts";
