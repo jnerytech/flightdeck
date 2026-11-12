@@ -3,11 +3,11 @@ import { ClientChip } from "@/features/clients/client-chip.tsx";
 import type { LoopAlert } from "@/features/messaging";
 import type { Finish } from "@/features/sessions/index.ts";
 import { pendingText, pendingWhere } from "@/features/sessions/index.ts";
+import type { WatchAlert } from "@/features/watch/index.ts";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore, PendingItem } from "@/lib/app-store";
 import type { ClientColor } from "@/lib/clients";
-import type { WatchAlert } from "@/lib/watch-alerts";
 import { StatusDot } from "@/shared/status/index.ts";
 import { type QuietAlert, quietText } from "./quiet.ts";
 

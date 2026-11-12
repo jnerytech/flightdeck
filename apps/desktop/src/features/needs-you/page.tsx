@@ -19,11 +19,11 @@ import { type AppState, type AppStore, needsYou, type PendingItem } from "../../
 import { sessionProjectKeys } from "../../lib/client-scope.ts";
 import { typing } from "../../lib/keys.ts";
 import type { Route } from "../../lib/router.ts";
-import { type WatchAlert, watchAlerts } from "../../lib/watch-alerts.ts";
 import { awayView } from "../activity/index.ts";
 import { budgetAlerts } from "../costs/index.ts";
 import { type LoopAlert, loopPairKey } from "../messaging/index.ts";
 import { CONTINUATION } from "../sessions/index.ts";
+import { type WatchAlert, watchAlerts } from "../watch/index.ts";
 import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "./entry-row.tsx";
 import { type QuietAlert, quietAlerts, quietText } from "./quiet.ts";
 import { WhileAway } from "./while-away.tsx";
