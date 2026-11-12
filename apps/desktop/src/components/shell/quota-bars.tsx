@@ -1,9 +1,9 @@
 import type { QuotaState } from "@flightdeck/protocol";
 import { Inline, Stack } from "@/components/layout/stack";
-import { Meter } from "@/components/status/meter";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { quotaBars } from "@/lib/quota";
+import { Meter } from "@/shared/status/index.ts";
 
 /** The plan windows of one host as bars: how much is used and when each resets. */
 export function QuotaBarList(

@@ -35,7 +35,7 @@ const SOURCES = [
   "src/components/feedback",
   "src/components/layout",
   "src/components/session",
-  "src/components/status",
+  "src/shared/status",
 ]
   .flatMap(
     (dir) =>

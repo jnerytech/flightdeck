@@ -1,6 +1,6 @@
 import type { SessionStatus } from "@flightdeck/protocol";
-import { StatusText } from "@/components/status/status-text";
 import { useT } from "@/i18n/context";
+import { StatusText } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { statusTone } from "../../lib/status.ts";
 
