@@ -53,7 +53,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `layout/` | `shared/layout/` | **moved** (14 primitives, behind an `index.ts`; the field-row context is a leaf, `field-row-context.ts`, that `shared/feedback` imports directly); `app-shell.tsx` and `breadcrumb.tsx` went to `features/shell/` (below); `view-toggle.tsx` stays in `components/layout/` for now: only the sessions hub and the history list use it, and it reads `lib/hub.ts`, so it follows the sessions rows |
 | `markdown/` | `shared/markdown/` | **moved**: `markdown.tsx` and the lazy `markdown-body.tsx`; the `index.ts` exports only `Markdown` and `preloadMarkdown`, never the body, so the lazy chunk stays lazy (`bundle-reach` green) |
 | `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` (**moved**) | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
-| `session/` | **theirs** (`features/sessions/`) | activity line, message actions, parts, tool rows, finish dialogs |
+| `session/` | **theirs** (`features/sessions/`) | **moved**: activity line, message actions, parts, tool rows, finish dialogs |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
 | `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and the shell `lib/` files follow in later PRs |
 | `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (**moved**; the sheet already lives there) |
@@ -72,7 +72,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `Areas.tsx` | `app/` | imports `Screen` from `Screens.tsx`: move it with or after `Screens.tsx` to avoid a cycle |
 | `BoardView.tsx` | **theirs** (`features/board/`) | |
 | `ConfirmDialog.tsx` | `shared/feedback/` | **moved** (#2101 to `components/feedback/`, then with the folder) |
-| `ExternalView.tsx` | **theirs** (`features/sessions/`) | |
+| `ExternalView.tsx` | **theirs** (`features/sessions/`) | **moved** (`external-session-view.tsx`) |
 | `FirstRun.tsx` | `features/hosts/` | **moved** (#2093) |
 | `FolderPicker.tsx` | `features/hosts/` | **moved** (it browses a host's folders and already used `AllowedFolders`; `hosts` is the lower domain, so plugins, projects, teleport, the new-session form and the screens import it from the `hosts` index without a file-level cycle; `hosts` and `projects` import each other's index, the one pair to watch) |
 | `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | **moved** (#2099, then the `markdown/` folder) |
@@ -83,7 +83,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `SessionsHub.tsx` | **theirs** (`features/sessions/`) | |
 | `SetupPage.tsx` | `features/setup/` | **moved** (#2091) |
 | `Sidebar.tsx` | `features/shell/` | 965 lines: split by reason to change (nav list, project tree, footer) in a later PR, not in the move |
-| `StartScreen.tsx` | **theirs** (`features/sessions/`) | |
+| `StartScreen.tsx` | **theirs** (`features/sessions/`) | **moved** (`start-screen.tsx`) |
 | `ToolCall.tsx` | **theirs** (`features/sessions/`) | |
 | `lazy-screen.ts` | `app/` | goes with `Screens.tsx` |
 | `simple/SimpleApp.tsx` | `features/home/` | with `components/simple/` |
