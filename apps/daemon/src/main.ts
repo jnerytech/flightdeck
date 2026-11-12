@@ -13,10 +13,8 @@ import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { createBgService } from "./bg/wiring.ts";
-import { Board } from "./board/board.ts";
 import { readSpecText } from "./board/spec.ts";
-import { templateRootOf } from "./board/spec-template.ts";
-import { createCheckLoop, createHostPause } from "./board/wiring.ts";
+import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -372,12 +370,10 @@ export async function startDaemon(
     readSettings: readWatchSettings,
     runner: boundedCheckRunner(),
   });
-  const board = new Board({
+  const board = createBoard({
     folderLocks,
     preparePersonas: prepare,
-    // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
-    specTemplateRoot: async (cwd, own) =>
-      templateRootOf(await trustForKnowledge(cwd), own ? cwd : undefined),
+    trustForKnowledge,
     log: (line) => logger.log(line),
     db: store.db,
     manager,
@@ -387,10 +383,9 @@ export async function startDaemon(
     // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
     // below is ready by then) and the project's trust, through the bounded runner.
     checkLoop: checkLoop.board,
-    // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
-    scanner: new SecretScanner(() => heldValues()),
-    allowedRoots: config.allowedRoots,
-    maxParallelRuns: config.maxParallelRuns,
+    vaultValues: () => heldValues(),
+    config,
+    configFile,
     budgets,
     projectKeys: keys,
     cardCost: costs.card.bind(costs),
@@ -398,10 +393,6 @@ export async function startDaemon(
     idle: snapshots.idle.bind(snapshots),
     // A card raised from an agent's findings keeps automatic approval off (issue #79).
     suspendApproval: autoApprove.suspendCard.bind(autoApprove),
-    ...present({ prPollIntervalMs: config.board.prPollIntervalMs || undefined }),
-    // Changed from the app: kept in the config file, like the rest of the host settings.
-    onSettingsChange: ({ maxParallelRuns }) =>
-      updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
   });
   // In the background: the radar reads the worktrees; the project keys get cached for the first card.
   void board.start();

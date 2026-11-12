@@ -37,13 +37,22 @@ import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
-import { ModelOptions, StatusBadge } from "../features/sessions/index.ts";
+import {
+  commandItemsOf,
+  ModelOptions,
+  missedAfter,
+  queueStep,
+  rememberPosition,
+  type ScrollPosition,
+  StatusBadge,
+  submitAction,
+} from "../features/sessions/index.ts";
 import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import type { Answer } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { modeRows, nextMode } from "../lib/mode-menu.ts";
-import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
+import type { MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
@@ -52,25 +61,9 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
-/** The menu group of each kind of command the daemon names. */
-const GROUP_OF_KIND: Record<"builtin" | "skill" | "mcp", MenuGroup> = {
-  builtin: "commands",
-  skill: "skills",
-  mcp: "mcp",
-};
-
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
-const positions = new Map<string, { top: number; atEnd: boolean; seq: number }>();
+const positions = new Map<string, ScrollPosition>();
 const MAX_POSITIONS = 200;
-function rememberPosition(key: string, top: number, atEnd: boolean, seq: number): void {
-  positions.delete(key);
-  positions.set(key, { top, atEnd, seq });
-  // The oldest go first: the map keeps insertion order.
-  for (const old of positions.keys()) {
-    if (positions.size <= MAX_POSITIONS) break;
-    positions.delete(old);
-  }
-}
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
@@ -343,25 +336,6 @@ interface SessionViewProps {
   pickPath?: (done: (path: string | null) => void) => ReactNode;
   /** The AI wand of the message box (phase 40): the assistant and where "no provider" goes. */
   assist?: WandBinding;
-}
-
-/** How many messages came after the one the reader had seen (none while they are at the end). */
-function missedAfter(items: SessionViewProps["session"]["items"], awaySeq: number | null): number {
-  return awaySeq === null ? 0 : items.filter((i) => i.seq > awaySeq).length;
-}
-
-/** The slash commands as menu items: with group and description when the daemon describes them. */
-function commandItemsOf(
-  described: SessionViewProps["session"]["commands"],
-  names: SessionViewProps["session"]["slashCommands"],
-): MenuItem[] {
-  if (!described) return (names ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` }));
-  return described.map((command) => ({
-    key: `slash:${command.name}`,
-    name: `/${command.name}`,
-    ...(command.description ? { description: command.description } : {}),
-    group: GROUP_OF_KIND[command.kind],
-  }));
 }
 
 /** The snippets of the host and the commands of the session behind one `/` menu. */
@@ -670,10 +644,15 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const nextQueued = queued[0];
   // biome-ignore lint/correctness/useExhaustiveDependencies: the head of the queue is what it reads
   useEffect(() => {
-    // The turn showed up (the session worked, or its user message reached the conversation).
-    if (awaiting.current !== null && (working || cards > awaiting.current)) awaiting.current = null;
-    if (working || closed || !nextQueued || awaiting.current !== null) return;
-    awaiting.current = cards;
+    const step = queueStep({
+      working,
+      closed,
+      hasNext: nextQueued !== undefined,
+      awaiting: awaiting.current,
+      cards,
+    });
+    awaiting.current = step.awaiting;
+    if (!step.send || !nextQueued) return;
     void actions
       .send(nextQueued.text, nextQueued.images.length > 0 ? nextQueued.images : undefined)
       .then(() => setQueued((rest) => rest.slice(1)))
@@ -684,7 +663,8 @@ export function SessionView(props: Readonly<SessionViewProps>) {
 
   const submit = () => {
     const value = text.trim();
-    if (!value && attached.length === 0) {
+    const action = submitAction(value, attached.length, working);
+    if (action === "focus") {
       // A click with nothing to send is not dead: the cursor goes where the text is typed.
       box.current?.focus();
       return undefined;
@@ -692,7 +672,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     setText("");
     setAttached([]);
     setRefusal(null);
-    if (working) {
+    if (action === "queue") {
       setQueued((before) => [...before, { text: value, images: attached }]);
       return undefined;
     }
@@ -825,7 +805,13 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             lastHeight.current = box.scrollHeight;
             // Leaving the end remembers the last message seen; returning to it forgets that.
             setAwaySeq((seen) => (atEnd ? null : (seen ?? lastSeqRef.current)));
-            if (scrollKey) rememberPosition(scrollKey, box.scrollTop, atEnd, lastSeqRef.current);
+            if (scrollKey)
+              rememberPosition(
+                positions,
+                scrollKey,
+                { top: box.scrollTop, atEnd, seq: lastSeqRef.current },
+                MAX_POSITIONS,
+              );
           }}
         >
           {props.earlier}
