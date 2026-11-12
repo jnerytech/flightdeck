@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { keyMatches, SONAR_KEY_FINGERPRINT, scannerFiles, withRetry } from "./lib/sonar-scanner.ts";
+import { keyMatches, SONAR_KEY_FINGERPRINT, scannerFiles, withRetry } from "./lib/sonar/scanner.ts";
 
 const BASE = "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli";
 const KEY = resolve(import.meta.dir, "../.github/keys/sonarsource-public.asc");
