@@ -30,4 +30,23 @@ describe("vault-wiring: the module the server takes `vault` and `actions` from",
     ]).toEqual([true, true, true, true]);
     store.close();
   });
+
+  test("a fresh vault holds nothing, so the file log has nothing to redact yet", () => {
+    const store = new EventStore(":memory:");
+    const { vault } = createVault({
+      db: store.db,
+      log: () => {},
+      runtimeKind: "fake",
+      actions: {
+        projects: () => {
+          throw new Error("no project");
+        },
+        hostName: "host",
+        risk: () => "low",
+        projectKey: () => undefined,
+      },
+    });
+    expect(vault.heldValues()).toEqual([]);
+    store.close();
+  });
 });
