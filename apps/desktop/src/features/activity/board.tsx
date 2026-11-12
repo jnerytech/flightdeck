@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import { Input } from "@/components/ui/input";
+import type { HubRow } from "@/features/sessions/index.ts";
 import { useBoardTransition } from "@/hooks/use-board-transition";
 import { useStoreSlice } from "@/lib/use-store";
 import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
@@ -13,7 +14,6 @@ import {
   NO_ACTIVITY_FILTER,
 } from "../../lib/activity.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import type { HubRow } from "../../lib/hub.ts";
 import type { Route } from "../../lib/router.ts";
 import { ActivityCardView } from "./activity-card.tsx";
 import { ActivityColumnView } from "./activity-column.tsx";

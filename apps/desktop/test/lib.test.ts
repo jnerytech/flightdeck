@@ -2,8 +2,12 @@ import { describe, expect, test } from "bun:test";
 import type { EventEnvelope, PendingPermission, SessionEvent } from "@flightdeck/protocol";
 import { backoffDelay, statusTone } from "@/shared/lib/index.ts";
 import { summaryNotifications } from "../src/features/inbox/notify.ts";
+import {
+  applyEnvelope,
+  emptySession,
+  endStreaming,
+} from "../src/features/sessions/session-state.ts";
 import { toolDiff } from "../src/lib/diff.ts";
-import { applyEnvelope, emptySession, endStreaming } from "../src/lib/session-state.ts";
 
 const env = (seq: number, event: SessionEvent): EventEnvelope => ({
   type: "event",

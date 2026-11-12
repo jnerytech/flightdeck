@@ -38,23 +38,25 @@ import type { InboxEntry } from "../features/inbox/index.ts";
 import type { MessagingSliceState } from "../features/messaging/index.ts";
 import type { PersonasSliceState } from "../features/personas/index.ts";
 import type { QuotaSliceState } from "../features/quota/index.ts";
-import type { SessionsSliceState } from "../features/sessions/index.ts";
+import {
+  type Finish,
+  type SessionState,
+  type SessionsSliceState,
+  sessionKey,
+  sessionLabel,
+} from "../features/sessions/index.ts";
 import type { SettingsSliceState } from "../features/settings/index.ts";
 import type { SnippetsSliceState } from "../features/snippets/index.ts";
 import type { SshSliceState } from "../features/ssh/index.ts";
 import type { ClosingTerminal } from "../features/terminal/index.ts";
 import type { T } from "../i18n/index.ts";
 import type { Client } from "./clients.ts";
-import type { Finish } from "./finished.ts";
 import type { GoogleConfig } from "./google-oauth.ts";
 import type { ConnectionStatus } from "./host-connection.ts";
 import type { RetryState } from "./host-offline.ts";
 import type { HostConfig } from "./hosts.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import type { Route } from "./router.ts";
-import { sessionKey } from "./session-key.ts";
-import { sessionLabel } from "./session-label.ts";
-import type { SessionState } from "./session-state.ts";
 import type { SetupProbe } from "./setup-steps.ts";
 import type { UiMode } from "./simple-mode.ts";
 import type { TerminalEnv } from "./terminal.ts";

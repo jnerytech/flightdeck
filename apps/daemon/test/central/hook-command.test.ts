@@ -4,7 +4,7 @@ import { ExternalSessions } from "../../src/central/external.ts";
 import { hookEntries } from "../../src/central/hooks-install.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
 import { runCli } from "../../src/main.ts";
-import { daemonCommand } from "../../src/service.ts";
+import { daemonCommand } from "../../src/service/install.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { poll } from "../support/helpers.ts";
 import { runHookCommand } from "../support/hook-shell.ts";

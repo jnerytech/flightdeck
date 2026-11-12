@@ -10,7 +10,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { hubRows } = await import("../../src/lib/hub.ts");
+const { hubRows } = await import("../../src/features/sessions/hub.ts");
 const { App } = await import("../../src/ui/App.tsx");
 const { SplitView } = await import("../../src/shared/layout/split-view.tsx");
 

@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionNameInfo } from "@flightdeck/protocol";
+import { hubRows } from "../../src/features/sessions/hub.ts";
+import { sessionLabel } from "../../src/features/sessions/session-label.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { type AppState, needsYou } from "../../src/lib/app-store.ts";
-import { hubRows } from "../../src/lib/hub.ts";
 import { paletteSections } from "../../src/lib/palette.ts";
-import { sessionLabel } from "../../src/lib/session-label.ts";
 
 /**
  * Issue #101: a team session's name carries its persona, in the person's language. The daemon

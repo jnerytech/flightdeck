@@ -65,9 +65,7 @@ import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.
 import type { AgentRuntime } from "./runtime/types.ts";
 import { createModuleRunner, serverGroup } from "./server/index.ts";
 import { startServer } from "./server.ts";
-import { daemonCommand } from "./service.ts";
-import { appServiceInstall } from "./service-from-app.ts";
-import { osServiceContext } from "./service-os.ts";
+import { appServiceInstall, daemonCommand, osServiceContext } from "./service/index.ts";
 import { createSessionManager, createSessionSettings } from "./sessions/wiring.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";

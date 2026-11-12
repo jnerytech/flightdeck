@@ -1,7 +1,7 @@
 import type { Card } from "@flightdeck/protocol";
+import { sessionKey } from "@/features/sessions/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
-import { sessionKey } from "../../lib/session-key.ts";
 import { type QuietAlert, quietText } from "../needs-you/index.ts";
 
 /** #1553: the words of a card's quiet badge (short on the card, full on hover), or null when its session is not quiet. */

@@ -1,4 +1,14 @@
 import {
+  type HubFilter,
+  type HubView,
+  loadHubFilter,
+  loadHubOpen,
+  loadHubView,
+  saveHubFilter,
+  saveHubOpen,
+  saveHubView,
+} from "@/features/sessions/index.ts";
+import {
   loadFolded,
   loadTreeFolded,
   loadTreeOpened,
@@ -11,16 +21,6 @@ import {
 } from "@/features/shell/index.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "@/shared/lib/index.ts";
 import { loadLastBoards, saveLastBoard } from "../../lib/board-shortcut.ts";
-import {
-  type HubFilter,
-  type HubView,
-  loadHubFilter,
-  loadHubOpen,
-  loadHubView,
-  saveHubFilter,
-  saveHubOpen,
-  saveHubView,
-} from "../../lib/hub.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "../../lib/tiles.ts";
 
 /** Where the Activity board keeps whether it shows its Idle column. */

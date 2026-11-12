@@ -5,7 +5,7 @@ import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
 const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
-const { hubRows } = await import("../src/lib/hub.ts");
+const { hubRows } = await import("../src/features/sessions/hub.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
 const { SessionTiles } = await import("../src/features/projects/session-tiles.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");

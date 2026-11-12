@@ -3,8 +3,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import type { ServiceContext } from "../../src/service.ts";
-import { stableBinPath } from "../../src/update.ts";
+import type { ServiceContext } from "../../src/service/install.ts";
+import { stableBinPath } from "../../src/service/update.ts";
 import { poll, tempDir } from "../support/helpers.ts";
 
 const TOKEN = "service-install-token-0123456789";

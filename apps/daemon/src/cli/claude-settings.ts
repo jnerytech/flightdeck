@@ -12,7 +12,7 @@ import {
 } from "../central/index.ts";
 import { claudeSettingsPath, generateToken, loadConfig, updateConfigFile } from "../config.ts";
 import type { Logger } from "../logger.ts";
-import { daemonCommand } from "../service.ts";
+import { daemonCommand } from "../service/index.ts";
 import { TelemetryOptIn, type TelemetryStatus } from "../telemetry/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
 

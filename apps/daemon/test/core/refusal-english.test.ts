@@ -169,7 +169,7 @@ describe("refusal-english: mcp, the vault rules, messaging, issues and automatio
  */
 const MSGS3_FILES = [
   "teams/teams.ts",
-  "service.ts",
+  "service/install.ts",
   "names/names.ts",
   "names/format.ts",
   "names/track.ts",

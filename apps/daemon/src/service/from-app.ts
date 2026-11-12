@@ -6,10 +6,10 @@
  */
 import { resolve } from "node:path";
 import type { ServiceInstallResult } from "@flightdeck/protocol";
-import { updateConfigFile } from "./config.ts";
-import { FlightdeckError } from "./errors.ts";
+import { updateConfigFile } from "../config.ts";
+import { FlightdeckError } from "../errors.ts";
+import { installService, resolveServiceClaude, type ServiceContext } from "./install.ts";
 import { lingerState } from "./linger.ts";
-import { installService, resolveServiceClaude, type ServiceContext } from "./service.ts";
 import { stableBinPath } from "./update.ts";
 
 /** What the app is told after the install. */

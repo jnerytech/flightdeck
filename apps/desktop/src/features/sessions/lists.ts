@@ -7,8 +7,8 @@ import type {
 } from "@flightdeck/protocol";
 import type { AppState, HostView } from "../../lib/app-store.ts";
 import type { HostConnection } from "../../lib/host-connection.ts";
-import { sessionKey } from "../../lib/session-key.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { sessionKey } from "./session-key.ts";
 
 /** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
 export const HISTORY_LIST_LIMIT = 200;

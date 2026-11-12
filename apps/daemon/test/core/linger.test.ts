@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { lingerState } from "../../src/linger.ts";
+import { lingerState } from "../../src/service/linger.ts";
 
 const ctx = (platform: string, answer: { code: number; stdout: string }) => {
   const calls: string[][] = [];

@@ -13,8 +13,7 @@ import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { awaitingApproval } from "../../lib/awaiting-approval.ts";
 import { toolLoader } from "../../lib/history-tool.ts";
-import { messageParts } from "../../lib/tool-line.ts";
-import { useLiveElsewhereGuard } from "../sessions/index.ts";
+import { messageParts, useLiveElsewhereGuard } from "../sessions/index.ts";
 
 /** Which transcript to read, and where to open it (a search hit). */
 export interface ReaderTarget {
