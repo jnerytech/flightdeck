@@ -5,7 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HarnessTemplatesSection } from "@/features/harness/index.ts";
 import type { ProjectCard } from "@/features/projects/index.ts";
 import type { HubRow } from "@/features/sessions/index.ts";
-import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
 import { useHostLatency, useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
@@ -41,6 +40,7 @@ import { RenameHostDialog } from "./rename-host-dialog.tsx";
 import { ResumePanel } from "./resume-panel.tsx";
 import { SimpleModePanel } from "./simple-mode-panel.tsx";
 import { SleepSetting } from "./sleep-setting.tsx";
+import { useNow } from "./use-now.ts";
 
 /** What the overview reads from the app: the sessions, the projects and the cards of the hosts. */
 const OVERVIEW_KEYS = [
