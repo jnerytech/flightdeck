@@ -273,8 +273,8 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
       },
     };
     await (
-      w.store as unknown as { loadHostInfo(id: string, conn: unknown): Promise<void> }
-    ).loadHostInfo("h1", conn);
+      w.store as unknown as { link: { loadHostInfo(id: string, conn: unknown): Promise<void> } }
+    ).link.loadHostInfo("h1", conn);
     await Promise.resolve();
     expect(asked).toContain("teams.list");
     finishTurn(w, "s");

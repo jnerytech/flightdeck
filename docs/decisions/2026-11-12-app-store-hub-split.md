@@ -90,9 +90,11 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   report to the banner (`fail`) and feed the cards and runs of a result to `onCard` and `onRun`,
   both still store methods; they move with those.
 - **The on-line steps are one ordered list**, `OnlineStep[]`, built in the store next to the route
-  table, in today's order, each step `{ gate?: HostFeature; run(ctx: { hostId, conn, hostInfo,
-  connect }): void | Promise<void> }`. `HostLink.loadHostInfo` runs the steps whose gate the host
-  has, every one started without waiting except the last, awaited; `connect` reaches the setup
+  table, in today's order, each step `{ gate?: string; run(ctx: { hostId, conn, hostInfo,
+  connect }): void | Promise<void> }`, the gate a feature name of `host.info`. The first step
+  records the answer on the host (and ends a daemon update that reached its target).
+  `HostLink.loadHostInfo` asks for `host.info` and runs the steps whose gate the host has, every
+  one started without waiting except a step marked `awaited` (the budgets), awaited when it runs; `connect` reaches the setup
   step, which passes it to `refreshSetup`, and nothing else. `refreshSetup` stays a store method;
   it runs no on-line step. The order lives in one place a reviewer reads top to bottom.
 - **Session methods go to the sessions domain** (`features/sessions/`): history (`historyGet`,
