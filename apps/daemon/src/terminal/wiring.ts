@@ -67,7 +67,7 @@ export async function createTerminals({
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
-export async function terminalInfo(env: Record<string, string | undefined>) {
+async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
   return {
     flightdeckdPath: (await stat(stable).then(
