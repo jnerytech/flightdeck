@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { en } from "../src/i18n/en.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { en } from "../../src/i18n/en.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 afterEach(() => cleanup());
 
