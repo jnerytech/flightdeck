@@ -18,7 +18,7 @@ function built() {
   const said: string[] = [];
   const secrets = { token: TOKEN, held: [] as string[] };
   const dir = tempDir("fd-host-log-");
-  const { logger, fileLog } = createHostLog({
+  const hostLog = createHostLog({
     console: { log: (m) => said.push(`info ${m}`), error: (m) => said.push(`error ${m}`) },
     dir,
     home: "/home/dev",
@@ -26,11 +26,12 @@ function built() {
     currentToken: () => secrets.token,
     heldValues: () => secrets.held,
   });
+  const { logger, fileLog } = hostLog;
   const file = async () => {
     await fileLog.flush();
     return readFileSync(join(dir, "flightdeckd.log"), "utf8");
   };
-  return { logger, said, secrets, file };
+  return { logger, said, secrets, file, hostLog };
 }
 
 describe("host-log: the daemon's log and what it never writes (#1593)", () => {
@@ -56,5 +57,10 @@ describe("host-log: the daemon's log and what it never writes (#1593)", () => {
       false,
     ]);
     expect(text.includes("saw [redacted] [redacted] [redacted] [redacted]")).toBe(true);
+  });
+
+  test("the module hands the server the file log it built, under the `fileLog` key", () => {
+    const { hostLog } = built();
+    expect(hostLog.modules[0].server?.fileLog === hostLog.fileLog).toBe(true);
   });
 });

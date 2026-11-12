@@ -174,7 +174,7 @@ export async function startDaemon(
   // holds. The vault is made further down; until then there is nothing held.
   let currentToken = config.token;
   let heldValues: () => string[] = () => [];
-  const { logger, fileLog } = createHostLog({
+  const hostLog = createHostLog({
     console: console_,
     dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
     home: userHome(env),
@@ -182,6 +182,7 @@ export async function startDaemon(
     currentToken: () => currentToken,
     heldValues: () => heldValues(),
   });
+  const { logger, fileLog } = hostLog;
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = await acquireLock(config.dataDir);
@@ -206,6 +207,7 @@ export async function startDaemon(
   );
   // #2094: the domains that give main.ts one module each; the rest still wire by hand below.
   const domains = createModuleRunner();
+  await domains.add(hostLog);
   const { quota, onQuota } = await domains.add(createQuota({ db: store.db, config, configFile }));
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
@@ -642,7 +644,6 @@ export async function startDaemon(
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
-    fileLog,
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
