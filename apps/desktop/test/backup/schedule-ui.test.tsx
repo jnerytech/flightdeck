@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { loadSchedule } from "../../src/lib/backup-schedule.ts";
+import { loadSchedule } from "../../src/features/backup/backup-schedule.ts";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";
 

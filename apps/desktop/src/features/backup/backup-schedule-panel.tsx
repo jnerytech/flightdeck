@@ -5,9 +5,9 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { formatDateTime } from "@/i18n/format";
 import type { AppStore } from "@/lib/app-store";
-import type { Cadence, ScheduleTarget } from "@/lib/backup-schedule";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Panel, Stack } from "@/shared/layout/index.ts";
+import type { Cadence, ScheduleTarget } from "./backup-schedule.ts";
 
 const CADENCES: readonly Cadence[] = ["off", "daily", "weekly"];
 const TARGETS: readonly ScheduleTarget[] = ["folder", "drive"];

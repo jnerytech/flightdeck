@@ -102,7 +102,7 @@ prefix. Tests move with their file in the same PR.
 | `assistant.ts`, `assistant-prefs.ts` | `features/assistant/` |
 | `automations.ts` | `features/automations/` (**moved**) |
 | `check-loop.ts` | `features/board/`: its only reader is `check-loop-panel.tsx`, which lives there, so it goes with the board and not with `features/automations` |
-| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` |
+| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` (**moved**: `backup-bundle`, `backup-error`, `backup-schedule`, `backup-scheduler`, `backup-target`, `drive-target`; the index adds `BackupError` and `BackupScheduler`, and `backup-bundle` stays out of it, a lazy chunk. `google-config` and `google-oauth` handle tokens: they stay in `lib/` for their own slice with the security review) |
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
 | `notify.ts` | `features/inbox/` (**moved**): it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
@@ -113,7 +113,7 @@ prefix. Tests move with their file in the same PR.
 | `keep-awake.ts` | `features/hosts/` |
 | `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`, **moved**; `router.ts` to `app/`). **Moved**: `breadcrumb.ts` as `crumbs.ts` and `status-bar.ts` as `status-bar-summary.ts` (the component files `breadcrumb.tsx` and `status-bar.tsx` already sit there), `nav-active.ts`, `nav-badges.ts`, `sidebar-fold.ts`, `sidebar-groups.ts`, `tree-fold.ts`, `shell-prefs.ts`, `foot-account.ts`, `workspace.ts`, `density.ts`, `theme.ts`. Still in `lib/`: `router.ts` (to `app/`, last). `tree-fold.ts` serves the project tree too, so it may move to `features/projects/` when that domain is cut |
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest |
-| `deps*.ts` | `features/deps/` |
+| `deps*.ts` | `deps-summary.ts` to `features/deps/` (**moved**); `deps.ts` (`chainOf`, `pickable`: a card's dependency chain) belongs to `features/board/`, its only reader is `card-deps.tsx` |
 | `harness.ts` | `features/harness/`: **moved** |
 | `home-*.ts`, `simple-*.ts` | `features/home/` |
 | `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`; `host-*.ts` and `hosts.ts` **moved**, where `host-compare.ts` and `host-overview.ts` became `host-compare-model.ts` and `host-overview-model.ts` because `host-compare.tsx` and `host-overview.tsx` already live in the folder) |
@@ -133,7 +133,7 @@ prefix. Tests move with their file in the same PR.
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
 | `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
-| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `lib/backup-bundle.ts`, a lazy chunk, imports it from the file) |
+| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
 | `webhook*.ts` | `features/webhook/`: **moved** |
 | `app-log.ts`, `kernel.ts` | `app/` |

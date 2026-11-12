@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { createBackup } from "../../src/lib/backup-bundle.ts";
+import { createBackup } from "../../src/features/backup/backup-bundle.ts";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settleMaybe } from "../wait.ts";

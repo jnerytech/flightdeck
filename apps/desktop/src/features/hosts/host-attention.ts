@@ -1,5 +1,5 @@
 import type { DepsResult, HostInfoResult } from "@flightdeck/protocol";
-import { requiredMissing } from "../../lib/deps-summary.ts";
+import { requiredMissing } from "../deps/index.ts";
 import type { ConnectionStatus } from "./host-connection.ts";
 
 /** A machine the person should look at: not connected, a required dependency missing, or its key forwarded. */
