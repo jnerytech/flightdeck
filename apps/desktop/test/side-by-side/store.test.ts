@@ -18,7 +18,7 @@ describe("lado-a-lado: following several sessions at once", () => {
     const server = d.listen();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10, maxDelayMs: 20 });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
     const a = (await store.createSession(hostId, { cwd: d.project, prompt: "a" })) as string;
     const b = (await store.createSession(hostId, { cwd: d.project, prompt: "b" })) as string;

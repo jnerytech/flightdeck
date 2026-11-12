@@ -26,7 +26,7 @@ async function open(
   const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
   await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
   return { store, hostId, mem, d };
 }
@@ -116,8 +116,8 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
 
   test("Given a host slow to add a folder, When Add folder is pressed in simple Settings, Then the box clears once the host answers", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     const { store, d } = await open({ mode: "simple", locked: false });
-    const real = store.allowRoot.bind(store);
-    store.allowRoot = async (...args: Parameters<typeof real>) => {
+    const real = store.roster.allowRoot.bind(store.roster);
+    store.roster.allowRoot = async (...args: Parameters<typeof real>) => {
       // timing: the host answers roots.add after 1.5 s, past a 1 s wait, as a loaded Windows runner did.
       await Bun.sleep(1500);
       return await real(...args);

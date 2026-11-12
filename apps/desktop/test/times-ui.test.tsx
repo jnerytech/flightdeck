@@ -150,7 +150,7 @@ async function open(
   // The teams are the subject: the dependency check the app starts on connect would run the real programs' versions.
   store.health.check = async () => {};
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: d.url, token: d.token }));
+  await act(() => store.roster.add({ name: "alfa", url: d.url, token: d.token }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await settle(() => screen.queryByRole("button", { name: "Times" }) !== null, 3000);
   await click("Times");
@@ -407,7 +407,7 @@ describe("times-ui: the teams of a host", () => {
     await click("Cancelar");
     expect(screen.queryByLabelText("Objetivo")).toBeNull();
     const other = await daemonWithProject("pi");
-    await act(() => store.addHost({ name: "beta", url: other.url, token: other.token }));
+    await act(() => store.roster.add({ name: "beta", url: other.url, token: other.token }));
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     await settle(() => screen.queryByLabelText("Host") !== null);
     await act(async () => {
@@ -779,7 +779,7 @@ describe("times-ui: the teams of a host", () => {
     cleanups.push(() => store.dispose());
     const daemon = legacyDaemon(cleanups);
     render(<App store={store} />);
-    await act(() => store.addHost({ name: "velho", url: daemon.url, token: TOKEN }));
+    await act(() => store.roster.add({ name: "velho", url: daemon.url, token: TOKEN }));
     await settle(() => store.getState().hosts[0]?.hostInfo != null);
     await act(async () => {
       store.router.push({ name: "teams" });
@@ -792,7 +792,7 @@ describe("times-ui: the teams of a host", () => {
     cleanups.push(() => store.dispose());
     const daemon = legacyDaemon(cleanups);
     render(<App store={store} />);
-    await act(() => store.addHost({ name: "velho", url: daemon.url, token: TOKEN }));
+    await act(() => store.roster.add({ name: "velho", url: daemon.url, token: TOKEN }));
     await settle(() => store.getState().hosts[0]?.hostInfo != null);
     await act(async () => {
       store.router.push({ name: "teams" });
@@ -939,7 +939,7 @@ describe("times-ui: the host follows the switcher", () => {
     fakeGh();
     const { store } = await open();
     const other = await daemonWithProject("pi");
-    await act(() => store.addHost({ name: "beta", url: other.url, token: other.token }));
+    await act(() => store.roster.add({ name: "beta", url: other.url, token: other.token }));
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     const [alfa, beta] = store.getState().hosts.map((h) => h.id);
     // A pick in the switcher shows that host's tabs; Times then opens on that host.
@@ -962,7 +962,7 @@ describe("times-ui: the host follows the switcher", () => {
     fakeGh();
     const { store } = await open();
     const other = await daemonWithProject("pi");
-    await act(() => store.addHost({ name: "beta", url: other.url, token: other.token }));
+    await act(() => store.roster.add({ name: "beta", url: other.url, token: other.token }));
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     const [alfa, beta] = store.getState().hosts.map((h) => h.id);
     await act(async () => store.hostTabs.switchHost(alfa as string));
@@ -978,7 +978,7 @@ describe("times-ui: the host follows the switcher", () => {
     fakeGh();
     const { store } = await open();
     const legacy = legacyDaemon(cleanups);
-    await act(() => store.addHost({ name: "gama", url: legacy.url, token: TOKEN }));
+    await act(() => store.roster.add({ name: "gama", url: legacy.url, token: TOKEN }));
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     const gama = store.getState().hosts.find((h) => h.name === "gama")?.id as string;
     await act(async () => store.hostTabs.switchHost(gama));

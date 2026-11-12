@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { DAEMON_FEATURES } from "@flightdeck/protocol";
+import { featuresOf } from "../../src/server/features.ts";
 import { GATES, GROUP_GATES } from "../../src/server/gates.ts";
-import { featuresOf } from "../../src/server/host-info.ts";
 import type { ServerOptions } from "../../src/server.ts";
 
 // #747: this check reads the sources and starts no server, so it stays in the unit tier, which a

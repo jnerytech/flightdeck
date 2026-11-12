@@ -50,7 +50,7 @@ async function setup() {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.sessions.length === 2);
   await sidebar.openHub();
@@ -263,7 +263,7 @@ describe("direcao-visual: três colunas", () => {
     render(<App store={store} />);
     // Nothing listens there: the host stays out of reach.
     const hostId = await act(() =>
-      store.addHost({ name: "longe", url: "ws://127.0.0.1:9", token: TOKEN }),
+      store.roster.add({ name: "longe", url: "ws://127.0.0.1:9", token: TOKEN }),
     );
     await act(async () => {
       store.router.push({ name: "history", host: hostId });

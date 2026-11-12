@@ -54,7 +54,7 @@ async function open(features = ["messaging"], seeded = true) {
         }),
       ];
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   const list = () => screen.queryByRole("list", { name: "Mensagens entre sessões" });
   return { store, daemon, list };

@@ -48,7 +48,7 @@ async function open(scoped: boolean) {
   daemon.features.push("actions");
   daemon.hub.managed = [managed("s1", "github.com/acme/api")];
   render(<App store={store} />);
-  const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await settle(() => store.getState().hub[hostId] !== undefined);
   const acme = store.clients.add("Acme");

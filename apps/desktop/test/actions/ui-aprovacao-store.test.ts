@@ -19,7 +19,7 @@ const VALUE = "aprovacao-test-value-456";
 async function setup() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
-  const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("vault.watch"));
   const meta = await store.secrets.add({

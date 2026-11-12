@@ -70,7 +70,7 @@ async function open(features: string[] = ["watch"]) {
   daemon.features.push(...features);
   daemon.watch.card = card;
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   return { store, daemon };
 }
@@ -177,9 +177,11 @@ describe("rastro-paleta: a pasted PR link opens what was made for it", () => {
     watcher.watch.byUrl = { via: "card", trace, sessions: [] };
     render(<App store={store} />);
     // A host nobody answers for, one that does not watch PRs, then the one that does.
-    await act(() => store.addHost({ name: "mudo", url: "ws://127.0.0.1:9/v1/ws", token: TOKEN }));
-    await act(() => store.addHost({ name: "simples", url: plain.url, token: TOKEN }));
-    await act(() => store.addHost({ name: "vigia", url: watcher.url, token: TOKEN }));
+    await act(() =>
+      store.roster.add({ name: "mudo", url: "ws://127.0.0.1:9/v1/ws", token: TOKEN }),
+    );
+    await act(() => store.roster.add({ name: "simples", url: plain.url, token: TOKEN }));
+    await act(() => store.roster.add({ name: "vigia", url: watcher.url, token: TOKEN }));
     await settle(() => store.getState().hosts.filter((h) => h.status === "online").length === 2);
     await settle(() =>
       store.getState().hosts.every((h) => h.hostInfo != null || h.status !== "online"),

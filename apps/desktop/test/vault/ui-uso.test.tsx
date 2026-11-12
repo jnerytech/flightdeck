@@ -24,7 +24,7 @@ const VALUE = "usage-ui-value-0123456789";
 async function open(requests = true) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
-  await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
+  await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("external.watch"));
   const github = await store.secrets.add({ name: "github", type: "token", value: VALUE });
