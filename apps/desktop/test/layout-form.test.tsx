@@ -7,9 +7,7 @@ import { InstantClock } from "./in-flight-clock.tsx";
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Field, Form, FormActions, NativeSelect } = await import(
-  "../src/components/layout/form.tsx"
-);
+const { Field, Form, FormActions, NativeSelect } = await import("../src/shared/layout/form.tsx");
 
 afterEach(cleanup);
 

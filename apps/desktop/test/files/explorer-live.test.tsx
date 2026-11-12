@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ChangesUpdated, FileListing } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { settle, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { FileExplorer } = await import("../src/features/files/file-explorer.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
+const { FileExplorer } = await import("../../src/features/files/file-explorer.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
-import type { AppStore } from "../src/lib/app-store.ts";
+import type { AppStore } from "../../src/lib/app-store.ts";
 
 afterEach(cleanup);
 

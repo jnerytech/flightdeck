@@ -44,7 +44,7 @@ client's name always goes with the dot.
 - Inter is the interface font; the system monospace is for commands and code.
 
 **Spacing:** the gaps are 4, 8, 12, 16, 24 and 32 px (`Gap` 1, 2, 3, 4, 6 and 8 in
-`components/layout/stack.tsx`). Forms always use 16 px between fields, 4 px from a label to its
+`shared/layout/stack.tsx`). Forms always use 16 px between fields, 4 px from a label to its
 control, and 8 px between buttons.
 
 **Radius:** 6 px for chips, 8 px for controls, 12 px for panels.

@@ -1,12 +1,12 @@
 import { type PersonaInput, PersonaModelError } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { Form, FormActions } from "@/shared/layout/index.ts";
 import { type AppPersona, personaInput } from "./global-personas.ts";
 import { MODELS } from "./model-select.tsx";
 

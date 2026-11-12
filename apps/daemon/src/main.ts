@@ -41,7 +41,7 @@ import { createKnowledge } from "./knowledge/wiring.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
 import type { Logger } from "./logger.ts";
 import { createHostLog } from "./logs/wiring.ts";
-import { Maintenance } from "./maintenance/maintenance.ts";
+import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
@@ -68,7 +68,8 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
-import { serverGroup, startServer } from "./server.ts";
+import { createModuleRunner, serverGroup } from "./server/index.ts";
+import { startServer } from "./server.ts";
 import { daemonCommand } from "./service.ts";
 import { appServiceInstall } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
@@ -85,8 +86,7 @@ import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { createProjectTrust, trustServer } from "./trust/wiring.ts";
-import { autoUpdateOf } from "./updates/auto.ts";
-import { createUpdates } from "./updates/wiring.ts";
+import { createUpdates } from "./updates/index.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { readWatchSettings } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
@@ -205,11 +205,13 @@ export async function startDaemon(
     mcpServer,
     logger.log.bind(logger),
   );
-  const { quota, quotaHistory, onQuota, quotaPause } = createQuota({
-    db: store.db,
-    config,
-    configFile,
-  });
+  // #2094: the domains that give main.ts one module each; the rest still wire by hand below.
+  const domains = createModuleRunner();
+  const {
+    quota,
+    onQuota,
+    modules: [quotaModule],
+  } = await domains.add(createQuota({ db: store.db, config, configFile }));
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
   // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
@@ -404,27 +406,30 @@ export async function startDaemon(
     log: logger.log.bind(logger),
   });
   automations.start();
-  // Retention at boot and every 24 h (backups join it in the same daily pass).
-  const maintenance = new Maintenance({
-    db: store.db,
-    dataDir: config.dataDir,
-    retention: config.retention,
-    backup: config.backup,
-    snapshots,
-  });
-  await maintenance.start();
-  const { updates, updater, autoUpdater } = createUpdates(config, {
-    idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
-    log: logger.log.bind(logger),
-  });
-  void updates?.start();
-  const { telemetryStore, telemetry, telemetryOptIn } = await createTelemetry({
-    db: store.db,
-    config,
-    configFile,
-    settingsPath: claudeSettingsPath,
-    log: logger,
-  });
+  const {
+    modules: [maintenanceModule],
+  } = await domains.add(createMaintenance({ db: store.db, config, snapshots }));
+  const {
+    modules: [updatesModule],
+  } = await domains.add(
+    createUpdates(config, {
+      configFile,
+      idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
+      log: logger.log.bind(logger),
+    }),
+  );
+  const {
+    telemetryStore,
+    modules: [telemetryModule],
+  } = await domains.add(
+    await createTelemetry({
+      db: store.db,
+      config,
+      configFile,
+      settingsPath: claudeSettingsPath,
+      log: logger,
+    }),
+  );
   const central = new Central({
     risk,
     autoApprove,
@@ -576,6 +581,7 @@ export async function startDaemon(
     options,
   });
   const server = startServer({
+    ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
     manager,
     opencode: {
@@ -651,10 +657,8 @@ export async function startDaemon(
     history,
     board,
     runenv: { configs: runEnv.configs, manager: runEnv.manager },
-    quota: serverGroup<"quota">()({ windows: quota, pause: quotaPause, history: quotaHistory }),
     usage,
     costs: serverGroup<"costs">()({ costs, budgets }),
-    telemetry: serverGroup<"telemetry">()({ store: telemetryStore, optIn: telemetryOptIn }),
     bg: createBgService({
       db: store.db,
       config,
@@ -678,7 +682,6 @@ export async function startDaemon(
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
     onTerminalSettings,
     central,
-    maintenance,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
     resources: await createResources({
@@ -702,14 +705,6 @@ export async function startDaemon(
       rewinder,
       forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
     }),
-    // A host without the update manifest runs none of them.
-    updates: serverGroup<"updates", "check" | "apply" | "auto">()(
-      present({
-        check: updates,
-        apply: updater,
-        auto: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
-      }),
-    ),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -768,12 +763,11 @@ export async function startDaemon(
         board.stop();
         terminals.stop();
         await central.stop();
-        await telemetry.stop();
-        maintenance.stop();
+        await telemetryModule.stop?.();
+        await maintenanceModule.stop?.();
         sleeper.stop();
         stall.stop();
-        updates?.stop();
-        autoUpdater?.stop();
+        await updatesModule.stop?.();
         await manager.shutdown();
         await server.stop();
         // Issue #100: no package of a transcript outlives the daemon.
@@ -782,7 +776,7 @@ export async function startDaemon(
         history.stop();
         await usageIndex.stop();
         budgets.stop();
-        quota.stop();
+        await quotaModule.stop?.();
         store.close();
         await lock.release();
         // The last lines (shutting down…) reach the file before the process can exit.

@@ -1,9 +1,8 @@
 import { useId } from "react";
-import { NativeSelect } from "@/components/layout/form";
-import { Inline, Stack } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { hasFeature } from "@/lib/version";
+import { Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
 
 /** The guards the select offers; 0 would stop every new card, so it is not one. A value the config holds outside these is added. */
 const CHOICES = [0.5, 0.6, 0.7, 0.8, 0.9, 1];

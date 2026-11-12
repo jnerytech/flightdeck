@@ -1,9 +1,5 @@
 import type { Budget, BudgetInput, QuotaBudgetInput } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
-import { ListRow } from "@/components/layout/list-row";
-import { Panel } from "@/components/layout/panel";
-import { Grid, Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
@@ -11,6 +7,17 @@ import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import {
+  Field,
+  Form,
+  FormActions,
+  Grid,
+  Inline,
+  ListRow,
+  NativeSelect,
+  Panel,
+  Stack,
+} from "@/shared/layout/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";

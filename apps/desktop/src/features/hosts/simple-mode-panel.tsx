@@ -1,11 +1,11 @@
 import { Lock } from "lucide-react";
 import { useState } from "react";
-import { Panel } from "@/components/layout/panel";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import type { UiMode } from "@/lib/simple-mode";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Panel } from "@/shared/layout/index.ts";
 
 const MODES: readonly UiMode[] = ["full", "simple"];
 

@@ -1,9 +1,8 @@
 import { Check } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
-import { Page, Section } from "@/components/layout/page";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { Page, Section, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";

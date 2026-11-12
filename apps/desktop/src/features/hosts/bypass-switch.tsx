@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Panel } from "@/shared/layout/index.ts";
 
 /**
  * The host's switch for sessions without permission prompts. Off until a person turns it on,

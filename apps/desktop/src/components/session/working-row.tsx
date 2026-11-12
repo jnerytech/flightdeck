@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Inline } from "@/components/layout/stack";
+import { Inline } from "@/shared/layout/index.ts";
 
 /** "12s", "1m 5s": how long the turn has been running. */
 export function elapsed(ms: number): string {

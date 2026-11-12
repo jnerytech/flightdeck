@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Inline, Stack } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import { type AppStore, sessionKey } from "@/lib/app-store";
 import { useStoreState } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 
 /** Issue #77: the rounds "Allow more rounds" gives at a time. */

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DiffFile } from "@flightdeck/protocol";
-import { affectedDirs } from "../src/lib/file-changes.ts";
+import { affectedDirs } from "../../src/lib/file-changes.ts";
 
 const file = (path: string, status: DiffFile["status"] = "added", oldPath: string | null = null) =>
   ({

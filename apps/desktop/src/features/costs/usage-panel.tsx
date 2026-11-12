@@ -1,7 +1,7 @@
 import type { UsageSummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { Panel } from "@/components/layout/panel";
 import { useFormatNumber, useT } from "@/i18n/context";
+import { Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { periodRange, usd } from "../../lib/costs.ts";
 import { groupByProject, type UsageHistoryTarget } from "../../lib/usage-rows.ts";

@@ -13,6 +13,7 @@ import { useInFlight } from "@/hooks/use-in-flight";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/shared/feedback/index.ts";
+import { FieldRowContext, type FieldRowSlot } from "./field-row-context.ts";
 
 /** What a form is laid out for: a page, a dialog's body, a bordered panel, or a part of a panel. */
 export type FormVariant = "page" | "dialog" | "panel" | "inline";
@@ -292,12 +293,3 @@ function withReason(
   const rest = list.filter((reason) => reason.id !== id);
   return text === null ? rest : [...rest, { id, text }];
 }
-
-interface FieldRowSlot {
-  /** Shows the reason of the button whose help line is `id`, or removes it with `null`. */
-  setReason(id: string, reason: string | null): void;
-}
-
-/** What a button inside a `FieldRow` finds: where to say why it is disabled. */
-const FieldRowContext = createContext<FieldRowSlot | null>(null);
-export const useFieldRow = () => useContext(FieldRowContext);

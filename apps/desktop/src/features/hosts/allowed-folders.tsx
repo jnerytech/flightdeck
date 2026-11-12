@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { FieldRow } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { isLocalUrl } from "@/lib/terminal";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { FieldRow, Panel } from "@/shared/layout/index.ts";
 import { hostDownReason } from "./host-down-reason.ts";
 
 /** The folders a host lets its sessions and projects use, and a way to add one (the host decides). */

@@ -1,6 +1,5 @@
 import type { RoiSummaryResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { WideTable } from "@/components/layout/wide-table";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
@@ -8,6 +7,7 @@ import type { AppStore } from "@/lib/app-store";
 import { usd } from "@/lib/costs";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "@/lib/roi-table";
 import { useStoreSlice } from "@/lib/use-store";
+import { WideTable } from "@/shared/layout/index.ts";
 
 const COLUMNS: RoiColumn[] = [
   "project",

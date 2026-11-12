@@ -1,11 +1,9 @@
 import { memo, useState } from "react";
-import { Field } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { Inline, Stack } from "../../components/layout/stack.tsx";
+import { Field, Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";

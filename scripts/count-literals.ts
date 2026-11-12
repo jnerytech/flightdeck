@@ -6,6 +6,7 @@ const dirs = [
   "apps/desktop/src/ui",
   "apps/desktop/src/components/feedback",
   "apps/desktop/src/shared/feedback",
+  "apps/desktop/src/shared/layout",
   "apps/desktop/src/components/layout",
   "apps/desktop/src/components/session",
   "apps/desktop/src/shared/markdown",

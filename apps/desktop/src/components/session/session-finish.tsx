@@ -1,8 +1,6 @@
 import type { ChangesResult } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { CheckField, Field } from "@/components/layout/form";
-import { Inline, Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
@@ -18,6 +16,7 @@ import {
   whyNot,
 } from "@/lib/session-finish";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { CheckField, Field, Inline, Stack } from "@/shared/layout/index.ts";
 
 /** The hooks a commit runs, in a line: none set, or not known. */
 function hooksText(t: ReturnType<typeof useT>, hooks: string[] | undefined): string {

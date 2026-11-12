@@ -1,6 +1,6 @@
 import type { PermissionMode } from "@flightdeck/protocol";
-import { Field, NativeSelect } from "@/components/layout/form";
 import { useT } from "@/i18n/context";
+import { Field, NativeSelect } from "@/shared/layout/index.ts";
 
 /** A mode picked, or "" for the default. */
 export type PermissionChoice = PermissionMode | "";

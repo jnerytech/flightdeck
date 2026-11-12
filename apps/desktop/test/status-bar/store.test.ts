@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { AppStore } from "../src/lib/app-store.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 const quota = (utilization: number) => ({
   pauseAt: null,

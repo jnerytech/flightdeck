@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { ActionButton } = await import("../src/shared/feedback/index.ts");
-const { FieldRow } = await import("../src/components/layout/form.tsx");
+const { FieldRow } = await import("../src/shared/layout/form.tsx");
 const { AllowedFolders } = await import("../src/features/hosts/allowed-folders.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { Dialog, DialogContent, DialogFooter, DialogTitle } = await import(

@@ -1,13 +1,12 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
 import { Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Page } from "@/components/layout/page";
-import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { workflowIssueText } from "@/i18n/errors";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { WorkflowTemplates } from "./workflow-templates.tsx";

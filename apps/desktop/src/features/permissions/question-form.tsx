@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index";
 import type { AskPick, AskQuestion } from "@/lib/ask-question";
-import { Inline, Stack } from "../../components/layout/stack.tsx";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 
 /** Claude's questions (AskUserQuestion): each with its header, options and an "Other" text. */
 /** The labels picked after one is toggled: several can be on in a multi-select, else only that one. */

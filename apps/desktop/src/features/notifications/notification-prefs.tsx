@@ -1,9 +1,8 @@
 import type { Project } from "@flightdeck/protocol";
 import { Volume2 } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
-import { NativeSelect } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
+import { NativeSelect, Panel } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { SOUND_FILE_MAX_BYTES, SWITCHABLE, type SwitchableEvent } from "./notify-policy.ts";
