@@ -1,10 +1,10 @@
 import type { Database } from "bun:sqlite";
 import { DEFAULT_MODELS, SecretScanner } from "@flightdeck/protocol";
 import { readSpecText } from "../board/index.ts";
+import { ulid } from "../kernel/index.ts";
 import { credential } from "../permissions/index.ts";
 import { packPersonas } from "../personas/index.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
-import { ulid } from "../ulid.ts";
 import { type CardReviewDeps, CardReviews, reviewHold } from "./card-review.ts";
 import { Changes, type ChangesOptions } from "./changes.ts";
 import { ReviewComments, type ReviewCommentsOptions } from "./comments.ts";

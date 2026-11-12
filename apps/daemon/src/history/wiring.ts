@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type { Config } from "../config.ts";
+import { present } from "../kernel/index.ts";
 import { adoptTitles, type Names, type TrackOptions } from "../names/index.ts";
 import { historyExcludes } from "../permissions/index.ts";
-import { present } from "../present.ts";
 import type { DomainModule } from "../server/index.ts";
 import { HistoryIndexer } from "./indexer.ts";
 

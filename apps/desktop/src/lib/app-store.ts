@@ -88,6 +88,8 @@ import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts"
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import {
+  browserClockDeps,
+  CacheTimerSettings,
   type ExternalSessionsSlice,
   type Finish,
   finishOutcome,
@@ -95,12 +97,14 @@ import {
   hubRows,
   initialSessionsState,
   loadFinished,
+  NewSessionPrefs,
   recordFinish,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
   type SessionsSlice,
   SessionViews,
+  SharedClock,
   type SummariesSlice,
   saveFinished,
   sessionKey,
@@ -171,7 +175,6 @@ import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
-import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
@@ -180,7 +183,6 @@ import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { googleConfig } from "./google-config.ts";
 import { HomeCache } from "./home-cache.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
-import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";

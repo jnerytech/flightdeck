@@ -5,7 +5,7 @@
  * merge needs FLIGHTDECK_COORDINATOR=1.
  */
 import { runCommand } from "../apps/daemon/src/board/command.ts";
-import { spawnExec } from "../apps/daemon/src/exec.ts";
+import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { runBounded } from "./lib/bounded-run.ts";
 import { mainRedWithin } from "./lib/main-red.ts";
 import { prFlow } from "./lib/pr-flow.ts";

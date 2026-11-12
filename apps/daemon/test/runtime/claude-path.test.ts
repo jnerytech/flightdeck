@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { delimiter } from "node:path";
+import { whichOnPath } from "../../src/kernel/which.ts";
 import { resolveClaudePath } from "../../src/runtime/claude-sdk-runtime.ts";
-import { whichOnPath } from "../../src/which.ts";
 
 // The test preload puts a sentinel folder first on PATH; lookups must see it.
 const firstOnPath = (process.env.PATH ?? "").split(delimiter)[0] ?? "";

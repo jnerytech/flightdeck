@@ -3,9 +3,9 @@ import { join } from "node:path";
 import type { AskpassRequest, SshTarget } from "@flightdeck/protocol";
 import { readConfig } from "../costs/statusline.ts";
 import { FlightdeckError } from "../errors.ts";
+import { ulid } from "../kernel/index.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import type { Timers } from "../quota/quota.ts";
-import { ulid } from "../ulid.ts";
 import type { AskpassHook } from "./connect.ts";
 
 export interface AskpassBrokerOptions {

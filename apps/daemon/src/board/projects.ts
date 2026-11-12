@@ -14,8 +14,8 @@ import {
 import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr, parseJsonWith } from "../json-text.ts";
+import { ulid } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
-import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
 import { assertBranchName } from "./ref-arg.ts";
 import type {

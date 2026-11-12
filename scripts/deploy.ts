@@ -2,7 +2,7 @@
 /** `bun run deploy <alias>`: hosts come from deploy.hosts.json (not versioned). */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnExec } from "../apps/daemon/src/exec.ts";
+import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { runDeploy } from "./lib/deploy.ts";
 
 const ROOT = resolve(import.meta.dir, "..");

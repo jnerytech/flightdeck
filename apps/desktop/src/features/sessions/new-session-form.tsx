@@ -11,7 +11,6 @@ import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, NativeSelect, Page, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { CLAUDE_MODELS } from "../../lib/new-session-prefs.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/index.ts";
 import { ModelOptions } from "./model-options.tsx";
@@ -26,6 +25,7 @@ import {
   startFolder,
   underRoot,
 } from "./new-session.ts";
+import { CLAUDE_MODELS } from "./new-session-prefs.ts";
 
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 type Runtime = "claude" | "opencode";

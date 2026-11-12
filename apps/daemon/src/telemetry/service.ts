@@ -5,7 +5,7 @@ import { writeFileAtomic } from "../atomic-write.ts";
 import { TELEMETRY_FILE } from "../central/wrapper.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { parseJsonOr } from "../json-text.ts";
-import type { Logger } from "../logger.ts";
+import type { Logger } from "../kernel/index.ts";
 import { type OtlpEvent, startOtlpReceiver } from "./otlp.ts";
 
 export interface TelemetryOptions {

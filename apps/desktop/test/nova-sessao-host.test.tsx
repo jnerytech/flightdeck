@@ -7,7 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { newSessionHost } = await import("../src/lib/new-session-host.ts");
+const { newSessionHost } = await import("../src/features/sessions/new-session-host.ts");
 const { NewSessionForm } = await import("../src/features/sessions/new-session-form.tsx");
 const { App } = await import("../src/ui/App.tsx");
 

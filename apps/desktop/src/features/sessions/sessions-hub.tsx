@@ -30,7 +30,6 @@ import { UNASSIGNED } from "../../lib/clients.ts";
 import { usd } from "../../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
 import { typing } from "../../lib/keys.ts";
-import { newSessionHost } from "../../lib/new-session-host.ts";
 import { activeWorktreeFilter } from "../../lib/project-tree.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
@@ -74,6 +73,7 @@ import {
   rowsInScope,
   scopeKeys,
 } from "./hub-scope.ts";
+import { newSessionHost } from "./new-session-host.ts";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
 import { ViewToggle } from "./view-toggle.tsx";

@@ -1,4 +1,4 @@
-import type { HostView, Selection } from "./app-store.ts";
+import type { HostView, Selection } from "../../lib/app-store.ts";
 
 /** The host a "New session" button starts on: the last one used if online, else the first online. */
 export function newSessionHost(

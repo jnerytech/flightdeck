@@ -31,7 +31,7 @@ import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
-import { ulid } from "../ulid.ts";
+import { ulid } from "../kernel/index.ts";
 import { Decisions } from "../vault/decisions.ts";
 import { toCsv } from "../vault/report.ts";
 import { decideRequest, type RequestDecision, requesterOf } from "../vault/requests.ts";

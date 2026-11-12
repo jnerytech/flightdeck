@@ -3,8 +3,8 @@ import { connect } from "node:net";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
 import type { Config } from "../config.ts";
+import { present } from "../kernel/index.ts";
 import { EXIT_ALREADY_RUNNING } from "../lock.ts";
-import { present } from "../present.ts";
 
 /** One WSL distro whose daemon the Windows daemon keeps running (config section `wsl`). */
 export interface WslItem {

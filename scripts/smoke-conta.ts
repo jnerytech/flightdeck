@@ -9,10 +9,10 @@
 import { AccountState, AccountUpdated } from "@flightdeck/protocol";
 import { Account } from "../apps/daemon/src/account/account.ts";
 import { accountReaders } from "../apps/daemon/src/account/readers.ts";
-import { spawnExec } from "../apps/daemon/src/exec.ts";
+import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
+import { whichOnPath } from "../apps/daemon/src/kernel/which.ts";
 import { Quota } from "../apps/daemon/src/quota/quota.ts";
 import { startServer } from "../apps/daemon/src/server.ts";
-import { whichOnPath } from "../apps/daemon/src/which.ts";
 import { newManager } from "../apps/daemon/test/support/helpers.ts";
 import { FrameClient } from "../apps/daemon/test/support/history-helpers.ts";
 import { installFakeCli } from "./test/fake-cli.ts";

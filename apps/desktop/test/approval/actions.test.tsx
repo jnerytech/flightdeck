@@ -53,7 +53,7 @@ describe("approval-actions: one way to answer a request", () => {
   });
 
   test("a tile's pending request carries its risk, so a high-risk one is held there too", async () => {
-    const { pendingOf } = await import("../../src/lib/tiles.ts");
+    const { pendingOf } = await import("../../src/features/sessions/tiles.ts");
     const { emptySession } = await import("../../src/features/sessions/session-state.ts");
     const session = {
       ...emptySession(),

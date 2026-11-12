@@ -22,7 +22,7 @@ import {
   useSuggestedPersona,
 } from "@/features/personas/index.ts";
 import { AddProject } from "@/features/projects/index.ts";
-import { sessionLabel } from "@/features/sessions/index.ts";
+import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
 import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
@@ -36,7 +36,6 @@ import {
 } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
-import { useDraft } from "../../lib/use-draft.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
 import {
   bypassAsked,

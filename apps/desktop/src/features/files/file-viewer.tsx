@@ -5,13 +5,13 @@ import type { DiffFile } from "@flightdeck/protocol";
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useFollow } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { languageFor, loadLanguage } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { useFollow } from "../../lib/use-follow.ts";
 import { DiffView } from "../review/index.ts";
 
 /** Token colors from the theme's tokens, so both themes keep their contrast. */

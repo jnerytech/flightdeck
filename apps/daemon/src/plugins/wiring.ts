@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { AgentConfig, McpConfig } from "../agentcfg/index.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import { decisionLog, ProjectMemory } from "../memory/index.ts";
 import { BUILTIN_TEMPLATES, loadTemplates, TaskTracker } from "../templates/index.ts";
-import { whichOnPath } from "../which.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins.ts";
 
 /** Where the agent setup keeps its files and which `claude` its plugins run (issue #1593). */

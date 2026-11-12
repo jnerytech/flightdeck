@@ -6,7 +6,7 @@
  */
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
-import { whichOnPath } from "../../apps/daemon/src/which.ts";
+import { whichOnPath } from "../../apps/daemon/src/kernel/which.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 export interface SleepingGit {

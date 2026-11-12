@@ -3,7 +3,7 @@
  * (`CLAUDE_CODE_GIT_BASH_PATH`, else `bash` on PATH) and `sh -c` elsewhere. Bash reads `\` as an
  * escape, so a Windows path written with backslashes does not survive it.
  */
-import { whichOnPath } from "../../src/which.ts";
+import { whichOnPath } from "../../src/kernel/which.ts";
 
 export function claudeHookShell(command: string, platform = process.platform): string[] {
   if (platform !== "win32") return ["sh", "-c", command];
