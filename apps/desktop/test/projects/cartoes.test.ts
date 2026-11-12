@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { Card, CostsSummary, Project } from "@flightdeck/protocol";
-import { emptySummary } from "../src/lib/client-costs.ts";
-import type { HubRow } from "../src/lib/hub.ts";
+import { emptySummary } from "../../src/lib/client-costs.ts";
+import type { HubRow } from "../../src/lib/hub.ts";
 import {
   boardLandingOrder,
   buildProjectCards,
   filterProjectCards,
   type ProjectCard,
   sortProjectCards,
-} from "../src/lib/project-cards.ts";
+} from "../../src/lib/project-cards.ts";
 
 const project = (id: string, name: string, baseBranch = "main"): Project =>
   ({ id, name, path: `/work/${name}`, baseBranch }) as Project;
