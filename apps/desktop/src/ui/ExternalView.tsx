@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TranscriptReader } from "@/features/history/index.ts";
 import { PersonaSwitch } from "@/features/personas/index.ts";
+import { approvalRequestOf, externalRequestsOf, externalTitle } from "@/features/sessions/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
 import { BgPanel } from "../features/background/bg-panel.tsx";
@@ -14,7 +15,7 @@ import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import { TerminalButton } from "../features/terminal/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { externalState } from "../lib/hub.ts";
-import { basename } from "../lib/paths.ts";
+import { isBusy } from "../lib/status.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import { hasFeature } from "../lib/version.ts";
 
@@ -39,11 +40,8 @@ export function ExternalView(
   const key = sessionKey(hostId, id);
   const session = state.externals[key];
   // Never the raw id: a session just opened has no name and no folder until its first events.
-  const title =
-    state.meta[key]?.name ?? (session?.cwd ? basename(session.cwd) : t("external.untitled"));
-  const requests = Object.entries(state.externalRequests)
-    .filter(([k, request]) => k.startsWith(`${hostId}/`) && request.claudeSessionId === id)
-    .map(([, request]) => request);
+  const title = externalTitle(state.meta[key]?.name, session?.cwd, t("external.untitled"));
+  const requests = externalRequestsOf(state.externalRequests, hostId, id);
   const [text, setText] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
   const terminalId = useLaunchTerminal(store, hostId, session?.launchId ?? null);
@@ -86,7 +84,7 @@ export function ExternalView(
                 hostId={hostId}
                 claudeSessionId={id}
                 cwd={session.cwd}
-                busy={session.status === "running" || session.status === "awaiting_permission"}
+                busy={isBusy(session.status)}
               />
             )}
             {terminalId && (
@@ -131,16 +129,7 @@ export function ExternalView(
           {requests.map((request) => (
             <ApprovalCard
               key={request.requestId}
-              request={{
-                requestId: request.requestId,
-                toolName: request.toolName,
-                input: request.input,
-                cwd: session?.cwd ?? null,
-                createdAt: request.createdAt,
-                ...(request.suggestions ? { suggestions: request.suggestions } : {}),
-                ...(request.risk ? { risk: request.risk } : {}),
-                ...(request.riskReason ? { riskReason: request.riskReason } : {}),
-              }}
+              request={approvalRequestOf(request, session?.cwd ?? null)}
               t={store.i18n.t}
               nowMs={store.now()}
               onCopyPath={(path) => void store.copyText(path)}

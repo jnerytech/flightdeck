@@ -1,4 +1,4 @@
-import type { SessionStatus } from "@flightdeck/protocol";
+import type { ExternalStatus, SessionStatus } from "@flightdeck/protocol";
 import type { StateTone } from "@/components/status/status-dot";
 
 /** A session status as the state tone of the theme (its badge color). */
@@ -19,6 +19,6 @@ export function statusTone(status: SessionStatus): StateTone {
 }
 
 /** A turn is on (starting, running or waiting for a permission): files cannot go back now. */
-export function isBusy(status: SessionStatus | undefined): boolean {
+export function isBusy(status: SessionStatus | ExternalStatus | undefined): boolean {
   return status === "starting" || status === "running" || status === "awaiting_permission";
 }
