@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { KnowledgeEntry } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { cleanup, fireEvent, render, screen, waitFor, within } = await import(
   "@testing-library/react"
 );
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectPage } = await import("../src/features/projects/project.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { ProjectPage } = await import("../../src/features/projects/project.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
