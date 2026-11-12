@@ -4,7 +4,7 @@ import { registerDom } from "../dom.ts";
 registerDom();
 const { cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { useState } = await import("react");
-const { SessionTabs } = await import("../../src/ui/SessionTabs.tsx");
+const { SessionTabs } = await import("../../src/features/sessions/session-tabs.tsx");
 const { SessionViews } = await import("../../src/lib/session-views.ts");
 
 afterEach(cleanup);

@@ -11,23 +11,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { FolderPicker } from "../features/hosts/index.ts";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore, HostView } from "../../lib/app-store.ts";
+import { CLAUDE_MODELS } from "../../lib/new-session-prefs.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { FolderPicker } from "../hosts/index.ts";
+import { ModelOptions } from "./model-options.tsx";
 import {
   choicesToKeep,
   createPayload,
   joinPath,
-  ModelOptions,
   opensMoreOptions,
   promptMissing,
   sessionModes,
   startChoices,
   startFolder,
   underRoot,
-} from "../features/sessions/index.ts";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore, HostView } from "../lib/app-store.ts";
-import { CLAUDE_MODELS } from "../lib/new-session-prefs.ts";
-import { hasFeature } from "../lib/version.ts";
+} from "./new-session.ts";
 
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 type Runtime = "claude" | "opencode";
