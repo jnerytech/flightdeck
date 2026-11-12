@@ -53,6 +53,7 @@ export class HostLink {
   private readonly connections = new Map<string, HostConnection>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
+  /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
   private readonly latencies = new Map<string, number | null>();
   private readonly latencyListeners = new Set<() => void>();
   private stopWake: (() => void) | null = null;

@@ -52,7 +52,10 @@ export async function fakeHostStore(
     dispose: () => {},
   };
   // The only private thing a test touches: the host's end of the wire is the one that is faked.
-  (store as unknown as { connections: Map<string, unknown> }).connections.set(hostId, connection);
+  (store as unknown as { link: { connections: Map<string, unknown> } }).link.connections.set(
+    hostId,
+    connection,
+  );
   // What the store does when a host that announces vault actions connects.
   if ((options.features ?? []).includes("actions")) {
     store.vaultRules.onConnect(hostId, connection as never);
@@ -94,7 +97,8 @@ export function interceptWire(
   hostId: string,
   intercept: (type: string, payload: unknown, next: () => Promise<unknown>) => Promise<unknown>,
 ): () => void {
-  const connections = (store as unknown as { connections: Map<string, WireEnd> }).connections;
+  const connections = (store as unknown as { link: { connections: Map<string, WireEnd> } }).link
+    .connections;
   const end = connections.get(hostId);
   if (!end) throw new Error(`no connection to ${hostId}: add the host first`);
   const real = end.request;

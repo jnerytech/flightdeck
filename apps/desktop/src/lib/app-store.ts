@@ -82,7 +82,7 @@ import {
   type ConnectionStatus,
   type HealthSlice,
   type HostConfig,
-  HostConnection,
+  type HostConnection,
   type HostFrames,
   HostLink,
   HostRosterSlice,
@@ -326,7 +326,8 @@ export class AppStore {
   private readonly link = new HostLink({
     options: () => this.options,
     rememberToken: (token) => this.scan.rememberToken(token),
-    lastSeqFor: (hostId, sessionId) => this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
+    lastSeqFor: (hostId, sessionId) =>
+      this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
     selected: () => this.state.selected,
     watched: () => this.watched.keys(),
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
@@ -870,8 +871,6 @@ export class AppStore {
       ? ""
       : formatWhen(iso, this.now(), this.i18n.lang, this.options.timeZone);
   }
-
-  /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
 
   getLatency = (hostId: string): number | null => this.link.getLatency(hostId);
 

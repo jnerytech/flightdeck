@@ -78,7 +78,10 @@ describe("teleport-store: the preview switch and the hosts' channels (#100)", ()
       steps: [],
     };
     const fake = { request: async () => shaped, dispose: () => {} };
-    (store as unknown as { connections: Map<string, unknown> }).connections.set("h1", fake);
+    (store as unknown as { link: { connections: Map<string, unknown> } }).link.connections.set(
+      "h1",
+      fake,
+    );
     const answer = await store.teleportRequest("h1")("teleport.receive", {
       manifest: {} as never,
     });
