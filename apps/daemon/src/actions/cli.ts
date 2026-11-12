@@ -4,7 +4,8 @@
  * Claude would: a run is asked of the app like any other, and what is printed is the same JSON the
  * MCP tools answer, with the secrets masked.
  */
-import { DaemonClient, daemonUrl, runnableActions } from "../mcp.ts";
+import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
+import { runnableActions } from "../mcp.ts";
 
 export interface ActionCliArgs {
   action: "list" | "run";
