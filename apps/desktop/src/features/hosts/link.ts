@@ -1,4 +1,5 @@
-import type { ChangesUpdated } from "@flightdeck/protocol";
+import type { ChangesUpdated, HostInfoResult } from "@flightdeck/protocol";
+import { hasFeature } from "../../lib/version.ts";
 import {
   type ConnectionStatus,
   HostConnection,
@@ -38,6 +39,27 @@ function framesFor(routes: HostRoutes, host: HostConfig): Pick<HostConnectionOpt
   return Object.fromEntries(bound) as Pick<HostConnectionOptions, FrameKey>;
 }
 
+/** What an on-line step gets: the host, its connection and the `host.info` it answered. */
+interface OnlineContext {
+  hostId: string;
+  conn: HostConnection;
+  /** Null for a daemon without `host.info` (phase 1). */
+  hostInfo: HostInfoResult | null;
+  /** True when the host has just come online, false on a reload of its info. */
+  connect: boolean;
+}
+
+/**
+ * One thing done when a host comes online or its info is reloaded (#1596). A step with a `gate`
+ * runs only on a host that announces that feature.
+ */
+export interface OnlineStep {
+  gate?: string;
+  /** Awaited by `loadHostInfo` (and so by a reload of the host's info); the others are not. */
+  awaited?: true;
+  run(ctx: OnlineContext): void | Promise<void>;
+}
+
 /** What the link reads of the rest of the app. */
 export interface HostLinkDeps {
   options(): { baseDelayMs?: number; wakeDebounceMs?: number; maxDelayMs?: number };
@@ -51,6 +73,8 @@ export interface HostLinkDeps {
   onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void;
   /** The route table, read at each connect (the store builds it after the link). */
   routes(): HostRoutes;
+  /** The on-line steps in their order, read at each load (the store builds them after the link). */
+  onlineSteps(): readonly OnlineStep[];
   /** Runs after every connection was woken (the window came back). */
   onWake(): void;
 }
@@ -130,6 +154,22 @@ export class HostLink {
     conn.watchBudgets();
     conn.watchVault();
     conn.connect();
+  }
+
+  /**
+   * Asks the host for its `host.info` (daemons without it answer with an error: null) and runs the
+   * on-line steps it has the features for, in order. Every step starts without waiting for the one
+   * before; only a step marked `awaited` is waited for.
+   */
+  async loadHostInfo(hostId: string, conn: HostConnection, connect = false): Promise<void> {
+    const hostInfo = await conn.request("host.info", {}).catch(() => null);
+    const ctx: OnlineContext = { hostId, conn, hostInfo, connect };
+    for (const step of this.deps.onlineSteps()) {
+      if (step.gate && !hasFeature(hostInfo?.features, step.gate, false)) continue;
+      const done = step.run(ctx);
+      if (step.awaited) await done;
+      else void done;
+    }
   }
 
   getLatency = (hostId: string): number | null => this.latencies.get(hostId) ?? null;
