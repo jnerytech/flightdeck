@@ -110,7 +110,7 @@ describe("otlp-app: over the protocol", () => {
     const { manager, root } = newManager();
     const server = startServer({
       manager,
-      ...(withOptIn ? { telemetryOptIn: optIn } : {}),
+      ...(withOptIn ? { telemetry: { optIn } } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

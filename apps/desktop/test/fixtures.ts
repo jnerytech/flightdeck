@@ -625,7 +625,7 @@ export function daemon(
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       costs: { ...(costs ? { costs } : {}), ...(budgets ? { budgets } : {}) },
-      ...(telemetry ? { telemetry, telemetryOptIn } : {}),
+      ...(telemetry ? { telemetry: { store: telemetry, optIn: telemetryOptIn } } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
       ...(projectTrust ? { projectTrust: projectTrustOver(projectTrust, manager) } : {}),
       ...(review ? { review } : {}),

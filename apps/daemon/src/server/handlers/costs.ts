@@ -15,19 +15,19 @@ export const costsHandlers = {
     return server.needIn("costs", "costs").summary(payload);
   },
   "telemetry.session": (payload, { server }) => {
-    return server.need("telemetry").timeline(payload.claudeSessionId);
+    return server.needIn("telemetry", "store").timeline(payload.claudeSessionId);
   },
   "telemetry.status": async (_payload, { server }) => {
-    return await server.need("telemetryOptIn").status();
+    return await server.needIn("telemetry", "optIn").status();
   },
   "telemetry.install": async (payload, { server }) => {
-    return await server.need("telemetryOptIn").install(payload.confirm === true);
+    return await server.needIn("telemetry", "optIn").install(payload.confirm === true);
   },
   "telemetry.uninstall": async (payload, { server }) => {
-    return await server.need("telemetryOptIn").uninstall(payload.confirm === true);
+    return await server.needIn("telemetry", "optIn").uninstall(payload.confirm === true);
   },
   "telemetry.summary": (_payload, { server }) => {
-    return server.need("telemetry").summary();
+    return server.needIn("telemetry", "store").summary();
   },
   "costs.session": (payload, { server }) => {
     return server.needIn("costs", "costs").session(payload.claudeSessionId);

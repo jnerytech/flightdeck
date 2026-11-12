@@ -177,7 +177,7 @@ describe("tempo-ui: over the protocol", () => {
     const { manager, root } = newManager();
     const server = startServer({
       manager,
-      ...(withTelemetry ? { telemetry } : {}),
+      ...(withTelemetry ? { telemetry: { store: telemetry } } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
