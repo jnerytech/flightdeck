@@ -6,6 +6,7 @@ import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
 import { BudgetsSection } from "@/features/costs/index.ts";
 import { NotificationPrefs } from "@/features/notifications/index.ts";
+import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
 import { InlineNotice } from "@/shared/feedback/index.ts";
@@ -13,10 +14,8 @@ import { Field, Form, FormActions, NativeSelect, Page, Panel } from "@/shared/la
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { CacheTtl } from "../../lib/cache-timer.ts";
-import type { Density } from "../../lib/density.ts";
 import type { TabOrder } from "../../lib/tab-switcher.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../../lib/terminal-view.ts";
-import type { ThemeMode } from "../../lib/theme.ts";
 import { hostsWith } from "../../lib/version.ts";
 import type { AppUpdateState } from "../appupdate/index.ts";
 import { MessagingRulesSection } from "../messaging/rules-section.tsx";

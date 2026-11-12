@@ -16,6 +16,7 @@ import { CacheTimer } from "@/features/sessions/cache-timer";
 import { EarlierTurns } from "@/features/sessions/earlier-turns";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
 import { rowRoute, sessionTabOffers } from "@/features/sessions/index.ts";
+import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
 import { UntrustedNotice } from "@/features/trust/index.ts";
 import { useT } from "@/i18n/context";
@@ -43,12 +44,10 @@ import {
   type PendingItem,
   sessionKey,
 } from "../lib/app-store.ts";
-import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import type { Route } from "../lib/router.ts";
-import type { ThemeMode } from "../lib/theme.ts";
 import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";

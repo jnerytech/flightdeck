@@ -58,6 +58,122 @@ function body(text: string): string {
     .join("\n");
 }
 
+/** A name's camelCase words, lower case: `checkClientBudgets` is check, client, budgets. */
+function words(name: string): string[] {
+  return name
+    .split(/(?=[A-Z])|_/)
+    .filter((word) => word !== "")
+    .map((word) => word.toLowerCase());
+}
+
+/** Whether every item of `part` is in `whole`, counting repeats. */
+function within(part: string[], whole: string[]): boolean {
+  return minus(part, whole).length === 0;
+}
+
+/** A comment, a string or template literal, a word, `++`/`--`, or one sign, from the start of the text. */
+const LEXEME =
+  /^(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\w+|\+\+|--|[^\w\s])/;
+/** A regex literal, from the start of the text. */
+const REGEX = /^\/(?:[^/\\\n[]|\\.|\[(?:[^\]\\\n]|\\.)*\])+\/\w*/;
+const WORD = /^\w+$/;
+/** The words after which a `/` divides; after anything else it starts a regex. */
+const DIVIDES = /^(?:\w+|\)|\])$/;
+const KEYWORDS = new Set(["return", "typeof", "case", "do", "else", "in", "of", "void", "yield"]);
+/** The words a line break after ends the statement (automatic semicolon insertion). */
+const RESTRICTED = new Set(["return", "throw", "break", "continue", "yield"]);
+const OPENING = new Set([",", "[", "(", "{"]);
+
+/**
+ * A body's tokens. The whitespace between them is the formatter's, but a literal (a string, a
+ * template, a regex) or a comment stays one token, a line break after `return` stays, and a
+ * trailing comma before a closing bracket is dropped (the formatter adds it on a wrap) unless it
+ * makes an array hole.
+ */
+function tokens(text: string): string[] {
+  const out: string[] = [];
+  let rest = text;
+  while (rest !== "") {
+    const space = /^\s+/.exec(rest)?.[0] ?? "";
+    if (space !== "") {
+      const last = out.at(-1) ?? "";
+      if (space.includes("\n") && RESTRICTED.has(last)) out.push("\n");
+      rest = rest.slice(space.length);
+      continue;
+    }
+    const last = out.at(-1) ?? "";
+    const regex =
+      rest.startsWith("/") && (!DIVIDES.test(last) || KEYWORDS.has(last)) ? REGEX.exec(rest) : null;
+    const token = regex?.[0] ?? LEXEME.exec(rest)?.[0] ?? rest.charAt(0);
+    out.push(token);
+    rest = rest.slice(token.length);
+  }
+  return out.filter(
+    (token, k) =>
+      token !== "," || !/^[)\]}]$/.test(out[k + 1] ?? "") || OPENING.has(out[k - 1] ?? ""),
+  );
+}
+
+/** Whether the tokens before index `i` read `store.` or `store.getState().`, the app's store in a test. */
+function onStore(a: string[], i: number): boolean {
+  if (a[i - 1] !== ".") return false;
+  if (a[i - 2] === "store") return a[i - 3] !== ".";
+  const read = a.slice(i - 6, i - 1).join(" ");
+  return read === "store . getState ( )" && a[i - 7] !== ".";
+}
+
+/**
+ * Whether a store method moved under a slice: the same method under any slice (`refresh` became
+ * `board.refresh`), or the old name split into the slice and the method (`checkClientBudgets` became
+ * `clientBudgets.check`, `addCard` became `cards.add`). Only a call: a field read under a new slice may read nothing.
+ */
+function sliceOf(member: string, slice: string, called: string, next: string): boolean {
+  if (next !== "(" || ![member, slice, called].every((token) => WORD.test(token))) return false;
+  if (called === member) return true;
+  const rest = minus(words(member), words(called));
+  if (!within(words(called), words(member))) return false;
+  // The slice may name the member's words in the plural (`addCard` became `cards.add`), never the reverse.
+  const slices = words(slice).map((word) =>
+    rest.find((part) => part === word || `${part}s` === word),
+  );
+  return (
+    slices.length === rest.length &&
+    slices.every((part) => part !== undefined) &&
+    within(
+      slices.filter((part) => part !== undefined),
+      rest,
+    )
+  );
+}
+
+/**
+ * Issue #1732: whether a moved test checks the same: its tokens are equal but for store members
+ * moved under a slice (`store.x` became `store.slice.x`). Strings stay whole tokens, so a text
+ * inside one never counts as a move.
+ */
+function sameBody(was: string, is: string): boolean {
+  if (was === is) return true;
+  const a = tokens(was);
+  const b = tokens(is);
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    const moved =
+      onStore(a, i) &&
+      b[j + 1] === "." &&
+      sliceOf(a[i] ?? "", b[j] ?? "", b[j + 2] ?? "", b[j + 3] ?? "");
+    if (!moved) return false;
+    i++;
+    j += 3;
+  }
+  return i === a.length && j === b.length;
+}
+
 /** The texts of a dictionary file, imports left out. */
 function texts(text: string | null): string[] {
   if (text === null) return [];
@@ -101,7 +217,7 @@ export function structureVerdict(input: StructureInput): StructureVerdict {
     const isTest = newText !== null && TEST_FILE.test(change.path);
     if (isTest && !wasTest) problems.push(`${change.path}: a test added`);
     else if (wasTest && !isTest) problems.push(`${from}: a test deleted`);
-    else if (wasTest && isTest && body(oldText) !== body(newText))
+    else if (wasTest && isTest && !sameBody(body(oldText), body(newText)))
       problems.push(`${change.path}: changed beyond its import paths`);
   }
   const changed = [...minus(was, is), ...minus(is, was)];

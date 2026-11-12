@@ -1,6 +1,6 @@
+import { NOT_KEPT, Workspace, type WorkspaceSnapshot } from "@/features/shell/workspace.ts";
 import { homeRoute, ROUTE_NAMES, type Route } from "./router.ts";
 import { type Navigation, type Tab, Tabs } from "./tabs.ts";
-import { NOT_KEPT, Workspace, type WorkspaceSnapshot } from "./workspace.ts";
 
 /** A kept tab: its screen, and whether it was pinned or a preview. */
 interface Entry {
