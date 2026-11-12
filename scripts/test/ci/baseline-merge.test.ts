@@ -34,13 +34,15 @@ describe("baseline-merge: a path-keyed count map (src-size, json-parse)", () => 
     });
   });
 
-  test("both sides add the same key with different counts: the lower count wins", () => {
+  test("both sides add the same key: the same count merges, two counts conflict", () => {
     const ours = { ...base, "apps/d.ts": 4 };
-    const theirs = { ...base, "apps/d.ts": 2 };
-    expect(mergeBaselines(json(base), json(ours), json(theirs))).toEqual({
+    expect(mergeBaselines(json(base), json(ours), json(ours))).toEqual({
       ok: true,
-      text: json({ ...base, "apps/d.ts": 2 }),
+      text: json(ours),
     });
+    // The merged file holds both sides' additions: its count may be neither, so a person decides.
+    const theirs = { ...base, "apps/d.ts": 2 };
+    expect(mergeBaselines(json(base), json(ours), json(theirs)).ok).toBe(false);
   });
 
   test("a deletion on one side wins over a lower count on the other", () => {
@@ -200,9 +202,10 @@ describe("baseline-merge: through git", () => {
       write(base);
       commit("base");
       git("checkout", "-q", "-b", "other");
-      write({ ...base, "apps/b.ts": 860 });
-      commit("raise b");
+      write({ ...base, "apps/c.ts": 830 });
+      commit("raise c");
       git("checkout", "-q", "main");
+      // Two lines apart: git's line merge alone would take the raise with no marker.
       write({ ...base, "apps/a.ts": undefined, "apps/a2.ts": 900 });
       commit("rename a");
       const merge = git("merge", "-q", "--no-edit", "other");
