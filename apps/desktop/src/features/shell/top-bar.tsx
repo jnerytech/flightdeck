@@ -25,9 +25,9 @@ import { HostDot } from "@/features/hosts/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 import type { Key, T } from "@/i18n/index";
 import { hostDotView } from "@/lib/host-status";
-import type { Theme } from "@/lib/theme";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
+import type { Theme } from "./theme.ts";
 
 /** A host as the top bar shows it: its name and how its connection is. */
 export interface TopBarHostItem {

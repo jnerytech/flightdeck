@@ -1,4 +1,4 @@
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "@/platform/types.ts";
 
 export type Density = "compact" | "comfortable";
 

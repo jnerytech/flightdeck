@@ -2,8 +2,8 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { git, gitRepo } from "../../daemon/test/support/board-helpers.ts";
+import { WORKSPACE_KEY } from "../src/features/shell/workspace.ts";
 import { AppStore, sessionKey } from "../src/lib/app-store.ts";
-import { WORKSPACE_KEY } from "../src/lib/workspace.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 

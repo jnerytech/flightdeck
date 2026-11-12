@@ -39,7 +39,7 @@
 @import "./styles/targets.css";
 @import "./styles/primitives.css";
 
-/* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
+/* The theme is the `dark` class on <html> (features/shell/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
