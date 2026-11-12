@@ -216,3 +216,8 @@ glossary gives that word to the rounds that watch a PR.
   `wireHostUpdate`'s `open` dep are the parts outside the host methods that change.
 - The six listener sets move with the link or the slice that owns their frames; their subscribers
   do not change.
+
+Decided: the board cards (`onCard`, the cards in a command result, `loadBoard`) are a
+`BoardCardsSlice` in `features/board/board-cards.ts`, in the board domain, not the sessions'. The
+store builds it itself: the desktop's import-cycle ratchet (#1624) counts a board wire importing the
+kernel, so the slice types only the connection's `board.get` and the notification's two keys.
