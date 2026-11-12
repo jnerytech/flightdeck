@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { HomeView } = await import("../src/components/simple/home-view.tsx");
+const { HomeView } = await import("../../src/components/simple/home-view.tsx");
 
 afterEach(cleanup);
 

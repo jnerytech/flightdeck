@@ -23,8 +23,9 @@ import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
-import { GlobalSearch } from "../features/palette/index.ts";
+import { GlobalSearch, paletteRoute } from "../features/palette/index.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
+import { tabIntent } from "../features/tabs/index.ts";
 import { TerminalCloseDialog } from "../features/terminal/index.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
@@ -43,72 +44,6 @@ import { preloadMarkdown } from "./Markdown.tsx";
 import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
-
-/** The palette's targets that act in place instead of opening a screen. */
-type InPlace =
-  | "terminal"
-  | "new-terminal"
-  | "toggle-theme"
-  | "toggle-ui-mode"
-  | "switch-language"
-  | "start-card"
-  | "create-card"
-  | "create-card-issue"
-  | "start-session"
-  | "snippet"
-  | "pull-link"
-  | "switch-client"
-  | "shortcuts"
-  | "session-view"
-  | "decide-oldest";
-
-/** The screen of a palette target that opens one. */
-function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route {
-  switch (target.kind) {
-    case "session":
-      return { name: "session", host: target.hostId, id: target.sessionId };
-    case "new-session":
-      return {
-        name: "new-session",
-        host: target.hostId,
-        ...(target.persona ? { persona: target.persona } : {}),
-      };
-    case "external":
-      return { name: "external", host: target.hostId, claudeSessionId: target.claudeSessionId };
-    case "card":
-      return {
-        name: "card",
-        host: target.hostId,
-        projectId: target.projectId,
-        cardId: target.cardId,
-      };
-    case "board":
-      return { name: "board", host: target.hostId, projectId: target.projectId };
-    case "workflows":
-      return {
-        name: "workflows",
-        host: target.hostId,
-        projectId: target.projectId,
-        projectName: target.name,
-      };
-    case "host":
-      return { name: "host", host: target.hostId };
-    case "projects":
-      return { name: "projects", host: target.hostId };
-    case "settings":
-      return { name: "settings" };
-    case "add-host":
-      return { name: "add-host" };
-    case "costs":
-      return { name: "costs" };
-    case "go":
-      return { name: target.to };
-    case "connect-ssh":
-      return { name: "connections", connect: target.targetId };
-    case "clients":
-      return { name: "clients" };
-  }
-}
 
 /** A card from an issue the palette named: by its full reference, else by its number in the project. */
 async function createFromIssue(
@@ -147,25 +82,32 @@ function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
 /** What a key does among the tab shortcuts; null when it is none of them. */
 function tabAction(store: AppStore, key: string, shift: boolean): (() => void) | null {
   const { tabs } = store;
-  if (key === "\\") return () => store.workspace.toggleSplit();
-  if (key === "t" && shift) return () => tabs.reopen();
-  if (key === "t") {
-    return () => {
-      store.openNewTab();
-      store.history.openSearch();
-    };
+  const intent = tabIntent(key, shift);
+  if (!intent) return null;
+  switch (intent.kind) {
+    case "toggle-split":
+      return () => store.workspace.toggleSplit();
+    case "reopen":
+      return () => tabs.reopen();
+    case "new":
+      return () => {
+        store.openNewTab();
+        store.history.openSearch();
+      };
+    case "close":
+      return () => store.closeTab(tabs, tabs.activeId);
+    case "next-host":
+      return () => store.hostTabs.next();
+    case "previous-host":
+      return () => store.hostTabs.previous();
+    case "goto-host":
+      return () => store.hostTabs.goto(intent.n);
+    case "move":
+      return () => {
+        const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
+        tabs.move(tabs.activeId, index + intent.step);
+      };
   }
-  if (key === "w") return () => store.closeTab(tabs, tabs.activeId);
-  if (key === "Tab") return () => (shift ? store.hostTabs.previous() : store.hostTabs.next());
-  if (/^[1-9]$/.test(key) && !shift) return () => store.hostTabs.goto(Number(key));
-  if ((key === "PageUp" || key === "PageDown") && shift) {
-    const step = key === "PageUp" ? -1 : 1;
-    return () => {
-      const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
-      tabs.move(tabs.activeId, index + step);
-    };
-  }
-  return null;
 }
 
 /** Where each go-to chord leads. */

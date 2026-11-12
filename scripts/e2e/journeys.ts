@@ -238,6 +238,18 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await row.first().click({ timeout: SESSION_WAIT });
     const card = c.page.locator("fieldset[data-request-id]").first();
     await card.waitFor({ timeout: WAIT });
+    // The request's folder breaks inside the card instead of running past it in a narrow pane
+    // (#641, #1870): computed styles, not the text of a class.
+    const folder = card.locator("[data-folder]");
+    await folder.waitFor({ timeout: WAIT });
+    const folderStyle = await folder.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { wordBreak: style.wordBreak, minWidth: style.minWidth };
+    });
+    expect(folderStyle, "the folder of a request").toEqual({
+      wordBreak: "break-all",
+      minWidth: "0px",
+    });
     await card.focus();
     await c.page.keyboard.press("a");
     await waitFor(async () => (await row.count()) === 0, "o pedido saiu da fila");

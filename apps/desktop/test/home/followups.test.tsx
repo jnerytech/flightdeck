@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { emptySummary } = await import("../src/lib/client-costs.ts");
-const { HomePage } = await import("../src/features/home/page.tsx");
-const { CostsPage } = await import("../src/features/costs/page.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { HistoryList } = await import("../src/features/history/history-list.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { emptySummary } = await import("../../src/lib/client-costs.ts");
+const { HomePage } = await import("../../src/features/home/page.tsx");
+const { CostsPage } = await import("../../src/features/costs/page.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { HistoryList } = await import("../../src/features/history/history-list.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

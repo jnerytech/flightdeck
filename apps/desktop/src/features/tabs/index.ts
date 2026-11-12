@@ -5,3 +5,4 @@
 
 export { TabBadgeGlyph, TabBar } from "./tab-bar.tsx";
 export { TAB_ICONS, tabFacts, tabTitle } from "./tab-facts.ts";
+export { tabIntent } from "./tab-shortcut.ts";

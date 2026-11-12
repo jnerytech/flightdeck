@@ -1,7 +1,7 @@
 /** Keeps the computer awake while sessions run (issue #163). */
 
 import { whichOnPath } from "../which.ts";
-import { detectWsl, realWslProbe } from "../wsl-host.ts";
+import { detectWsl, realWslProbe } from "../wsl/index.ts";
 
 export type WakeMethod = "powershell" | "systemd-inhibit" | "caffeinate";
 /** Why nothing is held although it was asked: the app words each code in both languages. */

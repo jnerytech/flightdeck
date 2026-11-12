@@ -6,7 +6,7 @@ import { loadConfig, updateConfigFile } from "./config.ts";
 import { parseJsonWith } from "./json-text.ts";
 import type { Logger } from "./logger.ts";
 import { compareVersions, swapBinary } from "./update.ts";
-import { WSL_PORT_OFFSET } from "./wsl-host.ts";
+import { WSL_PORT_OFFSET } from "./wsl/index.ts";
 
 export interface SetupDeps {
   /** Free-text question; an empty answer means "nothing". */

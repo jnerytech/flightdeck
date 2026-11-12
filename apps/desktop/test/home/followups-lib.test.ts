@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
-import { emptySummary } from "../src/lib/client-costs.ts";
-import { homeKpis } from "../src/lib/home-kpis.ts";
+import { emptySummary } from "../../src/lib/client-costs.ts";
+import { homeKpis } from "../../src/lib/home-kpis.ts";
 
 const DAYS = ["2026-10-09", "2026-10-10"];
 const costs = (): CostsSummary => {

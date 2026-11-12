@@ -21,7 +21,7 @@ import {
   realWslProbe,
   WSL_PORT_OFFSET,
   type WslProbe,
-} from "../../src/wsl-host.ts";
+} from "../../src/wsl/index.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];
