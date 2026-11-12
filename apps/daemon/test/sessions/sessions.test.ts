@@ -3,7 +3,7 @@ import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { buildChildEnv } from "../../src/kernel/env.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
-import { resolveAllowedCwd } from "../../src/paths.ts";
+import { resolveAllowedCwd } from "../../src/kernel/paths.ts";
 import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";

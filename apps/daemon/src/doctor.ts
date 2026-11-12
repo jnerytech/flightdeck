@@ -1,6 +1,6 @@
 import { loopbackOnly } from "./pairing/index.ts";
+import type { OpenCodeState } from "./runtime/index.ts";
 import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
-import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { findingText, type ScopeFinding } from "./runtime/opencode-scope.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
@@ -63,15 +63,6 @@ const check = (
   detail: string,
   fix?: string,
 ): DoctorCheck => ({ id, name, status, detail, ...(fix ? { fix } : {}) });
-
-export interface OpenCodeState {
-  enabled: boolean;
-  /** The executable on PATH, looked up without running it. */
-  found: string | null;
-  /** What discovery said, when OpenCode is turned on. */
-  info: OpenCodeInfo | null;
-  platform: NodeJS.Platform;
-}
 
 /** Phase 39: the OpenCode row; never a failure (OpenCode is optional). */
 export function opencodeCheck(state: OpenCodeState): DoctorCheck {

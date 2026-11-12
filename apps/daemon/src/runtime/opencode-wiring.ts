@@ -4,7 +4,6 @@
  */
 import { join } from "node:path";
 import type { Config, RuntimeKind } from "../config.ts";
-import type { OpenCodeState } from "../doctor.ts";
 import { buildChildEnv } from "../kernel/index.ts";
 import { FakeRuntime } from "./fake-runtime.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
@@ -56,6 +55,15 @@ function discoverHost(config: Config, childEnv: Record<string, string>): Promise
     scan: () => scanOpenCodeScope({ env: childEnv }),
     statFile: fileStamp,
   });
+}
+
+export interface OpenCodeState {
+  enabled: boolean;
+  /** The executable on PATH, looked up without running it. */
+  found: string | null;
+  /** What discovery said, when OpenCode is turned on. */
+  info: OpenCodeInfo | null;
+  platform: NodeJS.Platform;
 }
 
 /** Phase 39: the doctor's OpenCode row: looked up without running it, discovered only when on. */

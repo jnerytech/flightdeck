@@ -10,7 +10,7 @@ import type {
 } from "@flightdeck/protocol";
 import type { CommandResult } from "../board/command.ts";
 import { LOCAL_SETTINGS } from "../board/project-rules.ts";
-import { samePath } from "../paths.ts";
+import { samePath } from "../kernel/index.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import type { FolderLocks } from "./locks.ts";
 
