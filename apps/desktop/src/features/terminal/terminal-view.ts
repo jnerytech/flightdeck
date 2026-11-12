@@ -1,5 +1,5 @@
 import type { Theme } from "@/features/shell/index.ts";
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 export type TerminalKeyAction =
   | "copy"

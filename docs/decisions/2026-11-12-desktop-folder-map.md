@@ -130,7 +130,7 @@ prefix. Tests move with their file in the same PR.
 | `snippets.ts` | `features/snippets/`: **moved** (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
 | `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` |
 | `teleport.ts` | `features/teleport/`: **moved** |
-| `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
+| `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` (**moved**; public names through its index) |
 | `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
 | `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file) |

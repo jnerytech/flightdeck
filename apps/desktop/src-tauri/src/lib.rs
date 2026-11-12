@@ -1436,7 +1436,7 @@ fn on_path(program: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// The only programs the frontend may start: the command is built there (apps/desktop/src/lib/terminal.ts).
+/// The only programs the frontend may start: the command is built there (apps/desktop/src/features/terminal/terminal.ts).
 const TERMINAL_PROGRAMS: [&str; 2] = ["wt.exe", "cmd.exe"];
 
 /// Starts the terminal with the arguments as a list; no shell in between, except the `cmd /k` of

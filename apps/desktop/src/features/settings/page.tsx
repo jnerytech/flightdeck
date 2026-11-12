@@ -15,10 +15,10 @@ import { Field, Form, FormActions, NativeSelect, Page, Panel } from "@/shared/la
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { TabOrder } from "../../lib/tab-switcher.ts";
-import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../../lib/terminal-view.ts";
 import { hostsWith } from "../../lib/version.ts";
 import type { AppUpdateState } from "../appupdate/index.ts";
 import { MessagingRulesSection } from "../messaging/rules-section.tsx";
+import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../terminal/index.ts";
 import { WebhooksSection } from "../webhook/index.ts";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";

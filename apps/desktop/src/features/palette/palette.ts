@@ -5,7 +5,6 @@ import { ALL_CLIENTS, selectedClient, tagsFirst } from "../../lib/client-scope.t
 import { UNASSIGNED } from "../../lib/clients.ts";
 import type { Route } from "../../lib/router.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "../../lib/shortcuts.ts";
-import type { TerminalTarget } from "../../lib/terminal.ts";
 import { anyHostHas, hasFeature } from "../../lib/version.ts";
 import { hostStatusView } from "../hosts/index.ts";
 import {
@@ -14,6 +13,7 @@ import {
   VIEW_LABEL,
 } from "../sessions/index.ts";
 import type { AppSnippet } from "../snippets/index.ts";
+import type { TerminalTarget } from "../terminal/index.ts";
 
 /** Where an entry of the Ctrl+K palette leads. */
 export type PaletteTarget =

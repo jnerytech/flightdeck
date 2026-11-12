@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AppStore } from "./app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /** The live terminal of the host that launched this session ("Claude aqui"), if there is one. */
 export function useLaunchTerminal(store: AppStore, hostId: string, launchId: string | null) {

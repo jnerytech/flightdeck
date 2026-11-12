@@ -13,12 +13,10 @@ import { FileExplorer, SessionFiles } from "@/features/files/index.ts";
 import { TracePanel } from "@/features/trace/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
-import { useLaunchTerminal } from "../../lib/use-launch-terminal.ts";
-import type { XtermDeps } from "../../lib/xterm-screen.ts";
 import { SessionMessages } from "../messaging/session-messages.tsx";
 import { ChangesPanel } from "../review/index.ts";
 import { TempoPanel } from "../telemetry/index.ts";
-import { SessionTerminal } from "../terminal/index.ts";
+import { SessionTerminal, useLaunchTerminal, type XtermDeps } from "../terminal/index.ts";
 import { SessionFinish } from "./session-finish.tsx";
 import {
   offeredViews,
