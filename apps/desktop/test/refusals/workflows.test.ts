@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { workflowIssueText } from "../src/i18n/errors.ts";
-import { translator } from "../src/i18n/index.ts";
+import { workflowIssueText } from "../../src/i18n/errors.ts";
+import { translator } from "../../src/i18n/index.ts";
 
 describe("recusas-workflows: what is wrong in a workflow file, said in the app's language", () => {
   test("a known code is translated, under the step it belongs to", () => {
