@@ -297,6 +297,14 @@ export class HostTabs {
     else this.into(host, route, (set) => set.tabs.show(route), true);
   }
 
+  /** A new tab: the Overview of a host; with no host at all, the one Home tab is brought forward. */
+  openNew(hosts: readonly { id: string; status: string }[]): void {
+    const host =
+      this.hostId ?? hosts.find((h) => h.status === "online")?.id ?? hosts[0]?.id ?? null;
+    if (host) this.open({ name: "host", host });
+    else this.show({ name: "home" });
+  }
+
   /** A single click in the sidebar: the preview tab of the screen's own set (shared ones are pinned). */
   openPreview(route: Route): void {
     const host = routeHost(route);

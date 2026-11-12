@@ -22,7 +22,7 @@ import {
   timingsFrom,
   tryAcquire,
   USAGE,
-} from "../../lib/slot.ts";
+} from "../../lib/slot/index.ts";
 
 const PATH = "/tmp/flightdeck-slot.lock";
 const mine: SlotHolder = { pid: 10, label: "sonar", command: "bun run test", startedAt: 1000 };

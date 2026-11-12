@@ -5,7 +5,7 @@
  * they queued. `--status` shows the holder and the waiters with their ages, folders and an ORPHAN
  * mark, `--reap` stops the waiters whose shell is gone (#236),
  * `--nice` lowers the command's priority, `--priority` lowers the other
- * `bun test` processes of the user while the command runs. The logic is in `lib/slot.ts`; this file is the real
+ * `bun test` processes of the user while the command runs. The logic is in `lib/slot/index.ts`; this file is the real
  * files, clock and processes.
  */
 import {
@@ -28,7 +28,7 @@ import {
   run,
   type SlotEnv,
   timingsFrom,
-} from "./lib/slot.ts";
+} from "./lib/slot/index.ts";
 
 /** The CI timings file as `{ timings, root }`, or nothing when it cannot be read (#1541). */
 function timingsOf(path: string): { timings?: Record<string, number>; root?: string } {
