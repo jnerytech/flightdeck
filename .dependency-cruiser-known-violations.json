@@ -702,31 +702,6 @@
   },
   {
     "type": "cycle",
-    "from": "apps/daemon/src/runtime/opencode-preflight.ts",
-    "to": "apps/daemon/src/runtime/opencode-serve.ts",
-    "unresolvedTo": "./opencode-serve.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/runtime/opencode-serve.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/runtime/opencode-runtime.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/runtime/opencode-preflight.ts",
-        "dependencyTypes": ["local", "import"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "apps/daemon/src/server/context.ts",
     "to": "apps/daemon/src/server/host-info.ts",
     "unresolvedTo": "./host-info.ts",

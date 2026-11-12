@@ -3,14 +3,14 @@
  * `bun run scripts/lane.ts <command...>`: runs the command in the light lane, at most two at a time
  * on the machine and one when less than 5 GB is available (FLIGHTDECK_LANE_PLACES overrides), so
  * typechecks and lints never pile up and run it out of memory. `bun run typecheck`
- * and `bun run lint` go through it. The logic is in `lib/lane.ts`; this file is the real files,
+ * and `bun run lint` go through it. The logic is in `lib/machine/lane.ts`; this file is the real files,
  * clock and processes (the lock files sit next to the slot's, in the temp folder).
  */
 import { linkSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { lanePlaces, runInLane } from "./lib/lane.ts";
-import { offerToOomKiller } from "./lib/oom-guard.ts";
+import { lanePlaces, runInLane } from "./lib/machine/lane.ts";
+import { offerToOomKiller } from "./lib/machine/oom-guard.ts";
 import type { SlotEnv } from "./lib/slot/index.ts";
 
 /** The file is written whole under another name and linked in, as the slot does. */

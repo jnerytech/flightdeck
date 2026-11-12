@@ -46,7 +46,9 @@ function recorder(
       calls.push(`${host} ${type} ${JSON.stringify(payload)}`);
       return Promise.resolve(opts.answers?.[type] ?? null);
     },
-    decideOldest: (decision: string, key: string) => void calls.push(`decide ${decision} ${key}`),
+    permissions: {
+      decideOldest: (decision: string, key: string) => void calls.push(`decide ${decision} ${key}`),
+    },
     createSession: (host: string, payload: unknown) => {
       calls.push(`create ${host} ${JSON.stringify(payload)}`);
       return Promise.resolve("s1");

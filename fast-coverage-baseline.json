@@ -263,7 +263,7 @@
   "scripts/lib/hooks/hook-log.ts",
   "scripts/lib/hooks/session-context.ts",
   "scripts/lib/i18n-sweep.ts",
-  "scripts/lib/lane.ts",
+  "scripts/lib/machine/lane.ts",
   "scripts/lib/migrate-esperas.ts",
   "scripts/lib/no-money.ts",
   "scripts/lib/pr/handoff.ts",
@@ -291,6 +291,6 @@
   "scripts/lib/styles/theme-contrast.ts",
   "scripts/lib/tests/fast-coverage.ts",
   "scripts/lib/tests/related-coverage.ts",
-  "scripts/lib/typecheck.ts",
+  "scripts/lib/typecheck/typecheck.ts",
   "scripts/lib/visual.ts"
 ]

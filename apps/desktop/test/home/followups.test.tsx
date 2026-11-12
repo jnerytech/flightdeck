@@ -295,7 +295,7 @@ describe("home-followups: Costs and History start where Home pointed (issue #210
 
   test("History starts on the days Home pointed at", async () => {
     const w = world();
-    w.store.historyList = (async () => ({ sessions: [], total: 0 })) as never;
+    w.store.history.list = (async () => ({ sessions: [], total: 0 })) as never;
     render(
       <HistoryList
         store={w.store}
