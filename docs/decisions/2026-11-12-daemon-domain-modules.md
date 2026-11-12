@@ -29,7 +29,7 @@ import type { ServerOptions } from "../server.ts";
 export interface DomainModule<K extends keyof ServerOptions = never> {
   /** The domain's part of `startServer`'s options: its group, built with `serverGroup<K>()`. */
   server?: Pick<ServerOptions, K>;
-  /** Work before the server listens. Awaited right after this module is built. */
+  /** Work before the server listens. Awaited right after this module is added. */
   start?(): void | Promise<void>;
   /** Work that needs the server listening (loops that broadcast, WSL). Awaited in list order. */
   started?(): void | Promise<void>;
@@ -47,7 +47,7 @@ export interface DomainModule<K extends keyof ServerOptions = never> {
   members. A missing group is not a compile error, as today: every group key of `ServerOptions` is
   optional, and the domain's protocol tests catch a group that is not passed.
 - The factory still returns the domain's own objects next to its modules when another domain needs
-  them (`{ module, quota, onQuota }`). The module is the seam to `main.ts`, not the only export.
+  them (`{ modules: [module], quota, onQuota }`). The module is the seam to `main.ts`, not the only export.
 - The type and the runner (`createModuleRunner()`, with `add`, `server`, `started` and `stop`) live
   in `apps/daemon/src/server/module.ts`, exported by `server/index.ts`, with their own output test
   (`apps/daemon/test/server/module.test.ts`). Domains import the type with `import type`, so no domain gains a
