@@ -163,9 +163,10 @@ export class HistorySlice {
         ...(tail && !cursor ? { tail: true } : {}),
       });
     } catch (error) {
-      refused?.(this.core.reason(error));
+      const reason = this.core.reason(error);
+      refused?.(reason);
       // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
-      if (this.core.reason(error) !== "transcript_not_indexed") {
+      if (reason !== "transcript_not_indexed") {
         this.core.fail(error);
       }
       return null;
