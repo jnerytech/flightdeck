@@ -42,7 +42,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...when(opts.fsDirs, "fs.dirs", "fs.files"),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...when(opts.sessionSettings, "session.settings", "session.effort"),
+    ...when(opts.sessionSettings?.commands, "session.settings", "session.effort"),
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...when(opts.hostChecks?.doctor, "doctor.run"),
@@ -52,7 +52,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.memoryPause, "memoryPause"),
     ...when(opts.hostPause, "hostPause"),
     // Issue #1478: a running session that says nothing is marked quiet (`quietSince`).
-    ...when(opts.stall, "stall"),
+    ...when(opts.sessionSettings?.stall, "stall"),
     ...when(opts.review?.cardReview, "cardReview"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
@@ -185,8 +185,8 @@ export async function hostInfo(server: ServerContext, origin: string) {
     ...present({
       terminal: opts.terminals?.settings(),
       ui: opts.ui && { ...opts.ui },
-      allowBypassPermissions: opts.bypass?.allowed(),
-      sleepAfterMinutes: opts.sleep?.minutes(),
+      allowBypassPermissions: opts.sessionSettings?.bypass?.allowed(),
+      sleepAfterMinutes: opts.sessionSettings?.sleep?.minutes(),
       keepAwake: opts.keepAwake?.status(),
       pause: opts.hostPause?.status(),
       runtimes: opts.opencode && [hostRuntime(opts.opencode.info())],
