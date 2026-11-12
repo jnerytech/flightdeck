@@ -19,7 +19,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/ui/App.tsx");
-const { realXtermDeps } = await import("../../src/lib/xterm-deps.ts");
+const { realXtermDeps } = await import("../../src/features/terminal/xterm-deps.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

@@ -4,7 +4,7 @@ import {
   RESIZE_DEBOUNCE_MS,
   TerminalSession,
   type TerminalState,
-} from "../../src/lib/terminal-session.ts";
+} from "../../src/features/terminal/terminal-session.ts";
 
 const b64 = (text: string) => Buffer.from(text).toString("base64");
 const text = (bytes: Uint8Array) => Buffer.from(bytes).toString();
