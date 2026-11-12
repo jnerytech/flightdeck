@@ -116,6 +116,12 @@ import {
   wireSnippets,
 } from "../features/snippets/index.ts";
 import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import {
+  type TeleportOutcome,
+  type TeleportRequest,
+  type TeleportRunArgs,
+  teleportSession,
+} from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
@@ -185,12 +191,6 @@ import {
 import { TabScopeController } from "./tab-scope.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
-import {
-  type TeleportOutcome,
-  type TeleportRequest,
-  type TeleportRunArgs,
-  teleportSession,
-} from "./teleport.ts";
 import { isLocalUrl } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { Vault } from "./vault.ts";

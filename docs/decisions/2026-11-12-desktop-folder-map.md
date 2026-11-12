@@ -128,7 +128,7 @@ prefix. Tests move with their file in the same PR.
 | `roi*.ts` | `features/roi/` |
 | `snippets.ts` | `features/snippets/`: **moved** |
 | `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` |
-| `teleport.ts` | `features/teleport/` |
+| `teleport.ts` | `features/teleport/`: **moved** |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
 | `trace.ts` | `features/trace/` |
 | `tray.ts` | `features/tray/`: **moved** |

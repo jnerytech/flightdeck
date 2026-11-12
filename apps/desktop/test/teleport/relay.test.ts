@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { TeleportManifest } from "@flightdeck/protocol";
-import { RequestError } from "../../src/lib/host-connection.ts";
 import {
   plainText,
   type TeleportRequest,
   type TeleportSummary,
   teleportSession,
   teleportSummary,
-} from "../../src/lib/teleport.ts";
+} from "../../src/features/teleport/teleport.ts";
+import { RequestError } from "../../src/lib/host-connection.ts";
 import { settleMaybe, stays } from "../wait.ts";
 
 /**
