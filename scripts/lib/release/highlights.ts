@@ -4,7 +4,7 @@
  * keeps the PRs with a user-facing commit (feat or fix, not a Sonar or CI scope), groups them by
  * their issue, and prints one bullet per issue under a heading by area. It only reads, with gh.
  */
-import type { GhResult } from "./ci-branch.ts";
+import type { GhResult } from "../ci-branch.ts";
 
 export const REPO = "jnerytech/flightdeck";
 

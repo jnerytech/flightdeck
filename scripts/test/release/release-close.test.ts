@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { issueRefs, type ReleaseCloseDeps, releaseClose } from "../../lib/release-close.ts";
+import { issueRefs, type ReleaseCloseDeps, releaseClose } from "../../lib/release/close.ts";
 
 const R = "repos/{owner}/{repo}";
 
