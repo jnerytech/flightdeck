@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { en } from "../src/i18n/en.ts";
-import { translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { waiter } from "./wait.ts";
+import { en } from "../../src/i18n/en.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppShell } = await import("../src/features/shell/app-shell.tsx");
-const { TopBarHost } = await import("../src/features/shell/top-bar.tsx");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { memoryPlatform, TOKEN } = await import("./fixtures.ts");
+const { AppShell } = await import("../../src/features/shell/app-shell.tsx");
+const { TopBarHost } = await import("../../src/features/shell/top-bar.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { memoryPlatform, TOKEN } = await import("../fixtures.ts");
 
 const settle = waiter(4000);
 const cleanups: Array<() => void> = [];

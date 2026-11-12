@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { getField, parseDocument, serialize, setField } from "../src/lib/frontmatter.ts";
+import {
+  getField,
+  parseDocument,
+  serialize,
+  setField,
+} from "../src/features/agentcfg/frontmatter.ts";
 
 const AGENT = `---
 name: revisor

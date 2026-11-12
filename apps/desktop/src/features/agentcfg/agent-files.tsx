@@ -10,7 +10,7 @@ import { InlineNotice } from "@/shared/feedback/index.ts";
 import { EmptyState, ErrorState, LoadingState } from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { getField, parseDocument, serialize, setField } from "../../lib/frontmatter.ts";
+import { getField, parseDocument, serialize, setField } from "./frontmatter.ts";
 
 type Kind = AgentCfgItem["kind"];
 type Origin = AgentCfgItem["origin"];

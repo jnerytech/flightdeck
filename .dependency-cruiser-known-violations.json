@@ -4681,9 +4681,31 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/workflows/engine.ts",
+    "from": "apps/daemon/src/workflows/engine-types.ts",
     "to": "apps/daemon/src/board/columns.ts",
     "unresolvedTo": "../board/columns.ts",
+    "dependencyTypes": ["local", "import", "type-only"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/workflows/engine-types.ts",
+    "to": "apps/daemon/src/board/types.ts",
+    "unresolvedTo": "../board/types.ts",
+    "dependencyTypes": ["local", "import", "type-only"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/workflows/engine-types.ts",
+    "to": "apps/daemon/src/sessions/session-manager.ts",
+    "unresolvedTo": "../sessions/session-manager.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
@@ -4717,28 +4739,6 @@
     "from": "apps/daemon/src/workflows/engine.ts",
     "to": "apps/daemon/src/board/types.ts",
     "unresolvedTo": "../board/types.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/engine.ts",
-    "to": "apps/daemon/src/personas/prepare.ts",
-    "unresolvedTo": "../personas/prepare.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/engine.ts",
-    "to": "apps/daemon/src/sessions/session-manager.ts",
-    "unresolvedTo": "../sessions/session-manager.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",

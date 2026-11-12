@@ -5,6 +5,7 @@
   "apps/daemon/src/maintenance/maintenance.ts": 1,
   "apps/daemon/src/personas/store.ts": 1,
   "apps/desktop/src/demo/boot.ts": 3,
+  "apps/desktop/src/features/agentcfg/frontmatter.ts": 1,
   "apps/desktop/src/features/assistant/assistant-prefs.ts": 1,
   "apps/desktop/src/features/backup/backup-bundle.ts": 2,
   "apps/desktop/src/features/backup/backup-schedule.ts": 1,
@@ -36,7 +37,6 @@
   "apps/desktop/src/features/vault/vault.ts": 1,
   "apps/desktop/src/features/webhook/webhook-targets.ts": 1,
   "apps/desktop/src/lib/app-store.ts": 2,
-  "apps/desktop/src/lib/frontmatter.ts": 1,
   "apps/desktop/src/lib/setup-steps.ts": 1,
   "packages/protocol/src/index.ts": 1
 }
