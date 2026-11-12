@@ -12,12 +12,8 @@ import { Button } from "@/components/ui/button";
 import { FileExplorer, SessionFiles } from "@/features/files/index.ts";
 import { TracePanel } from "@/features/trace/index.ts";
 import { useT } from "@/i18n/context";
-import { SessionFinish } from "../components/session/session-finish.tsx";
-import { SessionMessages } from "../features/messaging/session-messages.tsx";
-import { ChangesPanel } from "../features/review/index.ts";
-import { TempoPanel } from "../features/telemetry/index.ts";
-import { SessionTerminal } from "../features/terminal/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
+import { SessionFinish } from "../../components/session/session-finish.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
 import {
   offeredViews,
   type SessionView,
@@ -27,9 +23,13 @@ import {
   VIEW_LABEL,
   type ViewKey,
   viewKeyTarget,
-} from "../lib/session-views.ts";
-import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
-import type { XtermDeps } from "../lib/xterm-screen.ts";
+} from "../../lib/session-views.ts";
+import { useLaunchTerminal } from "../../lib/use-launch-terminal.ts";
+import type { XtermDeps } from "../../lib/xterm-screen.ts";
+import { SessionMessages } from "../messaging/session-messages.tsx";
+import { ChangesPanel } from "../review/index.ts";
+import { TempoPanel } from "../telemetry/index.ts";
+import { SessionTerminal } from "../terminal/index.ts";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";
