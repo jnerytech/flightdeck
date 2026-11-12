@@ -33,6 +33,8 @@ async function wired() {
   return { ...sync, ghCalls, timersAsked };
 }
 
+const realSetTimeout = globalThis.setTimeout;
+
 beforeEach(() => {
   jest.useFakeTimers();
   const hostSetTimeout = globalThis.setTimeout;
@@ -45,6 +47,7 @@ afterEach(() => {
   started?.stop();
   started = null;
   jest.useRealTimers();
+  globalThis.setTimeout = realSetTimeout; // the isolation guard fails a file that leaves it changed
 });
 
 describe("createBoardSync: the loop runs on the host's timers", () => {
