@@ -7,10 +7,9 @@ import type { Config } from "../config.ts";
 import type { Exec } from "../exec.ts";
 import { spawnExec } from "../exec.ts";
 import { parseJsonOr } from "../json-text.ts";
-import type { Logger } from "../logger.ts";
+import { type Logger, ulid } from "../kernel/index.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
-import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
 
 /** What the daemon publishes about the receiver it runs: where it listens. */

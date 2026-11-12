@@ -16,7 +16,7 @@ import {
 } from "../deps/index.ts";
 import { runDoctor } from "../doctor.ts";
 import { type Exec, spawnExec } from "../exec.ts";
-import { linesOf } from "../kernel/index.ts";
+import { DAEMON_VERSION, linesOf } from "../kernel/index.ts";
 import { mcpReachable } from "../mcp.ts";
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "../pairing.ts";
 import { openCodeState } from "../runtime/index.ts";
@@ -37,7 +37,6 @@ import {
   waitHealthy,
 } from "../service/index.ts";
 import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
-import { DAEMON_VERSION } from "../version.ts";
 import { whichOnPath } from "../which.ts";
 import { detectWsl, readProcVersion } from "../wsl/index.ts";
 import { type CliArgs, configPath } from "./args.ts";

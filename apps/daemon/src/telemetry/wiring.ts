@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Config } from "../config.ts";
-import type { Logger } from "../logger.ts";
+import type { Logger } from "../kernel/index.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
 import { TelemetryOptIn, type TelemetryOptInOptions } from "./optin.ts";
 import { startTelemetry } from "./service.ts";

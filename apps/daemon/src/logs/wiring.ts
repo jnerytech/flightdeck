@@ -1,4 +1,4 @@
-import type { Logger } from "../logger.ts";
+import type { Logger } from "../kernel/index.ts";
 import { FileLog } from "./file-log.ts";
 import { createLogScanner } from "./scanner.ts";
 

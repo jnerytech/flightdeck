@@ -10,8 +10,8 @@ import { join } from "node:path";
 import { assistantDir } from "../assistant/paths.ts";
 import { summarizeInput } from "../central/external-permissions.ts";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
+import { ulid } from "../kernel/index.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
-import { ulid } from "../ulid.ts";
 import type { Risk } from "./risk.ts";
 
 export interface AutoApproveSettings {
