@@ -8,10 +8,10 @@ import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { periodRange, usd } from "@/lib/costs";
-import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "@/lib/roi";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "./roi.ts";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
 function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {
