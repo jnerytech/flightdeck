@@ -51,7 +51,7 @@ import {
   DEMO_TEAM_OUTCOME,
   DEMO_TEAM_REPORT,
   DEMO_UPDATE_CARDS,
-} from "./lib/e2e-journeys.ts";
+} from "./lib/e2e/journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
