@@ -55,13 +55,13 @@ describe("module runner: the daemon domains' start and stop order", () => {
           };
         }),
     };
-    const adding = runner.add({ modules: [slow] });
-    const next = adding.then(() => log.push("next added"));
+    const adding = runner.add({ modules: [slow, recorded("next", log)] });
+    const done = adding.then(() => log.push("added"));
     await Promise.resolve();
     log.push("still waiting");
     release();
-    await next;
-    expect(log).toEqual(["still waiting", "slow settled", "next added"]);
+    await done;
+    expect(log).toEqual(["still waiting", "slow settled", "next start", "added"]);
   });
 
   test("stops first modules in list order, the rest in reverse, then the server, then late ones", async () => {
