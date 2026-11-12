@@ -33,14 +33,18 @@ import {
   costAsks,
   cursorMove,
   filterCount,
+  hasBackgroundHost,
+  hostlessHub,
   hubProjectKeys,
   personasOf,
   projectChoices,
   projectName,
   refreshSignature,
   rowOffers,
+  rowSummary,
   rowsInScope,
   scopeKeys,
+  showsStateWord,
   worktreesOf,
 } from "@/features/sessions/index.ts";
 import { SessionCard, STATE_TONES } from "@/features/sessions/session-card";
@@ -156,9 +160,7 @@ export function SessionsHub(
 
   // Background sessions change state on their own (a permission asked, a turn done): while the
   // hub is open and a host has them, it asks again every BG_REFRESH_MS.
-  const withBackground = state.hosts.some(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "bg", false),
-  );
+  const withBackground = hasBackgroundHost(state.hosts);
   useEffect(() => {
     if (!withBackground) return;
     let stopped = false;
@@ -398,10 +400,7 @@ export function SessionsHub(
   };
   const active = filterCount(filter);
   const starter = newSessionHost(state.hosts, state.selected);
-  // No host at all, or none online and nothing cached to list: the list would be a dead end.
-  const hostless =
-    state.hosts.length === 0 ||
-    (rows.length === 0 && !state.hosts.some((h) => h.status === "online"));
+  const hostless = hostlessHub(state.hosts, rows.length);
   const toolbar = (
     <Toolbar label={t("hub.filters")}>
       {state.hostsLoaded && (state.hosts.length > 1 || scopedProject !== "") && (
@@ -714,16 +713,8 @@ export function SessionsHub(
                       // list shows the word where its time was (the time stays in the tooltip):
                       // the row has no room for one more item. An idle or past row keeps its time,
                       // which says more there. The summary carries the word and its detail.
-                      const showWord =
-                        props.density === "compact" &&
-                        row.origin !== "history" &&
-                        (row.state === "running" || row.state === "needs_you");
-                      const summaryText = [
-                        [said.word, said.detail].filter(Boolean).join(" · "),
-                        line,
-                      ]
-                        .filter(Boolean)
-                        .join(" — ");
+                      const showWord = showsStateWord(props.density, row);
+                      const summaryText = rowSummary(said, line);
                       // What the whole group shares is in its header; the row keeps what differs.
                       const rowMeta = [
                         shared.origin === null && row.origin !== "terminal"

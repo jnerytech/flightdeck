@@ -16,9 +16,13 @@ export {
   costAsks,
   cursorMove,
   filterCount,
+  hasBackgroundHost,
+  hostlessHub,
   personasOf,
   refreshSignature,
   rowOffers,
+  rowSummary,
+  showsStateWord,
   worktreesOf,
 } from "./hub-derive.ts";
 export {
