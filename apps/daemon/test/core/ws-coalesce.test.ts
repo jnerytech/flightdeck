@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { EventEnvelope } from "@flightdeck/protocol";
-import { coalesceDeltas, DELTA_WINDOW_MS, drainAll } from "../../src/delta-coalescer.ts";
+import { coalesceDeltas, DELTA_WINDOW_MS, drainAll } from "../../src/server/delta-coalescer.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { newManager, waitFor } from "../support/helpers.ts";
 

@@ -11,7 +11,6 @@ import type {
   SessionSummary,
 } from "@flightdeck/protocol";
 import { userHome } from "../../config.ts";
-import { coalesceDeltas } from "../../delta-coalescer.ts";
 import type { HistoryIndexer } from "../../history/indexer.ts";
 import type { LiveState } from "../../history/session-line.ts";
 import { resolveAllowedCwd } from "../../paths.ts";
@@ -20,6 +19,7 @@ import { rulePaths, ruleReadings } from "../../permissions/permission-updates.ts
 import { pathKinds, realPaths } from "../../permissions/rule-risk.ts";
 import { preparePersonas } from "../../personas/prepare.ts";
 import type { ServerContext } from "../context.ts";
+import { coalesceDeltas } from "../delta-coalescer.ts";
 import { afterAck, type Call, type Handlers } from "../dispatch.ts";
 
 /** Phase 8: the state of a session's line, from its live status. */
