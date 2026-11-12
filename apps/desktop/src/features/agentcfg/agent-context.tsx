@@ -1,10 +1,10 @@
 import type { ContextBudget } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { ListRow } from "@/components/layout/list-row";
 import { Stack } from "@/components/layout/stack";
 import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { formatNumber } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 

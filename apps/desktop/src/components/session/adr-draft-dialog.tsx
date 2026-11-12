@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { AppDialogContent } from "@/shared/feedback/index.ts";
 
 /**
  * Issue #1039: a decision record drafted from a session's summary. The summary is the starting

@@ -54,7 +54,9 @@ async function setup(withKeys = true): Promise<{ index: HistoryIndexer; server: 
     token: TOKEN,
     allowedRoots: [],
     history: index,
-    ...(withKeys ? { projectKeyOf: async (cwd: string) => KEYS[cwd] ?? `host:h:${cwd}` } : {}),
+    ...(withKeys
+      ? { projects: { keyOf: async (cwd: string) => KEYS[cwd] ?? `host:h:${cwd}` } }
+      : {}),
   });
   cleanups.push(() => server.stop());
   return { index, server };

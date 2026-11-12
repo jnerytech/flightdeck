@@ -1,10 +1,9 @@
 import type { TerminalInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 

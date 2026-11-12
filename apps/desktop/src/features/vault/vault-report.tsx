@@ -1,11 +1,11 @@
 import type { VaultDecisionInfo, VaultReportRow } from "@flightdeck/protocol";
 import { memo, useEffect, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { hostsWith } from "@/lib/version";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 const DAYS = 30;
 const SELECT =

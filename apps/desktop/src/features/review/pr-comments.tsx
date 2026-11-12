@@ -1,8 +1,8 @@
 import type { PrComment } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { isExternalAuthor } from "../../lib/review.ts";
 

@@ -1,6 +1,5 @@
 import { TriangleAlert } from "lucide-react";
 import { memo, useId, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
@@ -8,6 +7,7 @@ import { WideTable } from "@/components/layout/wide-table";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import {

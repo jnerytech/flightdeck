@@ -51,7 +51,6 @@ import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "@/shared/status/index.ts";
-import { InlineNotice } from "../components/feedback/inline-notice.tsx";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
@@ -79,6 +78,7 @@ import { typing } from "../lib/keys.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import { activeWorktreeFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
+import { InlineNotice } from "../shared/feedback/index.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;

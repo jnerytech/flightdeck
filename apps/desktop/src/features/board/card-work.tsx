@@ -1,9 +1,9 @@
 import type { Card, ChangesResult, StepRun } from "@flightdeck/protocol";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { issueLabel, issueUrl } from "../../lib/issues.ts";
 import type { SessionState } from "../../lib/session-state.ts";

@@ -1,12 +1,11 @@
 import type { BoardColumn, Card } from "@flightdeck/protocol";
 import { useRef, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { ActionButton } from "@/components/feedback/action-button";
-import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ActionButton, AppDialogContent } from "@/shared/feedback/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { applyTemplate, CardTemplateField } from "./card-template-field.tsx";

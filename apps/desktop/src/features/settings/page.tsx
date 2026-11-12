@@ -1,6 +1,5 @@
 import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { AssistantSettings } from "@/components/assistant/assistant-settings";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -13,6 +12,7 @@ import { BudgetsSection } from "@/features/costs/index.ts";
 import { NotificationPrefs } from "@/features/notifications/index.ts";
 import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { CacheTtl } from "../../lib/cache-timer.ts";

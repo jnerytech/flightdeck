@@ -6,7 +6,7 @@ import { settle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ActionButton: Button } = await import("../src/components/feedback/action-button.tsx");
+const { ActionButton: Button } = await import("../src/shared/feedback/index.ts");
 
 afterEach(cleanup);
 

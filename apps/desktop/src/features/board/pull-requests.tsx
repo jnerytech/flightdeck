@@ -1,10 +1,10 @@
 import { GitPullRequest } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Page } from "@/components/layout/page";
 import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { refusalText } from "@/i18n/errors";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { bulkSplit, updateMany, updateSummary } from "../../lib/board-bulk.ts";
 import { answerOf } from "../../lib/board-select.ts";

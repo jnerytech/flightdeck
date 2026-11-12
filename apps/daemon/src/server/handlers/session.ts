@@ -68,7 +68,7 @@ async function foldersOf(
 ): Promise<string[]> {
   const { opts } = server;
   const keyOf =
-    opts.projectKeyOf ?? ((cwd: string) => Promise.resolve(`host:${opts.hostName}:${cwd}`));
+    opts.projects?.keyOf ?? ((cwd: string) => Promise.resolve(`host:${opts.hostName}:${cwd}`));
   const cwds = index.distinctCwds();
   const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
   return cwds.filter((_, i) => keys[i] === key);
@@ -107,9 +107,10 @@ export const sessionHandlers = {
     const { opts, manager } = server;
     // Looked up in git before the session exists, so what names and lists it finds the
     // project already known; the wait is this request's own, the others are served meanwhile.
-    if (opts.warmProjectKey) {
+    const warmKey = opts.projects?.warmKey;
+    if (warmKey) {
       const cwd = await resolveAllowedCwd(payload.cwd, opts.allowedRoots);
-      await opts.warmProjectKey(cwd);
+      await warmKey(cwd);
     }
     const prepared = await preparePersonas(opts.personas?.store, payload.persona, payload.cwd);
     return await manager.create(payload, { prepared });

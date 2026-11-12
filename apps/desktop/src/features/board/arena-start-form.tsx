@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import { AppDialogContent } from "../../shared/feedback/index.ts";
 
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 const MIN = 2;

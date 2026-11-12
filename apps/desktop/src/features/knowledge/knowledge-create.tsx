@@ -1,11 +1,11 @@
 import type { KnowledgeKind } from "@flightdeck/protocol";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 const KINDS: readonly KnowledgeKind[] = ["adr", "rfc", "prd"];
 

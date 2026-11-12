@@ -183,7 +183,8 @@ describe("fs-dirs: the fs.dirs command", () => {
       port: 0,
       token: TOKEN,
       allowedRoots: [root],
-      fsDirs: true,
+      // The folder picker is part of the allowed folders' group (#1593).
+      roots: { picker: true },
     });
     stops.push(() => server.stop());
     const info = await ask(server, "host.info", {});

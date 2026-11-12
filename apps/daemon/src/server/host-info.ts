@@ -40,7 +40,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
-    ...when(opts.fsDirs, "fs.dirs", "fs.files"),
+    ...when(opts.roots?.picker, "fs.dirs", "fs.files"),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
     ...when(opts.sessionSettings?.commands, "session.settings", "session.effort"),
     // A message may carry images (`session.send` with `images`).
@@ -57,7 +57,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.costs?.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.hostChecks?.deps, "depsCheck"),
-    ...when(opts.projectTrust, "projectTrust"),
+    ...when(opts.projects?.trust, "projectTrust"),
     ...when(opts.harness?.stack, "harnessStack"),
     ...when(opts.alerts, "alerts"),
     // Issue #76: the project's library of documents, with their lifecycle status.
@@ -70,7 +70,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.harness?.commit, "harnessCommit"),
     ...when(opts.harness?.draft, "harnessDraft"),
     ...when(opts.harness?.templates, "harnessTemplates"),
-    ...when(opts.findProjects, "projects.scan", "projects.clone"),
+    ...when(opts.projects?.find, "projects.scan", "projects.clone"),
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
     ...when(opts.roi, "roi"),

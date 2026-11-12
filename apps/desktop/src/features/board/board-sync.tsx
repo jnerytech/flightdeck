@@ -6,8 +6,6 @@ import type {
 } from "@flightdeck/protocol";
 import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +22,7 @@ import { formatDateTime } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { uniqueKeys } from "@/lib/unique-keys";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 
 const COLUMNS: readonly BoardColumn[] = ["backlog", "in_progress", "waiting", "review", "done"];
 

@@ -1,7 +1,6 @@
 import type { AutoApprovalRecord, AutoApproveSuspension } from "@flightdeck/protocol";
 import { ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
@@ -10,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 

@@ -55,8 +55,7 @@ export const projectHandlers = {
     return { project: await board.forWire(now), outcome: found.outcome, host: found.host };
   },
   "project.trust.state": async (payload, { server }) => {
-    const trust = server.opts.projectTrust;
-    if (!trust) throw featureOff("projectTrust");
+    const trust = server.needIn("projects", "trust");
     const paths = await Promise.all(
       payload.paths.map((p) => resolveAllowedCwd(p, server.opts.allowedRoots)),
     );
@@ -64,16 +63,14 @@ export const projectHandlers = {
     return { items: trust.state(paths) };
   },
   "project.trust.inspect": async (payload, { ws, server }) => {
-    const trust = server.opts.projectTrust;
-    if (!trust) throw featureOff("projectTrust");
+    const trust = server.needIn("projects", "trust");
     // Commands and server arguments are shown whole, a secret in one included: a near connection only.
     requireVaultTransport(ws.data.origin, "project.trust.inspect", server.opts.log);
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await trust.inspect(path);
   },
   "project.trust.set": async (payload, { ws, server }) => {
-    const trust = server.opts.projectTrust;
-    if (!trust) throw featureOff("projectTrust");
+    const trust = server.needIn("projects", "trust");
     // Trusting lets the project's own hooks and MCP servers run without a prompt: only from a near
     // connection, like roots.add and host.bypass. Revoking only lowers risk.
     if (payload.trusted)
@@ -181,12 +178,12 @@ export const projectHandlers = {
     return await templates.remove(payload.id);
   },
   "projects.scan": async (payload, { server }) => {
-    if (!server.opts.findProjects) throw featureOff("projects.scan");
+    if (!server.opts.projects?.find) throw featureOff("projects.scan");
     const { depth } = payload;
     return await scanRepos(server.opts.allowedRoots, depth ? { depth } : {});
   },
   "projects.clone": async (payload, { server }) => {
-    if (!server.opts.findProjects) throw featureOff("projects.clone");
+    if (!server.opts.projects?.find) throw featureOff("projects.clone");
     return await cloneRepo(payload, server.opts.allowedRoots, server.opts.git ?? spawnGit);
   },
 } satisfies Partial<Handlers>;
