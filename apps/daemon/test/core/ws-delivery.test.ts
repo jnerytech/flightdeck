@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type FrameSocket, sendFrame } from "../../src/ws-send.ts";
+import { type FrameSocket, sendFrame } from "../../src/server/ws-send.ts";
 
 /** A socket whose `send` answers what the test says, one answer per call. */
 function socket(answers: number[]) {
