@@ -12,7 +12,7 @@ import {
   specPathProblem,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 
 /** A name a person types in a file: one line, not blank, not a page. */
 const line = (max: number) =>

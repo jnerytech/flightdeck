@@ -3,9 +3,8 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { TaskFile, TaskPreviewResult, TaskResultsResult } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
-import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonWith } from "../json-text.ts";
+import { parseJsonWith, writeFileAtomic } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 
 /** Names, sizes and times of the files of some folders, to compare with later. */

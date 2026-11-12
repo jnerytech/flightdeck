@@ -6,7 +6,7 @@
 import type { Database } from "bun:sqlite";
 import type { ActivitySinceResult, QuotaWindow } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 
 /** The values a stored refusal reason fills into its message. */
 const REASON_PARAMS = z.record(z.string(), z.union([z.string(), z.number()]));

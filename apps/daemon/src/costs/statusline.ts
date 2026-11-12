@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { type Ack, PROTOCOL_VERSION, parseServerMessage } from "@flightdeck/protocol";
 import { z } from "zod";
 import { Config } from "../config.ts";
-import { parseJsonOr, parseJsonWith } from "../json-text.ts";
+import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
 import { daemonUrl } from "../mcp.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { Costs } from "./costs.ts";

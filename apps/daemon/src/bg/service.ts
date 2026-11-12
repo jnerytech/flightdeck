@@ -4,7 +4,7 @@ import type { BgList, BgSession } from "@flightdeck/protocol";
 import { z } from "zod";
 import { runCommand } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 
 export interface BgServiceOptions {

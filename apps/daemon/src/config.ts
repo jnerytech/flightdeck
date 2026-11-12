@@ -5,7 +5,7 @@ import { dirname, join, posix, resolve, win32 } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { PricingConfig } from "./costs/pricing.ts";
-import { parseJsonText, parseJsonWith } from "./json-text.ts";
+import { parseJsonText, parseJsonWith } from "./kernel/index.ts";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 import { validRegex } from "./permissions/risk.ts";
 import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";

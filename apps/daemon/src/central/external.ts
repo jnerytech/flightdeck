@@ -7,7 +7,7 @@ import {
   PermissionMode,
   SessionPersona,
 } from "@flightdeck/protocol";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 import { type Tail, tailOfFile, type Waiting, waitingIn } from "./waiting.ts";
 
 // What the daemon keeps is what goes on the wire.

@@ -1,8 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { SshAuth, SshOptions, SshTarget } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr, parseJsonWith } from "../json-text.ts";
-import { ulid } from "../kernel/index.ts";
+import { parseJsonOr, parseJsonWith, ulid } from "../kernel/index.ts";
 import { PinnedKey, StoredOptions, Tags, WasForwardAgent } from "./row-json.ts";
 
 export interface SshTargetsOptions {

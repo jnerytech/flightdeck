@@ -59,7 +59,7 @@
 
 OpenCode's review found three highs, fixed before the Rust slice:
 
-- **A link is never followed.** An untracked file is read through `readRegular` (`apps/daemon/src/read-regular.ts`):
+- **A link is never followed.** An untracked file is read through `readRegular` (`apps/daemon/src/kernel/read-regular.ts`):
   `lstat`, a regular file only, opened with `O_NOFOLLOW | O_NONBLOCK` (where they exist), checked again with `fstat`, and
   read up to a cap. A link or a pipe is listed like a binary file, without content. The rule is in `untrackedFile`, so
   the Changes panel takes it too: a link to a file outside the worktree no longer shows its target there either, and a

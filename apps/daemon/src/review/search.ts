@@ -15,8 +15,7 @@ import {
 import { z } from "zod";
 import { type CommandResult, gitLimitedFor, runLimited } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr } from "../json-text.ts";
-import { whichOnPath } from "../kernel/index.ts";
+import { parseJsonOr, whichOnPath } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { firstStep, isGitDir } from "./paths.ts";
