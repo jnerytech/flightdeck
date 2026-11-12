@@ -6,13 +6,13 @@ import type { Handlers } from "../dispatch.ts";
 
 export const costsHandlers = {
   "costs.status": (_payload, { server }) => {
-    return server.need("costs").status();
+    return server.needIn("costs", "costs").status();
   },
   "costs.reprice": async (_payload, { server }) => {
-    return await server.need("costs").reprice();
+    return await server.needIn("costs", "costs").reprice();
   },
   "costs.summary": (payload, { server }) => {
-    return server.need("costs").summary(payload);
+    return server.needIn("costs", "costs").summary(payload);
   },
   "telemetry.session": (payload, { server }) => {
     return server.need("telemetry").timeline(payload.claudeSessionId);
@@ -30,37 +30,37 @@ export const costsHandlers = {
     return server.need("telemetry").summary();
   },
   "costs.session": (payload, { server }) => {
-    return server.need("costs").session(payload.claudeSessionId);
+    return server.needIn("costs", "costs").session(payload.claudeSessionId);
   },
   "costs.sessions": (payload, { server }) => {
-    return { costs: server.need("costs").sessions(payload.claudeSessionIds) };
+    return { costs: server.needIn("costs", "costs").sessions(payload.claudeSessionIds) };
   },
   "costs.card": (payload, { server }) => {
-    return { costUsd: server.need("costs").card(payload.cardId) };
+    return { costUsd: server.needIn("costs", "costs").card(payload.cardId) };
   },
   "costs.run": (payload, { server }) => {
-    return { costUsd: server.need("costs").run(payload.runId) };
+    return { costUsd: server.needIn("costs", "costs").run(payload.runId) };
   },
   "costs.export": (payload, { server }) => {
-    return server.need("costs").export(payload);
+    return server.needIn("costs", "costs").export(payload);
   },
   "budget.list": (_payload, { server }) => {
-    return { budgets: server.need("budgets").list() };
+    return { budgets: server.needIn("costs", "budgets").list() };
   },
   "budget.set": (payload, { server }) => {
-    return server.need("budgets").set(payload);
+    return server.needIn("costs", "budgets").set(payload);
   },
   "budget.setQuota": (payload, { server }) => {
-    const budgets = server.need("budgets");
+    const budgets = server.needIn("costs", "budgets");
     // A host without the plan quota does not announce `quotaBudgets`: it refuses the command.
     if (!budgets.opts.quota) throw featureOff("quotaBudgets");
     return budgets.setWindow(payload);
   },
   "budget.remove": (payload, { server }) => {
-    server.need("budgets").remove(payload.id);
+    server.needIn("costs", "budgets").remove(payload.id);
   },
   "budget.watch": (_payload, { ws, send, server }) => {
-    const host = server.need("budgets");
+    const host = server.needIn("costs", "budgets");
     ws.data.unwatchBudgets?.();
     ws.data.unwatchBudgets = host.watch((update) => send({ type: "budget.updated", ...update }));
   },

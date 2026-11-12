@@ -63,7 +63,7 @@ export const hostReadsHandlers = {
     return await server.needIn("hostChecks", "doctor")(payload.appVersion);
   },
   "statusline.get": (payload, { server }) => {
-    const { costs } = server.opts;
+    const costs = server.opts.costs?.costs;
     const quota = server.opts.quota?.windows;
     const { claudeSessionId } = payload;
     return statuslineData({

@@ -66,7 +66,7 @@ describe("carga-inicial", () => {
     const { manager, root } = newManager();
     const server = startServer({
       manager,
-      costs,
+      costs: { costs },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

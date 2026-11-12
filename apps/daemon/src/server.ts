@@ -171,6 +171,14 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** Phase 8, #1593: the costs' part of the server, each service optional. */
+interface CostsServer {
+  /** Estimated costs behind the `costs.*` commands. */
+  costs?: Costs;
+  /** Budgets behind the `budget.*` commands. */
+  budgets?: Budgets;
+}
+
 /** Phase 20, #1593: the personas' part of the server, each service optional. */
 interface PersonasServer {
   /** The personas behind `personas.*`. */
@@ -462,8 +470,8 @@ export interface ServerOptions {
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
   usage?: UsageLedger;
-  /** Estimated costs behind the `costs.*` commands (phase 8). */
-  costs?: Costs;
+  /** The estimated costs and their budgets (phase 8, #1593). */
+  costs?: CostsServer;
   /** Phase 23: the timing of terminal sessions, from Claude Code's OTLP telemetry. */
   telemetry?: TelemetryStore;
   /** The settings.json opt-in for a plain `claude` (phase 23). */
@@ -476,8 +484,6 @@ export interface ServerOptions {
   webhook?: WebhookSender;
   /** Phase 27: Claude Code's background sessions, through its own CLI. */
   bg?: BgService;
-  /** Budgets behind the `budget.*` commands (phase 8). */
-  budgets?: Budgets;
   /** The ssh destinos and what the server offers of them (phase 15, #1593). */
   ssh?: SshServer;
   /** Where the server writes what it refuses and why a connection closed (never a secret). */

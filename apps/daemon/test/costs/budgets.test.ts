@@ -269,7 +269,7 @@ describe("orcamentos", () => {
     const { manager, root } = newManager();
     const server = startServer({
       manager,
-      budgets,
+      costs: { budgets },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
