@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { activityState, NOW } from "./activity/fixtures.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { activityState, NOW } from "../activity/fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { CONTINUATION } = await import("../src/features/sessions/index.ts");
-const { NeedsYou } = await import("../src/features/needs-you/page.tsx");
-const { ActivityBoard } = await import("../src/features/activity/board.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { CONTINUATION } = await import("../../src/features/sessions/index.ts");
+const { NeedsYou } = await import("../../src/features/needs-you/page.tsx");
+const { ActivityBoard } = await import("../../src/features/activity/board.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -159,7 +159,7 @@ describe("stall-ui: the Working card on the Activity board says it is quiet (iss
 describe("stall-ui: the Needs you badge counts the quiet rows (issue #1478)", () => {
   test("one quiet session is a 1 on the Needs you entry, and snoozing it takes the 1 away", async () => {
     const { store } = setup();
-    const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
+    const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
     const tree = () => (
       <Sidebar
         store={store}
