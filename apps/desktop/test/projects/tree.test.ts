@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card, Project } from "@flightdeck/protocol";
-import type { HubRow } from "../src/features/sessions/hub.ts";
+import type { HubRow } from "../../src/features/sessions/hub.ts";
 import {
   activeWorktreeFilter,
   cardInFilter,
@@ -8,7 +8,7 @@ import {
   rowInFilter,
   type WorktreeFilter,
   worktreeOfProject,
-} from "../src/lib/project-tree.ts";
+} from "../../src/lib/project-tree.ts";
 
 const project = (id: string, name: string, over: Partial<Project> = {}): Project =>
   ({ id, name, path: `/work/${name}`, baseBranch: "main", ...over }) as Project;
