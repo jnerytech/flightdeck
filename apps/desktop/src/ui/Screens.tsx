@@ -76,7 +76,7 @@ const HomePage = lazyScreen(() => import("../features/home/page.tsx"), "HomePage
 const HostPage = lazyScreen(() => import("../features/hosts/page.tsx"), "HostPage");
 const PersonasPage = lazyScreen(() => import("../features/personas/page.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("../features/plugins/page.tsx"), "PluginsPage");
-const PreviewPage = lazyScreen(() => import("./PreviewPage.tsx"), "PreviewPage");
+const PreviewPage = lazyScreen(() => import("../features/runenv/page.tsx"), "PreviewPage");
 const ProjectsPage = lazyScreen(() => import("../features/projects/page.tsx"), "ProjectsPage");
 const Overview = lazyScreen(() => import("../features/projects/overview.tsx"), "ProjectsOverview");
 const ProjectPage = lazyScreen(() => import("../features/projects/project.tsx"), "ProjectPage");
