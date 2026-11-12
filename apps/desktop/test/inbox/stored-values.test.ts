@@ -5,6 +5,7 @@ import { loadQuietSnooze, QUIET_SNOOZE_KEY } from "../../src/features/needs-you/
 
 const storageWith = (key: string, raw: string) => ({
   getItem: (asked: string) => (asked === key ? raw : null),
+  setItem: () => {},
 });
 
 const ENTRY = {
