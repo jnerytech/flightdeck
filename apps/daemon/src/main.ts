@@ -637,7 +637,10 @@ export async function startDaemon(
       options.serviceSelf ?? selfCommand,
     ),
     hostChecks: serverGroup<"hostChecks">()(hostChecks),
-    sessionSettings: sessionSettings.server,
+    sessionSettings: serverGroup<"sessionSettings">()({
+      ...sessionSettings.server,
+      commands: true,
+    }),
     messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
     names,
     watch: prWatch,

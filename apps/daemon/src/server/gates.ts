@@ -131,8 +131,16 @@ export const GROUP_GATES = {
     sleep: "sleep",
   },
 } as const satisfies {
-  [G in keyof ServerOptions]?: Partial<Record<keyof NonNullable<ServerOptions[G]>, string>>;
+  [G in keyof ServerOptions]?: Record<
+    Exclude<keyof NonNullable<ServerOptions[G]>, AnnouncedOnly[G & keyof AnnouncedOnly]>,
+    string
+  >;
 };
+
+/** The members of a group that `host.info` only announces: no command refuses for them. */
+interface AnnouncedOnly {
+  sessionSettings: "commands" | "stall";
+}
 
 export type GatedGroup = keyof typeof GROUP_GATES;
 
