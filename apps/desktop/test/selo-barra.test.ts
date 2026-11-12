@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { BADGE_SIZE, badgeRgba } from "../src/lib/badge-icon.ts";
+import { BADGE_SIZE, badgeRgba } from "../src/platform/tauri/badge-icon.ts";
 
 const pixel = (rgba: number[], x: number, y: number) => {
   const at = (y * BADGE_SIZE + x) * 4;
