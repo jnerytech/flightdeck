@@ -151,8 +151,10 @@ describe("protocolo-compat", () => {
         (name) => !BASELINE_FEATURES.includes(name),
       );
     };
-    expect(await featuresOf({ snapshots, rewinder, forker })).toEqual(["checkpoints"]);
-    expect(await featuresOf({ snapshots, rewinder })).toEqual([]);
+    expect(await featuresOf({ checkpoints: { snapshots, rewinder, forker } })).toEqual([
+      "checkpoints",
+    ]);
+    expect(await featuresOf({ checkpoints: { snapshots, rewinder } })).toEqual([]);
     expect(
       await featuresOf({ agentSetup: { agentcfg: new AgentConfig(), mcp: new McpConfig() } }),
     ).toEqual(["agentcfg"]);
