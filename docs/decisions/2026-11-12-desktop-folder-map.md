@@ -132,7 +132,7 @@ prefix. Tests move with their file in the same PR.
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
 | `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
-| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `lib/backup-bundle.ts`, a lazy chunk, imports it from the file) |
+| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
 | `webhook*.ts` | `features/webhook/`: **moved** |
 | `app-log.ts`, `kernel.ts` | `app/` |
