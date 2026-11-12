@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_PRICING } from "../../../apps/daemon/src/costs/pricing.ts";
+import { DEFAULT_PRICING } from "../../../../apps/daemon/src/costs/pricing.ts";
 import {
   ASSISTANT_MAX_INPUT,
   type AssistantContextBundle,
@@ -11,7 +11,7 @@ import {
   DEFAULT_MODELS,
   KIND_SPECS,
   normalizeOutput,
-} from "../src/index.ts";
+} from "../../src/index.ts";
 
 const PREAMBLE = [
   "You improve or write one piece of text for a person who uses Flightdeck, a desktop app for coding agents.",

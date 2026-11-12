@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SecretScanner, scrubHome } from "../src/snippets.ts";
+import { SecretScanner, scrubHome } from "../../src/snippets.ts";
 
 const LIMIT_MS = 250;
 const timed = <T>(run: () => T): { value: T; ms: number } => {

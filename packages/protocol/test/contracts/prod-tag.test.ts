@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isProd, isProdTag } from "../src/index.ts";
+import { isProd, isProdTag } from "../../src/index.ts";
 
 describe("regras-padroes: the one production tag rule", () => {
   test("prod, produção and producao are production, in any case; other tags are not", () => {
