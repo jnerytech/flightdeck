@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeTranscript } from "../../daemon/test/support/history-helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settleMaybe, waiter } from "./wait.ts";
+import { writeTranscript } from "../../../daemon/test/support/history-helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { settleMaybe, waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TranscriptReader } = await import("../src/features/history/transcript-reader.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TranscriptReader } = await import("../../src/features/history/transcript-reader.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
