@@ -6,8 +6,6 @@ import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
 import { createVault } from "./actions/wiring.ts";
 import { activitySince } from "./activity/since.ts";
-import { AgentConfig } from "./agentcfg/files.ts";
-import { McpConfig } from "./agentcfg/mcp.ts";
 import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
@@ -47,8 +45,7 @@ import type { Logger } from "./logger.ts";
 import { FileLog } from "./logs/file-log.ts";
 import { createLogScanner } from "./logs/scanner.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
-import { exists } from "./memory/exists.ts";
-import { decisionLog, ProjectMemory } from "./memory/memory.ts";
+import { exists } from "./memory/index.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
 import { adoptTitles } from "./names/track.ts";
@@ -57,7 +54,7 @@ import { credential } from "./permissions/sensitive-paths.ts";
 import { createPermissions } from "./permissions/wiring.ts";
 import { packPersonas } from "./personas/pack.ts";
 import { createPersonas } from "./personas/wiring.ts";
-import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
+import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
 import { present } from "./present.ts";
@@ -91,9 +88,6 @@ import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { teleportImportDeps } from "./teleport/import.ts";
 import { createTeleport } from "./teleport/wiring.ts";
-import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
-import { loadTemplates } from "./templates/files.ts";
-import { TaskTracker } from "./templates/tasks.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { createProjectTrust, trustServer } from "./trust/wiring.ts";
@@ -103,7 +97,6 @@ import { DAEMON_VERSION } from "./version.ts";
 import { readWatchSettings } from "./watch/watch.ts";
 import { createWatch } from "./watch/wiring.ts";
 import { WebhookSender } from "./webhook/sender.ts";
-import { whichOnPath } from "./which.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
@@ -270,8 +263,11 @@ export async function startDaemon(
   });
   // The vault joins this scanner when it exists (phase 16).
   const snippetScanner = new SecretScanner();
-  // Phase 12's agent editor also writes the personas published as project agents.
-  const agentcfg = new AgentConfig();
+  // What a session starts with: agents, MCP, plugins, auto memory, templates and their tasks.
+  const { agentcfg, mcp, plugins, memory, tasks, templates } = createAgentSetup({
+    dataDir: config.dataDir,
+    claudePath,
+  });
   const { personaStore, prepare } = createPersonas({
     db: store.db,
     allowedRoots: config.allowedRoots,
@@ -706,10 +702,12 @@ export async function startDaemon(
     personas: personaStore,
     personaSessions,
     terminals,
-    tasks: new TaskTracker({ dir: join(config.dataDir, "tasks") }),
-    // The built-in templates and the files of `<dataDir>/templates` (phase 33).
-    templates: () =>
-      loadTemplates({ dir: join(config.dataDir, "templates"), builtins: BUILTIN_TEMPLATES }),
+    agentcfg,
+    mcp,
+    plugins,
+    memory,
+    tasks,
+    templates,
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
     ui: { ...config.ui },
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
@@ -743,20 +741,6 @@ export async function startDaemon(
     snapshots,
     rewinder,
     forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
-    mcp: new McpConfig(),
-    agentcfg,
-    // Phase 26: the project's auto memory; its writes are recorded by name and hash only.
-    // Phase 26: Claude Code's plugins through its own CLI; pins and decisions sit by the data.
-    plugins: new Plugins({
-      cli: claudeCli({
-        executable: () => claudePath ?? whichOnPath("claude"),
-      }),
-      pins: filePins(join(config.dataDir, "plugin-pins.json")),
-      record: pluginDecisionLog(join(config.dataDir, "plugin-decisions.jsonl")),
-    }),
-    memory: new ProjectMemory({
-      record: decisionLog(join(config.dataDir, "memory-decisions.jsonl")),
-    }),
     ...present({
       updater,
       autoUpdate: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
