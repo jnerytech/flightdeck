@@ -189,6 +189,7 @@ test's baseline, with the issue that renames them.
 | `knowledge` | library | A project's document library and what a session is given from it |
 | `logs` | log | The daemon's own log files: rotation, scan and serve |
 | `maintenance` | maintenance | Backup and retention of the daemon's data |
+| `mcp` | MCP server | The Flightdeck MCP server a Claude Code session runs: its tools over the local daemon (projects, cards, runs, messages, actions, snippets) and whether its program is still there |
 | `memory` | memory | Claude Code's auto memory of a project, edited only by an explicit action |
 | `messaging` | message | Messages between sessions, their policy, loops and exceptions |
 | `names` | standard name | The display name and alias of every session |
