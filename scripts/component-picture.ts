@@ -2,12 +2,12 @@
 /**
  * `bun run arch:picture`: regenerates docs/decisions/2026-11-10-context-map-components.md, the C4
  * component level of the context map, from dependency-cruiser's import graph (issue #1624). The
- * rules are not run, only the edges. The logic is scripts/lib/component-picture.ts.
+ * rules are not run, only the edges. The logic is scripts/lib/browser/component-picture.ts.
  */
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cruise } from "dependency-cruiser";
-import { componentPicture, type PictureModule } from "./lib/component-picture.ts";
+import { componentPicture, type PictureModule } from "./lib/browser/component-picture.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const OUT = "docs/decisions/2026-11-10-context-map-components.md";

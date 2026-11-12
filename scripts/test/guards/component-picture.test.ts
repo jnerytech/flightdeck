@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { componentPicture, domainOf } from "../../lib/component-picture.ts";
+import { componentPicture, domainOf } from "../../lib/browser/component-picture.ts";
 
 const module = (source: string, ...deps: string[]) => ({
   source,

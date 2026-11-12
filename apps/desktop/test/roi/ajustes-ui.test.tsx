@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import {
+  type AxeViolation,
+  blocking,
+  describeViolation,
+} from "../../../../scripts/lib/browser/axe.ts";
 import { en } from "../../src/i18n/en.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";
