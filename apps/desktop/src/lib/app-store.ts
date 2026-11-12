@@ -95,13 +95,9 @@ import {
   type NewHost,
   type OnlineStep,
   parseRequestLink,
-  type RelayDeps,
   RequestError,
-  relayMessage,
-  relayUpdate,
   saveHosts,
   statusLine,
-  syncPeers,
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
@@ -109,6 +105,10 @@ import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import {
   initialMessagingState,
   type MessagingSlice,
+  type RelayDeps,
+  relayMessage,
+  relayUpdate,
+  syncPeers,
   wireMessaging,
 } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
