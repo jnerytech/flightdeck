@@ -1,5 +1,9 @@
 import type { ChangesUpdated } from "@flightdeck/protocol";
-import { type ConnectionStatus, HostConnection, type HostConnectionOptions } from "./host-connection.ts";
+import {
+  type ConnectionStatus,
+  HostConnection,
+  type HostConnectionOptions,
+} from "./host-connection.ts";
 import type { HostConfig } from "./hosts.ts";
 
 /** Where the window's events (focus, the network) arrive: `window` in a browser or the webview, else the runtime's own global. */
@@ -42,7 +46,7 @@ export interface HostLinkDeps {
 }
 
 /**
- * The app's connections to its hosts (#1596, `docs/decisions/2026-11-12-app-store-hub-split.md`):
+ * The app's connections to its hosts (#1596, the decision on the app store's hub split):
  * one `HostConnection` per host, built here, woken here, and closed here.
  */
 export class HostLink {
@@ -85,15 +89,9 @@ export class HostLink {
       token,
       clientName: "flightdeck-desktop",
       hostId: config.id,
-      ...(options.baseDelayMs !== undefined
-        ? { baseDelayMs: options.baseDelayMs }
-        : {}),
-      ...(options.wakeDebounceMs !== undefined
-        ? { wakeDebounceMs: options.wakeDebounceMs }
-        : {}),
-      ...(options.maxDelayMs !== undefined
-        ? { maxDelayMs: options.maxDelayMs }
-        : {}),
+      ...(options.baseDelayMs !== undefined ? { baseDelayMs: options.baseDelayMs } : {}),
+      ...(options.wakeDebounceMs !== undefined ? { wakeDebounceMs: options.wakeDebounceMs } : {}),
+      ...(options.maxDelayMs !== undefined ? { maxDelayMs: options.maxDelayMs } : {}),
       lastSeqFor: (sessionId) => this.deps.lastSeqFor(config.id, sessionId),
       onStatus: (status) => this.deps.onStatus(config.id, conn, status),
       onPing: () => this.setLatency(config.id, conn.latencyMs),
