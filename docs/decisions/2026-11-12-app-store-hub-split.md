@@ -99,7 +99,7 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   it runs no on-line step. The order lives in one place a reviewer reads top to bottom.
 - **Session methods go to the sessions domain** (`features/sessions/`): history (`historyGet`,
   `historyList`, `resumeHistory`) to `HistorySlice`, with the history's own constants and filter
-  type (`HISTORY_PAGE`, `HISTORY_LIST_LIMIT`, `HistoryFilter`), which `app-state.ts` re-exports; the finished list (`recordFinished`,
+  type (`HISTORY_PAGE`, `HistoryFilter`), which `app-state.ts` re-exports (the slice takes the sessions domain's `HISTORY_LIST_LIMIT` and the connection's error from the store, so it imports neither entry and adds no cycle); the finished list (`recordFinished`,
   `countFinishedFiles`, `setFinished`) to a `FinishedSlice` next to `finished.ts`. The others
   (`select`, `watchSession`, `moveSession`, `closeTab`, `sendTo`, `setMeta`, `sessionRecap`,
   `onCard`) have no home yet: see the open questions. **Vault methods go to the vault slices.**
