@@ -1,9 +1,8 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { type ReactNode, useState } from "react";
-import { ApprovalActions } from "@/components/approval/approval-actions";
-import { GateText } from "@/components/approval/gate-text";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ApprovalActions, GateText } from "@/features/permissions/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";

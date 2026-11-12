@@ -1,5 +1,5 @@
 import type { ExternalPermissionFrame } from "@flightdeck/protocol";
-import type { ApprovalRequest } from "../../components/approval/approval-card.tsx";
+import type { ApprovalRequest } from "@/features/permissions/index.ts";
 import { basename } from "../../lib/paths.ts";
 
 /**

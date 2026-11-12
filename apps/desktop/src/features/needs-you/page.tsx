@@ -8,9 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { ApprovalCard } from "@/components/approval/approval-card";
-import { GateText } from "@/components/approval/gate-text";
 import { Button } from "@/components/ui/button";
+import { ApprovalCard, GateText } from "@/features/permissions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { EmptyState, Inline, SplitView, Stack } from "@/shared/layout/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
