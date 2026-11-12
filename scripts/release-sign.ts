@@ -5,7 +5,7 @@
  */
 import { resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { DAEMONS } from "./lib/release.ts";
+import { DAEMONS } from "./lib/release/index.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 await inSequence(DAEMONS, async (daemon) => {

@@ -6,7 +6,7 @@ import {
   readProductVersions,
   tagProblems,
   tauriReleaseConfig,
-} from "../../lib/release.ts";
+} from "../../lib/release/index.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");

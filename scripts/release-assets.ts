@@ -4,7 +4,7 @@
  * gathers the release files and their SHA256SUMS in `pasta` (`release-assets/` by default; `release/` holds the public key).
  */
 import { resolve } from "node:path";
-import { collectReleaseAssets, readProductVersions } from "./lib/release.ts";
+import { collectReleaseAssets, readProductVersions } from "./lib/release/index.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const out = resolve(ROOT, process.argv.slice(2).find((a) => a !== "--") ?? "release-assets");
