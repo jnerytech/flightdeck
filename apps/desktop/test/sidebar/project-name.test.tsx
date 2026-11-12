@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readStyles } from "../../../../scripts/lib/styles-source.ts";
-import type { TreeProject } from "../../src/lib/project-tree.ts";
+import type { TreeProject } from "../../src/features/projects/project-tree-model.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

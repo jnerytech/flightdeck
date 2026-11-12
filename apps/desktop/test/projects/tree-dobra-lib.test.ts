@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { TreeNode } from "../../src/features/projects/project-tree-model.ts";
 import {
   loadTreeFolded,
   pickedIn,
@@ -7,7 +8,6 @@ import {
   TREE_FOLDED_KEY,
   visibleNodes,
 } from "../../src/features/shell/tree-fold.ts";
-import type { TreeNode } from "../../src/lib/project-tree.ts";
 
 const storage = (value: string | null) => ({ getItem: () => value });
 const node = (n: number): TreeNode => ({

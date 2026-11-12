@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HarnessTemplatesSection } from "@/features/harness/index.ts";
+import type { ProjectCard } from "@/features/projects/index.ts";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
@@ -11,7 +12,6 @@ import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/ind
 import { FieldRow, Page, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import type { ProjectCard } from "../../lib/project-cards.ts";
 import { APP_VERSION, hasFeature } from "../../lib/version.ts";
 import type { UsageHistoryTarget } from "../costs/index.ts";
 import { UsagePanel } from "../costs/usage-panel.tsx";

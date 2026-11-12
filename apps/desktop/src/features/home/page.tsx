@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { knownProjectKeys } from "@/features/projects/index.ts";
 import { ScopeMenu } from "@/features/shell/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
@@ -7,7 +8,6 @@ import type { T } from "@/i18n/index";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Grid, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
-import { knownProjectKeys } from "../../lib/project-keys.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
 import {
