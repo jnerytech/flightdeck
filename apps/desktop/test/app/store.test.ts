@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { AppStore, needsYou, sessionKey } from "../src/lib/app-store.ts";
-import { HOSTS_KEY } from "../src/lib/hosts.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { AppStore, needsYou, sessionKey } from "../../src/lib/app-store.ts";
+import { HOSTS_KEY } from "../../src/lib/hosts.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

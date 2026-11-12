@@ -49,6 +49,108 @@ function pr(
 const MOVE = ["refactor(board): the totals move to cards.ts (#1523)"];
 const TEST = "apps/daemon/test/board/board.test.ts";
 
+/** A store test before a slice move (#1732, from #1731). */
+const STORE_BEFORE = [
+  'test("budgets", async () => {',
+  "  await act(() => store.checkClientBudgets());",
+  "  store.addCard(card); store.refresh();",
+  "  expect(store.clientBudgets.length).toBe(1);",
+  "  expect(r.total).toBe(3);",
+  '  expect(file).toBe("config.json");',
+  "  await expect(p).toThrow();",
+  "});",
+].join("\n");
+
+/** Each slice move as the store test reads it after the move. */
+const STORE_SLICED = STORE_BEFORE.replace(
+  "store.checkClientBudgets()",
+  "store.clientBudgets.check()",
+).replace("store.addCard(card); store.refresh()", "store.cards.add(card); store.board.refresh()");
+
+describe("structure-guard: a store member moved under a slice (#1732)", () => {
+  const change: FileChange[] = [{ status: "M", path: TEST }];
+
+  test("a test whose lines only move store members under a slice passes", () => {
+    const verdict = structureVerdict(
+      pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: STORE_SLICED }, change),
+    );
+    expect(verdict).toEqual({ structural: true, problems: [] });
+  });
+
+  test("a slice move whose longer line the formatter wraps, with a trailing comma, passes", () => {
+    const wrapped = STORE_SLICED.replace(
+      "  await act(() => store.clientBudgets.check());",
+      "  await act(() =>\n    store.clientBudgets.check(),\n  );",
+    );
+    const verdict = structureVerdict(
+      pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: wrapped }, change),
+    );
+    expect(verdict).toEqual({ structural: true, problems: [] });
+  });
+
+  test("a segment put before a member of something that is not the store, or inside a string, still fails", () => {
+    const heads = [
+      STORE_BEFORE.replace("expect(file).toBe(", "expect(file).not.toBe("),
+      STORE_BEFORE.replace("expect(p).toThrow()", "expect(p).rejects.toThrow()"),
+      STORE_BEFORE.replace("expect(r.total)", "expect(r.other.total)"),
+      STORE_BEFORE.replace('"config.json"', '"config.backup.json"'),
+    ];
+    const verdicts = heads.map(
+      (head) =>
+        structureVerdict(pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: head }, change)).problems,
+    );
+    expect(verdicts).toEqual(heads.map(() => [`${TEST}: changed beyond its import paths`]));
+  });
+
+  test("a change inside a regex, a read moved under a slice, another store, a hole, a return split or a plural still fails", () => {
+    const base = [
+      'test("t", () => {',
+      "  expect(s).toMatch(/a b/);",
+      "  expect(q).toMatch(/'/); expect(w).toBe('( )');",
+      "  expect(store.error).toBeUndefined();",
+      "  vaultStore.get(); store.getState().refresh();",
+      "  expect(list).toEqual([,]);",
+      "  const f = () => { return x; }; const n = a - --b;",
+      "  store.addCards([c]);",
+      "});",
+    ].join("\n");
+    const heads = [
+      base.replace("/a b/", "/a  b/"),
+      base.replace("toBe('( )')", "toBe('()')"),
+      base.replace("store.error", "store.cards.error"),
+      base.replace("vaultStore.get()", "vaultStore.secrets.get()"),
+      base.replace("[,]", "[]"),
+      base.replace("return x;", "return\n    x;"),
+      base.replace("a - --b", "a-- - b"),
+      base.replace("store.addCards(", "store.card.add("),
+    ];
+    const verdicts = heads.map(
+      (head) => structureVerdict(pr(MOVE, { [TEST]: base }, { [TEST]: head }, change)).problems,
+    );
+    expect(verdicts).toEqual(heads.map(() => [`${TEST}: changed beyond its import paths`]));
+    const sliced = base.replace("store.getState().refresh()", "store.getState().board.refresh()");
+    expect(
+      structureVerdict(pr(MOVE, { [TEST]: base }, { [TEST]: sliced }, change)).problems,
+    ).toEqual([]);
+  });
+
+  test("a slice move next to a changed assertion, or a member that is not the old one, still fails", () => {
+    const assertion = STORE_SLICED.replace("toBe(1)", "toBe(2)");
+    const otherMember = STORE_BEFORE.replace("store.addCard(card)", "store.cards.remove(card)");
+    // The old name's words all reach the new path, but the member called is a new one.
+    const newCall = STORE_BEFORE.replace("store.addCard(card)", "store.cardAdd.remove(card)");
+    const verdicts = [assertion, otherMember, newCall].map(
+      (head) =>
+        structureVerdict(pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: head }, change)).problems,
+    );
+    expect(verdicts).toEqual([
+      [`${TEST}: changed beyond its import paths`],
+      [`${TEST}: changed beyond its import paths`],
+      [`${TEST}: changed beyond its import paths`],
+    ]);
+  });
+});
+
 describe("structure-guard (#1602)", () => {
   test("a move whose tests change only in their import paths passes", () => {
     const verdict = structureVerdict(
