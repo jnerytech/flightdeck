@@ -1,8 +1,8 @@
 import { type LucideIcon, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
 import { KnowledgePanel } from "@/features/knowledge/index.ts";
+import { NAV_ICONS } from "@/features/shell/index.ts";
 import { TrustPanel } from "@/features/trust/index.ts";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { EmptyState, Inline, Page } from "@/shared/layout/index.ts";

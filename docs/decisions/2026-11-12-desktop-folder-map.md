@@ -55,14 +55,14 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` (**moved**) | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
 | `session/` | **theirs** (`features/sessions/`) | **moved**: activity line, message actions, parts, tool rows, finish dialogs (`session-finish.tsx`) |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
-| `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and the shell `lib/` files follow in later PRs |
+| `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and nine shell `lib/` files followed (rows below); `router.ts`, `workspace.ts`, `density.ts` and `theme.ts` follow later |
 | `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (**moved**; the sheet already lives there) |
 | `simple/` | `features/home/` (simple mode) | home, question and task views, settings view (**moved**); `SimpleApp.tsx` (**moved**, `simple-app.tsx`) |
 | `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
 | `tabs/` | `features/tabs/` | overflow and switcher (**moved**; the tab bar already lives there); **theirs** if the session view needs the file, ask first |
 | `ui/` | **stay** | vendored shadcn |
 | `whatsnew/` | `features/appupdate/` (**moved**) | the "what's new" dialog is part of the update story |
-| `nav-icons.ts` | `features/shell/` | the sidebar and rail icons |
+| `nav-icons.ts` | `features/shell/` | **moved**: the sidebar and rail icons |
 
 ## `ui/`
 
@@ -82,7 +82,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `SessionView.tsx` | **theirs** (`features/sessions/`) | **moved** (`session-view.tsx`) |
 | `SessionsHub.tsx` | **theirs** (`features/sessions/`) | **moved** (`sessions-hub.tsx`) |
 | `SetupPage.tsx` | `features/setup/` | **moved** (#2091) |
-| `Sidebar.tsx` | `features/shell/` | 965 lines: split by reason to change (nav list, project tree, footer) in a later PR, not in the move |
+| `Sidebar.tsx` | `features/shell/` | **moved** as `sidebar.tsx`, unsplit (about 980 lines): split by reason to change (nav list, project tree, footer) in a later PR, not in the move |
 | `StartScreen.tsx` | **theirs** (`features/sessions/`) | **moved** (`start-screen.tsx`) |
 | `ToolCall.tsx` | **theirs** (`features/sessions/`) | **moved** (`tool-call.tsx`, `tool-call-body.tsx`) |
 | `lazy-screen.ts` | `app/` | goes with `Screens.tsx` |
@@ -110,7 +110,7 @@ prefix. Tests move with their file in the same PR.
 | `quiet*.ts` | `features/needs-you/` (the quiet badge of the board and the needs-you rows) |
 | `away.ts` | `features/needs-you/` |
 | `keep-awake.ts` | `features/hosts/` |
-| `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`) |
+| `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`). **Moved**: `breadcrumb.ts` as `crumbs.ts` and `status-bar.ts` as `status-bar-summary.ts` (the component files `breadcrumb.tsx` and `status-bar.tsx` already sit there), `nav-active.ts`, `nav-badges.ts`, `sidebar-fold.ts`, `sidebar-groups.ts`, `tree-fold.ts`, `shell-prefs.ts`, `foot-account.ts`. Still in `lib/`: `router.ts`, `workspace.ts`, `density.ts`, `theme.ts` (many importers, one move of their own). `tree-fold.ts` serves the project tree too, so it may move to `features/projects/` when that domain is cut |
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest |
 | `deps*.ts` | `features/deps/` |
 | `harness.ts` | `features/harness/` |

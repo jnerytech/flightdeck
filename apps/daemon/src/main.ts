@@ -79,7 +79,7 @@ import { createTelemetry } from "./telemetry/wiring.ts";
 import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { createProjectTrust, trustServer } from "./trust/wiring.ts";
+import { createProjects, createProjectTrust } from "./trust/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { readWatchSettings } from "./watch/watch.ts";
@@ -291,6 +291,7 @@ export async function startDaemon(
     snapshots,
   });
   await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
+  await domains.add(createProjects({ keys, projectTrust, manager }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
   const { history } = await domains.add(
@@ -485,17 +486,18 @@ export async function startDaemon(
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
-  const sessionSettings = createSessionSettings({
-    manager,
-    config,
-    configFile,
-    // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
-    stallUnitMs:
-      Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
-        ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
-        : undefined,
-  });
-  const { sleeper, stall } = sessionSettings;
+  await domains.add(
+    createSessionSettings({
+      manager,
+      config,
+      configFile,
+      // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
+      stallUnitMs:
+        Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
+          ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
+          : undefined,
+    }),
+  );
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
@@ -562,12 +564,6 @@ export async function startDaemon(
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
     ...present({ assistant }),
-    projects: serverGroup<"projects">()({
-      warmKey: (cwd) => keys.resolve(cwd),
-      keyOf: (cwd) => keys.resolve(cwd),
-      trust: trustServer({ projectTrust, manager }),
-      find: true,
-    }),
     roots: serverGroup<"roots", "platform">()({
       ...present({ platform: options.rootsPlatform }),
       persist: (roots) =>
@@ -591,10 +587,6 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? selfCommand,
     ),
-    sessionSettings: serverGroup<"sessionSettings">()({
-      ...sessionSettings.server,
-      commands: true,
-    }),
     names,
     vault,
     log: logger.log.bind(logger),
@@ -685,8 +677,6 @@ export async function startDaemon(
           actions.stop();
           vault.stop();
           await central.stop();
-          sleeper.stop();
-          stall.stop();
           await manager.shutdown();
           await server.stop();
         });

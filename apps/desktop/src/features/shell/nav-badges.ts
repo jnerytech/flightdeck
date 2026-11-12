@@ -1,4 +1,4 @@
-import { APP_VERSION, isNewer } from "./version.ts";
+import { APP_VERSION, isNewer } from "@/lib/version.ts";
 
 /** The sidebar items that wear a badge, and the version from which they stop wearing it. */
 export type NavBadgeKey = "teams" | "conversations";
