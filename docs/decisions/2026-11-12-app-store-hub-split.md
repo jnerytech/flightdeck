@@ -126,12 +126,20 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   `lib/kernel.ts` and join the hosts' cycle; the sessions' key is a dep for the same reason; the
   store imports the file, not the entry, which re-exports the run panel, and the panel imports the
   store); `onRun` stays: it is one line fed by `dispatch` for every command's workflow run, not a
-  run environment's; messaging (`relayDeps`,
-  `onTeams`, `onTeamsUpdated`, `onMessageUpdated`, `startPeersSync`) to messaging; the requests
+  run environment's; the relay (`relayDeps`, the `messages.*` frames, `onMessageUpdated`,
+  `startPeersSync` and its timer) to the `MessagingSlice` (`onFrame`, `onUpdated`,
+  `startPeersSync`, `dispose`), after `relay.ts` moved from `features/hosts/` to
+  `features/messaging/`; the hosts that take part come from the store as a dep, and the interval
+  lives in the wire; the teams (`onTeams`, `onTeamsUpdated`) to a `TeamsSlice` in
+  `features/teams/store.ts` (`onFrame`, `onUpdated`; the summaries keep the team, the inbox
+  notifies; the connect step that lists the teams stays with the other connect steps); the requests
   (`onOpenRequest`, `openRequest`, `decideOldest`, `respondTo`, `respond`, with the open-request
-  listener set) to permissions; the quiet snooze
-  (`snoozeQuiet`) to a `QuietSnoozeSlice` in `features/needs-you/quiet-snooze.ts`, next to the
-  snoozes' storage (Needs you lists the quiet sessions, not the session screens).
+  listener set) to the `PermissionsSlice` (`onOpen`, `open`, `openLink`, `decideOldest`), after
+  `request-link.ts` moved from `features/hosts/` to `features/permissions/`; the window and the
+  tray's answer come from the store as deps, and the store keeps one-line forwarders for the
+  screens; the quiet snooze (`snoozeQuiet`) to a `QuietSnoozeSlice` in
+  `features/needs-you/quiet-snooze.ts`, next to the snoozes' storage (Needs you lists the quiet
+  sessions, not the session screens).
 - **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(...)`, next to
   `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
   its own; it is a recorded exception to the folders-by-domain rule, as `app-store.ts` is, and
