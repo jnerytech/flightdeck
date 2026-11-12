@@ -590,7 +590,7 @@ export class AppStore {
     this.terminalFont = new TerminalFontController(platform.storage);
     this.terminalReader = new TerminalReaderSetting(platform.storage);
     this.setup = new SetupSettings(platform.storage);
-    this.probes = new SetupProbes({
+    this.setupProbes = new SetupProbes({
       host: (hostId) => {
         const host = this.state.hosts.find((h) => h.id === hostId);
         return host && { status: host.status, features: host.hostInfo?.features };
@@ -786,7 +786,7 @@ export class AppStore {
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
   /** #1596: what the setup checklist asked each host. */
-  private readonly probes: SetupProbes;
+  private readonly setupProbes: SetupProbes;
   /** The prompt cache countdown on idle sessions: off by default (issue #159). */
   readonly cacheTimer: CacheTimerSettings;
   /** One 1-second clock for every countdown on screen. */
@@ -1287,7 +1287,6 @@ export class AppStore {
     return this.link.watchChanges(hostId, target, listener);
   }
 
-  /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
   /**
    * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
    * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
@@ -1297,7 +1296,7 @@ export class AppStore {
     hostId: string,
     options: { github?: boolean; connect?: boolean } = {},
   ): Promise<void> {
-    return this.probes.refresh(hostId, options);
+    return this.setupProbes.refresh(hostId, options);
   }
 
   /** Asks the host for its `host.info` again (after a change of its settings). */
