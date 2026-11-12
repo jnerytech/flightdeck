@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { applySuggestion, suggestClients } from "../../lib/client-suggest.ts";
+import { applySuggestion, suggestClients } from "./client-suggest.ts";
 
 /**
  * What to do with a project no client has: pin it to a client by hand, or make a rule from its

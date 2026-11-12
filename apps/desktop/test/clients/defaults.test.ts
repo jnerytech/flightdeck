@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import {
+  ALL_CLIENTS,
+  ClientScope,
+  selectedClient,
+  tagsFirst,
+} from "../../src/features/clients/client-scope.ts";
+import { type Client, UNASSIGNED } from "../../src/features/clients/clients.ts";
 import { paletteSections } from "../../src/features/palette/palette.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
-import { ALL_CLIENTS, ClientScope, selectedClient, tagsFirst } from "../../src/lib/client-scope.ts";
-import { type Client, UNASSIGNED } from "../../src/lib/clients.ts";
 
 const client = (
   id: string,

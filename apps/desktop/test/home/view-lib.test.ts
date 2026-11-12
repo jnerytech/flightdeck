@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CostsSummary } from "@flightdeck/protocol";
+import { emptySummary } from "../../src/features/clients/client-costs.ts";
 import type { HomeHostData } from "../../src/features/home/home-cache.ts";
 import {
   addUp,
@@ -9,7 +10,6 @@ import {
   rangeSubtitle,
 } from "../../src/features/home/home-view-model.ts";
 import type { T } from "../../src/i18n/index.ts";
-import { emptySummary } from "../../src/lib/client-costs.ts";
 
 /** Issue #363 (Sonar S3776): what Home worked out inside the page is worked out here, with its answers pinned. */
 const t = Object.assign(

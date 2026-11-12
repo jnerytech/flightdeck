@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CLIENT_COLORS, CLIENTS_KEY, Clients } from "../../src/lib/clients.ts";
+import { CLIENT_COLORS, CLIENTS_KEY, Clients } from "../../src/features/clients/clients.ts";
 
 function setup(initial?: string) {
   const items = new Map<string, string>(initial === undefined ? [] : [[CLIENTS_KEY, initial]]);

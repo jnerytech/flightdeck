@@ -1,4 +1,4 @@
-import { type KnownProject, resolveClient } from "./client-rules.ts";
+import { type KnownProject, resolveClient } from "./client-rules-model.ts";
 import type { Client, Clients, ClientsData } from "./clients.ts";
 
 /** One client the app offers to create from the remotes it has seen. */
