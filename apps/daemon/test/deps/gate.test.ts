@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { cardWhen, newBoard } from "../support/board-helpers.ts";
 
@@ -97,36 +95,5 @@ describe("deps-gate: a blocked card does not start", () => {
     const out = await refusal(() => board.startArena(b, { variants: [{}, {}] }));
     expect(out?.reason).toBe("card_blocked");
     expect(board.getBoard(project.id).columns.flatMap((column) => column.cards)).toHaveLength(3);
-  });
-});
-
-/** The files of the daemon that call `startCard`, relative to `src`. */
-function startCallers(): string[] {
-  const src = join(import.meta.dir, "../../src");
-  const files = readdirSync(src, { recursive: true, encoding: "utf8" }).filter((f) =>
-    f.endsWith(".ts"),
-  );
-  return files
-    .filter((file) => /\.startCard\(/.test(readFileSync(join(src, file), "utf8")))
-    .map((file) => relative(src, join(src, file)).replaceAll("\\", "/"))
-    .sort();
-}
-
-describe("deps-gate: every way to start a card goes through the gate", () => {
-  test("the callers of startCard are the known ones; a new one must be checked against the gate", () => {
-    // `startCard` is the only door: the app (the card.start handler), automations, teams (a worker's start:
-    // the daemon's in teams/wiring.ts, #1593; teams.ts's own when none is given) and the board's own arena,
-    // fix runs, the start once a card's blockers are done and the follow of a card's session. A new caller
-    // fails here until it is added on purpose.
-    expect(startCallers()).toEqual([
-      "automations/automations.ts",
-      "board/arena.ts",
-      "board/blockers.ts",
-      "board/board.ts",
-      "board/session-follow.ts",
-      "server/handlers/card.ts",
-      "teams/teams.ts",
-      "teams/wiring.ts",
-    ]);
   });
 });

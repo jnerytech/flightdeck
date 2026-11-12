@@ -180,7 +180,12 @@ describe("cobertura-main-0330: the running daemon", () => {
     stops.push(() => daemon.stop());
     const ack = await ask(daemon.url, "doctor.run", {});
     const result = (ack?.ok ? ack.data : null) as protocol.DoctorResult | null;
-    expect(result?.checks.find((check) => check.id === "service")).toBeDefined();
+    // The answer comes from the injected controller (`serviceInstalled: true`), not from this machine.
+    expect(result?.checks.find((check) => check.id === "service")).toMatchObject({
+      id: "service",
+      status: "ok",
+      detail: "installed",
+    });
   });
 });
 
@@ -226,7 +231,9 @@ describe("cobertura-main-0330: the command line", () => {
     const file = config(dir, { allowedRoots: [] });
     const { cli, out, exits } = deps(dir);
     await runCli(["setup", "--yes", "--folders", join(dir, "missing"), "--config", file], cli);
-    expect(exits.some((code) => code !== 0)).toBe(true);
-    expect(out.join("\n").length).toBeGreaterThan(0);
+    expect(exits).toEqual([1]);
+    expect(out).toEqual([
+      `flightdeckd: ${join(dir, "missing")} is not a folder that exists: type the path of a folder.`,
+    ]);
   });
 });
