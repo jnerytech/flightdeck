@@ -60,5 +60,7 @@ module.exports = {
     doNotFollow: { path: "node_modules" },
     exclude: { path: "(^|/)node_modules/" },
     enhancedResolveOptions: { extensions: [".ts", ".tsx", ".js"] },
+    // The desktop imports through the `@/` alias; without this its edges are never seen (#1597).
+    tsConfig: { fileName: "apps/desktop/tsconfig.json" },
   },
 };

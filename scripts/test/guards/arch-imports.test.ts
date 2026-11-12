@@ -10,6 +10,8 @@ const CONFIG = require("../../../.dependency-cruiser.cjs") as {
   forbidden: unknown[];
   options: Record<string, unknown>;
 };
+// The planted tree has no tsconfig, so its imports are relative (the real run resolves `@/` too).
+const { tsConfig: _tsConfig, ...PLANTED_OPTIONS } = CONFIG.options;
 
 /** The violations the real rules find in a planted tree, as `<rule> <from> -> <to>`. */
 async function planted(files: Record<string, string>): Promise<string[]> {
@@ -19,11 +21,11 @@ async function planted(files: Record<string, string>): Promise<string[]> {
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), text);
     }
-    const roots = ["apps/daemon/src", "packages/protocol/src"].filter((dir) =>
+    const roots = ["apps/daemon/src", "apps/desktop/src", "packages/protocol/src"].filter((dir) =>
       Object.keys(files).some((path) => path.startsWith(dir)),
     );
     const result = await cruise(roots, {
-      ...CONFIG.options,
+      ...PLANTED_OPTIONS,
       ruleSet: { forbidden: CONFIG.forbidden },
       validate: true,
       baseDir: root,
@@ -58,6 +60,20 @@ describe("arch-imports: the domain borders (#1591)", () => {
     });
     expect(found).toEqual([
       "no-deep-cross-domain apps/daemon/src/board/board.ts -> apps/daemon/src/sessions/session-manager.ts",
+    ]);
+  });
+
+  test("shared/ may import the domain-free leaves and itself, never a domain (#1597)", async () => {
+    const found = await planted({
+      "apps/desktop/src/shared/box.ts":
+        'import { cn } from "../lib/utils.ts";\nimport { Button } from "../components/ui/button.tsx";\nimport { util } from "./util.ts";\nimport { store } from "../lib/app-store.ts";\nexport const b = [cn, Button, util, store];\n',
+      "apps/desktop/src/shared/util.ts": "export const util = 1;\n",
+      "apps/desktop/src/lib/utils.ts": "export const cn = 1;\n",
+      "apps/desktop/src/components/ui/button.tsx": "export const Button = 1;\n",
+      "apps/desktop/src/lib/app-store.ts": "export const store = 1;\n",
+    });
+    expect(found).toEqual([
+      "shared-depends-on-no-domain apps/desktop/src/shared/box.ts -> apps/desktop/src/lib/app-store.ts",
     ]);
   });
 
