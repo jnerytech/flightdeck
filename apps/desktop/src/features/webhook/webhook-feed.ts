@@ -4,8 +4,8 @@
  * focus: a webhook is for when the person is away.
  */
 import type { ExternalPermissionFrame, ExternalSession, WatchInfo } from "@flightdeck/protocol";
-import { translator } from "../i18n/index.ts";
-import type { SidebarSession } from "./app-store.ts";
+import { translator } from "../../i18n/index.ts";
+import type { SidebarSession } from "../../lib/app-store.ts";
 import type { WebhookSource, Webhooks } from "./webhooks.ts";
 
 /** Messages that leave the app are in English, whatever the app's language. */
