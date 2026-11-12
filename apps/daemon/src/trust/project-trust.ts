@@ -2,7 +2,7 @@
 import type { Database } from "bun:sqlite";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import { isInside, rootNames, samePath } from "../paths.ts";
+import { isInside, rootNames, samePath } from "../kernel/index.ts";
 import { type TrustRootFs, trustsManyProjects } from "./trust-root.ts";
 
 export type TrustSource = "person" | "migration";

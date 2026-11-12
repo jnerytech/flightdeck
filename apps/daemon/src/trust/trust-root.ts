@@ -1,6 +1,6 @@
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { isInside } from "../paths.ts";
+import { isInside } from "../kernel/index.ts";
 
 /** What the rule looks at on disk; tests pass their own. */
 export interface TrustRootFs {

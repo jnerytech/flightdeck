@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { listDirs, listFiles } from "../../src/files/fs-dirs.ts";
-import { resolveAllowedCwd, rootNames } from "../../src/paths.ts";
+import { resolveAllowedCwd, rootNames } from "../../src/kernel/paths.ts";
 import { isSystemFolder } from "../../src/projects/roots.ts";
 import { resolveSshPath } from "../../src/ssh/connect.ts";
 import { tempDir } from "../support/helpers.ts";
