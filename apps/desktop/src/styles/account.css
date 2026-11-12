@@ -33,3 +33,7 @@
 @utility meter-height {
   height: 0.5rem;
 }
+
+@utility pill {
+  padding-inline: 0.5rem;
+}

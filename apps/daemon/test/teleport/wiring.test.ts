@@ -10,6 +10,7 @@ import {
   teleportDeps,
 } from "../../src/teleport/package.ts";
 import { TeleportInbox } from "../../src/teleport/receive.ts";
+import { createTeleport } from "../../src/teleport/wiring.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 import {
   FrameClient,
@@ -415,5 +416,42 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       why(await client.request("teleport.finish", finish))?.reason,
       why(await bare.request("teleport.finish", finish))?.params,
     ]).toEqual(["teleport_not_found", { feature: "teleport" }]);
+  });
+});
+
+describe("teleport-wiring: the teleport the daemon builds (#1593)", () => {
+  test("packages go under the data dir's teleport folder, received ones under teleport-in", () => {
+    const scan = (text: string) => (text.includes("secret") ? ["secret"] : []);
+    const log = () => {};
+    const { teleport, teleportInbox } = createTeleport({
+      manager: { get: () => undefined as never },
+      names: { get: () => null },
+      indexer: undefined,
+      config: { dataDir: "/data", history: { roots: ["/h1", "/h2"] } },
+      scan,
+      log,
+    });
+    const id = teleportInbox.deps.newId();
+    expect([
+      teleport.deps.dir,
+      teleport.deps.historyRoots,
+      teleport.deps.scan === scan,
+      teleport.deps.log === log,
+      teleportInbox.deps.dir,
+      teleportInbox.deps.now === Date.now,
+      teleportInbox.deps.timers === globalThis,
+      /^[0-9a-f-]{36}$/.test(id),
+      id !== teleportInbox.deps.newId(),
+    ]).toEqual([
+      join("/data", "teleport"),
+      ["/h1", "/h2"],
+      true,
+      true,
+      join("/data", "teleport-in"),
+      true,
+      true,
+      true,
+      true,
+    ]);
   });
 });

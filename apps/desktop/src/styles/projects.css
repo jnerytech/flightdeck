@@ -194,3 +194,35 @@
   align-items: flex-start;
   gap: 0.5rem;
 }
+
+/* Cards of the Projects overview and of a project page: one column, two and three as the area grows. */
+@utility card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  @container (min-width: 28rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @container (min-width: 36rem) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@utility card-link {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+/* The chip that says the hub is filtered, with its clear button. */
+@utility filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-block: 0.125rem;
+  padding-right: 0.25rem;
+  padding-left: 0.75rem;
+}

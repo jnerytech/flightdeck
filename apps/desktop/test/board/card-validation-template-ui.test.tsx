@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { CardFields } = await import("../src/features/board/card-fields.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { en } = await import("../src/i18n/en.ts");
-const { ptBR } = await import("../src/i18n/pt-BR.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { CardFields } = await import("../../src/features/board/card-fields.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { en } = await import("../../src/i18n/en.ts");
+const { ptBR } = await import("../../src/i18n/pt-BR.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

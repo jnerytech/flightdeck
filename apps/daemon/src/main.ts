@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
@@ -13,10 +12,8 @@ import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { createBgService } from "./bg/wiring.ts";
-import { Board } from "./board/board.ts";
 import { readSpecText } from "./board/spec.ts";
-import { templateRootOf } from "./board/spec-template.ts";
-import { createCheckLoop, createHostPause } from "./board/wiring.ts";
+import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -40,7 +37,7 @@ import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
 import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
-import { GithubService } from "./github/service.ts";
+import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
@@ -93,8 +90,7 @@ import { SummaryService } from "./summary/service.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { teleportImportDeps } from "./teleport/import.ts";
-import { TeleportPackages, teleportDeps } from "./teleport/package.ts";
-import { TeleportInbox } from "./teleport/receive.ts";
+import { createTeleport } from "./teleport/wiring.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
@@ -334,26 +330,16 @@ export async function startDaemon(
     ...present({ scanIntervalMs: config.history.scanIntervalMs || undefined }),
   });
   history.start();
-  // Issue #100: the packages of the sessions this host teleports to another; none outlives a run.
-  const teleport = new TeleportPackages(
-    teleportDeps({
-      manager,
-      names,
-      indexer: history,
-      historyRoots: config.history.roots,
-      dataDir: config.dataDir,
-      scan: snippetScanner.scan.bind(snippetScanner),
-      log: logger.log.bind(logger),
-    }),
-  );
-  await teleport.start();
-  // The packages other hosts send to this one (slice 2a); none outlives a run either.
-  const teleportInbox = new TeleportInbox({
-    dir: join(config.dataDir, "teleport-in"),
-    now: Date.now,
-    newId: randomUUID,
-    timers: globalThis,
+  // Issue #100: the packages this host teleports to another, and the ones other hosts send here.
+  const { teleport, teleportInbox } = createTeleport({
+    manager,
+    names,
+    indexer: history,
+    config,
+    scan: snippetScanner.scan.bind(snippetScanner),
+    log: logger.log.bind(logger),
   });
+  await teleport.start();
   await teleportInbox.start();
   const { costs, usageIndex, budgets } = createCosts({
     db: store.db,
@@ -372,12 +358,10 @@ export async function startDaemon(
     readSettings: readWatchSettings,
     runner: boundedCheckRunner(),
   });
-  const board = new Board({
+  const board = createBoard({
     folderLocks,
     preparePersonas: prepare,
-    // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
-    specTemplateRoot: async (cwd, own) =>
-      templateRootOf(await trustForKnowledge(cwd), own ? cwd : undefined),
+    trustForKnowledge,
     log: (line) => logger.log(line),
     db: store.db,
     manager,
@@ -387,10 +371,9 @@ export async function startDaemon(
     // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
     // below is ready by then) and the project's trust, through the bounded runner.
     checkLoop: checkLoop.board,
-    // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
-    scanner: new SecretScanner(() => heldValues()),
-    allowedRoots: config.allowedRoots,
-    maxParallelRuns: config.maxParallelRuns,
+    vaultValues: () => heldValues(),
+    config,
+    configFile,
     budgets,
     projectKeys: keys,
     cardCost: costs.card.bind(costs),
@@ -398,10 +381,6 @@ export async function startDaemon(
     idle: snapshots.idle.bind(snapshots),
     // A card raised from an agent's findings keeps automatic approval off (issue #79).
     suspendApproval: autoApprove.suspendCard.bind(autoApprove),
-    ...present({ prPollIntervalMs: config.board.prPollIntervalMs || undefined }),
-    // Changed from the app: kept in the config file, like the rest of the host settings.
-    onSettingsChange: ({ maxParallelRuns }) =>
-      updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
   });
   // In the background: the radar reads the worktrees; the project keys get cached for the first card.
   void board.start();
@@ -673,12 +652,7 @@ export async function startDaemon(
       signals: new RoiSignals(),
     }),
     boardsync: boardSync.service,
-    github: new GithubService({
-      roots: config.allowedRoots,
-      board,
-      issues,
-      startSession: ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
-    }),
+    github: createGithub({ config, board, issues, manager }),
     serviceInstall: appServiceInstall(
       args.config ?? null,
       configFile,
