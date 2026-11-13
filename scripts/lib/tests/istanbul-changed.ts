@@ -17,6 +17,8 @@ export interface IstanbulChangedDeps {
   /** The files added, changed or renamed since the base; null when git could not say. */
   changed: (base: string) => Promise<string[] | null>;
   mkdir: (path: string) => void;
+  /** Writes a file: the run's list of files to instrument. */
+  write: (path: string, text: string) => void;
   spawn: (argv: string[], env: Record<string, string>) => Promise<{ exit: number; log: string }>;
   print: (line: string) => void;
 }

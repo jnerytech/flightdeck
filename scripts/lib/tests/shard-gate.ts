@@ -264,6 +264,8 @@ export function shardGate(input: GateInput): GateResult {
 export interface ShardRun {
   argv: string[];
   env: Record<string, string>;
+  /** The istanbul job's files, as JSON: written to `path` before the run, whose env names it. */
+  targetsFile?: { path: string; text: string };
 }
 
 export function shardRun(

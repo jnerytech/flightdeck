@@ -389,7 +389,11 @@ describe("shard-gate: how a shard job runs (#296)", () => {
   test("the istanbul job loads its preload first and writes the counters of the files it names", () => {
     expect(shardRun("istanbul", ["a.test.ts"], "out", ["x.ts", "y.tsx"])).toEqual({
       argv: ["bun", "--config=bunfig.shard.toml", "test", "--timeout=15000", "./a.test.ts"],
-      env: { COVERAGE_FUNCS_FILES: '["x.ts","y.tsx"]', COVERAGE_FUNCS_OUT: "out/funcs.json" },
+      env: {
+        COVERAGE_FUNCS_FILES_PATH: "out/funcs-files.json",
+        COVERAGE_FUNCS_OUT: "out/funcs.json",
+      },
+      targetsFile: { path: "out/funcs-files.json", text: '["x.ts","y.tsx"]' },
     });
   });
 
@@ -420,15 +424,20 @@ describe("shard-gate: how a shard job runs (#296)", () => {
     expect(failedCount("crashed before the summary")).toBe(0);
   });
 
-  test("the istanbul job's file list fits one environment string with room to grow (#828 review)", () => {
-    // Linux caps one environment string at 128 KB (MAX_ARG_STRLEN); keep today's list under half.
+  test("the istanbul job's file list goes in a file, so the environment stays short however many sources there are (#2504)", () => {
+    // Linux caps one environment string at 128 KB (MAX_ARG_STRLEN): the list was 63 bytes from half
+    // of that, and any PR that added two source files turned the old size guard red.
     const tracked = Bun.spawnSync(["git", "ls-files"])
       .stdout.toString()
       .split("\n")
       .filter(Boolean);
-    const env = shardRun("istanbul", [], "/tmp/out", istanbulTargets(tracked)).env;
-    expect((env.COVERAGE_FUNCS_FILES ?? "").length).toBeGreaterThan(1000);
-    expect((env.COVERAGE_FUNCS_FILES ?? "").length).toBeLessThan(64 * 1024);
+    const targets = istanbulTargets(tracked);
+    const run = shardRun("istanbul", [], "/tmp/out", targets);
+    const envSize = Object.values(run.env).join("").length;
+    expect(envSize).toBeLessThan(1024);
+    expect(run.targetsFile?.path).toBe(run.env.COVERAGE_FUNCS_FILES_PATH ?? "");
+    expect(JSON.parse(run.targetsFile?.text ?? "[]")).toEqual(targets);
+    expect(targets.length).toBeGreaterThan(1000);
   });
 
   test("bunfig.shard.toml is bunfig.related.toml with istanbul's preload first and Bun's coverage off", () => {

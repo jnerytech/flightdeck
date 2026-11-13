@@ -73,6 +73,8 @@ export interface CoveragePlanDeps {
 export interface CoveragePlan extends Plan {
   /** Added to the environment of `command`: the preload reads the files and the output path from it. */
   env: Record<string, string>;
+  /** The files to instrument, as JSON: written to `path` before the run, whose env names it. */
+  targetsFile?: { path: string; text: string };
   /** A worker's plan over more than 20 test files (#674): refused, or let through on a reason. */
   slotHeavy?: "block" | "waived";
 }
