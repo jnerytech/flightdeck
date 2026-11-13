@@ -134,16 +134,18 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
   });
 
   test("the active tab stays in view once the scroll arrows take their room from the strip (#2728)", async () => {
-    // The strip is 500 px wide, 24 px less once the right arrow shows; the active tab ends at 500.
+    // The strip is 500 px wide and each arrow takes 24 px of it; the active tab is 60 px wide and ends
+    // at 500 before any scroll. The right arrow narrows the strip to 476 px, so the tab has to move 24 px in.
     const rect = HTMLElement.prototype.getBoundingClientRect;
+    const arrow = (side: "direita" | "esquerda") =>
+      document.querySelector(`[aria-label="Rolar as abas para a ${side}"]`) ? 24 : 0;
     HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
       const at = (left: number, right: number) => ({ left, right }) as DOMRect;
-      if (this.classList.contains("tab-scroller")) {
-        const arrow = document.querySelector('[aria-label="Rolar as abas para a direita"]');
-        return at(0, arrow ? 476 : 500);
-      }
+      const scrolled = (document.querySelector(".tab-scroller") as HTMLElement).scrollLeft;
+      if (this.classList.contains("tab-scroller"))
+        return at(arrow("esquerda"), 500 - arrow("direita"));
       if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
-        return at(440, 500);
+        return at(440 - scrolled, 500 - scrolled);
       return at(0, 0);
     };
     try {
