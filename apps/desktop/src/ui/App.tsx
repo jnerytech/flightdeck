@@ -36,6 +36,7 @@ import { SnippetUse } from "@/features/snippets/ui.ts";
 import { TContext } from "@/i18n/context";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { preloadMarkdown } from "@/shared/markdown/index.ts";
+import { Areas } from "../app/Areas.tsx";
 import { boardShortcut } from "../features/board/index.ts";
 import { GlobalSearch, type PaletteTarget, paletteRoute } from "../features/palette/index.ts";
 import {
@@ -54,7 +55,6 @@ import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
-import { Areas } from "./Areas.tsx";
 
 /** A card from an issue the palette named: by its full reference, else by its number in the project. */
 async function createFromIssue(
