@@ -77,7 +77,6 @@ import { statusTone, useWidth } from "@/shared/lib/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { boardTitle, COLUMNS, positionBefore, projectCards } from "../../lib/board.ts";
 import { ExternalSeal, IssuesPanel, issueNumber } from "../issues/index.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import {
@@ -99,6 +98,7 @@ import { cardKey } from "./board-card-keys.ts";
 import { askAbout, dragNeeds, type Lacking, missingFor } from "./board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./board-files.ts";
 import type { BoardKeyAction } from "./board-keys.ts";
+import { boardTitle, COLUMNS, positionBefore, projectCards } from "./board-model.ts";
 import {
   type BulkRefusal,
   COLUMN_GAP,

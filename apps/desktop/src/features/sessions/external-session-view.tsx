@@ -14,7 +14,7 @@ import { isBusy } from "@/shared/lib/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { BgPanel } from "../background/bg-panel.tsx";
-import { CheckpointsButton } from "../checkpoints/index.ts";
+import { CheckpointsButton } from "../checkpoints/ui.ts";
 import { useLaunchTerminal } from "../terminal/index.ts";
 import { TerminalButton } from "../terminal/ui.ts";
 import { approvalRequestOf, externalRequestsOf, externalTitle } from "./external-view.ts";
