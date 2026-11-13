@@ -458,18 +458,17 @@ describe("board-bulk: the Start and Stop confirm's pieces (#1125)", () => {
     ]);
   });
 
-  test("other hosts are asked about only while a Start confirm is open and ready", () => {
+  test("other hosts are asked about only while a Start confirm is open", () => {
     let asked = 0;
     const offers = () => {
       asked++;
       return ["pi"];
     };
     expect([
-      startOffers("start", true, offers),
-      startOffers("start", false, offers),
-      startOffers("stop", true, offers),
-      startOffers(null, true, offers),
+      startOffers("start", offers),
+      startOffers("stop", offers),
+      startOffers(null, offers),
       asked,
-    ]).toEqual([["pi"], [], [], [], 1]);
+    ]).toEqual([["pi"], [], [], 1]);
   });
 });

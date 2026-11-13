@@ -334,11 +334,10 @@ export function startConfirmLines(
   return lines;
 }
 
-/** The other hosts a Start that would wait can go to: asked only while the Start confirm is open and ready. */
-export function startOffers<Offer>(
-  kind: BulkKind | null,
-  ready: boolean,
-  offers: () => Offer[],
-): Offer[] {
-  return kind === "start" && ready ? offers() : [];
+/**
+ * The other hosts a Start that would wait can go to: asked only while the Start confirm is open.
+ * The caller passes `null` until that confirm is ready.
+ */
+export function startOffers<Offer>(kind: BulkKind | null, offers: () => Offer[]): Offer[] {
+  return kind === "start" ? offers() : [];
 }
