@@ -98,6 +98,17 @@ describe("weekly mutation run: one Stryker run per domain (#1607)", () => {
     expect(outcome.belowBaseline).toEqual([{ domain: "a", score: null, minScore: 50 }]);
   });
 
+  test("a minScore that is not a number from 0 to 100 is refused before any run", () => {
+    for (const bad of [Number.NaN, -1, 940, "94" as unknown as number]) {
+      const { deps, ran } = setup({});
+      expect(
+        () => runWeekly({ ...deps, domains: [{ ...domain("a"), minScore: bad }] }),
+        String(bad),
+      ).toThrow(/unsafe/);
+      expect(ran).toEqual([]);
+    }
+  });
+
   test("the config of a domain lives in that domain's report folder", () => {
     expect(configPathFor(domain("permissions-risk"))).toBe(
       "reports/mutation/permissions-risk/stryker.config.json",
