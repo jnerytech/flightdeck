@@ -4,7 +4,7 @@
  * auto <n> | merge <n>` (issue #260, GitHub Flow; auto #271). The logic is in lib/pr/pr-flow.ts;
  * merge needs FLIGHTDECK_COORDINATOR=1.
  */
-import { runCommand } from "../apps/daemon/src/board/command.ts";
+import { runCommand } from "../apps/daemon/src/kernel/command.ts";
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { runBounded } from "./lib/machine/bounded-run.ts";
 import { mainRedWithin } from "./lib/pr/main-red.ts";

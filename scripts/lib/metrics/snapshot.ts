@@ -9,6 +9,7 @@ import {
   mainRed,
   type PrSize,
   prSize,
+  REWORK_MS,
   type TimeWindow,
 } from "./gh-metrics.ts";
 import {
@@ -305,9 +306,10 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
       "--limit",
       String(LIST_LIMIT),
       "--json",
-      "additions,deletions,mergedAt",
+      "additions,deletions,mergedAt,title,files",
     ],
-    wideFrom,
+    // A fix on the window's first day can answer a feat merged up to REWORK_MS before it.
+    new Date(wideFrom.getTime() - REWORK_MS),
     to,
     isMergedPr,
   );

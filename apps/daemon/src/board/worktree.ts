@@ -1,8 +1,8 @@
 import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
-import { type CommandResult, git } from "./command.ts";
+import { git, gitWith } from "../git/index.ts";
+import { type CommandResult, FlightdeckError } from "../kernel/index.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
 import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 
@@ -56,15 +56,6 @@ async function freeSlug(repo: string, base: string): Promise<string> {
 /** Where each repository keeps its exclude file: it does not move, so git is asked once. */
 const excludeFiles = new Map<string, string>();
 
-const excludePathCommand = () => [
-  whichOnPath("git") ?? "git",
-  "rev-parse",
-  "--git-path",
-  "info/exclude",
-];
-const spawnOptions = (repo: string) =>
-  ({ cwd: repo, env: process.env, stdout: "pipe", stderr: "pipe" }) as const;
-
 function excludeFileFrom(repo: string, code: number, out: string, err: string): string {
   if (code !== 0)
     throw new FlightdeckError("invalid_state", `git rev-parse: ${err.trim()}`, "command_failed", {
@@ -80,13 +71,8 @@ function excludeFileFrom(repo: string, code: number, out: string, err: string): 
 async function excludeFileAsync(repo: string): Promise<string> {
   const known = excludeFiles.get(repo);
   if (known) return known;
-  const proc = Bun.spawn(excludePathCommand(), { ...spawnOptions(repo), stdin: "ignore" });
-  const [out, err, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return excludeFileFrom(repo, code, out, err);
+  const { code, stdout, stderr } = await git(repo, "rev-parse", "--git-path", "info/exclude");
+  return excludeFileFrom(repo, code, stdout, stderr);
 }
 
 /**
@@ -118,16 +104,9 @@ export const WORKTREE_INCLUDE_LIMIT = 50 * 1024 * 1024;
 
 /** Which of `paths` git ignores (`.gitignore`, `info/exclude`…), through `check-ignore --stdin`. */
 async function ignoredOf(repo: string, paths: string[]): Promise<Set<string>> {
-  const proc = Bun.spawn([whichOnPath("git") ?? "git", "check-ignore", "-z", "--stdin"], {
-    cwd: repo,
-    env: process.env,
-    stdin: new TextEncoder().encode(paths.map((p) => `${p}\0`).join("")),
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const out = await new Response(proc.stdout).text();
-  await proc.exited;
-  return new Set(out.split("\0").filter(Boolean));
+  const input = paths.map((p) => `${p}\0`).join("");
+  const { stdout } = await gitWith(repo, ["check-ignore", "-z", "--stdin"], { input });
+  return new Set(stdout.split("\0").filter(Boolean));
 }
 
 /**

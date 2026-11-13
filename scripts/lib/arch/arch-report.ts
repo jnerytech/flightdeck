@@ -18,6 +18,9 @@ export type ArchInputs = {
   desktopCycles?: { today: number; baseline: number };
   /** Calls to an I/O or clock global in a `domain/` file today (#1601); none is allowed, so the baseline is 0. */
   domainImpureCalls?: number;
+  /** Process launches (`Bun.spawn`) per file outside an `adapters/` folder today and in spawn-count-baseline.json (#1612); absent when not counted. */
+  spawnCounts?: Record<string, number>;
+  spawnBaseline?: Record<string, number>;
   /** Source files over the size limit today and in src-size-baseline.json. */
   srcOversized: Record<string, number>;
   srcBaseline: Record<string, number>;
@@ -86,6 +89,12 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
       ratchet: "domain-purity impure calls",
       baseline: 0,
       today: inputs.domainImpureCalls,
+    });
+  if (inputs.spawnCounts && inputs.spawnBaseline)
+    rows.push({
+      ratchet: "spawn-count launches outside adapters",
+      baseline: sum(inputs.spawnBaseline),
+      today: sum(inputs.spawnCounts),
     });
   rows.push({
     ratchet: "src-size files over the limit",

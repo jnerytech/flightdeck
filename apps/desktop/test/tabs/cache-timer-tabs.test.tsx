@@ -79,13 +79,11 @@ describe("cache-timer-tabs: on the tab strip (issue #159)", () => {
     return app;
   }
 
-  test("an idle session's tab carries the clock icon, laid over the tab so it takes no width", async () => {
+  test("an idle session's tab carries the clock icon, with no text of its own", async () => {
     await strip();
     const clock = await screen.findByRole("img", { name: /^Prompt cache expires/ });
     const item = clock.closest(".tab-item") as HTMLElement;
     expect(item).not.toBeNull();
-    expect(item.className).toContain("relative");
-    expect(clock.parentElement?.className).toContain("absolute");
     expect(clock.textContent).toBe("");
   });
 

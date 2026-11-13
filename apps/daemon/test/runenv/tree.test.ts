@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { killTree as killTreeOfCommand, runCommand } from "../../src/board/command.ts";
+import { killTree as killTreeOfCommand, runCommand } from "../../src/kernel/command.ts";
 import { killTree, terminalRunHost } from "../../src/runenv/host.ts";
 import { RunManager } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";

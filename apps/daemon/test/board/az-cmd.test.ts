@@ -1,14 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import { AzureDevOpsCli } from "../../src/board/pr.ts";
+import { GithubCli } from "../../src/github/index.ts";
+import { AzureIssues } from "../../src/issues/providers.ts";
 import {
   AZ_CUT_NOTE,
   AZ_TEXT_FLAGS,
   azText,
   mapSpawnError,
   sanitizeAzArgs,
-} from "../../src/board/az-text.ts";
-import { AzureDevOpsCli, GithubCli } from "../../src/board/pr.ts";
-import { AzureIssues } from "../../src/issues/providers.ts";
+} from "../../src/pr/az-text.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];

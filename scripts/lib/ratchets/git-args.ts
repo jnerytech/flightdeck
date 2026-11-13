@@ -8,8 +8,8 @@ export interface GitArgFinding {
   call: string;
 }
 
-/** A call of the daemon's git helpers: `git(`, `gitLimited(`, `this.git(`, `deps.git(`. */
-const CALL = /(?<![\w$])(?:[\w$]+\.)*(?:git|gitLimited)\(/g;
+/** A call of the daemon's git helpers: `git(`, `gitLimited(`, `gitWith(`, `gitBytes(`, `this.git(`, `deps.git(`. */
+const CALL = /(?<![\w$])(?:[\w$]+\.)*(?:git|gitLimited|gitWith|gitBytes)\(/g;
 /** A name that carries a branch or a revision in, from a project's settings or a protocol field. */
 const REF_TOKENS = [
   /^(?:base|branch|source|ref|against|upstream)\w*$/,
@@ -175,7 +175,7 @@ function exposed(argument: string): boolean {
   );
 }
 
-/** Calls of `git(` and `gitLimited(` in `source` that pass a base or branch without a guard (issue #345). */
+/** Calls of `git(`, `gitLimited(`, `gitWith(` and `gitBytes(` in `source` that pass a base or branch without a guard (issue #345). */
 export function unguardedGitCalls(source: string, file = ""): GitArgFinding[] {
   const masked = mask(source);
   const lines = source.split("\n");

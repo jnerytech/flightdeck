@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { GhResult } from "../../src/github/gh.ts";
+import type { GhResult } from "../../src/github/gh-runner.ts";
 import { GithubService } from "../../src/github/service.ts";
 
 /** Issue #954: a test or a stop can wait for the `gh` runs the service started. */

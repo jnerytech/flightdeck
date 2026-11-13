@@ -7,9 +7,9 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Notices } from "@/components/feedback/notices";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/ui.ts";
+import { projectContracts, useStartAsk } from "@/features/board/ui.ts";
 import { SimpleApp } from "@/features/home/ui.ts";
 import { pairingErrorText } from "@/features/hosts/index.ts";
 import { draftFromLink } from "@/features/hosts/ui.ts";
@@ -26,13 +26,13 @@ import {
   AppShell,
   Breadcrumb,
   HistoryButtons,
+  Notices,
   Sidebar,
   StatusBarSlot,
   TopBarActions,
   TopBarHost,
 } from "@/features/shell/ui.ts";
 import { SnippetUse } from "@/features/snippets/ui.ts";
-import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { preloadMarkdown } from "@/shared/markdown/index.ts";

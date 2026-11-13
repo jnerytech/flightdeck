@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { join } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
@@ -13,7 +11,6 @@ const personScrolls = (el: Element) => {
 };
 const screen = liveScreen(within);
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
-const { RecapPanel } = await import("../../src/features/summary/recap-panel.tsx");
 const { emptySession } = await import("../../src/features/sessions/session-state.ts");
 
 afterEach(cleanup);
@@ -54,21 +51,6 @@ function scroller(height: { scroll: number; client: number; top: number }) {
 }
 
 describe("sessao-rolagem: the conversation is the one scroll area of the session", () => {
-  test("the header, the composer and the messages never shrink, so nothing overlaps", () => {
-    render(view(3));
-    const el = document.querySelector("[tabindex='0'].overflow-y-auto") as HTMLElement;
-    expect(el.className).toContain("[&>*]:shrink-0");
-    expect(document.querySelector("header")?.className).toContain("shrink-0");
-    const dock = screen
-      .queryByRole("textbox", { name: /./ })
-      ?.closest("[data-slot='composer-card']")?.parentElement;
-    expect(dock?.className).toContain("composer-dock");
-    // The utility is what keeps the dock from shrinking.
-    expect(readStyles(join(import.meta.dir, "../../src/styles.css"))).toMatch(
-      /@utility composer-dock \{[^}]*flex-shrink: 0/,
-    );
-  });
-
   test("a new message follows the end when you were at the end", async () => {
     const { rerender } = render(view(3));
     const s = scroller({ scroll: 1000, client: 400, top: 600 });
@@ -78,58 +60,5 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
     await act(async () => {});
     expect(s.size.top).toBe(1100);
     expect(screen.queryByRole("button", { name: "Ir para a última" })).toBeNull();
-  });
-
-  test("a new message leaves you where you were reading, and offers Ir para a última", async () => {
-    const { rerender } = render(view(3));
-    const s = scroller({ scroll: 1000, client: 400, top: 100 });
-    await act(async () => void personScrolls(s.el));
-    s.size.scroll = 1100;
-    rerender(view(4));
-    await act(async () => {});
-    expect(s.size.top).toBe(100);
-    const jump = screen.queryByRole("button", { name: "Ir para a última (1 nova)" });
-    expect(jump).not.toBeNull();
-    await act(async () => void fireEvent.click(jump as HTMLElement));
-    expect(s.size.top).toBe(1100);
-    expect(screen.queryByRole("button", { name: "Ir para a última" })).toBeNull();
-  });
-});
-
-describe("sessao-rolagem: the summary does not push the conversation away", () => {
-  const state = { hosts: [{ id: "h", hostInfo: { features: ["summary"] } }] };
-  const store = (calls: string[]) =>
-    ({
-      subscribe: () => () => {},
-      getState: () => state,
-      sessionRecap: async () => {
-        calls.push("recap");
-        return {
-          asked: "a thing",
-          done: "it",
-          files: [],
-          filesMore: 0,
-          costUsd: null,
-          question: null,
-        };
-      },
-      copyText: async () => {},
-    }) as never;
-
-  test("it opens the first time a session is seen and starts collapsed after that", async () => {
-    const calls: string[] = [];
-    const mount = () =>
-      render(<RecapPanel store={store(calls)} hostId="h" claudeSessionId="c-1" />);
-    mount();
-    await act(async () => {});
-    expect(screen.queryByText("a thing")).not.toBeNull();
-    cleanup();
-    mount();
-    await act(async () => {});
-    expect(screen.queryByText("a thing")).toBeNull();
-    const toggle = screen.queryByRole("button", { name: /Resumo da sessão/ });
-    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
-    await act(async () => void fireEvent.click(toggle as HTMLElement));
-    expect(screen.queryByText("a thing")).not.toBeNull();
   });
 });

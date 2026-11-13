@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { gitLimitedFor } from "../../src/board/command.ts";
+import { gitLimitedFor } from "../../src/git/adapters/git.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /**
