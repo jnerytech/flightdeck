@@ -258,7 +258,7 @@ export class CardReviews {
     let placed = 0;
     for (const f of anchored) {
       try {
-        await this.deps.comments.add({
+        const comment: NewReviewComment = {
           target: `card:${card.id}`,
           path: f.path,
           side: "new",
@@ -267,7 +267,8 @@ export class CardReviews {
           body: f.body,
           author: "reviewer",
           severity: f.severity,
-        });
+        };
+        await this.deps.comments.add(comment); // NOSONAR: the comments keep the findings' order
         placed++;
       } catch {
         // The comment's own checks refused it (a credential path, lines gone): it goes to the summary.

@@ -37,7 +37,7 @@ export async function acquireLock(dataDir: string): Promise<Lock | null> {
       if (text === null) continue;
       const owner = Number.parseInt(text, 10);
       if (Number.isInteger(owner) && owner > 0 && isAlive(owner)) return null;
-      await removeStale(path, text);
+      await removeStale(path, text); // NOSONAR: a retry, each attempt reads what the last one left
     }
   }
   if (!taken) return null;
