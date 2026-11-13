@@ -94,7 +94,7 @@ import type { UpdateChecker } from "./updates/check.ts";
 import type { Vault } from "./vault/index.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
-import type { Worktrees } from "./worktrees/worktrees.ts";
+import type { Worktrees } from "./worktrees/index.ts";
 
 /** Phase 7, #1593: the quota domain's part of the server, each service optional. */
 interface QuotaServer {
