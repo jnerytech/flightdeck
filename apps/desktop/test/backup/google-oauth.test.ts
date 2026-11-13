@@ -125,15 +125,15 @@ describe("googleSignIn.signIn", () => {
   test("refuses a redirect whose state is not the one it sent and asks Google for nothing", async () => {
     const { sign, oauth, keyring } = setup({ redirect: { code: "the-code", state: "forged" } });
     expect(await sign.signIn()).toBe("refused");
-    expect(oauth.requests.length).toBe(0);
+    expect(oauth.requests).toHaveLength(0);
     expect(keyring.size).toBe(0);
   });
 
   test("a cancelled or timed-out wait is cancelled and stores nothing", async () => {
     const { sign, oauth, keyring, opened } = setup({ redirect: null });
     expect(await sign.signIn()).toBe("cancelled");
-    expect(opened.length).toBe(1);
-    expect(oauth.requests.length).toBe(0);
+    expect(opened).toHaveLength(1);
+    expect(oauth.requests).toHaveLength(0);
     expect(keyring.size).toBe(0);
   });
 
@@ -192,7 +192,7 @@ describe("googleSignIn.auth", () => {
     const { sign, oauth } = setup();
     await sign.signIn();
     expect(await sign.auth.token()).toBe("access-1");
-    expect(oauth.requests.length).toBe(1);
+    expect(oauth.requests).toHaveLength(1);
   });
 
   test("refreshes with the stored token once the access token has expired", async () => {
@@ -238,7 +238,7 @@ describe("googleSignIn.auth", () => {
     const { sign, oauth } = setup();
     const failure = await sign.auth.token().catch((e: unknown) => e);
     expect(failure instanceof DriveError && failure.kind).toBe("auth");
-    expect(oauth.requests.length).toBe(0);
+    expect(oauth.requests).toHaveLength(0);
   });
 
   test("a network failure on refresh keeps the refresh token for the next try", async () => {
@@ -246,8 +246,8 @@ describe("googleSignIn.auth", () => {
     await sign.signIn();
     oauth.offline = true;
     const failure = await sign.auth.token(true).catch((e: unknown) => e);
-    expect(failure instanceof DriveError).toBe(false);
-    expect(failure instanceof Error).toBe(true);
+    expect(failure).not.toBeInstanceOf(DriveError);
+    expect(failure).toBeInstanceOf(Error);
     expect(keyring.get(REFRESH_TOKEN_ID)).toBe("refresh-1");
   });
 
@@ -256,7 +256,7 @@ describe("googleSignIn.auth", () => {
     await sign.signIn();
     oauth.offline = true;
     const failure = await sign.auth.token(true).catch((e: unknown) => e);
-    expect(failure instanceof Error).toBe(true);
+    expect(failure).toBeInstanceOf(Error);
     const message = failure instanceof Error ? failure.message : "";
     expect(message.includes("refresh-1") || message.includes("access-1")).toBe(false);
   });

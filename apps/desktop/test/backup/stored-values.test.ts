@@ -38,7 +38,7 @@ describe("the backup's stored values are parsed, not trusted (#1609)", () => {
     const planted = profileWith({ "flightdeck.snippets": '{"id":"s1"}' });
     const file = await createBackup(planted, PASS, PASS, FAST);
     const preview = await previewRestore(profileWith({}), file, PASS);
-    expect(preview.snippets.added.length).toBe(0);
+    expect(preview.snippets.added).toHaveLength(0);
   });
 
   test("a schedule whose fields are of the wrong type reads as the default, field by field", () => {

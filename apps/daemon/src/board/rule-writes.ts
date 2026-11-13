@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import { isProjectRule } from "../permissions/permission-updates.ts";
+import { isProjectRule } from "../permissions/index.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import type { Card, Project } from "./types.ts";
 import { excludeLocalSettingsAsync } from "./worktree.ts";
