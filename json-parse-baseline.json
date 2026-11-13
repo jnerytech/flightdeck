@@ -1,6 +1,5 @@
 {
   "apps/daemon/src/actions/actions.ts": 2,
-  "apps/daemon/src/automations/automations.ts": 2,
   "apps/daemon/src/board/pr.ts": 1,
   "apps/daemon/src/maintenance/maintenance.ts": 1,
   "apps/daemon/src/personas/store.ts": 1,

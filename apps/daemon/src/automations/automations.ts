@@ -13,6 +13,7 @@ import { FlightdeckError, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { localDay } from "../quota/usage.ts";
 import { type CronError, type CronSpec, cronMatches, parseCron, validTimeZone } from "./cron.ts";
+import { actionOf, triggerOf } from "./row-json.ts";
 
 export type AutomationEvent =
   | {
@@ -97,8 +98,8 @@ const toAutomation = (row: Row): Automation => ({
   projectId: row.project_id,
   name: row.name,
   enabled: row.enabled === 1,
-  trigger: JSON.parse(row.trigger),
-  action: JSON.parse(row.action),
+  trigger: triggerOf(row.trigger),
+  action: actionOf(row.action),
   maxRunsPerDay: row.max_runs_per_day,
   allowExternalAuthors: row.allow_external_authors === 1,
   createdAt: row.created_at,
