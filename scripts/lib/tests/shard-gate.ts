@@ -376,49 +376,104 @@ export interface RunShardDeps {
   extraTargets?: readonly string[];
 }
 
-/** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
-export async function runShard(
+/** The shard's index and count, or the line to print: a bad spec, kind, or an output inside the checkout. */
+function checkShardArgs(
   spec: string,
   kind: string,
   out: string,
-  deps: RunShardDeps,
-): Promise<number> {
-  const usage = "usage: bun run scripts/shard-gate.ts run <i>/<n> <bun|istanbul> <out>";
+  root: string,
+): { index: number; count: number; kind: "bun" | "istanbul" } | string {
   const parsed = /^(\d+)\/(\d+)$/.exec(spec);
   const index = Number(parsed?.[1]);
   const count = Number(parsed?.[2]);
   if (!parsed || index < 1 || index > count || (kind !== "bun" && kind !== "istanbul")) {
-    deps.print(usage);
-    return 2;
+    return "usage: bun run scripts/shard-gate.ts run <i>/<n> <bun|istanbul> <out>";
   }
   // The istanbul preload writes its counters after each test file, and the repo guard fails a run
   // that leaves a file in the checkout.
-  const inside = relative(deps.root, resolve(out));
+  const inside = relative(root, resolve(out));
   if (!inside.startsWith("..") && !isAbsolute(inside)) {
-    deps.print(`shard-gate: write the shard's output outside the checkout, not in ${out}`);
-    return 2;
+    return `shard-gate: write the shard's output outside the checkout, not in ${out}`;
   }
+  return { index, count, kind };
+}
+
+/** A PR's small selection can leave a shard empty: it passes with empty reports (#1761). */
+function writeEmptyShard(
+  out: string,
+  marker: ShardMarker,
+  deps: Pick<RunShardDeps, "mkdir" | "write" | "print">,
+): void {
+  deps.mkdir(out);
+  deps.write(join(out, "marker.json"), JSON.stringify(marker));
+  const bun = marker.kind === "bun";
+  deps.write(join(out, bun ? "lcov.info" : "funcs.json"), bun ? "" : "{}");
+  deps.print(
+    `shard ${marker.shard}/${marker.of} ${marker.kind}: no test file in this PR's selection`,
+  );
+}
+
+/** The test files this shard runs, with its tier label; or the line to print when the spec is no shard. */
+function pickShardFiles(
+  spec: string,
+  index: number,
+  count: number,
+  deps: Pick<RunShardDeps, "selection" | "tierOf" | "tracked" | "timings">,
+): { files: string[]; tier: { tier?: string } } | string {
   const { selection, tierOf } = deps;
   const all = selection ? [...selection.tests] : testFiles([...deps.tracked]);
   // With a tier map (#1854) the shards are the tier plan's: this one runs its group's tiers only.
   const at = tierOf ? tierShard(index, count) : null;
   if (tierOf && !at) {
-    deps.print(`shard-gate: ${spec} is not a shard of the tier plan (${TIER_SHARDS} shards)`);
-    return 2;
+    return `shard-gate: ${spec} is not a shard of the tier plan (${TIER_SHARDS} shards)`;
   }
   const files =
     at && tierOf
       ? (tierShardFiles(all, tierOf, deps.timings, index, count)?.files ?? [])
       : (splitShards(all, deps.timings, count)[index - 1] ?? []);
-  const tier = at ? { tier: `${at.group.label} ${at.part}/${at.of}` } : {};
+  return { files, tier: at ? { tier: `${at.group.label} ${at.part}/${at.of}` } : {} };
+}
+
+/** The sources a shard instruments. The fast baseline is judged from the fast shards: instrumented, never left to Bun's per-shard counts. */
+function shardTargets(
+  index: number,
+  deps: Pick<RunShardDeps, "selection" | "tracked" | "extraTargets">,
+): string[] {
+  const { selection } = deps;
+  if (!selection) return istanbulTargets(deps.tracked);
+  const extra = FAST_SHARDS.includes(index) ? (deps.extraTargets ?? []) : [];
+  return [...new Set([...selection.targets, ...extra])];
+}
+
+/** `{ seconds }` when the clock was injected and read twice, nothing otherwise. */
+function secondsBetween(started: number | undefined, ended: number | undefined) {
+  return started !== undefined && ended !== undefined ? { seconds: (ended - started) / 1000 } : {};
+}
+
+/** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
+export async function runShard(
+  spec: string,
+  kindArg: string,
+  out: string,
+  deps: RunShardDeps,
+): Promise<number> {
+  const checked = checkShardArgs(spec, kindArg, out, deps.root);
+  if (typeof checked === "string") {
+    deps.print(checked);
+    return 2;
+  }
+  const { index, count, kind } = checked;
+  const { selection } = deps;
+  const picked = pickShardFiles(spec, index, count, deps);
+  if (typeof picked === "string") {
+    deps.print(picked);
+    return 2;
+  }
+  const { files, tier } = picked;
   // A bun test with no file runs the whole suite. A PR's small selection can leave a shard empty:
   // it passes with empty reports, so the merge still sees every shard (#1761).
   if (files.length === 0 && selection) {
-    deps.mkdir(out);
-    const marker: ShardMarker = { shard: index, of: count, kind, files, exit: 0, fail: 0, ...tier };
-    deps.write(join(out, "marker.json"), JSON.stringify(marker));
-    deps.write(join(out, kind === "bun" ? "lcov.info" : "funcs.json"), kind === "bun" ? "" : "{}");
-    deps.print(`shard ${index}/${count} ${kind}: no test file in this PR's selection`);
+    writeEmptyShard(out, { shard: index, of: count, kind, files, exit: 0, fail: 0, ...tier }, deps);
     return 0;
   }
   if (files.length === 0) {
@@ -426,11 +481,7 @@ export async function runShard(
     return 2;
   }
   deps.mkdir(out);
-  // The fast baseline is judged from these shards: instrumented, never left to Bun's per-shard counts.
-  const extra = FAST_SHARDS.includes(index) ? (deps.extraTargets ?? []) : [];
-  const targets = selection
-    ? [...new Set([...selection.targets, ...extra])]
-    : istanbulTargets(deps.tracked);
+  const targets = shardTargets(index, deps);
   const plan = shardRun(kind, files, out, targets);
   if (plan.targetsFile) deps.write(plan.targetsFile.path, plan.targetsFile.text);
   const started = deps.now?.();
@@ -445,7 +496,7 @@ export async function runShard(
     exit,
     fail: failedCount(log),
     ...tier,
-    ...(started !== undefined && ended !== undefined ? { seconds: (ended - started) / 1000 } : {}),
+    ...secondsBetween(started, ended),
   };
   deps.write(join(out, "marker.json"), JSON.stringify(marker));
   for (const line of log.split("\n").filter((l) => /^\s*\d+ (pass|fail|skip)$|^Ran /.test(l))) {
