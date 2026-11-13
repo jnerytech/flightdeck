@@ -1,10 +1,9 @@
 import type { SpawnedAcp } from "./acp/client.ts";
+import { spawnQuiet } from "./adapters/opencode-spawn.ts";
 
 /** The real kill of a process tree: a detached run and a signal to a process group. */
 export const REAL_KILL_DEPS = {
-  run(argv: string[]): void {
-    Bun.spawn(argv, { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
-  },
+  run: spawnQuiet,
   killGroup(pid: number, signal: NodeJS.Signals): void {
     process.kill(-pid, signal);
   },
