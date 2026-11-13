@@ -293,6 +293,11 @@ export interface PendingItem {
   riskReason?: string;
   /** Issue #88: the request in plain words, for the surfaces outside the window; an older daemon sends none. */
   plain?: PlainInfo;
+  /**
+   * Issue #1751: a terminal session waits at a plan approval or a question. It has no request to
+   * answer (`requestId` is made up): the person answers in the terminal, the app only opens it.
+   */
+  waiting?: "plan" | "question";
   /** Phase 17: the daemon asks for a secret to run an action or a free command. */
   vault?: true;
   /** Phase 19: the rule lets this request be approved for the rest of the session. */
