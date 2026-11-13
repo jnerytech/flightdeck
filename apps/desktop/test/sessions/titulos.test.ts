@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cleanTitle, rowTitle } from "../../src/features/sessions/hub-title.ts";
+import { cleanTitle, rowTitle } from "../../src/features/sessions/domain/hub-title.ts";
 
 describe("sessoes-titulos: wrappers never reach a title (issue #111)", () => {
   test("system wrappers are stripped, and what is left is the text", () => {

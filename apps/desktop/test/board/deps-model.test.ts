@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { chainOf, pickable } from "../../src/features/board/deps.ts";
+import { chainOf, pickable } from "../../src/features/board/domain/deps.ts";
 import { refusalText } from "../../src/i18n/errors.ts";
 import { translator } from "../../src/i18n/index.ts";
 

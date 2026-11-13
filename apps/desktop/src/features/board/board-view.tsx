@@ -96,9 +96,7 @@ import {
   updateSummary,
 } from "./board-bulk.ts";
 import { cardKey } from "./board-card-keys.ts";
-import { askAbout, dragNeeds, type Lacking, missingFor } from "./board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./board-files.ts";
-import type { BoardKeyAction } from "./board-keys.ts";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./board-model.ts";
 import {
   type BulkRefusal,
@@ -115,12 +113,14 @@ import {
   toggleSelection,
 } from "./board-select.ts";
 import { BulkRunDialog } from "./bulk-run-dialog.tsx";
-import { cardStartBlock } from "./card-start-block.ts";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
 import { BoardColumnEmpty } from "./column-empty.tsx";
-import { radarBadge } from "./conflict-radar.ts";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
+import { askAbout, dragNeeds, type Lacking, missingFor } from "./domain/board-contracts.ts";
+import type { BoardKeyAction } from "./domain/board-keys.ts";
+import { cardStartBlock } from "./domain/card-start-block.ts";
+import { radarBadge } from "./domain/conflict-radar.ts";
 import { NewCardDialog } from "./new-card-dialog.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
 import { useStartAsk } from "./use-start-ask.tsx";

@@ -11,7 +11,7 @@ import type { HostConnection } from "@/features/hosts/index.ts";
 import { nullOnError } from "@/shared/lib/index.ts";
 import type { AppState, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { sessionKey } from "./session-key.ts";
+import { sessionKey } from "./domain/session-key.ts";
 
 /** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
 export const HISTORY_LIST_LIMIT = 200;

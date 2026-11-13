@@ -14,7 +14,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { T } from "../../i18n/index.ts";
-import { EFFORTS, isCurrentModel, MAIN_MODELS, MORE_MODELS, modelName } from "./model-menu.ts";
+import {
+  EFFORTS,
+  isCurrentModel,
+  MAIN_MODELS,
+  MORE_MODELS,
+  modelName,
+} from "./domain/model-menu.ts";
 
 const FAMILIES = ["opus", "sonnet", "haiku"] as const;
 

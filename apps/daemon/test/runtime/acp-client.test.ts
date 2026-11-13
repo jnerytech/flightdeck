@@ -9,8 +9,8 @@ import {
   AcpClient,
   type AcpClientOptions,
   AcpError,
-  spawnAcp,
 } from "../../src/runtime/acp/client.ts";
+import { spawnAcp } from "../../src/runtime/adapters/acp-process.ts";
 import { poll } from "../support/helpers.ts";
 
 /** An in-memory agent: what the client wrote, and a way to write back. */

@@ -11,7 +11,7 @@ import { SCHEDULE_KEY } from "../../../apps/desktop/src/features/backup/backup-s
 import { TOKEN_MASK } from "../../../apps/desktop/src/features/hosts/domain/pairing-mask.ts";
 import { HOSTS_KEY } from "../../../apps/desktop/src/features/hosts/hosts.ts";
 import { AWAY_KEY } from "../../../apps/desktop/src/features/needs-you/away.ts";
-import { VIEW_LABEL } from "../../../apps/desktop/src/features/sessions/session-views.ts";
+import { VIEW_LABEL } from "../../../apps/desktop/src/features/sessions/domain/session-views.ts";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import {

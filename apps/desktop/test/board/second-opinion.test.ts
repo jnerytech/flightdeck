@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { findingsNote, openFindings } from "../../src/features/board/second-opinion.ts";
+import { findingsNote, openFindings } from "../../src/features/board/domain/second-opinion.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 /**

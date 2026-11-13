@@ -1,8 +1,8 @@
 import type { Card } from "@flightdeck/protocol";
 import type { KeyboardEvent, MutableRefObject } from "react";
 import { CHORD_TIMEOUT_MS } from "../shortcuts/index.ts";
-import { type BoardKeyAction, boardKey } from "./board-keys.ts";
 import { rangeSelection } from "./board-select.ts";
+import { type BoardKeyAction, boardKey } from "./domain/board-keys.ts";
 
 /** What the board holds while keys act on its cards, and what a key may do to it. */
 export interface CardKeyContext {

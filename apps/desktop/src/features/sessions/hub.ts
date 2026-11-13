@@ -11,8 +11,8 @@ import { z } from "zod";
 import { basename, readStored } from "@/shared/lib/index.ts";
 import { type Key, type T, translator } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
-import { rowTitle } from "./hub-title.ts";
-import { sessionLabel } from "./session-label.ts";
+import { rowTitle } from "./domain/hub-title.ts";
+import { sessionLabel } from "./domain/session-label.ts";
 
 const PT = translator("pt-BR");
 
