@@ -11,7 +11,6 @@ import {
   requestResult,
   runMany,
   startConfirmLines,
-  startOffers,
   startQuotaLines,
   updateMany,
   updateSummary,
@@ -456,19 +455,5 @@ describe("board-bulk: the Start and Stop confirm's pieces (#1125)", () => {
       true,
       false,
     ]);
-  });
-
-  test("other hosts are asked about only while a Start confirm is open", () => {
-    let asked = 0;
-    const offers = () => {
-      asked++;
-      return ["pi"];
-    };
-    expect([
-      startOffers("start", offers),
-      startOffers("stop", offers),
-      startOffers(null, offers),
-      asked,
-    ]).toEqual([["pi"], [], [], 1]);
   });
 });

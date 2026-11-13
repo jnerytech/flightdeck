@@ -91,7 +91,6 @@ import {
   requestResult,
   runMany,
   startConfirmLines,
-  startOffers,
   startQuotaLines,
   updateMany,
   updateSummary,
@@ -819,7 +818,7 @@ export const BoardView = memo(function BoardView(props: {
     max: queueMax ?? null,
     running: runningOnHost,
   });
-  const otherHosts = startOffers(startReady ? bulk : null, () => elsewhere.offers(waiting));
+  const otherHosts = bulk === "start" && startReady ? elsewhere.offers(waiting) : [];
   /** Hands the cards that would wait to another host: made and started there, then Done here. */
   const startOnOther = async (hostIdOther: string) => {
     const target = otherHosts.find((o) => o.hostId === hostIdOther);
