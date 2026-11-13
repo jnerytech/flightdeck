@@ -29,11 +29,12 @@ import {
   inSequence,
   type SecretScanner,
 } from "@flightdeck/protocol";
-import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import {
+  assertBranchName,
   type CommandResult,
   FlightdeckError,
   killTree,
+  refArg,
   runCommand,
   whichOnPath,
 } from "../kernel/index.ts";

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { refArg } from "../../src/board/ref-arg.ts";
 import { addWorktree, excludeLocalSettingsAsync, freshBase } from "../../src/board/worktree.ts";
+import { refArg } from "../../src/kernel/index.ts";
 import { cardWhen, git, gitRepo, newBoard } from "../support/board-helpers.ts";
 import { must, record } from "../support/helpers.ts";
 

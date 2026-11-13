@@ -6,12 +6,11 @@ import {
   specExpectedPath,
 } from "@flightdeck/protocol";
 import { git } from "../git/index.ts";
-import { FlightdeckError, parseJsonWith, refusalOf } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonWith, refArg, refusalOf } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/prepare.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import { pinnedPrompt } from "./pins.ts";
-import { refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import {
   hasTddSkill,

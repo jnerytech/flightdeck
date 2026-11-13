@@ -3,13 +3,14 @@ import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import type { Board } from "../board/board.ts";
 import { prProvider } from "../board/pr.ts";
-import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { git as realGit } from "../git/index.ts";
 import {
+  assertBranchName,
   type CommandResult,
   FlightdeckError,
   parseJsonOr,
+  refArg,
   settled,
   ulid,
 } from "../kernel/index.ts";

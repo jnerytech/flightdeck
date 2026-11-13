@@ -1,6 +1,5 @@
 import { gitLimitedFor } from "../git/index.ts";
-import type { CommandResult } from "../kernel/index.ts";
-import type { Rev } from "./ref-arg.ts";
+import type { CommandResult, Rev } from "../kernel/index.ts";
 
 /** Issue #1405: the most files one overlap lists. */
 export const MAX_SHARED_FILES = 20;
