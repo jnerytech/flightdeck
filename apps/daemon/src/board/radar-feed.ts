@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { inSequence } from "@flightdeck/protocol";
+import { type Rev, refArg } from "../kernel/index.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
-import { type Rev, refArg } from "./ref-arg.ts";
 import type { Card, MayConflict, Project } from "./types.ts";
 
 /** What the radar's feed needs of the board (issue #1523); late-bound, so it never imports `board.ts`. */

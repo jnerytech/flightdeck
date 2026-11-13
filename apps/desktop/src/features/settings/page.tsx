@@ -1,4 +1,12 @@
-import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
+import {
+  memo,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
@@ -85,6 +93,7 @@ export const Settings = memo(function Settings(props: {
     () => props.store.terminalReader.value,
   );
   const readerHint = useId();
+  const autostartHint = useId();
   const fontHint = useId();
   const setupHidden = useSyncExternalStore(
     props.store.setup.subscribe,
@@ -259,12 +268,15 @@ export const Settings = memo(function Settings(props: {
               type="checkbox"
               checked={settings.autostart}
               disabled={!settings.autostartSupported}
+              aria-describedby={settings.autostartSupported ? undefined : autostartHint}
               onChange={(e) => props.onAutostart(e.target.checked)}
             />
             {t("prefs.autostart")}
           </label>
           {!settings.autostartSupported && (
-            <small className="setting-hint">{t("prefs.unavailable")}</small>
+            <small id={autostartHint} className="setting-hint">
+              {t("prefs.unavailable")}
+            </small>
           )}
           <label className={check}>
             <input
@@ -487,12 +499,56 @@ export const Settings = memo(function Settings(props: {
         `${section.label} ${section.words}`.toLowerCase().includes(needle),
       )
     : sections;
+  let matchText = "";
+  if (shown.length === 0) matchText = t("settingsRail.none");
+  else if (needle)
+    matchText =
+      shown.length === 1
+        ? t("settingsRail.matchesOne")
+        : t("settingsRail.matches", { n: shown.length });
+  // A click's mark holds while the page scrolls to the section (a short last one never reaches the
+  // observer's band); the next wheel, touch or key hands the mark back to the scroll.
+  const pinned = useRef(false);
   const go = (id: string) => {
+    pinned.current = true;
     setCurrent(id);
     const target = document.getElementById(`settings-${id}`);
     target?.scrollIntoView?.({ block: "start" });
     target?.focus({ preventScroll: true });
   };
+  // The rail marks the section on screen: the upper one when several are. Without the observer
+  // (tests, old webviews) the mark is the last one a click went to.
+  const shownIds = shown.map((section) => section.id).join(",");
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const ids = shownIds ? shownIds.split(",") : [];
+    const onScreen = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = entry.target.id.replace(/^settings-/, "");
+          if (entry.isIntersecting) onScreen.add(id);
+          else onScreen.delete(id);
+        }
+        const first = ids.find((id) => onScreen.has(id));
+        if (first && !pinned.current) setCurrent(first);
+      },
+      { rootMargin: "0px 0px -60% 0px" },
+    );
+    for (const id of ids) {
+      const el = document.getElementById(`settings-${id}`);
+      if (el) observer.observe(el);
+    }
+    const release = () => {
+      pinned.current = false;
+    };
+    const handBack = ["wheel", "touchstart", "keydown"] as const;
+    for (const type of handBack) window.addEventListener(type, release, { passive: true });
+    return () => {
+      observer.disconnect();
+      for (const type of handBack) window.removeEventListener(type, release);
+    };
+  }, [shownIds]);
   // Opened on a part (a budget alert): scroll to it and focus it.
   const wanted = props.section;
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request moves the view
@@ -527,7 +583,8 @@ export const Settings = memo(function Settings(props: {
           </nav>
         </div>
         <div className="settings-sections">
-          {shown.length === 0 && <output>{t("settingsRail.none")}</output>}
+          {/* Always there, so a reader hears the count change: silent with no search. */}
+          <output className={shown.length === 0 ? undefined : "sr-only"}>{matchText}</output>
           {shown.map((section) => (
             <section
               key={section.id}

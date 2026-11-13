@@ -6,8 +6,8 @@ import {
   mergeIntoBase,
   rebaseOnto,
 } from "../../src/board/merge.ts";
-import { assertBranchName, type Rev, refArg } from "../../src/board/ref-arg.ts";
 import { freshBase } from "../../src/board/worktree.ts";
+import { assertBranchName, type Rev, refArg } from "../../src/kernel/index.ts";
 import { workflowSources } from "../../src/workflows/repo.ts";
 
 /**
@@ -88,6 +88,6 @@ describe("rev-type: a Rev is forged nowhere in production code (issue #369)", ()
       }
     };
     walk(root);
-    expect(holders).toEqual(["board/ref-arg.ts"]);
+    expect(holders).toEqual(["kernel/ref-arg.ts"]);
   });
 });
