@@ -5,6 +5,7 @@ import {
   ActivitySlice,
   initialActivityState,
 } from "../../src/features/activity/index.ts";
+import { settlePlain } from "../wait.ts";
 
 const SINCE = "2026-11-09T00:00:00.000Z";
 const RESULT = { sessions: { total: 1, items: [] } } as unknown as ActivitySinceResult;
@@ -37,22 +38,17 @@ function slice() {
   };
 }
 
-const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-
 describe("away slice: what happened on the hosts while the app was away (#1709)", () => {
   test("a host that reconnects while its request is in flight is asked again, and ends answered, not unreached", async () => {
     const s = slice();
     const first = s.activity.loadAway();
-    await settle();
+    await settlePlain(() => s.asked() === 1);
     // The host reconnects: its info arrives again and asks again while the first request is on its way.
-    const second = s.activity.loadAway();
-    await second;
+    await s.activity.loadAway();
     s.answer(0, { ok: false });
-    await settle();
-    expect(s.asked()).toBe(2);
+    await settlePlain(() => s.asked() === 2);
     s.answer(1, { ok: true, data: RESULT });
     await first;
-    await settle();
     expect(s.away().hosts.map((h) => h.hostId)).toEqual(["h1"]);
     expect(s.away().unreached).toEqual([]);
   });
@@ -60,14 +56,13 @@ describe("away slice: what happened on the hosts while the app was away (#1709)"
   test("a host whose request fails with no reconnect in between is named unreached, and asked again on its next connect", async () => {
     const s = slice();
     const first = s.activity.loadAway();
-    await settle();
+    await settlePlain(() => s.asked() === 1);
     s.answer(0, { ok: false });
     await first;
     expect(s.away().unreached).toEqual(["h1"]);
     expect(s.asked()).toBe(1);
     const again = s.activity.loadAway();
-    await settle();
-    expect(s.asked()).toBe(2);
+    await settlePlain(() => s.asked() === 2);
     s.answer(1, { ok: true, data: RESULT });
     await again;
     expect(s.away().hosts.map((h) => h.hostId)).toEqual(["h1"]);
@@ -77,7 +72,7 @@ describe("away slice: what happened on the hosts while the app was away (#1709)"
   test("a host that reconnects while its request is in flight is not asked twice when the first answers", async () => {
     const s = slice();
     const first = s.activity.loadAway();
-    await settle();
+    await settlePlain(() => s.asked() === 1);
     await s.activity.loadAway();
     s.answer(0, { ok: true, data: RESULT });
     await first;
