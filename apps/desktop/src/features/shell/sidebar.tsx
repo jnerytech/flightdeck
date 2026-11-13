@@ -28,16 +28,14 @@ import {
   type GithubHost,
   githubSignedIn,
   type HostNameError,
-  HostVersionTip,
   hostDotView,
   hostInitial,
   hostNeedsAttention,
   hostRailLabel,
-  hostVersionText,
-  RenameHostDialog,
   useSwitcherHostId,
   useSwitcherHosts,
 } from "@/features/hosts/index.ts";
+import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/ui.ts";
 import { pendingCount } from "@/features/needs-you/index.ts";
 import {
   activeWorktreeFilter,

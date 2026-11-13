@@ -48,3 +48,50 @@ describe("mutation testing (#1607)", () => {
     expect(version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
+
+describe("weekly mutation run (#1607)", () => {
+  const domains = () =>
+    JSON.parse(read("mutation-domains.json")) as {
+      name: string;
+      mutate: string[];
+      tests: string[];
+    }[];
+  const workflow = () => read(".github/workflows/mutation.yml");
+
+  test("every domain has a unique name, files to mutate that exist and test files that exist", () => {
+    const list = domains();
+    expect(list.length).toBeGreaterThan(0);
+    expect(new Set(list.map((d) => d.name)).size).toBe(list.length);
+    for (const { name, mutate, tests } of list) {
+      expect(name).toMatch(/^[a-z0-9-]+$/);
+      expect(mutate.length, name).toBeGreaterThan(0);
+      expect(tests.length, name).toBeGreaterThan(0);
+      for (const file of [...mutate, ...tests])
+        expect(existsSync(join(ROOT, file)), file).toBe(true);
+    }
+  });
+
+  test("`bun run mutation:weekly` is the entry the workflow runs", () => {
+    expect(JSON.parse(read("package.json")).scripts["mutation:weekly"]).toBe(
+      "bun run scripts/mutation-weekly.ts",
+    );
+    expect(workflow()).toContain("bun run mutation:weekly");
+  });
+
+  test("the workflow starts on a schedule or by hand, never on a push, a pull request or a release", () => {
+    const on = workflow().match(/^on:\n((?:[ \t].*\n|\n)*)/m)?.[1] ?? "";
+    expect(on).toContain("schedule:");
+    expect(on).toContain("workflow_dispatch:");
+    expect(on).not.toMatch(/pull_request|push:|release:|workflow_run/);
+  });
+
+  test("it only reads the repository, has a timeout, keeps the incremental state and uploads the JSON", () => {
+    const text = workflow();
+    expect(text).toMatch(/permissions:\n\s+contents: read/);
+    expect(text).not.toMatch(/contents: write|pull-requests: write|issues: write/);
+    expect(text).toMatch(/timeout-minutes: \d+/);
+    expect(text).toContain("actions/cache@");
+    expect(text).toContain("reports/mutation");
+    expect(text).toContain("actions/upload-artifact@");
+  });
+});

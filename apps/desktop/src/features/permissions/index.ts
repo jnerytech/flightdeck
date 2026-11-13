@@ -4,14 +4,9 @@
  * project. Another domain imports from here, never a file inside.
  */
 
-export { AlwaysAllow } from "./always-allow.tsx";
 export { fields, shortPath } from "./approval.ts";
-export { ApprovalActions } from "./approval-actions.tsx";
-export { ApprovalCard, type ApprovalRequest, RiskSeal } from "./approval-card.tsx";
-export { GateText } from "./gate-text.tsx";
+export type { ApprovalRequest } from "./approval-card.tsx";
 export { HIGH_RISK_HOLD_MS } from "./hold.ts";
-export { HoldButton } from "./hold-button.tsx";
-export { RulesSection } from "./project-rules.tsx";
 export { parseRequestLink, requestLink } from "./request-link.ts";
 export { PermissionsSlice } from "./store.ts";
 export { wirePermissions } from "./wire.ts";
