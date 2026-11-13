@@ -112,7 +112,7 @@ for (const [lang, t] of [
       await fill(t.hostForm.name, "pc");
       await submit(t.hostForm.submit);
       // A boolean: a failed diff of two DOM nodes can take gigabytes.
-      expect(document.activeElement === field(t.hostForm.address)).toBe(true);
+      expect(document.activeElement === field(t.hostForm.address)).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
 
     test("editing a field clears its own error and leaves the others", async () => {
@@ -120,7 +120,7 @@ for (const [lang, t] of [
       await submit(t.hostForm.submit);
       await fill(t.hostForm.name, "p");
       expect(invalid(t.hostForm.name)).toBe(false);
-      expect(screen.queryByText(says.name) === null).toBe(true);
+      expect(screen.queryByText(says.name) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       expect(invalid(t.hostForm.address)).toBe(true);
       expect(screen.queryByText(says.address)).not.toBeNull();
     });
@@ -185,7 +185,7 @@ for (const [lang, t] of [
       form(lang, t.hostForm.probeRefused);
       await fill(t.hostForm.token, "new");
       expect(invalid(t.hostForm.token)).toBe(false);
-      expect(screen.queryByText(t.hostForm.probeRefused) === null).toBe(true);
+      expect(screen.queryByText(t.hostForm.probeRefused) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
   });
 }
