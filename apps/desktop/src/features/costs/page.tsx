@@ -10,7 +10,6 @@ import { RoiTable } from "@/features/roi/roi-table.tsx";
 import { ScopeMenu } from "@/features/shell/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
-import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
@@ -23,7 +22,7 @@ import {
   Panel,
   Toolbar,
 } from "@/shared/layout/index.ts";
-import { basename } from "@/shared/lib/index.ts";
+import { basename, uniqueKeys } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
