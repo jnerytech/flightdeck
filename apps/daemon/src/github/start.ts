@@ -8,10 +8,9 @@ import { join } from "node:path";
 import type { Issue } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../git/index.ts";
-import type { Issues } from "../issues/issues.ts";
-import { githubCoords } from "../issues/remote.ts";
 import { FlightdeckError, samePath, UNTRUSTED_MARK } from "../kernel/index.ts";
 import { allowedRoot, cloneRepo, type GitRunner } from "../projects/index.ts";
+import { githubCoords } from "./adapters/remote.ts";
 import type { GhRunner } from "./gh-runner.ts";
 import { checkRepo, Github } from "./github.ts";
 
@@ -34,12 +33,17 @@ export interface GithubStartResult {
   reused: boolean;
 }
 
+/** What starting from GitHub asks of the issues domain: a card for an issue (it names no `Issues` type, so github does not depend on issues). */
+export interface IssueCards {
+  createCard(projectId: string, issueRef: string): Promise<{ id: string }>;
+}
+
 export interface GithubStartDeps {
   gh: GhRunner;
   git: GitRunner;
   roots: readonly string[];
   board: Board;
-  issues: Issues;
+  issues: IssueCards;
   startSession(opts: { cwd: string; prompt: string; name: string }): Promise<{ sessionId: string }>;
 }
 

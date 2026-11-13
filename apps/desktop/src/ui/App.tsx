@@ -43,11 +43,12 @@ import {
   chordStep,
   isMac,
   NO_CHORD,
-  ShortcutsSheet,
   typing,
 } from "../features/shortcuts/index.ts";
+import { ShortcutsSheet } from "../features/shortcuts/ui.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
-import { TabSwitcherHost, tabIntent } from "../features/tabs/index.ts";
+import { tabIntent } from "../features/tabs/index.ts";
+import { TabSwitcherHost } from "../features/tabs/ui.ts";
 import { TerminalCloseDialog } from "../features/terminal/ui.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";

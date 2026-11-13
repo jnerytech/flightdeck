@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { hostDotView } from "@/features/hosts/index.ts";
 import { HostDot } from "@/features/hosts/ui.ts";
-import { ShortcutKeys } from "@/features/shortcuts/index.ts";
+import { ShortcutKeys } from "@/features/shortcuts/ui.ts";
 import type { Key, T } from "@/i18n/index";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";

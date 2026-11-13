@@ -8,3 +8,4 @@
 export { GithubIssues, TRUSTED_ASSOCIATIONS } from "./adapters/gh-issues.ts";
 export { GithubCli } from "./adapters/gh-pr.ts";
 export { type ClosedIssues, closedIssues } from "./adapters/issues-closed.ts";
+export { githubCoords } from "./adapters/remote.ts";

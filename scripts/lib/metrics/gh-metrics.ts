@@ -23,6 +23,10 @@ export interface MergedPr {
   additions: number;
   deletions: number;
   mergedAt: string;
+  /** The pull request's title; a row without it or without `files` falls back to the commits (#2027). */
+  title?: string;
+  /** The files it changed, as `gh pr list --json files` prints them. */
+  files?: { path: string }[];
 }
 
 interface Spread {
@@ -46,13 +50,13 @@ export interface MainRed {
 export interface PrSize {
   merged: number;
   changedLines: Spread;
-  /** The share of `fix` commits made within 48 hours of a `feat` commit that touched one of the same files. */
+  /** The share of `fix` pull requests merged 1 to 48 hours after a `feat` pull request that changed most of the same source files. */
   reworkShare: number | null;
 }
 
 const HOUR_MS = 3_600_000;
 /** A `fix` this soon after a `feat` that touched one of its files counts as rework. */
-const REWORK_MS = 48 * HOUR_MS;
+export const REWORK_MS = 48 * HOUR_MS;
 /**
  * Closer than this, a fix is the review of its own pull request (its commits come a few minutes
  * apart), not a rework of what was shipped: with every commit counted the share read 83% (#2019).
@@ -123,32 +127,79 @@ export function mainRed(runs: CiRun[], window: TimeWindow): MainRed {
   return { periods, totalSeconds };
 }
 
-/** The share of `fix` commits with a `feat` commit one to 48 hours before it that touched half or more of its source files. */
-function reworkShare(commits: LogCommit[]): number | null {
-  const fixes = commits.filter((c) => /^fix(\(|:|!)/.test(c.subject));
-  if (fixes.length === 0) return null;
-  const feats = commits.filter((c) => /^feat(\(|:|!)/.test(c.subject));
-  const reworked = fixes.filter((fix) => {
-    const t = Date.parse(fix.date);
-    const mine = fix.files.filter(isSource);
-    if (mine.length === 0) return false;
-    return feats.some((feat) => {
-      const gap = t - Date.parse(feat.date);
-      if (gap < SAME_PR_MS || gap > REWORK_MS) return false;
-      // Half of the fix's source files in the one feat: sharing a file everyone touches is not rework.
-      const shared = mine.filter((file) => feat.files.includes(file)).length;
-      return shared * 2 >= mine.length;
-    });
+type TitledPr = MergedPr & { title: string; files: { path: string }[] };
+const isTitled = (pr: MergedPr): pr is TitledPr =>
+  typeof pr.title === "string" &&
+  Array.isArray(pr.files) &&
+  pr.files.every(
+    (file) =>
+      typeof file === "object" &&
+      file !== null &&
+      typeof (file as { path?: unknown }).path === "string",
+  );
+
+const isFix = (title: string) => /^fix(\(|:|!)/.test(title);
+const isFeat = (title: string) => /^feat(\(|:|!)/.test(title);
+
+/**
+ * Whether the fix touched half or more of its source files in one of the feats that came 1 to 48
+ * hours before it: sharing a file everyone touches is not rework.
+ */
+function reworks(
+  fix: { time: number; files: string[] },
+  feats: Array<{ time: number; files: string[] }>,
+  minGap: number,
+): boolean {
+  const mine = fix.files.filter(isSource);
+  if (mine.length === 0) return false;
+  return feats.some((feat) => {
+    const gap = fix.time - feat.time;
+    if (gap < minGap || gap > REWORK_MS) return false;
+    const shared = mine.filter((file) => feat.files.includes(file)).length;
+    return shared * 2 >= mine.length;
   });
-  return reworked.length / fixes.length;
 }
 
-/** Changed lines per merged PR, and the rework share of the commits, in the window. */
+/**
+ * The share of `fix` pull requests merged in the window with a `feat` pull request merged 1 to 48
+ * hours before it that touched half or more of its source files (#2027); null with no fix pull
+ * request. The feat may be older than the window's start.
+ */
+function reworkShareOfPrs(prs: TitledPr[], window: TimeWindow): number | null {
+  const ofPr = (pr: TitledPr) => ({
+    time: Date.parse(pr.mergedAt),
+    files: pr.files.map((file) => file.path),
+  });
+  const fixes = prs.filter((pr) => isFix(pr.title) && within(pr.mergedAt, window));
+  if (fixes.length === 0) return null;
+  const feats = prs.filter((pr) => isFeat(pr.title)).map(ofPr);
+  return fixes.filter((fix) => reworks(ofPr(fix), feats, HOUR_MS)).length / fixes.length;
+}
+
+/**
+ * The same share over commits, for pull requests whose title or files could not be read: a `fix`
+ * commit and the `feat` commits an hour or more before it, since closer is the review of its own
+ * pull request (#2019).
+ */
+function reworkShareOfCommits(commits: LogCommit[]): number | null {
+  const fixes = commits.filter((c) => isFix(c.subject));
+  if (fixes.length === 0) return null;
+  const ofCommit = (c: LogCommit) => ({ time: Date.parse(c.date), files: c.files });
+  const feats = commits.filter((c) => isFeat(c.subject)).map(ofCommit);
+  return fixes.filter((fix) => reworks(ofCommit(fix), feats, SAME_PR_MS)).length / fixes.length;
+}
+
+/**
+ * Changed lines per merged PR, and the rework share in the window: of the pull requests, or of the
+ * commits when a pull request of the window has no title or files.
+ */
 export function prSize(prs: MergedPr[], commits: LogCommit[], window: TimeWindow): PrSize {
   const merged = prs.filter((pr) => within(pr.mergedAt, window));
   return {
     merged: merged.length,
     changedLines: spread(merged.map((pr) => pr.additions + pr.deletions)),
-    reworkShare: reworkShare(commits.filter((c) => within(c.date, window))),
+    reworkShare: merged.every(isTitled)
+      ? reworkShareOfPrs(prs.filter(isTitled), window)
+      : reworkShareOfCommits(commits.filter((c) => within(c.date, window))),
   };
 }
