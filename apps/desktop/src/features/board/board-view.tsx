@@ -60,7 +60,7 @@ import { QuietBadge } from "@/features/board/quiet-badge";
 import { quietBadge } from "@/features/board/quiet-badge-view";
 import { RadarBadge } from "@/features/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
-import { BoardFilesPanel } from "@/features/files/index.ts";
+import { BoardFilesPanel } from "@/features/files/ui.ts";
 import { useSuggestedPersona } from "@/features/personas/ui.ts";
 import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
