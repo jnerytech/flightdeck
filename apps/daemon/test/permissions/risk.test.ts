@@ -161,6 +161,25 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "curl https://api.example/status"],
   ["medium", "Get-ChildItem -Recurse src", "PowerShell"],
   ["medium", "Write-Output x > $null", "PowerShell"],
+  // Near misses of the dangerous rules (#2519): each looks like one and is not.
+  ["medium", "rm -f build.log"],
+  ["medium", "r.exem -rf x"],
+  ["medium", "del build/s"],
+  ["medium", "format /fs:ntfs"],
+  ["medium", "ri -rx a", "PowerShell"],
+  ["medium", "ri a-r", "PowerShell"],
+  ["medium", "pwsh -ExecutionPolicy Bypass -File a.ps1", "PowerShell"],
+  ["medium", "pwsh a-e", "PowerShell"],
+  ["medium", "echo reset --hard"],
+  ["medium", "echo push --force"],
+  ["medium", "echo x > /dev/stdout"],
+  ["medium", "echo x > /dev/stderr"],
+  // The same rules, at their edges: a long form of the encoded-command flag, the flag with no
+  // program in front of it or no word after it, a base64 decode with options before `-d`.
+  ["high", "pwsh -encodedcomma x", "PowerShell"],
+  ["high", "-EncodedCommand abc"],
+  ["high", "echo -EncodedCommand"],
+  ["high", "base64 -w0 -d x | cat"],
 ];
 
 describe("risco", () => {
@@ -237,6 +256,40 @@ describe("risco", () => {
     expect(level("NotebookEdit", { notebook_path: "a.ipynb" })).toBe("medium");
     expect(risk.classify("Read", { file_path: "a.ts" }, CWD).network).toBe(false);
     expect(risk.classify("Bash", { command: "ls" }, CWD).reason).not.toBe("");
+  });
+
+  test("the network mark follows the program, not the words around it, and only for a shell tool (#2519)", () => {
+    const net = (tool: string, input: Record<string, unknown>) =>
+      risk.classify(tool, input, CWD).network;
+    expect({
+      pushWord: net("Bash", { command: "echo push origin" }),
+      gitPush: net("Bash", { command: "git push origin main" }),
+      gitFetch: net("Bash", { command: "git -C sub fetch" }),
+      readWithCommand: net("Read", { file_path: "a.ts", command: "curl https://x.example" }),
+      readWithOddCommand: net("Read", { file_path: "a.ts", command: 5 }),
+      shellWithOddCommand: net("Bash", { command: 5 }),
+    }).toEqual({
+      pushWord: false,
+      gitPush: true,
+      gitFetch: true,
+      readWithCommand: false,
+      readWithOddCommand: false,
+      shellWithOddCommand: true,
+    });
+  });
+
+  test("finish_card is high only when it discards the card (#2519)", () => {
+    const finish = (input: Record<string, unknown>) => level("mcp__flightdeck__finish_card", input);
+    expect({
+      discard: finish({ outcome: "discard" }),
+      done: finish({ outcome: "done" }),
+      empty: finish({ outcome: "" }),
+      none: finish({}),
+    }).toEqual({ discard: "high", done: "medium", empty: "medium", none: "medium" });
+  });
+
+  test("a read path that only ends in ~ is a relative path, not the home (#2519)", () => {
+    expect(level("Read", { file_path: "src/~" })).toBe("low");
   });
 
   test("a write call with both file_path and notebook_path takes the stricter of the two (#2479)", () => {
