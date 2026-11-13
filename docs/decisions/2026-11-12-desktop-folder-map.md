@@ -118,7 +118,7 @@ prefix. Tests move with their file in the same PR.
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
 | `notify.ts` | `features/inbox/` (**moved**): it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | `platform/tauri/` (**moved**: a pure pixel helper with no imports, read only by `platform/tauri/index.ts`, so the platform adapter no longer reaches into `lib/`) |
-| `notice-*.ts` | `notice-lifetime.ts` goes to `app/` (it reads the `Notice` type and the store; **moved**: it is the first file in `app/`, read by `features/shell/notices.tsx` and `lib/app-store.ts`); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) stays until `i18n` has a home |
+| `notice-*.ts` | `notice-lifetime.ts` goes to `app/` (it reads the `Notice` type and the store; **moved**: it is the first file in `app/`, read by `features/shell/notices.tsx` and `lib/app-store.ts`); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) **moved** to `i18n/errors.ts` next to `translateError` (#1597, 2026-11-13): `shared/` may not import it (`shared-depends-on-no-domain`), and it only wraps `translateError` |
 | `incident-text.ts` | **theirs** (`features/board/`, only `post-mortem.tsx` reads it) |
 | `review.ts`, `word-diff.ts` | **moved**: `review.ts` to `features/review/`; `word-diff.ts` to `features/assistant/`, not `features/review/` as the row above says: its only reader is `wand-controls.tsx`, so it needs no review entry and no assistant to review cycle |
 | `quiet*.ts` | `features/needs-you/` (**moved**; the quiet badge of the board and the needs-you rows) |

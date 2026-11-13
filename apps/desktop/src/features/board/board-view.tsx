@@ -68,7 +68,7 @@ import { RoiCard } from "@/features/roi/ui.ts";
 import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
 import { useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
-import { reasonText } from "@/lib/notice-text";
+import { reasonText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
