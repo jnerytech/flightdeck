@@ -85,7 +85,7 @@ async function open(features = ["telemetry"], prompts: unknown[] = PROMPTS) {
   daemon.features.push(...features);
   daemon.telemetry.session = { prompts };
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     store.router.push({ name: "external", host: hostId, claudeSessionId: "c1" });
@@ -224,7 +224,7 @@ describe("tempo-ui: Custos", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.hostInfo !== null);
     await click("Custos");

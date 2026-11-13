@@ -32,7 +32,7 @@ async function setup() {
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   const hostId = await act(() =>
-    store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN }),
+    store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN }),
   );
   await waitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"));
   return { ...d, store, hostId };

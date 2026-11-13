@@ -76,7 +76,7 @@ async function openReader(external: boolean, tail: "plan" | "answered" | null = 
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   const hostId = await act(async () =>
-    store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN }),
+    store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN }),
   );
   await settle(() => store.getState().hosts[0]?.status === "online");
   if (external) {

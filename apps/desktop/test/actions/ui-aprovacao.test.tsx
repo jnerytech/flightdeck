@@ -33,7 +33,7 @@ async function queued(over: Record<string, unknown>) {
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => daemon.asked.includes("vault.watch"));
   const meta = await act(() =>
     store.secrets.add({

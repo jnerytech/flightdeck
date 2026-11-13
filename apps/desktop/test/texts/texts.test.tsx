@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { visibleLiterals } from "../../../../scripts/lib/i18n-sweep.ts";
+import { visibleLiterals } from "../../../../scripts/lib/guards/i18n-sweep.ts";
 import { poll } from "../../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
@@ -60,7 +60,7 @@ async function online(language: string) {
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await uiIdle(300);
   return { d, store, sessionId, hostId: store.getState().hosts[0]?.id ?? "" };

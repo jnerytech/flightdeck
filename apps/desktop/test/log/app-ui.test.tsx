@@ -232,7 +232,7 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
 
   test("a host's token and a vault value never reach the memory or the file, even typed into a message", async () => {
     const { store, written } = setup();
-    await store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
+    await store.roster.add({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
     await store.secrets.add({ name: "deploy", type: "token", value: VAULT_VALUE });
     // The scanner learns the vault's values after the list is read again.
     await settle(() => store.scan.values().includes(VAULT_VALUE));
@@ -249,7 +249,7 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
       lines: [`2026 INFO leaked ${HOST_TOKEN} and {"password":"hunter2hunter2"} in /home/ana/x`],
       path: "/x",
     })) as never;
-    await w.store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
+    await w.store.roster.add({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
     render(view(w.store, <HostLogs store={w.store} host={host(["logs"])} />));
     await click(screen.getByRole("button", { name: "Copy the host's last log lines" }));
     await settle(() => w.copied.length === 1);
@@ -260,7 +260,7 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
 
   test("Copy diagnostics redacts the whole text: a host named like a secret is not copied", async () => {
     const w = setup();
-    await w.store.addHost({
+    await w.store.roster.add({
       name: `box token=${HOST_TOKEN}`,
       url: "ws://127.0.0.1:1",
       token: HOST_TOKEN,

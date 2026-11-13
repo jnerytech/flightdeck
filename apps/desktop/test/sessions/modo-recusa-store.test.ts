@@ -13,7 +13,7 @@ describe("modo-recusa: the store tells the picker whether the host took the mode
     const d = makeDaemon(cleanups);
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10, maxDelayMs: 20 });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
     const none = await store.setMode("plan");
     const id = (await store.createSession(hostId, { cwd: d.project, prompt: "a" })) as string;

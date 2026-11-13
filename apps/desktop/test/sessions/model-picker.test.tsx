@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ModelOption } from "@flightdeck/protocol";
-import { AXE_RUN_OPTIONS, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import {
+  AXE_RUN_OPTIONS,
+  blocking,
+  describeViolation,
+} from "../../../../scripts/lib/browser/axe.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 

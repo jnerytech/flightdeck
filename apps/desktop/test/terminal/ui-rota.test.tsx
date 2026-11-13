@@ -37,7 +37,7 @@ describe("terminal-ui: the route and the settings", () => {
       maxDelayMs: 20,
     });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
     await waitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"));
     const { terminalId } = await store.terminals.host(hostId).open(d.project, 80, 24);
     render(<App store={store} />);

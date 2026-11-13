@@ -82,14 +82,14 @@ describe("app-store-lacunas: following sessions without opening them", () => {
 describe("app-store-lacunas: a host that does not answer", () => {
   test("sending to it raises an error notice instead of throwing", async () => {
     const { store } = make();
-    const hostId = await store.addHost({ name: "alfa", url: DEAD, token: TOKEN });
+    const hostId = await store.roster.add({ name: "alfa", url: DEAD, token: TOKEN });
     await store.sendTo(hostId, "s1", "hello");
     expect(store.getState().notices.map((n) => n.kind)).toEqual(["error"]);
   });
 
   test("following its account does not throw and leaves the account unknown", async () => {
     const { store } = make();
-    const hostId = await store.addHost({ name: "alfa", url: DEAD, token: TOKEN });
+    const hostId = await store.roster.add({ name: "alfa", url: DEAD, token: TOKEN });
     const stop = store.account.watch(hostId);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(store.getState().account[hostId]).toBeUndefined();
@@ -149,7 +149,7 @@ describe("app-store-lacunas: a card that needs you but is unknown here", () => {
     const daemon = legacyDaemon(cleanups);
     daemon.features.push("watch");
     const { store, notifications } = make();
-    await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
     await waitFor(() => store.getState().hosts[0]?.hostInfo != null, "host info");
     daemon.push({
       type: "watch.updated",

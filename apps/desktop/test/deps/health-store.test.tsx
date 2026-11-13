@@ -40,7 +40,7 @@ async function connected(
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   await act(async () => {
-    await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
   });
   const hostId = await pollFor(() => store.getState().hosts[0]?.id, "the host");
   await pollFor(() => store.getState().healthAt[hostId] || undefined, "the first read");

@@ -38,7 +38,7 @@ async function open(options: Parameters<typeof sshDaemon>[1] = { targets: TARGET
   const d = sshDaemon(cleanups, options);
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: d.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   render(<App store={store} />);
@@ -69,7 +69,7 @@ describe("conexoes-ui: the screen", () => {
     const d = sshDaemon(cleanups, { feature: false });
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
-    await store.addHost({ name: "pc", url: d.url, token: TOKEN });
+    await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     await settle(() => d.commands.some((c) => c.type === "host.info"));
     render(<App store={store} />);

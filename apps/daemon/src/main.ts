@@ -11,8 +11,9 @@ import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
 import { createBg } from "./bg/wiring.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
-import { Central, messageExternal } from "./central/central.ts";
+import { messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
+import { createCentral } from "./central/wiring.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
@@ -46,7 +47,7 @@ import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { createNames } from "./names/wiring.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
-import { createPermissions } from "./permissions/wiring.ts";
+import { createPermissions, type PermissionsDeps } from "./permissions/wiring.ts";
 import { createPersonas } from "./personas/wiring.ts";
 import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
@@ -173,7 +174,7 @@ export async function startDaemon(
   // holds. The vault is made further down; until then there is nothing held.
   let currentToken = config.token;
   let heldValues: () => string[] = () => [];
-  const { logger, fileLog } = createHostLog({
+  const hostLog = createHostLog({
     console: console_,
     dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
     home: userHome(env),
@@ -181,6 +182,7 @@ export async function startDaemon(
     currentToken: () => currentToken,
     heldValues: () => heldValues(),
   });
+  const { logger, fileLog } = hostLog;
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = await acquireLock(config.dataDir);
@@ -205,6 +207,7 @@ export async function startDaemon(
   );
   // #2094: the domains that give main.ts one module each; the rest still wire by hand below.
   const domains = createModuleRunner();
+  await domains.add(hostLog);
   const { quota, onQuota } = await domains.add(createQuota({ db: store.db, config, configFile }));
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
@@ -238,14 +241,18 @@ export async function startDaemon(
   const snapshots = new Snapshots({ db: store.db });
   // Phase 13: the risk classifier and the projects' automatic approval, through the board (defined
   // below) and the costs.
-  const { risk, autoApprove } = createPermissions({
-    db: store.db,
-    runtime,
-    config,
-    home: userHome(env),
-    projectForCwd: (cwd) => board.projectForCwd(cwd),
-    usage: { record: (entry) => usageIndex.record(entry) },
-  });
+  const { risk, autoApprove } = await domains.add(
+    createPermissions({
+      db: store.db,
+      runtime,
+      config,
+      home: userHome(env),
+      // The return type is named: `board` is made below from `autoApprove`, and `domains.add` would loop.
+      projectForCwd: (cwd): ReturnType<PermissionsDeps["projectForCwd"]> =>
+        board.projectForCwd(cwd),
+      usage: { record: (entry) => usageIndex.record(entry) },
+    }),
+  );
   // The vault joins this scanner when it exists (phase 16).
   const snippetScanner = new SecretScanner();
   // What a session starts with: agents, MCP, plugins, auto memory, templates and their tasks.
@@ -430,20 +437,22 @@ export async function startDaemon(
   await domains.add(createGithub({ config, board, issues, manager }));
   await domains.add(createActivity({ db: store.db, quota: () => quota.windows() }));
   await domains.add(createReleases());
-  const central = new Central({
-    risk,
-    autoApprove,
-    snapshots,
-    db: store.db,
-    keys,
-    manager,
-    hooks: config.hooks,
-    dataDir: config.dataDir,
-    hostName: config.hostName,
-    configFile,
-    selfCommand,
-    settingsPath: claudeSettingsPath,
-  });
+  const { central } = await domains.add(
+    createCentral({
+      risk,
+      autoApprove,
+      snapshots,
+      db: store.db,
+      keys,
+      manager,
+      hooks: config.hooks,
+      dataDir: config.dataDir,
+      hostName: config.hostName,
+      configFile,
+      selfCommand,
+      settingsPath: claudeSettingsPath,
+    }),
+  );
   // Phase 15: the SSH destinations, their server keys, the connector and askpass.
   const ssh = await createSsh({
     db: store.db,
@@ -471,21 +480,23 @@ export async function startDaemon(
     history: { home: userHome(env), appData: process.env.APPDATA, platform: process.platform },
   });
 
-  const { vault, actions } = createVault({
-    db: store.db,
-    log: logger.log.bind(logger),
-    runtimeKind,
-    actions: {
-      projects: (id) => board.getProject(id),
-      // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
-      ssh: ssh.exec,
-      sshTags: ssh.tagsOf,
-      sshKey: ssh.vaultKeyOf,
-      hostName: config.hostName,
-      risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
-      projectKey: (id) => keys.known(board.getProject(id).path),
-    },
-  });
+  const { vault, actions } = await domains.add(
+    createVault({
+      db: store.db,
+      log: logger.log.bind(logger),
+      runtimeKind,
+      actions: {
+        projects: (id) => board.getProject(id),
+        // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
+        ssh: ssh.exec,
+        sshTags: ssh.tagsOf,
+        sshKey: ssh.vaultKeyOf,
+        hostName: config.hostName,
+        risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
+        projectKey: (id) => keys.known(board.getProject(id).path),
+      },
+    }),
+  );
   heldValues = () => vault.heldValues();
   await domains.add(
     await createTeams({
@@ -629,15 +640,10 @@ export async function startDaemon(
       picker: true,
     }),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    vault,
     log: logger.log.bind(logger),
-    actions,
-    autoApprove,
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
-    central,
-    fileLog,
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,

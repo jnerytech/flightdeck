@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { removed, walkSchema } from "../../lib/protocol-surface.ts";
+import { removed, walkSchema } from "../../lib/release/protocol-surface.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const BASELINE = join(ROOT, "packages/protocol/surface-baseline.txt");

@@ -98,7 +98,7 @@ async function online(language: keyof typeof WORDS, features?: string[]) {
   });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   const read = async (utilization: number) => {

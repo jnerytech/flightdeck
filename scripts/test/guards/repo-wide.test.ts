@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isRepoWide, scansRealRepo, unmarkedRepoScans } from "../../lib/repo-wide.ts";
+import { isRepoWide, scansRealRepo, unmarkedRepoScans } from "../../lib/ci/repo-wide.ts";
 
 // repo-wide (#1108): reads every tracked test file, so CI's quick job runs it on every PR.
 const ROOT = resolve(import.meta.dir, "../../..");

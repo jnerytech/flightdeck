@@ -91,7 +91,7 @@ function ErrorToast(
             setAsking(false);
             props.onClose();
             if (props.action)
-              void store.allowRoot(props.action.hostId, props.action.folder, props.retry);
+              void store.roster.allowRoot(props.action.hostId, props.action.folder, props.retry);
           }}
         />
       )}

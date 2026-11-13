@@ -7,7 +7,7 @@ import {
   type VisualCheck,
   type VisualIO,
   visualMode,
-} from "../../lib/visual.ts";
+} from "../../lib/browser/visual.ts";
 
 /** A solid-color PNG; `paint` turns some pixels another color. */
 function image(
