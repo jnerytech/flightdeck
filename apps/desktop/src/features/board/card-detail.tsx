@@ -134,11 +134,15 @@ export const CardDetail = memo(function CardDetail(props: {
 
   // A route straight to a card (a link, a notification) has not loaded its board: ask the host.
   const missing = card === undefined;
-  /** The host answered the lookup (#2599): until then the page loads, after it a missing card is gone. */
-  const [asked, setAsked] = useState(false);
+  /** The card the host answered the lookup for (#2599): until then the page loads, after it a missing card is gone. */
+  const [askedFor, setAskedFor] = useState<string | null>(null);
+  const asked = askedFor === sessionKey(hostId, cardId);
   useEffect(() => {
-    setAsked(false);
-    if (missing) void store.hostCommand(hostId, "card.get", { cardId }).then(() => setAsked(true));
+    if (missing) {
+      void store
+        .hostCommand(hostId, "card.get", { cardId })
+        .then(() => setAskedFor(sessionKey(hostId, cardId)));
+    }
   }, [store, hostId, cardId, missing]);
 
   if (!card) {
