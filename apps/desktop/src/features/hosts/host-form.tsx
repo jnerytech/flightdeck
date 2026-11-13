@@ -94,16 +94,16 @@ export function HostForm(
           setFocusOn("link");
           return;
         }
-        const refusal: Partial<Record<FieldName, string>> = {};
-        if (!draft.name.trim()) refusal.name = t("hostForm.missingName");
-        if (!draft.address.trim()) refusal.address = t("hostForm.missingAddress");
+        const problems: Partial<Record<FieldName, string>> = {};
+        if (!draft.name.trim()) problems.name = t("hostForm.missingName");
+        if (!draft.address.trim()) problems.address = t("hostForm.missingAddress");
         const port = Number(draft.port);
         if (!/^\d+$/.test(draft.port) || port < 1 || port > 65535) {
-          refusal.port = t("hostForm.badPort");
+          problems.port = t("hostForm.badPort");
         }
-        if (!draft.token.trim()) refusal.token = t("hostForm.missingToken");
-        setFieldErrors(refusal);
-        const first = FIELDS.find((key) => refusal[key]);
+        if (!draft.token.trim()) problems.token = t("hostForm.missingToken");
+        setFieldErrors(problems);
+        const first = FIELDS.find((key) => problems[key]);
         if (first) {
           setByHand(true);
           setFocusOn(first);
