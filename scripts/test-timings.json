@@ -136,7 +136,7 @@
   "apps/daemon/test/git/helper.test.ts": 2.859,
   "apps/daemon/test/git/sync.test.ts": 3.675,
   "apps/daemon/test/github/issues.test.ts": 0.833,
-  "apps/daemon/test/github/login.test.ts": 2.53,
+  "apps/daemon/test/github/adapters/login.test.ts": 2.53,
   "apps/daemon/test/github/logout.test.ts": 0.195,
   "apps/daemon/test/github/protocol.test.ts": 0.637,
   "apps/daemon/test/github/repos.test.ts": 0.273,
