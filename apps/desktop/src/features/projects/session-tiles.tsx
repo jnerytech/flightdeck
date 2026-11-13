@@ -2,7 +2,8 @@ import { CornerDownLeft } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useWand, WandButton, WandPanel } from "@/features/assistant/index.ts";
+import { useWand } from "@/features/assistant/index.ts";
+import { WandButton, WandPanel } from "@/features/assistant/ui.ts";
 import { ApprovalActions } from "@/features/permissions/ui.ts";
 import {
   type HubRow,

@@ -11,7 +11,8 @@ import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lu
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useWand, type WandBinding, WandButton, WandPanel } from "@/features/assistant/index.ts";
+import { useWand, type WandBinding } from "@/features/assistant/index.ts";
+import { WandButton, WandPanel } from "@/features/assistant/ui.ts";
 import { ApprovalCard } from "@/features/permissions/ui.ts";
 import type { MenuItem, PromptSnippets } from "@/features/snippets/index.ts";
 import { PromptMenu } from "@/features/snippets/ui.ts";

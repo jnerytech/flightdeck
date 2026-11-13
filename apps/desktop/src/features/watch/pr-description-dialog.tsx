@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { AssistField, type WandBinding } from "@/features/assistant/index.ts";
+import type { WandBinding } from "@/features/assistant/index.ts";
+import { AssistField } from "@/features/assistant/ui.ts";
 import { useT } from "@/i18n/context";
 import { ActionButton, AppDialogContent } from "@/shared/feedback/index.ts";
 
