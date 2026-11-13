@@ -3,7 +3,7 @@ import { slashFill } from "../../src/features/sessions/command-menu.ts";
 import {
   composerModeMenu,
   offersModelPicker,
-} from "../../src/features/sessions/composer-pickers.ts";
+} from "../../src/features/sessions/domain/composer-pickers.ts";
 
 /** #1605 (Humble Object): what SessionView decides about the composer's pickers and the `/` menu. */
 describe("the model picker", () => {

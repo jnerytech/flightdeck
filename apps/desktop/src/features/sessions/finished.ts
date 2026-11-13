@@ -1,7 +1,7 @@
 import type { CommandResults, SessionStatus, SessionSummary } from "@flightdeck/protocol";
 import { z } from "zod";
 import { basename, readStored } from "@/shared/lib/index.ts";
-import { sessionKey } from "./session-key.ts";
+import { sessionKey } from "./domain/session-key.ts";
 
 /** How a session finished: its turn ended well, ended in an error, or the session itself ended. */
 export type FinishOutcome = "done" | "failed" | "ended";

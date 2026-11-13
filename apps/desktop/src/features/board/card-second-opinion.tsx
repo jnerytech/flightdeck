@@ -8,7 +8,7 @@ import type { AppStore } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { FindingSeverity } from "../review/ui.ts";
-import { cardStartBlock } from "./card-start-block.ts";
+import { cardStartBlock } from "./domain/card-start-block.ts";
 
 type Outcome = { kind: "result"; result: CardReviewResult } | { kind: "refused"; text: string };
 

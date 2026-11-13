@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../../daemon/test/support/helpers.ts";
-import { parseRequestLink, requestLink } from "../../src/features/permissions/request-link.ts";
+import {
+  parseRequestLink,
+  requestLink,
+} from "../../src/features/permissions/domain/request-link.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu } from "../../src/features/tray/tray.ts";
 import { needsYou, type PendingItem } from "../../src/lib/app-store.ts";
 import type { TrayAction, TrayActionKind, TrayMenu } from "../../src/platform/types.ts";
