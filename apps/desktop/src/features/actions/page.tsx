@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { SecretMeta } from "@/features/vault/index.ts";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { actionIssueText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -91,10 +91,14 @@ export function ActionsPage(
   /** `"new"` for the creation, an action made in the app for its editing. */
   const [editing, setEditing] = useState<ActionInfo | "new" | null>(props.draft ? "new" : null);
   const [removing, setRemoving] = useState<ActionInfo | null>(null);
-  const loading = useMinLoading(actions === null);
+  /** `actions.list` failed (#2609): the page says so and offers a retry, not a loading shape for good. */
+  const [loadFailed, setLoadFailed] = useState(false);
+  const loading = useMinLoading(actions === null && !loadFailed);
 
   const load = useCallback(async () => {
     const list = await store.hostCommand(hostId, "actions.list", { projectId });
+    // `hostCommand` raises the toast with the reason and answers null for a refused request.
+    setLoadFailed(!list);
     if (!list) return;
     setActions(list.actions);
     setErrors(problemsOf(list, t));
@@ -158,6 +162,13 @@ export function ActionsPage(
           {t("actionsUi.sameUser")}
         </p>
         {loading && <LoadingState label={t("actionsUi.loading")} />}
+        {!loading && actions === null && loadFailed && (
+          <ErrorState
+            message={t("actionsUi.loadFailed")}
+            retryLabel={t("actionsUi.retry")}
+            onRetry={() => void load()}
+          />
+        )}
         {actions?.length === 0 && (
           <EmptyState
             icon={Terminal}

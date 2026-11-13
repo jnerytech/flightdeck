@@ -138,6 +138,8 @@ export const automations = {
     empty: "No actions in this project",
     emptyAction: "Create the first action",
     loading: "Loading actions",
+    loadFailed: "The actions did not load.",
+    retry: "Try again",
     problems: "Problems in the actions file",
     here: "On this host",
     onHost: "Host {host}",
