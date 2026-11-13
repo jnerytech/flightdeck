@@ -10,8 +10,9 @@ import { isScanned, spawnCounts } from "../../lib/ratchets/spawn-count.ts";
 const ROOT = resolve(import.meta.dir, "../../..");
 
 describe("spawn-count (#1612)", () => {
-  test("source under a package's src is scanned; tests, declarations, adapters and the kernel exec helper are not", () => {
-    expect(isScanned("apps/daemon/src/kernel/command.ts")).toBe(true);
+  test("source under a package's src is scanned; tests, declarations, adapters and the kernel's two launchers are not", () => {
+    expect(isScanned("apps/daemon/src/kernel/command.ts")).toBe(false);
+    expect(isScanned("apps/daemon/src/kernel/other.ts")).toBe(true);
     expect(isScanned("packages/protocol/src/index.ts")).toBe(true);
     expect(isScanned("apps/daemon/test/board/command.test.ts")).toBe(false);
     expect(isScanned("apps/daemon/src/text-modules.d.ts")).toBe(false);
@@ -43,6 +44,17 @@ describe("spawn-count (#1612)", () => {
     ).toEqual({ "apps/daemon/src/a.ts": 3 });
   });
 
+  test("a launch counts wherever the name appears, not only as a direct call: a default, an alias, a type", () => {
+    expect(
+      spawnCounts([
+        {
+          path: "apps/daemon/src/a.ts",
+          text: "const run = spawn ?? Bun.spawn;\nconst deps = { spawn: Bun.spawn, x };\ntype S = typeof Bun.spawn;\n// Bun.spawn in a comment\n",
+        },
+      ]),
+    ).toEqual({ "apps/daemon/src/a.ts": 3 });
+  });
+
   test("a new file with a launch, or a baseline file with more, fails the ratchet", () => {
     const counts = spawnCounts([
       { path: "apps/daemon/src/a.ts", text: "Bun.spawn(a);\nBun.spawn(b);\n" },
@@ -67,7 +79,7 @@ describe("spawn-count (#1612)", () => {
     );
     const baseline = JSON.parse(readFileSync(join(ROOT, "spawn-count-baseline.json"), "utf8"));
     expect(overBaseline(counts, baseline)).toEqual([]);
-    // weaker: the baseline shrinks toward {} as the adapter slices land (#1612); the closing slice drops this line
-    expect(Object.keys(baseline).length).toBeGreaterThan(0);
+    // The adapters are done (#1612): the baseline stays empty, so a launch outside one fails at once.
+    expect(baseline).toEqual({});
   });
 });
