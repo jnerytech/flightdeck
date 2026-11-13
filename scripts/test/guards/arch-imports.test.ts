@@ -119,6 +119,8 @@ describe("arch-imports: the domain borders (#1591)", () => {
       "domain-is-pure apps/daemon/src/board/domain/rules.ts -> perf_hooks",
       "domain-is-pure apps/daemon/src/board/domain/rules.ts -> timers/promises",
       "domain-is-pure apps/daemon/src/board/domain/rules.ts -> worker_threads",
+      // A domain file that spawns is also a spawn outside an adapter (#1612).
+      "spawn-only-from-adapters apps/daemon/src/board/domain/rules.ts -> child_process",
     ]);
   });
 
