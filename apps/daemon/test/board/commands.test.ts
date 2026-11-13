@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { runCommand } from "../../src/board/command.ts";
+import { runCommand } from "../../src/kernel/command.ts";
 import { tempDir } from "../support/helpers.ts";
 
 afterEach(() => {

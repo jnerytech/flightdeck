@@ -65,6 +65,33 @@ describe("health slice: a host's dependencies and doctor", () => {
     expect(s.state().healthError).toEqual({});
   });
 
+  test("a half that fails keeps its older data beside the new error", async () => {
+    const s = slice(["depsCheck", "doctor.run"]);
+    await s.health.check("h1");
+    s.answer({ doctor: { ok: false, message: "no doctor" } });
+    await s.health.check("h1");
+    expect(s.state().doctor.h1).toBe(DOCTOR);
+    expect(s.state().healthError.h1).toBe("no doctor");
+  });
+
+  test("when both halves fail, every message is kept: dependencies first, then doctor", async () => {
+    const s = slice(["depsCheck", "doctor.run"], {
+      deps: { ok: false, message: "no deps" },
+      doctor: { ok: false, message: "no doctor" },
+    });
+    await s.health.check("h1");
+    expect(s.state().healthError.h1).toBe("no deps; no doctor");
+  });
+
+  test("when both halves fail with the same words, the error says them once", async () => {
+    const s = slice(["depsCheck", "doctor.run"], {
+      deps: { ok: false, message: "host offline" },
+      doctor: { ok: false, message: "host offline" },
+    });
+    await s.health.check("h1");
+    expect(s.state().healthError.h1).toBe("host offline");
+  });
+
   test("two asks at once share one read", async () => {
     const s = slice(["depsCheck"]);
     await Promise.all([s.health.check("h1"), s.health.check("h1")]);
@@ -80,5 +107,42 @@ describe("health slice: a host's dependencies and doctor", () => {
     s.tick(5 * 60_000);
     await s.health.ensure("h1");
     expect(s.asked.deps).toBe(2);
+  });
+
+  test("a removed host leaves no health data, and a re-added host with the same id is read again", async () => {
+    const s = slice(["depsCheck", "doctor.run"]);
+    await s.health.check("h1");
+    await s.health.check("h2");
+    s.health.forget("h1");
+    expect(Object.keys(s.state().deps)).toEqual(["h2"]);
+    expect(Object.keys(s.state().doctor)).toEqual(["h2"]);
+    expect(Object.keys(s.state().healthAt)).toEqual(["h2"]);
+    await s.health.ensure("h1");
+    expect(s.asked.deps).toBe(3);
+  });
+
+  test("a read in flight when its host is removed writes nothing back", async () => {
+    const s = slice(["depsCheck", "doctor.run"]);
+    const reading = s.health.check("h1");
+    s.health.forget("h1");
+    await reading;
+    expect(s.state().deps).toEqual({});
+    expect(s.state().doctor).toEqual({});
+    expect(s.state().healthAt).toEqual({});
+    expect(s.state().healthError).toEqual({});
+  });
+
+  test("a host whose reads both fail is not asked again within five minutes", async () => {
+    const s = slice(["depsCheck", "doctor.run"], {
+      deps: { ok: false, message: "no deps" },
+      doctor: { ok: false, message: "no doctor" },
+    });
+    await s.health.ensure("h1");
+    s.tick(60_000);
+    await s.health.ensure("h1");
+    expect(s.asked).toEqual({ deps: 1, doctor: 1 });
+    s.tick(5 * 60_000);
+    await s.health.ensure("h1");
+    expect(s.asked).toEqual({ deps: 2, doctor: 2 });
   });
 });

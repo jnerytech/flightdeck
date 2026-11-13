@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { must } from "../../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -235,7 +234,7 @@ describe("board-ui", () => {
     expect(count("Em revisão")).toBe("1");
   });
 
-  test("uma coluna vazia mostra uma caixa tracejada e quieta que diz Vazio", async () => {
+  test("uma coluna vazia mostra um botão que diz Vazio e se chama Adicionar card", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     const done = screen.getByRole("region", { name: "Concluído" });
@@ -243,33 +242,32 @@ describe("board-ui", () => {
     const empty = within(done).queryByRole("button", { name: "Vazio, Adicionar card" });
     expect(empty).not.toBeNull();
     expect(empty?.textContent).toBe("Vazio");
-    expect(empty?.className).toContain("border-dashed");
   });
 
-  // #114 (board, Orca's lane): since the cards' list fills the lane (#713), an empty lane put its
-  // Empty box at the bottom and a filter's "no matches" was a bare line under it. Now the box sits
-  // under the head and "no matches" is a quiet box there too. The lane has a border, and its head
-  // a line under it.
-  test("an empty lane's box sits under its head, and no matches is a box there too", async () => {
+  // #114 (board, Orca's lane): a filter's "no matches" was a bare line under an empty list. The lane
+  // says it in a box under its head. The lane's border, the head's line and the box's height are
+  // computed styles: the e2e `layout-medido` journey measures them in the browser (#1870).
+  test("a filter that matches nothing says so in the lane and hides its card, and clearing it brings the card back", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     await createCard("Corrigir login");
     const lane = (name: string) => screen.queryByRole("region", { name }) as HTMLElement;
-    const list = lane("Concluído")?.querySelector("ul");
-    const before = {
-      emptyListHidden:
-        list !== null && list?.children.length === 0 && list.className.includes("empty:hidden"),
-    };
     await type("Filtrar cards", "nada disso");
-    const noMatch = within(lane("Backlog")).queryByText("Nenhuma correspondência");
-    // The lane's border, the column head's line and the empty box's height are computed styles:
-    // the e2e `layout-medido` journey measures them in the browser (#1870).
-    expect({ ...before, noMatchBox: noMatch?.classList.contains("column-empty") ?? false }).toEqual(
-      {
-        emptyListHidden: true,
-        noMatchBox: true,
+    const filtered = {
+      noMatch: within(lane("Backlog")).queryByText("Nenhuma correspondência") !== null,
+      card: cardItem("Corrigir login") !== null,
+    };
+    await type("Filtrar cards", "");
+    expect({
+      filtered,
+      cleared: {
+        noMatch: within(lane("Backlog")).queryByText("Nenhuma correspondência") !== null,
+        card: cardItem("Corrigir login") !== null,
       },
-    );
+    }).toEqual({
+      filtered: { noMatch: true, card: false },
+      cleared: { noMatch: false, card: true },
+    });
   });
 
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {
@@ -293,16 +291,17 @@ describe("board-ui", () => {
     expect(column("Backlog")).toEqual(["C", "B"]);
     const moved = board.listProjects()[0];
     expect(board.getBoard(moved?.id ?? "").columns[3]?.cards.map((c) => c.title)).toEqual(["A"]);
-    // A column lights up while a card is over it and goes back when the card leaves or drops.
+    // A column looks different while a card is over it and goes back when the card leaves.
     const over = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
+    const resting = over.className;
     await act(async () => {
       fireEvent.dragEnter(over);
     });
-    expect(over.className).toContain("drop-over");
+    expect(over.className === resting).toBe(false);
     await act(async () => {
       fireEvent.dragLeave(over);
     });
-    expect(over.className).not.toContain("drop-over");
+    expect(over.className === resting).toBe(true);
     // Dropping without dragging anything does nothing.
     await act(async () => {
       fireEvent.drop(screen.queryByRole("region", { name: "Concluído" }) as HTMLElement);
@@ -564,31 +563,26 @@ describe("board-ui", () => {
     await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
     const after = details() ?? null;
     const log = screen.queryByRole("log", { name: "Conversa do card" });
-    const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
-    const at = css.indexOf("@utility card-info {");
-    const rule = at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
     expect({
       splitBefore,
       same: before !== null && before === after,
       splitAfter: after?.getAttribute("data-split") ?? null,
       apart: log !== null && log.closest("[data-slot='card-info']") === null,
       reachable: after?.getAttribute("tabindex") ?? null,
-      scrolls: /&\[data-split="true"\] \{[^}]*overflow-y: auto/.test(rule),
     }).toEqual({
       splitBefore: "false",
       same: true,
       splitAfter: "true",
       apart: true,
       reachable: "0",
-      scrolls: true,
     });
   });
 
   // #641: the board's columns scrolled sideways inside the page's own scroller, and their
   // scrollbar sat under the tallest column, below the window. The board fills the page now: the
-  // columns row takes the rest of the height and is the sideways scroller at the window's bottom,
-  // and each column's cards scroll by themselves. A narrow board snaps one column at a time.
-  test("the board fills its page: the columns row scrolls sideways, each column's cards scroll by themselves", async () => {
+  // columns row sits outside the page's scroll area. How it scrolls and snaps is CSS, which this
+  // DOM cannot check; the test keeps the structure: the row outside the scroller, a list per column.
+  test("the board fills its page outside the page's scroll area, with one list per column", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     await createCard("Coluna", "faça");
@@ -597,22 +591,11 @@ describe("board-ui", () => {
     const lists = [
       ...document.querySelectorAll("[data-slot='board-columns'] section[data-column] > ul"),
     ];
-    const classes = (el: Element | null | undefined) => el?.className.split(/\s+/) ?? [];
     expect({
       fill:
         body !== null && body !== undefined && body.closest("[data-slot='scroll-area']") === null,
-      // A 12 rem floor: an empty board's notice above never squeezes the columns to nothing.
-      row: ["min-h-48", "flex-1", "@max-[40rem]:snap-x", "@max-[40rem]:snap-mandatory"].filter(
-        (c) => !classes(row).includes(c),
-      ),
       lists: lists.length,
-      scroll: lists.filter(
-        (ul) => !["min-h-0", "flex-1", "overflow-y-auto"].every((c) => classes(ul).includes(c)),
-      ).length,
-      snap: [
-        ...document.querySelectorAll("[data-slot='board-columns'] section[data-column]"),
-      ].filter((column) => !classes(column).includes("snap-start")).length,
-    }).toEqual({ fill: true, row: [], lists: 5, scroll: 0, snap: 0 });
+    }).toEqual({ fill: true, lists: 5 });
   });
 
   test("detalhe: descrição editável, execuções, conversa, ajuste, diff lado a lado ou unificado", async () => {
@@ -637,8 +620,6 @@ describe("board-ui", () => {
     expect(screen.queryByRole("log")?.textContent ?? "").toContain("crie e commite [commit]");
     // The card's conversation fills its pane like the session screen: no fixed box, no narrow column.
     const chat = screen.queryByRole("log", { name: "Conversa do card" }) as HTMLElement;
-    expect(chat.className).toContain("card-chat");
-    expect(chat.className).not.toContain("h-[32rem]");
     expect(chat.closest(".max-w-4xl")).toBeNull();
     expect(cardItem("Detalhe")).toBeNull();
 

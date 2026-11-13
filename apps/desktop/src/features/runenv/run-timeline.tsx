@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ApprovalActions, GateText } from "@/features/permissions/ui.ts";
 import { useT } from "@/i18n/context";
-import { reasonText } from "@/lib/notice-text";
+import { reasonText } from "@/i18n/errors";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Meter } from "@/shared/status/index.ts";

@@ -3,7 +3,8 @@ import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "n
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
 import { startServer } from "../../src/server.ts";
-import { processRun, resolveSshPath, SshConnector } from "../../src/ssh/connect.ts";
+import { processRun } from "../../src/ssh/adapters/ssh-process.ts";
+import { resolveSshPath, SshConnector } from "../../src/ssh/connect.ts";
 import { HostKeys } from "../../src/ssh/hostkey.ts";
 import {
   type AgentOps,

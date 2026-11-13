@@ -398,17 +398,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/actions/actions.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/actions/actions.ts",
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
     "dependencyTypes": ["local", "import"],
@@ -489,17 +478,6 @@
     "to": "apps/daemon/src/vault/vault.ts",
     "unresolvedTo": "../vault/vault.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/assistant/context.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -664,17 +642,6 @@
     "from": "apps/daemon/src/automations/automations.ts",
     "to": "apps/daemon/src/quota/usage.ts",
     "unresolvedTo": "../quota/usage.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/bg/service.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -981,8 +948,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/boardsync/github.ts",
-    "to": "apps/daemon/src/github/gh.ts",
-    "unresolvedTo": "../github/gh.ts",
+    "to": "apps/daemon/src/github/gh-runner.ts",
+    "unresolvedTo": "../github/gh-runner.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
@@ -994,17 +961,6 @@
     "from": "apps/daemon/src/boardsync/github.ts",
     "to": "apps/daemon/src/github/status.ts",
     "unresolvedTo": "../github/status.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/boardsync/github.ts",
-    "to": "apps/daemon/src/issues/providers.ts",
-    "unresolvedTo": "../issues/providers.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -1266,42 +1222,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/github/gh.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/github/gh.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/github/github.ts",
-    "to": "apps/daemon/src/issues/providers.ts",
-    "unresolvedTo": "../issues/providers.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/github/login.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
+    "from": "apps/daemon/src/github/adapters/remote.ts",
+    "to": "apps/daemon/src/central/project-key.ts",
+    "unresolvedTo": "../../central/project-key.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -1321,54 +1244,10 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/github/service.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/github/start.ts",
     "to": "apps/daemon/src/board/board.ts",
     "unresolvedTo": "../board/board.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/github/start.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/github/start.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/github/start.ts",
-    "to": "apps/daemon/src/issues/remote.ts",
-    "unresolvedTo": "../issues/remote.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -1432,17 +1311,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/issues/issues.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/issues/issues.ts",
     "to": "apps/daemon/src/board/types.ts",
     "unresolvedTo": "../board/types.ts",
     "dependencyTypes": ["local", "import", "type-only"],
@@ -1457,17 +1325,6 @@
     "to": "apps/daemon/src/permissions/auto-approve.ts",
     "unresolvedTo": "../permissions/auto-approve.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/issues/providers.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -1828,17 +1685,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/review/changes.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/changes.ts",
     "to": "apps/daemon/src/board/diff.ts",
     "unresolvedTo": "../board/diff.ts",
     "dependencyTypes": ["local", "import"],
@@ -1886,17 +1732,6 @@
     "to": "apps/daemon/src/board/board.ts",
     "unresolvedTo": "../board/board.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/comments.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -1960,17 +1795,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/review/files.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/files.ts",
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
     "dependencyTypes": ["local", "import"],
@@ -2026,30 +1850,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/review/search.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/search.ts",
     "to": "apps/daemon/src/permissions/sensitive-paths.ts",
     "unresolvedTo": "../permissions/sensitive-paths.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/session-commit.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -2072,17 +1874,6 @@
     "from": "apps/daemon/src/review/session-files.ts",
     "to": "apps/daemon/src/history/indexer.ts",
     "unresolvedTo": "../history/indexer.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/session-pr.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -2116,17 +1907,6 @@
     "from": "apps/daemon/src/review/session-pr.ts",
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/runenv/config.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -2928,30 +2708,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/teleport/bundle.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/teleport/bundle.ts",
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/teleport/git.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -3074,17 +2832,6 @@
     "to": "apps/daemon/src/board/board.ts",
     "unresolvedTo": "../board/board.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/watch/fix.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -3224,31 +2971,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/watch/watch.ts",
-    "to": "apps/daemon/src/issues/providers.ts",
-    "unresolvedTo": "../issues/providers.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/webhook/sender.ts",
     "to": "apps/daemon/src/vault/vault.ts",
     "unresolvedTo": "../vault/vault.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/check-runner.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -3302,17 +3027,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/workflows/engine.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/engine.ts",
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
     "dependencyTypes": ["local", "import"],
@@ -3327,17 +3041,6 @@
     "to": "apps/daemon/src/board/types.ts",
     "unresolvedTo": "../board/types.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/repo.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -3379,17 +3082,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/workflows/template-add.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/template-add.ts",
     "to": "apps/daemon/src/board/publish-pr.ts",
     "unresolvedTo": "../board/publish-pr.ts",
     "dependencyTypes": ["local", "import"],
@@ -3404,28 +3096,6 @@
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/worktrees/wiring.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/worktrees/worktrees.ts",
-    "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"

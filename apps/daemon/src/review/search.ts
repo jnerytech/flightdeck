@@ -13,8 +13,15 @@ import {
   SecretScanner,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { type CommandResult, gitLimitedFor, runLimited } from "../board/command.ts";
-import { FlightdeckError, isInside, parseJsonOr, whichOnPath } from "../kernel/index.ts";
+import { gitLimitedFor } from "../git/index.ts";
+import {
+  type CommandResult,
+  FlightdeckError,
+  isInside,
+  parseJsonOr,
+  runLimited,
+  whichOnPath,
+} from "../kernel/index.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { firstStep, isGitDir } from "./paths.ts";
 

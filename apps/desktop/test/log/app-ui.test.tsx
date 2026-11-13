@@ -126,11 +126,11 @@ describe("log-app-ui: the app's own events reach the log", () => {
     const w = setup();
     const internals = w.store as unknown as {
       update(p: object): void;
-      onStatus(id: string, conn: object, status: string): void;
+      handlers: { onStatus(id: string, conn: object, status: string): void };
       fail(error: unknown): void;
     };
     internals.update({ hosts: [{ id: "h1", name: "pc", status: "online", sessions: [] }] });
-    internals.onStatus(
+    internals.handlers.onStatus(
       "h1",
       { info: null, incompatibility: null, retry: null, lastDrop: null },
       "offline",
@@ -155,7 +155,7 @@ describe("log-app-ui: the app's own events reach the log", () => {
       pingMs: 30_000,
       wasOnline: true,
     };
-    internals.onStatus(
+    internals.handlers.onStatus(
       "h1",
       { info: null, incompatibility: null, retry: null, lastDrop: drop },
       "offline",

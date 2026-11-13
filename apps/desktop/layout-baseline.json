@@ -142,6 +142,7 @@
   "src/features/shell/account-footer.tsx": 10,
   "src/features/shell/app-shell.tsx": 15,
   "src/features/shell/breadcrumb.tsx": 11,
+  "src/features/shell/notices.tsx": 6,
   "src/features/shell/sidebar.tsx": 30,
   "src/features/shell/status-bar.tsx": 7,
   "src/features/snippets/file-import.tsx": 14,

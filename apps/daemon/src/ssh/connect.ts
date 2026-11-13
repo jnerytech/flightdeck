@@ -17,29 +17,6 @@ export type RunSsh = (
   env: Record<string, string>,
 ) => Promise<{ code: number; stderr: string }>;
 
-type SpawnRun = (
-  cmd: string[],
-  options: {
-    env: Record<string, string | undefined>;
-    stdin: "ignore";
-    stdout: "ignore";
-    stderr: "pipe";
-  },
-) => { stderr: ReadableStream<Uint8Array>; exited: Promise<number> };
-
-export function processRun(spawn: SpawnRun = Bun.spawn as unknown as SpawnRun): RunSsh {
-  return async (argv, env) => {
-    const proc = spawn(argv, {
-      env: { ...process.env, ...env },
-      stdin: "ignore",
-      stdout: "ignore",
-      stderr: "pipe",
-    });
-    const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
-    return { code, stderr };
-  };
-}
-
 /** Phase 17: runs ssh for an action, writing `input` to its stdin and keeping what it prints. */
 export type ExecSsh = (
   argv: string[],
@@ -47,31 +24,6 @@ export type ExecSsh = (
   input: string,
   timeoutMs: number,
 ) => Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean }>;
-
-export function processExec(): ExecSsh {
-  return async (argv, env, input, timeoutMs) => {
-    const proc = Bun.spawn(argv, {
-      env: { ...process.env, ...env },
-      stdin: "pipe",
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      proc.kill();
-    }, timeoutMs);
-    proc.stdin.write(input);
-    await proc.stdin.end();
-    const [stdout, stderr, code] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited,
-    ]);
-    clearTimeout(timer);
-    return { code, stdout, stderr, timedOut };
-  };
-}
 
 /**
  * The `ssh` to run. On Windows the OpenSSH of the system, which is the one that takes `NUL` and
@@ -230,8 +182,8 @@ export class SshConnector {
     timeoutS: number;
     privateKey?: string;
   }): Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean }> {
-    const named = this.opts.targets.list().filter((t) => t.name === req.target);
-    if (named.length === 0) {
+    const target = this.opts.targets.byName(req.target);
+    if (!target && this.opts.targets.countNamed(req.target) === 0) {
       throw new FlightdeckError(
         "not_found",
         `destination ${req.target} not found`,
@@ -239,7 +191,7 @@ export class SshConnector {
         { name: req.target },
       );
     }
-    if (named.length > 1) {
+    if (!target) {
       throw new FlightdeckError(
         "invalid_state",
         `more than one destination is named ${req.target}`,
@@ -247,7 +199,6 @@ export class SshConnector {
         { name: req.target },
       );
     }
-    const target = named[0] as SshTarget;
     if (target.auth === "password") {
       throw new FlightdeckError(
         "invalid_state",

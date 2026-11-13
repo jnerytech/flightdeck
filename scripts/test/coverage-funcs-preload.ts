@@ -7,7 +7,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { plugin } from "bun";
 import { createInstrumenter, onLoadFor } from "../lib/coverage-gate/funcs-hooks.ts";
 
-const files: string[] = JSON.parse(process.env.COVERAGE_FUNCS_FILES ?? "[]");
+const listPath = process.env.COVERAGE_FUNCS_FILES_PATH ?? "";
+const files: string[] = listPath === "" ? [] : JSON.parse(readFileSync(listPath, "utf8"));
 const out = process.env.COVERAGE_FUNCS_OUT ?? "";
 const hooks = onLoadFor(files, createInstrumenter(), (path) => readFileSync(path, "utf8"));
 plugin({
