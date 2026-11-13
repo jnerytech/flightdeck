@@ -15,7 +15,7 @@ const {
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
 
 setDefaultTimeout(40_000);

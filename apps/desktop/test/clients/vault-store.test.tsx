@@ -10,7 +10,7 @@ const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 void screen;
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

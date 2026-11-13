@@ -6,5 +6,22 @@
       "apps/daemon/test/permissions/risk.test.ts",
       "apps/daemon/test/permissions/risk-rules.test.ts"
     ]
+  },
+  {
+    "name": "permissions-rules",
+    "mutate": [
+      "apps/daemon/src/permissions/rule-risk.ts",
+      "apps/daemon/src/permissions/sensitive-paths.ts"
+    ],
+    "tests": [
+      "apps/daemon/test/permissions/rule-risk-contract.test.ts",
+      "apps/daemon/test/permissions/rule-risk-segments.test.ts",
+      "apps/daemon/test/permissions/rule-risk-windows.test.ts",
+      "apps/daemon/test/permissions/rule-risk-rules.test.ts",
+      "apps/daemon/test/permissions/rule-path-kind.test.ts",
+      "apps/daemon/test/permissions/rule-realpath.test.ts",
+      "apps/daemon/test/permissions/sensitive-paths-ntfs.test.ts",
+      "apps/daemon/test/permissions/secret-paths-drift.test.ts"
+    ]
   }
 ]

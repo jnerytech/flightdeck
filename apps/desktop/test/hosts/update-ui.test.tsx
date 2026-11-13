@@ -16,7 +16,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { AUTO_UPDATE_KEY } = await import("../../src/features/settings/index.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

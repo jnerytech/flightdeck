@@ -3,7 +3,7 @@ import { registerDom } from "../dom.ts";
 import { settle, stays } from "../wait.ts";
 
 registerDom();
-const { runPaletteTarget } = await import("../../src/ui/App.tsx");
+const { runPaletteTarget } = await import("../../src/app/App.tsx");
 type Store = Parameters<typeof runPaletteTarget>[0];
 type Target = Parameters<typeof runPaletteTarget>[1];
 type Route = Parameters<Parameters<typeof runPaletteTarget>[2]["go"]>[0];

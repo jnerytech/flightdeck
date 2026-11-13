@@ -44,7 +44,7 @@ async function openHostMenu(host: string) {
   });
 }
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 setDefaultTimeout(20_000);
 
