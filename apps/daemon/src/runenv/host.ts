@@ -1,4 +1,5 @@
 import type { TerminalManager } from "../terminal/terminal-manager.ts";
+import { runTaskkill } from "./adapters/taskkill.ts";
 import type { RunHost } from "./manager.ts";
 
 export interface TreeKillDeps {
@@ -26,11 +27,6 @@ export async function killTree(pid: number, deps: TreeKillDeps = {}): Promise<vo
   } catch {
     // Already gone, or taskkill is not there: nothing left to end.
   }
-}
-
-/** Runs `taskkill` and settles when it has exited, without holding the event loop meanwhile. */
-async function runTaskkill(argv: string[]): Promise<void> {
-  await Bun.spawn(argv, { stdout: "ignore", stderr: "ignore" }).exited;
 }
 
 /** Ends a process tree; may return a promise that settles when the tree is gone. */

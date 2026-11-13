@@ -7,6 +7,5 @@
   "apps/desktop/src/features/sessions/session-view.tsx": 1103,
   "apps/desktop/src/features/sessions/sessions-hub.tsx": 865,
   "apps/desktop/src/features/shell/sidebar.tsx": 961,
-  "apps/desktop/src/features/teams/page.tsx": 855,
-  "apps/desktop/src/ui/Screens.tsx": 818
+  "apps/desktop/src/features/teams/page.tsx": 855
 }
