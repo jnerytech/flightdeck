@@ -8,7 +8,7 @@ import {
   saveFinished,
   sinceLastLook,
   withFiles,
-} from "../src/features/sessions/finished.ts";
+} from "../../src/features/sessions/finished.ts";
 
 const finish = (sessionId: string, at: string, over: Partial<Finish> = {}): Finish => ({
   key: `h1/${sessionId}`,

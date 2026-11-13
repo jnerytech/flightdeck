@@ -8,9 +8,9 @@ import {
   clockText,
   SharedClock,
   spokenParts,
-} from "../src/features/sessions/cache-timer-model.ts";
-import type { Platform } from "../src/platform/types.ts";
-import { settle } from "./wait.ts";
+} from "../../src/features/sessions/cache-timer-model.ts";
+import type { Platform } from "../../src/platform/types.ts";
+import { settle } from "../wait.ts";
 
 const FIVE = 300_000;
 const HOUR = 3_600_000;
