@@ -159,4 +159,24 @@ describe("hub-rename: Rename is a form with focus handling (#2673)", () => {
       document.activeElement === actionsOf("session 1"),
     ]).toEqual([[], true, true]);
   });
+
+  test("another row's menu, opened and closed while the form is open, gives the focus back to its own button", async () => {
+    setup();
+    await startRename("session 1");
+    await settleMaybe(() => field("session 1") !== null, 1500);
+    await act(async () => {
+      fireEvent.pointerDown(actionsOf("session 2"), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    const items = screen.queryAllByRole("menuitem");
+    expect(items.length).toBeGreaterThan(0);
+    await act(async () => {
+      fireEvent.keyDown(items[0] as HTMLElement, { key: "Escape" });
+    });
+    await uiIdle();
+    expect(document.activeElement === actionsOf("session 2")).toBe(true);
+  });
 });

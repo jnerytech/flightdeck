@@ -332,7 +332,7 @@ export function SessionsHub(
           align="end"
           // Rename opens a form: the menu hands it the focus, not back to its own button.
           onCloseAutoFocus={(event) => {
-            if (!renaming) return;
+            if (renaming?.claudeSessionId !== row.claudeSessionId) return;
             event.preventDefault();
             focusRenameField();
           }}
