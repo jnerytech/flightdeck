@@ -44,11 +44,11 @@ import type {
 } from "../../features/vault/index.ts";
 import { type WatchSlice, wireWatch } from "../../features/watch/index.ts";
 import type { WebhookFeed } from "../../features/webhook/webhook-feed.ts";
+import type { AppState, HostView, Notice } from "../../lib/app-state.ts";
+import type { AppKernel } from "../../lib/kernel.ts";
+import { hasFeature } from "../../lib/version.ts";
 import type { Platform } from "../../platform/types.ts";
 import type { AppLog } from "../app-log.ts";
-import type { AppState, HostView, Notice } from "../app-state.ts";
-import type { AppKernel } from "../kernel.ts";
-import { hasFeature } from "../version.ts";
 
 /** A host the app lists before its first connection answers. */
 export const newHostView = (config: HostConfig): HostView => ({
