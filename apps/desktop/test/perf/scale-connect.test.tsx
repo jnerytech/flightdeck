@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Profiler } from "react";
-import { registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { hostId, sessionId } from "./scale-fixture.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { hostId, sessionId } from "../scale-fixture.ts";
+import { settle, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 // Four in-process hosts and the app at 200 sessions: more than the default 5 s on a loaded runner.
 setDefaultTimeout(30_000);
