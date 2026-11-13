@@ -83,6 +83,15 @@ describe("health slice: a host's dependencies and doctor", () => {
     expect(s.state().healthError.h1).toBe("no deps; no doctor");
   });
 
+  test("when both halves fail with the same words, the error says them once", async () => {
+    const s = slice(["depsCheck", "doctor.run"], {
+      deps: { ok: false, message: "host offline" },
+      doctor: { ok: false, message: "host offline" },
+    });
+    await s.health.check("h1");
+    expect(s.state().healthError.h1).toBe("host offline");
+  });
+
   test("two asks at once share one read", async () => {
     const s = slice(["depsCheck"]);
     await Promise.all([s.health.check("h1"), s.health.check("h1")]);
