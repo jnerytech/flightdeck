@@ -8,7 +8,7 @@ import { aheadBehind } from "../board/merge.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, resolveAllowedCwd } from "../kernel/index.ts";
-import type { Timers } from "../quota/quota.ts";
+import type { Timers } from "../quota/index.ts";
 import { commitHooks, withDigests } from "./session-commit.ts";
 import { pushAddress } from "./session-pr.ts";
 import type { ChangesReader, ChangesResult, ResolvedTarget } from "./target.ts";

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Config } from "../config.ts";
 import { daemonUrl } from "../daemon-client/index.ts";
 import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
-import type { Quota } from "../quota/quota.ts";
+import type { Quota } from "../quota/index.ts";
 import type { Costs } from "./costs.ts";
 
 /** What `statusline.get` gives: the quota windows, today's cost and the session's. */
