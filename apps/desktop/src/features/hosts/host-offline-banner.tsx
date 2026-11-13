@@ -108,11 +108,11 @@ export function HostOfflineBanner(
           </form>
         )}
         {/* Always in the page, so a screen reader announces what lands in it (#2586). */}
-        <p role="status">
+        <output className="block">
           {connecting && asked !== null
             ? t("hostOffline.connecting")
             : answered && t("hostOffline.still")}
-        </p>
+        </output>
         {hint === "linux" && (
           <Stack gap={1}>
             <p>{t("hostOffline.hintLinux")}</p>

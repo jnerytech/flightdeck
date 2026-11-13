@@ -294,7 +294,7 @@ export function requestShutdown(url: string, token: string, timeoutMs: number): 
     );
     ws.addEventListener("message", (msg) => {
       const frame = parseJsonOr(ACK_FRAME, String(msg.data), null);
-      if (frame === null || frame.type !== "ack") return;
+      if (frame?.type !== "ack") return;
       if (frame.ok && frame.id === "1") send("2", "daemon.shutdown", {});
       else done(frame.ok === true);
     });

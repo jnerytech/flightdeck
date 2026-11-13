@@ -10,7 +10,7 @@ export interface PersonasDeps {
   scanner: PersonasOptions["scanner"];
   /** Phase 12's agent editor, which also writes the personas published as project agents. */
   agents: Parameters<typeof agentPublisher>[0];
-  log?: PersonasOptions["log"];
+  log?: NonNullable<PersonasOptions["log"]>;
 }
 
 /** The persona store, with phase 20's pack, and the read a new session makes of it. */

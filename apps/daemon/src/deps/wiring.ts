@@ -25,7 +25,7 @@ export interface HostChecksDeps {
   config: () => Config | Promise<Config>;
   env: Record<string, string | undefined>;
   /** What discovery found of OpenCode when the daemon started; the CLI has none and asks. */
-  opencode: { info?: Parameters<typeof openCodeState>[2] };
+  opencode: { info?: NonNullable<Parameters<typeof openCodeState>[2]> };
   /** The runtime's `claude`, when the real runtime has one. */
   claude?: { path: string | null };
   /** Who the host's own `claude` is signed in as, as the account card reads it. */
