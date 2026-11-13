@@ -25,8 +25,9 @@ describe("rule-risk: a wildcard stands for each name a credential has", () => {
     expect(level("//proj/foo*", "/proj/unrelated")).toBe("low");
   });
 
-  // The names a whole-segment wildcard shares with the partial-wildcard lists (`.env`, `.ssh`) are
-  // found there too: only the ones those lists lack show a whole-segment list that lost one.
+  // The names a whole-segment wildcard shares with the partial-wildcard lists (`.env`, `.ssh`,
+  // `.aws`, `id_rsa`, `credentials`) are found there too: only the ones those lists lack show a
+  // whole-segment list that lost one. The `foo*` tests below cover the shared ones.
   for (const name of ["x.pem", "x.key"]) {
     test(`a '*' may stand for ${name}`, () => {
       expect(level("//proj/*", `/proj/${name}`)).toBe("any");
