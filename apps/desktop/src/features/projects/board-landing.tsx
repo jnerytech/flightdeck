@@ -1,11 +1,10 @@
-import type { Project } from "@flightdeck/protocol";
+import { BoardColumn, type Project } from "@flightdeck/protocol";
 import { FolderGit2 } from "lucide-react";
 import { type KeyboardEvent, useId, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { COLUMNS } from "../../lib/board.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { usd } from "../costs/index.ts";
 import { gridStep } from "../shortcuts/index.ts";
@@ -32,7 +31,7 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
   const { t } = store.i18n;
   const factsId = useId();
   const where = `${card.path} · ${card.branch}`;
-  const filled = COLUMNS.filter(({ id }) => card.columns[id] > 0);
+  const filled = BoardColumn.options.filter((id) => card.columns[id] > 0);
   return (
     <li>
       <button
@@ -58,7 +57,7 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
             {filled.length === 0 ? (
               <span className="text-muted-foreground">{t("boardLanding.noCards")}</span>
             ) : (
-              filled.map(({ id }, at) => (
+              filled.map((id, at) => (
                 <span
                   key={id}
                   className={id === "waiting" ? "font-medium text-status-needs-you" : ""}
