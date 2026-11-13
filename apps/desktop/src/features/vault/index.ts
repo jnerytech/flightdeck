@@ -1,7 +1,8 @@
 /**
  * The vault's public entry in the app (#1589, #1596): the secrets (create, edit, remove, the
  * `.fdvault` file) and their usage rules, checked by the connected hosts and sent again when a
- * client's scope changes. Another domain imports from here, never a file inside.
+ * client's scope changes. Another domain imports from here, never a file inside. The secret
+ * picker component is in ui.ts (#2451).
  */
 export {
   type ApprovalHost,
@@ -16,7 +17,6 @@ export {
   VaultRulesSlice,
 } from "./rules-store.ts";
 export { type VaultScanCore, VaultScanSlice } from "./scan-store.ts";
-export { SecretPicker, type SecretPickerProps } from "./secret-picker.tsx";
 export {
   type VaultFileFailure,
   type VaultSecretsCore,
@@ -31,3 +31,4 @@ export type { DeliveryRefusal, VaultPolicy } from "./vault-requests.ts";
 export { VaultRules } from "./vault-rules.ts";
 export { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 export { wireVaultApprovals, wireVaultRules, wireVaultSecrets } from "./wire.ts";
+export type { SecretPickerProps } from "./secret-picker.tsx";
