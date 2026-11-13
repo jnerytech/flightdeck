@@ -70,7 +70,7 @@ async function setup(listFails = false, files = true, launch: string | null = nu
 /** The host's hook reports the Claude session of a launch, and the app reads the host's lists. */
 async function hookSession(d: Awaited<ReturnType<typeof setup>>, launch: string) {
   d.central.external.apply("SessionStart", { session_id: "c1", cwd: "/p", launch_id: launch });
-  await act(async () => d.store.refreshHub());
+  await act(async () => d.store.sessionLists.refresh());
 }
 
 const state = (name: string) => screen.queryByText(name);

@@ -43,16 +43,16 @@ async function online() {
 describe("hub-pisca: the Sessions list does not blink", () => {
   test("a refresh whose request fails keeps the sessions the host last listed", async () => {
     const { store, daemon, hostId } = await online();
-    await store.refreshHub();
+    await store.sessionLists.refresh();
     const ids = () => store.getState().hub[hostId]?.managed.map((s) => s.id);
     expect(ids()).toEqual(["s1", "s2"]);
     // A busy host (a slow answer, a refusal) makes this one request fail; the next refresh is fine.
     daemon.refuse.set("session.list", "busy");
-    await store.refreshHub();
+    await store.sessionLists.refresh();
     expect(ids()).toEqual(["s1", "s2"]);
     daemon.refuse.delete("session.list");
     daemon.hub.managed = [managed("s1")];
-    await store.refreshHub();
+    await store.sessionLists.refresh();
     expect(ids()).toEqual(["s1"]);
   });
 });

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Board } from "../../src/board/board.ts";
-import { type BoardEvent, nextColumn } from "../../src/board/columns.ts";
+import { type BoardEvent, nextColumn } from "../../src/board/domain/columns.ts";
 import type { BoardColumn } from "../../src/board/types.ts";
 import { cardWhen, newBoard } from "../support/board-helpers.ts";
 import { poll } from "../support/helpers.ts";

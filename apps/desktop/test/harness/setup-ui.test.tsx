@@ -82,7 +82,7 @@ function setup(
   });
   store.i18n.start();
   store.projectList.load = (async () => []) as never;
-  store.refreshHub = (async () => {}) as never;
+  store.sessionLists.refresh = (async () => {}) as never;
   const sent: Array<[string, unknown]> = [];
   const answers = [
     ...(options.answers ?? [{ ok: true, data: { written: [SETTINGS, "CLAUDE.md"] } }]),

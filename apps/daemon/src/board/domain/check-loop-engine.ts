@@ -8,7 +8,7 @@
  */
 import { createHash } from "node:crypto";
 import type { CheckLoopReason, PermissionMode } from "@flightdeck/protocol";
-import { type CheckOutcome, masked } from "../watch/check-run.ts";
+import { type CheckOutcome, masked } from "../../watch/check-run.ts";
 
 /** Why a loop ended: the protocol's list, so a reason the daemon writes is one the app knows. */
 export type { CheckLoopReason } from "@flightdeck/protocol";
