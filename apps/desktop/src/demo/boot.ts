@@ -101,7 +101,7 @@ const BACKUP_NAME = /^flightdeck-backup-\d{8}-\d{6}\.fdbackup$/;
 /** The folder as it is kept; a part that does not fit reads as empty, the other part stays. */
 const StoredFolder = z.object({
   chosen: z.boolean().catch(false),
-  files: validValues(z.string()).catch({}),
+  files: validValues(z.string()).catch({}), // NOSONAR: zod .catch (a fallback value), not a promise chain
 });
 
 type DemoFolder = z.infer<typeof StoredFolder>;
