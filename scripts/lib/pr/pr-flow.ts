@@ -286,6 +286,55 @@ async function warnMainRed(deps: PrFlowDeps): Promise<void> {
   if (line) deps.log(`warning: ${line}`);
 }
 
+/** Why `branch` gets no new PR now (the exit code and what to say), or null when it can: not on origin, its PRs unreadable, already open, another branch's, or no review record. */
+async function openBlock(
+  branch: string,
+  base: string,
+  deps: PrFlowDeps,
+): Promise<{ code: number; message: string } | null> {
+  if ((await deps.git(["rev-parse", "--verify", "--quiet", `origin/${branch}`])).code !== 0) {
+    return { code: 2, message: `${branch} is not on origin: push it first` };
+  }
+  const existing = await deps.gh([
+    "api",
+    `${REPO}/pulls?head={owner}:${branch}&state=open`,
+    "--jq",
+    BRANCH_PR_JQ,
+  ]);
+  if (existing.code !== 0) {
+    return { code: 1, message: `the open PRs of ${branch} cannot be read: nothing was opened` };
+  }
+  const { own, others } = branchPr(existing.stdout, branch);
+  if (own !== null) return { code: 0, message: `${branch} already has PR #${own}` };
+  if (others.length > 0) return { code: 1, message: otherPrsMessage(branch, others) };
+  // #1707: a session's PR needs the record of both reviews on its head; the coordinator's rc branch (workers cannot push rc/*) does not.
+  const problem = branch.startsWith("rc/") ? null : await reviewProblem(branch, base, deps.git);
+  return problem ? { code: 1, message: problem } : null;
+}
+
+/** The issues a PR names: the one slice of --refs, the list of --issue, or those the feat and fix subjects name. Null for a malformed --issue list. */
+function prIssues(
+  mode: { refs: boolean; named: boolean; given: string | undefined },
+  subjects: string[],
+): number[] | null {
+  if (mode.refs) {
+    const slice = Number(mode.given) || issueOf(subjects);
+    return slice ? [slice] : [];
+  }
+  return mode.named ? issueList(mode.given ?? "") : issuesOf(subjects);
+}
+
+/** The title of each issue in order, or the number of the first one that cannot be read. */
+async function issueTitles(issues: number[], deps: PrFlowDeps): Promise<string[] | number> {
+  const titles: string[] = [];
+  for (const n of issues) {
+    const title = await deps.gh(["api", `${REPO}/issues/${n}`, "--jq", ".title"]);
+    if (title.code !== 0) return n;
+    titles.push(title.stdout.trim());
+  }
+  return titles;
+}
+
 async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
   const branch = args[0];
   if (!branch || branch.startsWith("--")) return usage(deps);
@@ -296,36 +345,10 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     return 2;
   }
   const base = option("--base") ?? MAIN;
-  if ((await deps.git(["rev-parse", "--verify", "--quiet", `origin/${branch}`])).code !== 0) {
-    deps.log(`${branch} is not on origin: push it first`);
-    return 2;
-  }
-  const existing = await deps.gh([
-    "api",
-    `${REPO}/pulls?head={owner}:${branch}&state=open`,
-    "--jq",
-    BRANCH_PR_JQ,
-  ]);
-  if (existing.code !== 0) {
-    deps.log(`the open PRs of ${branch} cannot be read: nothing was opened`);
-    return 1;
-  }
-  const { own, others } = branchPr(existing.stdout, branch);
-  if (own !== null) {
-    deps.log(`${branch} already has PR #${own}`);
-    return 0;
-  }
-  if (others.length > 0) {
-    deps.log(otherPrsMessage(branch, others));
-    return 1;
-  }
-  // #1707: a session's PR needs the record of both reviews on its head; the coordinator's rc branch (workers cannot push rc/*) does not.
-  if (!branch.startsWith("rc/")) {
-    const problem = await reviewProblem(branch, base, deps.git);
-    if (problem) {
-      deps.log(problem);
-      return 1;
-    }
+  const blocked = await openBlock(branch, base, deps);
+  if (blocked) {
+    deps.log(blocked.message);
+    return blocked.code;
   }
   const subjects = await ownSubjects(branch, base, deps.git);
   const refs = args.includes("--refs");
@@ -336,15 +359,7 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     deps.log("--refs takes one issue: a slice of one issue");
     return 2;
   }
-  const slice = Number(given) || issueOf(subjects);
-  const named = args.includes("--issue");
-  const issues = refs
-    ? slice
-      ? [slice]
-      : []
-    : named
-      ? issueList(given ?? "")
-      : issuesOf(subjects);
+  const issues = prIssues({ refs, named: args.includes("--issue"), given }, subjects);
   if (issues === null) {
     deps.log("--issue takes issue numbers separated by commas: --issue 12,13");
     return 2;
@@ -354,14 +369,10 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     deps.log(`no (#N) in the subjects of ${branch}'s commits: name the issue with --issue <n>`);
     return 2;
   }
-  const titles: string[] = [];
-  for (const n of issues) {
-    const title = await deps.gh(["api", `${REPO}/issues/${n}`, "--jq", ".title"]);
-    if (title.code !== 0) {
-      deps.log(`#${n}: the issue cannot be read`);
-      return 1;
-    }
-    titles.push(title.stdout.trim());
+  const titles = await issueTitles(issues, deps);
+  if (typeof titles === "number") {
+    deps.log(`#${titles}: the issue cannot be read`);
+    return 1;
   }
   const link = refs ? "Refs" : "Closes";
   // #909: a slice (--refs) is named after its own first commit, not the issue it is part of; a
