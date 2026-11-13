@@ -54,7 +54,7 @@ control, and 8 px between buttons.
 
 ## Layout: named styles, not utility soup
 
-- A screen (`src/ui/*.tsx`) composes layout primitives (`Page`, `Section`, `Panel`, `Stack`,
+- A screen (`src/app/*.tsx`, `src/features/*/*.tsx`) composes layout primitives (`Page`, `Section`, `Panel`, `Stack`,
   `Inline`, `Grid`, `FieldRow`) and the named styles of `styles.css` (`@utility …`).
 - The layout ratchet (`apps/desktop/layout-baseline.json`) counts the raw layout utilities each
   screen still holds. A screen may never go over its count. When a change lowers a count, run
@@ -79,7 +79,7 @@ control, and 8 px between buttons.
 | A select | `NativeSelect` | Sized like an `Input`, with `border-input`. |
 | Several choices | A `fieldset` + `legend` with one labelled checkbox each (`hit-control`) | Never `<select multiple>`: a plain click drops the other choices (#237). |
 | A button whose work takes time, or that can be disabled | `ActionButton` (`feedback/action-button.tsx`) | Busy at once while the promise it returns is pending. `disabledReason` says why it is off, next to it, and links it with `aria-describedby`. |
-| Answering a request | `ApprovalActions` (`features/permissions/approval-actions.tsx`, #182) | Approve first, then Deny, the same verbs on every screen (card, tile, run's gate). `risk` is a required prop (`RiskLevel \| undefined`): a high risk shows `HoldButton`, held for `HIGH_RISK_HOLD_MS` (`features/permissions/hold.ts`), never a click or a key. `onApprove(held)` hands the proof of the hold to the store, which refuses an unheld high-risk allow (#245, from v0.36.5). `pending` keeps both off while an answer is on its way. A plan says "Approve the plan" / "Keep planning" through `labels`. |
+| Answering a request | `ApprovalActions` (`features/permissions/approval-actions.tsx`, #182) | Approve first, then Deny, the same verbs on every screen (card, tile, run's gate). `risk` is a required prop (`RiskLevel \| undefined`): a high risk shows `HoldButton`, held for `HIGH_RISK_HOLD_MS` (`features/permissions/domain/hold.ts`), never a click or a key. `onApprove(held)` hands the proof of the hold to the store, which refuses an unheld high-risk allow (#245, from v0.36.5). `pending` keeps both off while an answer is on its way. A plan says "Approve the plan" / "Keep planning" through `labels`. |
 | An icon-only action | `IconActionButton`, or `IconTip` for an icon-only control | It has a name and a tooltip; never a native `title` for text a person needs. |
 | A status | `StatusDot`, `StatusText` (`shared/status/`) | A shape plus a label for each state, not colour alone. |
 | A tab's badge | `TabBadgeGlyph` (in `features/tabs/tab-bar.tsx`) | A glyph named in words (`role="img"`), never a text pill. It becomes `StatusDot` once #146 lands. |
@@ -146,7 +146,7 @@ should rely on them.
 
 | Guard | Where | What a failure says |
 |---|---|---|
-| Layout ratchet | `apps/desktop/test/layout/layout-ratchet.test.ts` | `src/ui/X.tsx: 12 > 11`: the screen gained a raw layout utility. Use a primitive or a named style. |
+| Layout ratchet | `apps/desktop/test/layout/layout-ratchet.test.ts` | `src/app/X.tsx: 12 > 11`: the screen gained a raw layout utility. Use a primitive or a named style. |
 | Style lint | `scripts/lib/styles/style-lint.ts` | A palette colour or a fixed measure in `style`. |
 | One definition per named style | `apps/desktop/test/layout/css-utilities.test.ts` | The names defined twice. |
 | Contrast | `scripts/test/demo/theme-contrast.test.ts` | The token pair and theme under its ratio. Also any field that draws a border without `border-input`. |

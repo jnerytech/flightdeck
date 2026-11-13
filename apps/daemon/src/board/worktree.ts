@@ -2,9 +2,14 @@ import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { git, gitWith } from "../git/index.ts";
-import { type CommandResult, FlightdeckError } from "../kernel/index.ts";
+import {
+  assertBranchName,
+  type CommandResult,
+  FlightdeckError,
+  type Rev,
+  refArg,
+} from "../kernel/index.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
-import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 
 /** Whether `path` exists, asked without blocking. */
 const exists = (path: string): Promise<boolean> =>

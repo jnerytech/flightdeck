@@ -123,8 +123,8 @@ describe("telas-rotas: routes that open a screen", () => {
     const { translator } = await import("../../src/i18n/index.ts");
     const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
     // A second instance of the module: its lazy screens start unloaded, unlike the preloaded ones.
-    const specifier = "../../src/ui/Screens.tsx?unloaded";
-    const fresh = (await import(specifier)) as typeof import("../../src/ui/Screens.tsx");
+    const specifier = "../../src/app/Screens.tsx?unloaded";
+    const fresh = (await import(specifier)) as typeof import("../../src/app/Screens.tsx");
     const noop = () => {};
     cleanup();
     render(

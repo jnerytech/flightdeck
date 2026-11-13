@@ -1,3 +1,5 @@
+import { spawnPty } from "./adapters/pty-process.ts";
+
 /** A PTY the terminal manager drives; the real one is Bun's, tests inject a fake. */
 export interface PtyStart {
   argv: string[];
@@ -44,7 +46,7 @@ const EOF_GRACE_MS = 100;
  * stream stays silent for a moment after the process ended).
  */
 export function bunPty(
-  spawn: SpawnFn = Bun.spawn as unknown as SpawnFn,
+  spawn: SpawnFn = spawnPty,
   killGraceMs = KILL_GRACE_MS,
   platform: NodeJS.Platform = process.platform,
 ): PtyFactory {

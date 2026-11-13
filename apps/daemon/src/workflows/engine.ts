@@ -1,10 +1,9 @@
 import type { Database } from "bun:sqlite";
 import type { RunResumeCheck, RunStatus, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { refArg } from "../board/ref-arg.ts";
 import type { Card, Project } from "../board/types.ts";
 import { git } from "../git/index.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError, refArg } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import { noSpending } from "./budget.ts";
 import {

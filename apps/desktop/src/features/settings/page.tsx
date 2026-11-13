@@ -1,4 +1,12 @@
-import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
+import {
+  memo,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
@@ -10,7 +18,7 @@ import type { CacheTtl } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, NativeSelect, Page, Panel } from "@/shared/layout/index.ts";
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -22,6 +30,7 @@ import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../terminal/index.ts";
 import { WebhooksSection } from "../webhook/ui.ts";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
+import { TerminalFontInput } from "./terminal-font-input.tsx";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
 function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
@@ -58,7 +67,7 @@ export const Settings = memo(function Settings(props: {
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
   appUpdate: AppUpdateState;
-  onCheckUpdate(): void;
+  onCheckUpdate(): Promise<void> | void;
   onNotifyUpdates(enabled: boolean): void;
   onAutoUpdate(enabled: boolean): void;
   /** Light, dark or the system's (phase 10). */
@@ -84,6 +93,8 @@ export const Settings = memo(function Settings(props: {
     () => props.store.terminalReader.value,
   );
   const readerHint = useId();
+  const autostartHint = useId();
+  const fontHint = useId();
   const setupHidden = useSyncExternalStore(
     props.store.setup.subscribe,
     () => props.store.setup.hidden,
@@ -181,17 +192,17 @@ export const Settings = memo(function Settings(props: {
           </SettingRow>
           <SettingRow label={t("settings.terminalFont")}>
             {(id) => (
-              <Input
+              <TerminalFontInput
                 id={id}
-                type="number"
-                className="setting-select"
-                min={TERMINAL_FONT_MIN}
-                max={TERMINAL_FONT_MAX}
-                value={terminalFont}
-                onChange={(e) => props.store.terminalFont.set(Number(e.target.value))}
+                describedBy={fontHint}
+                size={terminalFont}
+                onCommit={(size) => props.store.terminalFont.set(size)}
               />
             )}
           </SettingRow>
+          <small id={fontHint} className="setting-hint">
+            {t("settings.terminalFontRange", { min: TERMINAL_FONT_MIN, max: TERMINAL_FONT_MAX })}
+          </small>
           <label className={check}>
             <input
               type="checkbox"
@@ -257,12 +268,15 @@ export const Settings = memo(function Settings(props: {
               type="checkbox"
               checked={settings.autostart}
               disabled={!settings.autostartSupported}
+              aria-describedby={settings.autostartSupported ? undefined : autostartHint}
               onChange={(e) => props.onAutostart(e.target.checked)}
             />
             {t("prefs.autostart")}
           </label>
           {!settings.autostartSupported && (
-            <small className="setting-hint">{t("prefs.unavailable")}</small>
+            <small id={autostartHint} className="setting-hint">
+              {t("prefs.unavailable")}
+            </small>
           )}
           <label className={check}>
             <input
@@ -322,11 +336,22 @@ export const Settings = memo(function Settings(props: {
                   />
                   {t("prefs.autoUpdate")}
                 </label>
-                <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
+                <ActionButton
+                  variant="outline"
+                  className="self-start"
+                  onClick={props.onCheckUpdate}
+                >
                   {t("prefs.checkNow")}
-                </Button>
+                </ActionButton>
                 {props.appUpdate.upToDate && (
-                  <p className="text-muted-foreground text-sm">{t("prefs.upToDate")}</p>
+                  <p role="status" className="text-muted-foreground text-sm">
+                    {t("prefs.upToDate")}
+                  </p>
+                )}
+                {props.appUpdate.error && (
+                  <p role="alert" className="text-status-needs-you">
+                    {props.appUpdate.error}
+                  </p>
                 )}
               </Panel>
             ),
@@ -474,12 +499,56 @@ export const Settings = memo(function Settings(props: {
         `${section.label} ${section.words}`.toLowerCase().includes(needle),
       )
     : sections;
+  let matchText = "";
+  if (shown.length === 0) matchText = t("settingsRail.none");
+  else if (needle)
+    matchText =
+      shown.length === 1
+        ? t("settingsRail.matchesOne")
+        : t("settingsRail.matches", { n: shown.length });
+  // A click's mark holds while the page scrolls to the section (a short last one never reaches the
+  // observer's band); the next wheel, touch or key hands the mark back to the scroll.
+  const pinned = useRef(false);
   const go = (id: string) => {
+    pinned.current = true;
     setCurrent(id);
     const target = document.getElementById(`settings-${id}`);
     target?.scrollIntoView?.({ block: "start" });
     target?.focus({ preventScroll: true });
   };
+  // The rail marks the section on screen: the upper one when several are. Without the observer
+  // (tests, old webviews) the mark is the last one a click went to.
+  const shownIds = shown.map((section) => section.id).join(",");
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const ids = shownIds ? shownIds.split(",") : [];
+    const onScreen = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = entry.target.id.replace(/^settings-/, "");
+          if (entry.isIntersecting) onScreen.add(id);
+          else onScreen.delete(id);
+        }
+        const first = ids.find((id) => onScreen.has(id));
+        if (first && !pinned.current) setCurrent(first);
+      },
+      { rootMargin: "0px 0px -60% 0px" },
+    );
+    for (const id of ids) {
+      const el = document.getElementById(`settings-${id}`);
+      if (el) observer.observe(el);
+    }
+    const release = () => {
+      pinned.current = false;
+    };
+    const handBack = ["wheel", "touchstart", "keydown"] as const;
+    for (const type of handBack) window.addEventListener(type, release, { passive: true });
+    return () => {
+      observer.disconnect();
+      for (const type of handBack) window.removeEventListener(type, release);
+    };
+  }, [shownIds]);
   // Opened on a part (a budget alert): scroll to it and focus it.
   const wanted = props.section;
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request moves the view
@@ -514,7 +583,8 @@ export const Settings = memo(function Settings(props: {
           </nav>
         </div>
         <div className="settings-sections">
-          {shown.length === 0 && <output>{t("settingsRail.none")}</output>}
+          {/* Always there, so a reader hears the count change: silent with no search. */}
+          <output className={shown.length === 0 ? undefined : "sr-only"}>{matchText}</output>
           {shown.map((section) => (
             <section
               key={section.id}

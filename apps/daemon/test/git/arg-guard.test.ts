@@ -8,8 +8,8 @@ import {
   mergeIntoBase,
   rebaseOnto,
 } from "../../src/board/merge.ts";
-import { type Rev, refArg } from "../../src/board/ref-arg.ts";
 import { freshBase } from "../../src/board/worktree.ts";
+import { type Rev, refArg } from "../../src/kernel/index.ts";
 import { workflowSources } from "../../src/workflows/repo.ts";
 import { gitRepo, gitRepoWithOrigin, newBoard } from "../support/board-helpers.ts";
 

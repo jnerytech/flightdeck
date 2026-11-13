@@ -397,7 +397,7 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/actions/actions.ts",
+    "from": "apps/daemon/src/actions/catalog.ts",
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
     "dependencyTypes": ["local", "import"],
@@ -408,7 +408,7 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/actions/actions.ts",
+    "from": "apps/daemon/src/actions/catalog.ts",
     "to": "apps/daemon/src/board/worktree.ts",
     "unresolvedTo": "../board/worktree.ts",
     "dependencyTypes": ["local", "import"],
