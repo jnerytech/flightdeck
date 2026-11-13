@@ -37,7 +37,7 @@ import {
 } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
-import { hasFeature, hostsWith } from "../../lib/version.ts";
+import { hostsWith } from "../../lib/version.ts";
 import { NewMember } from "./new-member.tsx";
 import {
   bypassAsked,

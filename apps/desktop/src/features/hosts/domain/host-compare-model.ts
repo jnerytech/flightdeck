@@ -98,7 +98,7 @@ function majorityOf(values: ReadonlyArray<string | null>): string | null {
   for (const value of values) if (value !== null) counts.set(value, (counts.get(value) ?? 0) + 1);
   const ranked = [...counts].sort((a, b) => b[1] - a[1]);
   const [lead, runnerUp] = ranked;
-  if (!lead || (runnerUp && runnerUp[1] === lead[1])) return null;
+  if (!lead || runnerUp?.[1] === lead[1]) return null;
   return lead[0];
 }
 
@@ -205,9 +205,9 @@ export function featureDiffTied(
   const own = new Set(featureList(value));
   const others = values.flatMap((other) => (other === null ? [] : [new Set(featureList(other))]));
   const union = new Set(others.flatMap((set) => [...set]));
-  const shared = [...union].filter((name) => others.every((set) => set.has(name)));
+  const shared = new Set([...union].filter((name) => others.every((set) => set.has(name))));
   return {
     missing: [...union].filter((name) => !own.has(name)).sort((a, b) => a.localeCompare(b)),
-    extra: [...own].filter((name) => !shared.includes(name)).sort((a, b) => a.localeCompare(b)),
+    extra: [...own].filter((name) => !shared.has(name)).sort((a, b) => a.localeCompare(b)),
   };
 }
