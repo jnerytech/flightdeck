@@ -23,7 +23,7 @@ import { projectCards } from "../../lib/board.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { usd } from "../costs/index.ts";
-import { GateCard, RunPanel, RunTimeline } from "../runenv/index.ts";
+import { GateCard, RunPanel, RunTimeline } from "../runenv/ui.ts";
 import { CardConflicts } from "./card-conflicts.tsx";
 import { CardDeps } from "./card-deps.tsx";
 import { canMergeCardPr } from "./card-merge-pr-model.ts";
