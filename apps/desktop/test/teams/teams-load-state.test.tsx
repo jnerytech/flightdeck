@@ -69,7 +69,7 @@ describe.each(["en", "pt-BR"] as const)("teams-load-state (%s)", (language) => {
   test("before the host answers the list, the page shows the loading shape, not the empty state", async () => {
     const { words } = await openTeams(language, ["hang"]);
     await settleMaybe(() => screen.queryByRole("status", { name: words.loading }) !== null, 3000);
-    expect(screen.queryByRole("status", { name: words.loading }) !== null).toBe(true);
+    expect(screen.queryByRole("status", { name: words.loading }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(text(words.empty)).toBe(false);
     expect(button(words.first)).toBe(false);
   });
@@ -79,7 +79,7 @@ describe.each(["en", "pt-BR"] as const)("teams-load-state (%s)", (language) => {
     await settleMaybe(() => text(words.empty), 3000);
     expect(text(words.empty)).toBe(true);
     expect(button(words.first)).toBe(true);
-    expect(screen.queryByRole("status", { name: words.loading }) !== null).toBe(false);
+    expect(screen.queryByRole("status", { name: words.loading }) !== null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a failed list shows an error with a retry, not the empty state", async () => {
@@ -89,7 +89,7 @@ describe.each(["en", "pt-BR"] as const)("teams-load-state (%s)", (language) => {
     expect(screen.queryByRole("alert")?.textContent).toContain(words.failed);
     expect(text(words.empty)).toBe(false);
     expect(button(words.first)).toBe(false);
-    expect(screen.queryByRole("status", { name: words.loading }) !== null).toBe(false);
+    expect(screen.queryByRole("status", { name: words.loading }) !== null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a reload that fails after an answered empty list keeps the empty state and adds no error banner", async () => {
@@ -104,7 +104,7 @@ describe.each(["en", "pt-BR"] as const)("teams-load-state (%s)", (language) => {
     });
     await settleMaybe(() => page.lists() === 2, 3000);
     expect(page.lists()).toBe(2);
-    expect(screen.queryByRole("alert") !== null).toBe(false);
+    expect(screen.queryByRole("alert") !== null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(text(page.words.empty)).toBe(true);
   });
 
