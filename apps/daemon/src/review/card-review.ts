@@ -6,7 +6,7 @@
  */
 import type { Database } from "bun:sqlite";
 import type { CardDiff } from "@flightdeck/protocol";
-import type { UsageTokens } from "../costs/usage-indexer.ts";
+import type { UsageTokens } from "../costs/index.ts";
 import { FlightdeckError, parseJsonOr } from "../kernel/index.ts";
 import { CompleteCutShort } from "../runtime/claude-sdk-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../runtime/index.ts";

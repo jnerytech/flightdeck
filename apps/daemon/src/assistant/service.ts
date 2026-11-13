@@ -17,7 +17,7 @@ import {
   KIND_SPECS,
   type SecretScanner,
 } from "@flightdeck/protocol";
-import type { UsageIndexer } from "../costs/usage-indexer.ts";
+import type { UsageIndexer } from "../costs/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { type Quota, realTimers, type Timers } from "../quota/index.ts";
 import type { CompleteOptions, CompleteResult } from "../runtime/index.ts";
