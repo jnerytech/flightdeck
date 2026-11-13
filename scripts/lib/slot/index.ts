@@ -667,9 +667,9 @@ export function estimatedSeconds(
   const values = Object.values(timings);
   const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 1;
   // The table's keys are repo-relative with "/": a Windows-style or absolute path is read as one.
-  const base = `${root.replace(/\\/g, "/").replace(/\/$/, "")}/`;
+  const base = `${root.replaceAll("\\", "/").replace(/\/$/, "")}/`;
   const key = (arg: string) => {
-    const path = arg.replace(/\\/g, "/");
+    const path = arg.replaceAll("\\", "/");
     const inside = base !== "/" && path.startsWith(base) ? path.slice(base.length) : path;
     return inside.replace(/^\.\//, "");
   };

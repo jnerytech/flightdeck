@@ -205,13 +205,25 @@ const MODIFIERS = String.raw`(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?`;
 const KINDS = String.raw`(?:const|let|var|function\*?|class|interface|type|enum)`;
 /** `export const x`, `export declare function x`, `export abstract class x`, and the other declarations. */
 const DECLARATION = new RegExp(String.raw`^export\s+${MODIFIERS}${KINDS}\s+(\w+)`, "gm");
+/** `source` without its `//` comments; a `//` right after a colon (a URL) is not one. Linear: no regex backtracking. */
+function withoutLineComments(source: string): string {
+  return source
+    .split("\n")
+    .map((line) => {
+      let at = line.indexOf("//");
+      while (at > 0 && line[at - 1] === ":") at = line.indexOf("//", at + 1);
+      return at < 0 ? line : line.slice(0, at);
+    })
+    .join("\n");
+}
+
 /**
  * The distinct names an entry exports (a value and a type of one name are one) and whether it has a
  * bare `export * from` (#1624); comments are skipped. An entry is PR code, so every scan is linear:
  * a stalled regex would hang the CI job.
  */
 function exportsOf(source: string): { count: number; broad: boolean } {
-  const text = withoutBlockComments(source).replaceAll(/(?<!:)\/\/.*$/gm, "");
+  const text = withoutLineComments(withoutBlockComments(source));
   const declared = text.matchAll(DECLARATION);
   const namespaced = text.matchAll(/^export\s*\*\s*as\s+(\w+)/gm);
   const names = new Set([

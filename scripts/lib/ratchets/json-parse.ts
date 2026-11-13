@@ -7,15 +7,15 @@
 
 const SOURCE = /^(apps|packages)\/[^/]+\/src\/.+\.tsx?$/;
 /** The helpers that parse text into a checked value (#927, #1609) are the places a raw call belongs. */
-const HELPERS = [
+const HELPERS = new Set([
   "apps/daemon/src/kernel/json-text.ts",
   "apps/desktop/src/shared/lib/stored-json.ts",
   "packages/protocol/src/frame.ts",
-];
+]);
 
 /** Whether the check reads this tracked path: TypeScript under a package's src, minus the helper and declarations. */
 export function isScanned(path: string): boolean {
-  return SOURCE.test(path) && !path.endsWith(".d.ts") && !HELPERS.includes(path);
+  return SOURCE.test(path) && !path.endsWith(".d.ts") && !HELPERS.has(path);
 }
 
 const CALL = /\bJSON\.parse\(/g;
