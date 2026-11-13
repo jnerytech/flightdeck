@@ -17,7 +17,7 @@ const { Breadcrumb } = await import("../../src/features/shell/breadcrumb.tsx");
 const { DayChart } = await import("../../src/features/costs/day-chart.tsx");
 const { SessionTiles } = await import("../../src/features/projects/session-tiles.tsx");
 const { FolderPicker } = await import("../../src/features/hosts/folder-picker.tsx");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 
 setDefaultTimeout(30_000);

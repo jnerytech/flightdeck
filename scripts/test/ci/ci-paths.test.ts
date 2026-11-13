@@ -94,7 +94,7 @@ describe("ci-paths: the rules", () => {
         ["docs/TDD.md"],
         ["scripts/lib/slot/index.ts"],
         ["apps/daemon/src/main.ts"],
-        ["apps/desktop/src/ui/App.tsx"],
+        ["apps/desktop/src/app/App.tsx"],
         ["package.json"],
         null,
       ]) {
@@ -118,7 +118,7 @@ describe("ci-paths: the rules", () => {
     ]) {
       expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
     }
-    expect(ciPlan(PR, ["apps/desktop/src/ui/App.tsx"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["apps/desktop/src/app/App.tsx"]).e2e).toBe(true);
     // The demo the journeys drive starts the real daemon (scripts/demo-seed.ts, #410 review).
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).e2e).toBe(true);
     expect(ciPlan(PR, ["apps/daemon/test/support/workflow-helpers.ts"]).e2e).toBe(true);
@@ -159,7 +159,7 @@ describe("ci-paths: the rules", () => {
   test("the app, the protocol, the dependencies or the workflow run everything but cargo", () => {
     // A file every test reads also runs the whole suite on Windows, in three shards (#444).
     for (const [path, windowsShards] of [
-      ["apps/desktop/src/ui/App.tsx", 1],
+      ["apps/desktop/src/app/App.tsx", 1],
       ["packages/protocol/src/index.ts", 1],
       ["package.json", 3],
       ["bun.lock", 3],

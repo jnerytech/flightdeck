@@ -18,6 +18,14 @@ export interface Party {
 /** `<host>/<id>`: how a session is addressed from any host. */
 export const addressOf = (party: Pick<Party, "host" | "id">): string => `${party.host}/${party.id}`;
 
+/** `host/id` into its parts; an address without a host has none. */
+export function addressParts(address: string): { host: string | null; id: string } {
+  const slash = address.indexOf("/");
+  return slash < 0
+    ? { host: null, id: address }
+    : { host: address.slice(0, slash), id: address.slice(slash + 1) };
+}
+
 /** Which sessions an exception names; every field given has to match. */
 export interface Selector {
   /** An address (`host/id`) or a bare id. */

@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { buildChildEnv, FlightdeckError } from "../kernel/index.ts";
+import { spawnProgram } from "./adapters/action-process.ts";
 import { type MaskedSecret, maskOutput } from "./mask.ts";
 import { type ActionDef, paramRegex, REFERENCE, secretsOf } from "./schema.ts";
 
@@ -206,7 +207,7 @@ export async function runAction(
 
     let proc: ReturnType<typeof Bun.spawn>;
     try {
-      proc = (opts.spawn ?? Bun.spawn)(argv, {
+      proc = (opts.spawn ?? spawnProgram)(argv, {
         cwd: action.cwd ? resolve(opts.base, fill(action.cwd)) : opts.base,
         env: { ...buildChildEnv(opts.baseEnv ?? process.env, false), ...env },
         stdin: "ignore",

@@ -8,14 +8,8 @@ import { join, resolve } from "node:path";
 import type { SessionImage } from "@flightdeck/protocol";
 import { AsyncQueue, FlightdeckError, isInside, settled } from "../kernel/index.ts";
 import { credential } from "../permissions/risk.ts";
-import {
-  ACP_CLOSED,
-  AcpClient,
-  AcpError,
-  REAL_TIMERS,
-  type SpawnedAcp,
-  spawnAcp,
-} from "./acp/client.ts";
+import { ACP_CLOSED, AcpClient, AcpError, REAL_TIMERS, type SpawnedAcp } from "./acp/client.ts";
+import { spawnAcp } from "./adapters/acp-process.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import { FLIGHTDECK_AGENT, FLIGHTDECK_PLAN_AGENT, opencodeEnv } from "./opencode-config.ts";
 import {

@@ -3,8 +3,8 @@ import { type ReactNode, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { type Lacking, startNeeds } from "./board-contracts.ts";
 import { ContractDialog } from "./contract-dialog.tsx";
+import { type Lacking, startNeeds } from "./domain/board-contracts.ts";
 
 /** What the project's columns ask of a card, from the project list the app holds. */
 export function projectContracts(

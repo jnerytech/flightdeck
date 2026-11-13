@@ -14,7 +14,7 @@ import { useT } from "@/i18n/context";
 import { AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
 import { LoadingState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { incidentText } from "./incident-text.ts";
+import { incidentText } from "./domain/incident-text.ts";
 
 /** The workflow the template ships under (`workflowTemplates` in the daemon). */
 const WORKFLOW = "post-mortem";
