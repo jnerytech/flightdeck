@@ -158,7 +158,9 @@ describe("backup-schedule: a run (#1264)", () => {
       report,
       [...files.keys()].sort(),
       text.startsWith("-----BEGIN AGE ENCRYPTED FILE-----"),
-      text.includes("dark"),
+      // The settings are not in the file as JSON. The armor is base64 and has no quote, so a quoted
+      // value cannot appear by chance; a bare `dark` can show up in the random ciphertext.
+      text.includes('"dark"'),
       preview?.settings.added,
     ]).toEqual([
       { status: "done", name, kept: 3, removed: 3, prune: "ok", at: NOON },

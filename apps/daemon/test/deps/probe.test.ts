@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { probeVersion } from "../../src/deps/probe.ts";
+import { probeVersion } from "../../src/deps/adapters/version-probe.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const bun = (code: string) => [process.execPath, "-e", code];
