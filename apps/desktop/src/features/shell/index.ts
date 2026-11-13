@@ -1,17 +1,10 @@
 /** The app's frame (shell), public entry (#1589): another folder imports from here, never a file inside. */
-export { AppShell, useHeaderSlot } from "./app-shell.tsx";
-export { Breadcrumb } from "./breadcrumb.tsx";
 export { breadcrumb } from "./crumbs.ts";
 export type { Density } from "./density.ts";
 export { NAV_ICONS, type NavKey } from "./nav-icons.ts";
-export { QuotaBarList } from "./quota-bars.tsx";
-export { ScopeMenu } from "./scope-menu.tsx";
-export { Sidebar } from "./sidebar.tsx";
 export { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
-export { StatusBarSlot } from "./status-bar.tsx";
 export { firstTerminalTab, hostsRoute, terminalTabCount } from "./status-bar-summary.ts";
 export type { ThemeMode } from "./theme.ts";
-export { HistoryButtons, TopBarActions, TopBarHost } from "./top-bar.tsx";
 export {
   foldedByDefault,
   liveTone,

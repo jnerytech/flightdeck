@@ -18,7 +18,7 @@ import { ALL_CLIENTS, UNASSIGNED } from "@/features/clients/index.ts";
 import { HostsBanner } from "@/features/hosts/ui.ts";
 import { activeWorktreeFilter, WorktreeChip } from "@/features/projects/index.ts";
 import type { Density } from "@/features/shell/index.ts";
-import { ScopeMenu } from "@/features/shell/index.ts";
+import { ScopeMenu } from "@/features/shell/ui.ts";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 import { onSubscription } from "@/features/quota/index.ts";
-import { QuotaBarList } from "@/features/shell/index.ts";
+import { QuotaBarList } from "@/features/shell/ui.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
