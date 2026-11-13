@@ -112,10 +112,14 @@ export function NewSecretForm(
         <input
           type="checkbox"
           checked={deleteOriginal}
+          aria-describedby={`${id}-delete-hint`}
           onChange={(event) => setDeleteOriginal(event.target.checked)}
         />
         {t("vault.deleteOriginal")}
       </label>
+      <p id={`${id}-delete-hint`} className="text-muted-foreground text-xs">
+        {t("vault.deleteOriginalHint")}
+      </p>
       {publicKey && (
         <div className="flex flex-col gap-1 text-sm">
           <span>{t("vault.publicKey")}</span>
@@ -135,6 +139,7 @@ export function NewSecretForm(
         submit={t("vault.save")}
         busy={saving.busy}
         disabled={!named || value === ""}
+        disabledReason={t(named ? "vault.needValue" : "vault.needName")}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
