@@ -7,7 +7,7 @@
 
 import { FlightdeckError } from "../kernel/index.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
-import type { AgentRuntime } from "../runtime/types.ts";
+import type { AgentRuntime } from "../runtime/index.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { Rewinder } from "./rewind.ts";
 
