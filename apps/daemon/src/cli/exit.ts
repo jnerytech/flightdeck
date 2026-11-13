@@ -15,5 +15,5 @@ export function exitWhenClosed(
   closed: Promise<void>,
   deps: Pick<CliDeps, "log" | "exit">,
 ): Promise<void> {
-  return closed.then(() => deps.exit(0));
+  return closed.then(() => deps.exit(0)).catch((error) => reportFailure(error, deps));
 }

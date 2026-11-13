@@ -3,6 +3,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { defaultConfigPath, expandHome, loadConfig } from "../config.ts";
 import { type Logger, settled } from "../kernel/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
+import { exitWhenClosed } from "./exit.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 
@@ -117,7 +118,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     }).catch((error: Error) => {
       throw new Error(`could not open the Flightdeck channel: ${error.message}`);
     });
-    void channel.closed.then(() => deps.exit(0));
+    void exitWhenClosed(channel.closed, deps);
     return null;
   },
   statusline: async (args, deps) => {
@@ -141,7 +142,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       cwd: deps.cwd ?? process.cwd(),
       identity: identityOf(deps.env),
     });
-    void mcp.closed.then(() => deps.exit(0));
+    void exitWhenClosed(mcp.closed, deps);
     return null;
   },
   message: async (args, deps) => {
