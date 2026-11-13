@@ -1,7 +1,6 @@
 {
   "apps/daemon/src/board/worktree.ts": 2,
   "apps/daemon/src/central/wrapper.ts": 1,
-  "apps/daemon/src/checkpoints/rewind.ts": 1,
   "apps/daemon/src/checkpoints/snapshots.ts": 1,
   "apps/daemon/src/deps/probe.ts": 1,
   "apps/daemon/src/kernel/command.ts": 3,
