@@ -15,7 +15,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { probeHost, PROBE_TIMEOUT_MS } = await import("../../src/features/hosts/probe-host.ts");
 const { translator } = await import("../../src/i18n/index.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

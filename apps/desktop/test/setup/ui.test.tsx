@@ -167,7 +167,7 @@ function page(w: ReturnType<typeof make>) {
 
 describe("setup-ui: the Setup screen (issue #164)", () => {
   test("the app opens the setup route as a tab, with the screen's title", async () => {
-    const { App } = await import("../../src/ui/App.tsx");
+    const { App } = await import("../../src/app/App.tsx");
     const cleanups: Array<() => unknown> = [];
     const server = makeDaemon(cleanups, {}).listen();
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });

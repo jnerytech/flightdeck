@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { runPaletteTarget } from "../../src/app/App.tsx";
 import { paletteSections } from "../../src/features/palette/palette.ts";
 import { SessionViews } from "../../src/features/sessions/session-views.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
-import { runPaletteTarget } from "../../src/ui/App.tsx";
 
 const state = () =>
   ({

@@ -81,7 +81,9 @@ export function SplitView(
       className="grid h-full min-h-0"
       style={{ gridTemplateColumns: columns }}
       onKeyDown={(e) => {
-        if (e.key === "Escape") props.onClose();
+        // A dialog, menu or popover the detail opened handles its own Esc (and the key bubbles
+        // through its portal to here): it keeps the detail open (#2579).
+        if (e.key === "Escape" && !e.defaultPrevented) props.onClose();
       }}
     >
       {children}
