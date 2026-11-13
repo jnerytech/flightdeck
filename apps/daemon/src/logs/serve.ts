@@ -1,4 +1,4 @@
-import { isVaultTransport, requireVaultTransport } from "../vault/vault.ts";
+import { isVaultTransport, requireVaultTransport } from "../vault/index.ts";
 import type { FileLog } from "./file-log.ts";
 
 /**

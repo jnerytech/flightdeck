@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { memoryPlatform } from "../fixtures.ts";
+import { addedSecret } from "./added-secret.ts";
 
 const { AppStore } = await import("../../src/lib/app-store.ts");
 
@@ -67,7 +68,7 @@ describe("cofre-store: a tool of the shell that fails", () => {
     };
     const store = new AppStore(platform, { baseDelayMs: 60_000 });
     stores.push(store);
-    const meta = await store.secrets.add({ name: "deploy", type: "token", value: "v-123" });
+    const meta = await addedSecret(store, { name: "deploy", type: "token", value: "v-123" });
     expect(await store.secrets.copy(meta.id, 5)).toBe(true);
     await Bun.sleep(40);
     expect(copied).toEqual(["v-123"]);

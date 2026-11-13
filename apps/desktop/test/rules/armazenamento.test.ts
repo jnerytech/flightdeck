@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { settlePlain as settle } from "../wait.ts";
 
 const { AppStore } = await import("../../src/lib/app-store.ts");
@@ -22,14 +23,14 @@ async function setup(platform = memoryPlatform().platform) {
   daemon.features.push("actions");
   const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
-  const here = await store.secrets.add({
+  const here = await addedSecret(store, {
     name: "staging",
     type: "token",
     value: "v1",
     tags: ["staging"],
     allowedHosts: [hostId],
   });
-  const elsewhere = await store.secrets.add({
+  const elsewhere = await addedSecret(store, {
     name: "outro",
     type: "token",
     value: "v2",

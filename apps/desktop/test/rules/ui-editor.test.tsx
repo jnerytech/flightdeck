@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { settle } from "../wait.ts";
 
 registerDom();
@@ -44,7 +45,7 @@ async function open(rules: unknown[] = []) {
   daemon.features.push("actions");
   const hostId = await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
-  const deploy = await store.secrets.add({
+  const deploy = await addedSecret(store, {
     name: "deploy",
     type: "token",
     value: "editor-value",

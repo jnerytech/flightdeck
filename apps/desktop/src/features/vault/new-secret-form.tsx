@@ -37,8 +37,8 @@ export function NewSecretForm(
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
   const save = async () => {
-    await store.secrets.add({ name: name.trim(), type, value, tags: splitTags(tags) });
-    props.onClose();
+    const meta = await store.secrets.add({ name: name.trim(), type, value, tags: splitTags(tags) });
+    if (meta) props.onClose();
   };
 
   const generate = async () => {

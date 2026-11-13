@@ -3,6 +3,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
 import { uiIdle, waiter } from "../wait.ts";
+import { addedSecret } from "./added-secret.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -43,7 +44,7 @@ async function open(input: { type: "password" | "ssh-key"; value: string; lastUs
   const store = new AppStore(platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
   const hostId = await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
-  const meta = await store.secrets.add({ name: "deploy", type: input.type, value: input.value });
+  const meta = await addedSecret(store, { name: "deploy", type: input.type, value: input.value });
   if (input.lastUsedAt !== undefined) {
     await store.vault.restore({ ...meta, lastUsedAt: input.lastUsedAt }, input.value);
     store.secrets.update(meta.id, {}); // tells the screen, which reads the store's secrets
