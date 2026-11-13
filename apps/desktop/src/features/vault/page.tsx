@@ -167,7 +167,13 @@ export const VaultPage = memo(function VaultPage(props: {
       const next: Record<string, SecretInfo> = {};
       // The vault reads a value only for a secret it has not described yet, and only for a type that has something to show.
       await inSequence(state.secrets, async (secret) => {
-        next[secret.id] = await store.vault.info(secret);
+        // A page that is gone (or a newer list) reads nothing more, so the vault is not refilled after it forgot.
+        if (!alive) return;
+        try {
+          next[secret.id] = await store.vault.info(secret);
+        } catch {
+          // A secret the vault cannot read shows no details; the other rows keep theirs.
+        }
       });
       if (alive) setInfos(next);
     })();
