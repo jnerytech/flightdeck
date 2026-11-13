@@ -259,11 +259,11 @@ describe("hub-ui", () => {
     const ask = item("repo-ask") as HTMLElement;
     // Needs you is a glyph with its name in the line, nothing more (#146: a shape as well as a colour).
     expect(ask.querySelector("svg[data-icon='needs-you']")).toBeNull();
-    expect(badge("repo-ask", "precisa de você") !== null).toBe(true);
+    expect(badge("repo-ask", "precisa de você")).not.toBeNull();
     // The host is the same for the whole group: it is in the header, not on the row.
     expect(within(ask).queryByText(/^alfa/)).toBeNull();
-    expect(badge("repo-run", "rodando") !== null).toBe(true);
-    expect(badge("Gerenciada", "ociosa") !== null).toBe(true);
+    expect(badge("repo-run", "rodando")).not.toBeNull();
+    expect(badge("Gerenciada", "ociosa")).not.toBeNull();
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
     expect(item("Do histórico")?.textContent ?? "").toContain("histórico");
     expect(item("Do histórico")?.querySelector("time")?.getAttribute("title")).toBe(
@@ -271,7 +271,7 @@ describe("hub-ui", () => {
     );
     expect(item("Do histórico")?.querySelector("time")?.textContent).toBe("1 de set.");
     expect(item("Do histórico")?.textContent ?? "").not.toContain("10:00");
-    expect(badge("Do histórico", "encerrada") !== null).toBe(true);
+    expect(badge("Do histórico", "encerrada")).not.toBeNull();
   });
 
   // #1132: the row says in words what the session is doing (the dot alone did not), and the
