@@ -1,10 +1,10 @@
 import type { ActionInfo, ActionList, ActionRunInfo } from "@flightdeck/protocol";
 import { Plus, Terminal } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SecretMeta } from "@/features/vault/index.ts";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { actionIssueText } from "../../i18n/errors.ts";
@@ -28,14 +28,24 @@ function usesProdSecret(action: ActionInfo, secrets: SecretMeta[]): boolean {
 }
 
 /** One action's runs, newest first; the output is shown as the daemon masked it. */
-function Runs(props: Readonly<{ store: AppStore; action: ActionInfo; runs: ActionRunInfo[] }>) {
+function Runs(
+  props: Readonly<{ id: string; store: AppStore; action: ActionInfo; runs: ActionRunInfo[] }>,
+) {
   const { store, action } = props;
   const { t } = store.i18n;
   if (props.runs.length === 0) {
-    return <p className="text-muted-foreground text-xs">{t("actionsUi.noRuns")}</p>;
+    return (
+      <p id={props.id} className="text-muted-foreground text-xs">
+        {t("actionsUi.noRuns")}
+      </p>
+    );
   }
   return (
-    <ul aria-label={t("actionsUi.runs", { name: action.name })} className="flex flex-col gap-2">
+    <ul
+      id={props.id}
+      aria-label={t("actionsUi.runs", { name: action.name })}
+      className="flex flex-col gap-2"
+    >
       {props.runs.map((run) => (
         <li key={run.id} className="flex flex-col gap-1 text-xs">
           <span className="flex flex-wrap items-baseline gap-x-2">
@@ -83,6 +93,10 @@ export function ActionsPage(
 ) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
+  const problemsId = useId();
+  const base = useId();
+  /** The id of an action's runs list, which its Runs button controls. */
+  const runsId = (key: string) => `${base}-${key.replaceAll(/\W/g, "_")}`;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   /** The runs of the actions whose history is open, by `source:name`. */
@@ -177,14 +191,20 @@ export function ActionsPage(
           />
         )}
         {errors.length > 0 && (
-          <ul
-            aria-label={t("actionsUi.problems")}
-            className="flex flex-col gap-1 text-status-error text-xs"
-          >
-            {errors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
+          // An alert: what a remove or a save leaves in the file is announced as it appears.
+          <section role="alert" aria-labelledby={problemsId} className="flex flex-col gap-1">
+            <h3 id={problemsId} className="font-medium text-status-error text-xs">
+              {t("actionsUi.problems")}
+            </h3>
+            <ul
+              aria-labelledby={problemsId}
+              className="flex flex-col gap-1 text-status-error text-xs"
+            >
+              {errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          </section>
         )}
         <ul aria-label={t("actionsUi.list")} className="flex flex-col gap-2">
           {(actions ?? []).map((action) => {
@@ -216,18 +236,22 @@ export function ActionsPage(
                     {t("actionsUi.secrets", { names: secrets.join(", ") })}
                   </span>
                 )}
-                <Button
+                <ActionButton
                   variant="ghost"
                   size="sm"
                   className="self-start"
                   aria-label={t(history[key] ? "actionsUi.hideRuns" : "actionsUi.showRuns", {
                     name: action.name,
                   })}
-                  onClick={() => void toggleRuns(action)}
+                  aria-expanded={Boolean(history[key])}
+                  aria-controls={history[key] ? runsId(key) : undefined}
+                  onClick={() => toggleRuns(action)}
                 >
                   {t(history[key] ? "actionsUi.hideRunsButton" : "actionsUi.runsButton")}
-                </Button>
-                {history[key] && <Runs store={store} action={action} runs={history[key] ?? []} />}
+                </ActionButton>
+                {history[key] && (
+                  <Runs id={runsId(key)} store={store} action={action} runs={history[key] ?? []} />
+                )}
                 {action.source === "app" && (
                   <span className="flex gap-1 self-start">
                     <Button

@@ -1,6 +1,6 @@
 import type { ActionInfo } from "@flightdeck/protocol";
 import { Plus, X } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -118,11 +118,18 @@ export function ActionForm(
   const [draft, setDraft] = useState<Draft>(() => draftOf(initial, props.seed));
   const [error, setError] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
+  const errorId = useId();
+  // The notice sits at the bottom of a long dialog: bring it into view when it appears (#2610).
+  useEffect(() => {
+    if (error) document.getElementById(errorId)?.scrollIntoView?.({ block: "nearest" });
+  }, [error, errorId]);
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const secrets = store.getState().secrets;
   const saving = useBusy();
 
   const save = async () => {
+    // The old error goes while the new request is out, so a repeated one shows (and scrolls) again.
+    setError(null);
     const result = await store.hostRequest(props.hostId, "actions.save", {
       projectId: props.projectId,
       definition: definitionOf(draft, initial),
@@ -294,7 +301,7 @@ export function ActionForm(
               </Button>
             </fieldset>
             {error && (
-              <InlineNotice tone="error">
+              <InlineNotice tone="error" id={errorId}>
                 {[error, ...problems].map((line, i) => (
                   <Fragment key={line}>
                     {i > 0 && <br />}
