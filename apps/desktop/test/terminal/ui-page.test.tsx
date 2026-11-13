@@ -174,7 +174,7 @@ describe("terminal-ui: the terminal screen", () => {
     expect(await escapeReachesPageUnhandled(box as HTMLElement)).toBe(false);
   });
 
-  test("Esc in the right-click menu closes the menu and marks the key handled", async () => {
+  test("Esc in the right-click menu closes the menu and the page never sees the key", async () => {
     const { x } = await setup();
     await settle(() => state("Ao vivo"));
     x.select("trecho");
@@ -184,7 +184,8 @@ describe("terminal-ui: the terminal screen", () => {
     });
     const menu = screen.queryByRole("menu", { name: "Terminal" });
     expect(menu).not.toBeNull();
-    expect(await escapeReachesPageUnhandled(menu as HTMLElement)).toBe(false);
+    // null: the key was stopped before it reached the page, so SplitView cannot read it.
+    expect(await escapeReachesPageUnhandled(menu as HTMLElement)).toBe(null);
   });
 
   test("closing asks: Desanexar keeps the process, Encerrar processo ends it, Cancelar does nothing", async () => {
@@ -486,6 +487,20 @@ describe("terminal-ui: the terminal screen", () => {
     act(() => menu.focus());
     await pressInMenu(menu, "ArrowDown");
     expect(focusedItem()).toBe("Copiar");
+  });
+
+  test("the Esc that closes the menu goes no further: the terminal under it never gets the key", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement;
+    let reached = 0;
+    const count = () => void reached++;
+    area.addEventListener("keydown", count);
+    await act(async () => {
+      fireEvent.keyDown(area, { key: "Escape" });
+    });
+    area.removeEventListener("keydown", count);
+    expect(reached).toBe(0);
   });
 
   test("Esc closes the menu and is marked handled even when the focus has left it", async () => {
