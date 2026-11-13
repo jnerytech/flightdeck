@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PersonaPicker } from "@/features/personas/index.ts";
+import { PersonaPicker } from "@/features/personas/ui.ts";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, LoadingState, NativeSelect, Page, Panel } from "@/shared/layout/index.ts";

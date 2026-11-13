@@ -7,15 +7,6 @@ export const MODELS = ["opus", "sonnet", "haiku"] as const;
 /** How hard the model works, from the lightest. */
 const EFFORTS: readonly EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 
-/**
- * Whether a model takes an effort. `model` is an alias of `MODELS` or "" (the persona's model);
- * `personaModel` is the persona's own model, a full id such as `claude-opus-5-5`, or null for none.
- */
-export function takesEffort(model: string, personaModel: string | null): boolean {
-  // A model of a family this list does not know, or none, is Claude Code's own: it takes one.
-  return !/haiku/i.test(model || personaModel || "");
-}
-
 /** A choice of model; "" is the default, named by `defaultLabel`. */
 export function ModelSelect(
   props: Readonly<{

@@ -1,13 +1,13 @@
 import type { TeamInfo } from "@flightdeck/protocol";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { PermissionChoice } from "@/features/personas/index.ts";
 import {
   EffortSelect,
   ModelSelect,
-  type PermissionChoice,
   PermissionSelect,
   PersonaPicker,
-} from "@/features/personas/index.ts";
+} from "@/features/personas/ui.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { type EffortChoice, effortOffered, offeredChoice } from "./new-team.ts";
 import { useModes, usePersonaModels } from "./use-modes.ts";
