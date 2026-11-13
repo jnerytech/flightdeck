@@ -199,7 +199,7 @@ describe("check-loop-ui: the switch on the card", () => {
         <CheckLoopPanel store={store} hostId="h1" card={card} />
       </TContext.Provider>,
     );
-    expect(theSwitch()).toBe(null); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(theSwitch() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
 
