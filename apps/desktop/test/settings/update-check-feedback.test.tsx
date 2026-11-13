@@ -75,10 +75,9 @@ describe("check for updates: the answer is at the button (#2597)", () => {
     setup({ upToDate: true, error: null }, () => {});
     const line = screen.queryByText(UP_TO_DATE);
     expect(line).not.toBeNull();
-    expect([line?.tagName, screen.queryByRole("status")?.textContent]).toEqual([
-      "OUTPUT",
-      line?.textContent,
-    ]);
+    // A boolean, not the node itself: a failed diff of a DOM node would print the whole page.
+    const announced = screen.queryAllByRole("status").some((node) => node === line);
+    expect([line?.tagName, announced]).toEqual(["OUTPUT", true]);
   });
 
   test("a failed check is shown beside the button as an alert", () => {
