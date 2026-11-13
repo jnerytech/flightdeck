@@ -41,12 +41,11 @@ describe("automationsOptions", () => {
     expect(automationsOptions(deps(60_000)).pollMs).toBe(60_000);
   });
 
-  test("they share the database, board, issues, automatic approval and log", () => {
+  // The database, the board and the issues are required options: a wiring that drops one fails
+  // typecheck. The automatic approval and the log are optional ones, so dropping them compiles.
+  test("they share the automatic approval and the log, optional options that a dropped wire would leave unset", () => {
     const given = deps(1000);
     const options = automationsOptions(given);
-    expect(options.db).toBe(given.db);
-    expect(options.board).toBe(given.board);
-    expect(options.issues).toBe(given.issues);
     expect(options.autoApprove).toBe(given.autoApprove);
     expect(options.log).toBe(given.log);
   });
