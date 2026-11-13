@@ -10,7 +10,7 @@ import {
 import { Notices } from "@/components/feedback/notices";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/index.ts";
-import { SimpleApp } from "@/features/home/index.ts";
+import { SimpleApp } from "@/features/home/ui.ts";
 import { draftFromLink, pairingErrorText } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
 import { activeWorktreeFilter } from "@/features/projects/index.ts";
