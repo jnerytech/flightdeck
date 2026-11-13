@@ -1,4 +1,12 @@
-import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
+import {
+  memo,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
@@ -498,7 +506,11 @@ export const Settings = memo(function Settings(props: {
       shown.length === 1
         ? t("settingsRail.matchesOne")
         : t("settingsRail.matches", { n: shown.length });
+  // A click's mark holds while the page scrolls to the section (a short last one never reaches the
+  // observer's band); the next wheel, touch or key hands the mark back to the scroll.
+  const pinned = useRef(false);
   const go = (id: string) => {
+    pinned.current = true;
     setCurrent(id);
     const target = document.getElementById(`settings-${id}`);
     target?.scrollIntoView?.({ block: "start" });
@@ -519,7 +531,7 @@ export const Settings = memo(function Settings(props: {
           else onScreen.delete(id);
         }
         const first = ids.find((id) => onScreen.has(id));
-        if (first) setCurrent(first);
+        if (first && !pinned.current) setCurrent(first);
       },
       { rootMargin: "0px 0px -60% 0px" },
     );
@@ -527,7 +539,15 @@ export const Settings = memo(function Settings(props: {
       const el = document.getElementById(`settings-${id}`);
       if (el) observer.observe(el);
     }
-    return () => observer.disconnect();
+    const release = () => {
+      pinned.current = false;
+    };
+    const handBack = ["wheel", "touchstart", "keydown"] as const;
+    for (const type of handBack) window.addEventListener(type, release, { passive: true });
+    return () => {
+      observer.disconnect();
+      for (const type of handBack) window.removeEventListener(type, release);
+    };
   }, [shownIds]);
   // Opened on a part (a budget alert): scroll to it and focus it.
   const wanted = props.section;

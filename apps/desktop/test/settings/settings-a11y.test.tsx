@@ -126,6 +126,7 @@ describe("the rail mark follows the page as it scrolls (#2598)", () => {
     const section = (name: string) => screen.getByRole("region", { name });
     expect(seen.watched).toContain(section("Atualizações"));
     await act(async () => {
+      fireEvent.wheel(window);
       seen.callback?.([
         { target: section("Janela"), isIntersecting: false },
         { target: section("Atualizações"), isIntersecting: true },
