@@ -27,11 +27,14 @@ import { AddProject } from "@/features/projects/ui.ts";
 import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
 import {
   EmptyState,
+  ErrorState,
   Field,
   FieldRow,
   FormActions,
+  LoadingState,
   NativeSelect,
   Page,
 } from "@/shared/layout/index.ts";
@@ -742,13 +745,21 @@ export const TeamsPage = memo(function TeamsPage(props: {
   /** The host asked for when it has no teams to show: the page names it and the one shown. */
   const missed = host && wanted !== host.id ? state.hosts.find((h) => h.id === wanted) : undefined;
   const current = host?.id ?? "";
-  const [teams, setTeams] = useState<TeamInfo[]>([]);
+  /** `null` until `teams.list` answers: an empty list is an answer, not the absence of one (#2647). */
+  const [teams, setTeams] = useState<TeamInfo[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const loading = useMinLoading(teams === null && !loadFailed);
   const [statuses, setStatuses] = useState<Record<string, TeamStatus>>({});
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     if (!current) return;
-    const list = await store.hostCommand(current, "teams.list", {});
+    // A retry shows the loading shape again, so the person sees it was taken.
+    setLoadFailed(false);
+    // The page has its own retry, so the toast offers none that would throw the answer away.
+    const list = await store.hostCommand(current, "teams.list", {}, { retry: false });
+    // `hostCommand` raises the toast with the reason and answers null for a refused request.
+    setLoadFailed(!list);
     if (!list) return;
     setTeams(list.teams);
     // The workers' branches are on their cards: the page asks for its teams' boards, as the app
@@ -828,7 +839,15 @@ export const TeamsPage = memo(function TeamsPage(props: {
           onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
         />
       )}
-      {teams.length === 0 && !creating && (
+      {loading && !creating && <LoadingState label={t("teamsUi.loading")} />}
+      {!loading && loadFailed && !creating && (
+        <ErrorState
+          message={t("teamsUi.loadFailed")}
+          retryLabel={t("teamsUi.retry")}
+          onRetry={() => void load()}
+        />
+      )}
+      {teams?.length === 0 && !creating && (
         <EmptyState
           icon={UsersRound}
           title={t("teamsUi.empty")}
@@ -836,7 +855,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
         />
       )}
       <ul aria-label={t("teamsUi.list")} className="flex max-w-3xl flex-col gap-3">
-        {[...teams]
+        {[...(teams ?? [])]
           .sort((a, b) => Number(b.id === props.team) - Number(a.id === props.team))
           .map((team) => (
             <Team
