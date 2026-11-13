@@ -32,11 +32,10 @@ export interface StructureVerdict {
 }
 
 const TEST_FILE = /\.test\.tsx?$/;
-const DICTIONARY = /^apps\/desktop\/src\/i18n\//;
+const DICTIONARY_DIR = "apps/desktop/src/i18n/";
 const REFACTOR = /^refactor(\([^)]*\))?!?: /;
 /** An import or re-export statement, multi-line included. */
-const IMPORT_FROM =
-  /^[ \t]*(?:import(?=[\s{*])|export\s*(?:\*|\{))[^;]*?\bfrom\s*["'][^"']*["'];?/gm;
+const IMPORT_FROM = /^[ \t]*(?:import(?=[\s{*])|export\s*[*{])[^;]*?\bfrom\s*["'][^"']*["'];?/gm;
 /** A side-effect import. */
 const IMPORT_BARE = /^[ \t]*import\s*["'][^"']*["'];?/gm;
 
@@ -71,9 +70,20 @@ function within(part: string[], whole: string[]): boolean {
   return minus(part, whole).length === 0;
 }
 
-/** A comment, a string or template literal, a word, `++`/`--`, or one sign, from the start of the text. */
-const LEXEME =
-  /^(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\w+|\+\+|--|[^\w\s])/;
+/**
+ * What a token can be, from the start of the text, the first that matches winning: a comment, a
+ * string or template literal, a word, `++`/`--`, or one sign.
+ */
+const LEXEMES = [
+  /^\/\/[^\n]*/,
+  /^\/\*[\s\S]*?\*\//,
+  /^"(?:[^"\\\n]|\\.)*"/,
+  /^'(?:[^'\\\n]|\\.)*'/,
+  /^`(?:[^`\\]|\\.)*`/,
+  /^\w+/,
+  /^(?:\+\+|--)/,
+  /^[^\w\s]/,
+];
 /** A regex literal, from the start of the text. */
 const REGEX = /^\/(?:[^/\\\n[]|\\.|\[(?:[^\]\\\n]|\\.)*\])+\/\w*/;
 const WORD = /^\w+$/;
@@ -83,6 +93,15 @@ const KEYWORDS = new Set(["return", "typeof", "case", "do", "else", "in", "of", 
 /** The words a line break after ends the statement (automatic semicolon insertion). */
 const RESTRICTED = new Set(["return", "throw", "break", "continue", "yield"]);
 const OPENING = new Set([",", "[", "(", "{"]);
+
+/** The first lexeme at the start of the text, if any. */
+function lexeme(text: string): string | undefined {
+  for (const pattern of LEXEMES) {
+    const found = pattern.exec(text);
+    if (found) return found[0];
+  }
+  return undefined;
+}
 
 /**
  * A body's tokens. The whitespace between them is the formatter's, but a literal (a string, a
@@ -104,7 +123,7 @@ function tokens(text: string): string[] {
     const last = out.at(-1) ?? "";
     const regex =
       rest.startsWith("/") && (!DIVIDES.test(last) || KEYWORDS.has(last)) ? REGEX.exec(rest) : null;
-    const token = regex?.[0] ?? LEXEME.exec(rest)?.[0] ?? rest.charAt(0);
+    const token = regex?.[0] ?? lexeme(rest) ?? rest.charAt(0);
     out.push(token);
     rest = rest.slice(token.length);
   }
@@ -198,6 +217,46 @@ function isStructural(commits: string[], labels: string[]): boolean {
   );
 }
 
+const inDictionary = (path: string): boolean => path.startsWith(DICTIONARY_DIR);
+
+/** A changed file's old path and its text at the base and at the head (null when it is absent). */
+function sidesOf(
+  change: FileChange,
+  before: StructureInput["before"],
+  after: StructureInput["after"],
+) {
+  const from = change.status === "R" ? (change.from ?? change.path) : change.path;
+  return {
+    from,
+    oldText: change.status === "A" ? null : before(from),
+    newText: change.status === "D" ? null : after(change.path),
+  };
+}
+
+/** What a test file may not do in a move: be added, be deleted, or change beyond its imports. */
+function testProblem(
+  change: FileChange,
+  from: string,
+  oldText: string | null,
+  newText: string | null,
+): string | null {
+  const wasTest = oldText !== null && TEST_FILE.test(from);
+  const isTest = newText !== null && TEST_FILE.test(change.path);
+  if (isTest && !wasTest) return `${change.path}: a test added`;
+  if (wasTest && !isTest) return `${from}: a test deleted`;
+  if (wasTest && isTest && !sameBody(body(oldText), body(newText)))
+    return `${change.path}: changed beyond its import paths`;
+  return null;
+}
+
+/** The problem a move makes when the dictionaries' texts differ between the base and the head. */
+function dictionaryProblem(was: string[], is: string[]): string | null {
+  const changed = [...minus(was, is), ...minus(is, was)];
+  if (changed.length === 0) return null;
+  const shown = changed.slice(0, 5).join(", ") + (changed.length > 5 ? ", ..." : "");
+  return `apps/desktop/src/i18n: a dictionary text changed (${shown})`;
+}
+
 export function structureVerdict(input: StructureInput): StructureVerdict {
   const { commits, labels, changes, before, after } = input;
   if (!isStructural(commits, labels)) return { structural: false, problems: [] };
@@ -205,26 +264,15 @@ export function structureVerdict(input: StructureInput): StructureVerdict {
   const was: string[] = [];
   const is: string[] = [];
   for (const change of changes) {
-    const from = change.status === "R" ? (change.from ?? change.path) : change.path;
-    const oldText = change.status === "A" ? null : before(from);
-    const newText = change.status === "D" ? null : after(change.path);
-    if (DICTIONARY.test(from) || DICTIONARY.test(change.path)) {
-      if (DICTIONARY.test(from)) was.push(...texts(oldText));
-      if (DICTIONARY.test(change.path)) is.push(...texts(newText));
-      continue;
-    }
-    const wasTest = oldText !== null && TEST_FILE.test(from);
-    const isTest = newText !== null && TEST_FILE.test(change.path);
-    if (isTest && !wasTest) problems.push(`${change.path}: a test added`);
-    else if (wasTest && !isTest) problems.push(`${from}: a test deleted`);
-    else if (wasTest && isTest && !sameBody(body(oldText), body(newText)))
-      problems.push(`${change.path}: changed beyond its import paths`);
+    const { from, oldText, newText } = sidesOf(change, before, after);
+    if (inDictionary(from)) was.push(...texts(oldText));
+    if (inDictionary(change.path)) is.push(...texts(newText));
+    if (inDictionary(from) || inDictionary(change.path)) continue;
+    const problem = testProblem(change, from, oldText, newText);
+    if (problem !== null) problems.push(problem);
   }
-  const changed = [...minus(was, is), ...minus(is, was)];
-  if (changed.length > 0) {
-    const shown = changed.slice(0, 5).join(", ") + (changed.length > 5 ? ", ..." : "");
-    problems.push(`apps/desktop/src/i18n: a dictionary text changed (${shown})`);
-  }
+  const dictionary = dictionaryProblem(was, is);
+  if (dictionary !== null) problems.push(dictionary);
   return { structural: true, problems };
 }
 
@@ -251,7 +299,7 @@ export function runStructureGuard(deps: {
   const { git, labels } = deps;
   const base = ["origin/main", "main"]
     .map((main) => git(["merge-base", "HEAD", main])?.trim())
-    .find((found) => found);
+    .find(Boolean);
   if (!base)
     return { code: 0, output: "structure-guard: no merge-base with main; nothing to check" };
   const commits = (git(["log", "--no-merges", "--format=%s", `${base}..HEAD`]) ?? "")

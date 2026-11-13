@@ -41,7 +41,10 @@ export function keyMatches(colons: string, fingerprint: string): boolean {
 }
 
 /** Runs `attempt` until it answers true, at most `tries` times; false when none did. */
-export async function withRetry(attempt: () => Promise<boolean>, tries: number): Promise<boolean> {
+export async function withRetry(
+  attempt: () => boolean | Promise<boolean>,
+  tries: number,
+): Promise<boolean> {
   for (let i = 0; i < tries; i++) if (await attempt()) return true;
   return false;
 }

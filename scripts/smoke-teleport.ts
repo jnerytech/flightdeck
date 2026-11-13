@@ -260,7 +260,7 @@ async function until(check: () => Promise<boolean> | boolean, what: string): Pro
     const checking = check();
     if (await checking) return; // NOSONAR: a poll until the deadline, one check at a time
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(100);
+    await Bun.sleep(100); // NOSONAR: a poll until the deadline, one check at a time
   }
 }
 

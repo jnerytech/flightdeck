@@ -34,13 +34,27 @@ const TEST =
   /(?<![\w$.])(?:test|it)(?:\.(?:skipIf|if|only|skip|todo|failing|serial|concurrent))*(?:\(|\.each[(`])/g;
 const EXPECT = /(?<![\w$.])expect\(/g;
 /** `Tests-Removed: <paths> — <why>`, the key in any case as git reads trailers. */
-const TRAILER = /^tests-removed:[^\S\n]*(.*)$/gim;
+const TRAILER = /^tests-removed:(.*)$/gim;
 /** The dash that ends the paths: the first em or en dash, or hyphen with a space on each side. */
-const DASH = /[^\S\n]*[—–][^\S\n]*|[^\S\n]+--?[^\S\n]+/;
+const DASH = /[—–]|(?<=[^\S\n])--?(?=[^\S\n])/;
 
 /** A test file's tests and `expect(` calls. */
 export function countTests(text: string): TestCount {
   return { tests: text.match(TEST)?.length ?? 0, expects: text.match(EXPECT)?.length ?? 0 };
+}
+
+/** The paths and the reason of one `Tests-Removed:` value, or null when it gives no reason. */
+function parseWaiver(value: string): { paths: string[]; why: string } | null {
+  const dash = DASH.exec(value);
+  if (!dash) return null;
+  const why = value.slice(dash.index + dash[0].length).trim();
+  if (why === "") return null;
+  const paths = value
+    .slice(0, dash.index)
+    .split(",")
+    .map((part) => part.trim().replace(/^`(.*)`$/, "$1"))
+    .filter((path) => path !== "");
+  return { paths, why };
 }
 
 /** The reason each file named by a `Tests-Removed:` trailer was waived for, by its path. */
@@ -48,14 +62,9 @@ function waivers(messages: string[]): Map<string, string> {
   const named = new Map<string, string>();
   for (const message of messages)
     for (const [, value = ""] of message.matchAll(TRAILER)) {
-      const dash = DASH.exec(value);
-      if (!dash) continue;
-      const why = value.slice(dash.index + dash[0].length).trim();
-      if (why === "") continue;
-      for (const part of value.slice(0, dash.index).split(",")) {
-        const path = part.trim().replace(/^`(.*)`$/, "$1");
-        if (path !== "" && !named.has(path)) named.set(path, why);
-      }
+      const waiver = parseWaiver(value.trimStart());
+      if (!waiver) continue;
+      for (const path of waiver.paths) if (!named.has(path)) named.set(path, waiver.why);
     }
   return named;
 }
@@ -72,28 +81,39 @@ function atHead(change: FileChange, text: string | null): TestCount | string {
   return text === null ? "unread" : countTests(text);
 }
 
+/** A changed test file that lost tests or expects: its line, and the paths a trailer may name it by. */
+function lostTests(
+  change: FileChange,
+  input: RemovalInput,
+): { line: string; waivers: string[] } | null {
+  if (change.status === "A") return null;
+  const from = change.from ?? change.path;
+  if (!TEST_FILE.test(from)) return null;
+  const name = change.from ? `${change.path} (was ${from})` : change.path;
+  const base = input.before(from);
+  const is = atHead(change, change.status === "D" ? null : input.after(change.path));
+  // A text git could not read is never taken as empty: the check fails closed.
+  if (base === null || is === "unread")
+    return {
+      line: `${name}: git could not read it at the ${base === null ? "base" : "head"}`,
+      waivers: [],
+    };
+  const was = countTests(base);
+  if (typeof is !== "string" && is.tests >= was.tests && is.expects >= was.expects) return null;
+  const head = typeof is === "string" ? is : `${counted(is)} at the head`;
+  return { line: `${name}: ${counted(was)} at the base; ${head}`, waivers: [from, change.path] };
+}
+
 export function removalVerdict(input: RemovalInput): RemovalVerdict {
   const named = waivers(input.messages);
   const problems: string[] = [];
   const waived: string[] = [];
   for (const change of input.changes) {
-    if (change.status === "A") continue;
-    const from = change.from ?? change.path;
-    if (!TEST_FILE.test(from)) continue;
-    const name = change.from ? `${change.path} (was ${from})` : change.path;
-    const base = input.before(from);
-    const is = atHead(change, change.status === "D" ? null : input.after(change.path));
-    // A text git could not read is never taken as empty: the check fails closed.
-    if (base === null || is === "unread") {
-      problems.push(`${name}: git could not read it at the ${base === null ? "base" : "head"}`);
-      continue;
-    }
-    const was = countTests(base);
-    if (typeof is !== "string" && is.tests >= was.tests && is.expects >= was.expects) continue;
-    const line = `${name}: ${counted(was)} at the base; ${typeof is === "string" ? is : `${counted(is)} at the head`}`;
-    const why = named.get(from) ?? named.get(change.path);
-    if (why === undefined) problems.push(line);
-    else waived.push(`${line} (waived: ${why})`);
+    const lost = lostTests(change, input);
+    if (lost === null) continue;
+    const why = lost.waivers.map((path) => named.get(path)).find((reason) => reason !== undefined);
+    if (why === undefined) problems.push(lost.line);
+    else waived.push(`${lost.line} (waived: ${why})`);
   }
   return { problems, waived };
 }
@@ -106,7 +126,7 @@ export function runTestsRemoved(deps: { git: (args: string[]) => string | null }
   const { git } = deps;
   const base = ["origin/main", "main"]
     .map((main) => git(["merge-base", "HEAD", main])?.trim())
-    .find((found) => found);
+    .find(Boolean);
   if (!base)
     return {
       code: 1,
