@@ -1,6 +1,7 @@
 import type { ChecksState, PrProviderKind, PrState } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import type { z } from "zod";
+import { FlightdeckError, parseJsonWith, whichOnPath } from "../kernel/index.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
 import { parseChecks, parsePrUrl } from "./gh-json.ts";
@@ -211,6 +212,16 @@ export const cliJson = async <T>(
   input?: string,
   run: CommandRunner = runCommand,
 ): Promise<T> => JSON.parse(await cliOk(name, args, cwd, input, run)) as T;
+
+/** A CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
+export const cliJsonWith = async <T>(
+  schema: z.ZodType<T>,
+  name: string,
+  args: string[],
+  cwd: string,
+  input?: string,
+  run: CommandRunner = runCommand,
+): Promise<T> => parseJsonWith(schema, await cliOk(name, args, cwd, input, run));
 
 /** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */
 function summarize(results: Array<"passing" | "failing" | "pending">): ChecksState | null {
