@@ -44,6 +44,8 @@ const items = () =>
     .queryAllByRole("button")
     .map((b) => b.textContent);
 const search = () => screen.getByRole("searchbox", { name: "Buscar nas configurações" });
+/** The search's own live line: the first thing in the sections column (a section may have its own status). */
+const matchLine = () => document.querySelector(".settings-sections > output")?.textContent;
 const typeInSearch = (text: string) =>
   act(async () => {
     fireEvent.change(search(), { target: { value: text } });
@@ -71,14 +73,14 @@ describe("settings page for a screen reader (#2598)", () => {
     setup();
     await typeInSearch("tema");
     expect(items()).toEqual(["Aparência"]);
-    expect(screen.queryByRole("status")?.textContent).toBe("1 seção corresponde.");
-    await typeInSearch("notific");
-    expect(items()).toEqual(["Notificações", "Atualizações"]);
-    expect(screen.queryByRole("status")?.textContent).toBe("2 seções correspondem.");
+    expect(matchLine()).toBe("1 seção corresponde.");
+    await typeInSearch("avisar");
+    expect(items()).toEqual(["Atualizações", "Webhooks"]);
+    expect(matchLine()).toBe("2 seções correspondem.");
     await typeInSearch("zzz");
-    expect(screen.queryByRole("status")?.textContent).toBe("Nenhuma configuração corresponde.");
+    expect(matchLine()).toBe("Nenhuma configuração corresponde.");
     await typeInSearch("");
-    expect(screen.queryByRole("status")?.textContent).toBe("");
+    expect(matchLine()).toBe("");
   });
 });
 
