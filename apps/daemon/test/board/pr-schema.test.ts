@@ -60,4 +60,37 @@ describe("pr schema: GitHub", () => {
     ]);
     await expect(provider.health(where())).rejects.toThrow(/does not fit/);
   });
+
+  test("replies shaped as gh prints them still read: nulls, an empty decision and extra keys", async () => {
+    const status = gh([
+      {
+        args: ["pr", "view"],
+        stdout: JSON.stringify({
+          state: "OPEN",
+          statusCheckRollup: null,
+          mergeStateStatus: "CLEAN",
+          reviewDecision: "",
+          createdAt: "2026-11-12T10:00:00Z",
+          extra: { __typename: "x" },
+        }),
+      },
+    ]);
+    expect((await status.status(where())).state).toBe("open");
+    const page = [{ id: 5, path: "a.ts", line: null, user: { login: "bob" }, body: "hm" }];
+    const threads = {
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              nodes: [{ isResolved: true, comments: { nodes: [{ databaseId: null }] } }],
+            },
+          },
+        },
+      },
+    };
+    const comments = gh(
+      commentsRules({ pages: JSON.stringify([page]), threads: JSON.stringify(threads) }),
+    );
+    expect((await comments.comments(where())).map((c) => c.author)).toEqual(["bob"]);
+  });
 });
