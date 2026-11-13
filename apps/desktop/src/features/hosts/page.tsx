@@ -92,7 +92,7 @@ export function HostPage(
     onNewSession(): void;
     onRemove(): void;
     /** Issue #1484: open Settings at this panel, with the focus on its heading. */
-    section?: "pause" | "keep-awake";
+    section?: "pause" | "keep-awake" | "health";
     /** The section was shown, or another tab was picked first: the ask is used up. */
     onSectionDone?(): void;
   }>,

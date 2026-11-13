@@ -40,7 +40,7 @@ export type Route =
       to?: string;
     }
   /** `section` (#1484): open the host's Settings at that panel, with the focus on it. */
-  | { name: "host"; host: string; section?: "pause" | "keep-awake" }
+  | { name: "host"; host: string; section?: "pause" | "keep-awake" | "health" }
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }
   /** Every project of every host, as cards (issue #9). */
