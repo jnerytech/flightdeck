@@ -337,7 +337,14 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     return 2;
   }
   const slice = Number(given) || issueOf(subjects);
-  const issues = refs ? (slice ? [slice] : []) : given ? issueList(given) : issuesOf(subjects);
+  const named = args.includes("--issue");
+  const issues = refs
+    ? slice
+      ? [slice]
+      : []
+    : named
+      ? issueList(given ?? "")
+      : issuesOf(subjects);
   if (issues === null) {
     deps.log("--issue takes issue numbers separated by commas: --issue 12,13");
     return 2;
