@@ -5,7 +5,7 @@ import {
   blocking,
   describeViolation,
 } from "../../../../scripts/lib/browser/axe.ts";
-import { modeRows } from "../../src/features/sessions/mode-menu.ts";
+import { modeRows } from "../../src/features/sessions/domain/mode-menu.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { settle } from "../wait.ts";

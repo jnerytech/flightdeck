@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionNameInfo } from "@flightdeck/protocol";
-import { sessionLabel } from "../../src/features/sessions/session-label.ts";
+import { sessionLabel } from "../../src/features/sessions/domain/session-label.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 const info = (over: Partial<SessionNameInfo> = {}): SessionNameInfo => ({

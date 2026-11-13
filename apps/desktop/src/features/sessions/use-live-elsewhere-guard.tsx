@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AppStore } from "../../lib/app-store.ts";
-import { liveElsewhere } from "./live-elsewhere.ts";
+import { liveElsewhere } from "./domain/live-elsewhere.ts";
 import { LiveElsewhereDialog } from "./live-elsewhere-dialog.tsx";
 
 /**
