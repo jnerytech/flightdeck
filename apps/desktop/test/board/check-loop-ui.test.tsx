@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, screen } = await import("@testing-libra
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { CheckLoopPanel } = await import("../../src/features/board/check-loop-panel.tsx");
-const { checkLoopLine } = await import("../../src/features/board/check-loop.ts");
+const { checkLoopLine } = await import("../../src/features/board/domain/check-loop.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

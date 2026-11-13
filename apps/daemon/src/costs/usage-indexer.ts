@@ -3,7 +3,7 @@ import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
-import { normalizeCwd } from "../history/indexer.ts";
+import { normalizeCwd } from "../history/index.ts";
 import { parseJsonOr, parseJsonText, ulid } from "../kernel/index.ts";
 import { localDay } from "../quota/usage.ts";
 
