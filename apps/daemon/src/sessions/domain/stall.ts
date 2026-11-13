@@ -2,8 +2,8 @@ import type { SessionSummary } from "@flightdeck/protocol";
 import type { ToolNote } from "./activity-clock.ts";
 
 export interface StallTimers {
-  setInterval(fn: () => unknown, ms: number): ReturnType<typeof setInterval>;
-  clearInterval(id: ReturnType<typeof setInterval>): void;
+  setInterval: (fn: () => unknown, ms: number) => ReturnType<typeof setInterval>;
+  clearInterval: (id: ReturnType<typeof setInterval>) => void;
 }
 
 /** What marks a session quiet: when it went silent and the last tool it called. */
@@ -22,8 +22,9 @@ export interface StallOptions {
   host: StallHost;
   /** Minutes without an event before a running session is quiet; 0 is off. */
   minutes: number;
-  now?: () => number;
-  timers?: StallTimers;
+  /** The clock and the interval timers; the wiring passes the real ones. */
+  now: () => number;
+  timers: StallTimers;
   /** What one "minute" lasts, in milliseconds; the demo and the journeys shorten it. */
   unitMs?: number;
 }
@@ -46,8 +47,8 @@ export class StallWatcher {
   private readonly marked = new Set<string>();
 
   constructor(private readonly opts: StallOptions) {
-    this.now = opts.now ?? Date.now;
-    this.timers = opts.timers ?? globalThis;
+    this.now = opts.now;
+    this.timers = opts.timers;
     this.unitMs = opts.unitMs ?? MINUTE_MS;
     this.setMinutes(opts.minutes);
   }
