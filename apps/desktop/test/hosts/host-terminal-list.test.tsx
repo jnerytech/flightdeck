@@ -80,66 +80,70 @@ for (const [lang, t] of [
   const none = () => screen.queryByText(t.hostTerminal.none);
   const unreadable = () => screen.queryByText(UNREADABLE[lang]);
   // Booleans: a failed toBeNull prints the whole DOM node, which can take gigabytes.
-  const present = (node: Element | null) => node !== null;
-  const absent = (node: Element | null) => node === null;
+  const expectPresent = (node: Element | null) => {
+    expect(node !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  };
+  const expectAbsent = (node: Element | null) => {
+    expect(node === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  };
 
   describe(`host-terminal-list (${lang}): a failed read of the terminals is not an empty list (issue #2587)`, () => {
     test("when no read ever worked, it says the list could not be read, not that nothing is open", async () => {
       await openPage(lang, ["fail"]);
-      expect(present(unreadable())).toBe(true);
-      expect(absent(none())).toBe(true);
+      expectPresent(unreadable());
+      expectAbsent(none());
     });
 
     test("a failed read after a good one keeps the last list and shows no error", async () => {
       const page = await openPage(lang, [{ ok: [ONE] }, "fail"]);
-      expect(present(attach())).toBe(true);
+      expectPresent(attach());
       await page.refresh();
-      expect(present(attach())).toBe(true);
-      expect(absent(unreadable())).toBe(true);
-      expect(absent(none())).toBe(true);
+      expectPresent(attach());
+      expectAbsent(unreadable());
+      expectAbsent(none());
     });
 
     test("a read the host refuses is its answer: no terminal is open, even after a list was shown", async () => {
       const page = await openPage(lang, [{ ok: [ONE] }, "refuse"]);
-      expect(present(attach())).toBe(true);
+      expectPresent(attach());
       await page.refresh();
-      expect(absent(attach())).toBe(true);
-      expect(present(none())).toBe(true);
-      expect(absent(unreadable())).toBe(true);
+      expectAbsent(attach());
+      expectPresent(none());
+      expectAbsent(unreadable());
     });
 
     test("any other refusal leaves the list unknown: the last one stays", async () => {
       const page = await openPage(lang, [{ ok: [ONE] }, "internal"]);
       await page.refresh();
-      expect(present(attach())).toBe(true);
-      expect(absent(none())).toBe(true);
+      expectPresent(attach());
+      expectAbsent(none());
     });
 
     test("a good read after the failed first one replaces the message with the list", async () => {
       const page = await openPage(lang, ["fail", { ok: [ONE] }]);
-      expect(present(unreadable())).toBe(true);
+      expectPresent(unreadable());
       await page.refresh();
-      expect(present(attach())).toBe(true);
-      expect(absent(unreadable())).toBe(true);
+      expectPresent(attach());
+      expectAbsent(unreadable());
     });
 
     test("before the first read answers it says neither that nothing is open nor that the list is unreadable", async () => {
       await openPage(lang, ["pending"]);
-      expect(absent(unreadable())).toBe(true);
-      expect(absent(none())).toBe(true);
+      expectAbsent(unreadable());
+      expectAbsent(none());
     });
 
     test("an empty list the host returned still reads as no terminal open", async () => {
       await openPage(lang, [{ ok: [] }]);
-      expect(present(none())).toBe(true);
-      expect(absent(unreadable())).toBe(true);
+      expectPresent(none());
+      expectAbsent(unreadable());
     });
 
     test("a failed read after the host returned an empty list keeps saying no terminal is open", async () => {
       const page = await openPage(lang, [{ ok: [] }, "fail"]);
       await page.refresh();
-      expect(present(none())).toBe(true);
-      expect(absent(unreadable())).toBe(true);
+      expectPresent(none());
+      expectAbsent(unreadable());
     });
   });
 }
