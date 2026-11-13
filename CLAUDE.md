@@ -135,8 +135,8 @@ New code and every move follow these rules; older code moves toward them one str
 
 - Folders by domain, not by layer: the tree names the product (`board/`, `sessions/`, `hosts/`,
   `review/`), not the framework (`server/`, `lib/`, `utils/`). Names come from `docs/GLOSSARY.md`.
-- One public entry per domain (`index.ts`); a desktop feature also has `ui.ts` for its components,
-  so state and wiring never reach the screens (#2451). Another domain imports only those, never a deep
+- One public entry per domain (`index.ts`); a desktop feature also gets `ui.ts` for its components
+  as it moves, so state and wiring never reach the screens (#2451). Another domain imports only those, never a deep
   file. No import cycles between domains; dependencies point toward the more stable, more abstract code.
 - Cut by reason to change (Parnas, SRP): a module answers to one actor and hides one decision that
   may change. Things that change together live together; nothing depends on what it does not use.
