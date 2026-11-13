@@ -55,6 +55,42 @@ describe("spawn-count (#1612)", () => {
     ).toEqual({ "apps/daemon/src/a.ts": 3 });
   });
 
+  test("a launch through a bun import, a destructured Bun, a computed key or the Bun shell counts too", () => {
+    expect(
+      spawnCounts([
+        {
+          path: "apps/daemon/src/a.ts",
+          text: [
+            'import { spawn, spawnSync } from "bun";',
+            'import { $ } from "bun";',
+            "const { spawn: go } = Bun;",
+            'const run = Bun["spawn"];',
+            "await Bun.$`ls ${dir}`;",
+            "const p = Bun . spawn(cmd);",
+            'import type { Subprocess } from "bun";',
+            'import { serve } from "bun";',
+          ].join("\n"),
+        },
+      ]),
+    ).toEqual({ "apps/daemon/src/a.ts": 6 });
+  });
+
+  test("a launch after a block comment on the same line counts; a trailing comment or a url does not hide or fake one", () => {
+    expect(
+      spawnCounts([
+        {
+          path: "apps/daemon/src/a.ts",
+          text: [
+            "/* x */ Bun.spawn(argv);",
+            "/** x */ const p = Bun.spawn(argv);",
+            "ok(); // was Bun.spawn(argv)",
+            'fetch("http://x/y"); Bun.spawn(argv);',
+          ].join("\n"),
+        },
+      ]),
+    ).toEqual({ "apps/daemon/src/a.ts": 3 });
+  });
+
   test("a new file with a launch, or a baseline file with more, fails the ratchet", () => {
     const counts = spawnCounts([
       { path: "apps/daemon/src/a.ts", text: "Bun.spawn(a);\nBun.spawn(b);\n" },
