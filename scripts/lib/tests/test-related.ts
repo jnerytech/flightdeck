@@ -405,24 +405,39 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
   const relatives = new Map(tests.map(([test, source]) => [test, relativeNames(test, source)]));
   const found = new Map<string, string>();
   for (const path of changed) {
-    // The path itself, then its folders, most specific first. A name with no slash (a root file,
-    // a top-level folder) is a word in a test, not a path; a baseline also counts by its own name.
-    const names = [path];
-    if (path.endsWith("-baseline.json")) names.push(posix.basename(path));
-    for (let dir = posix.dirname(path); dir !== "."; dir = posix.dirname(dir)) names.push(dir);
-    const paths = names.filter((n) => n.includes("/") || n.endsWith("-baseline.json"));
+    const { names, paths } = pathNames(path);
     for (const [test, source] of tests) {
       if (found.has(test)) continue;
-      const name = paths.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
-      const relative = name
-        ? undefined
-        : relatives.get(test)?.find(({ resolved }) => names.includes(resolved));
-      if (name) found.set(test, `names ${name}`);
-      else if (relative) found.set(test, `names ${relative.literal} (${relative.resolved})`);
+      const why = whyNamed(source, relatives.get(test), names, paths);
+      if (why) found.set(test, why);
     }
   }
   // In the sources' order; planRelated sorts what it runs.
   return [...found].map(([path, why]) => ({ path, why }));
+}
+
+/**
+ * The path itself, then its folders, most specific first. A name with no slash (a root file, a
+ * top-level folder) is a word in a test, not a path; a baseline also counts by its own name.
+ */
+function pathNames(path: string): { names: string[]; paths: string[] } {
+  const names = [path];
+  if (path.endsWith("-baseline.json")) names.push(posix.basename(path));
+  for (let dir = posix.dirname(path); dir !== "."; dir = posix.dirname(dir)) names.push(dir);
+  return { names, paths: names.filter((n) => n.includes("/") || n.endsWith("-baseline.json")) };
+}
+
+/** Why a test reads this change: it quotes one of the paths, or a relative literal resolves to a name. */
+function whyNamed(
+  source: string,
+  relatives: Array<{ literal: string; resolved: string }> | undefined,
+  names: string[],
+  paths: string[],
+): string | undefined {
+  const name = paths.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
+  if (name) return `names ${name}`;
+  const relative = relatives?.find(({ resolved }) => names.includes(resolved));
+  return relative ? `names ${relative.literal} (${relative.resolved})` : undefined;
 }
 
 /** A relative path in one string, opened and closed by the same quote. */

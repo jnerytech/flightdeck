@@ -149,8 +149,8 @@ export async function sonarLeft(args: string[], deps: SonarLeftDeps): Promise<nu
           "--",
           file,
         ]);
-      const plain = await since(["--no-merges"]);
-      const logged = plain.code === 0 && plain.stdout.trim() ? plain : await since([]);
+      const plain = await since(["--no-merges"]); // NOSONAR: one git at a time, the Pi's slot is shared
+      const logged = plain.code === 0 && plain.stdout.trim() ? plain : await since([]); // NOSONAR: one git at a time, the Pi's slot is shared
       // A git that cannot say is a doubt, never "unchanged": the finding is marked for a look.
       if (logged.code !== 0) changedBy.set(file, FAILED);
       else changedBy.set(file, oneLine(logged.stdout) || null);

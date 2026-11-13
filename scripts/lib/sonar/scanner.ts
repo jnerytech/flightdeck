@@ -14,7 +14,10 @@ export function scannerFiles(
   flavor: string,
 ): { zip: string; asc: string; name: string } {
   const name = `sonar-scanner-cli-${version}-${flavor}.zip`;
-  const zip = `${base.replace(/\/+$/, "")}/${name}`;
+  // No regex: `/\/+$/` backtracks over a long run of slashes (S8786).
+  let end = base.length;
+  while (end > 0 && base[end - 1] === "/") end--;
+  const zip = `${base.slice(0, end)}/${name}`;
   return { zip, asc: `${zip}.asc`, name };
 }
 
