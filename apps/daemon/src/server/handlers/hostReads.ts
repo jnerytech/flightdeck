@@ -2,7 +2,7 @@
  * Issue #1288: the host readouts: logs, releases, names, idle, ROI, the statusline, resources, the
  * dependency and doctor checks, and the runtime models.
  */
-import { statuslineData } from "../../costs/statusline.ts";
+import { statuslineData } from "../../costs/index.ts";
 import { FlightdeckError } from "../../kernel/index.ts";
 import { tailForOrigin } from "../../logs/serve.ts";
 import { localDay } from "../../quota/index.ts";

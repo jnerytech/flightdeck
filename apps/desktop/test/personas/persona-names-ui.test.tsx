@@ -127,7 +127,7 @@ describe("persona-names-ui: a team member's row (#101)", () => {
   test("the persona picker and its buttons sit on the shared field row", () => {
     setup("en");
     const row = document.querySelector('[data-slot="member-persona"]');
-    const buttons = [/^Change the persona of /, /^Remove /].map(
+    const buttons = [/^Change persona of /, /^Remove /].map(
       (name) => within(row as HTMLElement).queryByRole("button", { name }) !== null,
     );
     expect([row?.classList.contains("field-row") ?? false, ...buttons]).toEqual([true, true, true]);

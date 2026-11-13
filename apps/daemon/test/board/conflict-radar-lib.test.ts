@@ -221,7 +221,7 @@ describe("conflict-radar: scale (#1191)", () => {
     }
     for (let i = 0; i < 200; i++) await radar.update(card(`c${i}`));
     // rev-parse, the commits, the tracked edits and the untracked files.
-    expect(calls.length).toBe(200 * 4);
+    expect(calls.length).toBe(200 * 4); // NOSONAR: a failed length check would print all 800 calls
     expect(
       radar
         .overlaps("c10")

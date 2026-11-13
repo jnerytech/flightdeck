@@ -1,5 +1,5 @@
 import type { TerminalData, TerminalExited, TerminalResync } from "@flightdeck/protocol";
-import { TERMINAL_LAUNCH_VAR } from "../central/wrapper.ts";
+import { TERMINAL_LAUNCH_VAR } from "../central/index.ts";
 import {
   buildChildEnv,
   FlightdeckError,

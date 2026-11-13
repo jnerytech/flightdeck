@@ -3,8 +3,9 @@
  * domain imports from here, never a file inside.
  */
 
-export type { Central } from "./central.ts";
+export { type Central, messageExternal } from "./central.ts";
 export { startChannel } from "./channel.ts";
+export type { ExternalSessions } from "./external.ts";
 export { sendSessionStart } from "./hook-command.ts";
 export {
   type HooksStatus,
@@ -14,5 +15,5 @@ export {
   installHooks,
   uninstallHooks,
 } from "./hooks-install.ts";
-export type { ProjectKeys } from "./project-key.ts";
-export { runClaude } from "./wrapper.ts";
+export { type AsyncGitRunner, type ProjectKeys, runGitAsync, stripRemote } from "./project-key.ts";
+export { runClaude, TELEMETRY_FILE, TERMINAL_LAUNCH_VAR } from "./wrapper.ts";

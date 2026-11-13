@@ -17,6 +17,8 @@
       "apps/daemon/test/permissions/rule-risk-contract.test.ts",
       "apps/daemon/test/permissions/rule-risk-segments.test.ts",
       "apps/daemon/test/permissions/rule-risk-windows.test.ts",
+      "apps/daemon/test/permissions/rule-risk-names.test.ts",
+      "apps/daemon/test/permissions/rule-risk-wildcards.test.ts",
       "apps/daemon/test/permissions/rule-risk-rules.test.ts",
       "apps/daemon/test/permissions/rule-path-kind.test.ts",
       "apps/daemon/test/permissions/rule-realpath.test.ts",

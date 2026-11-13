@@ -63,7 +63,7 @@ describe("harness-wiring: the host's harness, built from its runtime and data fo
     const { built, module } = harness({ oneShot: false });
     const runner = createModuleRunner();
     await runner.add({ modules: [module] });
-    expect(runner.server().harness === built).toBe(true);
+    expect(runner.server().harness).toBe(built);
   });
 
   test("a runtime that cannot run a one-shot offers no draft", () => {

@@ -6,8 +6,11 @@ export const TOKEN_MASK = "••••";
 /** A real token never has this character, so a token that has it is the shown mask, edited or not. */
 const DOT = "•";
 
-/** The value of every parameter but `name`, in text that may not read as a link: the key as typed or encoded. */
-const SECRET_VALUES = /([?&#](?!name=)[^=&\s#]*=)[^&]*/gi; // NOSONAR: runs on the one link a person typed; excluding "?" from a key would stop masking a "name=" that follows one
+/**
+ * The value of every parameter but `name`, in text that may not read as a link: the key as typed or encoded.
+ * A key may hold a `?` (`?x?name=secret` masks `secret`), so the class stays as wide as it is: the input is one typed field.
+ */
+const SECRET_VALUES = /([?&#](?!name=)[^=&\s#]*=)[^&]*/gi; // NOSONAR: bounded by the length of a typed link; narrowing the key would leave a value unmasked
 
 /** The `host:port` a pairing link was read with. */
 const WHERE = /^ws:\/\/(.+):(\d+)\/v1\/ws$/;

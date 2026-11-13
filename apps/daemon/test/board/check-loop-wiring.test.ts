@@ -80,7 +80,7 @@ describe("check-loop-wiring: the check loop the daemon builds (#1593)", () => {
     expect(read).toEqual([[store.db, "p1"]]);
     expect(checkLoop.board.isTrusted("/w/p1")).toBe(false);
     expect(asked).toEqual(["/w/p1"]);
-    expect(checkLoop.board.runner === runner).toBe(true);
+    expect(checkLoop.board.runner).toBe(runner);
   });
 
   test("the switch turns on with the watcher's checks in the session's mode", () => {

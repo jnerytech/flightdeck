@@ -12,7 +12,7 @@ import type {
   PrState,
   UnblockWhen,
 } from "@flightdeck/protocol";
-import type { Prepare } from "../personas/prepare.ts";
+import type { Prepare } from "../personas/index.ts";
 import type { PrProvider } from "../pr/index.ts";
 import type { Quota } from "../quota/index.ts";
 import type { SessionManager } from "../sessions/index.ts";

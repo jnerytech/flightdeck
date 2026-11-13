@@ -56,7 +56,7 @@ describe("usage-wiring: the ledger of every turn, as the module the server takes
   test("the server and the sessions read one ledger, kept on the host's store", () => {
     const { db } = new EventStore(":memory:");
     const built = createUsage({ db, projectKey: (cwd) => `p:${cwd}` });
-    expect(built.usage instanceof UsageLedger).toBe(true);
-    expect(built.modules[0].server?.usage === built.usage).toBe(true);
+    expect(built.usage).toBeInstanceOf(UsageLedger);
+    expect(built.modules[0].server?.usage).toBe(built.usage);
   });
 });

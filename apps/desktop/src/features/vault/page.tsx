@@ -6,12 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { groupSecrets, selectedClient } from "@/features/clients/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { EmptyState, Page, Stack } from "@/shared/layout/index.ts";
+import { EmptyState, OpenedPanel, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { BackupPanel } from "./backup-panel.tsx";
 import { EditSecretForm } from "./edit-secret-form.tsx";
 import { NewSecretForm } from "./new-secret-form.tsx";
-import { VaultPanel } from "./panel.tsx";
 import { RulesEditor } from "./rules-editor.tsx";
 import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
@@ -23,11 +22,19 @@ const REVEAL_MS = 10_000;
 const CLEAR_MS = 30_000;
 /** How long before a revealed value hides that the person is told once. */
 const WARN_MS = 5_000;
+/** How long the "hidden" notice stays in the status line before it is cleared. */
+const HIDDEN_NOTICE_MS = 5_000;
 
 /** What describes a secret on its row, without revealing it. */
 function infoText(info: SecretInfo, fingerprint: (value: string) => string): string {
   if (info.fingerprint) return fingerprint(info.fingerprint);
   return info.hint ?? info.names?.join(", ") ?? "";
+}
+
+/** The secret a removal hands the focus to: the next one in the list, else the one before it, else none. */
+function neighbourOf(list: readonly SecretMeta[], id: string): string | null {
+  const at = list.findIndex((s) => s.id === id);
+  return list[at + 1]?.id ?? list[at - 1]?.id ?? null;
 }
 
 function SecretRow(
@@ -167,8 +174,14 @@ export const VaultPage = memo(function VaultPage(props: {
   const opener = useRef<HTMLElement | null>(null);
   // Where the focus lands when the opener's row is gone (a removed secret).
   const newSecretButton = useRef<HTMLButtonElement>(null);
-  const focusAfterClose = () =>
-    opener.current?.isConnected ? opener.current : newSecretButton.current;
+  // Where the focus went when a removal's row left the list, for a dialog that closes after it.
+  const landed = useRef<HTMLElement | null>(null);
+  const focusAfterClose = () => {
+    if (opener.current?.isConnected) return opener.current;
+    return landed.current?.isConnected ? landed.current : newSecretButton.current;
+  };
+  // A confirmed removal: which secret goes, and which row takes the focus once it is gone.
+  const removal = useRef<{ id: string; next: string | null } | null>(null);
 
   useEffect(() => {
     if (!shown) return;
@@ -184,6 +197,33 @@ export const VaultPage = memo(function VaultPage(props: {
       clearTimeout(soon);
     };
   }, [shown, revealMs]);
+
+  // "Hidden" is said once: it does not stay in the status line for good.
+  useEffect(() => {
+    if (phase !== "hidden") return;
+    const timer = setTimeout(() => setPhase(null), HIDDEN_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  // A secret that is gone shows no value and leaves no status about it, and its row's neighbour
+  // takes the focus (else the New secret button) once the row has left the list.
+  useEffect(() => {
+    const listed = (id: string) => state.secrets.some((s) => s.id === id);
+    if (shown && !listed(shown.id)) {
+      setShown(null);
+      setPhase(null);
+    }
+    const gone = removal.current;
+    if (!gone || listed(gone.id)) return;
+    removal.current = null;
+    const next = gone.next
+      ? [...document.querySelectorAll<HTMLElement>("[data-opener]")].find(
+          (el) => el.dataset.opener === `edit:${gone.next}`,
+        )
+      : undefined;
+    landed.current = next ?? newSecretButton.current;
+    landed.current?.focus();
+  }, [state.secrets, shown]);
 
   const reveal = async (secret: SecretMeta) => {
     setAsking(null);
@@ -242,28 +282,28 @@ export const VaultPage = memo(function VaultPage(props: {
         {phase === "hidden" && t("vault.hidden")}
       </output>
       {creating && (
-        <VaultPanel opener="new">
+        <OpenedPanel opener="new">
           <NewSecretForm
             store={store}
             onClose={() => setCreating(false)}
             {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
           />
-        </VaultPanel>
+        </OpenedPanel>
       )}
       {editing && (
-        <VaultPanel key={editing.id} opener={`edit:${editing.id}`}>
+        <OpenedPanel key={editing.id} opener={`edit:${editing.id}`}>
           <EditSecretForm store={store} secret={editing} onClose={() => setEditing(null)} />
-        </VaultPanel>
+        </OpenedPanel>
       )}
       {ruling && (
-        <VaultPanel key={ruling.id} opener={`rules:${ruling.id}`}>
+        <OpenedPanel key={ruling.id} opener={`rules:${ruling.id}`}>
           <RulesEditor
             store={store}
             secret={ruling}
             {...(props.rule?.secretId === ruling.id ? { seed: props.rule.match } : {})}
             onClose={() => setRuling(null)}
           />
-        </VaultPanel>
+        </OpenedPanel>
       )}
       <Tabs defaultValue="secrets">
         <TabsList aria-label={t("vault.tabs")}>
@@ -365,6 +405,14 @@ export const VaultPage = memo(function VaultPage(props: {
           destructive
           returnFocus={focusAfterClose}
           onConfirm={() => {
+            landed.current = null;
+            removal.current = {
+              id: removing.id,
+              next: neighbourOf(
+                groups.flatMap((g) => g.secrets),
+                removing.id,
+              ),
+            };
             void store.secrets.remove(removing.id);
             setRemoving(null);
           }}
