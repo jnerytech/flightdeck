@@ -17,7 +17,7 @@ import {
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { byCodeUnit, type MemorySuggestion } from "@flightdeck/protocol";
-import { frontmatter } from "../agentcfg/files.ts";
+import { frontmatter } from "../agentcfg/index.ts";
 import { userHome } from "../config.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, isInside } from "../kernel/index.ts";
