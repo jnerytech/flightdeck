@@ -42,6 +42,15 @@ describe("sonar scanner download (#1883)", () => {
     });
   });
 
+  test("the binaries URL gives the same files with no trailing slash, one or many", () => {
+    const zip = (base: string) => scannerFiles(base, "8.3.0.16463", "linux-x64").zip;
+    const plain = zip("https://binaries.example/dist");
+    expect([
+      zip("https://binaries.example/dist/"),
+      zip("https://binaries.example/dist////"),
+    ]).toEqual([plain, plain]);
+  });
+
   test("only a primary key's fingerprint counts, never a subkey's", () => {
     expect(primaryFingerprints(COLONS)).toEqual([PRIMARY]);
   });
