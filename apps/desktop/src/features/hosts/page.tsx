@@ -73,6 +73,23 @@ const tabOf = (section: HostSection) => (section === "health" ? "overview" : "se
 const slotOf = (section: HostSection) =>
   `[data-slot="${section === "health" ? "host-health" : `host-section-${section}`}"]`;
 
+/** Whether the host has said it has the panel of `section` (a daemon older than the app has not). */
+function sectionIsShown(section: HostSection | undefined, info: HostView["hostInfo"]): boolean {
+  switch (section) {
+    case "pause":
+      return info?.pause !== undefined;
+    case "keep-awake":
+      return info?.keepAwake !== undefined;
+    case "health":
+      return (
+        hasFeature(info?.features, "depsCheck", false) ||
+        hasFeature(info?.features, "doctor.run", false)
+      );
+    default:
+      return false;
+  }
+}
+
 const HOOK_LABELS = {
   installed: "hostPage.hooksInstalled",
   absent: "hostPage.hooksAbsent",
@@ -139,12 +156,7 @@ export function HostPage(
   // A status-bar item opens its section (#1484): Settings, the panel in view, the focus on its heading.
   // The panel shows once the host says it has the feature, so the move waits for it.
   const section = props.section;
-  const sectionShown =
-    (section === "pause" && info?.pause !== undefined) ||
-    (section === "keep-awake" && info?.keepAwake !== undefined) ||
-    (section === "health" &&
-      (hasFeature(info?.features, "depsCheck", false) ||
-        hasFeature(info?.features, "doctor.run", false)));
+  const sectionShown = sectionIsShown(section, info);
   // The focus moves once the Settings panel is active (a browser does not focus into a hidden
   // one), then the ask is used up, so it never pulls the person back later.
   // It looks only inside this page (another page may show the same section), and moves the focus
