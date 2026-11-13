@@ -36,6 +36,8 @@ export interface MutationDomain {
   name: string;
   mutate: string[];
   tests: string[];
+  /** The score (percent) the weekly run must not fall below; absent means no baseline. */
+  minScore?: number;
 }
 
 export interface DomainResult extends MutationCounts {

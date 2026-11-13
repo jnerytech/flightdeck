@@ -8,7 +8,7 @@ import {
   whichOnPath,
 } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
-import { folderRemoving } from "../worktrees/locks.ts";
+import { folderRemoving } from "../worktrees/index.ts";
 import type { Pty, PtyFactory } from "./pty.ts";
 import { Ring } from "./ring.ts";
 import { defaultShell } from "./shell.ts";

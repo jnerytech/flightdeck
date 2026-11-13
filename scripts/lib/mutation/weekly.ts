@@ -23,6 +23,8 @@ export interface WeeklyOutcome {
   results: DomainResult[];
   /** Domains whose run exited non-zero or left no report: they have no score this week. */
   failed: string[];
+  /** Domains whose score is under their `minScore` baseline. */
+  belowBaseline: { domain: string; score: number | null; minScore: number }[];
 }
 
 export function configPathFor(domain: MutationDomain): string {
@@ -36,7 +38,10 @@ const SAFE_PATH = /^[\w./-]+$/;
 function assertSafe(domain: MutationDomain): void {
   const paths = [...domain.mutate, ...domain.tests];
   const unsafePath = paths.find((path) => !SAFE_PATH.test(path) || path.split("/").includes(".."));
-  if (!SAFE_NAME.test(domain.name) || unsafePath !== undefined) {
+  const badScore =
+    domain.minScore !== undefined &&
+    !(typeof domain.minScore === "number" && domain.minScore >= 0 && domain.minScore <= 100);
+  if (!SAFE_NAME.test(domain.name) || unsafePath !== undefined || badScore) {
     throw new Error(`unsafe mutation domain: ${domain.name} ${unsafePath ?? ""}`.trim());
   }
 }
@@ -45,6 +50,7 @@ export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
   for (const domain of deps.domains) assertSafe(domain);
   const results: DomainResult[] = [];
   const failed: string[] = [];
+  const belowBaseline: WeeklyOutcome["belowBaseline"] = [];
   for (const domain of deps.domains) {
     const configPath = configPathFor(domain);
     deps.writeConfig(
@@ -56,7 +62,19 @@ export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
       failed.push(domain.name);
       continue;
     }
-    results.push({ domain: domain.name, ...scoreReport(report), survivors: survivorsOf(report) });
+    const counts = scoreReport(report);
+    results.push({ domain: domain.name, ...counts, survivors: survivorsOf(report) });
+    if (
+      domain.minScore !== undefined &&
+      (counts.score === null || counts.score < domain.minScore)
+    ) {
+      belowBaseline.push({ domain: domain.name, score: counts.score, minScore: domain.minScore });
+    }
   }
-  return { results, failed };
+  return { results, failed, belowBaseline };
+}
+
+/** The weekly run is red when a domain failed to run or fell under its baseline. */
+export function exitCodeOf(outcome: WeeklyOutcome): number {
+  return outcome.failed.length > 0 || outcome.belowBaseline.length > 0 ? 1 : 0;
 }

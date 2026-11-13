@@ -176,6 +176,9 @@ const dayOf = (at: Date) => at.toISOString().slice(0, 10);
 
 const DAY_MS = 86_400_000;
 
+/** What a `gh` list gave: its rows (`cut` when a day filled the list), or why there are none. */
+type GhRows<T> = { rows: T[]; cut: boolean } | { reason: string };
+
 /**
  * Every row `gh` lists in the days from `from` to `to`: a range that fills the 1000 rows `gh` gives
  * is split in two and asked again, down to one day, so a busy window is counted whole (#2019). A
@@ -187,7 +190,7 @@ async function ghRange<T>(
   from: Date,
   to: Date,
   valid: (row: Record<string, unknown>) => boolean,
-): Promise<{ rows: T[]; cut: boolean } | { reason: string }> {
+): Promise<GhRows<T>> {
   const got = await ghList<T>(deps, argsFor(`${dayOf(from)}..${dayOf(to)}`), valid);
   if ("reason" in got || !got.cut || dayOf(from) === dayOf(to)) return got;
   const days = Math.round((Date.parse(dayOf(to)) - Date.parse(dayOf(from))) / DAY_MS);
@@ -224,46 +227,17 @@ const windowed = <T>(
 /** A tag name as git writes one: it never starts with `-`, so git cannot read it as an option. */
 const TAG_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
-/** The snapshot of the repository at `tag`. */
-export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Snapshot> {
-  if (!TAG_NAME.test(tag)) throw new Error(`tag ${tag} is not a tag name`);
-  const commit = await line(deps, ["rev-parse", `${tag}^{commit}`]);
-  if (commit === null) throw new Error(`tag ${tag} is not in this repository`);
-  const tagDate = await line(deps, ["log", "-1", "--format=%cI", tag]);
-  if (tagDate === null) throw new Error(`tag ${tag} has no commit date`);
-  const previousTag = await line(deps, ["describe", "--tags", "--abbrev=0", `${tag}^`]);
-  const previousTagDate = previousTag
-    ? await line(deps, ["log", "-1", "--format=%cI", previousTag])
-    : null;
-  const since = new Date(Date.parse(tagDate) - DAYS * 86_400_000).toISOString();
-
-  const unavailable: Unavailable[] = [];
-  const last30Days = await windowMetrics(
-    deps,
-    tag,
-    { name: `the last ${DAYS} days`, revision: [`--since=${since}`, tag] },
-    unavailable,
-  );
-  const sinceRelease = previousTag
-    ? await windowMetrics(
-        deps,
-        tag,
-        { name: `the range since ${previousTag}`, revision: [`${previousTag}..${tag}`] },
-        unavailable,
-      )
-    : null;
-
-  const ratchets = await deps.arch().catch(() => null);
-  if (ratchets === null)
-    unavailable.push({ metric: "ratchets", reason: "arch-report.ts wrote no report" });
-  const covered = await deps.coverage(commit).catch((error: Error) => ({ reason: error.message }));
-  if ("reason" in covered) unavailable.push({ metric: "coverage", reason: covered.reason });
-
-  const to = new Date(tagDate);
-  const windows: { sinceRelease: TimeWindow | null; last30Days: TimeWindow } = {
-    sinceRelease: previousTagDate ? { from: new Date(previousTagDate), to } : null,
-    last30Days: { from: new Date(since), to },
-  };
+/** The CI runs, the main-branch runs and the merged PRs over both windows, from one query each; what gh cannot give goes to `unavailable`. */
+async function ghSources(
+  deps: MetricsDeps,
+  windows: { sinceRelease: TimeWindow | null; last30Days: TimeWindow },
+  unavailable: Unavailable[],
+): Promise<{
+  ci: GhRows<CiRun>;
+  main: GhRows<CiRun>;
+  prs: GhRows<MergedPr>;
+}> {
+  const { to } = windows.last30Days;
   // One query for both windows: from the earlier start to the tag, in day ranges.
   const starts = [windows.last30Days.from, windows.sinceRelease?.from].filter(
     (d): d is Date => !!d,
@@ -328,6 +302,50 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
       });
     }
   }
+  return { ci, main, prs };
+}
+
+/** The snapshot of the repository at `tag`. */
+export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Snapshot> {
+  if (!TAG_NAME.test(tag)) throw new Error(`tag ${tag} is not a tag name`);
+  const commit = await line(deps, ["rev-parse", `${tag}^{commit}`]);
+  if (commit === null) throw new Error(`tag ${tag} is not in this repository`);
+  const tagDate = await line(deps, ["log", "-1", "--format=%cI", tag]);
+  if (tagDate === null) throw new Error(`tag ${tag} has no commit date`);
+  const previousTag = await line(deps, ["describe", "--tags", "--abbrev=0", `${tag}^`]);
+  const previousTagDate = previousTag
+    ? await line(deps, ["log", "-1", "--format=%cI", previousTag])
+    : null;
+  const since = new Date(Date.parse(tagDate) - DAYS * 86_400_000).toISOString();
+
+  const unavailable: Unavailable[] = [];
+  const last30Days = await windowMetrics(
+    deps,
+    tag,
+    { name: `the last ${DAYS} days`, revision: [`--since=${since}`, tag] },
+    unavailable,
+  );
+  const sinceRelease = previousTag
+    ? await windowMetrics(
+        deps,
+        tag,
+        { name: `the range since ${previousTag}`, revision: [`${previousTag}..${tag}`] },
+        unavailable,
+      )
+    : null;
+
+  const ratchets = await deps.arch().catch(() => null);
+  if (ratchets === null)
+    unavailable.push({ metric: "ratchets", reason: "arch-report.ts wrote no report" });
+  const covered = await deps.coverage(commit).catch((error: Error) => ({ reason: error.message }));
+  if ("reason" in covered) unavailable.push({ metric: "coverage", reason: covered.reason });
+
+  const to = new Date(tagDate);
+  const windows: { sinceRelease: TimeWindow | null; last30Days: TimeWindow } = {
+    sinceRelease: previousTagDate ? { from: new Date(previousTagDate), to } : null,
+    last30Days: { from: new Date(since), to },
+  };
+  const { ci, main, prs } = await ghSources(deps, windows, unavailable);
 
   return {
     schemaVersion: 1,
