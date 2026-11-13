@@ -89,7 +89,6 @@ export function HostForm(
       onSubmit={() => {
         // A link typed by hand is masked as the form goes, the field not left (#1548).
         setLink(maskOnLeave(link));
-        setAnswered(null);
         // A link that is refused names a host the form does not hold: it is fixed or emptied first.
         if (linkError) {
           setFocusOn("link");
@@ -110,6 +109,8 @@ export function HostForm(
           setFocusOn(first);
           return;
         }
+        // The test runs again: a refusal of the token is shown again only if it comes back.
+        setAnswered(null);
         run(() =>
           props.onSubmit({ ...draft, name: draft.name.trim(), address: draft.address.trim() }),
         );
@@ -134,6 +135,12 @@ export function HostForm(
               setLinkError(edit.problem ? pairingErrorText(t, edit.problem) : null);
               if (edit.fields) {
                 setDraft({ ...draft, ...edit.fields });
+                // What the link fills is no longer missing, and a new token answers a refused one.
+                const filled = Object.keys(edit.fields);
+                setFieldErrors((now) =>
+                  Object.fromEntries(Object.entries(now).filter(([key]) => !filled.includes(key))),
+                );
+                if (filled.includes("token")) setAnswered(props.error ?? null);
                 setByHand(true);
               } else if (bound && !edit.bound && draft.token === bound.token) {
                 // The link that carried the token no longer has one: the form does not keep it.
