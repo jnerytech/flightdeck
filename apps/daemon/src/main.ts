@@ -267,6 +267,7 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
     agents: agentSetup.agentcfg,
+    log: (message) => logger.log(message),
   });
   const awake: {
     pinned?: (claudeSessionId: string | null) => boolean;

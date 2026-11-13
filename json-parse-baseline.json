@@ -3,7 +3,6 @@
   "apps/daemon/src/automations/automations.ts": 2,
   "apps/daemon/src/board/pr.ts": 1,
   "apps/daemon/src/maintenance/maintenance.ts": 1,
-  "apps/daemon/src/personas/store.ts": 1,
   "apps/desktop/src/features/costs/page.tsx": 2,
   "apps/desktop/src/features/sessions/sessions-hub.tsx": 1,
   "apps/desktop/src/lib/app-store.ts": 1,
