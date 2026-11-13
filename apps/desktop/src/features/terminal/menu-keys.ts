@@ -16,7 +16,8 @@ export function moveInMenu(event: KeyboardEvent, menu: HTMLElement | null): bool
   const at = items.indexOf(document.activeElement as HTMLElement);
   const next = {
     ArrowDown: (at + 1) % items.length,
-    ArrowUp: (at - 1 + items.length) % items.length,
+    // With the focus off the items, Up goes to the last one, as Down goes to the first.
+    ArrowUp: at < 0 ? items.length - 1 : (at - 1 + items.length) % items.length,
     Home: 0,
     End: items.length - 1,
   }[event.key as "ArrowDown" | "ArrowUp" | "Home" | "End"];

@@ -173,15 +173,31 @@ export function TerminalPage(
     };
   }, [store, hostId, terminalId, props.deps]);
 
-  // A click anywhere else closes the menu.
+  // A click anywhere else closes the menu. The terminal gets the focus back unless the click put
+  // it on another control (#2608).
   useEffect(() => {
     if (!menu) return;
     const close = () => {
       setMenu(null);
-      screen.current?.focus();
+      const held = document.activeElement;
+      if (!held || held === document.body || menuRef.current?.contains(held)) {
+        screen.current?.focus();
+      }
     };
     window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
+    // Esc closes the menu wherever the focus is, and marks the key handled before the split view
+    // reads it (capture phase): left unmarked, it closes the detail too (#2591).
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setMenu(null);
+      screen.current?.focus();
+    };
+    document.addEventListener("keydown", onEsc, true);
+    return () => {
+      window.removeEventListener("click", close);
+      document.removeEventListener("keydown", onEsc, true);
+    };
   }, [menu]);
   // The menu takes the focus, on the first thing it can do.
   useEffect(() => {
@@ -359,14 +375,7 @@ export function TerminalPage(
           tabIndex={-1}
           className="fixed z-50 flex flex-col rounded-md border bg-popover p-1 text-sm shadow-md"
           style={{ left: menu.x, top: menu.y }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              // Handled here: left unmarked, the key closes the detail too (#2591).
-              e.preventDefault();
-              setMenu(null);
-              screen.current?.focus();
-            } else moveInMenu(e, menuRef.current);
-          }}
+          onKeyDown={(e) => moveInMenu(e, menuRef.current)}
         >
           <Button
             role="menuitem"
