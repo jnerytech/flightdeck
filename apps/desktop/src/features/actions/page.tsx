@@ -110,7 +110,8 @@ export function ActionsPage(
   const loading = useMinLoading(actions === null && !loadFailed);
 
   const load = useCallback(async () => {
-    const list = await store.hostCommand(hostId, "actions.list", { projectId });
+    // The page has its own retry, so the toast offers none that would throw the answer away.
+    const list = await store.hostCommand(hostId, "actions.list", { projectId }, { retry: false });
     // `hostCommand` raises the toast with the reason and answers null for a refused request.
     setLoadFailed(!list);
     if (!list) return;
@@ -192,7 +193,7 @@ export function ActionsPage(
         )}
         {errors.length > 0 && (
           // An alert: what a remove or a save leaves in the file is announced as it appears.
-          <section role="alert" aria-labelledby={problemsId} className="flex flex-col gap-1">
+          <section role="alert" aria-labelledby={problemsId}>
             <h3 id={problemsId} className="font-medium text-status-error text-xs">
               {t("actionsUi.problems")}
             </h3>
