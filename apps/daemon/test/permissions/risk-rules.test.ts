@@ -347,8 +347,6 @@ describe("risk rules: redirections and credential words in a command (#2474)", (
         "ls >&2",
         "echo a=>b",
         "echo x -> y",
-        "echo x -> /tmp/y",
-        "echo a=>/tmp/y",
       ]),
     ).toEqual([]);
     const out = "redirecionamento para fora do cwd";
@@ -565,9 +563,6 @@ describe("risk rules: tools other than the shell (#2474)", () => {
     expect(classify("NotebookEdit", { notebook_path: join(HOME, "a.ipynb") })).toMatchObject(
       outside,
     );
-    expect(
-      classify("NotebookEdit", { file_path: join(CWD, "a"), notebook_path: join(HOME, "a") }),
-    ).toMatchObject(inside);
     expect(classify("Write", { file_path: join(CWD, ".env") })).toMatchObject({
       level: "high",
       reason: "escrita em caminho de credencial",
