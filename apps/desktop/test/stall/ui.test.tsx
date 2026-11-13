@@ -110,7 +110,7 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
       await press(/alfa · api/);
       await press(name);
       // The host answers by clearing the quiet mark; the test stands in for it with the snooze.
-      store.snoozeQuiet("h1", "s1");
+      store.quietSnooze.snooze("h1", "s1");
       await act1(() => view.refresh());
       await settle(
         () => document.body.textContent?.includes("Nothing is waiting for you.") === true,
@@ -179,7 +179,7 @@ describe("stall-ui: the Needs you badge counts the quiet rows (issue #1478)", ()
     const shown = render(tree());
     const entry = () => screen.queryByRole("button", { name: /Needs you/ })?.textContent ?? "";
     expect(entry()).toContain("Needs you1");
-    store.snoozeQuiet("h1", "s1");
+    store.quietSnooze.snooze("h1", "s1");
     await act1(() => shown.rerender(tree()));
     expect(entry()).toBe("Needs you");
   });

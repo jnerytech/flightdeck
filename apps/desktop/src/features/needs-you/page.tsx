@@ -217,7 +217,7 @@ function QuietDetail(
           variant="outline"
           onClick={() => {
             props.onActed();
-            store.snoozeQuiet(alert.hostId, alert.sessionId);
+            store.quietSnooze.snooze(alert.hostId, alert.sessionId);
           }}
         >
           {t("needsYou.quietSnooze")}
@@ -382,7 +382,7 @@ export function NeedsYou(
   shownFinished.current = entries.length - waiting.length;
   useEffect(
     () => () => {
-      if (shownFinished.current > 0) store.finishedSeen();
+      if (shownFinished.current > 0) store.finished.seen();
     },
     [store],
   );

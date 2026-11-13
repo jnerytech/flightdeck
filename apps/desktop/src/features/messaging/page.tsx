@@ -81,7 +81,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   }, [store, hostKey]);
   useEffect(() => {
     void load();
-    return store.onMessageUpdated(() => void load());
+    return store.messaging.onUpdated(() => void load());
   }, [store, load]);
 
   const needle = text.trim().toLowerCase();
