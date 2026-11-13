@@ -11,6 +11,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { BackupPanel } from "./backup-panel.tsx";
 import { EditSecretForm } from "./edit-secret-form.tsx";
 import { NewSecretForm } from "./new-secret-form.tsx";
+import { VaultPanel } from "./panel.tsx";
 import { RulesEditor } from "./rules-editor.tsx";
 import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
@@ -92,11 +93,17 @@ function SecretRow(
           variant="outline"
           size="sm"
           aria-label={t("vault.editFor", { name: secret.name })}
+          data-opener={`edit:${secret.id}`}
           onClick={props.onEdit}
         >
           {t("vault.edit")}
         </Button>
-        <Button variant="outline" size="sm" onClick={props.onRules}>
+        <Button
+          variant="outline"
+          size="sm"
+          data-opener={`rules:${secret.id}`}
+          onClick={props.onRules}
+        >
           {t("vaultRulesUi.open", { name: secret.name })}
         </Button>
         {info.publicKey && (
@@ -189,32 +196,36 @@ export const VaultPage = memo(function VaultPage(props: {
       title={t("vault.title")}
       subtitle={t("vault.subtitle")}
       actions={
-        !creating && <Button onClick={() => setCreating(true)}>{t("vault.newSecret")}</Button>
+        !creating && (
+          <Button data-opener="new" onClick={() => setCreating(true)}>
+            {t("vault.newSecret")}
+          </Button>
+        )
       }
     >
       {creating && (
-        <NewSecretForm
-          store={store}
-          onClose={() => setCreating(false)}
-          {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
-        />
+        <VaultPanel opener="new">
+          <NewSecretForm
+            store={store}
+            onClose={() => setCreating(false)}
+            {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
+          />
+        </VaultPanel>
       )}
       {editing && (
-        <EditSecretForm
-          key={editing.id}
-          store={store}
-          secret={editing}
-          onClose={() => setEditing(null)}
-        />
+        <VaultPanel key={editing.id} opener={`edit:${editing.id}`}>
+          <EditSecretForm store={store} secret={editing} onClose={() => setEditing(null)} />
+        </VaultPanel>
       )}
       {ruling && (
-        <RulesEditor
-          key={ruling.id}
-          store={store}
-          secret={ruling}
-          {...(props.rule?.secretId === ruling.id ? { seed: props.rule.match } : {})}
-          onClose={() => setRuling(null)}
-        />
+        <VaultPanel key={ruling.id} opener={`rules:${ruling.id}`}>
+          <RulesEditor
+            store={store}
+            secret={ruling}
+            {...(props.rule?.secretId === ruling.id ? { seed: props.rule.match } : {})}
+            onClose={() => setRuling(null)}
+          />
+        </VaultPanel>
       )}
       <Tabs defaultValue="secrets">
         <TabsList aria-label={t("vault.tabs")}>
@@ -230,7 +241,9 @@ export const VaultPage = memo(function VaultPage(props: {
               title={t("vault.empty")}
               action={
                 !creating && (
-                  <Button onClick={() => setCreating(true)}>{t("vault.emptyAction")}</Button>
+                  <Button data-opener="new" onClick={() => setCreating(true)}>
+                    {t("vault.emptyAction")}
+                  </Button>
                 )
               }
             />

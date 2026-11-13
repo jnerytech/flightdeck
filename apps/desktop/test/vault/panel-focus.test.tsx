@@ -82,7 +82,7 @@ describe("cofre-ui: a panel takes the focus when it opens and gives it back when
     const region = screen.queryByRole("region", { name: "Regras de deploy" });
     expect(region === null).toBe(false);
     expect(region?.contains(document.activeElement)).toBe(true);
-    expect(focusedOn(button("Adicionar regra"))).toBe(true);
+    expect(focusedOn(region?.querySelector("select") ?? null)).toBe(true);
     expect(scrolled.some((el) => el.tagName === "SECTION")).toBe(true);
     await click("Cancelar");
     expect(focusedOn(button("Regras de deploy"))).toBe(true);
