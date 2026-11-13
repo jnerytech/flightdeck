@@ -59,7 +59,7 @@ async function openTeams(language: "en" | "pt-BR", answers: Answer[]) {
       <TeamsPage store={host.store} go={() => {}} />
     </TooltipProvider>,
   );
-  return { lists: () => lists, words: WORDS[language] };
+  return { lists: () => lists, words: WORDS[language], store: host.store };
 }
 
 const text = (value: string) => screen.queryByText(value) !== null;
@@ -90,6 +90,22 @@ describe.each(["en", "pt-BR"] as const)("teams-load-state (%s)", (language) => {
     expect(text(words.empty)).toBe(false);
     expect(button(words.first)).toBe(false);
     expect(screen.queryByRole("status", { name: words.loading }) !== null).toBe(false);
+  });
+
+  test("a reload that fails after an answered empty list keeps the empty state and adds no error banner", async () => {
+    const page = await openTeams(language, ["empty", "fail"]);
+    await settleMaybe(() => text(page.words.empty), 3000);
+    await act(async () => {
+      page.store.teams.onFrame("h1", {
+        type: "teams.updated",
+        team: { id: "t1", name: "login", members: [], state: "running", goal: "x" },
+        reason: null,
+      } as never);
+    });
+    await settleMaybe(() => page.lists() === 2, 3000);
+    expect(page.lists()).toBe(2);
+    expect(screen.queryByRole("alert") !== null).toBe(false);
+    expect(text(page.words.empty)).toBe(true);
   });
 
   test("the retry asks the host again and, once it answers, shows the list", async () => {
