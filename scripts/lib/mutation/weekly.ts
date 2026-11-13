@@ -23,6 +23,8 @@ export interface WeeklyOutcome {
   results: DomainResult[];
   /** Domains whose run exited non-zero or left no report: they have no score this week. */
   failed: string[];
+  /** Domains whose score is under their `minScore` baseline. */
+  belowBaseline: { domain: string; score: number | null; minScore: number }[];
 }
 
 export function configPathFor(domain: MutationDomain): string {
@@ -58,5 +60,5 @@ export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
     }
     results.push({ domain: domain.name, ...scoreReport(report), survivors: survivorsOf(report) });
   }
-  return { results, failed };
+  return { results, failed, belowBaseline: [] };
 }

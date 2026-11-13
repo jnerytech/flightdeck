@@ -73,6 +73,31 @@ describe("weekly mutation run: one Stryker run per domain (#1607)", () => {
     expect(outcome.results.map((r) => r.domain)).toEqual(["a"]);
   });
 
+  test("a domain scoring under its minScore baseline is listed with both figures", () => {
+    // reportOf("Killed", "Survived") scores 50%
+    const { deps } = setup({});
+    const outcome = runWeekly({
+      ...deps,
+      domains: [{ ...domain("a"), minScore: 60 }, domain("b")],
+    });
+    expect(outcome.belowBaseline).toEqual([{ domain: "a", score: 50, minScore: 60 }]);
+  });
+
+  test("a domain scoring exactly its baseline, or with no baseline, is not listed", () => {
+    const { deps } = setup({});
+    const outcome = runWeekly({
+      ...deps,
+      domains: [{ ...domain("a"), minScore: 50 }, domain("b")],
+    });
+    expect(outcome.belowBaseline).toEqual([]);
+  });
+
+  test("a domain with a baseline whose report counts no mutant is below it, not skipped", () => {
+    const { deps } = setup({ reports: { a: reportOf() } });
+    const outcome = runWeekly({ ...deps, domains: [{ ...domain("a"), minScore: 50 }] });
+    expect(outcome.belowBaseline).toEqual([{ domain: "a", score: null, minScore: 50 }]);
+  });
+
   test("the config of a domain lives in that domain's report folder", () => {
     expect(configPathFor(domain("permissions-risk"))).toBe(
       "reports/mutation/permissions-risk/stryker.config.json",
