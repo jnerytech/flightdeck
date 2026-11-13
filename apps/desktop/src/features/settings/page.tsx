@@ -10,7 +10,7 @@ import type { CacheTtl } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, NativeSelect, Page, Panel } from "@/shared/layout/index.ts";
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -22,6 +22,7 @@ import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../terminal/index.ts";
 import { WebhooksSection } from "../webhook/ui.ts";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
+import { TerminalFontInput } from "./terminal-font-input.tsx";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
 function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
@@ -58,7 +59,7 @@ export const Settings = memo(function Settings(props: {
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
   appUpdate: AppUpdateState;
-  onCheckUpdate(): void;
+  onCheckUpdate(): Promise<void> | void;
   onNotifyUpdates(enabled: boolean): void;
   onAutoUpdate(enabled: boolean): void;
   /** Light, dark or the system's (phase 10). */
@@ -84,6 +85,7 @@ export const Settings = memo(function Settings(props: {
     () => props.store.terminalReader.value,
   );
   const readerHint = useId();
+  const fontHint = useId();
   const setupHidden = useSyncExternalStore(
     props.store.setup.subscribe,
     () => props.store.setup.hidden,
@@ -181,17 +183,17 @@ export const Settings = memo(function Settings(props: {
           </SettingRow>
           <SettingRow label={t("settings.terminalFont")}>
             {(id) => (
-              <Input
+              <TerminalFontInput
                 id={id}
-                type="number"
-                className="setting-select"
-                min={TERMINAL_FONT_MIN}
-                max={TERMINAL_FONT_MAX}
-                value={terminalFont}
-                onChange={(e) => props.store.terminalFont.set(Number(e.target.value))}
+                describedBy={fontHint}
+                size={terminalFont}
+                onCommit={(size) => props.store.terminalFont.set(size)}
               />
             )}
           </SettingRow>
+          <small id={fontHint} className="setting-hint">
+            {t("settings.terminalFontRange", { min: TERMINAL_FONT_MIN, max: TERMINAL_FONT_MAX })}
+          </small>
           <label className={check}>
             <input
               type="checkbox"
@@ -322,11 +324,22 @@ export const Settings = memo(function Settings(props: {
                   />
                   {t("prefs.autoUpdate")}
                 </label>
-                <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
+                <ActionButton
+                  variant="outline"
+                  className="self-start"
+                  onClick={props.onCheckUpdate}
+                >
                   {t("prefs.checkNow")}
-                </Button>
+                </ActionButton>
                 {props.appUpdate.upToDate && (
-                  <p className="text-muted-foreground text-sm">{t("prefs.upToDate")}</p>
+                  <p role="status" className="text-muted-foreground text-sm">
+                    {t("prefs.upToDate")}
+                  </p>
+                )}
+                {props.appUpdate.error && (
+                  <p role="alert" className="text-status-needs-you">
+                    {props.appUpdate.error}
+                  </p>
                 )}
               </Panel>
             ),

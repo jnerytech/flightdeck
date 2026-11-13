@@ -62,6 +62,8 @@ describe("terminal-ui: the route and the settings", () => {
     expect(field?.value).toBe("13");
     await act(async () => {
       if (field) fireEvent.change(field, { target: { value: "17" } });
+      // The size is stored when the person leaves the box (#2594).
+      if (field) fireEvent.blur(field);
     });
     expect(store.terminalFont.value).toBe(17);
   });
