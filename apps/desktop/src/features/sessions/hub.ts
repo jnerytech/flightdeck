@@ -377,6 +377,9 @@ export function hubRows(state: HubRowState, t?: T): HubRow[] {
         // At a plan or a question the session needs the person, whatever its hooks last said (#1736).
         state: externalState(s),
         ...(s.waiting && s.status !== "ended" ? { waiting: s.waiting } : {}),
+        ...(s.waiting === "plan" && s.waitingPlan && s.status !== "ended"
+          ? { waitingPlan: s.waitingPlan }
+          : {}),
         controllable: s.controllable,
         lastActivity: s.lastEventAt,
         summary: s.summary ?? null,
