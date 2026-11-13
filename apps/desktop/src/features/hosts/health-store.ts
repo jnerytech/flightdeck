@@ -103,7 +103,8 @@ export class HealthSlice {
       ...(heard ? { doctor: { ...state.doctor, [hostId]: heard } } : {}),
       // A failed read counts as a read: a host that refuses is not asked again within the max age.
       ...(deps || doctor ? { healthAt: { ...state.healthAt, [hostId]: this.core.now() } } : {}),
-      healthError: failures.length > 0 ? { ...rest, [hostId]: failures.join("; ") } : rest,
+      healthError:
+        failures.length > 0 ? { ...rest, [hostId]: [...new Set(failures)].join("; ") } : rest,
     });
   }
 }
