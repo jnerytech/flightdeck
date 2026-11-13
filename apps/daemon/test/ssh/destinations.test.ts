@@ -145,6 +145,17 @@ describe("ssh-destinos", () => {
     expect(codeOf(() => targets.remove(bastion.id, true))).toBe("ok");
   });
 
+  test("byName gives the one destination with that exact name, and nothing for no name or for two (#1684)", () => {
+    const { targets } = setup();
+    const vps = targets.save(base({ name: "vps", tags: ["prod"] }));
+    targets.save(base({ name: "twin", host: "a.example.com" }));
+    targets.save(base({ name: "twin", host: "b.example.com" }));
+    expect(targets.byName("vps")).toEqual(vps);
+    expect(targets.byName("missing")).toBeNull();
+    expect(targets.byName("twin")).toBeNull();
+    expect(targets.byName("VPS")).toBeNull();
+  });
+
   test("remover pede confirmação e um id que não existe é not_found", () => {
     const { targets } = setup();
     const target = targets.save(base());

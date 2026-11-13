@@ -83,17 +83,18 @@ const BASE = ["u.test.ts", "c.test.tsx", "u3.test.ts", "u4.test.ts", "u5.test.ts
 describe("shard-gate run: the fast baseline is instrumented in a PR's unit + component shards (#1854)", () => {
   const envOf = async (shard: number, extraTargets: string[]) => {
     const f = fakes({ tests: [...BASE, "i1.test.ts"], targets: ["src/x.ts"] });
-    let env: Record<string, string> = {};
+    let listed = "[]";
     const deps = {
       ...f.deps,
       extraTargets,
       spawn: async (_argv: string[], e: Record<string, string>) => {
-        env = e;
+        // The list is in the file the env names, and it is there when the run starts (#2504).
+        listed = f.written.get(e.COVERAGE_FUNCS_FILES_PATH ?? "") ?? "[]";
         return { exit: 0, log: " 1 pass\n 0 fail\nRan 1 tests across 1 files." };
       },
     };
     await runShard(`${shard}/${TIER_SHARDS}`, "istanbul", "/tmp/out", deps);
-    return JSON.parse(env.COVERAGE_FUNCS_FILES ?? "[]") as string[];
+    return JSON.parse(listed) as string[];
   };
 
   test("a unit + component shard instruments the changed sources and the baseline, so a settled count judges each baseline file", async () => {
