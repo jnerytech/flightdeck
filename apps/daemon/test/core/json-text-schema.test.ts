@@ -47,14 +47,14 @@ describe("parseJsonWith: an error does not echo the text it read", () => {
   test("a text that is not JSON throws a message without the text", () => {
     const message = messageOf(Auto, `{"workflow": ${SECRET}`);
     expect(message).toContain("not JSON");
-    expect(message.includes(SECRET)).toBe(false);
+    expect(message).not.toContain(SECRET);
   });
   test("a value that does not fit throws without the value", () => {
     expect(messageOf(Auto, `{"workflow":{"${SECRET}":1}}`).includes(SECRET)).toBe(false);
   });
   test("a key the text chose is not echoed either", () => {
     const message = messageOf(Names, `{"${SECRET}":1}`);
-    expect(message.includes(SECRET)).toBe(false);
+    expect(message).not.toContain(SECRET);
     expect(message).toContain("does not fit");
   });
 });

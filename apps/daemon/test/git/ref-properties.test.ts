@@ -1,4 +1,4 @@
-import { describe, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { isBranchName } from "@flightdeck/protocol";
 import fc from "fast-check";
 import { holds } from "../../../../scripts/test/property.ts";
@@ -26,41 +26,53 @@ const forbidden = fc.constantFrom(
 
 describe("branch names: properties of isBranchName", () => {
   test("a name of well-formed parts is accepted", () => {
-    holds(fc.property(validName, (name) => isBranchName(name)));
+    expect(() => holds(fc.property(validName, (name) => isBranchName(name)))).not.toThrow();
   });
 
   test("a name never begins with a dash or an at sign, so no command reads it as an option or a file", () => {
-    holds(
-      fc.property(fc.constantFrom("-", "@"), validName, (lead, rest) => !isBranchName(lead + rest)),
-    );
+    expect(() =>
+      holds(
+        fc.property(
+          fc.constantFrom("-", "@"),
+          validName,
+          (lead, rest) => !isBranchName(lead + rest),
+        ),
+      ),
+    ).not.toThrow();
   });
 
   test("a forbidden character or sequence refuses the name wherever it sits", () => {
-    holds(
-      fc.property(validName, forbidden, fc.nat(), (name, bad, at) => {
-        const cut = at % (name.length + 1);
-        return !isBranchName(name.slice(0, cut) + bad + name.slice(cut));
-      }),
-    );
+    expect(() =>
+      holds(
+        fc.property(validName, forbidden, fc.nat(), (name, bad, at) => {
+          const cut = at % (name.length + 1);
+          return !isBranchName(name.slice(0, cut) + bad + name.slice(cut));
+        }),
+      ),
+    ).not.toThrow();
   });
 
   test("a part ending in .lock, a leading dot part, a trailing slash or a trailing dot refuse the name", () => {
-    holds(
-      fc.property(validName, (name) => {
-        const [first = "", ...rest] = name.split("/");
-        return (
-          !isBranchName([`${first}.lock`, ...rest].join("/")) &&
-          !isBranchName(`${name}/.hidden`) &&
-          !isBranchName(`${name}/`) &&
-          !isBranchName(`${name}.`)
-        );
-      }),
-    );
+    expect(() =>
+      holds(
+        fc.property(validName, (name) => {
+          const [first = "", ...rest] = name.split("/");
+          return (
+            !isBranchName([`${first}.lock`, ...rest].join("/")) &&
+            !isBranchName(`${name}/.hidden`) &&
+            !isBranchName(`${name}/`) &&
+            !isBranchName(`${name}.`)
+          );
+        }),
+      ),
+    ).not.toThrow();
   });
 
   test("a doubled slash or a leading slash refuses the name", () => {
-    holds(
-      fc.property(validName, (name) => !isBranchName(`${name}//x`) && !isBranchName(`/${name}`)),
-    );
+    expect(() =>
+      holds(
+        fc.property(validName, (name) => !isBranchName(`${name}//x`) && !isBranchName(`/${name}`)),
+      ),
+    ).not.toThrow();
   });
 });

@@ -144,7 +144,7 @@ describe("second-opinion: the review's pure parts (#1439)", () => {
       "src/login.ts:11:high",
       "src/login.ts:12:medium",
     ]);
-    expect(loose.length).toBe(1);
+    expect(loose).toHaveLength(1);
   });
 
   test("the fake review reads an added line that starts with ++ as code, not as a file header", async () => {
