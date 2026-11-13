@@ -13,7 +13,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/shared/feedback/index.ts";
 import { useInFlight } from "@/shared/hooks/index.ts";
-import { FieldRowContext, type FieldRowSlot } from "./field-row-context.ts";
+import { FieldRowContext } from "./field-row-context.ts";
 
 /** What a form is laid out for: a page, a dialog's body, a bordered panel, or a part of a panel. */
 export type FormVariant = "page" | "dialog" | "panel" | "inline";

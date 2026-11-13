@@ -100,7 +100,7 @@ export class HostUpdateSlice {
 
   /** The store is closing: no timer outlives it. */
   dispose(): void {
-    for (const id of [...this.attempts.keys()]) this.settled(id);
+    for (const id of this.attempts.keys()) this.settled(id);
     this.autoChecks.clear();
   }
 
