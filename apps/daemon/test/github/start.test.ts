@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { runGh } from "../../src/github/gh.ts";
+import { runGh } from "../../src/github/adapters/gh.ts";
 import { GithubService } from "../../src/github/service.ts";
 import { type GithubStartRequest, startFromGithub } from "../../src/github/start.ts";
 import { Issues } from "../../src/issues/issues.ts";

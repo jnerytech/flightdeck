@@ -12,7 +12,8 @@ import { EmptyState, ErrorState, LoadingState, Note } from "@/shared/layout/inde
 import { basename, isInside } from "@/shared/lib/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { messageParts, useLiveElsewhereGuard } from "../sessions/index.ts";
+import { messageParts } from "../sessions/index.ts";
+import { useLiveElsewhereGuard } from "../sessions/ui.ts";
 
 /** Which transcript to read, and where to open it (a search hit). */
 export interface ReaderTarget {

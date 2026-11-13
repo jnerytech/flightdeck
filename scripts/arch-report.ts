@@ -25,6 +25,7 @@ import { isMeasured, oversizedSources } from "./lib/guards/src-size.ts";
 import { CONFIG, KNOWN, newRules } from "./lib/ratchets/arch.ts";
 import { impureCalls, isDomainFile } from "./lib/ratchets/domain-purity.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/ratchets/json-parse.ts";
+import { isScanned as isSpawnScanned, spawnCounts } from "./lib/ratchets/spawn-count.ts";
 import { flatTestCounts } from "./lib/tests/test-layout.ts";
 import { testTiers } from "./lib/tests/test-tiers.ts";
 
@@ -71,7 +72,9 @@ const tracked = (git(["ls-files", "apps", "packages", "scripts"]) ?? "")
   .filter(Boolean);
 // every tracked TypeScript source file under a package's src; one deleted in the working copy is skipped
 const sources = tracked
-  .filter((path) => isScanned(path) || isMeasured(path) || isDomainFile(path))
+  .filter(
+    (path) => isScanned(path) || isSpawnScanned(path) || isMeasured(path) || isDomainFile(path),
+  )
   .flatMap((path) => {
     const text = read(path);
     return text === null ? [] : [{ path, text }];
@@ -108,6 +111,8 @@ const rows = ratchetRows({
   knipBaseline: json("knip-baseline.json"),
   jsonParseCounts: rawJsonParseCounts(sources),
   jsonParseBaseline: json("json-parse-baseline.json"),
+  spawnCounts: spawnCounts(sources),
+  spawnBaseline: json("spawn-count-baseline.json"),
   shapeShares: shapeShares(filesByTier),
   shapeBaseline: json("test-shape-baseline.json"),
 });

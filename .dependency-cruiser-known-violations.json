@@ -981,8 +981,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/boardsync/github.ts",
-    "to": "apps/daemon/src/github/gh.ts",
-    "unresolvedTo": "../github/gh.ts",
+    "to": "apps/daemon/src/github/gh-runner.ts",
+    "unresolvedTo": "../github/gh-runner.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
@@ -1266,9 +1266,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/github/gh.ts",
+    "from": "apps/daemon/src/github/adapters/gh.ts",
     "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
+    "unresolvedTo": "../../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -1277,9 +1277,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/github/gh.ts",
+    "from": "apps/daemon/src/github/adapters/gh.ts",
     "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
+    "unresolvedTo": "../../board/pr.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -1299,9 +1299,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/github/login.ts",
+    "from": "apps/daemon/src/github/adapters/login.ts",
     "to": "apps/daemon/src/board/command.ts",
-    "unresolvedTo": "../board/command.ts",
+    "unresolvedTo": "../../board/command.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",

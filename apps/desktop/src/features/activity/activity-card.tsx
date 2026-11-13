@@ -1,4 +1,5 @@
-import { HIGH_RISK_HOLD_MS, HoldButton } from "@/features/permissions/index.ts";
+import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
+import { HoldButton } from "@/features/permissions/ui.ts";
 import { pendingText, sessionLineText } from "@/features/sessions/index.ts";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";

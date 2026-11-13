@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/index.ts";
 import { TranscriptReader } from "@/features/history/index.ts";
-import { ApprovalCard } from "@/features/permissions/index.ts";
+import { ApprovalCard } from "@/features/permissions/ui.ts";
 import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
@@ -14,7 +14,8 @@ import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts
 import { hasFeature } from "../../lib/version.ts";
 import { BgPanel } from "../background/bg-panel.tsx";
 import { CheckpointsButton } from "../checkpoints/index.ts";
-import { TerminalButton, useLaunchTerminal } from "../terminal/index.ts";
+import { useLaunchTerminal } from "../terminal/index.ts";
+import { TerminalButton } from "../terminal/ui.ts";
 import { approvalRequestOf, externalRequestsOf, externalTitle } from "./external-view.ts";
 import { externalState } from "./hub.ts";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "./parts";

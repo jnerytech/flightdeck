@@ -12,7 +12,7 @@ import type { Issues } from "../issues/issues.ts";
 import { githubCoords } from "../issues/remote.ts";
 import { FlightdeckError, samePath, UNTRUSTED_MARK } from "../kernel/index.ts";
 import { allowedRoot, cloneRepo, type GitRunner } from "../projects/index.ts";
-import type { GhRunner } from "./gh.ts";
+import type { GhRunner } from "./gh-runner.ts";
 import { checkRepo, Github } from "./github.ts";
 
 export interface GithubStartRequest {

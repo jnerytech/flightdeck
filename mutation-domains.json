@@ -1,0 +1,7 @@
+[
+  {
+    "name": "permissions-risk",
+    "mutate": ["apps/daemon/src/permissions/risk.ts"],
+    "tests": ["apps/daemon/test/permissions/risk.test.ts"]
+  }
+]

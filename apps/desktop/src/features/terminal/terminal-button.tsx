@@ -6,7 +6,7 @@ import { useT } from "@/i18n/context";
 import { ActionButton, IconActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { useLiveElsewhereGuard } from "../sessions/index.ts";
+import { useLiveElsewhereGuard } from "../sessions/ui.ts";
 import type { TerminalTarget } from "./terminal.ts";
 
 /**

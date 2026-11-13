@@ -10,24 +10,27 @@ import {
 import { Notices } from "@/components/feedback/notices";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/index.ts";
-import { SimpleApp } from "@/features/home/index.ts";
-import { draftFromLink, pairingErrorText } from "@/features/hosts/index.ts";
+import { SimpleApp } from "@/features/home/ui.ts";
+import { pairingErrorText } from "@/features/hosts/index.ts";
+import { draftFromLink } from "@/features/hosts/ui.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
 import { activeWorktreeFilter } from "@/features/projects/index.ts";
-import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
+import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/ui.ts";
+import {
+  breadcrumb,
+  firstTerminalTab,
+  hostsRoute,
+  terminalTabCount,
+} from "@/features/shell/index.ts";
 import {
   AppShell,
   Breadcrumb,
-  breadcrumb,
-  firstTerminalTab,
   HistoryButtons,
-  hostsRoute,
   Sidebar,
   StatusBarSlot,
   TopBarActions,
   TopBarHost,
-  terminalTabCount,
-} from "@/features/shell/index.ts";
+} from "@/features/shell/ui.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
@@ -45,7 +48,7 @@ import {
 } from "../features/shortcuts/index.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
 import { TabSwitcherHost, tabIntent } from "../features/tabs/index.ts";
-import { TerminalCloseDialog } from "../features/terminal/index.ts";
+import { TerminalCloseDialog } from "../features/terminal/ui.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { useStoreState } from "../lib/use-store.ts";

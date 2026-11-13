@@ -185,6 +185,15 @@ describe("arch-imports: the domain borders (#1591)", () => {
     ]);
   });
 
+  test("a desktop feature's components entry (ui.ts) is a public entry too (#2451)", async () => {
+    const found = await planted({
+      "apps/desktop/src/features/board/board.tsx":
+        'import { Button } from "../terminal/ui.ts";\nexport const b = Button;\n',
+      "apps/desktop/src/features/terminal/ui.ts": "export const Button = 1;\n",
+    });
+    expect(found).toEqual([]);
+  });
+
   test("a feature that imports lib/ or its own subfolders is no cross-feature import (#1624)", async () => {
     const found = await planted({
       "apps/desktop/src/features/board/board.tsx":
@@ -224,6 +233,20 @@ describe("arch-imports: the domain borders (#1591)", () => {
     expect(direct).toHaveLength(2);
     expect(moved).toHaveLength(2);
     expect(moved).not.toContain("apps/desktop/src/features/board/index.ts");
+  });
+
+  test("a feature's ui.ts barrel is folded into its targets like index.ts (#2451)", async () => {
+    const files = await plantedCycleFiles({
+      "apps/desktop/src/features/board/a.tsx":
+        'import { b } from "../setup/b.ts";\nexport const a = b;\n',
+      "apps/desktop/src/features/board/ui.ts": 'export { a } from "./a.tsx";\n',
+      "apps/desktop/src/features/setup/b.ts":
+        'import { a } from "../board/ui.ts";\nexport const b = a;\n',
+    });
+    expect(files).toEqual([
+      "apps/desktop/src/features/board/a.tsx",
+      "apps/desktop/src/features/setup/b.ts",
+    ]);
   });
 
   test("a chain, an import of one's own barrel and a self import sit in no cycle (#1624)", async () => {

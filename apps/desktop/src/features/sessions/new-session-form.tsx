@@ -12,7 +12,7 @@ import { Field, Form, FormActions, NativeSelect, Page, Stack } from "@/shared/la
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { FolderPicker } from "../hosts/index.ts";
+import { FolderPicker } from "../hosts/ui.ts";
 import { ModelOptions } from "./model-options.tsx";
 import {
   choicesToKeep,

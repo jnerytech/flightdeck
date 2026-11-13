@@ -15,10 +15,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { ALL_CLIENTS, UNASSIGNED } from "@/features/clients/index.ts";
-import { HostsBanner } from "@/features/hosts/index.ts";
-import { activeWorktreeFilter, WorktreeChip } from "@/features/projects/index.ts";
+import { HostsBanner } from "@/features/hosts/ui.ts";
+import { activeWorktreeFilter } from "@/features/projects/index.ts";
+import { WorktreeChip } from "@/features/projects/ui.ts";
 import type { Density } from "@/features/shell/index.ts";
-import { ScopeMenu } from "@/features/shell/index.ts";
+import { ScopeMenu } from "@/features/shell/ui.ts";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 /** Phase 37: whether the host's `gh` is signed in to GitHub, and as whom. Never a token. */
-import type { GhRunner } from "./gh.ts";
+import type { GhRunner } from "./gh-runner.ts";
 
 export interface GithubStatus {
   installed: boolean;
