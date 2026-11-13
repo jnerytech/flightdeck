@@ -67,6 +67,8 @@ export const ptBR = {
     loadingSessions: "Carregando sessões",
     loadingProjects: "Carregando projetos",
     loadingBoard: "Carregando o board",
+    loadBoardFailed: "O board não carregou.",
+    retry: "Tentar de novo",
     emptyHistory: "Nenhuma sessão no histórico.",
     emptyHistoryHint: "Comece uma sessão e ela entra aqui quando terminar.",
     emptyHistoryLink: "Nova sessão",

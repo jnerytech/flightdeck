@@ -97,6 +97,7 @@ import {
 } from "./board-bulk.ts";
 import { cardKey } from "./board-card-keys.ts";
 import { boardFiles, filesPanelOpen } from "./board-files.ts";
+import { BoardLoadError } from "./board-load-error.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./board-model.ts";
 import {
   type BulkRefusal,
@@ -122,6 +123,7 @@ import type { BoardKeyAction } from "./domain/board-keys.ts";
 import { cardStartBlock } from "./domain/card-start-block.ts";
 import { radarBadge } from "./domain/conflict-radar.ts";
 import { NewCardDialog } from "./new-card-dialog.tsx";
+import { useBoardProject } from "./use-board-project.ts";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
 import { useStartAsk } from "./use-start-ask.tsx";
 
@@ -422,7 +424,7 @@ export const BoardView = memo(function BoardView(props: {
 }) {
   const { store, hostId, projectId } = props;
   const state = useStoreSlice(store, BOARDVIEW_KEYS);
-  const [project, setProject] = useState<Project | null>(null);
+  const { project, setProject, loadFailed, loadBoard } = useBoardProject(store, hostId, projectId);
   const contracts: ContractOverrides = project?.contractByColumn ?? {};
   /** Starting a card with no acceptance criteria asks first (issue #78). */
   const startAsk = useStartAsk({
@@ -437,7 +439,7 @@ export const BoardView = memo(function BoardView(props: {
    * DataTransfer either, which some webviews leave empty.
    */
   const dragging = useRef<string | null>(null);
-  const loading = useMinLoading(project === null);
+  const loading = useMinLoading(project === null && !loadFailed);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(props.newCard === true);
   // The ask is used up once the dialog is open, so coming back to this entry shows no dialog (#1582).
@@ -532,11 +534,6 @@ export const BoardView = memo(function BoardView(props: {
     t,
   });
 
-  useEffect(() => {
-    void store.hostCommand(hostId, "board.get", { projectId }).then((board) => {
-      if (board) setProject(board.project);
-    });
-  }, [store, hostId, projectId]);
   // The sidebar's Board item opens this board next time on this host (#669).
   useEffect(() => store.viewPrefs.rememberBoard(hostId, projectId), [store, hostId, projectId]);
 
@@ -1095,6 +1092,9 @@ export const BoardView = memo(function BoardView(props: {
       <div className="board-body">
         {withRoi && project && <RoiCard store={store} hostId={hostId} project={project} />}
         {loading && <LoadingState label={t("states.loadingBoard")} shape="columns" />}
+        {!loading && !project && loadFailed && (
+          <BoardLoadError t={t} onRetry={() => void loadBoard()} />
+        )}
         {!loading && project && all.length === 0 && (
           <EmptyState
             icon={Columns3}
