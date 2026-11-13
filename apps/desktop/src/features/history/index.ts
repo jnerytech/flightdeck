@@ -13,5 +13,5 @@ export {
   initialHistoryState,
   type SearchState,
 } from "./store.ts";
-export { wireHistory } from "./wire.ts";
 export type { ReaderTarget } from "./transcript-reader.tsx";
+export { wireHistory } from "./wire.ts";

@@ -1,13 +1,22 @@
+import type { HistoryChanged, WorkflowRun } from "@flightdeck/protocol";
+import { FEATURE_RESUME_OFFER } from "@flightdeck/protocol";
 import { SystemSlice } from "@/features/shell/system.ts";
 import { type AccountSlice, wireAccount } from "../../features/account/index.ts";
+import type { ActivitySlice } from "../../features/activity/index.ts";
 import { type BackgroundSlice, wireBackground } from "../../features/background/index.ts";
 import { BoardCardsSlice } from "../../features/board/index.ts";
+import type { BudgetsSlice } from "../../features/costs/index.ts";
 import {
+  type ConnectionStatus,
   type HealthSlice,
   type HostConfig,
+  type HostConnection,
   type HostLink,
   HostRosterSlice,
+  type HostRoutes,
   type HostUpdateSlice,
+  type OnlineStep,
+  statusLine,
   wireHealth,
   wireHostUpdate,
 } from "../../features/hosts/index.ts";
@@ -16,16 +25,28 @@ import { type MessagingSlice, wireMessaging } from "../../features/messaging/ind
 import { type ProjectsSlice, wireProjects } from "../../features/projects/index.ts";
 import { type QuotaSlice, wireQuota } from "../../features/quota/index.ts";
 import { RunEnvSlice } from "../../features/runenv/store.ts";
-import { type SummariesSlice, sessionKey } from "../../features/sessions/index.ts";
+import {
+  type ExternalSessionsSlice,
+  type SessionStreamSlice,
+  type SessionsSlice,
+  type SummariesSlice,
+  sessionKey,
+} from "../../features/sessions/index.ts";
 import { SetupProbes, SetupSettings } from "../../features/setup/index.ts";
 import { type SshSlice, wireSsh } from "../../features/ssh/index.ts";
 import { TeamsSlice } from "../../features/teams/store.ts";
+import type { TerminalsSlice } from "../../features/terminal/index.ts";
 import { isLocalUrl } from "../../features/terminal/terminal.ts";
-import type { VaultApprovalsSlice } from "../../features/vault/index.ts";
+import type {
+  VaultApprovalsSlice,
+  VaultRulesSlice,
+  VaultUsageLog,
+} from "../../features/vault/index.ts";
 import { type WatchSlice, wireWatch } from "../../features/watch/index.ts";
 import type { WebhookFeed } from "../../features/webhook/webhook-feed.ts";
 import type { Platform } from "../../platform/types.ts";
-import type { AppState, HostView } from "../app-state.ts";
+import type { AppLog } from "../app-log.ts";
+import type { AppState, HostView, Notice } from "../app-state.ts";
 import type { AppKernel } from "../kernel.ts";
 import { hasFeature } from "../version.ts";
 
@@ -119,6 +140,8 @@ interface HostsDeps {
 export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): HostSlices {
   const { platform } = deps;
   const projectList = wireProjects(kernel);
+  const health = wireHealth(kernel);
+  const account = wireAccount(kernel);
   const hostUpdate = wireHostUpdate(kernel, {
     patch: (hostId, patch) => deps.updateHost(hostId, (h) => ({ ...h, ...patch })),
     open: (hostId) => deps.link.open(hostId),
@@ -157,6 +180,8 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
           setupProbes,
         });
         hostUpdate.forget(hostId);
+        health.forget(hostId);
+        account.forget(hostId);
       },
       setName: (hostId, name) => deps.updateHost(hostId, (h) => ({ ...h, name })),
       rememberToken: deps.rememberToken,
@@ -169,7 +194,7 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
       success: (text) => kernel.success(text),
       t: () => kernel.t(),
     }),
-    health: wireHealth(kernel),
+    health,
     hostUpdate,
     ssh: wireSsh(kernel, {
       hasSecret: deps.hasSecret,
@@ -183,7 +208,7 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
           hostId,
         }),
     }),
-    account: wireAccount(kernel),
+    account,
     runEnv: new RunEnvSlice({
       state: () => kernel.state(),
       update: (patch) => kernel.update(patch),
@@ -237,4 +262,193 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
       t: () => kernel.t(),
     }),
   };
+}
+
+/** The slices the host link's frames and online steps hand their work to. */
+interface LinkSlices
+  extends Pick<
+    HostSlices,
+    | "health"
+    | "hostUpdate"
+    | "ssh"
+    | "quota"
+    | "account"
+    | "runEnv"
+    | "boardCards"
+    | "prWatch"
+    | "messaging"
+    | "teams"
+  > {
+  readonly stream: SessionStreamSlice;
+  readonly summaries: SummariesSlice;
+  readonly external: ExternalSessionsSlice;
+  readonly sessions: SessionsSlice;
+  readonly activity: ActivitySlice;
+  readonly vaultApprovals: VaultApprovalsSlice;
+  readonly vaultRules: VaultRulesSlice;
+  readonly usage: VaultUsageLog;
+  readonly budgets: BudgetsSlice;
+  readonly terminals: TerminalsSlice;
+  readonly inbox: InboxSlice;
+  readonly appLog: AppLog;
+}
+
+/** What the host link's handlers read from the store besides the slices. */
+interface LinkHandlerDeps {
+  /** The slices, read when a frame arrives: all of them are built by then. */
+  slices: () => LinkSlices;
+  /** The connections to the hosts. */
+  link: () => HostLink;
+  /** Changes one host's view in the state. */
+  updateHost: (hostId: string, change: (host: HostView) => HostView) => void;
+  /** The id of the next notice. */
+  nextNoticeId: () => number;
+  /** Tells the state what the vault was asked, after the log changed. */
+  keepUsage: () => void;
+  /** A workflow run a host reports. */
+  onRun: (hostId: string, run: WorkflowRun) => void;
+  /** Tells the listeners of the history that a host's changed. */
+  historyChanged: (hostId: string, change: HistoryChanged) => void;
+  /** Asks the host what the setup checklist reads. */
+  refreshSetup: (hostId: string, options: { connect: boolean }) => Promise<void>;
+}
+
+/** What a host's connection hands the store: the frames, the steps when it comes online and its status. */
+export interface LinkHandlers {
+  readonly routes: HostRoutes;
+  readonly onlineSteps: readonly OnlineStep[];
+  readonly onStatus: (hostId: string, conn: HostConnection, status: ConnectionStatus) => void;
+}
+
+/**
+ * Builds what the host link calls: each frame goes to the slice that takes it (#1596), what runs
+ * when a host comes online or its info is reloaded, in order, and the host's new status (#2376).
+ */
+export function composeLinkHandlers(
+  kernel: AppKernel<AppState>,
+  deps: LinkHandlerDeps,
+): LinkHandlers {
+  const slices = deps.slices;
+  const routes: HostRoutes = {
+    onSubscribed: (config, sessionId, result) =>
+      slices().stream.onSubscribed(config.id, sessionId, result),
+    onEvent: (config, envelope) => slices().stream.onEvent(config.id, envelope),
+    onSummaries: (config, summaries) => slices().summaries.apply(config.id, summaries),
+    onCardUpdated: (config, card) => slices().boardCards.onCard(config.id, card),
+    onExternal: (config, frame) => slices().external.onExternal(config.id, frame),
+    onVaultRequest: (config, request) => void slices().vaultApprovals.onRequest(config, request),
+    onVaultUsed: (config, used) => {
+      slices().usage.recordUsed(config.id, used);
+      deps.keepUsage();
+    },
+    // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
+    onTeams: (config, frame) => slices().teams.onFrame(config.id, frame),
+    onMessagingAlert: (config, alert) => slices().messaging.onLoopAlert(config.id, alert),
+    onWatch: (config, frame) => slices().prWatch.keep(config.id, frame.watch),
+    onMessages: (config, frame) => slices().messaging.onFrame(config.id, frame),
+    onVaultAlert: (_config, alert) => {
+      const notice: Notice = {
+        id: deps.nextNoticeId(),
+        kind: "error",
+        code: "vault_alert",
+        text: alert.message,
+      };
+      kernel.update({ notices: [...kernel.state().notices, notice] });
+      slices().inbox.notify({
+        title: kernel.t()("vaultAudit.alertTitle"),
+        body: alert.message,
+      });
+    },
+    onRunUpdated: (config, run) => deps.onRun(config.id, run),
+    onRunEnvUpdated: (config, state) => slices().runEnv.updated(config.id, state),
+    onQuotaUpdated: (config, state) => slices().quota.updated(config.id, state),
+    onAccountUpdated: (config, state) => slices().account.updated(config.id, state),
+    onBudgetUpdated: (config, update) => slices().budgets.onUpdated(config.id, update),
+    onTerminal: (config, frame) => slices().terminals.deliver(config.id, frame),
+    onHistoryChanged: (config, change) => deps.historyChanged(config.id, change),
+    onAskpass: (config, request) => void slices().ssh.onAskpass(config.id, request),
+  };
+  const onlineSteps: readonly OnlineStep[] = [
+    {
+      run: ({ hostId, hostInfo }) =>
+        deps.updateHost(hostId, (h) => {
+          // Back on the version it was updating to: the update is over.
+          const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
+          if (done) slices().hostUpdate.settled(hostId);
+          return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
+        }),
+    },
+    // The setup checklist reads what this host has: its hooks, GitHub, projects.
+    { run: ({ hostId, connect }) => void deps.refreshSetup(hostId, { connect }) },
+    // Issue #1344: a host that can say what happened while the app was closed is asked once.
+    { gate: "activity", run: () => void slices().activity.loadAway() },
+    // ssh asks for passwords through the daemon: this app is who answers.
+    { gate: "ssh", run: ({ conn }) => void conn.request("askpass.watch", {}).catch(() => null) },
+    // Phase 21: this app carries the host's messages for the other hosts.
+    { gate: "watch", run: ({ conn }) => void conn.request("watch.watch", {}).catch(() => null) },
+    {
+      gate: "teams",
+      run: ({ hostId, conn }) => {
+        void conn.request("teams.watch", {}).catch(() => null);
+        // The sessions that belong to teams, so the workers' notifications can be folded.
+        void conn
+          .request("teams.list", {})
+          .then((result) => {
+            for (const team of result.teams) slices().summaries.rememberTeam(hostId, team);
+          })
+          .catch(() => null);
+      },
+    },
+    {
+      gate: "messaging",
+      run: ({ conn }) => {
+        void conn.request("messages.watch", {}).catch(() => null);
+        slices().messaging.startPeersSync();
+      },
+    },
+    // Phase 19: the daemon decides a request with the rules the app hands it.
+    { gate: "actions", run: ({ hostId, conn }) => slices().vaultRules.onConnect(hostId, conn) },
+    { run: ({ hostId }) => void slices().health.check(hostId) },
+    // Not awaited, as the health check: a reload of the host's info never waits on the offer.
+    {
+      gate: FEATURE_RESUME_OFFER,
+      run: ({ hostId, conn }) => void slices().sessions.offerResume(hostId, conn),
+    },
+    {
+      gate: "costs",
+      awaited: true,
+      run: async ({ hostId, conn }) => {
+        const list = await conn.request("budget.list", {}).catch(() => null);
+        if (list) slices().budgets.replace(hostId, list.budgets);
+      },
+    },
+  ];
+  const onStatus = (hostId: string, conn: HostConnection, status: ConnectionStatus): void => {
+    const name = kernel.state().hosts.find((h) => h.id === hostId)?.name ?? hostId;
+    const line = statusLine(name, status, conn.lastDrop);
+    slices().appLog.log(line.level, "host", line.text);
+    deps.updateHost(hostId, (h) => ({
+      ...h,
+      status,
+      info: conn.info,
+      incompatibility: conn.incompatibility,
+      retry: conn.retry,
+    }));
+    if (status === "online") {
+      void deps.link().loadHostInfo(hostId, conn, true);
+      // Daemons before phase 7 have no quota: quietly nothing.
+      void conn.request("quota.get", {}).then(
+        (state) => slices().quota.updated(hostId, state),
+        () => {},
+      );
+    }
+    if (status !== "online") slices().terminals.tellOffline(hostId);
+    if (status === "connecting") {
+      slices().stream.dropPartialText(hostId);
+      // The cards that waited on the old connection leave the queue: the new one never saw them.
+      // The deny may not reach the daemon; it ends the request at its own deadline.
+      slices().vaultApprovals.hostGone(hostId);
+    }
+  };
+  return { routes, onlineSteps, onStatus };
 }

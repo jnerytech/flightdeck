@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { CommandResult } from "../../src/board/command.ts";
 import {
   ConflictRadar,
   MAX_PEERS,
@@ -8,6 +7,7 @@ import {
   radarGit,
 } from "../../src/board/conflict-radar.ts";
 import { refArg } from "../../src/board/ref-arg.ts";
+import type { CommandResult } from "../../src/kernel/command.ts";
 
 /** A fake git: each worktree has a HEAD, the files its commits changed and the files it edits now. */
 function fakeGit() {

@@ -19,7 +19,8 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { byCodeUnit, type MemorySuggestion } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { userHome } from "../config.ts";
-import { FlightdeckError, isInside, whichOnPath } from "../kernel/index.ts";
+import { git } from "../git/index.ts";
+import { FlightdeckError, isInside } from "../kernel/index.ts";
 import { type ContextBudget, contextBudget } from "./budget.ts";
 import { exists } from "./exists.ts";
 import { suggestCleanup } from "./suggest.ts";
@@ -104,15 +105,9 @@ async function rootFrom(real: string, code: number, out: string): Promise<string
 /** The repository's own folder, and whether `project` is inside a repository at all. */
 async function lookUpRoot(project: string): Promise<{ root: string; repo: boolean }> {
   const real = await realpath(resolve(project));
-  const proc = Bun.spawn([whichOnPath("git") ?? "git", "rev-parse", "--git-common-dir"], {
-    cwd: real,
-    env: process.env,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [out, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
-  return { root: await rootFrom(real, code, out.trim()), repo: code === 0 };
+  // git-arg: fixed arguments only; the project folder is the working directory, never an argument
+  const { code, stdout } = await git(real, "rev-parse", "--git-common-dir");
+  return { root: await rootFrom(real, code, stdout.trim()), repo: code === 0 };
 }
 
 /** A recorder that appends each decision as a line of JSON to `path`. */

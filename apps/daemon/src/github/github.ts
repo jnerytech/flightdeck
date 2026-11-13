@@ -4,9 +4,9 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
-import { GH_FIELDS, GhIssueRow, GithubIssues } from "../issues/providers.ts";
 import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
-import type { GhResult, GhRunner } from "./gh.ts";
+import { GH_FIELDS, GhIssueRow, GithubIssues } from "./adapters/gh-issues.ts";
+import type { GhResult, GhRunner } from "./gh-runner.ts";
 import { GITHUB_HOST, type GithubStatus, githubStatus } from "./status.ts";
 
 const refuse = (reason: string, message: string, params?: Record<string, string | number>) =>

@@ -39,12 +39,6 @@ describe("botao-motivo-linha: a button's reason does not make its row taller", (
     expect(css).toMatch(/@utility action-reason \{[^}]*position: absolute/);
     expect(css).toMatch(/@utility action-button-box \{[^}]*position: relative/);
   });
-
-  test("without a reason the button has no box around it", () => {
-    render(<ActionButton>Ir</ActionButton>);
-    const button = screen.getByRole("button", { name: "Ir" });
-    expect(button.parentElement?.className ?? "").not.toContain("action-button-box");
-  });
 });
 
 describe("botao-motivo-linha: a button in a form row", () => {

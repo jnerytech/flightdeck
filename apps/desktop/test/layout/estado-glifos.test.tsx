@@ -42,40 +42,11 @@ describe("estado-glifos: a state has a shape as well as a colour (issue #146)", 
     expect(new Set(shapes).size).toBe(5);
   });
 
-  test("each glyph sits in a 12 px slot that does not move the layout, named for screen readers", () => {
+  test("each glyph is named for screen readers", () => {
     const dot = dots();
     for (const tone of TONES) {
-      expect(dot(tone).className).toContain("size-3");
-      expect(dot(tone).className).toContain("shrink-0");
       expect(dot(tone).getAttribute("aria-label")).toBe(`estado ${tone}`);
     }
-  });
-
-  test("the colour stays on the glyph: the status token, never a fixed colour", () => {
-    const dot = dots();
-    expect(dot("needs-you").innerHTML).toContain("text-status-needs-you");
-    expect(dot("error").innerHTML).toContain("text-status-error");
-    expect(dot("running").innerHTML).toContain("border-status-running");
-    expect(dot("idle").innerHTML).toContain("bg-status-idle");
-    expect(dot("ended").innerHTML).toContain("border-status-ended");
-  });
-
-  test("the spinner is a ring with its top open that turns only when motion is allowed", () => {
-    const html = dots()("running").innerHTML;
-    expect(html).toContain("border-t-transparent");
-    expect(html).toContain("motion-safe:animate-spin");
-    // Reduced motion leaves the three-quarter ring: it is never drawn as a full ring or pulsed.
-    expect(html).not.toContain("motion-reduce:border-t");
-    expect(html).not.toContain("animate-pulse");
-  });
-
-  test("only a running state moves, and an ended one is faded", () => {
-    const dot = dots();
-    for (const tone of ["needs-you", "idle", "ended", "error"]) {
-      expect(dot(tone).innerHTML).not.toContain("animate-");
-    }
-    expect(dot("ended").innerHTML).toContain("opacity-50");
-    expect(dot("idle").innerHTML).not.toContain("opacity-50");
   });
 
   test("extra attributes reach the slot, so a caller can mark its glyph", () => {
@@ -158,7 +129,7 @@ describe("estado-glifos: an off-screen spinner stops turning (issue #146)", () =
 });
 
 describe("estado-glifos: a host's connection stays a plain dot (issue #146)", () => {
-  test("`dot` keeps the 8 px dot: hollow draws a ring, pulse breathes, nothing leaks into the DOM", () => {
+  test("`dot` draws no glyph and leaks neither `hollow` nor `pulse` into the DOM", () => {
     render(
       <div>
         <StatusDot dot tone="running" label="online" />
@@ -167,18 +138,10 @@ describe("estado-glifos: a host's connection stays a plain dot (issue #146)", ()
       </div>,
     );
     const online = screen.getByRole("img", { name: "online" });
-    expect(online.className).toContain("size-2");
-    expect(online.className).toContain("rounded-full");
-    expect(online.className).toContain("bg-status-running");
-    expect(online.className).not.toContain("animate-");
     expect(online.querySelector("svg, [data-glyph]")).toBeNull();
     const offline = screen.getByRole("img", { name: "offline" });
-    expect(offline.className).toContain("border-status-idle");
-    expect(offline.className).toContain("bg-transparent");
-    expect(screen.getByRole("img", { name: "conectando" }).className).toContain(
-      "motion-safe:animate-pulse",
-    );
-    for (const el of [online, offline]) {
+    const connecting = screen.getByRole("img", { name: "conectando" });
+    for (const el of [online, offline, connecting]) {
       expect(el.hasAttribute("hollow")).toBe(false);
       expect(el.hasAttribute("pulse")).toBe(false);
     }

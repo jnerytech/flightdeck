@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSuggestedPersona } from "@/features/personas/ui.ts";
 import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
-import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
@@ -21,6 +20,7 @@ import { nextStep } from "./card-next-step.ts";
 import { cardStartBlock } from "./card-start-block.ts";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 import { findingsNote } from "./second-opinion.ts";
+import { projectContracts, useStartAsk } from "./use-start-ask.tsx";
 
 interface Confirming {
   kind: "complete" | "discard";

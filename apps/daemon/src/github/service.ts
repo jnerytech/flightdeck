@@ -4,12 +4,17 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
-import type { Issues } from "../issues/issues.ts";
 import { type GitRunner, spawnGit } from "../projects/index.ts";
-import { type GhRunner, runGh } from "./gh.ts";
+import { runGh } from "./adapters/gh.ts";
+import { type DeviceCode, GithubLogin } from "./adapters/login.ts";
+import type { GhRunner } from "./gh-runner.ts";
 import { Github, type GithubRepo } from "./github.ts";
-import { type DeviceCode, GithubLogin } from "./login.ts";
-import { type GithubStartRequest, type GithubStartResult, startFromGithub } from "./start.ts";
+import {
+  type GithubStartRequest,
+  type GithubStartResult,
+  type IssueCards,
+  startFromGithub,
+} from "./start.ts";
 import { type GithubStatus, githubStatus } from "./status.ts";
 
 export interface GithubServiceOptions {
@@ -17,7 +22,7 @@ export interface GithubServiceOptions {
   git?: GitRunner;
   roots: readonly string[];
   board: Board;
-  issues: Issues;
+  issues: IssueCards;
   startSession(opts: { cwd: string; prompt: string; name: string }): Promise<{ sessionId: string }>;
   login?: GithubLogin;
 }

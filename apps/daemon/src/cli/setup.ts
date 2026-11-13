@@ -3,20 +3,10 @@
  * run), `flightdeckd doctor` (what a first run needs) and `flightdeckd pair` (the pairing link).
  */
 import { stat } from "node:fs/promises";
-import { join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
-import { hooksStatus, hookTarget } from "../central/index.ts";
-import { type Config, claudeSettingsPath, loadConfig } from "../config.ts";
-import {
-  checkDeps,
-  type DepsEnv,
-  doctorExitCode,
-  formatDeps,
-  probeVersion,
-  runDoctor,
-} from "../deps/index.ts";
-import { DAEMON_VERSION, type Exec, linesOf, spawnExec, whichOnPath } from "../kernel/index.ts";
-import { mcpReachable } from "../mcp/index.ts";
+import { type Config, loadConfig } from "../config.ts";
+import { createHostChecks, type DepsEnv, doctorExitCode, formatDeps } from "../deps/index.ts";
+import { DAEMON_VERSION, type Exec, linesOf, spawnExec } from "../kernel/index.ts";
 import {
   loopbackOnly,
   pairingAddress,
@@ -24,7 +14,6 @@ import {
   rotateToken,
   tailscaleIp,
 } from "../pairing/index.ts";
-import { openCodeState } from "../runtime/index.ts";
 import {
   addToUserPath,
   binaryVersion,
@@ -41,7 +30,6 @@ import {
   stableBinPath,
   waitHealthy,
 } from "../service/index.ts";
-import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
 import { detectWsl, readProcVersion } from "../wsl/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
 import { type ClaudeSettingsCommandDeps, runHooks } from "./claude-settings.ts";
@@ -96,60 +84,34 @@ export async function runPair(args: CliArgs, deps: SetupCommandDeps): Promise<vo
 /** `flightdeckd doctor`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
 export async function runDoctorCommand(args: CliArgs, deps: SetupCommandDeps): Promise<number> {
   const file = configPath(args);
-  const ctx = (deps.serviceContext ?? osServiceContext)(false);
-  const settings = claudeSettingsPath();
-  const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
   let config: Config | null = null;
   const load = async () => {
     config ??= await loadConfig(file);
     return config;
   };
-  const report = await runDoctor({
+  // The same checks the running daemon answers the app with; only the daemon's own address is asked here.
+  const { checks } = createHostChecks({
     config: load,
-    isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
-    serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
-    healthy: async () => waitHealthy(healthUrl(await load()), 1_000, 250),
-    refused: async () => refusedAddress(healthUrl(await load()), 1_000),
-    tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
-    hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
-    claudePath: () => whichOnPath("claude"),
-    mcp: () => mcpReachable(self),
-    opencode: async () => openCodeState(await load(), process.env),
-
-    linger: () => lingerState(ctx),
-    templateProblems: async () =>
-      (
-        await loadTemplates({
-          dir: join((await load()).dataDir, "templates"),
-          builtins: BUILTIN_TEMPLATES,
-        })
-      ).problems,
+    env: deps.env,
+    opencode: {},
+    // The terminal does not ask the Claude account: the card in the app does.
+    account: async () => null,
+    options: { ...(deps.serviceContext ? { serviceContext: deps.serviceContext } : {}) },
+    cli: {
+      healthy: async (cfg) => waitHealthy(healthUrl(cfg), 1_000, 250),
+      refused: async (cfg) => refusedAddress(healthUrl(cfg), 1_000),
+      ...(deps.exec ? { exec: deps.exec } : {}),
+      ...(deps.selfCommand ? { self: deps.selfCommand } : {}),
+      ...(deps.depsEnv ? { depsEnv: deps.depsEnv } : {}),
+    },
   });
+  const report = await checks.doctor();
   for (const item of report.checks) {
     deps.log.log(`${item.status.toUpperCase().padEnd(4)} ${item.name.padEnd(16)} ${item.detail}`);
     if (item.fix) deps.log.log(`     -> ${item.fix}`);
   }
   // What the host needs and does without, grouped like the app's Dependencies section.
-  const found = await checkDeps(
-    deps.depsEnv ?? {
-      platform: process.platform,
-      // Like the running daemon: the claude that `flightdeckd setup` wrote into the config wins.
-      which: async (name) => {
-        const cfg = await load();
-        const configured =
-          name === "claude" ? (cfg.claude?.executablePath ?? cfg.claudePath) : undefined;
-        if (!configured) return whichOnPath(name);
-        return (await Bun.file(configured).exists()) ? configured : null;
-      },
-      version: (path) => probeVersion([path, "--version"]),
-      allowedRoots: (await load()).allowedRoots,
-      serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
-      linger: () => lingerState(ctx),
-      // The terminal does not ask the Claude account: the card in the app does.
-      account: async () => null,
-      hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
-    },
-  );
+  const found = await checks.deps();
   for (const line of formatDeps(found, process.platform)) deps.log.log(line);
   return doctorExitCode(report.ok, found);
 }

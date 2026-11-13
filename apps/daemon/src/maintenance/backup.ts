@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { chmod, copyFile, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { acquireLock } from "../kernel/index.ts";
+import { withLock } from "../kernel/index.ts";
 import { MIGRATIONS } from "../store/migrations.ts";
 
 export interface BackupInfo {
@@ -99,11 +99,7 @@ export async function restoreBackup(opts: {
   file: string;
   dataDir: string;
 }): Promise<{ beforeRestore: string }> {
-  const lock = await acquireLock(opts.dataDir);
-  if (!lock) {
-    throw new Error("the daemon is running with this dataDir: stop the daemon and run again");
-  }
-  try {
+  return withLock(opts.dataDir, "stop the daemon and run again", async () => {
     checkBackup(opts.file);
     const current = join(opts.dataDir, "flightdeck.db");
     const beforeRestore = `${current}.before-restore`;
@@ -124,7 +120,5 @@ export async function restoreBackup(opts: {
       await rm(`${current}${suffix}`, { force: true });
     });
     return { beforeRestore };
-  } finally {
-    await lock.release();
-  }
+  });
 }

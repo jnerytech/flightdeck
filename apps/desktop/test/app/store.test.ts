@@ -174,6 +174,30 @@ describe("desktop: estado do app", () => {
     ]);
   });
 
+  test("removing a host drops its account and its health read, and keeps those of the others (#1733, #1752)", async () => {
+    const d = makeDaemon(cleanups, {
+      firstRun: true,
+      deps: () => ({ items: [] }),
+      doctor: async () => ({ ok: true, checks: [] }),
+    });
+    const { platform } = memoryPlatform();
+    const store = new AppStore(platform, { baseDelayMs: 10 });
+    cleanups.push(() => store.dispose());
+    const url = d.listen().url;
+    const one = await store.roster.add({ name: "one", url, token: TOKEN });
+    const two = await store.roster.add({ name: "two", url, token: TOKEN });
+    await waitFor(
+      () => Object.keys(store.getState().healthAt).length === 2 || undefined,
+      "both health reads",
+    );
+    const account = { name: "ana" } as never;
+    store.account.updated(one, account);
+    store.account.updated(two, account);
+    await store.roster.remove(one);
+    expect(Object.keys(store.getState().account)).toEqual([two]);
+    expect(Object.keys(store.getState().healthAt)).toEqual([two]);
+  });
+
   test("reconexão limpa o texto parcial da sessão aberta", async () => {
     const { store, server, project } = setup();
     const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
