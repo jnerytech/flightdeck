@@ -112,7 +112,7 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
     })) as string;
     await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status === "idle");
     store.subscriptions.select(hostId, null);
-    // No refreshHub here: a deep link or a demo opens the page before the Sessions screen ever did.
+    // No sessionLists.refresh here: a deep link or a demo opens the page before the Sessions screen ever did.
     expect(hubRows(store.getState()).some((r) => r.sessionId === id)).toBe(false);
     render(
       <Page
