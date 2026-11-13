@@ -11,6 +11,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { BackupPanel } from "./backup-panel.tsx";
 import { EditSecretForm } from "./edit-secret-form.tsx";
 import { NewSecretForm } from "./new-secret-form.tsx";
+import { VaultPanel } from "./panel.tsx";
 import { RulesEditor } from "./rules-editor.tsx";
 import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
@@ -44,6 +45,8 @@ function SecretRow(
     onRules(): void;
     onCopyPublicKey(): void;
     hostName(id: string): string;
+    /** A moment (epoch ms) as the app writes dates and times. */
+    formatWhen(ms: number): string;
   }>,
 ) {
   const t = useT();
@@ -65,7 +68,7 @@ function SecretRow(
         <span>
           {secret.lastUsedAt === null
             ? t("vault.neverUsed")
-            : t("vault.lastUsed", { when: new Date(secret.lastUsedAt).toLocaleString() })}
+            : t("vault.lastUsed", { when: props.formatWhen(secret.lastUsedAt) })}
         </span>
         <span>
           {t("vault.hosts", { hosts: secret.allowedHosts.map(props.hostName).join(", ") })}
@@ -74,7 +77,7 @@ function SecretRow(
       {props.revealed !== null && (
         <code className="break-all rounded bg-muted p-2 text-sm">{props.revealed}</code>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -95,11 +98,17 @@ function SecretRow(
           variant="outline"
           size="sm"
           aria-label={t("vault.editFor", { name: secret.name })}
+          data-opener={`edit:${secret.id}`}
           onClick={props.onEdit}
         >
           {t("vault.edit")}
         </Button>
-        <Button variant="outline" size="sm" onClick={props.onRules}>
+        <Button
+          variant="outline"
+          size="sm"
+          data-opener={`rules:${secret.id}`}
+          onClick={props.onRules}
+        >
           {t("vaultRulesUi.open", { name: secret.name })}
         </Button>
         {info.publicKey && (
@@ -220,7 +229,7 @@ export const VaultPage = memo(function VaultPage(props: {
       subtitle={t("vault.subtitle")}
       actions={
         !creating && (
-          <Button ref={newSecretButton} onClick={() => setCreating(true)}>
+          <Button ref={newSecretButton} data-opener="new" onClick={() => setCreating(true)}>
             {t("vault.newSecret")}
           </Button>
         )
@@ -233,28 +242,28 @@ export const VaultPage = memo(function VaultPage(props: {
         {phase === "hidden" && t("vault.hidden")}
       </output>
       {creating && (
-        <NewSecretForm
-          store={store}
-          onClose={() => setCreating(false)}
-          {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
-        />
+        <VaultPanel opener="new">
+          <NewSecretForm
+            store={store}
+            onClose={() => setCreating(false)}
+            {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
+          />
+        </VaultPanel>
       )}
       {editing && (
-        <EditSecretForm
-          key={editing.id}
-          store={store}
-          secret={editing}
-          onClose={() => setEditing(null)}
-        />
+        <VaultPanel key={editing.id} opener={`edit:${editing.id}`}>
+          <EditSecretForm store={store} secret={editing} onClose={() => setEditing(null)} />
+        </VaultPanel>
       )}
       {ruling && (
-        <RulesEditor
-          key={ruling.id}
-          store={store}
-          secret={ruling}
-          {...(props.rule?.secretId === ruling.id ? { seed: props.rule.match } : {})}
-          onClose={() => setRuling(null)}
-        />
+        <VaultPanel key={ruling.id} opener={`rules:${ruling.id}`}>
+          <RulesEditor
+            store={store}
+            secret={ruling}
+            {...(props.rule?.secretId === ruling.id ? { seed: props.rule.match } : {})}
+            onClose={() => setRuling(null)}
+          />
+        </VaultPanel>
       )}
       <Tabs defaultValue="secrets">
         <TabsList aria-label={t("vault.tabs")}>
@@ -270,7 +279,9 @@ export const VaultPage = memo(function VaultPage(props: {
               title={t("vault.empty")}
               action={
                 !creating && (
-                  <Button onClick={() => setCreating(true)}>{t("vault.emptyAction")}</Button>
+                  <Button data-opener="new" onClick={() => setCreating(true)}>
+                    {t("vault.emptyAction")}
+                  </Button>
                 )
               }
             />
@@ -306,6 +317,12 @@ export const VaultPage = memo(function VaultPage(props: {
                         }
                         hostName={(hostId) =>
                           state.hosts.find((h) => h.id === hostId)?.name ?? hostId
+                        }
+                        formatWhen={(ms) =>
+                          // A moment no date can hold (a bad value from the daemon) shows as nothing, not a crash.
+                          Number.isFinite(new Date(ms).getTime())
+                            ? store.formatDateTime(new Date(ms).toISOString())
+                            : ""
                         }
                       />
                     ))}
