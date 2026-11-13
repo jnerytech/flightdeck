@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { type ProjectCard, ProjectCardTile, useProjectCards } from "@/features/projects/index.ts";
+import { type ProjectCard, useProjectCards } from "@/features/projects/index.ts";
+import { ProjectCardTile } from "@/features/projects/ui.ts";
 import {
   groupName,
   type HubRow,

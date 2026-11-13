@@ -138,6 +138,8 @@ describe("conexoes-ui with the vault: connecting", () => {
   test("Conectar hands the key to the host that runs ssh, in the connect command and only there, and logs the use", async () => {
     const { d, store, hostId, key } = await open({ auth: "vault-key", secretRef: "key" });
     await click("Conectar vps");
+    // The key is read from the vault first: wait for the command, never read it at once.
+    await settle(() => d.sent("ssh.connect").length > 0);
     expect(d.sent("ssh.connect")).toEqual([
       { targetId: "t1", cols: 80, rows: 24, privateKey: KEY },
     ]);
@@ -160,12 +162,14 @@ describe("conexoes-ui with the vault: connecting", () => {
     const { d } = await open({ auth: "vault-key", secretRef: "key" });
     await click("Editar vps");
     await click("Testar conexão");
+    await settle(() => d.sent("ssh.test").length > 0);
     expect(d.sent("ssh.test")).toEqual([{ targetId: "t1", privateKey: KEY }]);
   });
 
   test("a key not allowed for the host is refused with the reason, nothing is sent, and the refusal is logged", async () => {
     const { d, store, key } = await open({ auth: "vault-key", secretRef: "key", allowed: false });
     await click("Conectar vps");
+    await settle(() => screen.queryByRole("alert") !== null);
     expect(d.sent("ssh.connect")).toEqual([]);
     expect(screen.queryByRole("alert")?.textContent).toBe(
       "O segredo não está liberado para este host.",
@@ -181,6 +185,7 @@ describe("conexoes-ui with the vault: connecting", () => {
   test("a key that is gone from the vault is refused with the reason", async () => {
     const { d } = await open({ auth: "vault-key", secretRef: "key", remove: true });
     await click("Conectar vps");
+    await settle(() => screen.queryByRole("alert") !== null);
     expect(d.sent("ssh.connect")).toEqual([]);
     expect(screen.queryByRole("alert")?.textContent).toBe("O cofre não tem esse segredo.");
   });
@@ -205,6 +210,7 @@ describe("conexoes-ui with the vault: ssh asks for a password", () => {
   test("a request with a reference to a password in the vault is answered from it, without a dialog, and logged", async () => {
     const { d, store, hostId, password } = await open({ auth: "password", secretRef: "password" });
     await ask(d, password.id);
+    await settle(() => d.sent("askpass.answer").length > 0);
     expect(d.sent("askpass.answer")).toEqual([{ requestId: "r1", secret: PASSWORD }]);
     expect(screen.queryByLabelText("Senha")).toBeNull();
     expect(store.usage.list()[0]).toMatchObject({
@@ -222,6 +228,7 @@ describe("conexoes-ui with the vault: ssh asks for a password", () => {
     const { d } = await open({ auth: "password", secretRef: "password", allowed: false });
     const ref = d.targets[0]?.secretRef ?? null;
     await ask(d, ref);
+    await settle(() => screen.queryByLabelText("Senha") !== null);
     expect(d.sent("askpass.answer")).toEqual([]);
     expect(screen.queryByLabelText("Senha")).not.toBeNull();
   });

@@ -3,11 +3,8 @@
  * flyout, the worktree chip and the project card. The Projects, Project and overview screens are
  * loaded by their own files, lazily. Another domain imports from here, never a file inside.
  */
-export { AddProject } from "./add-project.tsx";
-export { ProjectCardTile } from "./project-card-tile.tsx";
 export type { ProjectCard } from "./project-cards.ts";
 export { knownProjectKeys, ProjectKeys } from "./project-keys.ts";
-export { ProjectTree } from "./project-tree.tsx";
 export {
   activeWorktreeFilter,
   cardInFilter,
@@ -18,8 +15,6 @@ export {
   type WorktreeFilter,
   worktreeOfProject,
 } from "./project-tree-model.ts";
-export { RailFlyout } from "./rail-flyout.tsx";
 export { ProjectsSlice } from "./store.ts";
 export { useProjectCards } from "./use-project-cards.ts";
 export { wireProjects } from "./wire.ts";
-export { WorktreeChip } from "./worktree-chip.tsx";

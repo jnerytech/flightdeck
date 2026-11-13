@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/index.ts";
 import { TranscriptReader } from "@/features/history/index.ts";
 import { ApprovalCard } from "@/features/permissions/ui.ts";
-import { PersonaSwitch } from "@/features/personas/index.ts";
+import { PersonaSwitch } from "@/features/personas/ui.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
 import { Stack } from "@/shared/layout/index.ts";

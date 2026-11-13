@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PersonaPicker, useSuggestedPersona } from "@/features/personas/index.ts";
+import { PersonaPicker, useSuggestedPersona } from "@/features/personas/ui.ts";
 import { AlertPicker } from "@/features/workflows/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { PersonaPicker } from "@/features/personas/index.ts";
+import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";

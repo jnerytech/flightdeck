@@ -66,7 +66,7 @@ async function build(prepare: Prepare = withoutPersonas) {
     quota,
   });
   cleanups.push(() => module.stop?.());
-  return { board, manager, module, watching, repo, personaStore };
+  return { board, manager, module, watching, repo, personaStore, central };
 }
 
 describe("teams-wiring: the sessions that work together, as the daemon builds them (#2094)", () => {
@@ -121,5 +121,36 @@ describe("teams-wiring: the sessions that work together, as the daemon builds th
       }),
     ).rejects.toThrow("stop here");
     expect(efforts).toEqual(["high"]);
+  });
+
+  test("a terminal session sends a message: its id is not one the manager knows, and nothing throws (#1694)", async () => {
+    const { module, central, repo } = await build();
+    central.external.apply("SessionStart", { session_id: "term-1", cwd: repo });
+    let result: unknown;
+    const sent = () => {
+      result = module.server?.messaging?.messages?.send({
+        as: { session: "term-1" },
+        to: "nobody",
+        text: "hello",
+      });
+    };
+    expect(sent).not.toThrow();
+    expect(result).toBeDefined();
+  });
+
+  test("a persona that cannot be read is logged with its error, not only reported as unknown (#1694)", async () => {
+    const { board, module, personaStore, repo } = await build();
+    const project = await board.addProject({
+      path: repo,
+      prProvider: "github",
+      promptTemplate: "",
+    });
+    spyOn(personaStore, "resolve").mockRejectedValue(new Error("persona store unreadable"));
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    cleanups.push(() => logged.mockRestore());
+    await module.server?.messaging?.teams
+      ?.create({ projectId: project.id, goal: "g", workers: 1, coordinatorPersona: "qa" })
+      .catch(() => {});
+    expect(logged.mock.calls.flat().join(" ")).toContain("persona store unreadable");
   });
 });

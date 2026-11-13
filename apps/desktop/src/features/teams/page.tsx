@@ -15,15 +15,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AssistField } from "@/features/assistant/index.ts";
 import { useSwitcherHostId } from "@/features/hosts/index.ts";
+import type { PermissionChoice } from "@/features/personas/index.ts";
 import {
   EffortSelect,
   ModelSelect,
-  type PermissionChoice,
   PermissionSelect,
   PersonaPicker,
   useSuggestedPersona,
-} from "@/features/personas/index.ts";
-import { AddProject } from "@/features/projects/index.ts";
+} from "@/features/personas/ui.ts";
+import { AddProject } from "@/features/projects/ui.ts";
 import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
