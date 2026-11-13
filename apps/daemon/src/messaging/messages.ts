@@ -7,7 +7,6 @@
 import type { Database } from "bun:sqlite";
 import type {
   MessageInfo,
-  MessageKind,
   MessagingSession,
   ReadSessionResult,
   RelayMessage,
@@ -22,8 +21,8 @@ import { formatSessionMessage, formatSystemMessage } from "./header.ts";
 import {
   access,
   addressOf,
+  addressParts,
   DEFAULT_POLICY,
-  type History,
   limits,
   type Party,
   type Policy,
@@ -31,6 +30,7 @@ import {
   validatePolicy,
 } from "./policy.ts";
 import { relayOf } from "./relay.ts";
+import { type MessagePatch, type MessageRow, MessageStore, type NewMessage } from "./store.ts";
 
 export interface MessagingOptions {
   db: Database;
@@ -83,25 +83,6 @@ export interface PeerSession {
 /** A session of this host as the app hands it to the other daemons: the aliases always come. */
 export type ListedSession = PeerSession & { alias: string | null; aliases: string[] };
 
-interface Row {
-  id: string;
-  from_session: string;
-  from_host: string;
-  to_session: string;
-  to_host: string;
-  text: string;
-  status: MessageInfo["status"];
-  reason: string | null;
-  created_at: string;
-  created_ms: number;
-  delivered_at: string | null;
-  team_id: string | null;
-  kind: MessageKind;
-  sender: string | null;
-  untrusted: number;
-  relayed: number;
-}
-
 /** Where a message is going. */
 interface Target {
   party: Party;
@@ -127,32 +108,9 @@ interface Missing {
   params: Params;
 }
 
-const toInfo = (row: Row): MessageInfo => ({
-  id: row.id,
-  fromSession: row.from_session,
-  fromHost: row.from_host,
-  toSession: row.to_session,
-  toHost: row.to_host,
-  text: row.text,
-  status: row.status,
-  reason: row.reason,
-  createdAt: row.created_at,
-  deliveredAt: row.delivered_at,
-  teamId: row.team_id,
-  kind: row.kind,
-});
-
 /** The key of a pair, the same from both sides. */
 const pairKey = (a: string, b: string): string =>
   [a, b].sort((a, b) => (a < b ? -1 : Number(a > b))).join("|");
-
-/** `host/id` into its parts; an address without a host has none. */
-function split(address: string): { host: string | null; id: string } {
-  const slash = address.indexOf("/");
-  return slash < 0
-    ? { host: null, id: address }
-    : { host: address.slice(0, slash), id: address.slice(slash + 1) };
-}
 
 export class Messaging {
   private readonly listeners = new Set<(frame: MessagingFrame) => void>();
@@ -163,21 +121,19 @@ export class Messaging {
   private readonly held = new Map<string, Array<{ id: string; formatted: string }>>();
   private policy: Policy;
   private readonly unsubscribe: Array<() => void> = [];
+  private readonly store: MessageStore;
 
   constructor(private readonly opts: MessagingOptions) {
-    const stored = opts.db.query("SELECT policy FROM messaging_config WHERE id = 1").get() as {
-      policy: string;
-    } | null;
+    this.store = new MessageStore(opts.db, opts.host);
+    const stored = this.store.policy();
     // A stored policy that is not JSON reads as none: the default applies, as for a new host.
-    this.policy = stored
-      ? validatePolicy(parseJsonOr(z.unknown(), stored.policy, undefined)).policy
-      : DEFAULT_POLICY;
+    this.policy =
+      stored !== null
+        ? validatePolicy(parseJsonOr(z.unknown(), stored, undefined)).policy
+        : DEFAULT_POLICY;
     // What was waiting in memory when the daemon stopped cannot be delivered any more.
-    const lost = opts.db
-      .query("SELECT * FROM session_messages WHERE status = 'queued' AND to_host = ?")
-      .all(opts.host) as Row[];
-    for (const row of lost) {
-      this.update(row.id, {
+    for (const id of this.store.queuedHere()) {
+      this.update(id, {
         status: "expired",
         reason: "the daemon restarted before delivery",
         at: this.ms(),
@@ -282,7 +238,7 @@ export class Messaging {
   }
 
   private target(address: string): Target | Missing {
-    const { host, id } = split(address);
+    const { host, id } = addressParts(address);
     if (host === null || host === this.opts.host) {
       const sessionId = this.opts.names?.resolve(id) ?? id;
       const list = this.opts.endpoints.list();
@@ -406,44 +362,6 @@ export class Messaging {
     return read;
   }
 
-  // --- the history the limits count ---
-
-  private history(): History {
-    const count = (fromHost: string, from: string, toHost: string, to: string, since: number) =>
-      (
-        this.opts.db
-          .query(
-            `SELECT COUNT(*) AS n FROM session_messages
-             WHERE kind = 'session' AND status IN ('pending', 'delivered', 'queued')
-               AND created_ms >= ? AND from_host = ? AND from_session = ? AND to_host = ? AND to_session = ?`,
-          )
-          .get(since, fromHost, from, toHost, to) as { n: number }
-      ).n;
-    return {
-      pair: (a, b, since) => {
-        const x = split(a);
-        const y = split(b);
-        const [xh, yh] = [x.host as string, y.host as string];
-        return {
-          fromA: count(xh, x.id, yh, y.id, since),
-          fromB: count(yh, y.id, xh, x.id, since),
-        };
-      },
-      sent: (address, since) => {
-        const x = split(address);
-        return (
-          this.opts.db
-            .query(
-              `SELECT COUNT(*) AS n FROM session_messages
-               WHERE kind = 'session' AND status IN ('pending', 'delivered', 'queued')
-                 AND created_ms >= ? AND from_host = ? AND from_session = ?`,
-            )
-            .get(since, x.host, x.id) as { n: number }
-        ).n;
-      },
-    };
-  }
-
   // --- sending ---
 
   send(input: { as: SessionIdentity; to: string; text: string }): SendResult {
@@ -484,7 +402,7 @@ export class Messaging {
     if (!target.local) {
       // Another host: the app carries it. Until it does, it waits here.
       record("queued", null);
-      const relay = relayOf(this.row(id) as Row);
+      const relay = relayOf(this.store.row(id) as MessageRow);
       if (relay) this.emit({ type: "messages.relay", message: relay });
       return { id, status: "queued", reason: null };
     }
@@ -517,7 +435,7 @@ export class Messaging {
     if (this.isPaused(key)) {
       return "the pair is paused by a message loop; release it in Settings";
     }
-    const limit = limits(from, to, this.history(), this.ms(), this.policy);
+    const limit = limits(from, to, this.store.history(), this.ms(), this.policy);
     if (!limit.ok) {
       if (limit.kind === "loop") this.pause(key, from, to);
       return limit.reason;
@@ -528,9 +446,7 @@ export class Messaging {
 
   private pause(key: string, from: string, to: string): void {
     const at = this.iso(this.ms());
-    this.opts.db
-      .query("INSERT OR IGNORE INTO messaging_paused (pair, at) VALUES (?, ?)")
-      .run(key, at);
+    this.store.pause(key, at);
     this.emit({
       type: "messaging.alert",
       kind: "loop",
@@ -542,15 +458,11 @@ export class Messaging {
   }
 
   private isPaused(key: string): boolean {
-    return this.opts.db.query("SELECT 1 FROM messaging_paused WHERE pair = ?").get(key) !== null;
+    return this.store.isPaused(key);
   }
 
   pausedPairs(): string[] {
-    return (
-      this.opts.db.query("SELECT pair FROM messaging_paused ORDER BY pair").all() as Array<{
-        pair: string;
-      }>
-    ).map((row) => row.pair);
+    return this.store.pausedPairs();
   }
 
   /**
@@ -624,7 +536,7 @@ export class Messaging {
 
   /** A message from another host, handed over by the app; idempotent by id. */
   relay(message: RelayMessage): SendResult {
-    const existing = this.row(message.id);
+    const existing = this.store.row(message.id);
     if (existing) {
       return {
         id: existing.id,
@@ -699,7 +611,7 @@ export class Messaging {
     id: string,
     result: { status: "delivered" | "queued" | "refused"; reason?: string | null },
   ): void {
-    if (!this.row(id)) return;
+    if (!this.store.row(id)) return;
     this.update(id, {
       status: result.status,
       reason: result.reason ?? null,
@@ -710,14 +622,7 @@ export class Messaging {
 
   /** Messages waiting to cross to another host. */
   outbox(): RelayMessage[] {
-    const rows = this.opts.db
-      .query(
-        `SELECT * FROM session_messages
-         WHERE kind = 'session' AND to_host <> ? AND status = 'queued' AND relayed = 0
-         ORDER BY created_ms, rowid`,
-      )
-      .all(this.opts.host) as Row[];
-    return rows.flatMap((row) => relayOf(row) ?? []);
+    return this.store.outbox();
   }
 
   // --- notices from Flightdeck itself ---
@@ -729,7 +634,7 @@ export class Messaging {
     text: string,
     teamId: string | null = null,
   ): SendResult {
-    const { id: sessionId } = split(to);
+    const { id: sessionId } = addressParts(to);
     const info = this.opts.endpoints.list().find((e) => e.id === sessionId);
     const id = ulid(this.ms());
     const target: Party = info
@@ -795,14 +700,8 @@ export class Messaging {
       throw bad(errors.join("; "), "messaging_policy_invalid", { errors: errors.join("; ") });
     }
     this.policy = policy;
-    this.opts.db
-      .query(
-        "INSERT INTO messaging_config (id, policy) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET policy = excluded.policy",
-      )
-      .run(JSON.stringify(policy));
-    for (const pair of unpause) {
-      this.opts.db.query("DELETE FROM messaging_paused WHERE pair = ?").run(pair);
-    }
+    this.store.savePolicy(JSON.stringify(policy));
+    for (const pair of unpause) this.store.unpause(pair);
     return { policy, paused: this.pausedPairs() };
   }
 
@@ -817,38 +716,21 @@ export class Messaging {
     limit?: number;
   }): MessageInfo[] {
     const since = this.ms() - (filter.days ?? 30) * DAY_MS;
-    const session = filter.session ? split(filter.session).id : null;
-    const rows = this.opts.db
-      .query(
-        `SELECT * FROM session_messages
-         WHERE created_ms >= ?1
-           AND (?2 IS NULL OR from_session = ?2 OR to_session = ?2)
-           AND (?3 IS NULL OR from_host = ?3 OR to_host = ?3)
-           AND (?4 IS NULL OR status = ?4)
-           AND (?5 IS NULL OR team_id = ?5)
-         ORDER BY created_ms DESC, rowid DESC LIMIT ?6`,
-      )
-      .all(
-        since,
-        session,
-        filter.host ?? null,
-        filter.status ?? null,
-        filter.team ?? null,
-        filter.limit ?? 200,
-      ) as Row[];
-    return rows.map(toInfo);
+    const session = filter.session ? addressParts(filter.session).id : null;
+    return this.store.list({
+      since,
+      session,
+      host: filter.host ?? null,
+      status: filter.status ?? null,
+      team: filter.team ?? null,
+      limit: filter.limit ?? 200,
+    });
   }
 
   /** Expires the outbox past 24 hours and drops the history past retention. */
   sweep(): void {
     const now = this.ms();
-    const stale = this.opts.db
-      .query(
-        `SELECT id FROM session_messages
-         WHERE kind = 'session' AND to_host <> ? AND status = 'queued' AND relayed = 0 AND created_ms < ?`,
-      )
-      .all(this.opts.host, now - OUTBOX_MS) as Array<{ id: string }>;
-    for (const { id } of stale) {
+    for (const id of this.store.staleOutbox(now - OUTBOX_MS)) {
       this.update(id, {
         status: "expired",
         reason: "the app did not relay it within 24 hours: the message was not sent",
@@ -856,7 +738,7 @@ export class Messaging {
       });
     }
     const keep = this.policy.retentionDays * DAY_MS;
-    this.opts.db.query("DELETE FROM session_messages WHERE created_ms < ?").run(now - keep);
+    this.store.prune(now - keep);
   }
 
   stop(): void {
@@ -866,66 +748,12 @@ export class Messaging {
 
   // --- rows ---
 
-  private row(id: string): Row | null {
-    return this.opts.db.query("SELECT * FROM session_messages WHERE id = ?").get(id) as Row | null;
+  private insert(input: NewMessage): void {
+    this.emit({ type: "messages.updated", message: this.store.insert(input, this.ms()) });
   }
 
-  private insert(input: {
-    id: string;
-    sender: Party;
-    to: Party;
-    text: string;
-    status: MessageInfo["status"];
-    reason: string | null;
-    teamId: string | null;
-    kind: MessageKind;
-    untrusted: boolean;
-    formatted: string | null;
-    createdAt?: string;
-  }): void {
-    const now = this.ms();
-    const delivered = input.status === "delivered" ? this.iso(now) : null;
-    this.opts.db
-      .query(
-        `INSERT INTO session_messages
-           (id, from_session, from_host, to_session, to_host, text, status, reason, created_at,
-            created_ms, delivered_at, team_id, kind, sender, untrusted, relayed)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-      )
-      .run(
-        input.id,
-        input.sender.id,
-        input.sender.host,
-        input.to.id,
-        input.to.host,
-        input.text,
-        input.status,
-        input.reason,
-        input.createdAt ?? this.iso(now),
-        now,
-        delivered,
-        input.teamId,
-        input.kind,
-        JSON.stringify(input.sender),
-        input.untrusted ? 1 : 0,
-      );
-    this.emit({ type: "messages.updated", message: toInfo(this.row(input.id) as Row) });
-  }
-
-  private update(
-    id: string,
-    patch: { status: MessageInfo["status"]; reason?: string | null; at: number; relayed?: boolean },
-  ): void {
-    this.opts.db
-      .query(
-        `UPDATE session_messages
-         SET status = ?1, reason = ?2,
-             delivered_at = CASE WHEN ?1 = 'delivered' THEN ?3 ELSE delivered_at END,
-             relayed = CASE WHEN ?4 = 1 THEN 1 ELSE relayed END
-         WHERE id = ?5`,
-      )
-      .run(patch.status, patch.reason ?? null, this.iso(patch.at), patch.relayed ? 1 : 0, id);
-    this.emit({ type: "messages.updated", message: toInfo(this.row(id) as Row) });
+  private update(id: string, patch: MessagePatch): void {
+    this.emit({ type: "messages.updated", message: this.store.update(id, patch) });
   }
 
   /** A refusal is recorded too: the conversations screen filters by it. */
@@ -938,7 +766,7 @@ export class Messaging {
     target?: Party,
   ): SendResult {
     const id = ulid(this.ms());
-    const { host, id: sessionId } = split(to);
+    const { host, id: sessionId } = addressParts(to);
     this.insert({
       id,
       sender,
