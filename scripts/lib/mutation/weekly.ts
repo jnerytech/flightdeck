@@ -29,7 +29,20 @@ export function configPathFor(domain: MutationDomain): string {
   return `reports/mutation/${domain.name}/stryker.config.json`;
 }
 
+const SAFE_NAME = /^[a-z0-9-]+$/;
+const SAFE_PATH = /^[\w./-]+$/;
+
+/** The name makes folder names and the paths join into a shell command: refuse what could escape. */
+function assertSafe(domain: MutationDomain): void {
+  const paths = [...domain.mutate, ...domain.tests];
+  const unsafePath = paths.find((path) => !SAFE_PATH.test(path) || path.split("/").includes(".."));
+  if (!SAFE_NAME.test(domain.name) || unsafePath !== undefined) {
+    throw new Error(`unsafe mutation domain: ${domain.name} ${unsafePath ?? ""}`.trim());
+  }
+}
+
 export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
+  for (const domain of deps.domains) assertSafe(domain);
   const results: DomainResult[] = [];
   const failed: string[] = [];
   for (const domain of deps.domains) {
