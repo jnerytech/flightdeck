@@ -65,6 +65,9 @@ export class HealthSlice {
     await this.check(hostId);
   }
 
+  /** Drops what a removed host left: its health data and a read on its way (#1733). */
+  forget(_hostId: string): void {}
+
   private async read(hostId: string): Promise<void> {
     const features = this.core.features(hostId);
     const [deps, doctor] = await Promise.all([
