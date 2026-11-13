@@ -99,6 +99,7 @@ export function activityBoard(
                 (item.sessionId === row.sessionId || item.sessionId === row.claudeSessionId) &&
                 !item.gate &&
                 !item.vault &&
+                !item.waiting &&
                 item.toolName !== "AskUserQuestion",
             ) ?? null)
           : null;

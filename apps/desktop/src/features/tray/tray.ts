@@ -15,7 +15,7 @@ const PT = translator("pt-BR");
 
 /** What the menu offers for a request: open only, deny and open, or all three. */
 function trayActions(item: PendingItem): Array<"approve" | "deny" | "open"> {
-  if (item.gate) return ["open"];
+  if (item.gate || item.waiting) return ["open"];
   return item.vault || item.risk === "high" ? ["deny", "open"] : ["approve", "deny", "open"];
 }
 
@@ -34,7 +34,7 @@ export function trayMenu(
         label: `${pendingWhere(item)} · ${
           simpleHost(item.hostId) && item.plain ? item.plain.sentence[t.lang] : pendingText(item, t)
         }`,
-        // A gate is answered in the app, and a high-risk request is approved by holding a button.
+        // A gate is answered in the app, a wait in the terminal, and a high-risk request is approved by holding a button.
         // A vault grant is never approved here (#244): this line cannot show the secret and
         // parameters. Deny needs no hold, so both still offer it (#245).
         actions: trayActions(item),

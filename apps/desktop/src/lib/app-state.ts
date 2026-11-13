@@ -293,6 +293,11 @@ export interface PendingItem {
   riskReason?: string;
   /** Issue #88: the request in plain words, for the surfaces outside the window; an older daemon sends none. */
   plain?: PlainInfo;
+  /**
+   * Issue #1751: a terminal session waits at a plan approval or a question. It has no request to
+   * answer (`requestId` is made up): the person answers in the terminal, the app only opens it.
+   */
+  waiting?: "plan" | "question";
   /** Phase 17: the daemon asks for a secret to run an action or a free command. */
   vault?: true;
   /** Phase 19: the rule lets this request be approved for the rest of the session. */
@@ -395,6 +400,34 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
             ...(request.riskReason ? { riskReason: request.riskReason } : {}),
             cwd: session?.cwd ?? null,
           };
+        }),
+      // A terminal session waiting at a plan or a question (#1751): no request to answer here, the
+      // person answers in the terminal, so the item can only be opened. A session whose hook already
+      // holds a request is listed by that request.
+      ...Object.entries(state.externals)
+        .filter(([key]) => key.startsWith(`${host.id}/`))
+        .flatMap(([, session]) => {
+          const id = session.claudeSessionId;
+          const waiting = session.waiting;
+          const held = Object.entries(state.externalRequests).some(
+            ([key, request]) => key.startsWith(`${host.id}/`) && request.claudeSessionId === id,
+          );
+          if (!waiting || session.status === "ended" || held) return [];
+          return [
+            {
+              hostId: host.id,
+              hostName: host.name,
+              sessionId: id,
+              sessionName:
+                label(id, state.meta[sessionKey(host.id, id)]?.name) ?? basename(session.cwd ?? id),
+              requestId: `waiting:${waiting}:${id}`,
+              toolName: waiting === "plan" ? "ExitPlanMode" : "AskUserQuestion",
+              createdAt: session.lastEventAt,
+              external: true,
+              waiting,
+              cwd: session.cwd,
+            },
+          ];
         }),
       // Open gates of the host's workflow runs.
       ...Object.entries(state.runs)
