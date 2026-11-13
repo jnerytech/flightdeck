@@ -57,19 +57,22 @@ describe("rule-risk: a shell rule is exact, or open only for the repository stat
     }
   });
 
-  test("every open form is the status of the repository or one of the project's scripts", () => {
-    for (const rule of [
-      "git status:*",
-      "npm test:*",
-      "pnpm test:*",
-      "yarn test:*",
-      "bun test:*",
-      "npm run build:*",
-      "bun run test:unit:*",
-      "yarn run b *",
-      "pnpm run lint-fix *",
-    ]) {
-      expect(ruleLevel("Bash", rule, classify, file), rule).not.toBe("any");
+  test("every open form is the status of the repository or one of the project's scripts, rated as its command", () => {
+    const forms: Array<[string, string]> = [
+      ["git status:*", "git status"],
+      ["npm test:*", "npm test"],
+      ["pnpm test:*", "pnpm test"],
+      ["yarn test:*", "yarn test"],
+      ["bun test:*", "bun test"],
+      ["npm run build:*", "npm run build"],
+      ["bun run test:unit:*", "bun run test:unit"],
+      ["yarn run b *", "yarn run b"],
+      ["pnpm run lint-fix *", "pnpm run lint-fix"],
+    ];
+    for (const [rule, command] of forms) {
+      const { calls, classifyCall } = recorder();
+      expect(ruleLevel("Bash", rule, classifyCall, file), rule).toBe("medium");
+      expect(calls, rule).toEqual([{ tool: "Bash", input: { command } }]);
     }
   });
 
@@ -143,6 +146,9 @@ describe("rule-risk: a network rule names a host, or it covers any host (issue #
       "domain:exa_mple.com",
       "see domain:example.com",
       "example.com",
+      "domain:example.com\n",
+      "domain:*.*.example.com",
+      "domain:example.com.",
     ]) {
       expect(ruleLevel("WebFetch", rule, classify, file), String(rule)).toBe("any");
     }
@@ -186,8 +192,7 @@ describe("rule-risk: a path rule is rated on the path as the CLI reads it (issue
     expect(calls).toEqual([{ tool: "Write", input: { file_path: "a.ts" } }]);
     const search = recorder();
     ruleLevel("Grep", "a.ts", search.classifyCall, file);
-    expect(search.calls.length).toBe(1);
-    expect(Object.keys(search.calls[0]?.input ?? {})).not.toEqual([]);
+    expect(search.calls).toEqual([{ tool: "Grep", input: { path: "a.ts" } }]);
   });
 
   test("a path whose real path could not be read is refused, and one with a real path is rated on both", () => {
@@ -269,7 +274,7 @@ describe("rule-risk: realPaths writes a real path back under the folder or the h
     expect(looked("~/notes")).toBe(join(HOME, ".ssh"));
   });
 
-  test("a path with a wildcard in its first segment, a network path, an empty fixed part: nothing to look up", async () => {
+  test("a wildcard in the first segment and a network path are not looked up; the fixed folder before a later wildcard is", async () => {
     const asked: string[] = [];
     const resolve = async (path: string) => {
       asked.push(path);
@@ -281,10 +286,7 @@ describe("rule-risk: realPaths writes a real path back under the folder or the h
       undefined,
       undefined,
     ]);
-    expect(asked).toEqual(
-      [PROJECT, HOME, join(PROJECT, "src")].filter((path) => asked.includes(path)),
-    );
-    expect(asked).not.toContain(PROJECT + "/*.ts");
+    expect([...asked].sort()).toEqual([HOME, PROJECT, join(PROJECT, "src")].sort());
   });
 
   test("a relative fixed part with no folder to start from is refused", async () => {
