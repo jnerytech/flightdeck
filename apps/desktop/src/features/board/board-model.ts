@@ -1,6 +1,7 @@
 import type { BoardColumn, Card } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
+import type { cardStartBlock } from "./card-start-block.ts";
 
 export const COLUMNS: ReadonlyArray<{ id: BoardColumn }> = [
   { id: "backlog" },
@@ -49,4 +50,10 @@ export function positionsBefore(cards: Card[], targetId: string, n: number): num
 /** The board's title: "Board of <name>", or the plain "Board" until the project's name is known. */
 export function boardTitle(t: T, name: string | undefined): string {
   return name ? t("kanban.boardOf", { project: name }) : t("sidebar.board");
+}
+
+/** Why "Iniciar card" is off (queued or running), else null. */
+export function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
+  if (block === "queued") return t("board.startQueued");
+  return block === "running" ? t("board.startRunning") : null;
 }

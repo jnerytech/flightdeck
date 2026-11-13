@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/ui.ts";
-import { TranscriptReader } from "@/features/history/index.ts";
+import { TranscriptReader } from "@/features/history/ui.ts";
 import { ApprovalCard } from "@/features/permissions/ui.ts";
 import { PersonaSwitch } from "@/features/personas/ui.ts";
 import type { PromptSnippets } from "@/features/snippets/index.ts";
