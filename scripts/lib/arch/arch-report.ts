@@ -90,6 +90,12 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
       baseline: 0,
       today: inputs.domainImpureCalls,
     });
+  if (inputs.spawnCounts && inputs.spawnBaseline)
+    rows.push({
+      ratchet: "spawn-count launches outside adapters",
+      baseline: sum(inputs.spawnBaseline),
+      today: sum(inputs.spawnCounts),
+    });
   rows.push({
     ratchet: "src-size files over the limit",
     baseline: Object.keys(inputs.srcBaseline).length,
