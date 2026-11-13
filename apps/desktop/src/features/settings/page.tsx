@@ -10,7 +10,7 @@ import type { CacheTtl } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, NativeSelect, Page, Panel } from "@/shared/layout/index.ts";
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -59,7 +59,7 @@ export const Settings = memo(function Settings(props: {
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
   appUpdate: AppUpdateState;
-  onCheckUpdate(): void;
+  onCheckUpdate(): Promise<void> | void;
   onNotifyUpdates(enabled: boolean): void;
   onAutoUpdate(enabled: boolean): void;
   /** Light, dark or the system's (phase 10). */
@@ -324,11 +324,22 @@ export const Settings = memo(function Settings(props: {
                   />
                   {t("prefs.autoUpdate")}
                 </label>
-                <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
+                <ActionButton
+                  variant="outline"
+                  className="self-start"
+                  onClick={props.onCheckUpdate}
+                >
                   {t("prefs.checkNow")}
-                </Button>
+                </ActionButton>
                 {props.appUpdate.upToDate && (
-                  <p className="text-muted-foreground text-sm">{t("prefs.upToDate")}</p>
+                  <p role="status" className="text-muted-foreground text-sm">
+                    {t("prefs.upToDate")}
+                  </p>
+                )}
+                {props.appUpdate.error && (
+                  <p role="alert" className="text-status-needs-you">
+                    {props.appUpdate.error}
+                  </p>
                 )}
               </Panel>
             ),
