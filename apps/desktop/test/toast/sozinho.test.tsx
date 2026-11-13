@@ -33,7 +33,7 @@ describe("toast-sozinho: a toast with an action or details", () => {
     const store = new AppStore(memoryPlatform(false, "en-US").platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.createSession("no-such-host", { cwd: "/", prompt: "hi" });
+      await store.commands.create("no-such-host", { cwd: "/", prompt: "hi" });
     });
     const settle = waiter(5000);
     await settle(() => screen.queryAllByRole("alert").length === 1);

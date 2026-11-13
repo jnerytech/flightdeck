@@ -49,9 +49,11 @@ function recorder(
     permissions: {
       decideOldest: (decision: string, key: string) => void calls.push(`decide ${decision} ${key}`),
     },
-    createSession: (host: string, payload: unknown) => {
-      calls.push(`create ${host} ${JSON.stringify(payload)}`);
-      return Promise.resolve("s1");
+    commands: {
+      create: (host: string, payload: unknown) => {
+        calls.push(`create ${host} ${JSON.stringify(payload)}`);
+        return Promise.resolve("s1");
+      },
     },
     newSessionPrefs: { value: opts.prefs ?? { mode: "default", model: "", folders: {} } },
     clientScope: {

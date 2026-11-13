@@ -204,7 +204,7 @@ function ManagedSession(
         composerFill={state.composerFill[sessionKey(hostId, sessionId)] ?? null}
         onComposerFilled={() => store.takeComposerFill(sessionKey(hostId, sessionId))}
         session={session}
-        actions={store}
+        actions={store.sessionActions}
         cache={
           <CacheTimer store={store} since={summary?.status === "idle" ? summary.updatedAt : null} />
         }
@@ -1170,12 +1170,15 @@ function NewSession(
           )}
         </>
       }
-      // The created session opens by itself (AppStore.createSession).
+      // The created session opens by itself (SessionCommandsSlice.create).
       onCreate={(payload) => {
-        if (payload.runtime === "opencode") return props.store.createSession(host.id, payload);
+        if (payload.runtime === "opencode") return props.store.commands.create(host.id, payload);
         if (background) return startInBackground(props.store, host.id, payload, persona);
         const ref = props.store.personas.ref(persona);
-        return props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });
+        return props.store.commands.create(host.id, {
+          ...payload,
+          ...(ref ? { persona: ref } : {}),
+        });
       }}
     />
   );
