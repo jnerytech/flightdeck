@@ -83,7 +83,7 @@ function setup(language: "en" | "pt-BR" = "en") {
     ),
   });
   const project = { id: "p1", name: "api", path: "/p1", projectKey: "git:acme/api" };
-  store.loadBoard = (async () => {}) as never;
+  store.boardCards.load = (async () => {}) as never;
   store.hostCommand = (async (_host: string, type: string) => {
     if (type === "board.get") return { project, cards: [] };
     if (type === "project.list") return { projects: [project], maxParallelRuns: 3 };
@@ -141,7 +141,7 @@ describe("board-quiet-badge-ui: a card whose session says nothing wears the Quie
     expect(wearing("Quiet one")).toEqual(["Em silêncio 23 min"]);
     const spoken = tile("Quiet one")?.querySelector("[data-slot='badge'] .sr-only")?.textContent;
     expect(spoken).toBe("Em silêncio há 23 min · última: Bash");
-    await act(async () => store.snoozeQuiet("h1", "Q"));
+    await act(async () => store.quietSnooze.snooze("h1", "Q"));
     await settle(() => wearing("Quiet one").length === 0);
     expect(wearing("Quiet one")).toEqual([]);
   });

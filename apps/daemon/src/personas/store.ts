@@ -9,8 +9,8 @@ import type {
   PersonaSubagents,
   PersonaSubagentsMode,
 } from "@flightdeck/protocol";
-import { byCodeUnit, inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, resolveAllowedCwd } from "../kernel/index.ts";
+import { byCodeUnit, inSequence, PersonaFields } from "@flightdeck/protocol";
+import { FlightdeckError, parseJsonWith, resolveAllowedCwd } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import {
   normalizePersona,
@@ -30,6 +30,8 @@ export interface PersonasOptions {
   pack?: (language: Language) => PersonaDef[];
   /** The project agent editor (phase 12), which writes `.claude/agents`; the integration plugs it in. */
   publisher?: { publish(request: AgentPublishRequest): Promise<{ path: string }> };
+  /** Where a row the store cannot read is reported (by id, never by content). */
+  log?: (message: string) => void;
 }
 
 /** A persona as a project agent file. */
@@ -337,10 +339,24 @@ export class Personas {
 
   /** The pack in its order with the host's edits standing in for it, then the host's own. */
   private hostViews(language?: Language): Persona[] {
-    const rows = this.opts.db.query("SELECT data FROM personas ORDER BY id").all() as Array<{
+    const rows = this.opts.db.query("SELECT id, data FROM personas ORDER BY id").all() as Array<{
+      id: string;
       data: string;
     }>;
-    const edited = rows.map((row) => JSON.parse(row.data) as PersonaDef);
+    // A row that no longer fits (written by a newer daemon, or edited by hand) leaves the others be.
+    // Its id is held back from the pack too: a stricter edit must not give way to the wider original.
+    const unreadable = new Set<string>();
+    const edited = rows.flatMap((row) => {
+      try {
+        const persona = parseJsonWith(PersonaFields, row.data);
+        if (persona.id !== row.id) throw new Error("the row names another persona");
+        return [persona];
+      } catch (error) {
+        unreadable.add(row.id);
+        this.opts.log?.(`personas: ${row.id} is unreadable: ${(error as Error).message}`);
+        return [];
+      }
+    });
     const view = (persona: PersonaDef, scope: "pack" | "host", modified: boolean): Persona => ({
       ...persona,
       scope,
@@ -348,7 +364,7 @@ export class Personas {
       trusted: true,
       modified,
     });
-    const packed = this.pack(language);
+    const packed = this.pack(language).filter((persona) => !unreadable.has(persona.id));
     const views = packed.map((persona) => {
       const mine = edited.find((candidate) => candidate.id === persona.id);
       return mine ? view(mine, "host", true) : view(persona, "pack", false);

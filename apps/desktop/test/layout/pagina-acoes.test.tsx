@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, render } = await import("@testing-library/react");
-const { Page } = await import("../src/shared/layout/page.tsx");
+const { Page } = await import("../../src/shared/layout/page.tsx");
 
 afterEach(cleanup);
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 
-const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
+const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
 
 describe("css-utilities: the named styles of styles.css", () => {
   // Two `@utility` blocks with one name merge silently in Tailwind v4: the second one changes every
