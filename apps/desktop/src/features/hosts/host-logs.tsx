@@ -26,8 +26,7 @@ export function HostLogs(props: Readonly<{ store: AppStore; host: HostView }>) {
     const clean = scrubHome(
       new SecretScanner(() => store.scan.values()).redact(tail.lines.join("\n"), false),
     );
-    await store.system.copyText(clean);
-    store.success(t("diagnostics.hostCopied", { n: tail.lines.length }));
+    await store.system.copyText(clean, t("diagnostics.hostCopied", { n: tail.lines.length }));
   };
   return (
     <div className="flex flex-col gap-1">
