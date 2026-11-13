@@ -3,6 +3,7 @@ import { memo, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { FieldRow, Panel, Stack, WideTable } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
@@ -130,7 +131,7 @@ function Cell(
   const { cell, row, t, fix, host, reading } = props;
   const padding = "py-1 pr-3 align-top";
   if (cell.value === null && reading) {
-    return <td className={`${padding} text-muted-foreground`}>{t("hostCompare.readingCell")}</td>;
+    return <td className={cn(padding, "text-muted-foreground")}>{t("hostCompare.readingCell")}</td>;
   }
   if (cell.value === null) {
     return (
