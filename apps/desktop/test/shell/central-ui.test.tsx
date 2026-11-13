@@ -229,7 +229,7 @@ describe("central-ui", () => {
     await rowAction("Gerenciada", "Desarquivar");
     await rowAction("Do histórico", "Desafixar");
     await rowAction("repo", "Renomear");
-    await change("Novo nome", "Terminal X");
+    await change("Nome de repo", "Terminal X");
     await click("Salvar nome");
     await settle(() => group("central").includes("Terminal X"));
     expect(group("central")).toContain("Terminal X");

@@ -115,15 +115,19 @@ export function SessionHeader(
   );
 }
 
-/** The conversation: scrolls by itself between the header and the composer. */
+/** The conversation: a log that scrolls by itself between the header and the composer. */
 export const Timeline = forwardRef<
   HTMLDivElement,
   { children: ReactNode } & React.HTMLAttributes<HTMLDivElement>
 >(function Timeline({ children, className, ...rest }, ref) {
+  const t = useT();
   return (
     <div
       ref={ref}
       data-slot="timeline"
+      // The conversation is a log: a new message is announced, and the region has a name (#2674).
+      role="log"
+      aria-label={t("session.conversation")}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls takes focus, so the keyboard reaches it
       tabIndex={0} // NOSONAR: a region that scrolls must take focus, or the keyboard cannot scroll it (axe scrollable-region-focusable)
       className={cn(
