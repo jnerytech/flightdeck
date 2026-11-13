@@ -7,8 +7,8 @@ import {
   specExpectedPath,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { BoardEvent } from "./columns.ts";
 import { git } from "./command.ts";
+import type { BoardEvent } from "./domain/columns.ts";
 import { refArg } from "./ref-arg.ts";
 import { readSpec } from "./spec.ts";
 import {

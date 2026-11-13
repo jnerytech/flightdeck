@@ -1,5 +1,5 @@
 import type { SessionStatus } from "@flightdeck/protocol";
-import type { BoardColumn, PrState } from "./types.ts";
+import type { BoardColumn, PrState } from "../types.ts";
 
 /** What can move a card (docs/SPEC-fase-4.md, "Colunas automáticas"). */
 export type BoardEvent =

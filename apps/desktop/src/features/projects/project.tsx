@@ -41,7 +41,7 @@ export function ProjectPage(
   }, [store, hostId, state.projects]);
   // The tiles are made of the hub's lists, which the Sessions screen used to be the only one to ask for.
   useEffect(() => {
-    void store.refreshHub();
+    void store.sessionLists.refresh();
   }, [store]);
 
   // #1547: a project with no cards points at the first one. Unknown (not asked yet, or the board

@@ -7,7 +7,7 @@
 import type { Card, PermissionMode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { WatchSettings } from "../watch/settings.ts";
-import { confirmationHash } from "./check-loop-engine.ts";
+import { confirmationHash } from "./domain/check-loop-engine.ts";
 
 /** Why the switch stays off. */
 export type CheckLoopRefusal =

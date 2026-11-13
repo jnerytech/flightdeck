@@ -10,6 +10,7 @@ const SOURCE = /^(apps|packages)\/[^/]+\/src\/.+\.tsx?$/;
 const HELPERS = [
   "apps/daemon/src/kernel/json-text.ts",
   "apps/desktop/src/shared/lib/stored-json.ts",
+  "packages/protocol/src/frame.ts",
 ];
 
 /** Whether the check reads this tracked path: TypeScript under a package's src, minus the helper and declarations. */

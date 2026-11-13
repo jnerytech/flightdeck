@@ -63,7 +63,7 @@ function setup(
     healthAt: { h1: Date.now() },
   });
   store.palette.load = async () => {};
-  store.refreshHub = (async () => {}) as never;
+  store.sessionLists.refresh = (async () => {}) as never;
   store.health.check = (async () => {}) as never;
   const asked: string[] = [];
   let installed = false;

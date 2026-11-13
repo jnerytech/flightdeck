@@ -141,7 +141,7 @@ describe("desktop: estado do app", () => {
     expect(store.getState().error).toBeNull();
     expect(await store.commands.create("host-inexistente", { cwd: "/", prompt: "x" })).toBeNull();
     expect(store.getState().error).toContain("host");
-    store.select(hostId, "sessao-fantasma");
+    store.subscriptions.select(hostId, "sessao-fantasma");
     await store.commands.send("x");
     expect(store.getState().error).toContain("not_found");
   });
@@ -163,7 +163,7 @@ describe("desktop: estado do app", () => {
     expect(host(store, "b")?.status).toBe("offline");
     const sessionId = (await store.commands.create("a", { cwd: project, prompt: "oi" })) as string;
     await waitFor(() => store.getState().sessions[sessionKey("a", sessionId)]?.status === "idle");
-    store.select("a", null);
+    store.subscriptions.select("a", null);
     await store.roster.remove("a");
     expect(host(store, "a")).toBeUndefined();
     expect(await platform.secrets.get("a")).toBeNull();

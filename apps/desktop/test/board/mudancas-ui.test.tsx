@@ -250,7 +250,7 @@ describe("mudancas-ui", () => {
     writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
     ctx.central.external.apply("SessionStart", { session_id: "externa-1", cwd: ctx.repo });
     await act(async () => {
-      await ctx.store.refreshHub();
+      await ctx.store.sessionLists.refresh();
       ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "externa-1" });
     });
     const copied: string[] = [];
@@ -535,7 +535,7 @@ describe("mudancas-ui", () => {
     writeFileSync(join(outside, "a.txt"), "um\ndois\n");
     ctx.central.external.apply("SessionStart", { session_id: "fora-1", cwd: outside });
     await act(async () => {
-      await ctx.store.refreshHub();
+      await ctx.store.sessionLists.refresh();
       ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "fora-1" });
     });
     await settle(() => screen.queryByRole("tab", { name: "Mudanças" }) !== null);

@@ -13,8 +13,8 @@ import {
   type LoopCard,
   type RoundRecord,
   roundsCap,
-} from "./check-loop-engine.ts";
-import type { BoardEvent } from "./columns.ts";
+} from "./domain/check-loop-engine.ts";
+import type { BoardEvent } from "./domain/columns.ts";
 import type { BoardOptions, Card, CardRow, Project } from "./types.ts";
 
 const now = () => new Date().toISOString();

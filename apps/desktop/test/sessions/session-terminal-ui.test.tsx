@@ -329,7 +329,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       launch_id: started?.launchId,
     });
     await act(async () => {
-      await store.refreshHub();
+      await store.sessionLists.refresh();
       store.router.push({ name: "external", host: hostId, claudeSessionId: "claude-1" });
     });
     await settle(() => tab("Terminal") !== null);

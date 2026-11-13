@@ -346,7 +346,7 @@ describe("abrir-terminal", () => {
     const hostId = store.getState().hosts[0]?.id ?? "";
 
     // The session.
-    await act(async () => store.select(hostId, sessionId));
+    await act(async () => store.subscriptions.select(hostId, sessionId));
     await settle(() => screen.queryByRole("button", { name: "Abrir no terminal" }) !== null);
     await click("Abrir no terminal");
     await settle(() => opened.length === 1);
@@ -387,7 +387,9 @@ describe("abrir-terminal", () => {
       await copier.roster.add({ name: "alfa", url, token: TOKEN });
     });
     await settle(() => copier.getState().hosts[0]?.hostInfo !== null);
-    await act(async () => copier.select(copier.getState().hosts[0]?.id ?? "", sessionId));
+    await act(async () =>
+      copier.subscriptions.select(copier.getState().hosts[0]?.id ?? "", sessionId),
+    );
     await settle(() => screen.queryByRole("button", { name: "Copiar comando" }) !== null);
     await click("Copiar comando");
     await settle(() => copied.length === 1);

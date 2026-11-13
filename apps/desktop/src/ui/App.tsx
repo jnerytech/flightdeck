@@ -558,7 +558,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                 appVersion={APP_VERSION}
                 t={t}
                 onChoose={(hostId) => {
-                  store.select(hostId, null);
+                  store.subscriptions.select(hostId, null);
                   store.hostTabs.switchHost(hostId);
                 }}
                 onAdd={() => go({ name: "add-host" })}
@@ -606,7 +606,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             route,
             onOpenProjectScreen: openProjectScreen,
             onNewSession: (hostId) => {
-              store.select(hostId, null);
+              store.subscriptions.select(hostId, null);
               go({ name: "new-session", host: hostId });
             },
             onRemoveHost: (id) => void store.roster.remove(id),
