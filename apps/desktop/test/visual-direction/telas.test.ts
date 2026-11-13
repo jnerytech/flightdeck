@@ -109,6 +109,9 @@ function classTokens(source: string): string[] {
 const FEATURES = resolve(UI, "../features");
 const SCREENS = [
   ...readdirSync(UI).filter((file) => file.endsWith(".tsx")),
+  ...readdirSync(resolve(UI, "../app"))
+    .filter((file) => file.endsWith(".tsx"))
+    .map((file) => `../app/${file}`),
   ...readdirSync(FEATURES, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .flatMap((entry) =>
