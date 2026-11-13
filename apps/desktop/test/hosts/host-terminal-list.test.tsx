@@ -10,6 +10,7 @@ const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { HostTerminal } = await import("../../src/features/hosts/host-terminal.tsx");
+const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
 
 afterEach(() => {
   cleanup();
@@ -24,7 +25,7 @@ const UNREADABLE = {
   "pt-BR": "Não foi possível ler os terminais deste host.",
 } as const;
 
-type Read = { ok: object[] } | "fail" | "pending";
+type Read = { ok: object[] } | "fail" | "refuse" | "pending";
 
 /** The page of an online host whose list answers the given reads in order, the last one for good. */
 async function openPage(lang: "en" | "pt-BR", reads: Read[]) {
@@ -35,7 +36,9 @@ async function openPage(lang: "en" | "pt-BR", reads: Read[]) {
       host: () => ({
         list: async () => {
           const read = reads[Math.min(next++, reads.length - 1)];
-          if (read === "fail") throw new Error("offline");
+          if (read === "fail") throw new RequestError("offline", "connection lost");
+          // The host answered: terminals are off there (a command it refuses, not a lost link).
+          if (read === "refuse") throw new RequestError("feature_off", "terminals are off");
           if (read === "pending") return new Promise<never>(() => {});
           return read?.ok ?? [];
         },
@@ -79,44 +82,53 @@ for (const [lang, t] of [
   describe(`host-terminal-list (${lang}): a failed read of the terminals is not an empty list (issue #2587)`, () => {
     test("when no read ever worked, it says the list could not be read, not that nothing is open", async () => {
       await openPage(lang, ["fail"]);
-      expect(unreadable()).not.toBeNull();
-      expect(none()).toBeNull();
+      expect(unreadable() !== null).toBe(true);
+      expect(none() === null).toBe(true);
     });
 
     test("a failed read after a good one keeps the last list and shows no error", async () => {
       const page = await openPage(lang, [{ ok: [ONE] }, "fail"]);
-      expect(attach()).not.toBeNull();
+      expect(attach() !== null).toBe(true);
       await page.refresh();
-      expect(attach()).not.toBeNull();
-      expect(unreadable()).toBeNull();
-      expect(none()).toBeNull();
+      expect(attach() !== null).toBe(true);
+      expect(unreadable() === null).toBe(true);
+      expect(none() === null).toBe(true);
+    });
+
+    test("a read the host refuses is its answer: no terminal is open, even after a list was shown", async () => {
+      const page = await openPage(lang, [{ ok: [ONE] }, "refuse"]);
+      expect(attach() !== null).toBe(true);
+      await page.refresh();
+      expect(attach() === null).toBe(true);
+      expect(none() !== null).toBe(true);
+      expect(unreadable() === null).toBe(true);
     });
 
     test("a good read after the failed first one replaces the message with the list", async () => {
       const page = await openPage(lang, ["fail", { ok: [ONE] }]);
-      expect(unreadable()).not.toBeNull();
+      expect(unreadable() !== null).toBe(true);
       await page.refresh();
-      expect(attach()).not.toBeNull();
-      expect(unreadable()).toBeNull();
+      expect(attach() !== null).toBe(true);
+      expect(unreadable() === null).toBe(true);
     });
 
     test("before the first read answers it says neither that nothing is open nor that the list is unreadable", async () => {
       await openPage(lang, ["pending"]);
-      expect(unreadable()).toBeNull();
-      expect(none()).toBeNull();
+      expect(unreadable() === null).toBe(true);
+      expect(none() === null).toBe(true);
     });
 
     test("an empty list the host returned still reads as no terminal open", async () => {
       await openPage(lang, [{ ok: [] }]);
-      expect(none()).not.toBeNull();
-      expect(unreadable()).toBeNull();
+      expect(none() !== null).toBe(true);
+      expect(unreadable() === null).toBe(true);
     });
 
     test("a failed read after the host returned an empty list keeps saying no terminal is open", async () => {
       const page = await openPage(lang, [{ ok: [] }, "fail"]);
       await page.refresh();
-      expect(none()).not.toBeNull();
-      expect(unreadable()).toBeNull();
+      expect(none() !== null).toBe(true);
+      expect(unreadable() === null).toBe(true);
     });
   });
 }
