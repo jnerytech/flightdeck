@@ -13,11 +13,11 @@ import type {
   UnblockWhen,
 } from "@flightdeck/protocol";
 import type { Prepare } from "../personas/prepare.ts";
+import type { PrProvider } from "../pr/index.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import type { BoundedCheckRunner, CheckRunner } from "../workflows/check-runner.ts";
-import type { PrProvider } from "./pr.ts";
 
 // The board's shapes are the protocol's: what the daemon stores is what goes on the wire.
 export type {

@@ -1,10 +1,11 @@
 import type { Database } from "bun:sqlite";
 import { z } from "zod";
 import type { Board } from "../board/board.ts";
-import { type PrCheck, type PrComment, type PrProvider, prProvider } from "../board/pr.ts";
+import { prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { TRUSTED_ASSOCIATIONS } from "../issues/providers.ts";
 import { parseJsonOr } from "../kernel/index.ts";
+import type { PrCheck, PrComment, PrProvider } from "../pr/index.ts";
 import { readWatchSettings, type WatchSettings } from "./settings.ts";
 
 /** What a watched PR needs fixed: the reason a round of fixing starts (phase 22). */

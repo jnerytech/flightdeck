@@ -3,8 +3,8 @@
  * daemon never holds a GitHub token: `gh` keeps it, and everything here reads `gh`'s own answers.
  */
 import { tmpdir } from "node:os";
-import { cli } from "../../board/pr.ts";
 import { FlightdeckError, runCommand } from "../../kernel/index.ts";
+import { cli } from "../../pr/index.ts";
 import type { GhResult, GhRunner } from "../gh-runner.ts";
 
 /** How long a `gh` run in a given folder may take before it is killed (issue #79). */
