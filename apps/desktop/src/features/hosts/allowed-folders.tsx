@@ -5,7 +5,7 @@ import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { FieldRow, Panel } from "@/shared/layout/index.ts";
 import { isLocalUrl } from "../terminal/index.ts";
-import { hostDownReason } from "./host-down-reason.ts";
+import { hostDownReason } from "./domain/host-down-reason.ts";
 
 /** The folders a host lets its sessions and projects use, and a way to add one (the host decides). */
 export function AllowedFolders(props: Readonly<{ store: AppStore; host: HostView }>) {

@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionEvent, SessionStatus, SessionSummary } from "@flightdeck/protocol";
-import { ActivityClock } from "../../src/sessions/activity-clock.ts";
+import { ActivityClock } from "../../src/sessions/domain/activity-clock.ts";
 import {
   type QuietInfo,
   type StallHost,
   type StallTimers,
   StallWatcher,
-} from "../../src/sessions/stall.ts";
+} from "../../src/sessions/domain/stall.ts";
 
 const MIN = 60_000;
 const T0 = Date.parse("2026-11-09T12:00:00Z");

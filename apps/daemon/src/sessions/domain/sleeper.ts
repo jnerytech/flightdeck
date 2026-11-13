@@ -1,8 +1,8 @@
 import type { SessionSummary } from "@flightdeck/protocol";
 
 export interface SleeperTimers {
-  setInterval(fn: () => unknown, ms: number): ReturnType<typeof setInterval>;
-  clearInterval(id: ReturnType<typeof setInterval>): void;
+  setInterval: (fn: () => unknown, ms: number) => ReturnType<typeof setInterval>;
+  clearInterval: (id: ReturnType<typeof setInterval>) => void;
 }
 
 export interface SleeperOptions {
@@ -12,8 +12,9 @@ export interface SleeperOptions {
   };
   /** Minutes idle before a session sleeps; 0 is off. */
   minutes: number;
-  now?: () => number;
-  timers?: SleeperTimers;
+  /** The clock and the interval timers; the wiring passes the real ones. */
+  now: () => number;
+  timers: SleeperTimers;
 }
 
 /** How often the sleeper looks, while it is on. */
@@ -30,8 +31,8 @@ export class IdleSleeper {
   private current = 0;
 
   constructor(private readonly opts: SleeperOptions) {
-    this.now = opts.now ?? Date.now;
-    this.timers = opts.timers ?? globalThis;
+    this.now = opts.now;
+    this.timers = opts.timers;
     this.setMinutes(opts.minutes);
   }
 

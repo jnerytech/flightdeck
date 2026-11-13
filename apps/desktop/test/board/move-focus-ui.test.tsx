@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
 import { useRef } from "react";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
-const { useMoveFocus } = await import("../src/features/board/use-move-focus.ts");
+const { useMoveFocus } = await import("../../src/features/board/use-move-focus.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

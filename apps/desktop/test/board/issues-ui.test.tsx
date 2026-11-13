@@ -1,19 +1,24 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Issue } from "@flightdeck/protocol";
-import { filterIssues, issueLabel, issueNumber, issueUrl } from "../src/features/issues/issues.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { ghIssue, ghRules, issuesDaemon } from "./issues-fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { waiter } from "./wait.ts";
+import {
+  filterIssues,
+  issueLabel,
+  issueNumber,
+  issueUrl,
+} from "../../src/features/issues/issues.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { ghIssue, ghRules, issuesDaemon } from "../issues-fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 // Real git, a fake `gh` (a Bun process per call) and the in-process daemon: more than 5 s.
 setDefaultTimeout(30_000);
