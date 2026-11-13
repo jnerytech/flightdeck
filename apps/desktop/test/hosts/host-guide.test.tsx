@@ -25,7 +25,7 @@ const TEXT = {
     copySetup: "Copy flightdeckd setup",
     copyDoctor: "Copy flightdeckd doctor",
     submit: "Test and add",
-    missing: "fill in name, address, port and token",
+    missing: "Fill in the name.",
   },
   "pt-BR": {
     steps: "Primeiros passos",
@@ -35,7 +35,7 @@ const TEXT = {
     copySetup: "Copiar flightdeckd setup",
     copyDoctor: "Copiar flightdeckd doctor",
     submit: "Testar e adicionar",
-    missing: "preencha nome, endereço, porta e token",
+    missing: "Preencha o nome.",
   },
 } as const;
 
