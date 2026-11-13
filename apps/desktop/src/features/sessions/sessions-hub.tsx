@@ -323,7 +323,7 @@ export function SessionsHub(
             size="icon"
             aria-label={t("hub.actions", { title: row.title })}
             data-row-actions={row.claudeSessionId}
-            className="size-6 shrink-0 opacity-0 focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+            className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
           >
             <MoreHorizontal />
           </Button>
