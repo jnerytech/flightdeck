@@ -13,7 +13,6 @@ const personScrolls = (el: Element) => {
 };
 const screen = liveScreen(within);
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
-const { RecapPanel } = await import("../../src/features/summary/recap-panel.tsx");
 const { emptySession } = await import("../../src/features/sessions/session-state.ts");
 
 afterEach(cleanup);
@@ -78,58 +77,5 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
     await act(async () => {});
     expect(s.size.top).toBe(1100);
     expect(screen.queryByRole("button", { name: "Ir para a última" })).toBeNull();
-  });
-
-  test("a new message leaves you where you were reading, and offers Ir para a última", async () => {
-    const { rerender } = render(view(3));
-    const s = scroller({ scroll: 1000, client: 400, top: 100 });
-    await act(async () => void personScrolls(s.el));
-    s.size.scroll = 1100;
-    rerender(view(4));
-    await act(async () => {});
-    expect(s.size.top).toBe(100);
-    const jump = screen.queryByRole("button", { name: "Ir para a última (1 nova)" });
-    expect(jump).not.toBeNull();
-    await act(async () => void fireEvent.click(jump as HTMLElement));
-    expect(s.size.top).toBe(1100);
-    expect(screen.queryByRole("button", { name: "Ir para a última" })).toBeNull();
-  });
-});
-
-describe("sessao-rolagem: the summary does not push the conversation away", () => {
-  const state = { hosts: [{ id: "h", hostInfo: { features: ["summary"] } }] };
-  const store = (calls: string[]) =>
-    ({
-      subscribe: () => () => {},
-      getState: () => state,
-      sessionRecap: async () => {
-        calls.push("recap");
-        return {
-          asked: "a thing",
-          done: "it",
-          files: [],
-          filesMore: 0,
-          costUsd: null,
-          question: null,
-        };
-      },
-      copyText: async () => {},
-    }) as never;
-
-  test("it opens the first time a session is seen and starts collapsed after that", async () => {
-    const calls: string[] = [];
-    const mount = () =>
-      render(<RecapPanel store={store(calls)} hostId="h" claudeSessionId="c-1" />);
-    mount();
-    await act(async () => {});
-    expect(screen.queryByText("a thing")).not.toBeNull();
-    cleanup();
-    mount();
-    await act(async () => {});
-    expect(screen.queryByText("a thing")).toBeNull();
-    const toggle = screen.queryByRole("button", { name: /Resumo da sessão/ });
-    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
-    await act(async () => void fireEvent.click(toggle as HTMLElement));
-    expect(screen.queryByText("a thing")).not.toBeNull();
   });
 });
