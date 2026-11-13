@@ -44,8 +44,8 @@ import {
   wireSummaries,
 } from "../../features/sessions/index.ts";
 import { type SettingsSlice, wireSettings } from "../../features/settings/index.ts";
-import { TabScopeController } from "../../features/tabs/tab-scope.ts";
-import { TabOrderController } from "../../features/tabs/tab-switcher.ts";
+import { TabScopeController } from "../../features/tabs/domain/tab-scope.ts";
+import { TabOrderController } from "../../features/tabs/domain/tab-switcher.ts";
 import {
   TerminalFontController,
   TerminalReaderSetting,

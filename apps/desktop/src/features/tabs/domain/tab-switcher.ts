@@ -1,4 +1,4 @@
-import type { Platform } from "../../platform/types.ts";
+import type { Platform } from "../../../platform/types.ts";
 
 /** The switcher while Ctrl is held: the tabs in recency order and the one that would open. */
 export interface SwitcherState {

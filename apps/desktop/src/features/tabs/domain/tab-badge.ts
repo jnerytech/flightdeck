@@ -1,6 +1,6 @@
 import type { NavKey } from "@/features/shell/index.ts";
-import { type AppState, needsYou, sessionKey } from "../../lib/app-store.ts";
-import type { Route } from "../../lib/router.ts";
+import { type AppState, needsYou, sessionKey } from "../../../lib/app-store.ts";
+import type { Route } from "../../../lib/router.ts";
 
 /** What a tab shows besides its title: something waits for the user, a session is working, or it replied unseen. */
 export type TabBadge = "needs-you" | "running" | "unread" | null;

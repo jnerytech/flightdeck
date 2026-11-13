@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
-import { tabBadge, tabKind } from "../../src/features/tabs/tab-badge.ts";
+import { tabBadge, tabKind } from "../../src/features/tabs/domain/tab-badge.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";

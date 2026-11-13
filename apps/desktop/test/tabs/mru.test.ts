@@ -5,7 +5,7 @@ import {
   stepSwitcher,
   TAB_ORDER_KEY,
   TabOrderController,
-} from "../../src/features/tabs/tab-switcher.ts";
+} from "../../src/features/tabs/domain/tab-switcher.ts";
 import { Tabs } from "../../src/features/tabs/tabs.ts";
 import type { Platform } from "../../src/platform/types.ts";
 

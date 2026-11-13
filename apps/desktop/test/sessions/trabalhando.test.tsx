@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { EventEnvelope, SessionEvent } from "@flightdeck/protocol";
-import { badgePulses } from "../../src/features/tabs/tab-badge.ts";
+import { badgePulses } from "../../src/features/tabs/domain/tab-badge.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
