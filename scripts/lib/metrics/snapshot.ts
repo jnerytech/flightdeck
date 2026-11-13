@@ -305,7 +305,7 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
       "--limit",
       String(LIST_LIMIT),
       "--json",
-      "additions,deletions,mergedAt",
+      "additions,deletions,mergedAt,title,files",
     ],
     wideFrom,
     to,
