@@ -1,7 +1,7 @@
 import type { BoardColumn, Card, WorkflowInfo } from "@flightdeck/protocol";
 import { cardInFilter, type WorktreeFilter } from "@/features/projects/index.ts";
 import { reasonText } from "../../i18n/errors.ts";
-import type { T } from "../../i18n/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { COLUMNS, filterCards, positionsBefore } from "./board-model.ts";
 import type { BulkRefusal } from "./board-select.ts";
@@ -90,6 +90,13 @@ export interface CardMove {
   column: BoardColumn;
   targetId?: string;
   disabled?: boolean;
+}
+
+/** The menu label of a move: up or down within the column, or to another column. */
+export function moveLabel(t: T, key: CardMove["key"]): string {
+  if (key === "up") return t("board.moveUp");
+  if (key === "down") return t("board.moveDown");
+  return t("board.moveTo", { column: t(`kanban.columns.${key}` as Key) });
 }
 
 /** The moves the menu offers for a card, and where it sits in its column (`here`, top to bottom). */

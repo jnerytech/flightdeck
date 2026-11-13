@@ -16,7 +16,7 @@ import {
 } from "@flightdeck/protocol";
 import { walkInside } from "../board/index.ts";
 import { FlightdeckError, samePath } from "../kernel/index.ts";
-import type { Quota } from "../quota/quota.ts";
+import type { Quota } from "../quota/index.ts";
 import type { CompleteOptions, CompleteResult } from "../runtime/types.ts";
 import { MAX_FILE } from "./preview.ts";
 import { detectStack } from "./stack.ts";

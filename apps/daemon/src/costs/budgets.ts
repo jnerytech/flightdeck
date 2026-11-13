@@ -1,8 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { Budget, BudgetInput, QuotaBudgetInput, QuotaState } from "@flightdeck/protocol";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
-import type { Timers } from "../quota/quota.ts";
-import { localDay } from "../quota/usage.ts";
+import { localDay, type Timers } from "../quota/index.ts";
 
 export interface BudgetsOptions {
   db: Database;
