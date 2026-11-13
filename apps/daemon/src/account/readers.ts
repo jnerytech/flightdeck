@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type Exec, FlightdeckError, parseJsonOr } from "../kernel/index.ts";
-import type { QuotaReading } from "../runtime/types.ts";
+import type { QuotaReading } from "../runtime/index.ts";
 
 /** What `claude auth status --json` says; a missing key is `null`. */
 export interface AuthStatus {

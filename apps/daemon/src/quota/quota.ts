@@ -1,5 +1,5 @@
 import type { QuotaState, QuotaWindow } from "@flightdeck/protocol";
-import type { QuotaReading } from "../runtime/types.ts";
+import type { QuotaReading } from "../runtime/index.ts";
 
 export interface Timers {
   set(fn: () => void, ms: number): unknown;
