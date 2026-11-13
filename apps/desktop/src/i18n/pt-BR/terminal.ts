@@ -10,6 +10,7 @@ export const terminal = {
   terminalUi: {
     sshBadge: "SSH · {name}",
     title: "Terminal",
+    opening: "Abrindo o terminal…",
     readerHint:
       "Para um leitor de tela ler a saída, ligue Suporte a leitor de tela no terminal em Configurações.",
     copy: "Copiar",

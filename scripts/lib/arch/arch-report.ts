@@ -96,16 +96,18 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
       baseline: sum(inputs.spawnBaseline),
       today: sum(inputs.spawnCounts),
     });
-  rows.push({
-    ratchet: "src-size files over the limit",
-    baseline: Object.keys(inputs.srcBaseline).length,
-    today: Object.keys(inputs.srcOversized).length,
-  });
-  rows.push({
-    ratchet: "json-parse raw calls",
-    baseline: sum(inputs.jsonParseBaseline),
-    today: sum(inputs.jsonParseCounts),
-  });
+  rows.push(
+    {
+      ratchet: "src-size files over the limit",
+      baseline: Object.keys(inputs.srcBaseline).length,
+      today: Object.keys(inputs.srcOversized).length,
+    },
+    {
+      ratchet: "json-parse raw calls",
+      baseline: sum(inputs.jsonParseBaseline),
+      today: sum(inputs.jsonParseCounts),
+    },
+  );
   for (const tier of new Set([
     ...Object.keys(inputs.shapeBaseline),
     ...Object.keys(inputs.shapeShares),
@@ -143,8 +145,10 @@ export function growing(rows: RatchetRow[]): RatchetRow[] {
 
 /** A markdown table of the rows, with a status column (`ok`, `down` or `UP`). */
 export function formatTable(rows: RatchetRow[]): string {
-  const status = (row: RatchetRow) =>
-    row.today > row.baseline ? "UP" : row.today < row.baseline ? "down" : "ok";
+  const status = (row: RatchetRow) => {
+    if (row.today > row.baseline) return "UP";
+    return row.today < row.baseline ? "down" : "ok";
+  };
   return [
     "| Ratchet | Baseline | Today | Status |",
     "| --- | ---: | ---: | --- |",
@@ -187,7 +191,7 @@ function listedNames(text: string): string[] {
       const name = item
         .trim()
         .replace(/^type\s+/, "")
-        .split(/\s+as\s+/)
+        .split(/\sas\s+/)
         .pop()
         ?.trim();
       if (name) names.push(name);
@@ -197,16 +201,18 @@ function listedNames(text: string): string[] {
   return names;
 }
 
+const MODIFIERS = String.raw`(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?`;
+const KINDS = String.raw`(?:const|let|var|function\*?|class|interface|type|enum)`;
+/** `export const x`, `export declare function x`, `export abstract class x`, and the other declarations. */
+const DECLARATION = new RegExp(String.raw`^export\s+${MODIFIERS}${KINDS}\s+(\w+)`, "gm");
 /**
  * The distinct names an entry exports (a value and a type of one name are one) and whether it has a
  * bare `export * from` (#1624); comments are skipped. An entry is PR code, so every scan is linear:
  * a stalled regex would hang the CI job.
  */
 function exportsOf(source: string): { count: number; broad: boolean } {
-  const text = withoutBlockComments(source).replaceAll(/(^|[^:])\/\/.*$/gm, "$1");
-  const declared = text.matchAll(
-    /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|let|var|function\*?|class|interface|type|enum)\s+(\w+)/gm,
-  );
+  const text = withoutBlockComments(source).replaceAll(/(?<!:)\/\/.*$/gm, "");
+  const declared = text.matchAll(DECLARATION);
   const namespaced = text.matchAll(/^export\s*\*\s*as\s+(\w+)/gm);
   const names = new Set([
     ...listedNames(text),
@@ -235,13 +241,15 @@ export function entryRows(
     .sort((a, b) => (a.entry < b.entry ? -1 : Number(a.entry > b.entry)));
 }
 
+/** How much an entry grew: `from 0`, or the percent over its base. */
+const growth = (base: number, today: number): string =>
+  base === 0 ? "from 0" : `${Math.ceil(((today - base) / base) * 100)}%`;
+
 const entryNote = (row: EntryRow): string => {
   const notes = [];
   if (row.broad) notes.push("broad (export *)");
   if (row.base !== null && row.today > row.base * (1 + ENTRY_GROWTH))
-    notes.push(
-      `grew ${row.base === 0 ? "from 0" : `${Math.ceil(((row.today - row.base) / row.base) * 100)}%`} (over ${ENTRY_GROWTH * 100}%)`,
-    );
+    notes.push(`grew ${growth(row.base, row.today)} (over ${ENTRY_GROWTH * 100}%)`);
   return notes.join("; ");
 };
 

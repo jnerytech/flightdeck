@@ -41,7 +41,7 @@ const SCOPE = "https://www.googleapis.com/auth/drive.appdata";
 const MARGIN_MS = 60_000;
 
 function base64Url(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes))
+  return btoa(String.fromCodePoint(...bytes))
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replaceAll("=", "");

@@ -347,7 +347,11 @@ export function ApprovalCard(
     // A high-risk request is approved by holding the button, never by a key.
     if (key === "a" && !high && !questions) respond("allow");
     else if (key === "n") setDenying(true);
-    else if (e.key === "Escape") e.currentTarget.blur();
+    else if (e.key === "Escape") {
+      // Handled here: left unmarked, the key reaches SplitView and closes the detail too (#2591).
+      e.preventDefault();
+      e.currentTarget.blur();
+    }
   };
 
   if (questions && resolution) {

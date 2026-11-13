@@ -50,7 +50,7 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 export function readPrefs(storage: Storage): AssistantPrefs {
   const prefs = defaultPrefs();
   const raw = readStored(storage, ASSISTANT_PREFS_KEY, z.record(z.string(), z.unknown()), null);
-  if (!raw || raw.version !== 1) return prefs;
+  if (raw?.version !== 1) return prefs;
   if (typeof raw.enabled === "boolean") prefs.enabled = raw.enabled;
   const provider = AssistantProvider.safeParse(raw.provider);
   if (provider.success) prefs.provider = provider.data;

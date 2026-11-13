@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/i18n/context";
+import { LoadingState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { TerminalPage } from "./page.tsx";
 import type { XtermDeps } from "./xterm-screen.ts";
@@ -24,6 +26,7 @@ export function SessionTerminal(
     deps?: XtermDeps;
   }>,
 ) {
+  const t = useT();
   const { store, hostId, viewKey, source } = props;
   const [terminalId, setTerminalId] = useState<string | null>(
     "terminalId" in source ? source.terminalId : null,
@@ -76,7 +79,8 @@ export function SessionTerminal(
       alive = false;
     };
   }, []);
-  if (!terminalId) return null;
+  // The shell takes a list and an open round trip: the view says so instead of staying blank (#2607).
+  if (!terminalId) return <LoadingState label={t("terminalUi.opening")} />;
   return (
     <TerminalPage
       store={store}

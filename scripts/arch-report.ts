@@ -50,8 +50,10 @@ function runKnip(): string {
     encoding: "utf8",
     maxBuffer: 1 << 28,
   }); // NOSONAR: bun itself, fixed arguments
-  if (proc.error || proc.signal)
-    throw new Error(`knip did not run: ${proc.error?.message ?? `killed by ${proc.signal}`}`);
+  if (proc.error || proc.signal) {
+    const why = proc.error?.message ?? `killed by ${proc.signal}`;
+    throw new Error(`knip did not run: ${why}`);
+  }
   if (!proc.stdout) throw new Error(`knip printed no report: ${proc.stderr.slice(0, 500)}`);
   return proc.stdout;
 }
@@ -66,7 +68,7 @@ async function desktopCycleCount(): Promise<number> {
 const CYCLES = "desktop-cycles-baseline.json";
 const mergeBase = ["origin/main", "main"]
   .map((main) => git(["merge-base", "HEAD", main])?.trim())
-  .find((found) => found);
+  .find(Boolean);
 const tracked = (git(["ls-files", "apps", "packages", "scripts"]) ?? "")
   .split("\n")
   .filter(Boolean);

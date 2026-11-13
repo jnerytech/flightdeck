@@ -17,7 +17,7 @@ const FLAVORS: Record<string, string> = { x64: "linux-x64", arm64: "linux-aarch6
 const [folder] = process.argv.slice(2);
 const version = process.env.SONAR_SCANNER_VERSION ?? "";
 const flavor = FLAVORS[process.arch];
-if (!folder || !/^[0-9][0-9.]*$/.test(version) || !flavor) {
+if (!folder || !/^\d[\d.]*$/.test(version) || !flavor) {
   console.error(
     "usage: SONAR_SCANNER_VERSION=<x.y.z.n> bun run scripts/sonar-scanner-verify.ts <folder>",
   );
@@ -30,7 +30,7 @@ const run = (cmd: string, args: string[], timeoutMs: number) =>
   spawnSync(cmd, args, { encoding: "utf8", timeout: timeoutMs });
 
 /** One attempt: download both files, import the committed key, verify. */
-async function attempt(): Promise<boolean> {
+function attempt(): boolean {
   const home = mkdtempSync(join(tmpdir(), "sonar-gpg-"));
   const zip = join(folder as string, files.name);
   const asc = `${zip}.asc`;

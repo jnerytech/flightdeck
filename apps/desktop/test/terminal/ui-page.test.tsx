@@ -74,7 +74,9 @@ async function hookSession(d: Awaited<ReturnType<typeof setup>>, launch: string)
 }
 
 const state = (name: string) => screen.queryByText(name);
-const button = (name: string) => screen.queryByRole("button", { name });
+// The right-click menu's items are menu items (#2608), the rest of the screen's controls are buttons.
+const button = (name: string) =>
+  screen.queryByRole("button", { name }) ?? screen.queryByRole("menuitem", { name });
 const click = async (name: string) => {
   const target = button(name);
   expect(target).not.toBeNull();
@@ -145,6 +147,47 @@ describe("terminal-ui: the terminal screen", () => {
     });
     expect(screen.queryByRole("searchbox", { name: "Buscar no terminal" })).toBeNull();
     expect(x.finds.at(-1)).toBe("clear");
+  });
+
+  // Issue #2591: SplitView closes the detail on an Esc nobody marked handled (#2579). A control
+  // either marks the key handled (the search box) or stops it (the menu: the shell must not get it).
+  /** Whether an Esc pressed in `element` reaches the page unhandled, as SplitView reads it. */
+  async function escapeReachesPageUnhandled(element: HTMLElement) {
+    const seen: boolean[] = [];
+    const read = (e: KeyboardEvent) => void seen.push(!e.defaultPrevented);
+    document.body.addEventListener("keydown", read);
+    try {
+      await act(async () => {
+        fireEvent.keyDown(element, { key: "Escape" });
+      });
+    } finally {
+      document.body.removeEventListener("keydown", read);
+    }
+    return seen[0] ?? null;
+  }
+
+  test("Esc in the search box closes the search and marks the key handled", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" });
+    expect(box).not.toBeNull();
+    expect(await escapeReachesPageUnhandled(box as HTMLElement)).toBe(false);
+  });
+
+  test("Esc in the right-click menu closes the menu and the page never sees the key", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    x.select("trecho");
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement;
+    await act(async () => {
+      fireEvent.contextMenu(area, { clientX: 40, clientY: 50 });
+    });
+    const menu = screen.queryByRole("menu", { name: "Terminal" });
+    expect(menu).not.toBeNull();
+    // null: the key was stopped before it reached the page, so SplitView cannot read it.
+    expect(await escapeReachesPageUnhandled(menu as HTMLElement)).toBe(null);
+    expect(screen.queryByRole("menu", { name: "Terminal" }) === null).toBe(true);
   });
 
   test("closing asks: Desanexar keeps the process, Encerrar processo ends it, Cancelar does nothing", async () => {
@@ -356,6 +399,145 @@ describe("terminal-ui: the terminal screen", () => {
       });
     });
     expect(screen.queryByRole("menu", { name: "Terminal" })).toBeNull();
+  });
+
+  // Issue #2608: the right-click menu is a menu: items, arrow keys, and the focus back on the terminal.
+  async function openMenu(x: Awaited<ReturnType<typeof setup>>["x"], selected: boolean) {
+    await settle(() => state("Ao vivo"));
+    if (selected) x.select("trecho");
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement;
+    await act(async () => {
+      fireEvent.contextMenu(area, { clientX: 40, clientY: 50 });
+    });
+    return screen.queryByRole("menu", { name: "Terminal" }) as HTMLElement;
+  }
+  const focusedItem = () => document.activeElement?.textContent ?? "";
+  const pressInMenu = (menu: HTMLElement, key: string) =>
+    act(async () => {
+      fireEvent.keyDown(document.activeElement ?? menu, { key });
+    });
+
+  test("the menu's three items are menu items, and Copiar is disabled with nothing selected", async () => {
+    const { x } = await setup();
+    await openMenu(x, false);
+    const items = screen.queryAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Copiar", "Colar", "Selecionar tudo"]);
+    expect((items[0] as HTMLButtonElement).disabled).toBe(true);
+    expect(focusedItem()).toBe("Colar");
+  });
+
+  test("Down and Up move between the enabled items and wrap; Home and End go to the ends", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, true);
+    expect(focusedItem()).toBe("Copiar");
+    const path: string[] = [];
+    for (const key of ["ArrowDown", "ArrowDown", "ArrowDown", "ArrowUp", "End", "Home"]) {
+      await pressInMenu(menu, key);
+      path.push(focusedItem());
+    }
+    expect(path).toEqual([
+      "Colar",
+      "Selecionar tudo",
+      "Copiar",
+      "Selecionar tudo",
+      "Selecionar tudo",
+      "Copiar",
+    ]);
+  });
+
+  test("a disabled Copiar is skipped by the arrow keys", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, false);
+    const path: string[] = [];
+    for (const key of ["ArrowUp", "ArrowDown", "Home"]) {
+      await pressInMenu(menu, key);
+      path.push(focusedItem());
+    }
+    expect(path).toEqual(["Selecionar tudo", "Colar", "Colar"]);
+  });
+
+  test("Esc closes the menu and gives the focus back to the terminal", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, true);
+    const before = x.focuses();
+    await pressInMenu(menu, "Escape");
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      x.focuses() - before,
+    ]).toEqual([true, 1]);
+  });
+
+  test("a click outside closes the menu and gives the focus back to the terminal", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    const before = x.focuses();
+    await act(async () => {
+      fireEvent.click(document.body);
+    });
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      x.focuses() - before,
+    ]).toEqual([true, 1]);
+  });
+
+  test("Up with the focus off the items goes to the last one, as Down goes to the first", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, true);
+    act(() => menu.focus());
+    await pressInMenu(menu, "ArrowUp");
+    expect(focusedItem()).toBe("Selecionar tudo");
+    act(() => menu.focus());
+    await pressInMenu(menu, "ArrowDown");
+    expect(focusedItem()).toBe("Copiar");
+  });
+
+  test("the Esc that closes the menu goes no further: the terminal under it never gets the key", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement;
+    let reached = 0;
+    const count = () => void reached++;
+    area.addEventListener("keydown", count);
+    await act(async () => {
+      fireEvent.keyDown(area, { key: "Escape" });
+    });
+    area.removeEventListener("keydown", count);
+    expect(reached).toBe(0);
+  });
+
+  test("Esc closes the menu and is marked handled even when the focus has left it", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    act(() => (document.activeElement as HTMLElement).blur());
+    const before = x.focuses();
+    let notMarked = true;
+    await act(async () => {
+      notMarked = fireEvent.keyDown(document.body, { key: "Escape" });
+    });
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      notMarked,
+      x.focuses() - before,
+    ]).toEqual([true, false, 1]);
+  });
+
+  test("a click on another control closes the menu and leaves the focus on that control", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    const other = document.createElement("input");
+    document.body.append(other);
+    other.focus();
+    const before = x.focuses();
+    await act(async () => {
+      fireEvent.click(other);
+    });
+    const kept = document.activeElement === other;
+    other.remove();
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      kept,
+      x.focuses() - before,
+    ]).toEqual([true, true, 0]);
   });
 
   test("a link in the output opens in the browser, http and https only", async () => {

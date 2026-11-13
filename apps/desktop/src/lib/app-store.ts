@@ -169,7 +169,7 @@ export class AppStore {
         copyText: (text) => this.system.copyText(text),
         projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
         shown: () => this.shownSessions(),
-        later: (fn, ms) => void this.later(fn, ms),
+        later: (fn, ms) => this.later(fn, ms),
         respondTo: (hostId, requestId, decision) =>
           void this.respondTo(hostId, requestId, decision),
         palette: {

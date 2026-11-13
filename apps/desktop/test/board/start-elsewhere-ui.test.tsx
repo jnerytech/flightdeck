@@ -203,12 +203,10 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     expect(elsewhere("Start on beta")).not.toBeNull();
     const text = dialog().textContent ?? "";
     // The hold is named, the queue line follows it, and nothing promises that they start now.
-    expect(text.includes("alfa has new runs paused: new cards wait until you resume it.")).toBe(
-      true,
-    );
-    expect(text.includes("They join the board's queue.")).toBe(true);
-    expect(text.includes("All of them start now.")).toBe(false);
-    expect(text.includes("of them would wait here")).toBe(true);
+    expect(text).toContain("alfa has new runs paused: new cards wait until you resume it.");
+    expect(text).toContain("They join the board's queue.");
+    expect(text).not.toContain("All of them start now.");
+    expect(text).toContain("of them would wait here");
   });
 
   test("one card that would wait is named in the singular, and the hint ends in a full stop (#1483)", async () => {
@@ -221,13 +219,11 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     await act1(() => fireEvent.click(start as HTMLElement));
     await settle(() => elsewhere("Start on beta") !== null);
     const text = dialog().textContent ?? "";
-    expect(
-      text.includes(
-        "This card would wait here. Another host with the same project has a place for it.",
-      ),
-    ).toBe(true);
-    expect(text.includes("1 of them")).toBe(false);
-    expect(text.includes("has the places for them:")).toBe(false);
+    expect(text).toContain(
+      "This card would wait here. Another host with the same project has a place for it.",
+    );
+    expect(text).not.toContain("1 of them");
+    expect(text).not.toContain("has the places for them:");
   });
 
   test("the hint of several cards ends in a full stop too (#1483)", async () => {
@@ -283,15 +279,13 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     await settle(() => elsewhere("Iniciar em beta") !== null);
     expect(elsewhere("Iniciar em beta")).not.toBeNull();
     const text = dialog().textContent ?? "";
-    expect(
-      text.includes(
-        "alfa está com novas execuções pausadas: os cards novos esperam até você retomar.",
-      ),
-    ).toBe(true);
-    expect(text.includes("Todos iniciam agora.")).toBe(false);
-    expect(
-      text.includes("2 deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles."),
-    ).toBe(true);
+    expect(text).toContain(
+      "alfa está com novas execuções pausadas: os cards novos esperam até você retomar.",
+    );
+    expect(text).not.toContain("Todos iniciam agora.");
+    expect(text).toContain(
+      "2 deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles.",
+    );
   });
 
   test("one card in Portuguese agrees too (#1483)", async () => {
