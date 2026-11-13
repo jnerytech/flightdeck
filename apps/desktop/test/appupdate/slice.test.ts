@@ -75,6 +75,17 @@ describe("app update slice", () => {
     expect(w.logs).toEqual(["error update: the check failed: check refused"]);
   });
 
+  test("a check that fails after one that found nothing no longer says up to date", async () => {
+    const over: { found: null; fail?: Array<"check"> } = { found: null };
+    const w = appUpdate(over);
+    await w.slice.check();
+    expect(w.state().upToDate).toBe(true);
+    over.fail = ["check"];
+    await w.slice.check();
+    expect(w.state().upToDate).toBe(false);
+    expect(w.state().error).toBe("messages.updateCheckFailed: check refused");
+  });
+
   test("by itself, a version is downloaded once, and the same one again is not downloaded twice", async () => {
     const w = appUpdate({ auto: true });
     await w.slice.check();

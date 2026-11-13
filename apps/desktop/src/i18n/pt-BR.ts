@@ -111,6 +111,7 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    terminalFontRange: "Entre {min} e {max} px.",
     terminalReader: "Suporte a leitor de tela no terminal",
     terminalReaderHint:
       "Deixa um leitor de tela ler a saída do terminal. Saída longa demora mais para aparecer.",

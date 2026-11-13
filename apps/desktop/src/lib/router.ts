@@ -4,6 +4,9 @@ import type { ActionSeed } from "../features/snippets/index.ts";
 import { actionOfRoute, startMeasure } from "./measures.ts";
 
 /** Every screen of the app, with what it shows. */
+/** A part of the host page a route can ask for (#1484, #2588). */
+export type HostSection = "pause" | "keep-awake" | "health";
+
 export type Route =
   /** The selected session, the new-session form of the selected host, or the hub. */
   | { name: "home" }
@@ -39,8 +42,8 @@ export type Route =
       from?: string;
       to?: string;
     }
-  /** `section` (#1484): open the host's Settings at that panel, with the focus on it. */
-  | { name: "host"; host: string; section?: "pause" | "keep-awake" }
+  /** `section` (#1484, #2588): open the host page at that panel (Settings, or the Overview for Health), with the focus on its heading. */
+  | { name: "host"; host: string; section?: HostSection }
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }
   /** Every project of every host, as cards (issue #9). */
