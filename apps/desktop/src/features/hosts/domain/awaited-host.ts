@@ -1,4 +1,4 @@
-import type { Route } from "../../lib/router.ts";
+import type { Route } from "../../../lib/router.ts";
 
 /** The host a route's screen loads from when it opens, if any. */
 export function awaitedHost(route: Route): string | null {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { awaitedHost } from "../../src/features/hosts/awaited-host.ts";
+import { awaitedHost } from "../../src/features/hosts/domain/awaited-host.ts";
 import type { Route } from "../../src/lib/router.ts";
 
 describe("awaitedHost", () => {

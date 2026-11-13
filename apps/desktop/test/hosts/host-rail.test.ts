@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hostInitial, hostRailLabel } from "../../src/features/hosts/host-rail.ts";
+import { hostInitial, hostRailLabel } from "../../src/features/hosts/domain/host-rail.ts";
 
 describe("hostRailLabel", () => {
   test("joins the name and the version with a middle dot", () => {

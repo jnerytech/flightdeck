@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hostNameError } from "../../src/features/hosts/host-name.ts";
+import { hostNameError } from "../../src/features/hosts/domain/host-name.ts";
 
 const hosts = [
   { id: "a", name: "pc-nery" },

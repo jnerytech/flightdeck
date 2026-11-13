@@ -1,6 +1,6 @@
 import { parsePairingLink, type RootsResult } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
-import { type HostNameError, hostNameError } from "./host-name.ts";
+import { type HostNameError, hostNameError } from "./domain/host-name.ts";
 import type { HostConfig } from "./hosts.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { probeHost } from "./probe-host.ts";
