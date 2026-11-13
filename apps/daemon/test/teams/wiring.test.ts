@@ -126,13 +126,16 @@ describe("teams-wiring: the sessions that work together, as the daemon builds th
   test("a terminal session sends a message: its id is not one the manager knows, and nothing throws (#1694)", async () => {
     const { module, central, repo } = await build();
     central.external.apply("SessionStart", { session_id: "term-1", cwd: repo });
-    const sent = () =>
-      module.server?.messaging?.messages?.send({
+    let result: unknown;
+    const sent = () => {
+      result = module.server?.messaging?.messages?.send({
         as: { session: "term-1" },
         to: "nobody",
         text: "hello",
       });
+    };
     expect(sent).not.toThrow();
+    expect(result).toBeDefined();
   });
 
   test("a persona that cannot be read is logged with its error, not only reported as unknown (#1694)", async () => {
