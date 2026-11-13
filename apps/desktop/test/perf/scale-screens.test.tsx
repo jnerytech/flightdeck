@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Profiler, type ProfilerOnRenderCallback } from "react";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { scaleState, summaryBurst } from "./scale-fixture.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { scaleState, summaryBurst } from "../scale-fixture.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { useStoreState } = await import("../src/lib/use-store.ts");
-const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
-const { SessionsHub } = await import("../src/features/sessions/sessions-hub.tsx");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { useStoreState } = await import("../../src/lib/use-store.ts");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
+const { SessionsHub } = await import("../../src/features/sessions/sessions-hub.tsx");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 afterEach(cleanup);
 

@@ -14,21 +14,7 @@ import { sameNotice } from "../app/notice-lifetime.ts";
 import { initialAccountState } from "../features/account/index.ts";
 import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import {
-  type ClientScopeSlice,
-  Clients,
-  knownProjects,
-  UNASSIGNED,
-  wireClientScope,
-} from "../features/clients/index.ts";
-import {
-  type BudgetsSlice,
-  type ClientBudgetsSlice,
-  hubHostScope,
-  localDay,
-  wireBudgets,
-  wireClientBudgets,
-} from "../features/costs/index.ts";
+import { type BudgetsSlice, hubHostScope, localDay, wireBudgets } from "../features/costs/index.ts";
 import { type HistorySlice, wireHistory } from "../features/history/index.ts";
 import {
   type ConnectionStatus,
@@ -48,13 +34,10 @@ import { type PermissionsSlice, wirePermissions } from "../features/permissions/
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
 import { initialQuotaState } from "../features/quota/index.ts";
-import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
-import { RoiSettings } from "../features/roi/roi-settings.ts";
 import {
   type ExternalSessionsSlice,
   type FinishedSlice,
   HISTORY_LIST_LIMIT,
-  hubRows,
   type SessionActions,
   type SessionCommandsSlice,
   type SessionListsSlice,
@@ -81,8 +64,6 @@ import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import type { DeliveryRefusal } from "../features/vault/index.ts";
-import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
-import { Webhooks } from "../features/webhook/webhooks.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n } from "../i18n/index.ts";
@@ -206,8 +187,6 @@ export class AppStore {
   readonly sessions: SessionsSlice;
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
-  /** What each client with a month limit spent against it (phase 9, #1596). */
-  readonly clientBudgets: ClientBudgetsSlice;
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
   readonly personas: PersonasSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
@@ -286,7 +265,12 @@ export class AppStore {
         notify: (...args) => this.inbox.notify(...args),
         keepUsage: () => this.keepUsage(),
         copyText: (text) => this.system.copyText(text),
-        projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
+        today: () => this.today(),
+        keyOf: (hostId, project) => this.projectList.keyOf(hostId, project),
+        relay: (request) => this.relayWebhook(request),
+        recap: (hostId, claudeSessionId, extra) =>
+          this.sessionRecap(hostId, claudeSessionId, extra),
+        roiChanged: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
       }),
     );
     this.history = wireHistory(this.kernel, {
@@ -335,59 +319,6 @@ export class AppStore {
     this.hostTabs.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
       this.clearShownUnread();
-    });
-    this.clients = new Clients(platform, { onChange: () => this.clientScope.sync() });
-    this.clientScope = wireClientScope(this.kernel, {
-      storage: platform.storage,
-      clients: () => this.clients,
-      projects: () =>
-        knownProjects([
-          ...hubRows(this.state),
-          ...Object.entries(this.state.projects).flatMap(([hostId, list]) =>
-            list.map((p) => ({
-              hostId,
-              cwd: p.path,
-              projectKey: this.projectList.keyOf(hostId, p),
-            })),
-          ),
-        ]),
-      changed: () => {
-        this.vaultRules.scopeChanged();
-        this.clientBudgets.onLimitsChanged();
-      },
-    });
-    this.clientBudgets = wireClientBudgets(this.kernel, {
-      storage: platform.storage,
-      limits: () => this.clients.budgets(),
-      today: () => this.today(),
-      scope: () => this.clientScope.get(),
-      clients: () => this.state.clientList,
-      feed: (name, clientId, percent, limit) =>
-        this.webhookFeed.clientBudget(name, clientId, percent, limit),
-      notify: (notification, clientId) =>
-        this.inbox.notify(notification, { name: "costs", client: clientId }, undefined, {
-          event: "budget-quota",
-        }),
-    });
-    this.roi = new RoiSettings(platform, {
-      onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
-    });
-    this.webhooks = new Webhooks({
-      platform,
-      send: (request) => this.relayWebhook(request),
-      summaryFor: (hostId, claudeSessionId, extra) =>
-        this.sessionRecap(hostId, claudeSessionId, extra),
-    });
-    this.webhookFeed = new WebhookFeed(this.webhooks, (hostId, cwd) => {
-      const clientId = cwd ? this.clientScope.get().clientOfFolder(hostId, cwd) : UNASSIGNED;
-      return clientId === UNASSIGNED ? null : clientId;
-    });
-    this.roiFigures = wireRoi(this.kernel, {
-      clientOf: (projectKey) => {
-        const clientId = this.clientScope.get().clientOf(projectKey);
-        return clientId === UNASSIGNED ? null : clientId;
-      },
-      settings: () => this.roi,
     });
     this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
@@ -1083,18 +1014,6 @@ export class AppStore {
   ): Promise<{ ok: true; value: string } | { ok: false; code: DeliveryRefusal }> {
     return this.vaultApprovals.secretFor(hostId, secretId, purpose);
   }
-
-  /** Phase 29: the clients, their rules and overrides, kept by the app. */
-  readonly clients: Clients;
-  /** Phase 36: the rates, the plan price and the people, kept by the app. */
-  readonly roi: RoiSettings;
-  /** The ROI figures: the day they end on, each host's summary and a project's money (#1596). */
-  readonly roiFigures: RoiSlice;
-  /** Phase 30: the webhook targets and the sending. */
-  readonly webhooks: Webhooks;
-  private readonly webhookFeed: WebhookFeed;
-  /** Which client the person works for: the selection of the work screens and each project's client (#1596). */
-  readonly clientScope: ClientScopeSlice;
 
   private keepUsage(): void {
     this.update({ vaultUsage: this.usage.list() });
