@@ -125,7 +125,7 @@ export function NewSecretForm(
             variant="outline"
             size="sm"
             className="self-start"
-            onClick={() => void store.copyText(publicKey)}
+            onClick={() => void store.system.copyText(publicKey)}
           >
             {t("vault.copyPublicKey")}
           </Button>

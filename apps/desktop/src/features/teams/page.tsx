@@ -400,7 +400,7 @@ export function TeamMemberRow(
                   size="icon"
                   aria-label={t("teamsUi.copyId", { name: label })}
                   onClick={() => {
-                    void store.copyText(sessionId);
+                    void store.system.copyText(sessionId);
                     store.success(t("teamsUi.idCopied"));
                   }}
                 >

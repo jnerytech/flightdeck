@@ -215,7 +215,7 @@ export const SnippetUse = memo(function SnippetUse(props: {
       text = result.data.text;
     }
     if (text === null) return;
-    await store.copyText(text);
+    await store.system.copyText(text);
     done();
   };
 

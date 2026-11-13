@@ -301,7 +301,7 @@ function RequestDetail(
           }}
           t={t}
           nowMs={store.now()}
-          onCopyPath={(text) => void store.copyText(text)}
+          onCopyPath={(text) => void store.system.copyText(text)}
           {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
           onRespond={(decision, message, _updates, updatedInput, held) => {
             if (item.gate) {

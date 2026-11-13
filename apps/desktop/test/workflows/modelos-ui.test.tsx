@@ -109,7 +109,7 @@ function setup(
     }
     return null;
   }) as never;
-  store.copyText = (async (text: string) => {
+  store.system.copyText = (async (text: string) => {
     copied.push(text);
     const by = options.copyBy;
     if (by) return new Promise<boolean>((resolve) => by.push(resolve));
