@@ -1,22 +1,22 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Budgets } from "../../daemon/src/costs/budgets.ts";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { uiIdle, waiter } from "./wait.ts";
+import { Budgets } from "../../../daemon/src/costs/budgets.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { uiIdle, waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(20_000);
 

@@ -5,8 +5,8 @@ import {
   MEASURE_NAMES,
   MEASURES_FLAG,
   startMeasure,
-} from "../src/lib/measures.ts";
-import { registerDom } from "./dom.ts";
+} from "../../src/lib/measures.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 

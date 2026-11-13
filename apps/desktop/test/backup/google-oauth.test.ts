@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { DriveError } from "../src/features/backup/drive-target.ts";
-import { googleSignIn, REFRESH_TOKEN_ID } from "../src/features/backup/google-oauth.ts";
-import { fakeOAuth } from "./fake-google.ts";
+import { DriveError } from "../../src/features/backup/drive-target.ts";
+import { googleSignIn, REFRESH_TOKEN_ID } from "../../src/features/backup/google-oauth.ts";
+import { fakeOAuth } from "../fake-google.ts";
 
 /**
  * Issue #1444: the desktop sign-in with Google is a loopback PKCE flow. The refresh token goes only
