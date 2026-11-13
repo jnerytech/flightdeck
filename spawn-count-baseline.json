@@ -1,12 +1,10 @@
 {
   "apps/daemon/src/board/worktree.ts": 2,
-  "apps/daemon/src/central/project-key.ts": 1,
   "apps/daemon/src/central/wrapper.ts": 1,
   "apps/daemon/src/checkpoints/rewind.ts": 1,
   "apps/daemon/src/checkpoints/snapshots.ts": 1,
   "apps/daemon/src/deps/probe.ts": 1,
   "apps/daemon/src/kernel/command.ts": 3,
-  "apps/daemon/src/memory/memory.ts": 1,
   "apps/daemon/src/plugins/plugins.ts": 1,
   "apps/daemon/src/power/keep-awake.ts": 1,
   "apps/daemon/src/projects/project-find.ts": 1,

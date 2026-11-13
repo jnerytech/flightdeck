@@ -64,7 +64,7 @@ import { BoardFilesPanel } from "@/features/files/ui.ts";
 import { useSuggestedPersona } from "@/features/personas/ui.ts";
 import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
-import { RoiCard } from "@/features/roi/index.ts";
+import { RoiCard } from "@/features/roi/ui.ts";
 import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
 import { useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
