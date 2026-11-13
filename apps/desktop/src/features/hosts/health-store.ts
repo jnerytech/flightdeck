@@ -92,7 +92,8 @@ export class HealthSlice {
       hasFeature(features, "doctor.run", false) ? this.core.doctor(hostId) : Promise.resolve(null),
     ]);
     if (this.removals.get(hostId) !== removals) return;
-    const failed = [deps, doctor].find((half) => half !== null && !half.ok);
+    // Every failed half says why, dependencies first; the older data of a failed half stays.
+    const failures = [deps, doctor].flatMap((half) => (half && !half.ok ? [half.message] : []));
     const state = this.core.state();
     const { [hostId]: _gone, ...rest } = state.healthError;
     const got = deps?.ok ? deps.data : null;
@@ -102,7 +103,8 @@ export class HealthSlice {
       ...(heard ? { doctor: { ...state.doctor, [hostId]: heard } } : {}),
       // A failed read counts as a read: a host that refuses is not asked again within the max age.
       ...(deps || doctor ? { healthAt: { ...state.healthAt, [hostId]: this.core.now() } } : {}),
-      healthError: failed && !failed.ok ? { ...rest, [hostId]: failed.message } : rest,
+      healthError:
+        failures.length > 0 ? { ...rest, [hostId]: [...new Set(failures)].join("; ") } : rest,
     });
   }
 }

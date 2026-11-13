@@ -7,7 +7,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Notices } from "@/components/feedback/notices";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/ui.ts";
 import { projectContracts, useStartAsk } from "@/features/board/ui.ts";
@@ -27,6 +26,7 @@ import {
   AppShell,
   Breadcrumb,
   HistoryButtons,
+  Notices,
   Sidebar,
   StatusBarSlot,
   TopBarActions,

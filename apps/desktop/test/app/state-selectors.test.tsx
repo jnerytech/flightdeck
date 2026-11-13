@@ -149,7 +149,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
 
   test("a parent that renders for every change does not render these (here: a search opening and closing)", async () => {
     const { UpdateBanner } = await import("../../src/features/appupdate/update-banner.tsx");
-    const { Notices } = await import("../../src/components/feedback/notices.tsx");
+    const { Notices } = await import("../../src/features/shell/notices.tsx");
     const { TeamsPage } = await import("../../src/features/teams/page.tsx");
     const { PersonasPage } = await import("../../src/features/personas/page.tsx");
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
@@ -184,7 +184,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
 
   test("every screen that reads some parts of the state is a memo component, so a parent's render skips it", async () => {
     const { UpdateBanner } = await import("../../src/features/appupdate/update-banner.tsx");
-    const { Notices } = await import("../../src/components/feedback/notices.tsx");
+    const { Notices } = await import("../../src/features/shell/notices.tsx");
     const { AskpassPrompt } = await import("../../src/features/ssh/askpass-prompt.tsx");
     const { QuotaPanel } = await import("../../src/features/quota/quota-panel.tsx");
     const { TeamsPage } = await import("../../src/features/teams/page.tsx");
