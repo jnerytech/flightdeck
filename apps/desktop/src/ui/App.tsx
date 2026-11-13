@@ -15,7 +15,7 @@ import { pairingErrorText } from "@/features/hosts/index.ts";
 import { draftFromLink } from "@/features/hosts/ui.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
 import { activeWorktreeFilter } from "@/features/projects/index.ts";
-import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
+import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/ui.ts";
 import {
   breadcrumb,
   firstTerminalTab,
