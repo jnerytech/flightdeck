@@ -4,7 +4,7 @@ import type { Board } from "../board/board.ts";
 import type { UsageIndexer } from "../costs/usage-indexer.ts";
 import { FlightdeckError, featureOff, resolveAllowedCwd } from "../kernel/index.ts";
 import type { Quota } from "../quota/index.ts";
-import type { AgentRuntime, CompleteOptions, CompleteResult } from "../runtime/types.ts";
+import type { AgentRuntime, CompleteOptions, CompleteResult } from "../runtime/index.ts";
 import { repoContext } from "./context.ts";
 import { AssistantService } from "./service.ts";
 

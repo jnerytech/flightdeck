@@ -20,7 +20,7 @@ import {
 import type { UsageIndexer } from "../costs/usage-indexer.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { type Quota, realTimers, type Timers } from "../quota/index.ts";
-import type { CompleteOptions, CompleteResult } from "../runtime/types.ts";
+import type { CompleteOptions, CompleteResult } from "../runtime/index.ts";
 import { assistantDir } from "./paths.ts";
 
 /** How long a second call waits for the one running on this host before it gives up. */

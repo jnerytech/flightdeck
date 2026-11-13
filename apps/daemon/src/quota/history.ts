@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { QuotaHistory as QuotaHistoryResult } from "@flightdeck/protocol";
-import type { QuotaReading } from "../runtime/types.ts";
+import type { QuotaReading } from "../runtime/index.ts";
 
 export interface QuotaHistoryOptions {
   db: Database;
