@@ -53,7 +53,7 @@ describe("externos-lista-velha: a list answered late does not undo a newer frame
         return null;
       },
     });
-    const refreshing = store.refreshHub();
+    const refreshing = store.sessionLists.refresh();
     // Meanwhile the hook happened and its frame arrived.
     store.external.onExternal("h", { type: "external.updated", session: waiting } as never);
     answerList();

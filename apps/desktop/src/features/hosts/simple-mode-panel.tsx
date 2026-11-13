@@ -83,7 +83,7 @@ export function SimpleModePanel(props: Readonly<{ store: AppStore; host: HostVie
             variant="outline"
             onClick={() => {
               // The app shows simple mode for the selected host: this page's host is the one meant.
-              store.select(host.id, null);
+              store.subscriptions.select(host.id, null);
               store.uiModes.choose(host.id, "simple");
             }}
           >

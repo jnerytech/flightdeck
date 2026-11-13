@@ -43,7 +43,7 @@ function setup(
   });
   store.i18n.start();
   store.projectList.load = (async () => []) as never;
-  store.refreshHub = (async () => {}) as never;
+  store.sessionLists.refresh = (async () => {}) as never;
   store.hostCommand = (async (_host: string, type: string) => {
     if (type === "project.trust.state")
       return { items: [{ path: "/work/api", trusted: false, via: null }] };

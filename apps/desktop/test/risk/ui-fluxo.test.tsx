@@ -123,7 +123,7 @@ describe("risco-ui: do daemon à tela", () => {
       "Um pedido de risco alto só é aprovado segurando o botão.",
     );
     // The open session's own answer is held to the same rule.
-    store.select(hostId, sessionId);
+    store.subscriptions.select(hostId, sessionId);
     await settle(() => store.getState().sessions[`${hostId}/${sessionId}`]?.items.length !== 0);
     await settle(() =>
       (store.getState().sessions[`${hostId}/${sessionId}`]?.items ?? []).some(

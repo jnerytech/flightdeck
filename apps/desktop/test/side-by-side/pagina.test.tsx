@@ -68,8 +68,8 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
       name: "primeira",
     })) as string;
     await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status === "idle");
-    store.select(hostId, null);
-    await store.refreshHub();
+    store.subscriptions.select(hostId, null);
+    await store.sessionLists.refresh();
     const projectKey = hubRows(store.getState())[0]?.projectKey as string;
     const went: Route[] = [];
     render(
@@ -111,8 +111,8 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
       name: "direta",
     })) as string;
     await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status === "idle");
-    store.select(hostId, null);
-    // No refreshHub here: a deep link or a demo opens the page before the Sessions screen ever did.
+    store.subscriptions.select(hostId, null);
+    // No sessionLists.refresh here: a deep link or a demo opens the page before the Sessions screen ever did.
     expect(hubRows(store.getState()).some((r) => r.sessionId === id)).toBe(false);
     render(
       <Page

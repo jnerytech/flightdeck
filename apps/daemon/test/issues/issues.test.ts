@@ -274,6 +274,26 @@ describe("issues", () => {
     expect(await code(broken.service.list(broken.project.id))).toBe("invalid_state");
   });
 
+  test("GitHub: a row gh prints without a title fails the list and the get, it is never dropped (#1609)", async () => {
+    const bad = ghIssue(7, { title: undefined });
+    fake("gh", GH_RULES([ghIssue(6), bad]));
+    const { service, project } = await setup(GH_REMOTE, { provider: "github" });
+    await expect(service.list(project.id)).rejects.toThrow(/does not fit/);
+    await expect(service.get(project.id, "7")).rejects.toThrow(/does not fit/);
+  });
+
+  test("Azure: an item az prints without fields fails the list and the get, it is never dropped (#1609)", async () => {
+    const bad = { id: 7 };
+    fake("az", [
+      { args: ["account", "show"], stdout: "eu@acme.com\n" },
+      { args: ["boards", "query"], stdout: JSON.stringify([azItem(6), bad]) },
+      { args: ["boards", "work-item", "show"], stdout: JSON.stringify(bad) },
+    ]);
+    const { service, project } = await setup(AZ_REMOTE, { provider: "azure" });
+    await expect(service.list(project.id)).rejects.toThrow(/does not fit/);
+    await expect(service.get(project.id, "7")).rejects.toThrow(/does not fit/);
+  });
+
   test("criar card: título, descrição com o link e a issueRef; a mesma issue não vira dois cards", async () => {
     fake("gh", GH_RULES([ghIssue(7)]));
     const { service, project, board } = await setup(GH_REMOTE, { provider: "github" });

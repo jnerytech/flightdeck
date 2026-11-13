@@ -185,7 +185,7 @@ function urlName(what: string, value: string): string {
   return value;
 }
 
-export const cliJson = async <T>(
+const cliJson = async <T>(
   name: string,
   args: string[],
   cwd: string,

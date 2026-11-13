@@ -59,8 +59,8 @@ async function setup(names: string[]) {
     ids.push(id);
     await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status !== undefined);
   }
-  store.select(hostId, null);
-  await store.refreshHub();
+  store.subscriptions.select(hostId, null);
+  await store.sessionLists.refresh();
   const projectKey = hubRows(store.getState())[0]?.projectKey as string;
   const opened: string[] = [];
   render(

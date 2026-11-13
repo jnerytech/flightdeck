@@ -67,7 +67,7 @@ describe("scale-screens: Sessions and the sidebar under a burst at 200 sessions 
   test("each renders at most once per summary, and the Sessions page asks its hosts for nothing", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
     let asked = 0;
-    store.refreshHub = async () => {
+    store.sessionLists.refresh = async () => {
       asked += 1;
     };
     const hidden = store as unknown as {

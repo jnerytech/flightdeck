@@ -4,8 +4,8 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
-import { cli, cliJson, cliOk } from "../board/pr.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { cli, cliOk } from "../board/pr.ts";
+import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
 
 /** Search of the issues assigned to you and still open. */
 export const GITHUB_DEFAULT_SEARCH = "assignee:@me is:open";
@@ -16,6 +16,14 @@ export const AZURE_DEFAULT_WIQL =
   "AND [System.State] NOT IN ('Closed','Done','Removed') AND [System.TeamProject] = @project " +
   "ORDER BY [System.ChangedDate] DESC";
 const LIMIT = 50;
+
+/** A CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
+const cliJsonWith = async <T>(
+  schema: z.ZodType<T>,
+  name: string,
+  args: string[],
+  cwd: string,
+): Promise<T> => parseJsonWith(schema, await cliOk(name, args, cwd));
 
 /**
  * An issue id goes to the CLI as an argument of its own, so it is digits and nothing else: a
@@ -63,7 +71,8 @@ export class GithubIssues implements IssueProvider {
   }
 
   async list(cwd: string, query?: string): Promise<Issue[]> {
-    const issues = await cliJson<GhIssue[]>(
+    const issues = await cliJsonWith(
+      z.array(GhIssueRow),
       "gh",
       [
         "issue",
@@ -82,7 +91,8 @@ export class GithubIssues implements IssueProvider {
   }
 
   async get(cwd: string, id: string): Promise<Issue> {
-    const issue = await cliJson<GhIssue>(
+    const issue = await cliJsonWith(
+      GhIssueRow,
       "gh",
       ["issue", "view", checkedId(id), "--json", GH_FIELDS],
       cwd,
@@ -122,10 +132,12 @@ interface AzIdentity {
   uniqueName?: string;
 }
 
-interface AzWorkItem {
-  id: number;
-  fields: Record<string, unknown>;
-}
+/** One work item as `az boards query|work-item show` prints it; the fields are read one by one. */
+const AzWorkItemRow = z.object({
+  id: z.number(),
+  fields: z.record(z.string(), z.unknown()),
+});
+type AzWorkItem = z.infer<typeof AzWorkItemRow>;
 
 /** The text of a field: a string as it is; anything else, which Azure DevOps does not send, is empty. */
 const textOf = (value: unknown): string => (typeof value === "string" ? value : "");
@@ -167,7 +179,8 @@ export class AzureIssues implements IssueProvider {
   }
 
   async list(cwd: string, query?: string): Promise<Issue[]> {
-    const items = await cliJson<AzWorkItem[]>(
+    const items = await cliJsonWith(
+      z.array(AzWorkItemRow),
       "az",
       ["boards", "query", "--wiql", query ?? AZURE_DEFAULT_WIQL, ...this.scope, "--output", "json"],
       cwd,
@@ -206,7 +219,8 @@ export class AzureIssues implements IssueProvider {
   }
 
   private show(cwd: string, id: string): Promise<AzWorkItem> {
-    return cliJson<AzWorkItem>(
+    return cliJsonWith(
+      AzWorkItemRow,
       "az",
       ["boards", "work-item", "show", "--id", checkedId(id), ...this.scope, "--output", "json"],
       cwd,

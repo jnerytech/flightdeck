@@ -41,7 +41,7 @@ export function StartScreen(
           {firstHost && (
             <Button
               onClick={() => {
-                props.store.select(firstHost.id, null);
+                props.store.subscriptions.select(firstHost.id, null);
                 go({ name: "new-session", host: firstHost.id });
               }}
             >
