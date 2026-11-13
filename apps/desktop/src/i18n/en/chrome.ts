@@ -168,6 +168,8 @@ export const chrome = {
     label: "Settings sections",
     search: "Search settings",
     none: "No setting matches.",
+    matches: "{n} sections match.",
+    matchesOne: "1 section matches.",
     budgets: "Budgets",
     watch: "Watch and fix PRs",
     messaging: "Messages between sessions",
