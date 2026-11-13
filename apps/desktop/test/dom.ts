@@ -116,7 +116,7 @@ export function liveScreen<T extends object>(within: (element: HTMLElement) => T
 // Every UI test file imports this module, so the screens are loaded here, once, before any test.
 registerDom();
 const { preloadAllScreens } = await import("../src/app/lazy-screen.ts");
-await import("../src/ui/Screens.tsx");
+await import("../src/app/Screens.tsx");
 await preloadAllScreens();
 
 /** The lines React printed about two siblings with one key. */

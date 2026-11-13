@@ -169,6 +169,8 @@ export const chrome = {
     label: "Seções das configurações",
     search: "Buscar nas configurações",
     none: "Nenhuma configuração corresponde.",
+    matches: "{n} seções correspondem.",
+    matchesOne: "1 seção corresponde.",
     budgets: "Orçamentos",
     watch: "Vigiar e corrigir PRs",
     messaging: "Mensagens entre sessões",

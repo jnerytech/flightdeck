@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { InlineNotice, useBusy } from "@/shared/feedback/index.ts";
@@ -12,6 +12,10 @@ export interface HostDraft {
   port: string;
   token: string;
 }
+
+/** The fields filled in by hand, in the order the form shows them. */
+const FIELDS = ["name", "address", "port", "token"] as const;
+type FieldName = (typeof FIELDS)[number];
 
 export const emptyDraft = (): HostDraft => ({ name: "", address: "", port: "7420", token: "" });
 
@@ -47,13 +51,34 @@ export function HostForm(
   const [linkError, setLinkError] = useState<string | null>(null);
   /** The token the pasted link carried and the host it was read with (never the Token field's own). */
   const [bound, setBound] = useState<BoundToken | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  /** What is wrong with each field the last submit refused, in words that name it (#2585). */
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldName, string>>>({});
+  /** The field that takes the focus once the form has drawn its error. */
+  const [focusOn, setFocusOn] = useState<FieldName | "link" | null>(null);
+  /** The connection test's error the person has answered by editing the token. */
+  const [answered, setAnswered] = useState<string | null>(null);
+  const inputs = useRef<Partial<Record<FieldName | "link", HTMLInputElement | null>>>({});
   // The fields to fill by hand are folded; they open on what needs them: a draft (a link from
   // outside), a pasted link they now show, or an error to fix there (#1199).
   const [byHand, setByHand] = useState(props.initial !== undefined);
-  const set = (key: keyof HostDraft) => (e: { target: { value: string } }) =>
+  const set = (key: FieldName) => (e: { target: { value: string } }) => {
     setDraft({ ...draft, [key]: e.target.value });
-  const error = problem ?? props.error ?? null;
+    setFieldErrors(({ [key]: _gone, ...rest }) => rest);
+    if (key === "token") setAnswered(props.error ?? null);
+  };
+  // A refused token is the token field's to say; the other errors of the test stay in one line.
+  const refusal = props.error === t("hostForm.probeRefused");
+  const refused = refusal && answered !== props.error;
+  const error = refusal ? null : (props.error ?? null);
+  const tokenError = fieldErrors.token ?? (refused ? props.error : null);
+  const input = (key: FieldName | "link") => (element: HTMLInputElement | null) => {
+    inputs.current[key] = element;
+  };
+  useEffect(() => {
+    if (focusOn === null) return;
+    inputs.current[focusOn]?.focus();
+    setFocusOn(null);
+  }, [focusOn]);
   // An error from the connection test (the form's own are opened in `onSubmit`).
   useEffect(() => {
     if (props.error) setByHand(true);
@@ -66,21 +91,26 @@ export function HostForm(
         setLink(maskOnLeave(link));
         // A link that is refused names a host the form does not hold: it is fixed or emptied first.
         if (linkError) {
-          setProblem(linkError);
+          setFocusOn("link");
           return;
         }
-        if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
-          setProblem(t("hostForm.missing"));
-          setByHand(true);
-          return;
-        }
+        const problems: Partial<Record<FieldName, string>> = {};
+        if (!draft.name.trim()) problems.name = t("hostForm.missingName");
+        if (!draft.address.trim()) problems.address = t("hostForm.missingAddress");
         const port = Number(draft.port);
         if (!/^\d+$/.test(draft.port) || port < 1 || port > 65535) {
-          setProblem(t("hostForm.badPort"));
+          problems.port = t("hostForm.badPort");
+        }
+        if (!draft.token.trim()) problems.token = t("hostForm.missingToken");
+        setFieldErrors(problems);
+        const first = FIELDS.find((key) => problems[key]);
+        if (first) {
           setByHand(true);
+          setFocusOn(first);
           return;
         }
-        setProblem(null);
+        // The test runs again: a refusal of the token is shown again only if it comes back.
+        setAnswered(null);
         run(() =>
           props.onSubmit({ ...draft, name: draft.name.trim(), address: draft.address.trim() }),
         );
@@ -91,6 +121,7 @@ export function HostForm(
         {(control) => (
           <Input
             {...control}
+            ref={input("link")}
             value={link}
             placeholder="flightdeck://…"
             // A typed link shows its token until the field is left: not for autofill, history or the spellchecker.
@@ -104,6 +135,12 @@ export function HostForm(
               setLinkError(edit.problem ? pairingErrorText(t, edit.problem) : null);
               if (edit.fields) {
                 setDraft({ ...draft, ...edit.fields });
+                // What the link fills is no longer missing, and a new token answers a refused one.
+                const filled = Object.keys(edit.fields);
+                setFieldErrors((now) =>
+                  Object.fromEntries(Object.entries(now).filter(([key]) => !filled.includes(key))),
+                );
+                if (filled.includes("token")) setAnswered(props.error ?? null);
                 setByHand(true);
               } else if (bound && !edit.bound && draft.token === bound.token) {
                 // The link that carried the token no longer has one: the form does not keep it.
@@ -123,34 +160,48 @@ export function HostForm(
       >
         <summary>{t("hostForm.byHand")}</summary>
         <Stack gap={4}>
-          <Field label={t("hostForm.name")}>
+          <Field label={t("hostForm.name")} error={fieldErrors.name}>
             {(control) => (
               <Input
                 {...control}
+                ref={input("name")}
                 value={draft.name}
                 onChange={set("name")}
                 placeholder={t("hostForm.namePlaceholder")}
               />
             )}
           </Field>
-          <Field label={t("hostForm.address")}>
+          <Field label={t("hostForm.address")} error={fieldErrors.address}>
             {(control) => (
               <Input
                 {...control}
+                ref={input("address")}
                 value={draft.address}
                 onChange={set("address")}
                 placeholder="100.64.0.1" // NOSONAR: an example address in a placeholder
               />
             )}
           </Field>
-          <Field label={t("hostForm.port")}>
+          <Field label={t("hostForm.port")} error={fieldErrors.port}>
             {(control) => (
-              <Input {...control} value={draft.port} onChange={set("port")} inputMode="numeric" />
+              <Input
+                {...control}
+                ref={input("port")}
+                value={draft.port}
+                onChange={set("port")}
+                inputMode="numeric"
+              />
             )}
           </Field>
-          <Field label={t("hostForm.token")}>
+          <Field label={t("hostForm.token")} error={tokenError}>
             {(control) => (
-              <Input {...control} type="password" value={draft.token} onChange={set("token")} />
+              <Input
+                {...control}
+                ref={input("token")}
+                type="password"
+                value={draft.token}
+                onChange={set("token")}
+              />
             )}
           </Field>
         </Stack>

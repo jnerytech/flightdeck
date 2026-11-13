@@ -107,7 +107,12 @@ export function HostOfflineBanner(
             {pairError && <p role="alert">{pairError}</p>}
           </form>
         )}
-        {answered && <p>{t("hostOffline.still")}</p>}
+        {/* Always in the page, so a screen reader announces what lands in it (#2586). */}
+        <p role="status">
+          {connecting && asked !== null
+            ? t("hostOffline.connecting")
+            : answered && t("hostOffline.still")}
+        </p>
         {hint === "linux" && (
           <Stack gap={1}>
             <p>{t("hostOffline.hintLinux")}</p>

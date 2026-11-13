@@ -4,7 +4,7 @@
  */
 
 import type { DiffFile } from "@flightdeck/protocol";
-import type { Rev } from "../board/index.ts";
+import type { Rev } from "../kernel/index.ts";
 
 /** What a target (`session:<claudeSessionId>` or `card:<id>`) points at. */
 export interface ResolvedTarget {
