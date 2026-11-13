@@ -17,7 +17,9 @@ import { createCentral } from "./central/wiring.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
-import { type CliDeps, COMMANDS } from "./cli/commands.ts";
+import type { CliDeps } from "./cli/commands.ts";
+import { reportFailure } from "./cli/exit.ts";
+import { runCommandCli } from "./cli/run.ts";
 import {
   type Config,
   claudeSettingsPath,
@@ -37,7 +39,6 @@ import {
   AlreadyRunningError,
   acquireLock,
   DAEMON_VERSION,
-  EXIT_ALREADY_RUNNING,
   type Lock,
   type Logger,
   present,
@@ -730,14 +731,9 @@ async function bootDaemon(
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Daemon | null> {
+  if (await runCommandCli(argv, deps)) return null;
   try {
     const args = parseArgs(argv);
-    const run = COMMANDS[args.command];
-    if (run) {
-      const code = await run(args, deps);
-      if (code !== null) deps.exit(code);
-      return null;
-    }
     let stopping: Promise<void> | null = null;
     // SIGINT, SIGTERM and `daemon.shutdown` all close the same way, once.
     const stop = () => {
@@ -749,8 +745,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
     deps.onSignal("SIGTERM", stop);
     return daemon;
   } catch (error) {
-    deps.log.error(`flightdeckd: ${error instanceof Error ? error.message : String(error)}`);
-    deps.exit(error instanceof AlreadyRunningError ? EXIT_ALREADY_RUNNING : 1);
+    reportFailure(error, deps);
     return null;
   }
 }

@@ -17,6 +17,17 @@ command exits 0 and prints an empty line.
 
 Windows is not measured: Windows is not in CI (#534), so a figure needs a run on a Windows host.
 
+## After (measured 2026-11-13, same command, same machine, same load)
+
+Ten runs, wall time in ms, sorted:
+
+    216 233 258 264 295 317 325 361 383 475
+
+Median about 310 ms, fastest 216 ms: about 2.5 times faster. What is left is the cost of loading the
+config schema and the costs domain, which `statusline` needs; the daemon's own start-up is not in it.
+`flightdeckd hook session-start` loads 48 source files and none of `main.ts`, `server/` or
+`messaging/` (the new test `cli-startup` checks both commands).
+
 ## Decision
 
 - `bin.ts` parses the arguments and runs a command from the `COMMANDS` table before it imports
@@ -24,3 +35,6 @@ Windows is not measured: Windows is not in CI (#534), so a figure needs a run on
 - Each command loads its own module with `await import()`, so `statusline` loads the config and the
   costs domain and nothing else.
 - What a command prints and returns does not change, and neither does the daemon's own start-up.
+- The command modules are loaded on demand, so a command that does not need `messaging/` never
+  evaluates it. A separate narrow entry for `messaging/cli.ts` would save about 10 ms for the
+  `message` command only (226 ms against 215 ms to import), so it is not added.

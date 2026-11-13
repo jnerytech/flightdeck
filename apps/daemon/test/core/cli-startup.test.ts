@@ -41,4 +41,19 @@ describe("cli-startup", () => {
     expect(loaded.includes("main.ts")).toBe(false);
     expect(loaded.some((file) => file.startsWith("server/"))).toBe(false);
   });
+
+  test("flightdeckd hook session-start starts without the daemon and the messaging service", async () => {
+    const { code, loaded } = await loadedBy([
+      "hook",
+      "session-start",
+      "--url",
+      "ws://127.0.0.1:1",
+      "--token",
+      "t",
+    ]);
+    expect(code).toBe(0);
+    expect(loaded.includes("central/hook-command.ts")).toBe(true);
+    expect(loaded.includes("main.ts")).toBe(false);
+    expect(loaded.some((file) => file.startsWith("messaging/"))).toBe(false);
+  });
 });
