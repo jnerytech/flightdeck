@@ -58,8 +58,38 @@ import { AppLog } from "../app-log.ts";
 import { type AppState, type HostView, needsYou } from "../app-state.ts";
 import type { AppKernel } from "../kernel.ts";
 
-/** The shell preferences: what the person set for the window and what the app keeps about itself, none of it a host's (#2376). */
-export interface ShellSlices {
+/** What the app does with the sessions of the hosts: their lists, stream, commands, answers and the tray that shows them (#2376). */
+interface SessionSlices {
+  /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
+  readonly tray: TraySlice;
+  /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
+  readonly permissions: PermissionsSlice;
+  /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
+  readonly summaries: SummariesSlice;
+  /** What a host tells about the Claude sessions started in a terminal (#1596). */
+  readonly external: ExternalSessionsSlice;
+  /** What the Sessions screen lists from the online hosts (#1596). */
+  readonly sessionLists: SessionListsSlice;
+  /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
+  readonly finished: FinishedSlice;
+  /** What a host's session events do to the conversations the app holds (#1596). */
+  readonly stream: SessionStreamSlice;
+  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
+  readonly subscriptions: SessionSubscriptions;
+  /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
+  readonly commands: SessionCommandsSlice;
+  /** What a conversation screen asks of the app: the commands, copying a text, answering a request. */
+  readonly sessionActions: SessionActions;
+  /** The history read from every host (#1596): its global search. */
+  readonly history: HistorySlice;
+  /** What happened on the hosts while the app was away (issue #1344, #1596). */
+  readonly activity: ActivitySlice;
+  /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
+  readonly sessions: SessionsSlice;
+}
+
+/** The shell preferences, what the person set for the window and what the app keeps about itself, and the session slices that read them (#2376). */
+export interface ShellSlices extends SessionSlices {
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
   readonly density: DensityController;
@@ -103,32 +133,6 @@ export interface ShellSlices {
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
   readonly appLog: AppLog;
   readonly settings: SettingsSlice;
-  /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
-  readonly tray: TraySlice;
-  /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
-  readonly permissions: PermissionsSlice;
-  /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
-  readonly summaries: SummariesSlice;
-  /** What a host tells about the Claude sessions started in a terminal (#1596). */
-  readonly external: ExternalSessionsSlice;
-  /** What the Sessions screen lists from the online hosts (#1596). */
-  readonly sessionLists: SessionListsSlice;
-  /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
-  readonly finished: FinishedSlice;
-  /** What a host's session events do to the conversations the app holds (#1596). */
-  readonly stream: SessionStreamSlice;
-  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
-  readonly subscriptions: SessionSubscriptions;
-  /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
-  readonly commands: SessionCommandsSlice;
-  /** What a conversation screen asks of the app: the commands, copying a text, answering a request. */
-  readonly sessionActions: SessionActions;
-  /** The history read from every host (#1596): its global search. */
-  readonly history: HistorySlice;
-  /** What happened on the hosts while the app was away (issue #1344, #1596). */
-  readonly activity: ActivitySlice;
-  /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
-  readonly sessions: SessionsSlice;
 }
 
 type PaletteDeps = ConstructorParameters<typeof PaletteSlice>[0];
@@ -185,8 +189,8 @@ interface ShellDeps {
 }
 
 /**
- * Builds the shell preferences. Every slice is built through its own domain's entry; the store
- * keeps only what it owns (#2376).
+ * Builds the shell preferences and the session slices that read them. Every slice is built through
+ * its own domain's entry; the store keeps only what it owns (#2376).
  */
 export function composeShell(kernel: AppKernel<AppState>, deps: ShellDeps): ShellSlices {
   const { platform } = deps;
@@ -252,27 +256,11 @@ export function composeShell(kernel: AppKernel<AppState>, deps: ShellDeps): Shel
   return { ...shell, ...composeSessions(kernel, deps, shell) };
 }
 
-/** The slices that read the shell's preferences: the sessions, their stream, the permissions and the tray. */
-type SessionSlices = Pick<
-  ShellSlices,
-  | "tray"
-  | "permissions"
-  | "summaries"
-  | "external"
-  | "sessionLists"
-  | "finished"
-  | "stream"
-  | "subscriptions"
-  | "commands"
-  | "sessionActions"
-  | "history"
-  | "activity"
-  | "sessions"
->;
-
 /**
  * Builds the session slices. They refer to each other through closures that run only after this
  * function returns, so a `const` declared further down is read late, never during construction.
+ * No `wire*` call reads another slice or the state while it is built, so the order below is free;
+ * the store builds this group first, ahead of the hosts and the vault.
  */
 function composeSessions(
   kernel: AppKernel<AppState>,
