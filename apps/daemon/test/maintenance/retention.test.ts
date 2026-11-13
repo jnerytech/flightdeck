@@ -289,4 +289,25 @@ describe("retention: state file", () => {
     });
     expect(await maintenance.lastPrune()).toEqual(lastPrune);
   });
+
+  test("a state file an older daemon wrote, without the later counts, still reads and prunes (#1609)", async () => {
+    const dataDir = tempDir("fd-maint-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const old = {
+      at: "2026-09-01T12:00:00.000Z",
+      dryRun: false,
+      counts: { events: 4, permission_requests: 1, external_sessions: 2 },
+    };
+    writeFileSync(join(dataDir, "maintenance.json"), JSON.stringify({ lastPrune: old }));
+    const maintenance = new Maintenance({
+      db: store.db,
+      dataDir,
+      retention: { eventsDays: 30, externalSessionsDays: 30, usageDays: 400 },
+    });
+    const read = (await maintenance.lastPrune().catch(() => null))?.counts;
+    expect([read?.events, read?.usage_entries, read?.quota_samples]).toEqual([4, 0, 0]);
+    await maintenance.prune(true);
+    expect((await maintenance.lastPrune())?.dryRun).toBe(true);
+  });
 });
