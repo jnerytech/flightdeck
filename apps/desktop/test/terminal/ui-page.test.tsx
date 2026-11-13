@@ -32,7 +32,7 @@ async function setup(listFails = false, files = true, launch: string | null = nu
     maxDelayMs: 20,
   });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
   const { terminalId } = await store.terminals.host(hostId).open(d.project, 80, 24);
   if (listFails) {

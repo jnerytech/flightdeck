@@ -50,14 +50,16 @@ function host(local = false) {
       return { ok: true, data: { target: "session:abc", root: "/r", base: null, files: [] } };
     },
     watchChanges: () => () => {},
-    canOpenPaths: () => local,
-    openPath: async (_host: string, path: string) => {
-      opened.push(`open ${path}`);
-      return true;
-    },
-    revealPath: async (_host: string, path: string) => {
-      opened.push(`reveal ${path}`);
-      return true;
+    system: {
+      canOpenPaths: () => local,
+      openPath: async (_host: string, path: string) => {
+        opened.push(`open ${path}`);
+        return true;
+      },
+      revealPath: async (_host: string, path: string) => {
+        opened.push(`reveal ${path}`);
+        return true;
+      },
     },
   } as unknown as AppStore;
   return { store, read, opened };

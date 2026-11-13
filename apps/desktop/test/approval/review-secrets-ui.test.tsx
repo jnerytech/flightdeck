@@ -37,7 +37,7 @@ const panel = async (language: "en" | "pt-BR") => {
     }),
     hostCommand: async () => null,
     watchChanges: () => () => {},
-    canOpenPaths: () => false,
+    system: { canOpenPaths: () => false },
     i18n: { t: translator(language) },
   } as unknown as AppStore;
   render(

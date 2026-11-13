@@ -26,7 +26,7 @@ const FRAME = {
 async function setup(options: ConstructorParameters<typeof AppStore>[1] = {}) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000, ...options });
   const daemon = legacyDaemon(cleanups);
-  const hostId = await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("external.watch"));
   const meta = await store.secrets.add({

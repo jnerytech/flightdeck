@@ -40,7 +40,7 @@ async function setup(language: "en" | "pt-BR", status: ExternalStatus | null) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
   store.i18n.start();
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   if (status) {
     // What external.watch brings: the same session, run by another `claude` (VS Code's terminal).

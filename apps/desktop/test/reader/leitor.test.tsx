@@ -44,7 +44,7 @@ async function setup() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   return { store };
@@ -155,7 +155,7 @@ describe("leitor", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const hostId = store.getState().hosts[0]?.id ?? "";
@@ -185,7 +185,7 @@ describe("leitor: a transcript opened at start-up", () => {
     const server = d.listen();
     const mem = memoryPlatform();
     const first = new AppStore(mem.platform, { baseDelayMs: 60_000 });
-    const hostId = await first.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    const hostId = await first.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     first.dispose();
     // The next start reads its token slowly, as a real secret store can: the route is already
     // there when the app first draws.

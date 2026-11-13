@@ -26,7 +26,7 @@ async function open(ui: { mode: "full" | "simple"; locked: boolean }) {
   });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
   await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
   return { store, hostId };
 }

@@ -44,7 +44,7 @@ async function online(language: "en" | "pt-BR", features?: string[], pauseAt: nu
   });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   await act(async () => {
@@ -81,7 +81,7 @@ async function twoHosts(language: "en" | "pt-BR") {
   for (const name of ["alfa", "beta"] as const) {
     const server = makeDaemon(cleanups, { quota: quotas[name] }).listen();
     await act(async () => {
-      await store.addHost({ name, url: server.url, token: TOKEN });
+      await store.roster.add({ name, url: server.url, token: TOKEN });
     });
   }
   await settle(() => store.getState().hosts.filter((h) => h.status === "online").length === 2);

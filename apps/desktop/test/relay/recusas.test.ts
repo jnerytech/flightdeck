@@ -26,7 +26,7 @@ describe("relay: a host that refuses the phase 21 watches and its directory", ()
     ]) {
       daemon.refuse.set(type, `sem ${type}`);
     }
-    await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
     await settle(() => daemon.commands.filter((c) => c.type === "messages.directory").length >= 2);
     // Every watch the app asks on connecting, refused: each refusal is swallowed on its own.
     expect(daemon.asked).toContain("askpass.watch");

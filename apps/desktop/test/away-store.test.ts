@@ -38,7 +38,7 @@ async function start(
   }
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000, now: () => NOW });
   cleanups.push(() => store.dispose());
-  await store.addHost({
+  await store.roster.add({
     name: "alfa",
     url: d.listen(0, undefined, options.features).url,
     token: TOKEN,

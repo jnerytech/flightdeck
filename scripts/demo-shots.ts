@@ -11,8 +11,14 @@ import { inSequence } from "@flightdeck/protocol";
 import { type BrowserContext, chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
-import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
-import { launchFirst } from "./lib/browser.ts";
+import {
+  AXE_RUN_OPTIONS,
+  type AxeViolation,
+  blocking,
+  describeViolation,
+} from "./lib/browser/axe.ts";
+import { launchFirst } from "./lib/browser/browser.ts";
+import { type VisualMode, VOLATILE_RULES } from "./lib/browser/visual.ts";
 import { DEMO_CARD_TEMPLATE } from "./lib/demo/card-templates.ts";
 import { demoFinished, demoInbox } from "./lib/demo/seeds.ts";
 import {
@@ -42,7 +48,6 @@ import {
   waitForStable,
 } from "./lib/styles/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/styles/print-theme.ts";
-import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
 /**

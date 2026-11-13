@@ -44,6 +44,7 @@ import {
 } from "../vault/rules.ts";
 import type { VaultRules } from "../vault/rules-store.ts";
 import type { Vault } from "../vault/vault.ts";
+import { definitionOf, pinnedFilesOf } from "./row-json.ts";
 import { type RunResult, resolveParams, runAction, type SshExecutor } from "./run.ts";
 import { type ActionDef, approvalOf, parseActions, secretsOf, validateAction } from "./schema.ts";
 import { shellLine } from "./shell.ts";
@@ -535,7 +536,7 @@ export class Actions {
       .query("SELECT definition FROM actions WHERE scope = ? ORDER BY name")
       .all(scope) as Array<{ definition: string }>;
     return rows.map((row) => ({
-      action: JSON.parse(row.definition) as ActionDef,
+      action: definitionOf(row.definition),
       source: "app",
       scope,
       base,
@@ -616,7 +617,7 @@ export class Actions {
     const row = this.opts.db
       .query("SELECT declaration, files FROM action_trust WHERE scope = ? AND name = ?")
       .get(found.scope, found.action.name) as TrustRow | null;
-    return row ? { declaration: row.declaration, files: JSON.parse(row.files) } : undefined;
+    return row ? { declaration: row.declaration, files: pinnedFilesOf(row.files) } : undefined;
   }
 
   private async pin(found: Found): Promise<void> {

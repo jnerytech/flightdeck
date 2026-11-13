@@ -28,7 +28,7 @@ async function openReader(lang: "en" | "pt-BR", claudeSessionId: string, live: b
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   const url = live ? makeDaemon(cleanups).listen().url : "ws://127.0.0.1:1/v1/ws";
-  await act(() => store.addHost({ name: "alfa", url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url, token: TOKEN }));
   await settle(() =>
     live
       ? store.getState().hosts[0]?.status === "online"
