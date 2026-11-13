@@ -12,8 +12,7 @@ import type {
   SessionSummary,
 } from "@flightdeck/protocol";
 import type { ExternalSessions } from "../central/external.ts";
-import { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "../history/parser.ts";
-import { requestLine } from "../history/session-line.ts";
+import { MAX_TEXT_BYTES, parseLines, requestLine, truncateUtf8 } from "../history/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
