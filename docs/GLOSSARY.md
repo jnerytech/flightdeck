@@ -178,6 +178,7 @@ test's baseline, with the issue that renames them.
 | `daemon-client` | daemon client | The daemon protocol as the host's own commands speak it to the local daemon: its address, `hello`, then commands and acks |
 | `deps` | dependency | The tools a host needs (git, gh, claude...), probed and reported, and the doctor's checks of the daemon's own setup |
 | `files` | file | The files of a session or a card: the explorer, the search, the viewer, a session's files tab and a card's files panel |
+| `git` | git | The one place `git` is run from: the runners that give every other domain a working directory, the PATH of the moment and an optional byte and time limit (#1612) |
 | `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
 | `harness` | harness | A project's Markdown harness shared as a host template |
 | `history` | history | The conversations Claude Code already recorded, indexed and read only |

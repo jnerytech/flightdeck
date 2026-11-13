@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git as run } from "../../src/board/command.ts";
+import { git as run } from "../../src/git/adapters/git.ts";
 import {
   duSize,
   type WorktreeCard,
