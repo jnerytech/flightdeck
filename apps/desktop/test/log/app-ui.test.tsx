@@ -198,6 +198,30 @@ describe("log-app-ui: the host's own log lines", () => {
     expect(w.store.getState().notices.at(-1)?.text).toContain("2 log lines copied");
   });
 
+  test("copying the host's log lines answers with one toast that names the lines (#2595)", async () => {
+    const w = setup();
+    w.store.hostCommand = (async () => ({ lines: ["a", "b"], path: "/x" })) as never;
+    render(view(w.store, <HostLogs store={w.store} host={host(["logs"])} />));
+    await click(screen.getByRole("button", { name: "Copy the host's last log lines" }));
+    await settle(() => w.copied.length === 1);
+    await settle(() => true);
+    expect(w.store.getState().notices.map((n) => n.kind)).toEqual(["success"]);
+    expect(w.store.getState().notices[0]?.text).toContain("2 log lines copied");
+  });
+
+  test("a clipboard that rejects on the host's log lines shows only the error toast (#2595)", async () => {
+    const w = setup();
+    w.mem.platform.copyText = async () => {
+      throw new Error("clipboard denied");
+    };
+    w.store.hostCommand = (async () => ({ lines: ["a"], path: "/x" })) as never;
+    render(view(w.store, <HostLogs store={w.store} host={host(["logs"])} />));
+    await click(screen.getByRole("button", { name: "Copy the host's last log lines" }));
+    await settle(() => w.store.getState().notices.length > 0);
+    await settle(() => true);
+    expect(w.store.getState().notices.map((n) => n.kind)).toEqual(["error"]);
+  });
+
   test("a host with no log lines says so instead of copying nothing", async () => {
     const w = setup();
     w.store.hostCommand = (async () => ({ lines: [], path: "/x" })) as never;
