@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { DiffFile } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { DiffView } = await import("../src/features/review/diff-view.tsx");
+const { DiffView } = await import("../../src/features/review/diff-view.tsx");
 
 afterEach(cleanup);
 

@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { memoriaHost } from "./memoria-ui-setup.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { memoriaHost } from "../memoria-ui-setup.ts";
+import { settle, uiIdle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { HostsBanner } = await import("../src/features/hosts/hosts-banner.tsx");
-const { DiffView } = await import("../src/features/review/diff-view.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { HostsBanner } = await import("../../src/features/hosts/hosts-banner.tsx");
+const { DiffView } = await import("../../src/features/review/diff-view.tsx");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];

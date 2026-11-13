@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { KnowledgeEntry } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { AdrDraftDialog } = await import("../src/features/sessions/adr-draft-dialog.tsx");
-const { RecapPanel } = await import("../src/features/summary/recap-panel.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { AdrDraftDialog } = await import("../../src/features/sessions/adr-draft-dialog.tsx");
+const { RecapPanel } = await import("../../src/features/summary/recap-panel.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
