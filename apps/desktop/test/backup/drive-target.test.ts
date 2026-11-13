@@ -94,7 +94,7 @@ describe("driveTarget", () => {
     expect(failure).toBeInstanceOf(DriveError);
     expect((failure as DriveError).kind).toBe("auth");
     expect(asked).toEqual([false, true]);
-    expect(drive.calls.length).toBe(2);
+    expect(drive.calls).toHaveLength(2);
   });
 
   test("an error carries the status, never the token", async () => {
@@ -102,7 +102,7 @@ describe("driveTarget", () => {
     await target.put(NAME(1), "a");
     drive.accept = new Set(["good"]);
     const failure = await target.get(NAME(9)).catch((e: unknown) => e);
-    expect(failure instanceof DriveError).toBe(true);
+    expect(failure).toBeInstanceOf(DriveError);
     const message = failure instanceof Error ? failure.message : "";
     expect(message).toContain("not-found");
     expect(message).not.toContain("good");
