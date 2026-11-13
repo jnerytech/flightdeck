@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { GITHUB_SCOPES, GithubLogin } from "../../src/github/login.ts";
-import { poll } from "../support/helpers.ts";
+import {
+  type FakeCli,
+  type FakeRule,
+  installFakeCli,
+} from "../../../../../scripts/test/fake-cli.ts";
+import { GITHUB_SCOPES, GithubLogin } from "../../../src/github/adapters/login.ts";
+import { poll } from "../../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 

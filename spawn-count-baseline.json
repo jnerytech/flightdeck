@@ -6,7 +6,6 @@
   "apps/daemon/src/checkpoints/rewind.ts": 1,
   "apps/daemon/src/checkpoints/snapshots.ts": 1,
   "apps/daemon/src/deps/probe.ts": 1,
-  "apps/daemon/src/github/login.ts": 1,
   "apps/daemon/src/memory/memory.ts": 1,
   "apps/daemon/src/plugins/plugins.ts": 1,
   "apps/daemon/src/power/keep-awake.ts": 1,

@@ -3,7 +3,7 @@
  * daemon holds no token. Query text is constant and every value goes as a variable.
  */
 import { z } from "zod";
-import type { GhResult, GhRunner } from "../github/gh.ts";
+import type { GhResult, GhRunner } from "../github/gh-runner.ts";
 import { githubStatus } from "../github/status.ts";
 import { TRUSTED_ASSOCIATIONS } from "../issues/providers.ts";
 import { FlightdeckError, parseJsonOr } from "../kernel/index.ts";

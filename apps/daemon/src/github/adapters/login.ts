@@ -3,8 +3,8 @@
  * and a page, the person types the code there, and `gh` keeps the token (in the OS keyring where one
  * exists). Flightdeck relays the code and the page; it never sees the token.
  */
-import { killTree } from "../board/command.ts";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import { killTree } from "../../board/command.ts";
+import { FlightdeckError, whichOnPath } from "../../kernel/index.ts";
 
 /** The narrowest scopes the features here need; `project` (write) is not asked for. */
 export const GITHUB_SCOPES = ["repo", "read:project"];

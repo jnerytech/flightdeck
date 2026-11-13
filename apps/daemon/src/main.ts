@@ -28,7 +28,7 @@ import {
 } from "./config.ts";
 import { createCosts } from "./costs/wiring.ts";
 import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
-import { runGh } from "./github/gh.ts";
+import { runGh } from "./github/adapters/gh.ts";
 import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { createHistory } from "./history/wiring.ts";
