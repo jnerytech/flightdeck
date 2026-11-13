@@ -140,11 +140,10 @@ interface WorkerSpec {
 const NO_SPEC: WorkerSpec = { persona: null, model: null, effort: null, permission: null };
 
 /** One worker to start: its name, who it reports to, and what it is started with (null: the default). */
-interface WorkerStart extends Partial<WorkerSpec> {
+interface WorkerStart extends WorkerSpec {
   readonly name: string;
-  readonly persona: string | null;
   readonly coordinator: string | null;
-  readonly number?: number | null;
+  readonly number: number | null;
 }
 
 export class Teams {
@@ -354,15 +353,7 @@ export class Teams {
     team: { name: string; goal: string; checks: string[]; projectId: string },
     worker: WorkerStart,
   ): Promise<StoredMember> {
-    const {
-      name,
-      persona,
-      coordinator,
-      model = null,
-      number = null,
-      permission = null,
-      effort = null,
-    } = worker;
+    const { name, persona, coordinator, model, number, permission, effort } = worker;
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
@@ -698,13 +689,10 @@ export class Teams {
         await /* NOSONAR: workers start one at a time: each takes its own worktree and a free slot */ this.startWorker(
           team,
           {
+            ...spec,
             name: `${label(row.name)} · executora ${number}`,
-            persona: spec.persona,
             coordinator: coordinator?.address ?? null,
-            model: spec.model,
             number,
-            permission: spec.permission,
-            effort: spec.effort,
           },
         );
       members.push(added);
