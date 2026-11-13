@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { MemorySuggestion } from "@flightdeck/protocol";
-import { frontmatter } from "../agentcfg/files.ts";
+import { frontmatter } from "../agentcfg/index.ts";
 import { exists } from "./exists.ts";
 
 const STALE_AFTER_MS = 90 * 86_400_000;

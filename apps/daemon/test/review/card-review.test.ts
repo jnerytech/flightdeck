@@ -164,7 +164,7 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     expect(await reviews.start("c1")).toMatchObject({ state: "failed", anchored: 0 });
     expect([added.length, recorded.length]).toEqual([0, 1]);
     expect((await reviews.start("c1")).cached).toBe(true);
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 
   test("a call cut short at its budget fails, and what it used is recorded", async () => {
@@ -183,7 +183,7 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
       {},
     ]);
     expect((await reviews.start("c1")).state).toBe("done");
-    expect(calls.length).toBe(2);
+    expect(calls).toHaveLength(2);
   });
 
   test("a hold, a running card, an empty diff and a fourth review in a day are refused before any call", async () => {
@@ -266,7 +266,7 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
       "card_review_limit",
       { max: "3" },
     ]);
-    expect(calls.length).toBe(3);
+    expect(calls).toHaveLength(3);
   });
 
   test("from the review: a throw outside the call (the spec read) leaves no running key, and asking again works", async () => {
@@ -280,7 +280,7 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     expect(String(await reviews.start("c1").catch((e) => e))).toContain("git broke");
     fail = false;
     expect((await reviews.start("c1")).state).toBe("done");
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 
   test("from the review: a review left running by a restart is no longer running for the next daemon", async () => {
@@ -312,7 +312,7 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     await reviews.start("c1");
     title = "Fix the login";
     expect((await reviews.start("c1")).cached).toBe(false);
-    expect(calls.length).toBe(2);
+    expect(calls).toHaveLength(2);
     const bare = setup({
       card: () => ({
         id: "c1",
@@ -327,7 +327,7 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
       "card_no_worktree",
       {},
     ]);
-    expect(bare.calls.length).toBe(0);
+    expect(bare.calls).toHaveLength(0);
   });
 
   test("from the review: the review writes in the app's language", async () => {
@@ -356,7 +356,7 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     // One more failed attempt two days later: the window holds one, not four.
     await reviews.start("c1").catch(() => null);
     expect((await reviews.start("c1")).state).toBe("done");
-    expect(calls.length).toBe(5);
+    expect(calls).toHaveLength(5);
   });
 
   test("from the second review: a second ask while the first still reads the diff is refused, even for a changed card", async () => {
@@ -386,6 +386,6 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     release();
     await first;
     expect(reason(second)).toEqual(["card_review_running", {}]);
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 });

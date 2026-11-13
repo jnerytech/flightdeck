@@ -167,7 +167,8 @@ export class HostLink {
     for (const step of this.deps.onlineSteps()) {
       if (step.gate && !hasFeature(hostInfo?.features, step.gate, false)) continue;
       const done = step.run(ctx);
-      if (step.awaited) await done;
+      if (step.awaited)
+        await done; // NOSONAR: only a step marked awaited is waited for, and the steps run in order
       else void done;
     }
   }

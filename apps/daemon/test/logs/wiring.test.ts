@@ -56,11 +56,11 @@ describe("host-log: the daemon's log and what it never writes (#1593)", () => {
       false,
       false,
     ]);
-    expect(text.includes("saw [redacted] [redacted] [redacted] [redacted]")).toBe(true);
+    expect(text).toContain("saw [redacted] [redacted] [redacted] [redacted]");
   });
 
   test("the module hands the server the file log it built, under the `fileLog` key", () => {
     const { hostLog } = built();
-    expect(hostLog.modules[0].server?.fileLog === hostLog.fileLog).toBe(true);
+    expect(hostLog.modules[0].server?.fileLog).toBe(hostLog.fileLog);
   });
 });

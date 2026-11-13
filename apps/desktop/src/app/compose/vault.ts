@@ -233,6 +233,7 @@ export function composeVault(kernel: AppKernel<AppState>, deps: VaultDeps): Vaul
       platform,
       scheduler: backupScheduler,
       vaultWorkFactor: options.vaultWorkFactor,
+      vaultRestored: () => vault.forgetInfos(),
     }),
   };
 }

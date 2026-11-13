@@ -8,7 +8,7 @@ describe("names-wiring: the module the server takes `names` from", () => {
     const { db } = new EventStore(":memory:");
     const built = createNames(db);
     const assigned = built.names.assign("s1", { project: "app", persona: "dev" });
-    expect(built.modules[0].server?.names === built.names).toBe(true);
+    expect(built.modules[0].server?.names).toBe(built.names);
     expect(built.modules[0].server?.names?.get("s1")?.display).toBe(assigned.display);
   });
 });

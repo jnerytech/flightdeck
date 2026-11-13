@@ -16,13 +16,11 @@ setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   jest.useRealTimers();
-  usingFakeTimers = false;
   cleanup();
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
 const realSetTimeout = globalThis.setTimeout;
-let usingFakeTimers = false;
 const VALUE = "reveal-status-value-0123456789";
 
 async function open() {
@@ -50,11 +48,9 @@ async function reveal() {
     });
   });
   await click("Revelar");
-  // The vault answers on a later turn and the clock may be faked: let a few milliseconds pass.
+  // The vault answers on a later turn; the faked clock stays where it is, only the real one passes.
   for (let turn = 0; turn < 50 && screen.queryByText(VALUE) === null; turn++) {
     await act(async () => {
-      if (usingFakeTimers) jest.advanceTimersByTime(1);
-      await Promise.resolve();
       await new Promise<void>((resolve) => realSetTimeout(resolve, 2));
     });
   }
@@ -71,7 +67,6 @@ describe("a revealed value tells a screen reader what happens to it (#2603)", ()
   test("the status line says for how long it shows, warns 5 seconds before it hides, and says when it is hidden", async () => {
     await open();
     jest.useFakeTimers();
-    usingFakeTimers = true;
     await reveal();
     expect(status()?.textContent).toBe("Visível por 10 s");
     await pass(4_800);
