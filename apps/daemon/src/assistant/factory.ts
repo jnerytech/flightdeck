@@ -1,7 +1,7 @@
 /** Phase 40: the host's assistant, wired to the board, the allowed roots and the scanner. */
 import type { SecretScanner } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
-import type { UsageIndexer } from "../costs/usage-indexer.ts";
+import type { UsageIndexer } from "../costs/index.ts";
 import { FlightdeckError, featureOff, resolveAllowedCwd } from "../kernel/index.ts";
 import type { Quota } from "../quota/index.ts";
 import type { AgentRuntime, CompleteOptions, CompleteResult } from "../runtime/index.ts";

@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { AskpassRequest, SshTarget } from "@flightdeck/protocol";
-import { readConfig } from "../costs/statusline.ts";
+import { readConfig } from "../costs/index.ts";
 import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
