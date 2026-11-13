@@ -94,7 +94,8 @@ describe("survivors: the mutants a test should have caught (#1607)", () => {
   });
 
   test("a mutant without a replacement text reads as an empty one", () => {
-    const bare = report({ ...mutant("Survived"), replacement: undefined });
+    const { replacement: _none, ...withoutReplacement } = mutant("Survived");
+    const bare = report(withoutReplacement as ReturnType<typeof mutant>);
     expect(survivorsOf(bare)[0]?.replacement).toBe("");
   });
 });

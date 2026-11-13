@@ -1,4 +1,11 @@
-import type { DomainResult, MutationDomain, MutationReport } from "./report.ts";
+import {
+  type DomainResult,
+  type MutationDomain,
+  type MutationReport,
+  scoreReport,
+  strykerConfigFor,
+  survivorsOf,
+} from "./report.ts";
 
 /** The effects of the weekly run (#1607): scripts/mutation-weekly.ts wires the real ones. */
 export interface WeeklyDeps {
@@ -18,10 +25,25 @@ export interface WeeklyOutcome {
   failed: string[];
 }
 
-export function runWeekly(_deps: WeeklyDeps): WeeklyOutcome {
-  return { results: [], failed: [] };
+export function configPathFor(domain: MutationDomain): string {
+  return `reports/mutation/${domain.name}/stryker.config.json`;
 }
 
-export function configPathFor(_domain: MutationDomain): string {
-  return "";
+export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
+  const results: DomainResult[] = [];
+  const failed: string[] = [];
+  for (const domain of deps.domains) {
+    const configPath = configPathFor(domain);
+    deps.writeConfig(
+      configPath,
+      `${JSON.stringify(strykerConfigFor(domain, deps.base), null, 2)}\n`,
+    );
+    const report = deps.runStryker(configPath) === 0 ? deps.readReport(domain) : null;
+    if (report === null) {
+      failed.push(domain.name);
+      continue;
+    }
+    results.push({ domain: domain.name, ...scoreReport(report), survivors: survivorsOf(report) });
+  }
+  return { results, failed };
 }
