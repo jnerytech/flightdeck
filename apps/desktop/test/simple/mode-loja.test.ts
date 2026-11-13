@@ -13,7 +13,7 @@ async function setup(ui: { mode: "full" | "simple"; locked: boolean }, mem = mem
   const server = d.listen();
   const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui);
   return { store, hostId, mem };
 }
@@ -57,7 +57,7 @@ describe("simple-mode-loja: the app's mode per host", () => {
     const server = d.listen();
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10 });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo);
     expect(store.uiModes.mode(hostId)).toEqual({ mode: "full", canSwitch: true });
   });

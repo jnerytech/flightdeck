@@ -51,7 +51,7 @@ function setup(deps: DepsResult | null) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const copied: string[] = [];
-  store.copyText = (async (text: string) => {
+  store.system.copyText = (async (text: string) => {
     copied.push(text);
     return true;
   }) as never;
@@ -197,7 +197,7 @@ describe("deps-ui: on the host page and the sidebar", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+      await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     });
     await pollFor(() => store.getState().hosts[0]?.status === "online" || undefined, "online");
     await act(

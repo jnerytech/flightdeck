@@ -31,7 +31,9 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     cleanups.push(() => store.dispose());
     const daemon = legacyDaemon(cleanups);
     render(<App store={store} />);
-    const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+    const hostId = await act(() =>
+      store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }),
+    );
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
       store.secrets.add({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
@@ -68,7 +70,9 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     cleanups.push(() => store.dispose());
     const daemon = legacyDaemon(cleanups);
     render(<App store={store} />);
-    const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+    const hostId = await act(() =>
+      store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }),
+    );
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
       store.secrets.add({ name: "staging", type: "token", value: "v", allowedHosts: [hostId] }),
@@ -118,7 +122,9 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     cleanups.push(() => store.dispose());
     const daemon = legacyDaemon(cleanups);
     render(<App store={store} />);
-    const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+    const hostId = await act(() =>
+      store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }),
+    );
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
       store.secrets.add({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),

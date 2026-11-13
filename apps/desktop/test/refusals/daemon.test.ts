@@ -565,12 +565,12 @@ describe("recusas-daemon: the daemon's refusals about folders and sessions", () 
     const server = d.listen(0, 20);
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10 });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     const deadline = Date.now() + 3000;
     while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
       await Bun.sleep(10);
     }
-    await store.createSession(hostId, { cwd: "/folder/nobody/made", prompt: "hi" });
+    await store.commands.create(hostId, { cwd: "/folder/nobody/made", prompt: "hi" });
     expect(store.getState().notices[0]).toMatchObject({
       code: "forbidden_cwd",
       reason: "cwd_outside_roots",

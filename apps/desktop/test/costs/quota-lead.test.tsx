@@ -66,7 +66,7 @@ async function online(language: keyof typeof WORDS, reads: Array<{ name: string;
       )
       .run(`q${++seq}`, `${TODAY}T12:00:00.000Z`, TODAY);
     await act(async () => {
-      await store.addHost({ name, url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name, url: d.listen().url, token: TOKEN });
     });
   }
   await settle(

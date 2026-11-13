@@ -97,8 +97,9 @@ constraints this keeps, each with its cause in the code:
 3. The PR watch and the board sync before `board.stop()`: both use the board. Reverse construction
    order gives this, since both are built after the board.
 4. Every database writer before `store.close()`, `store.close()` before `lock.release()` (the lock
-   guards the database), and `fileLog.flush()` last (the last lines reach the file). The log, the
-   lock and the store are not modules.
+   guards the database), and `fileLog.flush()` last (the last lines reach the file). The lock and
+   the store are not modules; the log is one only to hand the server its `fileLog`, and `main.ts`
+   flushes it itself.
 5. The stops that run after `server.stop()` today keep that place as `"late"` modules: the teleport
    and its inbox (#100: no transcript package outlives the daemon), `history`, the usage index, the
    budgets and the quota. Whether any of them must outlive the server is not shown by the code;

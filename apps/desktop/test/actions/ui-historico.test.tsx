@@ -52,7 +52,7 @@ async function online() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   await sidebar.hostAction("Projetos", "alfa");

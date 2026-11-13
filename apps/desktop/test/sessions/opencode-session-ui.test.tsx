@@ -32,7 +32,7 @@ async function open(lang: "en" | "pt-BR", opencode: boolean) {
   const d = await daemon(cleanups, { opencode });
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pi", url: d.listen().url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pi", url: d.listen().url, token: TOKEN });
   render(<App store={store} />);
   await settle(() => Boolean(store.getState().hosts[0]?.hostInfo));
   await act(async () => {

@@ -256,7 +256,10 @@ describe("desktop: interface", () => {
     expect(screen.getByRole("heading", { name: "minha sessão" })).toBeTruthy();
 
     await act(async () => {
-      await store.createSession(store.getState().hosts[0]?.id ?? "", { cwd: "/fora", prompt: "x" });
+      await store.commands.create(store.getState().hosts[0]?.id ?? "", {
+        cwd: "/fora",
+        prompt: "x",
+      });
     });
     // The error is a toast, titled by its code (phase 10); Fechar closes it.
     await waitFor(() =>

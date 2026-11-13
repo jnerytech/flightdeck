@@ -167,7 +167,7 @@ describe("dormindo-ui: asleep sessions in the hub (issue #157)", () => {
       ["not_idle", "is working"],
     ] as const) {
       w.store.hostCommand = (async () => ({ result })) as never;
-      await w.store.sleepSession("h1", "awake");
+      await w.store.commands.sleep("h1", "awake");
       const last = w.store.getState().notices.at(-1);
       expect(last?.text).toContain(text);
     }

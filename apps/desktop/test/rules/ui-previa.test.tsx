@@ -39,7 +39,7 @@ async function open(allowed = true) {
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push("actions");
-  const hostId = await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   const secret = await store.secrets.add({
     name: "prod-key",

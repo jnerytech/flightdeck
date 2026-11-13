@@ -17,7 +17,7 @@ describe("app-store init: a host added while it starts (#1718)", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
     const started = store.init();
-    const id = await store.addHost({ name: "alfa", url: "ws://127.0.0.1:9", token: "t" });
+    const id = await store.roster.add({ name: "alfa", url: "ws://127.0.0.1:9", token: "t" });
     release();
     await started;
     expect(store.getState().hosts.map((h) => h.id)).toEqual([id]);

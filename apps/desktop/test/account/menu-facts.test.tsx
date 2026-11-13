@@ -151,7 +151,7 @@ describe("account-menu-facts: the sidebar wires the menu to the app (issue #282)
     const store = new AppStore(memoryPlatform(false, "en").platform);
     store.i18n.start();
     const copied: string[] = [];
-    store.copyText = async (text: string) => {
+    store.system.copyText = async (text: string) => {
       copied.push(text);
       return true;
     };

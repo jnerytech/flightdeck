@@ -174,7 +174,7 @@ describe("setup-ui: the Setup screen (issue #164)", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+      await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     await act(async () => {

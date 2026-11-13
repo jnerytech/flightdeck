@@ -48,7 +48,7 @@ async function setup(options: Parameters<typeof makeDaemon>[1] = {}) {
   const store = new AppStore(mem.platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull());
   const open = screen.queryByRole("button", { name: "Abrir host pc" });
   expect(open).not.toBeNull();
@@ -237,7 +237,7 @@ describe("pagina-host", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await act(() =>
-      store.addHost({ name: "velho", url: `ws://127.0.0.1:${old.port}/`, token: TOKEN }),
+      store.roster.add({ name: "velho", url: `ws://127.0.0.1:${old.port}/`, token: TOKEN }),
     );
     await waitFor(() => expect(screen.queryByLabelText("velho: online")).not.toBeNull());
     const open = screen.queryByRole("button", { name: "Abrir host velho" });
@@ -289,7 +289,7 @@ describe("pagina-host", () => {
   test("Comparar hosts ocupa a largura toda da visão geral, abaixo das duas colunas", async () => {
     const { store } = await setup();
     const second = makeDaemon(cleanups).listen(0, 20);
-    await act(() => store.addHost({ name: "pc2", url: second.url, token: TOKEN }));
+    await act(() => store.roster.add({ name: "pc2", url: second.url, token: TOKEN }));
     await waitFor(() => expect(screen.queryByLabelText("pc2: online")).not.toBeNull());
     await waitFor(() =>
       expect(screen.queryByRole("region", { name: "Comparar hosts" })).not.toBeNull(),

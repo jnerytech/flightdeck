@@ -93,7 +93,7 @@ async function app(...hosts: Array<{ name: string; url: string; token: string }>
   cleanups.push(() => store.dispose());
   // The relay is the subject: the dependency check the app starts on connect would run the real programs' versions.
   store.health.check = async () => {};
-  for (const h of hosts) await store.addHost({ name: h.name, url: h.url, token: h.token });
+  for (const h of hosts) await store.roster.add({ name: h.name, url: h.url, token: h.token });
   await until(async () => store.getState().hosts.every((h) => h.hostInfo != null));
   return store;
 }

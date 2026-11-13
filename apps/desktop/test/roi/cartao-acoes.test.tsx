@@ -31,7 +31,7 @@ async function openCard(lang: "en" | "pt-BR", options: Parameters<typeof makeDae
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";

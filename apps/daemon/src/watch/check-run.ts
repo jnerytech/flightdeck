@@ -6,9 +6,11 @@
 import { SecretScanner } from "../snippets/model.ts";
 import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
 import { type CheckRefusal, checkCommandRefusal } from "./check-command.ts";
-import { REMOVED_LINE } from "./trace.ts";
 
 const scanner = new SecretScanner();
+
+/** What takes the place of a line that looked like a secret. */
+export const REMOVED_LINE = "[line removed: it looked like a secret]";
 
 /** A line that looks like a secret is taken out of what a check printed or a command names. */
 export const masked = (text: string): string =>

@@ -162,7 +162,7 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
       wakeDebounceMs: 0,
     });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: "wrong-token" });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: "wrong-token" });
     await rtlWaitFor(() => expect(store.getState().hosts[0]?.status).toBe("unauthorized"), {
       timeout: 4000,
     });

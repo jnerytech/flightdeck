@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import {
+  type AxeViolation,
+  blocking,
+  describeViolation,
+} from "../../../../scripts/lib/browser/axe.ts";
 import { item } from "../../../daemon/test/boardsync/contract.ts";
 import { en } from "../../src/i18n/en.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";
@@ -48,7 +52,7 @@ async function boardPage(
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";

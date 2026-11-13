@@ -62,7 +62,7 @@ async function connect(d: ReturnType<typeof makeDaemon>, mem = memoryPlatform(fa
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   return { store, mem };
 }
@@ -236,7 +236,7 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({
+      await store.roster.add({
         name: "alfa",
         url: d.listen(0, undefined, ["terminal"]).url,
         token: TOKEN,

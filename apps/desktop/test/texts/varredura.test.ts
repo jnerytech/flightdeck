@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { visibleTsLiterals } from "../../../../scripts/lib/i18n-sweep.ts";
+import { visibleTsLiterals } from "../../../../scripts/lib/guards/i18n-sweep.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 

@@ -218,7 +218,7 @@ export function TranscriptReader(
                   <IconActionButton
                     label={t("reader.copyCommand")}
                     onClick={() =>
-                      void store
+                      void store.system
                         .copyText(`claude --resume ${target.claudeSessionId}`)
                         .then((ok) => setCopied(ok))
                     }
@@ -274,7 +274,7 @@ export function TranscriptReader(
           onCancel={() => setAllowing(false)}
           onConfirm={() => {
             setAllowing(false);
-            void store.allowRoot(target.hostId, session.cwd);
+            void store.roster.allowRoot(target.hostId, session.cwd);
           }}
         />
       )}

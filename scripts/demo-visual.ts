@@ -1,14 +1,14 @@
 /**
  * The visual check of the prints (`VISUAL=record|compare`, or `--update`): the real files under
- * the logic of scripts/lib/visual.ts. Baselines are committed in apps/desktop/visual-baseline,
+ * the logic of scripts/lib/browser/visual.ts. Baselines are committed in apps/desktop/visual-baseline,
  * taken from the CI runner (Linux x64), never from another machine: fonts differ.
  */
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
+import { checkShots, type VisualIO, type VisualMode } from "./lib/browser/visual.ts";
 import { isCompleteRun, printedPairs } from "./lib/shots/variants.ts";
-import { checkShots, type VisualIO, type VisualMode } from "./lib/visual.ts";
 
 export const BASELINE_DIR = resolve(import.meta.dir, "../apps/desktop/visual-baseline");
 

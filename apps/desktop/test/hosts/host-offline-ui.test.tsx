@@ -32,7 +32,7 @@ async function offlineHost() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000, wakeDebounceMs: 0 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "pc", url: DEAD, token: TOKEN }));
+  await act(() => store.roster.add({ name: "pc", url: DEAD, token: TOKEN }));
   await waitFor(() => expect(store.getState().hosts[0]?.retry).not.toBeNull());
   const open = await waitFor(() => {
     const button = screen.queryByRole("button", { name: "Abrir host pc" });
@@ -151,7 +151,7 @@ describe("host-offline-ui", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     // 0.0.0.0 reaches this machine and nothing listens: refused, and not a loopback name.
-    await act(() => store.addHost({ name: "pc", url: "ws://0.0.0.0:1/v1/ws", token: TOKEN }));
+    await act(() => store.roster.add({ name: "pc", url: "ws://0.0.0.0:1/v1/ws", token: TOKEN }));
     await waitFor(() => expect(store.getState().hosts[0]?.retry?.kind).toBe("refused"));
     const open = await waitFor(() => {
       const button = screen.queryByRole("button", { name: "Abrir host pc" });
@@ -171,7 +171,7 @@ describe("host-offline-ui", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10 });
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
-    await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+    await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
     await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull());
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Abrir host pc" }));

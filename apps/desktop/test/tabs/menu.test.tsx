@@ -32,7 +32,7 @@ async function setup() {
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   const hostId = await act(() =>
-    store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN }),
+    store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN }),
   );
   await waitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"));
   return { ...d, store, hostId };
@@ -70,7 +70,7 @@ describe("abas: Abrir em nova aba nos menus", () => {
   test("a session row's menu opens it in a new tab", async () => {
     const { store, hostId, project } = await setup();
     const sessionId = await act(() =>
-      store.createSession(hostId, { cwd: project, prompt: "oi", name: "s1" }),
+      store.commands.create(hostId, { cwd: project, prompt: "oi", name: "s1" }),
     );
     await waitFor(() =>
       expect(

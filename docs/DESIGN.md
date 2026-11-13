@@ -148,9 +148,9 @@ should rely on them.
 |---|---|---|
 | Layout ratchet | `apps/desktop/test/layout/layout-ratchet.test.ts` | `src/ui/X.tsx: 12 > 11`: the screen gained a raw layout utility. Use a primitive or a named style. |
 | Style lint | `scripts/lib/styles/style-lint.ts` | A palette colour or a fixed measure in `style`. |
-| One definition per named style | `apps/desktop/test/css-utilities.test.ts` | The names defined twice. |
+| One definition per named style | `apps/desktop/test/layout/css-utilities.test.ts` | The names defined twice. |
 | Contrast | `scripts/test/demo/theme-contrast.test.ts` | The token pair and theme under its ratio. Also any field that draws a border without `border-input`. |
-| Test anchors | `apps/desktop/test/test-anchors.test.tsx` | A `data-testid` with no `testid:` comment, or more of them than `testid-baseline.json` allows. |
+| Test anchors | `apps/desktop/test/layout/test-anchors.test.tsx` | A `data-testid` with no `testid:` comment, or more of them than `testid-baseline.json` allows. |
 | axe | `bun run demo:shots` | Serious and critical violations, `target-size` included, per print. |
 | Layout guards | `scripts/lib/styles/layout-guards.ts` (#192), in the e2e journeys | Each finding is a rule, a `data-slot` path and a detail, judged against a baseline that only goes down. |
 | e2e layout checks | `scripts/e2e/journeys.ts`, `layout()` | Sideways scroll, the end of a list, the summary over the conversation, a split area's tab bar taller than 40 px, the waiting session not at its end, a Needs you line wider than its row. |

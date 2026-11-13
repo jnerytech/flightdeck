@@ -107,7 +107,7 @@ async function online(features?: string[]) {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000, now: () => START, day: utcDay });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.hostInfo !== null);
   return { d, mem, store };
@@ -129,7 +129,7 @@ describe("custos-ui", () => {
     });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.hostInfo !== null);
     const errors: string[] = [];
@@ -402,7 +402,7 @@ describe("custos-ui", () => {
     });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "velho", url: legacy.url, token: TOKEN });
+      await store.roster.add({ name: "velho", url: legacy.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     await stays(
@@ -443,7 +443,7 @@ describe("custos-ui", () => {
     const { showSaveFilePicker: _none, ...noPicker } = mem.win;
     const { createWebPlatform } = await import("../../src/platform/web/index.ts");
     const store = new AppStore(createWebPlatform(noPicker), { now: () => START, day: utcDay });
-    expect(await store.saveFile("a.csv", "x")).toBe(false);
+    expect(await store.system.saveFile("a.csv", "x")).toBe(false);
     expect(store.getState().error).toBe("saving a file is not available on this platform");
   });
   test("com dois hosts, a tela troca de host", async () => {
@@ -452,7 +452,7 @@ describe("custos-ui", () => {
     spend(other, { day: "2026-10-15", key: "kZ", cost: 7 });
     const second = other.listen();
     await act(async () => {
-      await store.addHost({ name: "beta", url: second.url, token: TOKEN });
+      await store.roster.add({ name: "beta", url: second.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[1]?.hostInfo !== null);
     await click("Custos");
@@ -473,7 +473,7 @@ describe("custos-ui", () => {
     spend(other, { day: "2026-10-15", key: "kA", cost: 3, session: "s-term" });
     const second = other.listen();
     await act(async () => {
-      await store.addHost({ name: "beta", url: second.url, token: TOKEN });
+      await store.roster.add({ name: "beta", url: second.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[1]?.hostInfo !== null);
     await click("Custos");

@@ -65,7 +65,7 @@ export function FileViewer(
   // Only where the host's files are this computer's own (the store checks the path again).
   // and only for a file the host could read.
   const full =
-    phase.name === "ready" && props.full && store.canOpenPaths(hostId) ? props.full : null;
+    phase.name === "ready" && props.full && store.system.canOpenPaths(hostId) ? props.full : null;
 
   useEffect(() => {
     let alive = true;
@@ -153,7 +153,7 @@ export function FileViewer(
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => void store.openPath(hostId, full)}
+                onClick={() => void store.system.openPath(hostId, full)}
               >
                 {t("files.openOutside")}
               </Button>
@@ -161,7 +161,7 @@ export function FileViewer(
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => void store.revealPath(hostId, full)}
+                onClick={() => void store.system.revealPath(hostId, full)}
               >
                 {t("files.reveal")}
               </Button>

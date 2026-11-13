@@ -10,16 +10,18 @@ export interface PersonasDeps {
   scanner: PersonasOptions["scanner"];
   /** Phase 12's agent editor, which also writes the personas published as project agents. */
   agents: Parameters<typeof agentPublisher>[0];
+  log?: PersonasOptions["log"];
 }
 
 /** The persona store, with phase 20's pack, and the read a new session makes of it. */
-export function createPersonas({ db, allowedRoots, scanner, agents }: PersonasDeps) {
+export function createPersonas({ db, allowedRoots, scanner, agents, log }: PersonasDeps) {
   const personaStore = new Personas({
     db,
     allowedRoots,
     scanner,
     pack: packPersonas,
     publisher: agentPublisher(agents),
+    log,
   });
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   return { personaStore, prepare };

@@ -51,12 +51,12 @@ describe("toast-repetido: the same error again replaces its toast instead of sta
       const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 60_000 });
       render(<App store={store} />);
       await act(async () => {
-        await store.createSession("no-such-host", { cwd: "/", prompt: "hi" });
+        await store.commands.create("no-such-host", { cwd: "/", prompt: "hi" });
       });
       await settle(() => screen.queryAllByRole("alert").length === 1);
       const first = store.getState().notices[0]?.id ?? 0;
       await act(async () => {
-        await store.createSession("no-such-host", { cwd: "/", prompt: "again" });
+        await store.commands.create("no-such-host", { cwd: "/", prompt: "again" });
       });
       // Exactly one: the old toast leaves (sonner keeps it ~200 ms while it animates out), then none
       // comes back beside the new one.
