@@ -111,4 +111,15 @@ describe("away slice: what happened on the hosts while the app was away (#1709)"
     await again;
     expect(s.away().hosts.map((h) => h.hostId)).toEqual(["h1"]);
   });
+
+  test("an answer that arrives after its host was removed is not added to the summary", async () => {
+    const s = slice();
+    const first = s.activity.loadAway();
+    await settlePlain(() => s.asked() === 1);
+    s.activity.forget("h1");
+    s.answer(0, { ok: true, data: RESULT });
+    await first;
+    expect(s.away().hosts).toEqual([]);
+    expect(s.away().unreached).toEqual([]);
+  });
 });
