@@ -16,7 +16,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
-const { GlobalSearch } = await import("../../src/features/palette/index.ts");
+const { GlobalSearch } = await import("../../src/features/palette/ui.ts");
 
 setDefaultTimeout(30_000);
 
