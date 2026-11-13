@@ -94,6 +94,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
 
   const save = async () => {
     setError(null);
+    setSaid("");
     try {
       const scope = draft.hostScope === "" ? null : draft.hostScope;
       if (editing) {
@@ -130,25 +131,30 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
 
   const toggle = async (target: WebhookTarget) => {
     setProblem(null);
-    focusAfter.current = (section) => rowButton(section, target.id, "toggle");
+    setSaid("");
     try {
       await store.webhooks.edit(target.id, { enabled: !target.enabled });
+      focusAfter.current = (section) => rowButton(section, target.id, "toggle");
       setSaid(
         t(target.enabled ? "webhooks.nowDisabled" : "webhooks.nowEnabled", { name: target.name }),
       );
       refresh();
     } catch (cause) {
       setProblem(failure(cause, "webhooks.errors.change_failed", target.name));
+      // A webhook that is gone leaves the list with the next read.
+      refresh();
     }
   };
 
   const remove = async (target: WebhookTarget) => {
     setProblem(null);
+    setSaid("");
     const index = targets.findIndex((item) => item.id === target.id);
     try {
       await store.webhooks.targets.remove(target.id);
     } catch (cause) {
       setProblem(failure(cause, "webhooks.errors.remove_failed", target.name));
+      refresh();
       return;
     }
     // The next row's first button, the one before it for the last row, else the Add form.
