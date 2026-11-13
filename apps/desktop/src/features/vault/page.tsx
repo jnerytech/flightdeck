@@ -16,7 +16,7 @@ import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
 import type { SecretMeta } from "./vault.ts";
 import { VaultReport } from "./vault-report.tsx";
-import { describeSecret, type SecretInfo } from "./vault-types.ts";
+import type { SecretInfo } from "./vault-types.ts";
 
 const REVEAL_MS = 10_000;
 const CLEAR_MS = 30_000;
@@ -165,9 +165,9 @@ export const VaultPage = memo(function VaultPage(props: {
     let alive = true;
     void (async () => {
       const next: Record<string, SecretInfo> = {};
+      // The vault reads a value only for a secret it has not described yet, and only for a type that has something to show.
       await inSequence(state.secrets, async (secret) => {
-        const value = await store.vault.value(secret.id);
-        next[secret.id] = value === null ? {} : await describeSecret(secret.type, value);
+        next[secret.id] = await store.vault.info(secret);
       });
       if (alive) setInfos(next);
     })();
@@ -175,6 +175,9 @@ export const VaultPage = memo(function VaultPage(props: {
       alive = false;
     };
   }, [store, state.secrets]);
+
+  // Leaving the screen forgets the derived details; they come back with the next visit.
+  useEffect(() => () => store.vault.forgetInfos(), [store]);
 
   // With a client that has a vault tag selected, its secrets come first (phase 29).
   const selected = selectedClient(state.clientList, state.clientSelection);

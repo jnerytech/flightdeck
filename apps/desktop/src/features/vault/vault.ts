@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
+import { describeSecret, type SecretInfo, type SecretType } from "./vault-types.ts";
 
-export type SecretType = "ssh-key" | "password" | "token" | "env";
+export type { SecretType };
 
 /** What the vault knows about a secret besides its value; never the value itself. */
 export interface SecretMeta {
@@ -62,6 +63,34 @@ export class Vault {
     private readonly options: VaultOptions = {},
   ) {}
 
+  /** What a row shows about each secret, derived once per id and held in memory only (#2612). */
+  private readonly infos = new Map<string, Promise<SecretInfo>>();
+
+  /**
+   * What a row may show about a secret (public key, fingerprint, hint, variable names), never the
+   * value. A value is read once, and only for a type that has something to derive; the answer is
+   * kept in memory until the secret changes, `forgetInfos` runs or the app closes. Nothing is stored.
+   */
+  info(meta: SecretMeta): Promise<SecretInfo> {
+    if (meta.type === "password") return Promise.resolve({});
+    const known = this.infos.get(meta.id);
+    if (known) return known;
+    const derived = this.value(meta.id).then((value) =>
+      value === null ? {} : describeSecret(meta.type, value),
+    );
+    this.infos.set(meta.id, derived);
+    // A failed read is not remembered: the next list change tries again.
+    derived.catch(() => {
+      if (this.infos.get(meta.id) === derived) this.infos.delete(meta.id);
+    });
+    return derived;
+  }
+
+  /** Drops every derived row detail, for example when the vault screen closes. */
+  forgetInfos(): void {
+    this.infos.clear();
+  }
+
   list(): SecretMeta[] {
     return readStored(this.platform.storage, LIST_KEY, validItems(SecretMetaSchema), []);
   }
@@ -93,6 +122,7 @@ export class Vault {
     };
     // The value first: a list entry never points at a value that was not stored.
     await this.platform.vault.set(meta.id, input.value);
+    this.infos.delete(meta.id);
     this.save([...this.list(), meta]);
     return meta;
   }
@@ -117,6 +147,7 @@ export class Vault {
   /** Puts a secret back with its own id and metadata, replacing the one with that id. */
   async restore(meta: SecretMeta, value: string): Promise<void> {
     await this.platform.vault.set(meta.id, value);
+    this.infos.delete(meta.id);
     this.save([...this.list().filter((s) => s.id !== meta.id), meta]);
   }
 
@@ -129,12 +160,14 @@ export class Vault {
     const list = this.list();
     const current = list.find((s) => s.id === id);
     if (!current) return null;
+    this.infos.delete(id);
     const next = { ...current, ...patch };
     this.save(list.map((s) => (s.id === id ? next : s)));
     return next;
   }
 
   async remove(id: string): Promise<void> {
+    this.infos.delete(id);
     this.save(this.list().filter((s) => s.id !== id));
     await this.platform.vault.delete(id);
   }
