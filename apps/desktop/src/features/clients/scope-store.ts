@@ -1,6 +1,6 @@
-import type { KnownProject } from "./client-rules-model.ts";
-import { ALL_CLIENTS, ClientScope, saveSelection } from "./client-scope.ts";
-import { type Client, UNASSIGNED } from "./clients.ts";
+import type { KnownProject } from "./domain/client-rules-model.ts";
+import { ALL_CLIENTS, ClientScope, saveSelection } from "./domain/client-scope.ts";
+import { type Client, UNASSIGNED } from "./domain/clients.ts";
 
 /** The part of the app's state that tells which client each project belongs to. */
 export interface ClientScopeState {

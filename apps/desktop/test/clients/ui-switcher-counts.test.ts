@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { ALL_CLIENTS, ClientScope } from "../../src/features/clients/client-scope.ts";
-import { switcherCounts } from "../../src/features/clients/client-switcher-model.ts";
-import { type Client, UNASSIGNED } from "../../src/features/clients/clients.ts";
+import { ALL_CLIENTS, ClientScope } from "../../src/features/clients/domain/client-scope.ts";
+import { switcherCounts } from "../../src/features/clients/domain/client-switcher-model.ts";
+import { type Client, UNASSIGNED } from "../../src/features/clients/domain/clients.ts";
 
 const client = (id: string, pattern: string): Client => ({
   id,

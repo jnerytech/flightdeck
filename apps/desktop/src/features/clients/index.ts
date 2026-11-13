@@ -4,7 +4,7 @@
  */
 
 export { costByClient, loadCostsSummary, mergeSummaries } from "./client-costs.ts";
-export { knownProjects } from "./client-rules-model.ts";
+export { knownProjects } from "./domain/client-rules-model.ts";
 export {
   ALL_CLIENTS,
   type ClientScope,
@@ -12,7 +12,7 @@ export {
   selectedClient,
   sessionProjectKeys,
   tagsFirst,
-} from "./client-scope.ts";
+} from "./domain/client-scope.ts";
 export {
   effectiveRules,
   generatedScopeRules,
@@ -21,7 +21,7 @@ export {
   SCOPE_RULE_PREFIX,
   scopingClient,
   stripGenerated,
-} from "./client-vault.ts";
-export { type Client, type ClientColor, Clients, UNASSIGNED } from "./clients.ts";
+} from "./domain/client-vault.ts";
+export { type Client, type ClientColor, Clients, UNASSIGNED } from "./domain/clients.ts";
 export { ClientScopeSlice } from "./scope-store.ts";
 export { wireClientScope } from "./wire.ts";

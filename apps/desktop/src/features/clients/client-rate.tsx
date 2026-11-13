@@ -4,7 +4,7 @@ import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { RoiSettingsError } from "../roi/index.ts";
-import type { Client } from "./clients.ts";
+import type { Client } from "./domain/clients.ts";
 
 /** Phase 36: the hourly rate of a client, for every project of it that has none of its own. */
 export function ClientRate(props: Readonly<{ store: AppStore; client: Client }>) {
