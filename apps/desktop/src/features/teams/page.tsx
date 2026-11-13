@@ -25,6 +25,7 @@ import {
   FieldRow,
   LoadingState,
   NativeSelect,
+  OpenedPanel,
   Page,
 } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -542,7 +543,11 @@ export const TeamsPage = memo(function TeamsPage(props: {
               ))}
             </NativeSelect>
           )}
-          {!creating && <Button onClick={() => setCreating(true)}>{t("teamsUi.new")}</Button>}
+          {!creating && (
+            <Button data-opener="new-team" onClick={() => setCreating(true)}>
+              {t("teamsUi.new")}
+            </Button>
+          )}
         </div>
       }
     >
@@ -555,16 +560,18 @@ export const TeamsPage = memo(function TeamsPage(props: {
         </InlineNotice>
       )}
       {creating && (
-        <NewTeam
-          store={store}
-          hostId={current}
-          onCreated={() => {
-            setCreating(false);
-            void load();
-          }}
-          onCancel={() => setCreating(false)}
-          onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
-        />
+        <OpenedPanel opener="new-team">
+          <NewTeam
+            store={store}
+            hostId={current}
+            onCreated={() => {
+              setCreating(false);
+              void load();
+            }}
+            onCancel={() => setCreating(false)}
+            onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
+          />
+        </OpenedPanel>
       )}
       {loading && !creating && <LoadingState label={t("teamsUi.loading")} />}
       {!loading && loadFailed && teams === null && !creating && (
