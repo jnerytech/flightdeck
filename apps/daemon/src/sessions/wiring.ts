@@ -27,11 +27,18 @@ export function createSessionSettings({
   stallUnitMs,
 }: SessionSettingsDeps): { modules: readonly [DomainModule<"sessionSettings">] } {
   // Idle sessions give back their process after N minutes (off by default: no timer then).
-  const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
+  const sleeper = new IdleSleeper({
+    manager,
+    minutes: config.sessions.sleepAfterMinutes,
+    now: Date.now,
+    timers: globalThis,
+  });
   // A running session that says nothing for N minutes is marked quiet (0: off, no timer then).
   const stall = new StallWatcher({
     host: manager,
     minutes: config.stall.afterMinutes,
+    now: Date.now,
+    timers: globalThis,
     ...(stallUnitMs !== undefined ? { unitMs: stallUnitMs } : {}),
   });
   const server = {
