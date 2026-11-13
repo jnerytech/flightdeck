@@ -12,7 +12,7 @@ import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useS
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useWand, type WandBinding, WandButton, WandPanel } from "@/features/assistant/index.ts";
-import { ApprovalCard } from "@/features/permissions/index.ts";
+import { ApprovalCard } from "@/features/permissions/ui.ts";
 import type { MenuItem } from "@/features/snippets/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
