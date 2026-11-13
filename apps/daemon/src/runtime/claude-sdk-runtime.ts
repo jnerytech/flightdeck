@@ -13,7 +13,7 @@ import {
 import type { AssistantBlock, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
 import { AsyncQueue, buildChildEnv, FlightdeckError, whichOnPath } from "../kernel/index.ts";
-import { quotaReadings } from "../quota/quota.ts";
+import { quotaReadings } from "../quota/index.ts";
 import { describeCommands, type SdkSlashCommand } from "./commands.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import { truncateToolResult } from "./tool-result.ts";

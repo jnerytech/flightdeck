@@ -19,7 +19,7 @@ import {
 } from "@flightdeck/protocol";
 import type { UsageIndexer } from "../costs/usage-indexer.ts";
 import { FlightdeckError } from "../kernel/index.ts";
-import { type Quota, realTimers, type Timers } from "../quota/quota.ts";
+import { type Quota, realTimers, type Timers } from "../quota/index.ts";
 import type { CompleteOptions, CompleteResult } from "../runtime/types.ts";
 import { assistantDir } from "./paths.ts";
 

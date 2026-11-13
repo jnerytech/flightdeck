@@ -7,7 +7,7 @@ import { cardDiff, workingDiff } from "../board/diff.ts";
 import { aheadBehind } from "../board/merge.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, HEAD, refArg, resolveAllowedCwd } from "../kernel/index.ts";
-import type { Timers } from "../quota/quota.ts";
+import type { Timers } from "../quota/index.ts";
 import { commitHooks, withDigests } from "./session-commit.ts";
 import { pushAddress } from "./session-pr.ts";
 import type { ChangesReader, ChangesResult, ResolvedTarget } from "./target.ts";
