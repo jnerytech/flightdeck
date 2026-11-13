@@ -90,7 +90,7 @@ describe("app lifecycle: init and dispose (#2376)", () => {
       ]),
     );
     await store.init();
-    expect(store.state.hosts.map((host) => host.id)).toEqual(["h1", "h2"]);
+    expect(store.getState().hosts.map((host) => host.id)).toEqual(["h1", "h2"]);
     store.dispose();
   });
 
@@ -106,7 +106,7 @@ describe("app lifecycle: init and dispose (#2376)", () => {
       remove: async () => {},
     };
     await store.init();
-    expect(store.state.hostsLoaded).toBe(true);
+    expect(store.getState().hostsLoaded).toBe(true);
     store.dispose();
   });
 });
