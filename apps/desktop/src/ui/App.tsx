@@ -13,7 +13,7 @@ import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/u
 import { SimpleApp } from "@/features/home/ui.ts";
 import { pairingErrorText } from "@/features/hosts/index.ts";
 import { draftFromLink } from "@/features/hosts/ui.ts";
-import { NotificationBell } from "@/features/inbox/index.ts";
+import { NotificationBell } from "@/features/inbox/ui.ts";
 import { activeWorktreeFilter } from "@/features/projects/index.ts";
 import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/ui.ts";
 import {
