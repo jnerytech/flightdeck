@@ -123,6 +123,8 @@ export function planCoverageFuncs({
     }
     slotHeavy = "waived";
   }
+  // The list goes in a file next to the counters, and the env names it (#2504).
+  const listPath = `${out.replace(/\.json$/, "")}-files.json`;
   const run = [
     "bun",
     "--config=bunfig.area.toml",
@@ -135,7 +137,8 @@ export function planCoverageFuncs({
       ...related.map((r) => `  ${r.path}  ${r.why}`),
     ].join("\n"),
     command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
-    env: { COVERAGE_FUNCS_FILES: JSON.stringify(targets), COVERAGE_FUNCS_OUT: out },
+    env: { COVERAGE_FUNCS_FILES_PATH: listPath, COVERAGE_FUNCS_OUT: out },
+    targetsFile: { path: listPath, text: JSON.stringify(targets) },
     ...(slotHeavy ? { slotHeavy } : {}),
   };
 }

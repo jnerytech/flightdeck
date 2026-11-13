@@ -699,7 +699,10 @@ describe("shard-gate run and merge over a PR's selection (#1761)", () => {
   test("a shard runs its part of the selection, and istanbul instruments the changed sources only", async () => {
     const d = runDeps(SEL);
     expect(await runShard("2/3", "istanbul", "/tmp/out", d.deps)).toBe(0);
-    expect(d.spawned).toEqual([shardRun("istanbul", ["c.test.ts"], "/tmp/out", ["src/y.ts"])]);
+    const { argv, env } = shardRun("istanbul", ["c.test.ts"], "/tmp/out", ["src/y.ts"]);
+    expect(d.spawned).toEqual([{ argv, env }]);
+    // The instrumented list is in the file the env names (#2504).
+    expect(d.files.get(env.COVERAGE_FUNCS_FILES_PATH ?? "")).toBe('["src/y.ts"]');
     expect(JSON.parse(d.files.get(join("/tmp/out", "marker.json")) ?? "")).toMatchObject({
       files: ["c.test.ts"],
       of: 3,

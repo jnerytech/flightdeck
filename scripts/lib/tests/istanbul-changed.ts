@@ -55,6 +55,7 @@ export async function istanbulChanged(
   }
   deps.mkdir(out);
   const plan = shardRun("istanbul", files, out, istanbulTargets(deps.tracked));
+  if (plan.targetsFile) deps.write(plan.targetsFile.path, plan.targetsFile.text);
   const { exit, log } = await deps.spawn(plan.argv, plan.env);
   for (const line of log.split("\n")) deps.print(line);
   return exit !== 0 || failedCount(log) > 0 ? 1 : 0;

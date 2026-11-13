@@ -287,9 +287,13 @@ export function shardRun(
       env: {},
     };
   }
+  // The list is about 64 KiB: one environment string holds 128 KiB at most (MAX_ARG_STRLEN), so it
+  // goes in a file and the env names it (#2504).
+  const listPath = `${out}/funcs-files.json`;
   return {
     argv: ["bun", "--config=bunfig.shard.toml", ...tests],
-    env: { COVERAGE_FUNCS_FILES: JSON.stringify(targets), COVERAGE_FUNCS_OUT: `${out}/funcs.json` },
+    env: { COVERAGE_FUNCS_FILES_PATH: listPath, COVERAGE_FUNCS_OUT: `${out}/funcs.json` },
+    targetsFile: { path: listPath, text: JSON.stringify(targets) },
   };
 }
 
@@ -428,6 +432,7 @@ export async function runShard(
     ? [...new Set([...selection.targets, ...extra])]
     : istanbulTargets(deps.tracked);
   const plan = shardRun(kind, files, out, targets);
+  if (plan.targetsFile) deps.write(plan.targetsFile.path, plan.targetsFile.text);
   const started = deps.now?.();
   const { exit, log } = await deps.spawn(plan.argv, plan.env);
   const ended = deps.now?.();
