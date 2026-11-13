@@ -23,6 +23,8 @@ import {
   EmptyState,
   ErrorState,
   FieldRow,
+  Form,
+  FormActions,
   LoadingState,
   NativeSelect,
   Page,
@@ -264,6 +266,14 @@ function Team(
       }),
     );
   };
+  /** A text a worker took is sent; one every worker refused stays, to be sent again. */
+  const sendAll = async () => {
+    if (!text.trim()) return;
+    const result = await store.hostCommand(hostId, "teams.message", { team: team.id, text });
+    if (!result) return;
+    setSent(result);
+    if (result.delivered >= 1) setText("");
+  };
   const act = async (command: Promise<TeamInfo | null>) => {
     const updated = await command;
     if (updated) props.onChanged(updated);
@@ -388,29 +398,16 @@ function Team(
               }}
             />
           )}
-          <div className="team-row">
+          <Form variant="inline" onSubmit={() => void sendAll()}>
             <Input
               aria-label={t("teamsUi.messageAll")}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="h-8 w-64"
+              className="h-8"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!text.trim()}
-              onClick={async () => {
-                const result = await store.hostCommand(hostId, "teams.message", {
-                  team: team.id,
-                  text,
-                });
-                if (result) setSent(result);
-              }}
-            >
-              {t("teamsUi.sendAll")}
-            </Button>
+            <FormActions submit={t("teamsUi.sendAll")} disabled={!text.trim()} />
             {sent && <output>{t("teamsUi.sentAll", sent)}</output>}
-          </div>
+          </Form>
         </div>
       )}
       {bypassing && (
