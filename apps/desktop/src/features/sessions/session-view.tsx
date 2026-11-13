@@ -29,7 +29,7 @@ import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
 import { commandItemsOf, slashFill } from "./command-menu.ts";
 import { composerModeMenu, offersModelPicker } from "./domain/composer-pickers.ts";
-import { queueStep, submitAction } from "./domain/composer-queue.ts";
+import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-queue.ts";
 import { nextMode } from "./domain/mode-menu.ts";
 import { missedAfter, rememberPosition, type ScrollPosition } from "./domain/scroll-memory.ts";
 import { activityOf } from "./domain/session-activity.ts";
@@ -1006,11 +1006,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             }}
             onKeyDown={(e) => {
               if (wand?.onKeyDown(e)) return;
-              if (e.key === "Escape" && working) {
-                // Handled here: left unmarked, the key reaches SplitView and closes the detail too (#2591).
-                e.preventDefault();
-                void actions.interrupt();
-              }
+              interruptOnEscape(e, working, actions.interrupt);
               if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
                 // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
                 const next = nextMode(modeMenu, mode);
