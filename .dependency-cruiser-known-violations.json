@@ -374,27 +374,6 @@
     }
   },
   {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/issues/issues.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
     "type": "dependency",
     "from": "apps/daemon/src/account/account.ts",
     "to": "apps/daemon/src/quota/quota.ts",
@@ -663,7 +642,7 @@
     "from": "apps/daemon/src/automations/automations.ts",
     "to": "apps/daemon/src/issues/issues.ts",
     "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -696,17 +675,6 @@
     "from": "apps/daemon/src/bg/service.ts",
     "to": "apps/daemon/src/board/command.ts",
     "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -1005,17 +973,6 @@
     "to": "apps/daemon/src/board/types.ts",
     "unresolvedTo": "../board/types.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/boardsync/engine.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -1400,7 +1357,7 @@
     "from": "apps/daemon/src/github/start.ts",
     "to": "apps/daemon/src/issues/issues.ts",
     "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -1665,17 +1622,6 @@
     "to": "apps/daemon/src/sessions/session-manager.ts",
     "unresolvedTo": "../sessions/session-manager.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/messaging/header.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
