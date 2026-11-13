@@ -45,21 +45,32 @@ describe("mutation cache key: a verdict is reused only while its sources and tes
 });
 
 describe("mutation cache key: the files of every domain count (#2485)", () => {
-  test("lists each domain's sources and tests once, in a stable order", () => {
+  const settings = [
+    "bun.lock",
+    "bunfig.area.toml",
+    "mutation-domains.json",
+    "scripts/test/preload.ts",
+    "stryker.config.json",
+  ];
+
+  test("lists each domain's sources and tests once, in a stable order, with the settings every verdict depends on", () => {
     const list = keyFiles([
       domain("one", ["src/b.ts", "src/a.ts"], ["test/shared.test.ts"]),
       domain("two", ["src/c.ts"], ["test/shared.test.ts", "test/c.test.ts"]),
     ]);
-    expect(list).toEqual([
-      "src/a.ts",
-      "src/b.ts",
-      "src/c.ts",
-      "test/c.test.ts",
-      "test/shared.test.ts",
-    ]);
+    expect(list).toEqual(
+      [
+        "src/a.ts",
+        "src/b.ts",
+        "src/c.ts",
+        "test/c.test.ts",
+        "test/shared.test.ts",
+        ...settings,
+      ].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    );
   });
 
-  test("no domain means no files", () => {
-    expect(keyFiles([])).toEqual([]);
+  test("no domain still keys on the settings", () => {
+    expect(keyFiles([])).toEqual(settings);
   });
 });
