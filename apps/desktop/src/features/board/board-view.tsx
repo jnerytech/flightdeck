@@ -75,9 +75,10 @@ import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, Inline, LoadingState, Page, Toolbar } from "@/shared/layout/index.ts";
 import { statusTone, useWidth } from "@/shared/lib/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
-import type { Key, T } from "../../i18n/index.ts";
+import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { ExternalSeal, IssuesPanel, issueNumber } from "../issues/index.ts";
+import { issueNumber } from "../issues/index.ts";
+import { ExternalSeal, IssuesPanel } from "../issues/ui.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import {
   bulkRunOutcome,
@@ -98,7 +99,7 @@ import { cardKey } from "./board-card-keys.ts";
 import { askAbout, dragNeeds, type Lacking, missingFor } from "./board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./board-files.ts";
 import type { BoardKeyAction } from "./board-keys.ts";
-import { boardTitle, COLUMNS, positionBefore, projectCards } from "./board-model.ts";
+import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./board-model.ts";
 import {
   type BulkRefusal,
   COLUMN_GAP,
@@ -135,12 +136,6 @@ const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
 
 /** What a card's own text lacks: fixed in its fields, not on the card's run (#1197). */
 const FIELD_NEEDS: ReadonlySet<string> = new Set(["criteria", "validation", "spec"]);
-
-/** Why "Iniciar card" is off (queued or running), else null. */
-function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
-  if (block === "queued") return t("board.startQueued");
-  return block === "running" ? t("board.startRunning") : null;
-}
 
 function CardTile(
   props: Readonly<{
