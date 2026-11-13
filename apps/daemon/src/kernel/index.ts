@@ -14,6 +14,7 @@ export {
   AlreadyRunningError,
   acquireLock,
   EXIT_ALREADY_RUNNING,
+  type Lock,
   readLockPid,
   withLock,
 } from "./lock.ts";

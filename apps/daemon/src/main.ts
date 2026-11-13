@@ -19,6 +19,7 @@ import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import { type CliDeps, COMMANDS } from "./cli/commands.ts";
 import {
+  type Config,
   claudeSettingsPath,
   loadConfig,
   type RuntimeKind,
@@ -37,6 +38,7 @@ import {
   acquireLock,
   DAEMON_VERSION,
   EXIT_ALREADY_RUNNING,
+  type Lock,
   type Logger,
   present,
   spawnExec,
@@ -138,38 +140,64 @@ async function createRuntime(
   };
 }
 
-/** Loads the config, opens the store and starts serving. The token is never logged. */
+/** What `startDaemon` takes besides the command line: the seams the tests and the demo give. */
+type StartOptions = {
+  configWatchMs?: number;
+  /** Where the daemon writes its log; `~/.flightdeck/logs` when absent (tests give a temp folder). */
+  logDir?: string;
+  /** What decides the system folders `roots.add` refuses (tests give their own). */
+  rootsPlatform?: PlatformInfo;
+  wslCommand?: (item: WslItem) => string[];
+  /** What `daemon.shutdown` triggers; the command is refused without it. */
+  onShutdown?: () => void;
+  /** The PTY terminals run in; Bun's own when absent (tests inject a fake). */
+  pty?: TerminalsDeps["pty"];
+  /** Where `resources.get` reads processes from; the real /proc on Linux when absent (tests inject a fake). */
+  resourcesProc?: ProcReader;
+  /** The host's memory for the hold on new cards (#1343); the OS's when absent (tests inject one). */
+  memoryReading?: MemoryGateDeps["reading"];
+  /** How the project key asks git; the process itself when absent (tests hold it). */
+  projectGit?: AsyncGitRunner;
+  /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
+  serviceSelf?: string[];
+  /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
+  portProbe?: (port: number) => Promise<boolean>;
+  /** What keeps the computer awake (issue #163); the machine's own when absent. */
+  powerContext?: PowerContext;
+} & HostCheckOptions;
+
+/**
+ * Loads the config, takes the data folder's lock, opens the store and starts serving. The token is
+ * never logged. The lock goes back when the boot fails: a caller in this process (a test, the CLI)
+ * can start again (#1677).
+ */
 export async function startDaemon(
   args: CliArgs,
   env: Record<string, string | undefined>,
   console_: Logger,
-  options: {
-    configWatchMs?: number;
-    /** Where the daemon writes its log; `~/.flightdeck/logs` when absent (tests give a temp folder). */
-    logDir?: string;
-    /** What decides the system folders `roots.add` refuses (tests give their own). */
-    rootsPlatform?: PlatformInfo;
-    wslCommand?: (item: WslItem) => string[];
-    /** What `daemon.shutdown` triggers; the command is refused without it. */
-    onShutdown?: () => void;
-    /** The PTY terminals run in; Bun's own when absent (tests inject a fake). */
-    pty?: TerminalsDeps["pty"];
-    /** Where `resources.get` reads processes from; the real /proc on Linux when absent (tests inject a fake). */
-    resourcesProc?: ProcReader;
-    /** The host's memory for the hold on new cards (#1343); the OS's when absent (tests inject one). */
-    memoryReading?: MemoryGateDeps["reading"];
-    /** How the project key asks git; the process itself when absent (tests hold it). */
-    projectGit?: AsyncGitRunner;
-    /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
-    serviceSelf?: string[];
-    /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
-    portProbe?: (port: number) => Promise<boolean>;
-    /** What keeps the computer awake (issue #163); the machine's own when absent. */
-    powerContext?: PowerContext;
-  } & HostCheckOptions = {},
+  options: StartOptions = {},
+): Promise<Daemon> {
+  const config = await loadConfig(configPath(args));
+  const lock = await acquireLock(config.dataDir);
+  if (!lock) throw new AlreadyRunningError(config.dataDir);
+  try {
+    return await bootDaemon(args, env, console_, options, config, lock);
+  } catch (error) {
+    await lock.release();
+    throw error;
+  }
+}
+
+/** The boot after the lock is held: opens the store, builds the domains and listens. */
+async function bootDaemon(
+  args: CliArgs,
+  env: Record<string, string | undefined>,
+  console_: Logger,
+  options: StartOptions,
+  config: Config,
+  lock: Lock,
 ): Promise<Daemon> {
   const configFile = configPath(args);
-  const config = await loadConfig(configFile);
   // Everything the daemon says goes to the console and, redacted, to a rotated file.
   // What the log must never write: the daemon's tokens (the protocol's rotates) and what the vault
   // holds. The vault is made further down; until then there is nothing held.
@@ -185,9 +213,7 @@ export async function startDaemon(
   });
   const { logger, fileLog } = hostLog;
   const runtimeKind = args.runtime ?? config.runtime;
-  // Before SQLite and the port: a second daemon must not touch either.
-  const lock = await acquireLock(config.dataDir);
-  if (!lock) throw new AlreadyRunningError(config.dataDir);
+  // The lock is held by `startDaemon`, before SQLite and the port: a second daemon touches neither.
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
   // This daemon's own command line, as the sessions' MCP server, the hooks and the terminals call it back.
