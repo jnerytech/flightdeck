@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { HoldButton } = await import("../src/features/permissions/hold-button.tsx");
-const { QuestionCard } = await import("../src/features/home/question-card.tsx");
+const { HoldButton } = await import("../../src/features/permissions/hold-button.tsx");
+const { QuestionCard } = await import("../../src/features/home/question-card.tsx");
 
 afterEach(cleanup);
 
