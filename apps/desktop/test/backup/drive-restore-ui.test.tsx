@@ -103,6 +103,7 @@ describe("backup-drive-restore-ui: restore from Google Drive (#1462)", () => {
     await click("Google Drive");
     await click("Look in Google Drive");
     await waitFor(() => control(NAME(9)) !== null);
+    expect(control(NAME(9)) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     // Newest first, and both are offered.
     const labels = screen.queryAllByRole("radio").map((radio) => radio.parentElement?.textContent);
     expect(labels).toContain(NAME(9));
@@ -162,6 +163,7 @@ describe("backup-drive-restore-ui: restore from Google Drive (#1462)", () => {
     await click("Google Drive");
     await click("Look in Google Drive");
     await waitFor(() => shown("No backups on Google Drive yet."));
+    expect(shown("No backups on Google Drive yet.")).toBe(true);
   });
 
   test("not signed in to Google: it says to sign in first and offers no lookup", async () => {
