@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { applySuggestion, suggestClients } from "./client-suggest.ts";
-import { UNASSIGNED } from "./clients.ts";
+import { applySuggestion, suggestClients } from "./domain/client-suggest.ts";
+import { UNASSIGNED } from "./domain/clients.ts";
 
 /** What the screen says about the projects without a client: how many, a suggestion, the pins. */
 export function ClientsSuggest(

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { SCOPE_RULE_PREFIX, stripGenerated } from "../../src/features/clients/client-vault.ts";
+import {
+  SCOPE_RULE_PREFIX,
+  stripGenerated,
+} from "../../src/features/clients/domain/client-vault.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";

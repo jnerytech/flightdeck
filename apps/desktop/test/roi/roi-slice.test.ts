@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiSummaryResult } from "@flightdeck/protocol";
-import { UNASSIGNED } from "../../src/features/clients/clients.ts";
+import { UNASSIGNED } from "../../src/features/clients/domain/clients.ts";
 import { RoiSettings } from "../../src/features/roi/domain/roi-settings.ts";
 import { RoiSlice } from "../../src/features/roi/index.ts";
 import type { HostResult } from "../../src/lib/app-store.ts";

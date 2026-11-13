@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
-import { CLIENTS_KEY, UNASSIGNED } from "../../src/features/clients/clients.ts";
+import { CLIENTS_KEY, UNASSIGNED } from "../../src/features/clients/domain/clients.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { settle } from "../wait.ts";
