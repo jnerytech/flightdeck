@@ -38,7 +38,8 @@ export function RenameForm(
     <div
       data-slot="rename-form"
       onKeyDown={(event) => {
-        if (event.key !== "Escape") return;
+        // Escape inside an IME composition cancels the composition, not the form.
+        if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
         event.stopPropagation();
         props.onCancel();
       }}

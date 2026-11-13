@@ -143,6 +143,18 @@ describe("hub-rename: Rename is a form with focus handling (#2673)", () => {
     ]).toEqual([[], true, true]);
   });
 
+  test("Escape during an IME composition does not close the form", async () => {
+    setup();
+    await startRename("session 1");
+    await settleMaybe(() => field("session 1") !== null, 1500);
+    const input = field("session 1") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape", isComposing: true });
+    });
+    await uiIdle();
+    expect(field("session 1") !== null).toBe(true);
+  });
+
   test("the Cancel button closes the form without saving", async () => {
     const { saved } = setup();
     await startRename("session 1");
