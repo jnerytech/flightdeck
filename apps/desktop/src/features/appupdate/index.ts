@@ -8,7 +8,4 @@ export {
   type AppUpdateState,
   initialAppUpdateState,
 } from "./store.ts";
-export { UpdateBanner } from "./update-banner.tsx";
-export { UpdateCard } from "./update-card.tsx";
-export { WhatsNewDialog } from "./whats-new-dialog.tsx";
 export { wireAppUpdates } from "./wire.ts";
