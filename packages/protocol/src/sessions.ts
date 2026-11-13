@@ -245,6 +245,9 @@ export const ExternalStatus = z.enum([
 ]);
 export type ExternalStatus = z.infer<typeof ExternalStatus>;
 
+/** #1751: the most characters of a plan the daemon sends on an external session. */
+export const WAITING_PLAN_MAX = 1000;
+
 export const ExternalSession = z.object({
   claudeSessionId: z.string(),
   cwd: z.string().nullable(),
@@ -271,6 +274,8 @@ export const ExternalSession = z.object({
    * enum would refuse a new one.
    */
   waiting: z.enum(["plan", "question"]).nullable().optional(),
+  /** #1751: the plan text of a `plan` wait (the `ExitPlanMode` call's input), cut at `WAITING_PLAN_MAX`. */
+  waitingPlan: z.string().max(WAITING_PLAN_MAX).optional(),
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 

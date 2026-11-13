@@ -8,7 +8,7 @@ import {
   SessionPersona,
 } from "@flightdeck/protocol";
 import { parseJsonOr } from "../kernel/index.ts";
-import { type Tail, tailOfFile, type Waiting, waitingIn } from "./waiting.ts";
+import { planTextIn, type Tail, tailOfFile, type Waiting, waitingIn } from "./waiting.ts";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };
@@ -76,7 +76,7 @@ const personaOf = (...stored: Array<string | null | undefined>): { persona?: Ses
   return {};
 };
 
-const toSession = (row: Row, waiting: Waiting | null): ExternalSession => ({
+const toSession = (row: Row, waiting: Waiting | null, plan: string | null): ExternalSession => ({
   claudeSessionId: row.claude_session_id,
   cwd: row.cwd,
   transcriptPath: row.transcript_path,
@@ -93,7 +93,9 @@ const toSession = (row: Row, waiting: Waiting | null): ExternalSession => ({
   ...personaOf(row.persona_applied, row.persona_open),
   ...(row.permission_mode ? { permissionMode: row.permission_mode } : {}),
   // A session that has ended or asks for a permission is not told apart by its transcript's end (#1736).
-  ...(waiting && row.status !== "ended" && row.status !== "awaiting_permission" ? { waiting } : {}),
+  ...(waiting && row.status !== "ended" && row.status !== "awaiting_permission"
+    ? { waiting, ...(plan ? { waitingPlan: plan } : {}) }
+    : {}),
 });
 
 /** Last modification of a transcript, or 0 when it is unreadable. */
@@ -118,7 +120,7 @@ export class ExternalSessions {
   /** What each session's transcript ended at when it was last read, with the file's size and time. */
   private readonly looks = new Map<
     string,
-    { size: number; mtimeMs: number; value: Waiting | null }
+    { size: number; mtimeMs: number; value: Waiting | null; plan: string | null }
   >();
   /** Counts the events of each session: a look that began before one must not store its answer. */
   private readonly events = new Map<string, number>();
@@ -224,7 +226,8 @@ export class ExternalSessions {
   }
 
   private view(row: Row): ExternalSession {
-    return toSession(row, this.looks.get(row.claude_session_id)?.value ?? null);
+    const look = this.looks.get(row.claude_session_id);
+    return toSession(row, look?.value ?? null, look?.plan ?? null);
   }
 
   /** Current session of a launch: the latest one started with that launch id. */
@@ -316,8 +319,9 @@ export class ExternalSessions {
       // A regular file that could not be read is not remembered: it is tried again at the next sweep.
       if (info?.isFile() && !tail) return;
       const value = tail && info ? waitingIn(tail.text) : null;
-      this.looks.set(id, { size: info?.size ?? 0, mtimeMs: info?.mtimeMs ?? 0, value });
-      if (value !== (before?.value ?? null)) this.emit(id);
+      const plan = tail && info ? planTextIn(tail.text) : null;
+      this.looks.set(id, { size: info?.size ?? 0, mtimeMs: info?.mtimeMs ?? 0, value, plan });
+      if (value !== (before?.value ?? null) || plan !== (before?.plan ?? null)) this.emit(id);
     });
   }
 
