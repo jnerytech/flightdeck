@@ -654,7 +654,7 @@ describe("board-ui", () => {
     expect(screen.queryByRole("region", { name: "Diff unificado" })).not.toBeNull();
 
     // No PR provider (#1543): there is no Open PR to press, and the panel says why, in the app's language.
-    expect(screen.queryByRole("button", { name: "Abrir PR" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Abrir PR" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(document.body.textContent ?? "").toContain("este projeto está sem provedor de PR");
     await click("Conversa");
     expect(screen.queryByRole("log")).not.toBeNull();

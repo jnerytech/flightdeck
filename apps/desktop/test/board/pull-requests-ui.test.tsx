@@ -200,7 +200,7 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
     // It names the card it is about, and takes the focus, as the merge refusal does.
     expect(alert?.textContent).toContain("Card a");
     await settle(() => document.activeElement === screen.queryByRole("alert"));
-    expect(document.activeElement === screen.queryByRole("alert")).toBe(true);
+    expect(document.activeElement === screen.queryByRole("alert")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the controls of a row point at the card's title, so a list of buttons says which PR", () => {

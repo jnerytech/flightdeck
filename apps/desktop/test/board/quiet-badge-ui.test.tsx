@@ -130,8 +130,8 @@ describe("board-quiet-badge-ui: a card whose session says nothing wears the Quie
     setup();
     await ready();
     const badge = tile("Quiet one")?.querySelector("[data-slot='badge']");
-    expect(badge?.querySelector("svg") !== null).toBe(true);
-    expect(badge?.closest("button") === null).toBe(true);
+    expect(badge?.querySelector("svg") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(badge?.closest("button") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(badge?.tagName).not.toBe("BUTTON");
   });
 

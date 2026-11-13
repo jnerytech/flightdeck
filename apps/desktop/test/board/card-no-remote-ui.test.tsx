@@ -89,7 +89,7 @@ function setup(
 const button = (name: string | RegExp) => screen.queryByRole("button", { name });
 async function openMenu() {
   const trigger = button("Actions for Cart screen") ?? button("Ações de Cart screen");
-  expect(trigger !== null).toBe(true);
+  expect(trigger !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   await act(async () => {
     fireEvent.pointerDown(trigger as HTMLElement, {
       button: 0,
@@ -104,16 +104,16 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
   test("on the changes, there is no Open PR button: the panel says why and where the work is, before any form", async () => {
     const w = setup("none");
     render(w.form("diff"));
-    expect(button("Open PR") === null).toBe(true);
+    expect(button("Open PR") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(panel()).toContain("no PR provider set");
     expect(panel()).toContain("git remote add origin");
     expect(panel()).toContain("gh auth login");
     expect(panel()).toContain("az login");
     expect(panel()).toContain("card/cart-screen");
     // The changes stay the card's lead on its own tab: nothing unmounts under the person's focus.
-    expect(button("Review changes") !== null).toBe(true);
+    expect(button("Review changes") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await openMenu();
-    expect(screen.queryByRole("menuitem", { name: "Open PR" }) === null).toBe(true);
+    expect(screen.queryByRole("menuitem", { name: "Open PR" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     // Nothing was asked of the host: no description, no form.
     expect(w.commands).toEqual([]);
   });
@@ -122,22 +122,22 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     const w = setup("none");
     const view = render(w.form("conversation"));
     const review = button("Review changes");
-    expect(review !== null).toBe(true);
+    expect(review !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     (review as HTMLElement).focus();
     await act(async () => {
       fireEvent.click(review as HTMLElement);
     });
     view.rerender(w.form("diff"));
     const after = button("Review changes");
-    expect(after === review).toBe(true);
-    expect(document.activeElement === review).toBe(true);
+    expect(after === review).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(document.activeElement === review).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the card's changes stay reachable: Review changes leads from the conversation", async () => {
     const w = setup("none");
     render(w.form("conversation"));
-    expect(button("Review changes") !== null).toBe(true);
-    expect(button("Open PR") === null).toBe(true);
+    expect(button("Review changes") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(button("Open PR") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(panel()).toContain("no PR provider set");
     await act(async () => {
       fireEvent.click(button("Review changes") as HTMLElement);
@@ -148,7 +148,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
   test("the same in Portuguese", () => {
     const w = setup("none", "pt-BR");
     render(w.form("diff"));
-    expect(button("Abrir PR") === null).toBe(true);
+    expect(button("Abrir PR") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(panel()).toContain("sem provedor de PR");
     expect(panel()).toContain("card/cart-screen");
   });
@@ -156,7 +156,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
   test("a project with a provider keeps Open PR, and says nothing about a remote", async () => {
     const w = setup("github");
     render(w.form("diff"));
-    expect(button("Open PR") !== null).toBe(true);
+    expect(button("Open PR") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(panel()).not.toContain("remote");
     await act(async () => {
       fireEvent.click(button("Open PR") as HTMLElement);
@@ -167,7 +167,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
   test("a project the app has not loaded yet is not judged: Open PR stays, and the host still decides", () => {
     const w = setup(null);
     render(w.form("diff"));
-    expect(button("Open PR") !== null).toBe(true);
+    expect(button("Open PR") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(panel()).not.toContain("remote");
   });
 });
@@ -183,7 +183,7 @@ describe("card-no-remote-ui: a refused Open PR keeps what the person wrote (#154
       fireEvent.click(button("Open PR") as HTMLElement);
     });
     const box = screen.queryByRole("textbox", { name: "PR description" });
-    expect(box !== null).toBe(true);
+    expect(box !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.change(box as HTMLElement, { target: { value: "what I wrote for the PR" } });
     });
@@ -236,7 +236,7 @@ describe("card-no-remote-ui: a late refusal does not outlive its dialog (#1543)"
       release();
     });
     await open();
-    expect(screen.queryByRole("textbox", { name: "PR description" }) !== null).toBe(true);
-    expect(screen.queryByRole("alert") === null).toBe(true);
+    expect(screen.queryByRole("textbox", { name: "PR description" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByRole("alert") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

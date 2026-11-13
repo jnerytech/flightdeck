@@ -97,7 +97,7 @@ describe("create-card: the focus goes to the card that was made (#1546)", () => 
     const tile = () => screen.queryByLabelText("Card Ship the cart");
     const opener = () => tile()?.querySelector<HTMLElement>("[data-card-open]") ?? null;
     await settle(() => opener() !== null && document.activeElement === opener(), 5000);
-    expect(document.activeElement === opener()).toBe(true);
+    expect(document.activeElement === opener()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
 
