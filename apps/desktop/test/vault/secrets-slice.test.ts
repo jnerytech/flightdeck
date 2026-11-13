@@ -65,6 +65,29 @@ describe("vault secrets slice", () => {
     expect(events).toEqual(["changed", "changed", "changed"]);
   });
 
+  test("a secret that cannot be saved or removed is a failure to show: add gives null, remove stays quiet, nothing is announced as changed (#2601)", async () => {
+    const broken = {
+      create: async () => {
+        throw new Error("the disk is full");
+      },
+      remove: async () => {
+        throw new Error("the keyring is locked");
+      },
+    };
+    const { secrets, events } = slice({ vault: broken });
+    const added = await secrets.add({ name: "deploy", type: "token", value: "v-123" }).then(
+      (meta) => meta,
+      () => "threw",
+    );
+    expect(added).toBeNull();
+    const removed = await secrets.remove("s1").then(
+      () => "returned",
+      () => "threw",
+    );
+    expect(removed).toBe("returned");
+    expect(events).toEqual(["fail the disk is full", "fail the keyring is locked"]);
+  });
+
   test("a key that cannot be generated or imported is a failure to show, not a stored secret", async () => {
     const broken = {
       generateSshKey: async () => {
