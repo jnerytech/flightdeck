@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { tabIntent } from "../../src/features/tabs/tab-shortcut.ts";
+import { tabIntent } from "../../src/features/tabs/domain/tab-shortcut.ts";
 
 /** #1605 (Humble Object): what a Ctrl-key asks of the tabs, tested without a store. */
 describe("tabIntent", () => {

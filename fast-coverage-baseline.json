@@ -169,7 +169,7 @@
   "apps/desktop/src/features/snippets/prompt-menu-model.ts",
   "apps/desktop/src/features/snippets/prompt-menu.tsx",
   "apps/desktop/src/features/summary/recap-preview.ts",
-  "apps/desktop/src/features/tabs/tab-badge.ts",
+  "apps/desktop/src/features/tabs/domain/tab-badge.ts",
   "apps/desktop/src/features/tabs/tab-bar.tsx",
   "apps/desktop/src/features/tabs/tabs.ts",
   "apps/desktop/src/features/telemetry/telemetry-section.tsx",
