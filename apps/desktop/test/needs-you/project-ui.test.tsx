@@ -102,7 +102,7 @@ for (const [lang, t] of [
       const row = [...document.querySelectorAll("main li button")].find((b) =>
         (b.getAttribute("aria-label") ?? "").startsWith("alfa · site · First card: "),
       ) as HTMLElement | undefined;
-      expect(row === undefined).toBe(false);
+      expect(row === undefined).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       await act(async () => {
         if (row) fireEvent.click(row);
       });

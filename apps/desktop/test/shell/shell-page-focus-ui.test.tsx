@@ -143,7 +143,7 @@ describe("shell-page-focus-ui: a page that opens takes the focus when the step l
   test("the page that is there when the app starts does not take the focus", async () => {
     render(<Harness />);
     await act(async () => {});
-    expect(document.activeElement === document.body).toBe(true);
+    expect(document.activeElement === document.body).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("focus the person already has on a control that stays is left where it is", async () => {
@@ -154,7 +154,7 @@ describe("shell-page-focus-ui: a page that opens takes the focus when the step l
       if (side) fireEvent.click(side);
     });
     await settle(() => title()?.textContent === "alfa");
-    expect(document.activeElement === side).toBe(true);
+    expect(document.activeElement === side).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a page that is still loading takes the focus when its heading comes, if the step lost it", async () => {
@@ -170,7 +170,7 @@ describe("shell-page-focus-ui: a page that opens takes the focus when the step l
     (document.activeElement as HTMLElement | null)?.blur();
     await settle(() => title()?.textContent === "beta", 5000, "the heading of the slow page");
     await settle(() => document.activeElement === title(), 5000, "focus on the late heading");
-    expect(document.activeElement === title()).toBe(true);
+    expect(document.activeElement === title()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a control the person moved to while the page loaded keeps the focus when the heading comes", async () => {
@@ -184,6 +184,7 @@ describe("shell-page-focus-ui: a page that opens takes the focus when the step l
     menu?.focus();
     await settle(() => title()?.textContent === "beta", 5000, "the heading of the slow page");
     await stays(() => document.activeElement === menu, 300, "focus stays on the control");
+    expect(document.activeElement === menu).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the browser refuses the focus while the dialog that gave the command closes: the heading takes it when the dialog goes", async () => {
@@ -195,7 +196,7 @@ describe("shell-page-focus-ui: a page that opens takes the focus when the step l
       if (add) fireEvent.click(add);
     });
     await settle(() => title()?.textContent === "setup", 5000, "the project's page");
-    expect(document.activeElement === title()).toBe(false);
+    expect(document.activeElement === title()).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await settle(() => screen.queryByRole("button", { name: "Add" }) === null, 5000, "dialog gone");
     const taken = await settleMaybe(() => document.activeElement === title(), 2000);
     expect(taken).toBe(true);
