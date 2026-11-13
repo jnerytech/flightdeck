@@ -235,7 +235,7 @@ describe("board-ui", () => {
     expect(count("Em revisão")).toBe("1");
   });
 
-  test("uma coluna vazia mostra um botão que diz Vazio e adiciona um card", async () => {
+  test("uma coluna vazia mostra um botão que diz Vazio e se chama Adicionar card", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     const done = screen.getByRole("region", { name: "Concluído" });

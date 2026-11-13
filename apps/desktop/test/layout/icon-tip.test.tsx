@@ -135,5 +135,6 @@ describe("icon-tip: the client switcher keeps its title only as a tooltip in the
     });
     await settle(() => screen.queryByRole("tooltip") !== null, 3000, "the tooltip opens");
     expect(screen.getByRole("tooltip").textContent).toBe("Acme");
+    store.dispose();
   });
 });
