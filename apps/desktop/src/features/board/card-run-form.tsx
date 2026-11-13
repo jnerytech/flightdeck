@@ -16,10 +16,10 @@ import type { AppStore } from "@/lib/app-store";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { FieldRow, Panel, Stack } from "@/shared/layout/index.ts";
 import { CardFinishDialog } from "./card-finish.tsx";
-import { nextStep } from "./card-next-step.ts";
-import { cardStartBlock } from "./card-start-block.ts";
 import { CardStartDialog } from "./card-start-dialog.tsx";
-import { findingsNote } from "./second-opinion.ts";
+import { nextStep } from "./domain/card-next-step.ts";
+import { cardStartBlock } from "./domain/card-start-block.ts";
+import { findingsNote } from "./domain/second-opinion.ts";
 import { projectContracts, useStartAsk } from "./use-start-ask.tsx";
 
 interface Confirming {

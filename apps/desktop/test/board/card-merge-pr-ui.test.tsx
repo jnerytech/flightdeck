@@ -10,7 +10,7 @@ const { useState } = await import("react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { CardMergePr } = await import("../../src/features/board/card-merge-pr.tsx");
-const { canMergeCardPr } = await import("../../src/features/board/card-merge-pr-model.ts");
+const { canMergeCardPr } = await import("../../src/features/board/domain/card-merge-pr-model.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

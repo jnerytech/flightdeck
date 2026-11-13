@@ -5,7 +5,7 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, NativeSelect, Stack } from "@/shared/layout/index.ts";
-import { radarMergeLine } from "./conflict-radar.ts";
+import { radarMergeLine } from "./domain/conflict-radar.ts";
 
 export interface CardMergePrProps {
   store: AppStore;

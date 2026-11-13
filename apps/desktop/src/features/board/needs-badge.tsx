@@ -1,7 +1,7 @@
 import { CircleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Key, T } from "../../i18n/index.ts";
-import type { Need } from "./board-contracts.ts";
+import type { Need } from "./domain/board-contracts.ts";
 
 /** What a card lacks, in words: "a PR link, passing checks". */
 export const needsText = (t: T, needs: readonly Need[]) =>
