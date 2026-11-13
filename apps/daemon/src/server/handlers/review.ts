@@ -4,7 +4,7 @@
  */
 import { withTurnUuids } from "../../checkpoints/turn-uuid.ts";
 import { FlightdeckError } from "../../kernel/index.ts";
-import { preparePersonas } from "../../personas/prepare.ts";
+import { preparePersonas } from "../../personas/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../dispatch.ts";
 

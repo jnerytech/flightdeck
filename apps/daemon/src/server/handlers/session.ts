@@ -22,7 +22,7 @@ import {
   ruleReadings,
   statKind,
 } from "../../permissions/index.ts";
-import { preparePersonas } from "../../personas/prepare.ts";
+import { preparePersonas } from "../../personas/index.ts";
 import type { ServerContext } from "../context.ts";
 import { coalesceDeltas } from "../delta-coalescer.ts";
 import { afterAck, type Call, type Handlers } from "../dispatch.ts";
