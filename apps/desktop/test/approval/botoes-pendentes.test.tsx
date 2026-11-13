@@ -1,25 +1,27 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { fakeHostStore, onWire } from "./fake-host.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { fakeHostStore, onWire } from "../fake-host.ts";
+import { settle, uiIdle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TContext } = await import("../src/i18n/context.tsx");
-const { RequestError } = await import("../src/features/hosts/host-connection.ts");
-const { TerminalButton } = await import("../src/features/terminal/terminal-button.tsx");
-const { UpdateBanner } = await import("../src/features/appupdate/update-banner.tsx");
-const { MaintenanceSection } = await import("../src/features/maintenance/maintenance-section.tsx");
-const { SessionMessages } = await import("../src/features/messaging/session-messages.tsx");
-const { RunTimeline } = await import("../src/features/runenv/run-timeline.tsx");
-const { CardReview } = await import("../src/features/review/card-review.tsx");
-const { PrComments } = await import("../src/features/review/pr-comments.tsx");
-const { RulesPreview } = await import("../src/features/vault/rules-preview.tsx");
-const { RulesEditor } = await import("../src/features/vault/rules-editor.tsx");
-const { VaultReport } = await import("../src/features/vault/vault-report.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
+const { TerminalButton } = await import("../../src/features/terminal/terminal-button.tsx");
+const { UpdateBanner } = await import("../../src/features/appupdate/update-banner.tsx");
+const { MaintenanceSection } = await import(
+  "../../src/features/maintenance/maintenance-section.tsx"
+);
+const { SessionMessages } = await import("../../src/features/messaging/session-messages.tsx");
+const { RunTimeline } = await import("../../src/features/runenv/run-timeline.tsx");
+const { CardReview } = await import("../../src/features/review/card-review.tsx");
+const { PrComments } = await import("../../src/features/review/pr-comments.tsx");
+const { RulesPreview } = await import("../../src/features/vault/rules-preview.tsx");
+const { RulesEditor } = await import("../../src/features/vault/rules-editor.tsx");
+const { VaultReport } = await import("../../src/features/vault/vault-report.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

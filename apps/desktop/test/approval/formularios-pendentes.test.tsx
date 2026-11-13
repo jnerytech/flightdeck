@@ -1,22 +1,22 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { fakeHostStore, onWire } from "./fake-host.ts";
-import { uiIdle } from "./wait.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { fakeHostStore, onWire } from "../fake-host.ts";
+import { uiIdle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TContext } = await import("../src/i18n/context.tsx");
-const { RequestError } = await import("../src/features/hosts/host-connection.ts");
-const { BudgetsSection } = await import("../src/features/costs/budgets-section.tsx");
-const { MessagingRulesSection } = await import("../src/features/messaging/rules-section.tsx");
-const { NewSecretForm } = await import("../src/features/vault/new-secret-form.tsx");
-const { PersonaEditor } = await import("../src/features/personas/persona-editor.tsx");
-const { SnippetEditor } = await import("../src/features/snippets/snippet-editor.tsx");
-const { ActionForm } = await import("../src/features/actions/action-form.tsx");
-const { TargetForm } = await import("../src/features/ssh/target-form.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
+const { BudgetsSection } = await import("../../src/features/costs/budgets-section.tsx");
+const { MessagingRulesSection } = await import("../../src/features/messaging/rules-section.tsx");
+const { NewSecretForm } = await import("../../src/features/vault/new-secret-form.tsx");
+const { PersonaEditor } = await import("../../src/features/personas/persona-editor.tsx");
+const { SnippetEditor } = await import("../../src/features/snippets/snippet-editor.tsx");
+const { ActionForm } = await import("../../src/features/actions/action-form.tsx");
+const { TargetForm } = await import("../../src/features/ssh/target-form.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

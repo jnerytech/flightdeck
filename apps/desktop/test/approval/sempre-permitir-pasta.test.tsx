@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, render } = await import("@testing-library/react");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
-const { AlwaysAllow } = await import("../src/features/permissions/always-allow.tsx");
-const { translateError } = await import("../src/i18n/errors.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
+const { AlwaysAllow } = await import("../../src/features/permissions/always-allow.tsx");
+const { translateError } = await import("../../src/i18n/errors.ts");
 
 afterEach(cleanup);
 
