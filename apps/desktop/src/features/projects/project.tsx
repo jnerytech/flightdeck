@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { KnowledgePanel } from "@/features/knowledge/index.ts";
 import type { HubRowState } from "@/features/sessions/index.ts";
 import { NAV_ICONS } from "@/features/shell/index.ts";
-import { TrustPanel } from "@/features/trust/index.ts";
+import { TrustPanel } from "@/features/trust/ui.ts";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { EmptyState, Inline, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
