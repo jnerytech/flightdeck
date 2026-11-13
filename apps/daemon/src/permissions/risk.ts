@@ -311,14 +311,15 @@ export class RiskClassifier {
     }
     // `>`, `>>`, `&>`, `&>>`, `>&file`, `>|file` and `<>file`; `>&2` and `>&-` copy or close a
     // descriptor. The lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`,
-    // match too. The target is one shell word: quoted and bare parts glued together (#2496).
-    for (const match of command.matchAll(
-      /(?<![<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g,
-    )) {
+    // match too. The target is one shell word: quoted and bare parts glued together (#2496). A
+    // backslash before a newline is a line continuation, so the lines are joined first.
+    for (const match of command
+      .replace(/\\\r?\n/g, "")
+      .matchAll(/(?<![<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g)) {
       const target = (match[2] as string).replace(/["']/g, "");
       if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;
       if (SINKS.has(target.toLowerCase())) continue;
-      if (/[$%{]|^\(/.test(target) || !this.insideAny(target, cwd)) {
+      if (/[$%{]|^\(|^~(?![\\/]|$)/.test(target) || !this.insideAny(target, cwd)) {
         out.push(["high", "redirecionamento para fora do cwd"]);
       }
     }
