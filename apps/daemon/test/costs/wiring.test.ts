@@ -96,6 +96,6 @@ describe("costs-wiring: the host's usage index, costs and budgets (#1593)", () =
 
   test("the usage index follows the history index's changes", () => {
     const { listeners } = wired();
-    expect(listeners.length).toBe(1);
+    expect(listeners).toHaveLength(1);
   });
 });

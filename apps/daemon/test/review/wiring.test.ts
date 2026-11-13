@@ -135,7 +135,7 @@ describe("review-wiring: the card review the daemon builds (#1593)", () => {
   test("a review's call is recorded against the card's worktree as a card call", async () => {
     const { built, recorded } = setup();
     await built.cardReview?.start("c1");
-    expect(recorded.length).toBe(1);
+    expect(recorded).toHaveLength(1);
     expect([
       recorded[0]?.origin,
       recorded[0]?.projectPath,
