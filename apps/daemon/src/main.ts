@@ -88,7 +88,7 @@ import { createTrace } from "./trace/wiring.ts";
 import { createProjects, createProjectTrust } from "./trust/wiring.ts";
 import { createUi } from "./ui/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
-import { readWatchSettings } from "./watch/watch.ts";
+import { readWatchSettings } from "./watch/settings.ts";
 import { createWebhook } from "./webhook/wiring.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
@@ -267,6 +267,7 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
     agents: agentSetup.agentcfg,
+    log: (message) => logger.log(message),
   });
   const awake: {
     pinned?: (claudeSessionId: string | null) => boolean;

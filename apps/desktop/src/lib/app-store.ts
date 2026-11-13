@@ -3,9 +3,7 @@ import type {
   CommandPayload,
   CommandResults,
   HistoryChanged,
-  MessageInfo,
   SessionRecap,
-  TeamsUpdatedFrame,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
@@ -208,7 +206,7 @@ export class AppStore {
   /** What the Sessions screen lists from the online hosts (#1596). */
   readonly sessionLists: SessionListsSlice;
   /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
-  private readonly finished: FinishedSlice;
+  readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
   /** The sessions that keep their full event stream: the open one and the followed (#1596). */
@@ -266,7 +264,7 @@ export class AppStore {
         openSearch: () => this.history.openSearch(),
         palette: {
           loadProjects: (hostId) => this.projectList.load(hostId),
-          loadBoard: (hostId, projectId) => this.loadBoard(hostId, projectId),
+          loadBoard: (hostId, projectId) => this.boardCards.load(hostId, projectId),
           loadSshTargets: (hostId) => this.ssh.loadTargets(hostId),
           loadPersonas: (hostId) => this.personas.load(hostId),
           listSnippets: (hostId) => nullOnError(this.dispatch(hostId, "snippets.list", {})),
@@ -706,11 +704,6 @@ export class AppStore {
     return text;
   }
 
-  /** The person looked at Needs you: what finished before now is no longer new. */
-  finishedSeen(): void {
-    this.finished.seen();
-  }
-
   /** Issue #1327: a scheduled backup that cannot go reaches the bell, and a click opens its settings. */
   private onBackupAttention(kind: Attention): void {
     const t = this.i18n.t;
@@ -760,11 +753,6 @@ export class AppStore {
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
   setWorktreeFilter(filter: WorktreeFilter | null): void {
     this.update({ worktreeFilter: filter });
-  }
-
-  /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
-  loadBoard(hostId: string, projectId: string): Promise<void> {
-    return this.boardCards.load(hostId, projectId);
   }
 
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
@@ -1226,20 +1214,6 @@ export class AppStore {
     }
   }
 
-  /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
-  snoozeQuiet(hostId: string, sessionId: string): void {
-    this.quietSnooze.snooze(hostId, sessionId);
-  }
-
-  /** Phase 21: told each time a team of a host changes. */
-  onTeamsUpdated(listener: (hostId: string, frame: TeamsUpdatedFrame) => void): () => void {
-    return this.teams.onUpdated(listener);
-  }
-
-  /** Phase 21: told each time a message between sessions changes on a host. */
-  onMessageUpdated(listener: (hostId: string, message: MessageInfo) => void): () => void {
-    return this.messaging.onUpdated(listener);
-  }
 
   private onRun(hostId: string, run: WorkflowRun): void {
     this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });

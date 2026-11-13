@@ -156,7 +156,7 @@ describe("team-outcome-ui: a team's outcome in one place (#1220)", () => {
       // As the app opens on Teams: no card in the state yet, only what the page asks for.
       act(() => (store as unknown as { update(patch: object): void }).update({ cards: {} }));
       const asked: string[] = [];
-      store.loadBoard = (async (hostId: string, projectId: string) => {
+      store.boardCards.load = (async (hostId: string, projectId: string) => {
         asked.push(`${hostId}/${projectId}`);
         (store as unknown as { update(patch: object): void }).update({
           cards: { "h1/c-1": { id: "c-1", projectId: "p1", branch: "fd/login-1" } },

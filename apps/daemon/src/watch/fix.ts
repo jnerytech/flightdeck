@@ -11,7 +11,8 @@ import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
 import { MAX_VALUE } from "../workflows/interpolate.ts";
 import { masked, runChecks } from "./check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./drift.ts";
-import type { PrWatcher, WatchSettings, WatchTrigger } from "./watch.ts";
+import type { WatchSettings } from "./settings.ts";
+import type { PrWatcher, WatchTrigger } from "./watch.ts";
 
 /** One round of fixing a PR, as it is kept and shown (phase 22). */
 export interface FixRound {

@@ -1,23 +1,23 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
-import { EMPTY_PERIOD } from "../src/features/roi/roi.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
+import { EMPTY_PERIOD } from "../../src/features/roi/roi.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { RoiTable } = await import("../src/features/roi/roi-table.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { RoiTable } = await import("../../src/features/roi/roi-table.tsx");
 
 afterEach(cleanup);
 const settle = waiter(5000);
-const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
 const SHOP: RoiPeriod = { ...EMPTY_PERIOD, costUsd: 12, cards: 3, prsMerged: 3, hours: 6 };
 const RESULT: RoiSummaryResult = {
