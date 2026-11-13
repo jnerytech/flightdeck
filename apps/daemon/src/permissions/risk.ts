@@ -101,7 +101,6 @@ export { credential as isCredentialPath };
 /** The words of a command, without quotes, split also where a path cannot go on. */
 const words = (command: string) => command.split(/[\s"'`;|&<>()=,]+/).filter((w) => w !== "");
 
-/** Separate commands (`;`, `&&`, `||`, `|`, `&`, newlines), each as its words. */
 /**
  * A backslash before a newline is a line continuation: bash reads the two lines as one (`.e\<LF>nv`
  * is `.env`). An escaped backslash, `\\<LF>`, is not one. This is a second reading, never a
@@ -112,6 +111,7 @@ function joinContinuations(command: string): string {
   return command.replace(/(?<!\\)((?:\\\\)*)\\\r?\n/g, "$1");
 }
 
+/** Separate commands (`;`, `&&`, `||`, `|`, `&`, newlines), each as its words. */
 function segments(command: string): string[][] {
   return command
     .split(/&&|\|\||[;|&\n]/)
@@ -340,7 +340,11 @@ export class RiskClassifier {
       // A `>` that is only quoted text can start a match whose "quoted target" runs over a real
       // redirect further on; a quoted part with a shell operator in it is never a plain name.
       const spans = /"[^"]*[;&|<>\n]|'[^']*[;&|<>\n]/.test(word);
-      if (spans || /[$%{]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) || !this.insideAny(target, cwd)) {
+      if (
+        spans ||
+        /[$%{*?[]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) ||
+        !this.insideAny(target, cwd)
+      ) {
         out.push(["high", "redirecionamento para fora do cwd"]);
       }
     }
