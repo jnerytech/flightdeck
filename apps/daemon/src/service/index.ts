@@ -4,6 +4,7 @@
  * imports from here, never a file inside.
  */
 
+export { binaryVersion } from "./adapters/flightdeckd-process.ts";
 export {
   daemonCommand,
   installService,
@@ -20,7 +21,6 @@ export { lingerState } from "./linger.ts";
 export { killProcess, osServiceContext, processPath } from "./os.ts";
 export { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 export {
-  binaryVersion,
   compareVersions,
   refusedAddress,
   requestShutdown,
