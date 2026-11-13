@@ -35,7 +35,7 @@ import { RadarFeed } from "./radar-feed.ts";
 import { RuleWrites } from "./rule-writes.ts";
 import { RunQueue } from "./run-queue.ts";
 import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
-import type { TemplateIgnored, TemplateName } from "./spec-template.ts";
+import type { TemplateIgnored } from "./spec-template.ts";
 import type {
   BoardColumn,
   BoardOptions,
@@ -131,14 +131,14 @@ export class Board {
     this.projects = new Projects(opts.db, opts);
     this.queue = new RunQueue({
       ...core,
-      launch: (cardId, runId) => this.launch(cardId, runId),
-      failRun: (cardId, runId, notice, why) => this.failRun(cardId, runId, notice, why),
+      launch: (cardId, runId) => this.launcher.launch(cardId, runId),
+      failRun: (cardId, runId, notice, why) => this.launcher.failRun(cardId, runId, notice, why),
     });
     this.sessions = new SessionFollow({
       ...core,
       manager: opts.manager,
       loop: () => this.loop,
-      release: (cardId) => this.release(cardId),
+      release: (cardId) => this.queue.release(cardId),
       refreshConflicts: (cardId) => this.refreshConflicts(cardId),
       startCard: (id, options) => this.startCard(id, options),
     });
@@ -151,7 +151,7 @@ export class Board {
       ...(opts.preparePersonas ? { preparePersonas: opts.preparePersonas } : {}),
       host: {
         place: (cardId, event) => this.state.place(cardId, event),
-        release: (cardId) => this.release(cardId),
+        release: (cardId) => this.queue.release(cardId),
         hold: (cardId) => this.queue.hold(cardId),
         acquire: (cardId) => this.queue.acquire(cardId),
         takeSlots: (cardId, count) => this.queue.takeSlots(cardId, count),
@@ -175,22 +175,22 @@ export class Board {
       diff: (id) => this.diff(id),
       freesSlot: (status) => FREES_SLOT.has(status),
       unfollow: (id) => this.sessions.unfollow(id),
-      follow: (id, sessionId, sinceSeq) => this.follow(id, sessionId, sinceSeq),
+      follow: (id, sessionId, sinceSeq) => this.sessions.follow(id, sessionId, sinceSeq),
     });
     this.loopHost = new CheckLoopHost({
       ...core,
       workflows: this.workflows,
-      budgetBlocked: (projectId) => this.budgetBlocked(projectId),
-      release: (id) => this.release(id),
+      budgetBlocked: (projectId) => this.queue.budgetBlocked(projectId),
+      release: (id) => this.queue.release(id),
     });
     this.launcher = new Launcher({
       ...core,
       workflows: this.workflows,
-      release: (id) => this.release(id),
-      settleFix: (id, result) => this.settleFix(id, result),
-      follow: (id, sessionId, sinceSeq) => this.follow(id, sessionId, sinceSeq),
-      templateFor: (cwd, name) => this.templateFor(cwd, name),
-      dropConflicts: (id) => this.dropConflicts(id),
+      release: (id) => this.queue.release(id),
+      settleFix: (id, result) => this.sessions.settleFix(id, result),
+      follow: (id, sessionId, sinceSeq) => this.sessions.follow(id, sessionId, sinceSeq),
+      templateFor: (cwd, name) => this.lifecycle.templateFor(cwd, name),
+      dropConflicts: (id) => this.radarFeed.drop(id),
       loop: () => this.loop,
       settle: () => this.settle(),
     });
@@ -198,7 +198,7 @@ export class Board {
       ...core,
       message: (id, text) => this.message(id, text),
       settle: () => this.settle(),
-      closeRuns: (id) => this.closeRuns(id),
+      closeRuns: (id) => this.launcher.closeRuns(id),
       loop: () => this.loop,
       armPoll: () => this.prPoll.arm(),
       readInFlight: (id) => this.prPoll.inFlight(id),
@@ -206,7 +206,7 @@ export class Board {
     });
     this.prPoll = new PrPoll({
       ...core,
-      finish: (id) => this.finish(id),
+      finish: (id) => this.launcher.finish(id),
       fetchComments: (id) => this.prFlow.fetchComments(id),
       pendingNotice: PENDING_NOTICE,
     });
@@ -214,8 +214,8 @@ export class Board {
       ...core,
       workflows: this.workflows,
       queued: (id) => this.queue.has(id),
-      pump: () => this.pump(),
-      templateFor: (cwd, name, own) => this.templateFor(cwd, name, own),
+      pump: () => this.queue.pump(),
+      templateFor: (cwd, name, own) => this.lifecycle.templateFor(cwd, name, own),
       removeFromBoard: (id, verb) => this.lifecycle.removeFromBoard(id, verb),
       untrustedMark: UNTRUSTED_MARK,
       blockers: this.blockers,
@@ -224,15 +224,15 @@ export class Board {
       ...core,
       workflows: this.workflows,
       emit: (card) => this.state.emit(card),
-      settleFix: (id, result) => this.settleFix(id, result),
+      settleFix: (id, result) => this.sessions.settleFix(id, result),
       loop: () => this.loop,
-      closeRuns: (id) => this.closeRuns(id),
-      finish: (id) => this.finish(id),
+      closeRuns: (id) => this.launcher.closeRuns(id),
+      finish: (id) => this.launcher.finish(id),
       unfollow: (id) => this.sessions.unfollow(id),
       runEnds: (id) => Promise.all(this.ends.map((end) => end(id))),
       settle: () => this.settle(),
       variantIds: (id) => this.arenas.variantIds(id),
-      dropConflicts: (id) => this.dropConflicts(id),
+      dropConflicts: (id) => this.radarFeed.drop(id),
       blockers: this.blockers,
       forgetDone: (id) => forgetDone(this.db, id),
     });
@@ -260,7 +260,7 @@ export class Board {
       .all();
     for (const run of active) {
       const sessionId = run.session_id as string;
-      this.follow(run.card_id, sessionId, opts.manager.get(sessionId).lastSeq);
+      this.sessions.follow(run.card_id, sessionId, opts.manager.get(sessionId).lastSeq);
     }
     // Workflow runs take their slots back before the queue moves.
     this.workflows.recover();
@@ -270,7 +270,7 @@ export class Board {
       .all()) {
       this.blockers.afterBlockerChange(id);
     }
-    this.pump();
+    this.queue.pump();
   }
 
   /**
@@ -458,10 +458,6 @@ export class Board {
     return this.sessions.fixCard(id, opts);
   }
 
-  private settleFix(id: string, result: Partial<FixResult>): void {
-    this.sessions.settleFix(id, result);
-  }
-
   /** Gets every card after each change; returns the function that stops it. */
   watch(listener: (card: Card) => void): () => void {
     return this.state.watch(listener);
@@ -520,44 +516,10 @@ export class Board {
     await Promise.all(rows.map((row) => keys.resolve?.(row.path)));
   }
 
-  /** Starts queued runs, oldest first, while there are free slots. */
-  private pump(): void {
-    this.queue.pump();
-  }
-
   /** Why a queued card waits, for the card itself: the pause, the quota, memory, a budget, then a slot. */
   /** Issue #1439: whether the project's budget holds new work now, for the card review's gate. */
   budgetHeld(projectId: string): boolean {
     return this.queue.budgetBlocked(projectId);
-  }
-
-  /** A `queue` budget of the host or of the card's project is at 100% (sync-git.test.ts reads it). */
-  private budgetBlocked(projectId: string): boolean {
-    return this.queue.budgetBlocked(projectId);
-  }
-
-  /** The card's run stopped holding a slot: the next one in the queue goes. */
-  private release(cardId: string): void {
-    this.queue.release(cardId);
-  }
-
-  /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
-  private failRun(id: string, runId: string, notice: string, why?: unknown): void {
-    this.launcher.failRun(id, runId, notice, why);
-  }
-
-  private launch(id: string, runId: string): Promise<void> {
-    return this.launcher.launch(id, runId);
-  }
-
-  /** Closes the card's sessions and ends its open runs, except `keep` (the one launching). */
-  private closeRuns(id: string, keep = ""): Promise<void> {
-    return this.launcher.closeRuns(id, keep);
-  }
-
-  /** The card is done: sessions closed, worktree removed unless something is still pending. */
-  private finish(id: string): Promise<void> {
-    return this.launcher.finish(id);
   }
 
   /** Moves the card by hand; Backlog and Concluído lock it there until the next start. */
@@ -577,15 +539,6 @@ export class Board {
     force: boolean,
   ): Promise<Card> {
     return this.lifecycle.moveByHand(id, column, position, force);
-  }
-
-  /** A project's own template from its trusted checkout, or why it gives none (`CardLifecycle.templateFor`). */
-  private templateFor(
-    cwd: string,
-    name: TemplateName,
-    own?: true,
-  ): Promise<{ body: string | null; ignored: TemplateIgnored | null }> {
-    return this.lifecycle.templateFor(cwd, name, own);
   }
 
   /**
@@ -789,11 +742,6 @@ export class Board {
     return this.radarFeed.refresh(id);
   }
 
-  /** The card no longer takes part in the radar; the cards that were flagged with it hear of it. */
-  private dropConflicts(id: string): void {
-    this.radarFeed.drop(id);
-  }
-
   /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
   releaseWorktree(id: string, path: string, clearBranch: boolean): void {
     // Only the worktree that was removed: a card that got another one meanwhile keeps it.
@@ -805,18 +753,13 @@ export class Board {
       )
       .run(new Date().toISOString(), id, path);
     if (done.changes === 0) return;
-    this.dropConflicts(id);
+    this.radarFeed.drop(id);
     this.state.changed(id);
   }
 
   /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */
   announce(id: string): void {
     this.state.changed(id);
-  }
-
-  /** Session events of the card's active run move the card (replay first, then live). */
-  private follow(cardId: string, sessionId: string, sinceSeq: number): void {
-    this.sessions.follow(cardId, sessionId, sinceSeq);
   }
 
   /** A test drives a session event by hand (check-loop-board.test.ts): kept as a delegate. */
