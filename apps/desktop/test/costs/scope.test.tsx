@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
-import { projectLabels } from "../../src/features/costs/costs.ts";
-import { DATA_SCOPE_KEY } from "../../src/features/costs/data-scope.ts";
+import { projectLabels } from "../../src/features/costs/domain/costs.ts";
+import { DATA_SCOPE_KEY } from "../../src/features/costs/domain/data-scope.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";

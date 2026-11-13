@@ -7,7 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { DATA_SCOPE_KEY } = await import("../../src/features/costs/data-scope.ts");
+const { DATA_SCOPE_KEY } = await import("../../src/features/costs/domain/data-scope.ts");
 const { SessionsHub } = await import("../../src/features/sessions/sessions-hub.tsx");
 const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 

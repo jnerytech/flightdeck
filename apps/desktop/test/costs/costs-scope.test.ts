@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { ALL_HOSTS } from "../../src/features/costs/costs.ts";
+import { ALL_HOSTS } from "../../src/features/costs/domain/costs.ts";
 import {
   awayHost,
   hostScope,
   routeScopeOf,
   topModel,
-} from "../../src/features/costs/costs-scope.ts";
-import { ALL_SCOPE, type DataScope } from "../../src/features/costs/data-scope.ts";
+} from "../../src/features/costs/domain/costs-scope.ts";
+import { ALL_SCOPE, type DataScope } from "../../src/features/costs/domain/data-scope.ts";
 
 const host = (id: string, status = "online") => ({ id, status });
 const scoped = (hostId: string): DataScope => ({ kind: "host", hostId });

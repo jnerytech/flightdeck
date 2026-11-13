@@ -4,7 +4,7 @@ import {
   hiddenProject,
   projectCwd,
   projectLabel,
-} from "../../src/features/costs/usage-rows.ts";
+} from "../../src/features/costs/domain/usage-rows.ts";
 
 describe("uso-tabela: the rows of a host's usage", () => {
   test("a folder key is labelled by its folder and gives its cwd, whatever the slash", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Budget } from "@flightdeck/protocol";
-import { usd } from "../../src/features/costs/costs.ts";
+import { usd } from "../../src/features/costs/domain/costs.ts";
 import {
   type BudgetsCore,
   BudgetsSlice,

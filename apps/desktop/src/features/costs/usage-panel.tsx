@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { periodRange, usd } from "./costs.ts";
+import { periodRange, usd } from "./domain/costs.ts";
+import { groupByProject, type UsageHistoryTarget } from "./domain/usage-rows.ts";
 import { UsageGroupRows } from "./usage-group.tsx";
-import { groupByProject, type UsageHistoryTarget } from "./usage-rows.ts";
 
 interface Row {
   day: string;
