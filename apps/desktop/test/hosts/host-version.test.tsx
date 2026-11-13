@@ -33,7 +33,7 @@ for (const [lang, dict] of [
     test("a daemon on another version is marked, in words and not by color alone", () => {
       render(<HostVersionLine url="ws://pc:7878/v1/ws" daemon="0.36.4" app="0.37.0" t={t} />);
       expect(screen.queryByText(dict.hostPage.differs)).not.toBeNull();
-      expect((document.body.textContent ?? "").includes(daemon("0.36.4"))).toBe(true);
+      expect(document.body.textContent ?? "").toContain(daemon("0.36.4"));
     });
 
     test("before the host has said its version, only the address shows", () => {

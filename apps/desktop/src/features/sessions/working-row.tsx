@@ -34,10 +34,12 @@ export function WorkingRow(
           <i />
           <i />
         </span>
+        {/* A screen reader hears the word and the tool; the seconds tick for the eyes only (#2674). */}
         <span>
-          {props.label} {elapsed(now - props.since)}
+          {props.label}
           {props.tool ? ` · ${props.tool}` : ""}
         </span>
+        <span aria-hidden="true">{elapsed(now - props.since)}</span>
       </Inline>
     </output>
   );

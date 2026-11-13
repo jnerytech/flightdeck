@@ -73,6 +73,7 @@ import {
   scopeKeys,
 } from "./hub-scope.ts";
 import { newSessionHost } from "./new-session-host.ts";
+import { focusRenameField, focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
 import { ViewToggle } from "./view-toggle.tsx";
@@ -147,7 +148,6 @@ export function SessionsHub(
   const [moving, setMoving] = useState<HubRow | null>(null);
   const canTeleport = (hostId: string) =>
     hasFeature(state.hosts.find((h) => h.id === hostId)?.hostInfo?.features, "teleport", false);
-  const [name, setName] = useState("");
   // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
   // keeps failing to connect changes status on every attempt: only being online counts.
   const signature = refreshSignature(state.hosts);
@@ -303,6 +303,11 @@ export function SessionsHub(
   const sessionKeyOf = (row: HubRow) => `${row.hostId}/${row.sessionId ?? row.claudeSessionId}`;
   const isMuted = (row: HubRow) =>
     store.notifyPrefs.value.mutedSessions.includes(sessionKeyOf(row));
+  /** Closes the rename form and puts the focus back on the row's actions button. */
+  const closeRename = (row: HubRow) => {
+    focusRowActions(row.claudeSessionId);
+    setRenaming(null);
+  };
   /** The row's actions menu, the same in a line and on a card. */
   const rowActions = (row: HubRow) => {
     if (!row.claudeSessionId) return null;
@@ -317,12 +322,21 @@ export function SessionsHub(
             variant="ghost"
             size="icon"
             aria-label={t("hub.actions", { title: row.title })}
+            data-row-actions={row.claudeSessionId}
             className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
           >
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent
+          align="end"
+          // Rename opens a form: the menu hands it the focus, not back to its own button.
+          onCloseAutoFocus={(event) => {
+            if (renaming?.claudeSessionId !== row.claudeSessionId) return;
+            event.preventDefault();
+            focusRenameField();
+          }}
+        >
           <DropdownMenuItem
             onSelect={() => {
               store.hostTabs.openNextInNewTab();
@@ -331,14 +345,7 @@ export function SessionsHub(
           >
             {t("tabs.openInNew")}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => {
-              setRenaming(row);
-              setName(row.title);
-            }}
-          >
-            {t("hub.rename")}
-          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setRenaming(row)}>{t("hub.rename")}</DropdownMenuItem>
           {offers.sleep && (
             <DropdownMenuItem
               onSelect={() => void store.commands.sleep(row.hostId, row.sessionId as string)}
@@ -582,22 +589,15 @@ export function SessionsHub(
           />
         )}
         {renaming && (
-          <div className="flex items-center gap-2">
-            <Input
-              aria-label={t("hub.newName")}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-64"
-            />
-            <Button
-              onClick={() => {
-                meta(renaming, { name: name.trim() || null });
-                setRenaming(null);
-              }}
-            >
-              {t("hub.saveName")}
-            </Button>
-          </div>
+          <RenameForm
+            key={renaming.claudeSessionId}
+            title={renaming.title}
+            onSave={(name) => {
+              meta(renaming, { name: name || null });
+              closeRename(renaming);
+            }}
+            onCancel={() => closeRename(renaming)}
+          />
         )}
         {groups.map((group) => {
           const shared = sharedMeta(group.rows);

@@ -541,7 +541,7 @@ describe("board-ui", () => {
     await type("Título", "Rascunho meu");
     await type("Ajuste", "meu ajuste");
     await click("Iniciar");
-    await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
+    await settle(() => screen.queryByRole("region", { name: "Conversa do card" }) !== null);
     const value = (label: string) =>
       (screen.queryByLabelText(label) as HTMLInputElement | null)?.value;
     expect([value("Título"), value("Ajuste")]).toEqual(["Rascunho meu", "meu ajuste"]);
@@ -560,9 +560,9 @@ describe("board-ui", () => {
     const before = details() ?? null;
     const splitBefore = before?.getAttribute("data-split") ?? null;
     await click("Iniciar");
-    await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
+    await settle(() => screen.queryByRole("region", { name: "Conversa do card" }) !== null);
     const after = details() ?? null;
-    const log = screen.queryByRole("log", { name: "Conversa do card" });
+    const log = screen.queryByRole("region", { name: "Conversa do card" });
     expect({
       splitBefore,
       same: before !== null && before === after,
@@ -619,7 +619,7 @@ describe("board-ui", () => {
     await settle(() => (screen.queryByRole("log")?.textContent ?? "").includes("Echo:"));
     expect(screen.queryByRole("log")?.textContent ?? "").toContain("crie e commite [commit]");
     // The card's conversation fills its pane like the session screen: no fixed box, no narrow column.
-    const chat = screen.queryByRole("log", { name: "Conversa do card" }) as HTMLElement;
+    const chat = screen.queryByRole("region", { name: "Conversa do card" }) as HTMLElement;
     expect(chat.closest(".max-w-4xl")).toBeNull();
     expect(cardItem("Detalhe")).toBeNull();
 

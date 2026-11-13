@@ -198,7 +198,7 @@ for (const [lang, t] of [
       await show(OFFER({ dropped: 1 }));
       await settle(() => select() !== null);
       const said = lang === "en" ? "1 template left out" : "1 modelo deixado de fora";
-      expect(document.body.textContent?.includes(said)).toBe(true);
+      expect(document.body.textContent ?? "").toContain(said);
     });
 
     test("a file that was not used says why, and offers no picker", async () => {

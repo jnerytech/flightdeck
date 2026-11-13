@@ -137,8 +137,8 @@ describe("incidentText: the facts of a failed card, for the post-mortem (issue #
     );
     expect(all).toHaveLength(INCIDENT_MAX);
     // Only the first failed steps are listed.
-    expect(all.includes("Failed step: s0")).toBe(true);
-    expect(all.includes("Failed step: s9")).toBe(false);
+    expect(all).toContain("Failed step: s0");
+    expect(all).not.toContain("Failed step: s9");
   });
 
   test("a field that is empty after cleaning leaves no line", () => {
