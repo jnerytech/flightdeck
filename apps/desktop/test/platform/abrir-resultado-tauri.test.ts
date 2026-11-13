@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
 
 describe("abrir-resultado-tauri: opening a result goes through the host-checked command", () => {
   test("Given the desktop shell, When a file is opened or shown, Then the app asks open_result, which checks the path", async () => {
@@ -21,7 +21,7 @@ describe("abrir-resultado-tauri: opening a result goes through the host-checked 
 
 describe("abrir-resultado-tauri: what the webview may ask of the opener plugin", () => {
   const capability = JSON.parse(
-    readFileSync(join(import.meta.dir, "../src-tauri/capabilities/default.json"), "utf8"),
+    readFileSync(join(import.meta.dir, "../../src-tauri/capabilities/default.json"), "utf8"),
   ) as { permissions: Array<string | { identifier: string }> };
   const identifiers = capability.permissions.map((p) => (typeof p === "string" ? p : p.identifier));
 
@@ -38,7 +38,7 @@ describe("abrir-resultado-tauri: what the webview may ask of the opener plugin",
   });
 
   test("Given the Rust shell, Then open_result is a command, with the checks that keep a result a document", () => {
-    const source = readFileSync(join(import.meta.dir, "../src-tauri/src/lib.rs"), "utf8");
+    const source = readFileSync(join(import.meta.dir, "../../src-tauri/src/lib.rs"), "utf8");
     expect(source).toContain("async fn open_result(");
     expect(source).toMatch(/open_result,?\s*\n/);
     for (const check of ["symlink_metadata", "canonicalize", "OPENABLE", "spawn_blocking_result"]) {

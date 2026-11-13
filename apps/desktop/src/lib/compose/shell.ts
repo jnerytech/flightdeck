@@ -3,20 +3,45 @@ import { DensityController } from "@/features/shell/density.ts";
 import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
 import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
+import { type ActivitySlice, wireActivity } from "../../features/activity/index.ts";
 import { type AppUpdateSlice, wireAppUpdates } from "../../features/appupdate/index.ts";
 import { WhatsNew } from "../../features/appupdate/whats-new.ts";
+import type { BackgroundSlice } from "../../features/background/index.ts";
 import { BoardWidth } from "../../features/board/index.ts";
 import { DataScopeController } from "../../features/costs/index.ts";
+import { type HistorySlice, wireHistory } from "../../features/history/index.ts";
 import { HomeCache, UiModeSlice } from "../../features/home/index.ts";
+import { RequestError } from "../../features/hosts/index.ts";
+import type { InboxSlice } from "../../features/inbox/index.ts";
 import { AwayClock } from "../../features/needs-you/away.ts";
 import { QuietSnoozeSlice } from "../../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../../features/notifications/index.ts";
+import { type PermissionsSlice, wirePermissions } from "../../features/permissions/index.ts";
 import {
   browserClockDeps,
   CacheTimerSettings,
+  type ExternalSessionsSlice,
+  type FinishedSlice,
+  HISTORY_LIST_LIMIT,
   NewSessionPrefs,
+  type SessionActions,
+  type SessionCommandsSlice,
+  type SessionListsSlice,
+  type SessionStreamSlice,
+  type SessionSubscriptions,
+  type SessionsSlice,
   SharedClock,
+  type SummariesSlice,
   sessionKey,
+  wireExternalSessions,
+  wireFinished,
+  wireSessionActions,
+  wireSessionCommands,
+  wireSessionLists,
+  wireSessionStream,
+  wireSessionSubscriptions,
+  wireSessions,
+  wireSummaries,
 } from "../../features/sessions/index.ts";
 import { type SettingsSlice, wireSettings } from "../../features/settings/index.ts";
 import { TabScopeController } from "../../features/tabs/tab-scope.ts";
@@ -25,14 +50,46 @@ import {
   TerminalFontController,
   TerminalReaderSetting,
 } from "../../features/terminal/terminal-view.ts";
+import { type TraySlice, wireTray } from "../../features/tray/index.ts";
 import { ViewPrefsSlice } from "../../features/viewprefs/index.ts";
+import type { WebhookFeed } from "../../features/webhook/webhook-feed.ts";
 import type { Platform } from "../../platform/types.ts";
 import { AppLog } from "../app-log.ts";
-import type { AppState, HostView } from "../app-state.ts";
+import { type AppState, type HostView, needsYou } from "../app-state.ts";
 import type { AppKernel } from "../kernel.ts";
 
-/** The shell preferences: what the person set for the window and what the app keeps about itself, none of it a host's (#2376). */
-export interface ShellSlices {
+/** What the app does with the sessions of the hosts: their lists, stream, commands, answers and the tray that shows them (#2376). */
+interface SessionSlices {
+  /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
+  readonly tray: TraySlice;
+  /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
+  readonly permissions: PermissionsSlice;
+  /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
+  readonly summaries: SummariesSlice;
+  /** What a host tells about the Claude sessions started in a terminal (#1596). */
+  readonly external: ExternalSessionsSlice;
+  /** What the Sessions screen lists from the online hosts (#1596). */
+  readonly sessionLists: SessionListsSlice;
+  /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
+  readonly finished: FinishedSlice;
+  /** What a host's session events do to the conversations the app holds (#1596). */
+  readonly stream: SessionStreamSlice;
+  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
+  readonly subscriptions: SessionSubscriptions;
+  /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
+  readonly commands: SessionCommandsSlice;
+  /** What a conversation screen asks of the app: the commands, copying a text, answering a request. */
+  readonly sessionActions: SessionActions;
+  /** The history read from every host (#1596): its global search. */
+  readonly history: HistorySlice;
+  /** What happened on the hosts while the app was away (issue #1344, #1596). */
+  readonly activity: ActivitySlice;
+  /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
+  readonly sessions: SessionsSlice;
+}
+
+/** The shell preferences, what the person set for the window and what the app keeps about itself, and the session slices that read them (#2376). */
+export interface ShellSlices extends SessionSlices {
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
   readonly density: DensityController;
@@ -79,6 +136,7 @@ export interface ShellSlices {
 }
 
 type PaletteDeps = ConstructorParameters<typeof PaletteSlice>[0];
+type SummariesDeps = Parameters<typeof wireSummaries>[1];
 
 /** What the shell slices read from the rest of the store; each is read when a slice asks, so a slice built later is fine. */
 interface ShellDeps {
@@ -104,16 +162,40 @@ interface ShellDeps {
     | "keepSnippets"
     | "refreshHub"
   >;
+  /** The longest a global search waits for a host; `undefined` keeps the slice's default. */
+  searchTimeoutMs: number | undefined;
+  /** The timers the tray's countdowns run on. */
+  timers: Parameters<typeof wireTray>[1]["timers"];
+  /** Opens a session's tab. */
+  showSession: (hostId: string, sessionId: string) => void;
+  /** Settles a vault request the permission answer carries. */
+  settleVault: Parameters<typeof wirePermissions>[1]["settleVault"];
+  /** Tells the background tasks slice a host's session list changed. */
+  backgroundChanged: BackgroundSlice["changed"];
+  /** What the webhooks are told, read when an event asks. */
+  webhookFeed: () => WebhookFeed;
+  /** The notification center (the bell). */
+  notify: InboxSlice["notify"];
+  /** Copies a text through the machine's clipboard slice. */
+  copyText: (text: string) => Promise<boolean>;
+  /** The project a folder of a host belongs to. */
+  projectOf: SummariesDeps["projectOf"];
+  /** The sessions on screen: the open tab's and the visible ones'. */
+  shown: SummariesDeps["shown"];
+  /** Runs a function after a delay, on the store's timers. */
+  later: SummariesDeps["later"];
+  /** Answers a permission request of a host from the tray or a toast. */
+  respondTo: Parameters<typeof wireTray>[1]["answer"];
 }
 
 /**
- * Builds the shell preferences. Every slice is built through its own domain's entry; the store
- * keeps only what it owns (#2376).
+ * Builds the shell preferences and the session slices that read them. Every slice is built through
+ * its own domain's entry; the store keeps only what it owns (#2376).
  */
 export function composeShell(kernel: AppKernel<AppState>, deps: ShellDeps): ShellSlices {
   const { platform } = deps;
   const appLog = new AppLog({ sink: platform.logs, values: deps.secretValues });
-  return {
+  const shell = {
     theme: new ThemeController(platform),
     density: new DensityController(platform.storage),
     terminalFont: new TerminalFontController(platform.storage),
@@ -170,5 +252,99 @@ export function composeShell(kernel: AppKernel<AppState>, deps: ShellDeps): Shel
     awayClock: new AwayClock(platform.storage, kernel.now),
     appLog,
     settings: wireSettings(kernel, { platform, onShortcut: deps.openSearch }),
+  };
+  return { ...shell, ...composeSessions(kernel, deps, shell) };
+}
+
+/**
+ * Builds the session slices. They refer to each other through closures that run only after this
+ * function returns, so a `const` declared further down is read late, never during construction.
+ * No `wire*` call reads another slice or the state while it is built, so the order below is free;
+ * the store builds this group first, ahead of the hosts and the vault.
+ */
+function composeSessions(
+  kernel: AppKernel<AppState>,
+  deps: ShellDeps,
+  shell: Pick<ShellSlices, "uiModes" | "notifyPrefs" | "awayClock">,
+): SessionSlices {
+  const { platform } = deps;
+  const needsYouNow = () => needsYou(kernel.state(), kernel.t());
+  const isSimple = (hostId: string) => shell.uiModes.mode(hostId).mode === "simple";
+  const subscriptions = wireSessionSubscriptions(kernel);
+  const history = wireHistory(kernel, {
+    searchTimeoutMs: deps.searchTimeoutMs,
+    select: (hostId, sessionId) => subscriptions.select(hostId, sessionId),
+    listLimit: HISTORY_LIST_LIMIT,
+    offline: () => new RequestError("offline", "unknown host"),
+    reason: (error) => (error instanceof RequestError ? error.reason : undefined),
+  });
+  const commands = wireSessionCommands(kernel, {
+    opened: (hostId, sessionId) => {
+      subscriptions.select(hostId, sessionId);
+      // A new session opens, wherever it was created from (phase 10).
+      history.closeSearch();
+      deps.showSession(hostId, sessionId);
+    },
+  });
+  const tray: TraySlice = wireTray(kernel, {
+    platform,
+    needsYou: needsYouNow,
+    uiHostId: () => shell.uiModes.hostId(),
+    isSimple,
+    answer: deps.respondTo,
+    open: (item) => permissions.open(item),
+    timers: deps.timers,
+  });
+  const permissions: PermissionsSlice = wirePermissions(kernel, {
+    needsYou: needsYouNow,
+    settleVault: deps.settleVault,
+    sendSelected: (response) =>
+      commands.onSelected((conn) => conn.request("permission.respond", response)),
+    showWindow: () => void platform.showMainWindow(),
+    act: (action) => tray.act(action),
+  });
+  const finished = wireFinished(kernel, {
+    storage: platform.storage,
+    isFocused: () => platform.isFocused(),
+    shown: deps.shown,
+  });
+  const summaries: SummariesSlice = wireSummaries(kernel, {
+    setSessions: (hostId, sessions) => deps.updateHost(hostId, (h) => ({ ...h, sessions })),
+    shown: deps.shown,
+    projectOf: deps.projectOf,
+    isSimple,
+    isFocused: () => platform.isFocused(),
+    prefs: () => shell.notifyPrefs.value,
+    notify: deps.notify,
+    feed: (host, prev, next) => deps.webhookFeed().managed(host, prev, next),
+    finished: (hostId, prev, next) => finished.record(hostId, prev, next),
+    later: deps.later,
+  });
+  return {
+    tray,
+    permissions,
+    summaries,
+    finished,
+    subscriptions,
+    commands,
+    history,
+    sessionActions: wireSessionActions(commands, {
+      copyText: deps.copyText,
+      respond: (requestId, decision, answer) =>
+        permissions.respond(requestId, decision, answer ?? {}),
+    }),
+    external: wireExternalSessions(kernel, {
+      projectOf: deps.projectOf,
+      isFocused: () => platform.isFocused(),
+      notify: deps.notify,
+      feedSession: (host, prev, next) => deps.webhookFeed().externalSession(host, prev, next),
+      feedPermission: (host, frame, cwd) => deps.webhookFeed().externalPermission(host, frame, cwd),
+    }),
+    sessionLists: wireSessionLists(kernel, { backgroundPatch: deps.backgroundChanged }),
+    stream: wireSessionStream(kernel, {
+      summary: (hostId, event) => summaries.apply(hostId, [event]),
+    }),
+    activity: wireActivity(kernel, { since: () => shell.awayClock.since() }),
+    sessions: wireSessions(kernel, { storage: platform.storage }),
   };
 }

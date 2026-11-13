@@ -27,7 +27,7 @@ import {
 import { EmptyState, LoadingState } from "@/shared/layout/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { TerminalButton } from "../terminal/index.ts";
+import { TerminalButton } from "../terminal/ui.ts";
 
 interface Target {
   store: AppStore;

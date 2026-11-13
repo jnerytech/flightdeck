@@ -1,5 +1,5 @@
 import { expect, describe as suite, test } from "bun:test";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 import {
   plainWaiter,
   settleMaybe,
@@ -8,7 +8,7 @@ import {
   uiIdle,
   WaitTimeout,
   waiter,
-} from "./wait.ts";
+} from "../wait.ts";
 
 registerDom();
 

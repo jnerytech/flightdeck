@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { PENDING_SELECTOR } from "../../../scripts/lib/shots/loaded.ts";
-import { registerDom } from "./dom.ts";
+import { PENDING_SELECTOR } from "../../../../scripts/lib/shots/loaded.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, render } = await import("@testing-library/react");
-const { EmptyState, LoadingState } = await import("../src/shared/layout/states.tsx");
+const { EmptyState, LoadingState } = await import("../../src/shared/layout/states.tsx");
 
 afterEach(cleanup);
 

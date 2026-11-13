@@ -82,7 +82,7 @@
   "apps/desktop/test/palette/claude-aqui-ui.test.tsx": 1,
   "apps/desktop/test/perf/orcamento-render.test.tsx": 1,
   "apps/desktop/test/permissions/question-card-ui.test.tsx": 1,
-  "apps/desktop/test/platform.test.ts": 2,
+  "apps/desktop/test/platform/platform.test.ts": 2,
   "apps/desktop/test/projects/busca-app.test.tsx": 1,
   "apps/desktop/test/reader/leitor.test.tsx": 1,
   "apps/desktop/test/refusals/daemon.test.ts": 1,
