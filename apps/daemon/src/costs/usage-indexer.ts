@@ -5,6 +5,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { normalizeCwd } from "../history/index.ts";
 import { parseJsonOr, parseJsonText, ulid } from "../kernel/index.ts";
+// Not ../quota/index.ts: the entry pulls quota.ts, whose runtime types import this file (a cycle).
 import { localDay } from "../quota/usage.ts";
 
 /** Where the usage of a message came from. */

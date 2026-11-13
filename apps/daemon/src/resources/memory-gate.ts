@@ -4,7 +4,7 @@
  * MemAvailable), so the hold agrees with what the panel shows. Every doubt lets runs go: no
  * threshold, no reading, a reading that throws or makes no sense.
  */
-import { realTimers, type Timers } from "../quota/quota.ts";
+import { realTimers, type Timers } from "../quota/index.ts";
 
 /** The host's memory as the OS reports it. */
 export interface MemoryReading {
