@@ -6,27 +6,17 @@ import type {
   SessionRecap,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
-import { initialAccountState } from "../features/account/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import { type BudgetsSlice, hubHostScope, localDay, wireBudgets } from "../features/costs/index.ts";
-import {
-  HostLink,
-  HostTabs,
-  initialHealthState,
-  loadHosts,
-  RequestError,
-  saveHosts,
-} from "../features/hosts/index.ts";
+import { type BudgetsSlice, localDay, wireBudgets } from "../features/costs/index.ts";
+import { HostLink, HostTabs, loadHosts, RequestError, saveHosts } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
-import { initialQuotaState } from "../features/quota/index.ts";
-import { SessionViews, sessionKey, takeHubHost } from "../features/sessions/index.ts";
+import { SessionViews, sessionKey } from "../features/sessions/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
@@ -51,8 +41,8 @@ import {
   composeLinkHandlers,
   type HostSlices,
   type LinkHandlers,
-  newHostView,
 } from "./compose/hosts.ts";
+import { composeLifecycle, type Lifecycle } from "./compose/lifecycle.ts";
 import { composeShell, type ShellSlices } from "./compose/shell.ts";
 import { composeVault, type VaultSlices } from "./compose/vault.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
@@ -73,9 +63,6 @@ export type {
 } from "./app-state.ts";
 export { HISTORY_PAGE, needsYou } from "./app-state.ts";
 export type { HostCommandType, HostResult } from "./kernel.ts";
-
-/** How often the app writes that it is still active (issue #1344). */
-const AWAY_MARK_MS = 60_000;
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
@@ -130,9 +117,10 @@ export class AppStore {
   });
   /** What the host link calls: its frames, its steps when a host comes online and its status (#2376). */
   private readonly handlers: LinkHandlers;
+  /** The start and the stop of the app, with the timers they own (#2376). */
+  private readonly lifecycle: Lifecycle;
   private noticeSeq = 0;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
-  private offQuit: (() => void) | null = null;
 
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
@@ -327,6 +315,12 @@ export class AppStore {
       },
       refreshSetup: (hostId, options) => this.refreshSetup(hostId, options),
     });
+    this.lifecycle = composeLifecycle(this.kernel, {
+      platform,
+      slices: () => this,
+      link: () => this.link,
+      clientBudgetIntervalMs: () => this.options.clientBudgetIntervalMs,
+    });
   }
 
   /** Phase 40: the AI assistant's preferences, keys state and the wand's requests. */
@@ -346,7 +340,6 @@ export class AppStore {
   readonly terminals: TerminalsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
-  private awayTimer: ReturnType<typeof setInterval> | null = null;
   /** The screen in use and its history (phase 10). */
   readonly router: Navigation;
   /** Each host's own tabs and the shared screens (issue #644). */
@@ -408,59 +401,8 @@ export class AppStore {
     return () => this.listeners.delete(listener);
   };
 
-  async init(): Promise<void> {
-    this.inbox.load();
-    this.finished.load();
-    this.inbox.syncBadge();
-    // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
-    this.dispose();
-    this.link.listenForWake();
-    this.theme.start();
-    void this.assistant.refreshKeys();
-    this.i18n.start();
-    this.update({
-      hosts: [],
-      hostsLoaded: false,
-      sessions: {},
-      selected: null,
-      cards: {},
-      runs: {},
-      ...initialQuotaState(),
-      ...initialAccountState(),
-      ...initialHealthState(),
-    });
-    await this.settings.load();
-    // Client budgets are looked at every few minutes, and when a host with costs comes online.
-    this.clientBudgets.start(this.options.clientBudgetIntervalMs);
-    this.appUpdates.start();
-    // Issue #1344: the time the app is active, for the next start's "While you were away".
-    this.awayClock.mark();
-    if (this.awayTimer) clearInterval(this.awayTimer);
-    this.awayTimer = setInterval(() => this.awayClock.mark(), AWAY_MARK_MS);
-    // A schedule that cannot start (storage full) must not stop the app from starting.
-    this.backupScheduler.start().catch(() => {});
-    await this.settings.registerSaved();
-    this.tray.start();
-    this.offQuit?.();
-    this.offQuit = this.platform.onQuitRequested(() => void this.appUpdates.quit());
-    await inSequence(loadHosts(this.platform.storage), async (config) => {
-      // A host added while init ran (#1718) is already listed and connecting.
-      if (this.state.hosts.some((host) => host.id === config.id)) return;
-      this.update({ hosts: [...this.state.hosts, newHostView(config)] });
-      const token = await this.platform.secrets.get(config.id);
-      if (token) this.link.connect(config, token);
-    });
-    this.update({ hostsLoaded: true });
-    // #126 slice 2: the hub's own host filter (a name) becomes the data scope once, unless one
-    // was chosen already; either way it leaves the hub, which now follows the scope.
-    const hubHost = takeHubHost(this.platform.storage);
-    if (hubHost && !this.dataScope.chosen) {
-      this.dataScope.set(hubHostScope(hubHost, this.state.hosts));
-    }
-    // Last: the saved hosts must not wait for it.
-    if (this.platform.terminal.supported) {
-      this.update({ terminalEnv: await this.platform.terminal.probe() });
-    }
+  init(): Promise<void> {
+    return this.lifecycle.init();
   }
 
   /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
@@ -732,19 +674,7 @@ export class AppStore {
   }
 
   dispose(): void {
-    this.messaging.dispose();
-    if (this.awayTimer) clearInterval(this.awayTimer);
-    this.awayTimer = null;
-    this.link.dispose();
-    this.tray.stop();
-    this.offQuit?.();
-    this.offQuit = null;
-    this.appUpdates.dispose();
-    this.hostUpdate.dispose();
-    this.backupScheduler.dispose();
-    this.clientBudgets.dispose();
-    this.vaultRules.dispose();
-    this.theme.stop();
+    this.lifecycle.dispose();
   }
 
   /** The session a move made, opened on its new host. */
