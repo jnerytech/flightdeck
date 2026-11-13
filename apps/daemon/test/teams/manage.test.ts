@@ -245,7 +245,7 @@ describe("team-manage: the coordinator adds and removes a member (#2090)", () =>
     ]).toEqual([
       "team_manage_not_coordinator",
       "request_invalid:brief",
-      "request_invalid:permission",
+      "request_invalid",
       "ok",
       "team_manage_not_coordinator",
       "ok",

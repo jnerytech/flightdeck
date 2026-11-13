@@ -38,6 +38,31 @@ export const readSession = (daemon: Caller, as: SessionIdentity, session: string
 export const teamStatus = (daemon: Caller, as: SessionIdentity, team: string) =>
   daemon.call("teams.status", { team, as });
 
+/** #2090: the coordinator adds a worker in a persona it picks; the host checks it is the coordinator. */
+export const teamAddMember = (
+  daemon: Caller,
+  as: SessionIdentity,
+  team: string,
+  brief: string,
+  persona?: string,
+  model?: string,
+) =>
+  daemon.call("teams.add_member", {
+    team,
+    brief,
+    ...(persona ? { persona } : {}),
+    ...(model ? { model } : {}),
+    as,
+  });
+
+/** #2090: the coordinator takes a worker out of the team; its card and branch stay. */
+export const teamRemoveMember = (
+  daemon: Caller,
+  as: SessionIdentity,
+  team: string,
+  member: string,
+) => daemon.call("teams.remove_member", { team, member, as });
+
 /** #1220: the coordinator's report of the team's outcome; the host checks it is the coordinator. */
 export const teamReport = (
   daemon: Caller,

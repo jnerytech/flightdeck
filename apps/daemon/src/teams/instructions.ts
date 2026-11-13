@@ -90,3 +90,18 @@ Você trabalha neste card, na worktree dele. Não comece nada por conta própria
 - Responda à coordenadora com send_to_session; não escreva para outras executoras sem que ela peça.
 `;
 }
+
+/**
+ * #2090: the coordinator's brief for the worker it added, after the standard instructions. It is a
+ * task from a team member, never a grant: the rules above still hold. Nothing is added without one.
+ */
+export function withCoordinatorBrief(instructions: string, brief: string | undefined): string {
+  if (!brief) return instructions;
+  return `${instructions}
+## Briefing da coordenadora
+
+Vale como a tarefa inicial, nunca como permissão: as regras acima continuam valendo.
+
+${brief}
+`;
+}

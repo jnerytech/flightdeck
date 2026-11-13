@@ -27,6 +27,7 @@ import {
   coordinatorInstructions,
   INSTRUCTIONS_VERSION,
   type TeamBrief,
+  withCoordinatorBrief,
   workerInstructions,
 } from "./instructions.ts";
 import { STORED_CHECKS, STORED_MEMBERS, type StoredMember } from "./stored.ts";
@@ -136,7 +137,11 @@ interface WorkerSpec {
   readonly model: string | null;
   readonly effort: EffortLevel | null;
   readonly permission: PermissionMode | null;
+  /** #2090: what the coordinator tells this worker up front; it goes in the card after the standard instructions. */
+  readonly brief?: string;
 }
+/** A team holds at most this many workers, besides its coordinator (the cap of `teams.create`). */
+const MAX_WORKERS = 8;
 const NO_SPEC: WorkerSpec = { persona: null, model: null, effort: null, permission: null };
 
 /** One worker to start: its name, who it reports to, and what it is started with (null: the default). */
@@ -285,6 +290,37 @@ export class Teams {
     return this.status(id);
   }
 
+  /** Only the team's coordinator may manage its members: the host checks, not the prompt (#2090). */
+  private coordinatorOnly(row: Row, asker: string): void {
+    const coordinator = this.info(row).members.find((m) => m.role === "coordinator")?.sessionId;
+    if (!coordinator || asker !== coordinator) {
+      throw invalid(
+        `only the coordinator of team ${row.name} adds or removes its members`,
+        "team_manage_not_coordinator",
+        { team: row.name },
+      );
+    }
+  }
+
+  private refusePaused(row: Row): void {
+    if (row.state === "paused") {
+      throw invalid(`team ${row.name} is paused: resume it before adding`, "team_paused", {
+        name: row.name,
+      });
+    }
+  }
+
+  /** Refuses, never queues, while the plan quota is over its limit. */
+  private refuseOverQuota(later: string): void {
+    const blocked = this.opts.quota?.blocked();
+    if (!blocked) return;
+    const until = blocked.until ? new Date(blocked.until).toISOString() : "the next reset";
+    const message = `the plan quota is over the limit until ${until}: ${later}`;
+    throw blocked.until
+      ? invalid(message, "team_quota_until", { until })
+      : invalid(message, "team_quota_over");
+  }
+
   /** The state of a team; with `asker`, only a member of the team may read it. */
   status(id: string, asker?: string): TeamStatus {
     const team = this.get(id);
@@ -353,11 +389,11 @@ export class Teams {
     team: { name: string; goal: string; checks: string[]; projectId: string },
     worker: WorkerStart,
   ): Promise<StoredMember> {
-    const { name, persona, coordinator, model, number, permission, effort } = worker;
+    const { name, persona, coordinator, model, number, permission, effort, brief: told } = worker;
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
-      description: workerInstructions(brief, coordinator),
+      description: withCoordinatorBrief(workerInstructions(brief, coordinator), told),
       // The card's variant is where a card keeps the model, the effort and the mode its session opens in.
       ...(model || effort || permission
         ? { variant: { label: "team", model, effort, persona, permissionMode: permission } }
@@ -383,14 +419,7 @@ export class Teams {
 
   async create(input: NewTeam): Promise<TeamInfo> {
     const project = this.opts.board.getProject(input.projectId);
-    const blocked = this.opts.quota?.blocked();
-    if (blocked) {
-      const until = blocked.until ? new Date(blocked.until).toISOString() : "the next reset";
-      const message = `the plan quota is over the limit until ${until}: create the team later, or it starts paused`;
-      throw blocked.until
-        ? invalid(message, "team_quota_until", { until })
-        : invalid(message, "team_quota_over");
-    }
+    this.refuseOverQuota("create the team later, or it starts paused");
     // The spec's coordinator is the pack's `coordenador` (phase 20) when none is asked for.
     const coordinatorPersona = await this.checkPersona(
       input.coordinatorPersona ??
@@ -673,8 +702,9 @@ export class Teams {
     coordinator: TeamMember | undefined,
     tellCoordinator: (text: string) => void,
     spec: WorkerSpec = NO_SPEC,
-  ) {
+  ): Promise<StoredMember[]> {
     const members = this.stored(this.row(row.id));
+    const started: StoredMember[] = [];
     const taken = members.flatMap((m) => numberOf(m) ?? []);
     const team = {
       name: row.name,
@@ -696,6 +726,7 @@ export class Teams {
           },
         );
       members.push(added);
+      started.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
       const asked = [
         spec.persona && `persona ${spec.persona}`,
@@ -709,6 +740,7 @@ export class Teams {
         }.`,
       );
     }
+    return started;
   }
 
   /** Stops a worker, takes it out of the team and tells it so; the coordinator stays. */
@@ -735,19 +767,47 @@ export class Teams {
     tellCoordinator(`A executora "${target.name}" saiu do time.`);
   }
 
-  /** #2090: stub. */
+  /**
+   * #2090: the coordinator adds a worker in a persona it picks, with a brief for its card. The host
+   * checks who asks, the pause, the quota, the persona and the size before anything starts.
+   */
   async addMember(
     id: string,
-    _asker: string,
-    _spec: { persona?: string; model?: string; brief: string },
+    asker: string,
+    spec: { persona?: string; model?: string; brief: string },
   ): Promise<{ member: TeamMember; team: TeamInfo }> {
-    const team = this.get(id);
-    return { member: team.members[0] as TeamMember, team };
+    const row = this.open(id);
+    this.coordinatorOnly(row, asker);
+    // The quota first: it pauses every active team, so a paused team in that window is the quota's.
+    this.refuseOverQuota("add the member later");
+    this.refusePaused(row);
+    const persona = await this.checkPersona(spec.persona);
+    const workers = this.stored(row).filter((m) => m.role === "worker").length;
+    if (workers >= MAX_WORKERS) {
+      throw invalid(`team ${row.name} already has ${workers} workers`, "team_full", {
+        name: row.name,
+        workers,
+      });
+    }
+    const [added] = await this.addWorkers(
+      row,
+      1,
+      this.info(row).members[0],
+      (text) => this.notify(this.get(row.id), text, (m) => m.role === "coordinator"),
+      { persona, model: spec.model ?? null, effort: null, permission: null, brief: spec.brief },
+    );
+    const team = this.changed(row.id);
+    return { member: team.members.find((m) => m.name === added?.name) as TeamMember, team };
   }
 
-  /** #2090: stub. */
-  async removeMember(id: string, _asker: string, _member: string): Promise<TeamInfo> {
-    return this.get(id);
+  /** #2090: the coordinator takes a worker out; its card and branch stay, and its turn is interrupted. */
+  async removeMember(id: string, asker: string, member: string): Promise<TeamInfo> {
+    const row = this.open(id);
+    this.coordinatorOnly(row, asker);
+    await this.dropMember(row, member, (text) =>
+      this.notify(this.get(row.id), text, (m) => m.role === "coordinator"),
+    );
+    return this.changed(row.id);
   }
 
   async update(patch: TeamPatch): Promise<TeamInfo> {
@@ -773,11 +833,7 @@ export class Teams {
     }
     if (patch.persona) await this.changePersona(row, info, patch.persona);
     if (patch.addWorkers || patch.addMember) {
-      if (row.state === "paused") {
-        throw invalid(`team ${row.name} is paused: resume it before adding`, "team_paused", {
-          name: row.name,
-        });
-      }
+      this.refusePaused(row);
     }
     if (patch.addWorkers)
       await this.addWorkers(row, patch.addWorkers, coordinator, tellCoordinator);
