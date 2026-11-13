@@ -344,10 +344,15 @@ export class Personas {
       data: string;
     }>;
     // A row that no longer fits (written by a newer daemon, or edited by hand) leaves the others be.
+    // Its id is held back from the pack too: a stricter edit must not give way to the wider original.
+    const unreadable = new Set<string>();
     const edited = rows.flatMap((row) => {
       try {
-        return [parseJsonWith(PersonaFields, row.data)];
+        const persona = parseJsonWith(PersonaFields, row.data);
+        if (persona.id !== row.id) throw new Error("the row names another persona");
+        return [persona];
       } catch (error) {
+        unreadable.add(row.id);
         this.opts.log?.(`personas: ${row.id} is unreadable: ${(error as Error).message}`);
         return [];
       }
@@ -359,7 +364,7 @@ export class Personas {
       trusted: true,
       modified,
     });
-    const packed = this.pack(language);
+    const packed = this.pack(language).filter((persona) => !unreadable.has(persona.id));
     const views = packed.map((persona) => {
       const mine = edited.find((candidate) => candidate.id === persona.id);
       return mine ? view(mine, "host", true) : view(persona, "pack", false);
