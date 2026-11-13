@@ -42,6 +42,8 @@ function SecretRow(
     onRules(): void;
     onCopyPublicKey(): void;
     hostName(id: string): string;
+    /** A moment (epoch ms) as the app writes dates and times. */
+    formatWhen(ms: number): string;
   }>,
 ) {
   const t = useT();
@@ -63,7 +65,7 @@ function SecretRow(
         <span>
           {secret.lastUsedAt === null
             ? t("vault.neverUsed")
-            : t("vault.lastUsed", { when: new Date(secret.lastUsedAt).toLocaleString() })}
+            : t("vault.lastUsed", { when: props.formatWhen(secret.lastUsedAt) })}
         </span>
         <span>
           {t("vault.hosts", { hosts: secret.allowedHosts.map(props.hostName).join(", ") })}
@@ -72,7 +74,7 @@ function SecretRow(
       {props.revealed !== null && (
         <code className="break-all rounded bg-muted p-2 text-sm">{props.revealed}</code>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -274,6 +276,7 @@ export const VaultPage = memo(function VaultPage(props: {
                         hostName={(hostId) =>
                           state.hosts.find((h) => h.id === hostId)?.name ?? hostId
                         }
+                        formatWhen={(ms) => store.formatDateTime(new Date(ms).toISOString())}
                       />
                     ))}
                   </ul>
