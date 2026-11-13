@@ -7,7 +7,7 @@ import {
   type GitRun,
   mergeBaselines,
   registerMergeDriver,
-} from "../../lib/baseline-merge.ts";
+} from "../../lib/ci/baseline-merge.ts";
 import { GIT_ENV_VARS } from "../git-env.ts";
 import { realTempDir } from "../temp-dir.ts";
 
@@ -153,11 +153,11 @@ describe("baseline-merge: through git", () => {
         { cwd: root, env, stdout: "pipe", stderr: "pipe" },
       );
     git("init", "-q", "-b", "main");
-    mkdirSync(join(root, "scripts/lib"), { recursive: true });
+    mkdirSync(join(root, "scripts/lib/ci"), { recursive: true });
     copyFileSync(join(scripts, "merge-baseline.ts"), join(root, "scripts/merge-baseline.ts"));
     copyFileSync(
-      join(scripts, "lib/baseline-merge.ts"),
-      join(root, "scripts/lib/baseline-merge.ts"),
+      join(scripts, "lib/ci/baseline-merge.ts"),
+      join(root, "scripts/lib/ci/baseline-merge.ts"),
     );
     writeFileSync(join(root, ".gitattributes"), `src-size-baseline.json merge=${DRIVER_NAME}\n`);
     git("config", `merge.${DRIVER_NAME}.driver`, DRIVER_COMMAND);
