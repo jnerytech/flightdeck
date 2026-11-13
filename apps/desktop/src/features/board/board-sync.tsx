@@ -20,9 +20,9 @@ import { refusalText } from "@/i18n/errors";
 import { formatDateTime } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { uniqueKeys } from "@/lib/unique-keys";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { NativeSelect } from "@/shared/layout/index.ts";
+import { uniqueKeys } from "@/shared/lib/index.ts";
 
 const COLUMNS: readonly BoardColumn[] = ["backlog", "in_progress", "waiting", "review", "done"];
 
