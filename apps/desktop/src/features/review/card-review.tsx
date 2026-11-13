@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { AssistField } from "@/features/assistant/index.ts";
+import { AssistField } from "@/features/assistant/ui.ts";
 import { useT } from "@/i18n/context";
 import { translateError } from "@/i18n/errors";
 import { ActionButton } from "@/shared/feedback/index.ts";

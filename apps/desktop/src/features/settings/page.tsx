@@ -1,7 +1,7 @@
 import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AssistantSettings } from "@/features/assistant/index.ts";
+import { AssistantSettings } from "@/features/assistant/ui.ts";
 import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
 import { BudgetsSection } from "@/features/costs/index.ts";
