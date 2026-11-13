@@ -1,5 +1,5 @@
 /** Where a project's issues live, read from its `origin` remote in any of its forms. */
-import { stripRemote } from "../central/project-key.ts";
+import { stripRemote } from "../central/index.ts";
 
 const decode = (text: string) => {
   try {

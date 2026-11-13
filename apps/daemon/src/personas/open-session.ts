@@ -1,5 +1,5 @@
 import type { PersonaSwitchResult, SessionPersona } from "@flightdeck/protocol";
-import { type Central, messageExternal } from "../central/central.ts";
+import { type Central, messageExternal } from "../central/index.ts";
 import { FlightdeckError, settled } from "../kernel/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { PersonaContext, PersonaRef, ResolvedPersona } from "./store.ts";
