@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
-import { EMPTY_PERIOD, figures, type RoiMoney } from "../../src/features/roi/roi.ts";
+import { EMPTY_PERIOD, figures, type RoiMoney } from "../../src/features/roi/domain/roi.ts";
 import {
   csvOf,
   type RoiRow,
   rowsFrom,
   sortRows,
   totalsOf,
-} from "../../src/features/roi/roi-table.ts";
+} from "../../src/features/roi/domain/roi-table.ts";
 
 const period = (over: Partial<RoiPeriod>): RoiPeriod => ({ ...EMPTY_PERIOD, ...over });
 const MONEY: RoiMoney = {
