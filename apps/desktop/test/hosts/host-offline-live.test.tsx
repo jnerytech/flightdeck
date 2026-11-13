@@ -43,7 +43,8 @@ for (const [lang, t] of [
     test("one status region is there before the press, so the later text is announced", () => {
       render(page(lang, host("offline", 1_000)));
       expect(status()).not.toBeNull();
-      expect(status()?.textContent).toBe("");
+      // An <output> element: it carries the status role by itself (Sonar S6819).
+      expect([status()?.tagName, status()?.textContent]).toEqual(["OUTPUT", ""]);
     });
 
     test("the region says the host is connecting while the try runs", async () => {

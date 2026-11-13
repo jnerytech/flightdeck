@@ -1,5 +1,4 @@
 import type { PrState } from "@flightdeck/protocol";
-import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../kernel/index.ts";
 import {
   BUILD_LOG_BYTES,
