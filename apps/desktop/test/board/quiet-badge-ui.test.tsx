@@ -132,7 +132,7 @@ describe("board-quiet-badge-ui: a card whose session says nothing wears the Quie
     const badge = tile("Quiet one")?.querySelector("[data-slot='badge']");
     expect(badge?.querySelector("svg") !== null).toBe(true);
     expect(badge?.closest("button") === null).toBe(true);
-    expect(badge?.tagName === "BUTTON").toBe(false);
+    expect(badge?.tagName).not.toBe("BUTTON");
   });
 
   test("Not stuck hides it with the row, and the same badge reads in Portuguese", async () => {

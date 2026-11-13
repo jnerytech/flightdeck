@@ -297,11 +297,11 @@ describe("board-ui", () => {
     await act(async () => {
       fireEvent.dragEnter(over);
     });
-    expect(over.className === resting).toBe(false);
+    expect(over.className).not.toBe(resting);
     await act(async () => {
       fireEvent.dragLeave(over);
     });
-    expect(over.className === resting).toBe(true);
+    expect(over.className).toBe(resting);
     // Dropping without dragging anything does nothing.
     await act(async () => {
       fireEvent.drop(screen.queryByRole("region", { name: "Concluído" }) as HTMLElement);
