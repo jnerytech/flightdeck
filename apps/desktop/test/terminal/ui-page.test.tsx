@@ -149,7 +149,8 @@ describe("terminal-ui: the terminal screen", () => {
     expect(x.finds.at(-1)).toBe("clear");
   });
 
-  // Issue #2591: SplitView closes the detail on an Esc nobody marked handled (#2579).
+  // Issue #2591: SplitView closes the detail on an Esc nobody marked handled (#2579). A control
+  // either marks the key handled (the search box) or stops it (the menu: the shell must not get it).
   /** Whether an Esc pressed in `element` reaches the page unhandled, as SplitView reads it. */
   async function escapeReachesPageUnhandled(element: HTMLElement) {
     const seen: boolean[] = [];
@@ -186,6 +187,7 @@ describe("terminal-ui: the terminal screen", () => {
     expect(menu).not.toBeNull();
     // null: the key was stopped before it reached the page, so SplitView cannot read it.
     expect(await escapeReachesPageUnhandled(menu as HTMLElement)).toBe(null);
+    expect(screen.queryByRole("menu", { name: "Terminal" }) === null).toBe(true);
   });
 
   test("closing asks: Desanexar keeps the process, Encerrar processo ends it, Cancelar does nothing", async () => {
