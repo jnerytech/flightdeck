@@ -8,7 +8,7 @@ import {
   type WorkflowRun,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { BoardEvent } from "./columns.ts";
+import type { BoardEvent } from "./domain/columns.ts";
 import type { BoardOptions, Card, CardDiff } from "./types.ts";
 
 const now = () => new Date().toISOString();

@@ -760,17 +760,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/check-loop-engine.ts",
-    "to": "apps/daemon/src/watch/check-run.ts",
-    "unresolvedTo": "../watch/check-run.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/check-loop-host.ts",
     "to": "apps/daemon/src/watch/check-run.ts",
     "unresolvedTo": "../watch/check-run.ts",
@@ -818,6 +807,17 @@
     "from": "apps/daemon/src/board/diff.ts",
     "to": "apps/daemon/src/permissions/sensitive-paths.ts",
     "unresolvedTo": "../permissions/sensitive-paths.ts",
+    "dependencyTypes": ["local", "import"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/board/domain/check-loop-engine.ts",
+    "to": "apps/daemon/src/watch/check-run.ts",
+    "unresolvedTo": "../../watch/check-run.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -3269,8 +3269,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/workflows/engine-types.ts",
-    "to": "apps/daemon/src/board/columns.ts",
-    "unresolvedTo": "../board/columns.ts",
+    "to": "apps/daemon/src/board/domain/columns.ts",
+    "unresolvedTo": "../board/domain/columns.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",

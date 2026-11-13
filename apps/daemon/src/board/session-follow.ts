@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type { PersonaRef, SessionEvent, SessionStatus } from "@flightdeck/protocol";
 import type { SessionManager } from "../sessions/session-manager.ts";
-import type { CheckLoopEngine } from "./check-loop-engine.ts";
-import type { BoardEvent } from "./columns.ts";
+import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
+import type { BoardEvent } from "./domain/columns.ts";
 import type { Card } from "./types.ts";
 
 /** How a fix run (phase 22) ended: its first turn's result. */
