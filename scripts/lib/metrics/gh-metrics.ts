@@ -23,6 +23,10 @@ export interface MergedPr {
   additions: number;
   deletions: number;
   mergedAt: string;
+  /** The pull request's title; a row without it or without `files` falls back to the commits (#2027). */
+  title?: string;
+  /** The files it changed, as `gh pr list --json files` prints them. */
+  files?: { path: string }[];
 }
 
 interface Spread {
