@@ -37,12 +37,8 @@ import {
 } from "@/features/hosts/index.ts";
 import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/ui.ts";
 import { pendingCount } from "@/features/needs-you/index.ts";
-import {
-  activeWorktreeFilter,
-  ProjectTree,
-  projectTree,
-  RailFlyout,
-} from "@/features/projects/index.ts";
+import { activeWorktreeFilter, projectTree } from "@/features/projects/index.ts";
+import { ProjectTree, RailFlyout } from "@/features/projects/ui.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { setupProgress, setupSteps } from "@/features/setup/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
