@@ -325,7 +325,7 @@ function oldestOf(
 ): { oldest?: { text: string; opens: boolean; key: string } } {
   const item = items[0];
   if (!item) return {};
-  const opens = Boolean(item.gate || item.vault || item.risk === "high");
+  const opens = Boolean(item.gate || item.vault || item.waiting || item.risk === "high");
   return {
     oldest: {
       text: `${pendingWhere(item)}: ${pendingText(item, t)}`,

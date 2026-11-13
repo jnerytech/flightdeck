@@ -112,11 +112,13 @@ export class TraySlice {
     const item = this.core.needsYou().find((i) => `${i.hostId}/${i.requestId}` === key);
     if (!item) return;
     // The tray never approves a high-risk request: that takes holding the button in the app. A
-    // workflow gate is answered on its card, never as a permission (the host refuses its id).
+    // workflow gate is answered on its card, never as a permission (the host refuses its id), and a
+    // terminal session's plan or question in the terminal (#1751): the app can only open it.
     // A vault grant is opened too (#244): the tray's line cannot show the secret and parameters.
     if (
       action === "open" ||
       item.gate ||
+      item.waiting ||
       (action === "approve" && (item.risk === "high" || item.vault))
     )
       this.core.open(item);

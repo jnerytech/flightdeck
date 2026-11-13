@@ -3,7 +3,7 @@ import {
   homeLeaders,
   type LeaderSource,
   sharePercent,
-} from "../../src/features/home/home-leaders.ts";
+} from "../../src/features/home/domain/home-leaders.ts";
 
 const projects = (...rows: Array<[string, number, number?]>): LeaderSource => ({
   byProject: rows.map(([projectKey, tokens, costUsd = 0]) => ({ projectKey, tokens, costUsd })),

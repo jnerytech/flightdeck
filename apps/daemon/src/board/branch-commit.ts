@@ -16,7 +16,7 @@ import {
   runCommand,
   whichOnPath,
 } from "../kernel/index.ts";
-import { SAFE, TIMEOUT_MS } from "../teleport/git.ts";
+import { SAFE, TIMEOUT_MS } from "../teleport/index.ts";
 
 /** What can go wrong, each refused by the caller under its own reason. */
 export type BranchCommitFailure = "no_head" | "identity" | "branch_taken" | "git";

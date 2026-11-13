@@ -4,7 +4,7 @@ import {
   pendingQuestion,
   recentTools,
   taskState,
-} from "../../src/features/home/simple-task.ts";
+} from "../../src/features/home/domain/simple-task.ts";
 import {
   emptySession,
   type SessionState,

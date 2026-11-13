@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { HomeCache } from "../../src/features/home/home-cache.ts";
-import { loadChoices, UI_CHOICES_KEY } from "../../src/features/home/simple-mode.ts";
+import { HomeCache } from "../../src/features/home/domain/home-cache.ts";
+import { loadChoices, UI_CHOICES_KEY } from "../../src/features/home/domain/simple-mode.ts";
 
 const CACHE_KEY = "flightdeck.home.v1";
 

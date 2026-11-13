@@ -14,9 +14,9 @@ import {
   sessionKey,
 } from "../../lib/app-store.ts";
 import { useSessionState } from "../../lib/use-store.ts";
+import { type TaskState, taskState } from "./domain/simple-task.ts";
 import { HomeView } from "./home-view.tsx";
 import { SettingsView } from "./settings-view.tsx";
-import { type TaskState, taskState } from "./simple-task.ts";
 import { TaskView } from "./task-view.tsx";
 
 type Screen =
