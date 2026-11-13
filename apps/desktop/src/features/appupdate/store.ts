@@ -1,5 +1,5 @@
+import type { LogLevel } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
-import type { LogLevel } from "../../lib/app-log.ts";
 import type { AppUpdate, Platform } from "../../platform/types.ts";
 
 /** What the app knows about its own update. */

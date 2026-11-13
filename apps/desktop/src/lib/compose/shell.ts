@@ -3,6 +3,7 @@ import { DensityController } from "@/features/shell/density.ts";
 import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
 import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
+import { AppLog } from "../../app/app-log.ts";
 import { type ActivitySlice, wireActivity } from "../../features/activity/index.ts";
 import { type AppUpdateSlice, wireAppUpdates } from "../../features/appupdate/index.ts";
 import { WhatsNew } from "../../features/appupdate/whats-new.ts";
@@ -54,7 +55,6 @@ import { type TraySlice, wireTray } from "../../features/tray/index.ts";
 import { ViewPrefsSlice } from "../../features/viewprefs/index.ts";
 import type { WebhookFeed } from "../../features/webhook/webhook-feed.ts";
 import type { Platform } from "../../platform/types.ts";
-import { AppLog } from "../app-log.ts";
 import { type AppState, type HostView, needsYou } from "../app-state.ts";
 import type { AppKernel } from "../kernel.ts";
 

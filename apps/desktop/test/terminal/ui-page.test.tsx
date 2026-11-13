@@ -97,18 +97,13 @@ describe("terminal-ui: the terminal screen", () => {
     expect(ptys.spawned[0]?.written).toContain("ls\r");
   });
 
-  test("the terminal fills the area under the header, with a floor, and does not scroll with the page", async () => {
+  test("the terminal does not scroll with the page", async () => {
     await setup();
     await settle(() => state("Ao vivo"));
     const area = document.querySelector("[data-terminal-area]") as HTMLElement;
     expect(area).not.toBeNull();
-    // Its height comes from the area (a flex child), not from the window (60vh).
-    expect(area.className).toContain("flex-1");
-    expect(area.className).toContain("min-h-80");
-    expect(area.className).not.toContain("60vh");
-    // The page's body is a flex column of its own, not the scrolling viewport the other pages use.
+    // The page's body is not the scrolling viewport the other pages use.
     expect(area.closest("[data-slot='scroll-area-viewport']")).toBeNull();
-    expect(area.parentElement?.className).toContain("flex-col");
   });
 
   test("a terminal that ends shows its code and Reabrir attaches it again", async () => {

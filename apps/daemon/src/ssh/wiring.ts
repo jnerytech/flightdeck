@@ -2,14 +2,9 @@ import type { Database } from "bun:sqlite";
 import { join } from "node:path";
 import type { Config } from "../config.ts";
 import { present, spawnExec, whichOnPath } from "../kernel/index.ts";
+import { processExec, processRun } from "./adapters/ssh-process.ts";
 import { AskpassBroker, askpassHook } from "./askpass.ts";
-import {
-  processExec,
-  processRun,
-  resolveSshPath,
-  SshConnector,
-  type SshConnectorOptions,
-} from "./connect.ts";
+import { resolveSshPath, SshConnector, type SshConnectorOptions } from "./connect.ts";
 import { HostKeys } from "./hostkey.ts";
 import { SshImporter } from "./import.ts";
 import { chooseDelivery, processOps } from "./key-delivery.ts";

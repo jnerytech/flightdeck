@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { reactErrorLine } from "../../src/lib/app-log.ts";
+import { reactErrorLine } from "../../src/app/app-log.ts";
 
 /**
  * Issue #363 (Sonar S8786): the frames of an error's stack are read in one pass. A stack is text

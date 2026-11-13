@@ -17,29 +17,6 @@ export type RunSsh = (
   env: Record<string, string>,
 ) => Promise<{ code: number; stderr: string }>;
 
-type SpawnRun = (
-  cmd: string[],
-  options: {
-    env: Record<string, string | undefined>;
-    stdin: "ignore";
-    stdout: "ignore";
-    stderr: "pipe";
-  },
-) => { stderr: ReadableStream<Uint8Array>; exited: Promise<number> };
-
-export function processRun(spawn: SpawnRun = Bun.spawn as unknown as SpawnRun): RunSsh {
-  return async (argv, env) => {
-    const proc = spawn(argv, {
-      env: { ...process.env, ...env },
-      stdin: "ignore",
-      stdout: "ignore",
-      stderr: "pipe",
-    });
-    const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
-    return { code, stderr };
-  };
-}
-
 /** Phase 17: runs ssh for an action, writing `input` to its stdin and keeping what it prints. */
 export type ExecSsh = (
   argv: string[],
@@ -47,31 +24,6 @@ export type ExecSsh = (
   input: string,
   timeoutMs: number,
 ) => Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean }>;
-
-export function processExec(): ExecSsh {
-  return async (argv, env, input, timeoutMs) => {
-    const proc = Bun.spawn(argv, {
-      env: { ...process.env, ...env },
-      stdin: "pipe",
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      proc.kill();
-    }, timeoutMs);
-    proc.stdin.write(input);
-    await proc.stdin.end();
-    const [stdout, stderr, code] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited,
-    ]);
-    clearTimeout(timer);
-    return { code, stdout, stderr, timedOut };
-  };
-}
 
 /**
  * The `ssh` to run. On Windows the OpenSSH of the system, which is the one that takes `NUL` and
