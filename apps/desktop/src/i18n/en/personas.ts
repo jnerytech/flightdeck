@@ -136,7 +136,7 @@ export const personas = {
     bypassAddConfirm: "Add without permission prompts",
     addRow: "Add worker to the new team",
     removeRow: "Remove worker {n}",
-    workersMax: "A team has at most 8 workers.",
+    workersMax: "A team has at most {max} workers.",
     workersMin: "A team needs at least one worker.",
     newMemberPersona: "Persona of the new worker of {name} (optional)",
     newMemberModel: "Model of the new worker of {name}",

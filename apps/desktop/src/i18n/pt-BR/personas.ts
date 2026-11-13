@@ -132,7 +132,7 @@ export const personas = {
     bypassAddConfirm: "Adicionar sem pedidos de permissão",
     addRow: "Adicionar executora ao novo time",
     removeRow: "Remover a executora {n}",
-    workersMax: "Um time tem no máximo 8 executoras.",
+    workersMax: "Um time tem no máximo {max} executoras.",
     workersMin: "Um time precisa de pelo menos uma executora.",
     newMemberPersona: "Persona da nova executora de {name} (opcional)",
     newMemberModel: "Modelo da nova executora de {name}",

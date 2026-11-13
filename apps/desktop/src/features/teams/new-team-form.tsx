@@ -82,12 +82,12 @@ export function NewTeam(
   const [creating, setCreating] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const limits = useId();
-  /** The row a person removed: its place takes the focus once the rows are redrawn (#2646). */
-  const removedAt = useRef<number | null>(null);
+  /** The row that takes the focus once the rows are redrawn: the place of a removed one, or the last one added at the limit (#2646). */
+  const focusAt = useRef<number | null>(null);
   useEffect(() => {
-    const at = removedAt.current;
+    const at = focusAt.current;
     if (at === null) return;
-    removedAt.current = null;
+    focusAt.current = null;
     const worker = form.current?.querySelectorAll<HTMLElement>('[data-slot="worker-row"]')[
       Math.min(at, rows.length - 1)
     ];
@@ -259,7 +259,7 @@ export function NewTeam(
               aria-describedby={rows.length === 1 ? `${limits}-min` : undefined}
               aria-label={t("teamsUi.removeRow", { n: i + 1 })}
               onClick={() => {
-                removedAt.current = i;
+                focusAt.current = i;
                 setRows((all) => all.filter((_, at) => at !== i));
               }}
             >
@@ -275,9 +275,11 @@ export function NewTeam(
           disabled={rows.length >= MAX_WORKERS}
           aria-describedby={rows.length >= MAX_WORKERS ? `${limits}-max` : undefined}
           aria-label={t("teamsUi.addRow")}
-          onClick={() =>
-            setRows((all) => [...all, { persona: null, model: "", effort: "", permission: "" }])
-          }
+          onClick={() => {
+            // The button turns off on the click that adds the last row: the focus goes to that row.
+            if (rows.length + 1 >= MAX_WORKERS) focusAt.current = rows.length;
+            setRows((all) => [...all, { persona: null, model: "", effort: "", permission: "" }]);
+          }}
         >
           {t("teamsUi.addWorkerButton")}
         </Button>
@@ -288,7 +290,7 @@ export function NewTeam(
         )}
         {rows.length >= MAX_WORKERS && (
           <p id={`${limits}-max`} className="text-muted-foreground text-xs">
-            {t("teamsUi.workersMax")}
+            {t("teamsUi.workersMax", { max: MAX_WORKERS })}
           </p>
         )}
       </fieldset>
