@@ -64,7 +64,8 @@ function sectionsOf(body: string): Map<string, string> {
 const itemsOf = (text: string) =>
   text
     .split(/\r?\n/)
-    .flatMap((line) => /^(?:[-*]|\d+\.)\s+(.*)$/.exec(line.trimStart())?.[1] ?? []);
+    // `\s` once, then the rest trimmed: `\s+(.*)` backtracks over the spaces a long line may hold.
+    .flatMap((line) => /^(?:[-*]|\d+\.)\s(.*)$/.exec(line.trimStart())?.[1]?.trimStart() ?? []);
 
 /** The kind from the first line, plus the problems of that line. */
 function headerOf(body: string): { kind: Kind | null; problems: string[] } {
