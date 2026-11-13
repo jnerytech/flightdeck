@@ -163,14 +163,14 @@ describe("manutencao-ui", () => {
     d.maintenance?.prune(false);
     expect(eventCount(d, sessionId)).toBe(0);
     await act(async () => {
-      d.store.select(d.hostId, sessionId);
+      d.store.subscriptions.select(d.hostId, sessionId);
     });
     await waitFor(() => expect(text()).toContain("conversa removida pela retenção"));
     // A session with its events keeps showing them.
     const kept = await d.manager.create({ cwd: d.project, prompt: "fica", name: "Nova" });
     await poll(() => d.manager.get(kept.sessionId).status === "idle", "sessão ociosa");
     await act(async () => {
-      d.store.select(d.hostId, kept.sessionId);
+      d.store.subscriptions.select(d.hostId, kept.sessionId);
     });
     await waitFor(() => expect(text()).toContain("fica"));
     expect(text()).not.toContain("conversa removida pela retenção");

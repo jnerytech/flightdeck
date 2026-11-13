@@ -128,7 +128,7 @@ export const CardDetail = memo(function CardDetail(props: {
 
   // The conversation is the regular session view: selecting the session subscribes to it.
   useEffect(() => {
-    if (sessionId) store.select(hostId, sessionId);
+    if (sessionId) store.subscriptions.select(hostId, sessionId);
   }, [store, hostId, sessionId]);
 
   // A route straight to a card (a link, a notification) has not loaded its board: ask the host.
@@ -145,7 +145,7 @@ export const CardDetail = memo(function CardDetail(props: {
   const openStep = (step: StepRun) => {
     setTab("conversation");
     setOpened({ stepId: step.stepId, attempt: step.attempt });
-    if (step.sessionId) store.select(hostId, step.sessionId);
+    if (step.sessionId) store.subscriptions.select(hostId, step.sessionId);
   };
 
   /**

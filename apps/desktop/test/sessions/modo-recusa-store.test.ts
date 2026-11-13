@@ -18,7 +18,7 @@ describe("modo-recusa: the store tells the picker whether the host took the mode
     const none = await store.commands.setMode("plan");
     const id = (await store.commands.create(hostId, { cwd: d.project, prompt: "a" })) as string;
     await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status === "idle");
-    store.select(hostId, id);
+    store.subscriptions.select(hostId, id);
     const stricter = await store.commands.setMode("plan");
     const looser = await store.commands.setMode("acceptEdits");
     expect([none, stricter, looser]).toEqual([false, true, false]);

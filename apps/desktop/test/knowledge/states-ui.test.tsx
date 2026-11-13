@@ -41,7 +41,7 @@ function setup(options: Setup = {}) {
   });
   store.i18n.start();
   store.projectList.load = (async () => []) as never;
-  store.refreshHub = (async () => {}) as never;
+  store.sessionLists.refresh = (async () => {}) as never;
   const sent: Array<[string, unknown]> = [];
   let reads = 0;
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {

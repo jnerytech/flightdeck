@@ -161,7 +161,7 @@ function ManagedSession(
   const host = state.hosts.find((h) => h.id === hostId);
   useEffect(() => {
     if (state.selected?.hostId !== hostId || state.selected.sessionId !== sessionId) {
-      store.select(hostId, sessionId);
+      store.subscriptions.select(hostId, sessionId);
     }
   }, [store, state.selected, hostId, sessionId]);
   const summary = host?.sessions.find((s) => s.id === sessionId);
@@ -500,7 +500,7 @@ function sessionsEmpty(props: ScreenProps): ReactNode {
           firstHost && (
             <Button
               onClick={() => {
-                store.select(firstHost.id, null);
+                store.subscriptions.select(firstHost.id, null);
                 go({ name: "new-session", host: firstHost.id });
               }}
             >
