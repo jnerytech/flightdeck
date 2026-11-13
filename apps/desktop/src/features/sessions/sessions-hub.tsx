@@ -20,7 +20,7 @@ import { activeWorktreeFilter } from "@/features/projects/index.ts";
 import { WorktreeChip } from "@/features/projects/ui.ts";
 import type { Density } from "@/features/shell/index.ts";
 import { ScopeMenu } from "@/features/shell/ui.ts";
-import { TeleportMove } from "@/features/teleport/index.ts";
+import { TeleportMove } from "@/features/teleport/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { useKeyed } from "@/shared/hooks/index.ts";
