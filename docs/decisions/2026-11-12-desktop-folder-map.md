@@ -45,7 +45,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   `features/hosts/` (with its `switcher-hosts.ts`, the pure rule that left `tabs/tab-scope.ts`, so hosts no
   longer reads the tabs) and `use-start-elsewhere` to `features/sessions/`, each behind its index. Two stay in
   `hooks/` for now: `use-project-labels` (it reads the costs index, which reaches the store) and
-  `use-start-ask` (it reads the board index, which reaches the projects and sessions indexes): moving them
+  `use-start-ask` (**moved** to `features/board/` behind a new `ui.ts`, #1597, 2026-11-13: it holds the board's contract dialog, so it is not in the lazy-free `index.ts`): moving them
   adds import cycles, and the cycle count only goes down (#1624).
 - Hooks that only one feature reads moved into it (#1597): `use-move-focus` to `features/board/`,
   `use-board-transition` to `features/activity/` and `use-now` to `features/hosts/`, each imported by file

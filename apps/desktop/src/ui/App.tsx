@@ -32,11 +32,11 @@ import {
   TopBarHost,
 } from "@/features/shell/ui.ts";
 import { SnippetUse } from "@/features/snippets/ui.ts";
-import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { preloadMarkdown } from "@/shared/markdown/index.ts";
 import { boardShortcut } from "../features/board/index.ts";
+import { projectContracts, useStartAsk } from "../features/board/ui.ts";
 import { GlobalSearch, type PaletteTarget, paletteRoute } from "../features/palette/index.ts";
 import {
   type ChordState,
