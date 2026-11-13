@@ -88,7 +88,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `FolderPicker.tsx` | `features/hosts/` | **moved** (it browses a host's folders and already used `AllowedFolders`; `hosts` is the lower domain, so plugins, projects, teleport, the new-session form and the screens import it from the `hosts` index without a file-level cycle; `hosts` and `projects` import each other's index, the one pair to watch) |
 | `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | **moved** (#2099, then the `markdown/` folder) |
 | `NewSessionForm.tsx` | **theirs** (`features/sessions/`) | **moved** (`new-session-form.tsx`) |
-| `Screens.tsx` | `app/` | the lazy screen table; moves with `App.tsx`, after the features it loads are in place. Split first, one cut per PR (#1597): `ManagedSession` and its pin, fork and OpenCode-model hooks are in `features/sessions/managed-session.tsx` |
+| `Screens.tsx` | `app/` | the lazy screen table; moves with `App.tsx`, after the features it loads are in place. Split first, one cut per PR (#1597): `ManagedSession` and its pin, fork and OpenCode-model hooks are in `features/sessions/managed-session.tsx`, `NewSession` and `startInBackground` in `features/sessions/new-session.tsx` |
 | `SessionTabs.tsx` | **theirs** (`features/tabs/`) | **moved**, to `features/sessions/session-tabs.tsx` |
 | `SessionView.tsx` | **theirs** (`features/sessions/`) | **moved** (`session-view.tsx`) |
 | `SessionsHub.tsx` | **theirs** (`features/sessions/`) | **moved** (`sessions-hub.tsx`) |
