@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,12 @@ import {
   rowPersona,
 } from "./new-team.ts";
 import { useModes, usePersonaModels } from "./use-modes.ts";
+
+/** A team has at most this many workers. */
+const MAX_WORKERS = 8;
+
+/** The controls a worker row holds: the first one takes the focus when a row goes (#2646). */
+const ROW_CONTROLS = "select, input, textarea, button:not(:disabled)";
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 export function NewTeam(
@@ -74,6 +80,19 @@ export function NewTeam(
   const effortShown = (member: string, personaId: string) =>
     effortOffered({ efforts: modes.efforts, personaModels }, member, personaId);
   const [creating, setCreating] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+  const limits = useId();
+  /** The row that takes the focus once the rows are redrawn: the place of a removed one, or the last one added at the limit (#2646). */
+  const focusAt = useRef<number | null>(null);
+  useEffect(() => {
+    const at = focusAt.current;
+    if (at === null) return;
+    focusAt.current = null;
+    const worker = form.current?.querySelectorAll<HTMLElement>('[data-slot="worker-row"]')[
+      Math.min(at, rows.length - 1)
+    ];
+    worker?.querySelector<HTMLElement>(ROW_CONTROLS)?.focus();
+  }, [rows.length]);
   // A second submit before the first answered would create the team twice.
   const inFlight = useRef(false);
   const create = async (confirmed = false) => {
@@ -106,6 +125,7 @@ export function NewTeam(
   };
   return (
     <form
+      ref={form}
       className="flex max-w-xl flex-col gap-3 rounded-lg border p-4 text-sm"
       onSubmit={(event) => {
         event.preventDefault();
@@ -236,8 +256,12 @@ export function NewTeam(
               variant="ghost"
               size="sm"
               disabled={rows.length === 1}
+              aria-describedby={rows.length === 1 ? `${limits}-min` : undefined}
               aria-label={t("teamsUi.removeRow", { n: i + 1 })}
-              onClick={() => setRows((all) => all.filter((_, at) => at !== i))}
+              onClick={() => {
+                focusAt.current = i;
+                setRows((all) => all.filter((_, at) => at !== i));
+              }}
             >
               {t("teamsUi.removeButton")}
             </Button>
@@ -248,14 +272,27 @@ export function NewTeam(
           variant="outline"
           size="sm"
           className="self-start"
-          disabled={rows.length >= 8}
+          disabled={rows.length >= MAX_WORKERS}
+          aria-describedby={rows.length >= MAX_WORKERS ? `${limits}-max` : undefined}
           aria-label={t("teamsUi.addRow")}
-          onClick={() =>
-            setRows((all) => [...all, { persona: null, model: "", effort: "", permission: "" }])
-          }
+          onClick={() => {
+            // The button turns off on the click that adds the last row: the focus goes to that row.
+            if (rows.length + 1 >= MAX_WORKERS) focusAt.current = rows.length;
+            setRows((all) => [...all, { persona: null, model: "", effort: "", permission: "" }]);
+          }}
         >
           {t("teamsUi.addWorkerButton")}
         </Button>
+        {rows.length === 1 && (
+          <p id={`${limits}-min`} className="text-muted-foreground text-xs">
+            {t("teamsUi.workersMin")}
+          </p>
+        )}
+        {rows.length >= MAX_WORKERS && (
+          <p id={`${limits}-max`} className="text-muted-foreground text-xs">
+            {t("teamsUi.workersMax", { max: MAX_WORKERS })}
+          </p>
+        )}
       </fieldset>
       <FormActions
         sticky
