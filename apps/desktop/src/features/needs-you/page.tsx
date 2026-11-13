@@ -10,7 +10,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { sessionProjectKeys } from "@/features/clients/index.ts";
-import { ApprovalCard, GateText } from "@/features/permissions/index.ts";
+import { ApprovalCard, GateText } from "@/features/permissions/ui.ts";
 import { type Finish, hubRows, pendingWhere, sinceLastLook } from "@/features/sessions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { EmptyState, Inline, SplitView, Stack } from "@/shared/layout/index.ts";
