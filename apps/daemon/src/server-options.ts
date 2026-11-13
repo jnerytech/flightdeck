@@ -37,7 +37,8 @@ import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
 import type { Budgets, Costs } from "./costs/index.ts";
-import type { AlertList } from "./github/alerts.ts";
+import type { AlertList } from "./github/index.ts";
+// Direct: the service imports the board, which imports the github entry (a cycle through the entry).
 import type { GithubService } from "./github/service.ts";
 import type { PreviewPart } from "./harness/preview.ts";
 import type { HarnessTemplates, TemplateMarkdown } from "./harness/templates-store.ts";
