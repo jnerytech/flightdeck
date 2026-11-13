@@ -11,7 +11,7 @@ import type {
 } from "@flightdeck/protocol";
 import { byCodeUnit, inSequence, PersonaFields } from "@flightdeck/protocol";
 import { FlightdeckError, parseJsonWith, resolveAllowedCwd } from "../kernel/index.ts";
-import type { SecretScanner } from "../snippets/model.ts";
+import type { SecretScanner } from "../snippets/index.ts";
 import {
   normalizePersona,
   type PersonaDef,
