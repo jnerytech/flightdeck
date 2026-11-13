@@ -11,7 +11,7 @@ export interface SummarySnapshot {
   status: SessionStatus;
   pendingPermissions: PendingPermission[];
   /** Issue #1478: when the host marked the session quiet; absent when it is not. */
-  quietSince?: string | undefined;
+  quietSince?: string | undefined; // NOSONAR: exactOptionalPropertyTypes needs the explicit undefined
 }
 
 const IN_TURN: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awaiting_permission"]);

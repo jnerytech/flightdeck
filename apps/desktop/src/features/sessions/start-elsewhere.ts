@@ -104,33 +104,28 @@ export async function startElsewhere(run: {
   const { t, target, ask } = run;
   const outcome: ElsewhereOutcome = { moved: [], refused: [], unmarked: [], orphaned: [] };
   for (const card of run.cards) {
-    const made = await ask(target.hostId, "card.create", {
-      // NOSONAR: one card at a time, so the target's queue sees them in the board's order
-      projectId: target.projectId,
-      title: card.title,
-      description: card.description,
-    });
+    // NOSONAR: one card at a time, so the target's queue sees them in the board's order
+    const draft = { projectId: target.projectId, title: card.title, description: card.description };
+    const made = await ask(target.hostId, "card.create", draft); // NOSONAR: one card at a time, each step needs the one before
     if (!made.ok) {
       outcome.refused.push({ card, ...answerOf(made) });
       continue;
     }
     const as = (made.data as { id: string }).id;
-    const started = await ask(target.hostId, "card.start", { cardId: as });
+    const started = await ask(target.hostId, "card.start", { cardId: as }); // NOSONAR: one card at a time, each step needs the one before
     if (!started.ok) {
-      const removed = await ask(target.hostId, "card.delete", { cardId: as, confirm: true });
+      const removed = await ask(target.hostId, "card.delete", { cardId: as, confirm: true }); // NOSONAR: one card at a time, each step needs the one before
       if (!removed.ok) outcome.orphaned.push(card);
       outcome.refused.push({ card, ...answerOf(started) });
       continue;
     }
     outcome.moved.push({ card, as });
     const note = t("board.startedElsewhere", { host: target.name, id: as });
-    const marked = await ask(run.sourceHostId, "card.update", {
-      cardId: card.id,
-      description: [card.description, note].join("\n\n"),
-    });
+    const noted = { cardId: card.id, description: [card.description, note].join("\n\n") };
+    const marked = await ask(run.sourceHostId, "card.update", noted); // NOSONAR: one card at a time, each step needs the one before
     const done =
       marked.ok &&
-      (await ask(run.sourceHostId, "card.move", { cardId: card.id, column: "done" })).ok;
+      (await ask(run.sourceHostId, "card.move", { cardId: card.id, column: "done" })).ok; // NOSONAR: one card at a time, each step needs the one before
     if (!done) outcome.unmarked.push(card);
   }
   return outcome;

@@ -171,8 +171,8 @@ export interface HubGroup {
 
 /** The quiet fields of a session's summary, when the host marked it quiet. */
 function quietOf(session: {
-  quietSince?: string | undefined;
-  quietTool?: string | null | undefined;
+  quietSince?: string | undefined; // NOSONAR: exactOptionalPropertyTypes needs the explicit undefined
+  quietTool?: string | null | undefined; // NOSONAR: exactOptionalPropertyTypes needs the explicit undefined
 }) {
   return session.quietSince
     ? { quietSince: session.quietSince, quietTool: session.quietTool ?? null }
