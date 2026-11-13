@@ -1,8 +1,7 @@
 import { lstat, realpath } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { FlightdeckError, isInside, ntfsName } from "../kernel/index.ts";
-import { maskedConfig } from "../permissions/mask-config.ts";
-import { credential } from "../permissions/sensitive-paths.ts";
+import { credential, maskedConfig } from "../permissions/index.ts";
 
 /** The first step of a path relative to the repository's root. */
 export const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";

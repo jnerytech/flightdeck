@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { gitBytes } from "../git/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { RewindFilesResult } from "../runtime/types.ts";
+import type { RewindFilesResult } from "../runtime/index.ts";
 import type { SnapshotRow, Snapshots } from "./snapshots.ts";
 
 export interface RewindSessions {

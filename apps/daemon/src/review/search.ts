@@ -22,7 +22,7 @@ import {
   runLimited,
   whichOnPath,
 } from "../kernel/index.ts";
-import { credential } from "../permissions/sensitive-paths.ts";
+import { credential } from "../permissions/index.ts";
 import { firstStep, isGitDir } from "./paths.ts";
 
 export interface SearchOptions {

@@ -187,6 +187,6 @@ describe("second-opinion-drafts-ui: going to the reviewer drafts (#1496)", () =>
 
   test("a review that placed no draft offers no button", async () => {
     await show("en", 0);
-    expect(screen.queryByRole("button", { name: "Go to the drafts" }) === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Go to the drafts" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

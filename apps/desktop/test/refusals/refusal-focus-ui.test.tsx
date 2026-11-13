@@ -49,7 +49,7 @@ describe("refusal-focus-ui: a refused command puts the focus on its message (#15
     });
     await settle(() => alert() !== null, 5000, "the refusal toast");
     await settle(() => document.activeElement === alert(), 5000, "focus on the refusal");
-    expect(document.activeElement === alert()).toBe(true);
+    expect(document.activeElement === alert()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("focus on a control that stays is left where it is", async () => {
@@ -63,6 +63,7 @@ describe("refusal-focus-ui: a refused command puts the focus on its message (#15
     });
     await settle(() => alert() !== null, 5000, "the refusal toast");
     await stays(() => document.activeElement === other, 300, "focus stays on the control");
+    expect(document.activeElement === other).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("an error that no command of the person's caused does not take the focus", async () => {
@@ -73,6 +74,7 @@ describe("refusal-focus-ui: a refused command puts the focus on its message (#15
     });
     await settle(() => alert() !== null, 5000, "the error toast");
     await stays(() => document.activeElement !== alert(), 300, "focus is not taken");
+    expect(document.activeElement === alert()).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a refusal of a command the person did not give (a background load) does not take the focus", async () => {
@@ -83,6 +85,7 @@ describe("refusal-focus-ui: a refused command puts the focus on its message (#15
     });
     await settle(() => alert() !== null, 5000, "the refusal toast");
     await stays(() => document.activeElement !== alert(), 300, "focus is not taken");
+    expect(document.activeElement === alert()).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("closing a refusal that holds the focus gives it to the page's heading, not to the body", async () => {
@@ -100,7 +103,7 @@ describe("refusal-focus-ui: a refused command puts the focus on its message (#15
     });
     const heading = document.querySelector("[data-slot=page-title]");
     await settle(() => document.activeElement === heading, 5000, "focus on the heading");
-    expect(document.activeElement === heading).toBe(true);
+    expect(document.activeElement === heading).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a refusal that holds the focus and goes away on its own (the store drops it) gives the focus to the heading", async () => {
@@ -117,6 +120,6 @@ describe("refusal-focus-ui: a refused command puts the focus on its message (#15
     });
     const heading = document.querySelector("[data-slot=page-title]");
     await settle(() => alert() === null, 5000, "the refusal is gone");
-    expect(document.activeElement === heading).toBe(true);
+    expect(document.activeElement === heading).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

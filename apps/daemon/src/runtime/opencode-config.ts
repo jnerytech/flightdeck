@@ -4,7 +4,7 @@
  * the only ones; everything asks except reads, globs and greps inside the folder; project config is
  * off (`OPENCODE_DISABLE_PROJECT_CONFIG`, verified on 2.2.5, see DECISIONS).
  */
-import { credentialReadGlobs } from "../permissions/sensitive-paths.ts";
+import { credentialReadGlobs } from "../permissions/index.ts";
 
 export interface PermissionRule {
   action: string;
