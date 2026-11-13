@@ -567,7 +567,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
         />
       )}
       {loading && !creating && <LoadingState label={t("teamsUi.loading")} />}
-      {!loading && loadFailed && !creating && (
+      {!loading && loadFailed && teams === null && !creating && (
         <ErrorState
           message={t("teamsUi.loadFailed")}
           retryLabel={t("teamsUi.retry")}
