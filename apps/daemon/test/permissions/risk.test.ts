@@ -97,6 +97,11 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   // The join is for the whole command, not only the redirect scan: `.e\<LF>nv` is `.env`.
   ["high", "cat .e\\\nnv"],
   ["high", "r\\\nm -rf x"],
+  // The join only adds a reading: it never hides the lines as written. A comment ends at the
+  // newline whatever precedes it, `\<CR><LF>` ends the command, and `\` is a PowerShell separator.
+  ["high", "echo hi # x \\\nrm -rf x"],
+  ["high", "cd src\\\r\nrm -rf build"],
+  ["high", "cd src\\\nRemove-Item -Recurse -Force build"],
   // An escaped `>` is part of the target; the real redirect after it still counts.
   ["high", "echo x >a\\>>/etc/y"],
   // `\\` is a literal backslash, so the newline after it ends the command; it is no continuation.
@@ -214,6 +219,10 @@ describe("risco", () => {
       level: "medium",
       network: true,
     });
+    // A continuation hides the program name from the raw text: `cu\<LF>rl` runs curl.
+    expect(risk.classify("Bash", { command: "cu\\\nrl https://x.example" }, CWD).network).toBe(
+      true,
+    );
     expect(level("mcp__db__drop_table", { table: "t" })).toBe("high");
     expect(level("mcp__fs__delete_file", { path: "a" })).toBe("high");
     expect(level("mcp__infra__destroy", {})).toBe("high");
