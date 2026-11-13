@@ -159,7 +159,7 @@ describe("BackupScheduler: Google Drive (#1444)", () => {
     await s.scheduler.tick();
     expect(s.scheduler.report).toEqual({ status: "skipped", reason: "drive-auth", at: T0 });
     expect(s.asked).toEqual(["passphrase", "drive-auth"]);
-    expect(s.google.drive.calls.length).toBe(0);
+    expect(s.google.drive.calls).toHaveLength(0);
   });
 
   test("a sign-in Google revokes shows as signed out and is reported", async () => {
@@ -187,7 +187,7 @@ describe("BackupScheduler: Google Drive (#1444)", () => {
     s.clock.now = T0 + DAY;
     await s.scheduler.tick();
     expect(s.scheduler.report).toEqual({ status: "skipped", reason: "drive-auth", at: T0 + DAY });
-    expect(s.google.drive.calls.length).toBe(calls);
+    expect(s.google.drive.calls).toHaveLength(calls);
   });
 
   test("without a client id a saved Drive target falls back to the folder", async () => {
