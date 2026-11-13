@@ -185,11 +185,12 @@ export function TerminalPage(
       }
     };
     window.addEventListener("click", close);
-    // Esc closes the menu wherever the focus is, and marks the key handled before the split view
-    // reads it (capture phase): left unmarked, it closes the detail too (#2591).
+    // Esc closes the menu wherever the focus is. It is the menu's key: it goes no further (capture
+    // phase), so it does not close the detail (#2591) or reach the shell as an ESC.
     const onEsc = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
+      e.stopPropagation();
       setMenu(null);
       screen.current?.focus();
     };
