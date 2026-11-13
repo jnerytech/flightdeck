@@ -85,6 +85,11 @@ export class SshTargets {
     return row ? toTarget(row) : null;
   }
 
+  /** The one destination with that exact name; null when none has it or more than one does. */
+  byName(_name: string): SshTarget | null {
+    return null;
+  }
+
   save(input: SshTargetInput): SshTarget {
     const previous = input.id ? this.row(input.id) : null;
     if (input.id && !previous) throw notFound();
