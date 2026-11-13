@@ -47,6 +47,7 @@ export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
   for (const domain of deps.domains) assertSafe(domain);
   const results: DomainResult[] = [];
   const failed: string[] = [];
+  const belowBaseline: WeeklyOutcome["belowBaseline"] = [];
   for (const domain of deps.domains) {
     const configPath = configPathFor(domain);
     deps.writeConfig(
@@ -58,7 +59,14 @@ export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
       failed.push(domain.name);
       continue;
     }
-    results.push({ domain: domain.name, ...scoreReport(report), survivors: survivorsOf(report) });
+    const counts = scoreReport(report);
+    results.push({ domain: domain.name, ...counts, survivors: survivorsOf(report) });
+    if (
+      domain.minScore !== undefined &&
+      (counts.score === null || counts.score < domain.minScore)
+    ) {
+      belowBaseline.push({ domain: domain.name, score: counts.score, minScore: domain.minScore });
+    }
   }
-  return { results, failed, belowBaseline: [] };
+  return { results, failed, belowBaseline };
 }

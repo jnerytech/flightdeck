@@ -32,6 +32,9 @@ mkdirSync("reports/mutation", { recursive: true });
 writeFileSync("reports/mutation/summary.json", `${JSON.stringify(outcome, null, 2)}\n`);
 let text = summaryMarkdown(outcome.results, SURVIVOR_LIMIT);
 if (outcome.failed.length > 0) text += `\nFailed runs: ${outcome.failed.join(", ")}\n`;
+for (const b of outcome.belowBaseline) {
+  text += `\nBelow baseline: ${b.domain} scored ${b.score ?? "no mutant"}%, minimum ${b.minScore}%\n`;
+}
 console.log(text);
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
-process.exit(outcome.failed.length > 0 ? 1 : 0);
+process.exit(outcome.failed.length > 0 || outcome.belowBaseline.length > 0 ? 1 : 0);
