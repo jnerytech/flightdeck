@@ -14,7 +14,6 @@ export {
   urlName,
 } from "./host-output.ts";
 export {
-  type CommandRunner,
   type CreatePr,
   type PrCheck,
   type PrComment,
