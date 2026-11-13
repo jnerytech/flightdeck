@@ -2,7 +2,7 @@ import type { ChangesResult } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { AssistField } from "@/features/assistant/index.ts";
+import { AssistField } from "@/features/assistant/ui.ts";
 import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
