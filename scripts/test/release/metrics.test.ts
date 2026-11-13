@@ -327,6 +327,39 @@ describe("metrics: the snapshot", () => {
     expect(note.reason).toContain("1000 rows");
   });
 
+  test("the pull requests are asked with their title and files, and the rework share reads them (#2027)", async () => {
+    const { deps } = fakeGit();
+    const asked: string[][] = [];
+    const rows = [
+      {
+        additions: 1,
+        deletions: 1,
+        mergedAt: "2026-11-08T00:00:00Z",
+        title: "feat(x): one",
+        files: [{ path: "apps/daemon/src/a.ts" }],
+      },
+      {
+        additions: 1,
+        deletions: 1,
+        mergedAt: "2026-11-09T06:00:00Z",
+        title: "fix(x): the bug",
+        files: [{ path: "apps/daemon/src/a.ts" }],
+      },
+    ];
+    const withFiles: MetricsDeps = {
+      ...deps,
+      gh: async (args) => {
+        if (!args.includes("pr")) return deps.gh(args);
+        asked.push(args);
+        return { code: 0, stdout: JSON.stringify(rows) };
+      },
+    };
+    const snapshot = (await buildSnapshot(withFiles, "v0.2.0")) as Record<string, any>;
+    const fields = String(asked[0]?.[asked[0].indexOf("--json") + 1]).split(",");
+    expect(fields).toEqual(expect.arrayContaining(["title", "files"]));
+    expect(snapshot.prSize.last30Days.reworkShare).toBe(1);
+  });
+
   test("coverage is the summary of the full run on the tag's commit", async () => {
     const { deps } = fakeGit();
     const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
