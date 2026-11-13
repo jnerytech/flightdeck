@@ -1214,7 +1214,6 @@ export class AppStore {
     }
   }
 
-
   private onRun(hostId: string, run: WorkflowRun): void {
     this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });
   }
