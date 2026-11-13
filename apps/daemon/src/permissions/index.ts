@@ -2,9 +2,19 @@
  * The permission domain's public entry (#1589): permission requests, risk, auto-approval and the
  * rules behind them. Another domain imports from here, never a file inside.
  */
-export { type AutoApprover, historyExcludes } from "./auto-approve.ts";
-export { summarizeInput } from "./bind-input.ts";
-export type { PermissionBroker } from "./permission-broker.ts";
-export { parseSuggestions } from "./permission-updates.ts";
-export type { RiskClassifier } from "./risk.ts";
-export { credential } from "./sensitive-paths.ts";
+export { type AutoApproveRequest, type AutoApprover, historyExcludes } from "./auto-approve.ts";
+export { bindInput, summarizeInput } from "./bind-input.ts";
+export { requireHold } from "./hold.ts";
+export { maskConfig, maskedConfig } from "./mask-config.ts";
+export { realPathOf, statKind } from "./path-kind.ts";
+export { PermissionBroker } from "./permission-broker.ts";
+export {
+  checkUpdates,
+  isProjectRule,
+  parseSuggestions,
+  rulePaths,
+  ruleReadings,
+} from "./permission-updates.ts";
+export { isCredentialPath, type Risk, RiskClassifier } from "./risk.ts";
+export { type DiskView, pathKinds, realPaths, writeTarget } from "./rule-risk.ts";
+export { credential, credentialReadGlobs } from "./sensitive-paths.ts";

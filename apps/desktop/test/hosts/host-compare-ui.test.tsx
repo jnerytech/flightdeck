@@ -138,16 +138,16 @@ async function answered(store: { getState(): AppState }, hosts: number) {
 describe("host-compare-ui: when the panel shows and when the hosts are asked", () => {
   test("a single host has nothing to compare with, so the panel is not shown", () => {
     mount([{ id: "alfa" }]);
-    expect(panel() === null).toBe(true);
-    expect(screen.queryByRole("button", { name: names.en.show }) === null).toBe(true);
+    expect(panel() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByRole("button", { name: names.en.show }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("two hosts show the panel closed, and nobody is asked until it is opened", async () => {
     const { view, asked, push, hosts } = setup([{ id: "alfa" }, { id: "beta" }]);
     render(view);
-    expect(panel() !== null).toBe(true);
-    expect(screen.queryByRole("button", { name: names.en.show }) !== null).toBe(true);
-    expect(table() === null).toBe(true);
+    expect(panel() !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByRole("button", { name: names.en.show }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(table() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     // Something else in the app changes: still nothing asked.
     await act(async () => push({ hosts: [...hosts] as never }));
     expect(asked).toEqual([]);
@@ -161,7 +161,7 @@ describe("host-compare-ui: when the panel shows and when the hosts are asked", (
     ]);
     render(view);
     await open();
-    expect(table() !== null).toBe(true);
+    expect(table() !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const doctorAsks = () => asked.filter((a) => a.endsWith(":doctor.run")).sort();
     expect(doctorAsks()).toEqual(["alfa:doctor.run", "beta:doctor.run"]);
     await act(async () => {
@@ -262,7 +262,7 @@ describe("host-compare-ui: the table", () => {
     expect(alfa).toContain("Differs, with no majority among the hosts");
     expect(beta).toContain("1.3.0");
     expect(beta).toContain("Differs, with no majority among the hosts");
-    expect(screen.queryAllByText(/Differs from most hosts/).length).toBe(0);
+    expect(screen.queryAllByText(/Differs from most hosts/).length).toBe(0); // NOSONAR: a failed length check on DOM elements prints each node
   });
 
   test("in a tied daemon row only the older host has a Fix button, and the newest has none", async () => {
@@ -273,8 +273,8 @@ describe("host-compare-ui: the table", () => {
     await open();
     expect(await answered(store, 2)).toBe(true);
     expect(screen.queryByRole("button", { name: "Fix on alfa" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Fix on beta" }) !== null).toBe(true);
-    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1);
+    expect(screen.queryByRole("button", { name: "Fix on beta" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
   });
 
   test("two hosts that match say nothing in any row", async () => {
@@ -392,9 +392,9 @@ describe("host-compare-ui: the table", () => {
     await open();
     expect(await answered(store, 3)).toBe(true);
     const link = screen.queryByRole("button", { name: "Fix on gama" });
-    expect(link !== null).toBe(true);
+    expect(link !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     // Hooks is the only marked cell with a fix: the OS differs too, and has none.
-    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1);
+    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
     await act(async () => {
       if (link) fireEvent.click(link);
     });
@@ -475,7 +475,7 @@ describe("host-compare-ui: in Portuguese", () => {
       ],
       "pt-BR",
     );
-    expect(panel("pt-BR") !== null).toBe(true);
+    expect(panel("pt-BR") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await open("pt-BR");
     expect(await answered(store, 3)).toBe(true);
     expect(cells("Sistema operacional", "pt-BR")[2] ?? "").toContain("Windows");
@@ -483,7 +483,7 @@ describe("host-compare-ui: in Portuguese", () => {
     expect(cells("GitHub CLI (gh)", "pt-BR")[2]).toContain("Não instalado");
     expect(cells("Iniciar no boot", "pt-BR")[2] ?? "").toContain("Ligado");
     // The daemon, hooks, sign-in and gh of gama are marked and lacking; Start at boot is marked, but on.
-    expect(screen.queryAllByRole("button", { name: "Corrigir em gama" }).length).toBe(4);
+    expect(screen.queryAllByRole("button", { name: "Corrigir em gama" }).length).toBe(4); // NOSONAR: a failed length check on DOM elements prints each node
     const first = table("pt-BR")?.querySelectorAll("tbody tr")[0]?.querySelectorAll("td");
     expect(first?.[3]?.textContent).toBe("Não comparado: offline.");
     expect(cells("Versão do daemon", "pt-BR")[2] ?? "").toContain(

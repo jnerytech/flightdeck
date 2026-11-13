@@ -295,7 +295,7 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
   test("a host from before the check loop shows none of its fields", async () => {
     await openSettings();
     await settle(() => screen.queryByLabelText("Rodadas por PR") !== null);
-    expect(screen.queryByLabelText("Rodadas do laço de checks") === null).toBe(true);
+    expect(screen.queryByLabelText("Rodadas do laço de checks") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("#1499: the check loop has its own heading and a sentence on what it does, and Rounds per PR says it counts CI rounds", async () => {

@@ -28,7 +28,7 @@ import {
   resolveAllowedCwd,
   ulid,
 } from "../kernel/index.ts";
-import { credential } from "../permissions/sensitive-paths.ts";
+import { credential } from "../permissions/index.ts";
 import type { Changes } from "./changes.ts";
 import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
 import { type SearchOptions, searchRepository } from "./search.ts";

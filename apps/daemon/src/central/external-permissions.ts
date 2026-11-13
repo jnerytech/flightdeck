@@ -1,12 +1,17 @@
 import type { AutoApproval, ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { ulid } from "../kernel/index.ts";
-import type { AutoApprover } from "../permissions/auto-approve.ts";
-import { bindInput, summarizeInput } from "../permissions/bind-input.ts";
-import { requireHold } from "../permissions/hold.ts";
-import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
-import { RiskClassifier } from "../permissions/risk.ts";
-import { type DiskView, writeTarget } from "../permissions/rule-risk.ts";
+import {
+  type AutoApprover,
+  bindInput,
+  checkUpdates,
+  type DiskView,
+  parseSuggestions,
+  RiskClassifier,
+  requireHold,
+  summarizeInput,
+  writeTarget,
+} from "../permissions/index.ts";
 import type { HookPayload } from "./external.ts";
 
 export type { ExternalPermissionFrame };
