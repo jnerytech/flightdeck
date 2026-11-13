@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { seedDemoHosts } from "../src/demo/boot.ts";
-import { emptySession } from "../src/features/sessions/session-state.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { seedDemoHosts } from "../../src/demo/boot.ts";
+import { emptySession } from "../../src/features/sessions/session-state.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 /**
  * A store whose session shows a high-risk request the host's summary does not list yet (a tile
