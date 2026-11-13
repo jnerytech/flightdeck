@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within, waitFor } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { Settings } = await import("../../src/features/settings/page.tsx");
 const { SessionsHub } = await import("../../src/features/sessions/sessions-hub.tsx");
 const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");

@@ -12,7 +12,7 @@ const { AppStore } = await import("../../src/lib/app-store.ts");
 const { RecapPanel } = await import("../../src/features/summary/recap-panel.tsx");
 const { SessionPane } = await import("../../src/features/sessions/parts.tsx");
 const { ExternalView } = await import("../../src/features/sessions/external-session-view.tsx");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(20_000);

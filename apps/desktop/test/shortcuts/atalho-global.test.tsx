@@ -12,7 +12,7 @@ const { AppStore } = await import("../../src/lib/app-store.ts");
 const { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } = await import(
   "../../src/features/shortcuts/shortcut.ts"
 );
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 afterEach(() => cleanup());
 

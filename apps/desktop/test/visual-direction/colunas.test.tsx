@@ -14,7 +14,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { Page } = await import("../../src/shared/layout/page.tsx");
 const { formatWhen } = await import("../../src/i18n/format.ts");
 
