@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { settle } from "../wait.ts";
 
 registerDom();
@@ -36,7 +37,7 @@ async function queued(over: Record<string, unknown>) {
   const hostId = await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => daemon.asked.includes("vault.watch"));
   const meta = await act(() =>
-    store.secrets.add({
+    addedSecret(store, {
       name: "deploy",
       type: "token",
       value: "ui-value-123",

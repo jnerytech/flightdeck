@@ -4,7 +4,7 @@
  * pull request comments are separate.
  */
 import { manageCard } from "../../board/manage.ts";
-import { requireVaultTransport } from "../../vault/vault.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const cardHandlers = {

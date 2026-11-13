@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { trayMenu } from "../../src/features/tray/tray.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { settlePlain as settle } from "../wait.ts";
 
 const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
@@ -22,7 +23,7 @@ async function setup() {
   const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("vault.watch"));
-  const meta = await store.secrets.add({
+  const meta = await addedSecret(store, {
     name: "deploy",
     type: "token",
     value: VALUE,

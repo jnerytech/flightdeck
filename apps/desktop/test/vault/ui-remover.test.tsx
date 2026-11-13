@@ -3,6 +3,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
 import { settle } from "../wait.ts";
+import { addedSecret } from "./added-secret.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -22,7 +23,7 @@ async function open() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
   await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
-  const meta = await store.secrets.add({
+  const meta = await addedSecret(store, {
     name: "github",
     type: "password",
     value: "remove-test-value",

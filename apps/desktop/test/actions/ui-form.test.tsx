@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { sidebarNav } from "../sidebar/helpers.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { waiter } from "../wait.ts";
 import { workflowDaemon } from "../workflow-fixtures.ts";
 
@@ -49,7 +50,7 @@ async function online() {
   const hostId = await act(() =>
     store.roster.add({ name: "alfa", url: d.server.url, token: TOKEN }),
   );
-  const secret = await store.secrets.add({
+  const secret = await addedSecret(store, {
     name: "token-staging",
     type: "token",
     value: "form-value-xyz",
