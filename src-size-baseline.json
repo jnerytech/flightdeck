@@ -3,7 +3,7 @@
   "apps/daemon/src/board/board.ts": 835,
   "apps/daemon/src/history/indexer.ts": 841,
   "apps/daemon/src/messaging/messages.ts": 963,
-  "apps/desktop/src/features/board/board-view.tsx": 1477,
+  "apps/desktop/src/features/board/board-view.tsx": 1476,
   "apps/desktop/src/features/sessions/session-view.tsx": 1103,
   "apps/desktop/src/features/sessions/sessions-hub.tsx": 865,
   "apps/desktop/src/features/shell/sidebar.tsx": 961,
