@@ -1,9 +1,9 @@
 import type { SessionSummary } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
+import { IdleSleeper, type SleeperOptions } from "./domain/sleeper.ts";
+import { type StallOptions, StallWatcher } from "./domain/stall.ts";
 import { SessionManager, type SessionManagerOptions, type TurnEdge } from "./session-manager.ts";
-import { IdleSleeper, type SleeperOptions } from "./sleeper.ts";
-import { type StallOptions, StallWatcher } from "./stall.ts";
 
 /** What the sessions' idle sleep, stall watch and bypass switch are built from. */
 export interface SessionSettingsDeps {
@@ -27,11 +27,18 @@ export function createSessionSettings({
   stallUnitMs,
 }: SessionSettingsDeps): { modules: readonly [DomainModule<"sessionSettings">] } {
   // Idle sessions give back their process after N minutes (off by default: no timer then).
-  const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
+  const sleeper = new IdleSleeper({
+    manager,
+    minutes: config.sessions.sleepAfterMinutes,
+    now: Date.now,
+    timers: globalThis,
+  });
   // A running session that says nothing for N minutes is marked quiet (0: off, no timer then).
   const stall = new StallWatcher({
     host: manager,
     minutes: config.stall.afterMinutes,
+    now: Date.now,
+    timers: globalThis,
     ...(stallUnitMs !== undefined ? { unitMs: stallUnitMs } : {}),
   });
   const server = {

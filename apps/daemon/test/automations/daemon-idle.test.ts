@@ -35,7 +35,7 @@ const IDLE_TIMERS = [
   "history/indexer.ts 10000",
   "maintenance/maintenance.ts 86400000",
   "server.ts 15000",
-  "sessions/stall.ts 30000",
+  "sessions/domain/stall.ts 30000",
   "teams/wiring.ts 300000",
 ];
 
