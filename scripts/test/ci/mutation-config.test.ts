@@ -94,4 +94,14 @@ describe("weekly mutation run (#1607)", () => {
     expect(text).toContain("reports/mutation");
     expect(text).toContain("actions/upload-artifact@");
   });
+
+  test("the incremental cache is keyed by the digest of the domains' sources and tests, and never falls back to an older one (#2485)", () => {
+    const text = workflow();
+    expect(text).toContain("bun run mutation:cache-key");
+    expect(text).toContain("mutation-incremental-${{ steps.cache-key.outputs.key }}");
+    expect(text).not.toContain("restore-keys");
+    expect(JSON.parse(read("package.json")).scripts["mutation:cache-key"]).toBe(
+      "bun run scripts/mutation-cache-key.ts",
+    );
+  });
 });
