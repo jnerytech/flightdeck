@@ -62,12 +62,8 @@ import { RadarBadge } from "@/features/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { BoardFilesPanel } from "@/features/files/index.ts";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
-import {
-  AddProject,
-  activeWorktreeFilter,
-  WorktreeChip,
-  worktreeOfProject,
-} from "@/features/projects/index.ts";
+import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/index.ts";
+import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/index.ts";
 import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
 import { useStartAsk } from "@/hooks/use-start-ask";

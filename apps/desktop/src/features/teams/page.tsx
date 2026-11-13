@@ -23,7 +23,7 @@ import {
   PersonaPicker,
   useSuggestedPersona,
 } from "@/features/personas/index.ts";
-import { AddProject } from "@/features/projects/index.ts";
+import { AddProject } from "@/features/projects/ui.ts";
 import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
