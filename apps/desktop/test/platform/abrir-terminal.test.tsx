@@ -6,25 +6,25 @@ import {
   assertNoTauriCalls,
   installTauriGuard,
   tauriCalls,
-} from "../../../scripts/test/tauri-guard.ts";
-import { realTempDir } from "../../../scripts/test/temp-dir.ts";
-import { startDaemon } from "../../daemon/src/main.ts";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { must, poll } from "../../daemon/test/support/helpers.ts";
-import { isLocalUrl, terminalLaunch } from "../src/features/terminal/terminal.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { waiter } from "./wait.ts";
+} from "../../../../scripts/test/tauri-guard.ts";
+import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
+import { startDaemon } from "../../../daemon/src/main.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { must, poll } from "../../../daemon/test/support/helpers.ts";
+import { isLocalUrl, terminalLaunch } from "../../src/features/terminal/terminal.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { tauriPlatform } = await import("../../src/platform/tauri/index.ts");
 
 setDefaultTimeout(20_000);
 

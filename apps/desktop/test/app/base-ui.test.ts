@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { styleViolations } from "../../../scripts/lib/styles/style-lint.ts";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
-import { cn } from "../src/lib/utils.ts";
+import { styleViolations } from "../../../../scripts/lib/styles/style-lint.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
+import { cn } from "../../src/lib/utils.ts";
 
-const DESKTOP = resolve(import.meta.dir, "..");
+const DESKTOP = resolve(import.meta.dir, "../..");
 const css = () => readStyles(resolve(DESKTOP, "src/styles.css"));
 
 /** The declarations inside the first `selector { … }` block of the stylesheet. */

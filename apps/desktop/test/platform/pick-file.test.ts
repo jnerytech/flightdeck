@@ -5,7 +5,7 @@ import {
   type PickDocument,
   type PickInput,
   pickWithInput,
-} from "../src/platform/pick-file.ts";
+} from "../../src/platform/pick-file.ts";
 
 /** A file input that records what the picker does and lets the test play the person. */
 function fakeDocument() {
