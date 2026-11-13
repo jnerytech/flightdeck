@@ -87,4 +87,13 @@ describe("cofre-ui: a panel takes the focus when it opens and gives it back when
     await click("Cancelar");
     expect(focusedOn(button("Regras de deploy"))).toBe(true);
   });
+
+  test("a panel that closes while the person has moved on leaves the focus where it is", async () => {
+    await open();
+    await click("Editar deploy");
+    const elsewhere = button("Novo segredo");
+    act(() => elsewhere.focus());
+    await click("Cancelar");
+    expect(focusedOn(elsewhere)).toBe(true);
+  });
 });
