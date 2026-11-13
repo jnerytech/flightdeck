@@ -26,10 +26,10 @@ import type {
   VaultVerdict,
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { userHome } from "../config.ts";
+import { git } from "../git/index.ts";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
 import { Decisions } from "../vault/decisions.ts";
 import { toCsv } from "../vault/report.ts";

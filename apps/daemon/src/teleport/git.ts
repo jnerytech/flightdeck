@@ -3,8 +3,7 @@
  * signature check (gpg.program) of the repository runs, and a call that runs out of time is killed
  * with what it started.
  */
-import { killTree, runCommand } from "../board/command.ts";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import { FlightdeckError, killTree, runCommand, whichOnPath } from "../kernel/index.ts";
 
 export const TIMEOUT_MS = 120_000;
 /** The `core.hooksPath` that holds no hook, on this platform. */

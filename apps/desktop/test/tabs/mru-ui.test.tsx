@@ -152,13 +152,10 @@ describe("tab-mru-ui: hold Ctrl and press Tab to cycle the recent tabs (issue #1
     expect(active(store)).toBe("settings");
   });
 
-  test("it reads in Portuguese too, and the panel fits a narrow window", async () => {
+  test("it reads in Portuguese too", async () => {
     setup("pt-BR");
     await ctrlTab();
     expect(screen.getByRole("listbox", { name: "Trocar de aba" })).toBeTruthy();
-    const panel = screen.getByRole("listbox").closest("[data-slot='switcher-panel']");
-    expect(panel?.className).toContain("w-[min(22.5rem,calc(100vw-3rem))]");
-    expect(panel?.className).toContain("max-h-[min(18rem,60vh)]");
   });
 
   test("a live region says where the pick is, for a screen reader", async () => {

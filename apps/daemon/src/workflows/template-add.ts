@@ -11,10 +11,10 @@ import {
   commitOnNewBranch,
   safeGit,
 } from "../board/branch-commit.ts";
-import type { PrProvider } from "../board/pr.ts";
 import { publishPr } from "../board/publish-pr.ts";
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../kernel/index.ts";
+import type { PrProvider } from "../pr/index.ts";
 
 export interface TemplateAddDeps {
   /** The project's PR host, or null when it has none. */

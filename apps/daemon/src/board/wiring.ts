@@ -5,7 +5,7 @@ import { present } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
 import { Board } from "./board.ts";
 import { type CheckLoopDeps, CheckLoopSwitch, cardMode } from "./check-loop.ts";
-import { HostPause } from "./host-pause.ts";
+import { HostPause } from "./domain/host-pause.ts";
 import { templateRootOf } from "./spec-template.ts";
 import type { BoardOptions } from "./types.ts";
 

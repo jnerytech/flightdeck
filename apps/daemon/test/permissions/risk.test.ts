@@ -66,6 +66,57 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   // Redirection outside the cwd.
   ["high", "echo x > /tmp/fora.txt"],
   ["high", "echo x >> ../fora.txt"],
+  // A > after - or = is still a redirect for the shell (#2479).
+  ["high", "echo x -> /tmp/fora.txt"],
+  ["high", "echo a=>/tmp/fora.txt"],
+  // Every other form of a redirect to a file the shell has (#2484).
+  ["high", "echo x &>/tmp/fora.txt"],
+  ["high", "echo x &>>/tmp/fora.txt"],
+  ["high", "echo x >&/tmp/fora.txt"],
+  ["high", "echo x >& /tmp/fora.txt"],
+  ["high", "echo x >|/tmp/fora.txt"],
+  ["high", "echo x>a>/tmp/fora.txt"],
+  ["high", "true&&>/tmp/fora.txt"],
+  // A target the shell reads as more than the text next to the `>` (#2496): a quoted prefix before an
+  // escaping tail, a brace expansion, a backslash escape, a process substitution, a read-write open.
+  ["high", 'echo x >"a"/../../etc/x'],
+  ["high", "echo x >'a'/../../etc/x"],
+  ["high", "echo x >{/tmp/fora.txt,b}"],
+  ["high", "echo x >\\/tmp/fora.txt"],
+  ["high", "echo x >(tee /tmp/fora.txt)"],
+  ["high", "cat <>/tmp/fora.txt"],
+  ["high", "exec 3<>/tmp/fora.txt"],
+  // An escaped quote does not open a quoted string, so the `>` after it is still a redirect.
+  ["high", 'echo x >a\\"b>/tmp/fora.txt "z"'],
+  // A backslash before a newline is a line continuation: the shell joins the two lines.
+  ["high", "echo x >src\\\n/../../etc/x"],
+  ["high", "echo x >src\\\r\n/../../etc/x"],
+  // `~user` and `~+` expand to another folder; only `~` and `~/` are the home.
+  ["high", "echo x >~root/.bashrc"],
+  ["high", "echo x >~+/../x"],
+  // The join is for the whole command, not only the redirect scan: `.e\<LF>nv` is `.env`.
+  ["high", "cat .e\\\nnv"],
+  ["high", "r\\\nm -rf x"],
+  // The join only adds a reading: it never hides the lines as written. A comment ends at the
+  // newline whatever precedes it, `\<CR><LF>` ends the command, and `\` is a PowerShell separator.
+  ["high", "echo hi # x \\\nrm -rf x"],
+  ["high", "cd src\\\r\nrm -rf build"],
+  ["high", "cd src\\\nRemove-Item -Recurse -Force build"],
+  // An escaped `>` is part of the target; the real redirect after it still counts.
+  ["high", "echo x >a\\>>/etc/y"],
+  // `\\` is a literal backslash, so the newline after it ends the command; it is no continuation.
+  ["high", "echo x >a\\\\\n>/etc/y"],
+  // A `>` inside quotes must not let the quoted text swallow the real redirect after it.
+  ["high", 'echo "a>" ; echo x > /etc/cron.d/evil ; echo "b"'],
+  ["high", `echo '>"' ; echo x >/etc/y ; echo '"'`],
+  ["high", 'echo ">">"/etc/y"'],
+  // A glob in a target is read by the shell as whatever it matches, `.?` as `..`.
+  ["high", "echo x >.?/pwned"],
+  ["high", "echo x >.[.]/pwned"],
+  ["high", "echo x >*.log"],
+  // zsh: `>!file` forces the write and `>=(cmd)` is a process substitution.
+  ["high", "echo x >!/tmp/fora.txt"],
+  ["high", "echo x >=(cat)"],
   // Credentials, read or not.
   ["high", "cat ~/.ssh/id_rsa"],
   ["high", "cat .env"],
@@ -83,6 +134,25 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "git log --format=%H"],
   ["medium", "git push origin main"],
   ["medium", "npm test 2>&1"],
+  // A copy of a descriptor, a close and a write into the cwd stay medium, whatever the form (#2484).
+  ["medium", "npm test >&2"],
+  ["medium", "npm test 2>&-"],
+  ["medium", "npm test &> saida.txt"],
+  ["medium", "npm test &>> saida.txt"],
+  ["medium", "npm test >& saida.txt"],
+  ["medium", "echo x >| saida.txt"],
+  ["medium", "echo x>a>b"],
+  ["medium", "npm test &>/dev/null"],
+  // What the rows of #2496 must not catch: a quoted name with a space, a quoted prefix with a tail
+  // that stays inside, a subshell, a Windows-style relative path, a read-write open inside the cwd.
+  ["medium", 'echo x >"my file.txt"'],
+  ["medium", "echo x >'a b'/c.txt"],
+  ["medium", 'echo x >"a"/b.txt'],
+  ["medium", "(cd src && make > log.txt)"],
+  ["medium", "echo x > .\\saida.txt", "PowerShell"],
+  ["medium", "exec 3<>fifo"],
+  ["medium", "cat <&3"],
+  ["medium", 'echo x >"sem fim'],
   ["medium", "echo ok > /dev/null"],
   ["medium", "dir > NUL"],
   ["medium", "bun test > saida.txt"],
@@ -91,6 +161,39 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "curl https://api.example/status"],
   ["medium", "Get-ChildItem -Recurse src", "PowerShell"],
   ["medium", "Write-Output x > $null", "PowerShell"],
+  // Near misses of the dangerous rules (#2519): each looks like one and is not.
+  ["medium", "rm -f build.log"],
+  ["medium", "r.exem -rf x"],
+  ["medium", "del build/s"],
+  ["medium", "format /fs:ntfs"],
+  ["medium", "ri -rx a", "PowerShell"],
+  ["medium", "ri a-r", "PowerShell"],
+  // `-ExecutionPolicy` starts with `-e` but is not the encoded-command flag, which is `-e`, `-ec` or `-en...`.
+  ["medium", "pwsh -ExecutionPolicy Bypass -File a.ps1", "PowerShell"],
+  ["medium", "pwsh a-e", "PowerShell"],
+  ["medium", "echo reset --hard"],
+  ["medium", "echo push --force"],
+  ["medium", "echo x > /dev/stdout"],
+  ["medium", "echo x > /dev/stderr"],
+  // The same rules, at their edges: a long form of the encoded-command flag, the flag with no
+  // program in front of it or no word after it, a base64 decode with options before `-d`. The text
+  // rules are conservative on purpose: the flag as a word anywhere, and any decode fed to a pipe.
+  ["high", "pwsh -encodedcomma x", "PowerShell"],
+  ["high", "-EncodedCommand abc"],
+  ["high", "echo -EncodedCommand"],
+  ["high", "base64 -w0 -d x | cat"],
+  // Redirect targets (#2519): a lone backslash at the end is still an escape that reads as `/`; a
+  // quoted name with a shell operator in it is never a plain name, whatever its length or quote;
+  // `\` as a Windows separator and as a bash escape each reach out of the cwd on their own.
+  ["high", "echo x >\\"],
+  ["high", 'echo x >"ab;c"'],
+  ["high", "echo x >'ab;c'"],
+  ["high", "echo x >..\\..\\evil"],
+  ["high", "echo x >.\\./x"],
+  // A `~`, `!` or `src/~` inside a name is only a character: editor backups and the like.
+  ["medium", "echo x >notes~1.txt"],
+  ["medium", "echo x >hello!"],
+  ["medium", "echo x >src/~"],
 ];
 
 describe("risco", () => {
@@ -153,6 +256,10 @@ describe("risco", () => {
       level: "medium",
       network: true,
     });
+    // A continuation hides the program name from the raw text: `cu\<LF>rl` runs curl.
+    expect(risk.classify("Bash", { command: "cu\\\nrl https://x.example" }, CWD).network).toBe(
+      true,
+    );
     expect(level("mcp__db__drop_table", { table: "t" })).toBe("high");
     expect(level("mcp__fs__delete_file", { path: "a" })).toBe("high");
     expect(level("mcp__infra__destroy", {})).toBe("high");
@@ -163,6 +270,77 @@ describe("risco", () => {
     expect(level("NotebookEdit", { notebook_path: "a.ipynb" })).toBe("medium");
     expect(risk.classify("Read", { file_path: "a.ts" }, CWD).network).toBe(false);
     expect(risk.classify("Bash", { command: "ls" }, CWD).reason).not.toBe("");
+  });
+
+  test("the network mark follows the program, not the words around it, and only for a shell tool (#2519)", () => {
+    const net = (tool: string, input: Record<string, unknown>) =>
+      risk.classify(tool, input, CWD).network;
+    expect({
+      pushWord: net("Bash", { command: "echo push origin" }),
+      gitPush: net("Bash", { command: "git push origin main" }),
+      gitFetch: net("Bash", { command: "git -C sub fetch" }),
+      readWithCommand: net("Read", { file_path: "a.ts", command: "curl https://x.example" }),
+      readWithOddCommand: net("Read", { file_path: "a.ts", command: 5 }),
+      shellWithOddCommand: net("Bash", { command: 5 }),
+    }).toEqual({
+      pushWord: false,
+      gitPush: true,
+      gitFetch: true,
+      readWithCommand: false,
+      readWithOddCommand: false,
+      shellWithOddCommand: true,
+    });
+  });
+
+  test("finish_card is high only when it discards the card (#2519)", () => {
+    const finish = (input: Record<string, unknown>) => level("mcp__flightdeck__finish_card", input);
+    expect({
+      discard: finish({ outcome: "discard" }),
+      done: finish({ outcome: "done" }),
+      empty: finish({ outcome: "" }),
+      none: finish({}),
+    }).toEqual({ discard: "high", done: "medium", empty: "medium", none: "medium" });
+  });
+
+  test("a read path that only ends in ~ is a relative path, not the home (#2519)", () => {
+    expect(level("Read", { file_path: "src/~" })).toBe("low");
+  });
+
+  test("a redirect to ~ is the home: inside the cwd only when the cwd is the home (#2519)", () => {
+    const own = new RiskClassifier({ allowedRoots: [], home: HOME });
+    const at = (cwd: string) => own.classify("Bash", { command: "echo x > ~" }, cwd).level;
+    expect({ inProject: at(CWD), atHome: at(HOME) }).toEqual({
+      inProject: "high",
+      atHome: "medium",
+    });
+  });
+
+  test("a write call with both file_path and notebook_path takes the stricter of the two (#2479)", () => {
+    const inside = join(CWD, "a");
+    const outside = join(HOME, "a");
+    for (const tool of ["Write", "Edit", "MultiEdit", "NotebookEdit"]) {
+      expect(level(tool, { file_path: inside, notebook_path: outside })).toBe("high");
+      expect(level(tool, { file_path: outside, notebook_path: inside })).toBe("high");
+      expect(level(tool, { file_path: inside, notebook_path: inside })).toBe("medium");
+    }
+    expect(
+      risk.classify(
+        "NotebookEdit",
+        { file_path: inside, notebook_path: join(HOME, ".ssh", "k") },
+        CWD,
+      ).reason,
+    ).toBe("escrita em caminho de credencial");
+  });
+
+  test("a write call whose path key is there but is not text cannot be judged, so a person decides (#2484)", () => {
+    const inside = join(CWD, "a");
+    for (const tool of ["Write", "Edit", "MultiEdit", "NotebookEdit"]) {
+      expect(level(tool, { file_path: inside, notebook_path: 5 })).toBe("high");
+      expect(level(tool, { file_path: { path: inside } })).toBe("high");
+      expect(level(tool, { notebook_path: ["a.ipynb"] })).toBe("high");
+      // A key that is absent or null is not an odd one.
+      expect(level(tool, { file_path: inside, notebook_path: null })).toBe("medium");
+    }
   });
 
   test("run_with_secret, de qualquer servidor MCP, é high e rede: comando livre com segredo nunca passa como rotina", () => {

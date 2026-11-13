@@ -2,8 +2,8 @@ import type { TaskFile, TaskResultsResult, Template } from "@flightdeck/protocol
 import { inSequence } from "@flightdeck/protocol";
 import { FolderOpen, Home, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Notices } from "@/components/feedback/notices";
 import { Button } from "@/components/ui/button";
+import { Notices } from "@/features/shell/ui.ts";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import { translator } from "../../i18n/index.ts";

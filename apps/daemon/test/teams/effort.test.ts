@@ -88,15 +88,9 @@ describe("times-esforco: an effort per member (issue #2310)", () => {
   });
 
   test("the coordinator of the default starter reaches the session manager with the effort", async () => {
-    const efforts: Array<string | undefined> = [];
-    const { teams, project, manager } = await setup({ startWorker: async () => {} });
-    const create = manager.create.bind(manager);
-    manager.create = (payload, options) => {
-      efforts.push(payload.effort);
-      return create(payload, options);
-    };
+    const { teams, project, runtime } = await setup({ startWorker: async () => {} });
     await teams.create({ ...NEW, workers: 1, projectId: project.id, coordinatorEffort: "high" });
-    expect(efforts).toEqual(["high"]);
+    expect(runtime.starts.map((start) => start.effort)).toEqual(["high"]);
   });
 
   test("a worker added to a running team opens with the effort asked, and one with none keeps none", async () => {
@@ -120,13 +114,7 @@ describe("times-esforco: an effort per member (issue #2310)", () => {
   });
 
   test("the card a worker starts from reaches its session with the effort", async () => {
-    const { teams, project, board, manager } = await setup();
-    const efforts: Array<string | undefined> = [];
-    const create = manager.create.bind(manager);
-    manager.create = (payload, options) => {
-      efforts.push(payload.effort);
-      return create(payload, options);
-    };
+    const { teams, project, board, runtime } = await setup();
     const team = await teams.create({
       goal: "Review the login.",
       workers: 1,
@@ -136,7 +124,7 @@ describe("times-esforco: an effort per member (issue #2310)", () => {
     await whenChanged(board, () =>
       team.members.slice(1).every((m) => board.getCard(m.cardId as string).sessionId),
     );
-    expect(efforts).toContain("medium");
+    expect(runtime.starts.map((start) => start.effort)).toContain("medium");
   });
 });
 

@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CreatePr, PrProvider } from "../../src/board/pr.ts";
+import type { CreatePr, PrProvider } from "../../src/pr/index.ts";
 import { addWorkflowTemplate } from "../../src/workflows/template-add.ts";
 import { workflowTemplates } from "../../src/workflows/templates.ts";
 import { git, gitRepoWithOrigin } from "../support/board-helpers.ts";
