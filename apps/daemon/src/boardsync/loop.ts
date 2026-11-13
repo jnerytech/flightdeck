@@ -2,7 +2,7 @@
  * Phase 38: the polling loop. One timer per linked project, one run at a time per project, a back
  * off after errors, and a pause until the reset time when the provider's rate limit was reached.
  */
-import type { Timers } from "../quota/quota.ts";
+import type { Timers } from "../quota/index.ts";
 import type { SyncReport } from "./engine.ts";
 import type { BoardSyncStore } from "./store.ts";
 

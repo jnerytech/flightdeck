@@ -1,7 +1,6 @@
 import { join } from "node:path";
 import { git } from "../git/index.ts";
-import { FlightdeckError, ulid } from "../kernel/index.ts";
-import { HEAD, type Rev, refArg } from "./ref-arg.ts";
+import { FlightdeckError, HEAD, type Rev, refArg, ulid } from "../kernel/index.ts";
 import { must } from "./worktree.ts";
 
 /**

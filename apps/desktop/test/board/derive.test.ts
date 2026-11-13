@@ -7,6 +7,7 @@ import {
   columnCards,
   dropPositions,
   idsByColumn,
+  moveLabel,
   queueMaxOf,
   refusalNames,
   showingColumn,
@@ -359,5 +360,14 @@ describe("board derive: the host's limit of parallel runs", () => {
     expect(queueMaxOf({})).toBeNull();
     expect(queueMaxOf(null)).toBeNull();
     expect(queueMaxOf(undefined)).toBeNull();
+  });
+
+  test("a move's menu label says up, down or the column it goes to", () => {
+    const t = translator("en");
+    expect([moveLabel(t, "up"), moveLabel(t, "down"), moveLabel(t, "review")]).toEqual([
+      "Move up",
+      "Move down",
+      "Move to In review",
+    ]);
   });
 });

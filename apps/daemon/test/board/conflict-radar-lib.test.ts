@@ -6,8 +6,8 @@ import {
   type RadarCard,
   radarGit,
 } from "../../src/board/conflict-radar.ts";
-import { refArg } from "../../src/board/ref-arg.ts";
 import type { CommandResult } from "../../src/kernel/command.ts";
+import { refArg } from "../../src/kernel/index.ts";
 
 /** A fake git: each worktree has a HEAD, the files its commits changed and the files it edits now. */
 function fakeGit() {
