@@ -48,6 +48,14 @@ export async function cliOk(
   return result.stdout;
 }
 
+/** A CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
+export const cliJsonWith = async <T>(
+  schema: z.ZodType<T>,
+  name: string,
+  args: string[],
+  cwd: string,
+): Promise<T> => parseJsonWith(schema, await cliOk(name, args, cwd));
+
 /**
  * A PR host over its CLI. `run` starts the program found on PATH: runCommand, or a stand-in a test
  * hands over so that no process starts (the lookup, the safe text and the errors stay the same).

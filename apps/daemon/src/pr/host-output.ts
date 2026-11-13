@@ -21,6 +21,22 @@ export function urlName(what: string, value: string): string {
   return value;
 }
 
+/**
+ * An issue id goes to the CLI as an argument of its own, so it is digits and nothing else: a
+ * value like `-R other/repo` or `@file` must never reach gh or az as an option or a file.
+ */
+export function checkedId(id: string): string {
+  if (!/^\d+$/.test(id)) {
+    throw new FlightdeckError("invalid_state", `invalid issue id: ${id}`, "issue_id_invalid", {
+      id,
+    });
+  }
+  return id;
+}
+
+/** How many issues one listing asks a host for. */
+export const ISSUE_LIMIT = 50;
+
 /** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */
 export function summarize(results: Array<"passing" | "failing" | "pending">): ChecksState | null {
   if (results.length === 0) return null;
