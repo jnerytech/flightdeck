@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
+import { focusLost } from "@/shared/hooks/index.ts";
 
 /** The controls a person can type in or press, in document order. */
 const CONTROLS =
@@ -19,6 +20,8 @@ export function VaultPanel(props: Readonly<{ opener: string; children: ReactNode
     panel?.querySelector<HTMLElement>(CONTROLS)?.focus();
     panel?.firstElementChild?.scrollIntoView?.({ block: "nearest" });
     return () => {
+      // The focus went with the panel. A person who moved on while a save was running keeps theirs.
+      if (!focusLost()) return;
       const button = [...document.querySelectorAll<HTMLElement>("[data-opener]")].find(
         (el) => el.dataset.opener === opener,
       );
