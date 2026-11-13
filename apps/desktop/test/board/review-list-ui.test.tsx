@@ -63,7 +63,7 @@ describe("review-list-ui: the quote of a blank line (#1497)", () => {
   test("in pt-BR, the blank line is named in Portuguese", () => {
     list([comment()], "pt-BR");
     const item = screen.queryAllByRole("listitem")[0];
-    expect(item?.textContent?.includes("(linha em branco)")).toBe(true);
+    expect(item?.textContent ?? "").toContain("(linha em branco)");
   });
 
   test("a line with text keeps its quote as code", () => {

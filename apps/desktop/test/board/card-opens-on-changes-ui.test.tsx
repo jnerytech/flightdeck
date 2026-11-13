@@ -159,7 +159,7 @@ describe("card-opens-on-changes-ui: the conflict radar's section is part of the 
     });
     const section = () => screen.queryByRole("region", { name: "May conflict with other cards" });
     await settle(() => section() !== null);
-    expect((section()?.textContent ?? "").includes("Fix login")).toBe(true);
+    expect(section()?.textContent ?? "").toContain("Fix login");
     cleanup();
     await open({});
     await settle(() => pressed("Conversation") !== null);

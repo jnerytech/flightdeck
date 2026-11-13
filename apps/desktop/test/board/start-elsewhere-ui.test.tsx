@@ -174,7 +174,7 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     await settle(() => elsewhere("Start on beta") !== null);
     expect(elsewhere("Start on beta")).not.toBeNull();
     // The hint says how many go, and every board of the other host was loaded to count its runs.
-    expect((dialog().textContent ?? "").includes("2 of them would wait here.")).toBe(true);
+    expect(dialog().textContent ?? "").toContain("2 of them would wait here.");
     expect([...loaded].sort((a, b) => a.localeCompare(b))).toEqual(["h2/p2", "h2/p3"]);
     // Nothing moved before the person pressed it.
     expect(types(calls)).toEqual([]);

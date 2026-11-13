@@ -65,14 +65,14 @@ describe("card-not-found-ui", () => {
     await openCard("pending");
     await settleMaybe(() => screen.queryByRole("status", { name: "Loading card…" }) !== null, 3000);
     expect(screen.queryByRole("status", { name: "Loading card…" })).not.toBeNull();
-    expect(notFound() === null).toBe(true);
+    expect(notFound() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a card the host does not have says so, with a way back to the board", async () => {
     const page = await openCard("not-found");
     await settleMaybe(() => notFound() !== null, 3000);
     expect(notFound()).not.toBeNull();
-    expect(screen.queryByRole("status", { name: "Loading card…" }) === null).toBe(true);
+    expect(screen.queryByRole("status", { name: "Loading card…" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(backButton()).not.toBeNull();
     await act(async () => {
       fireEvent.click(backButton() as HTMLElement);
@@ -100,7 +100,7 @@ describe("card-not-found-ui", () => {
       page.answer("missing");
     });
     await settleMaybe(() => notFound() !== null, 400);
-    expect(notFound() === null).toBe(true);
+    expect(notFound() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(screen.queryByRole("status", { name: "Loading card…" })).not.toBeNull();
     await act(async () => {
       page.answer("other");

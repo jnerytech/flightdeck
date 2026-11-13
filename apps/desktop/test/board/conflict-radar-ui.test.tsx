@@ -91,7 +91,7 @@ describe("conflict-radar-ui: Details and the Merge PR confirm (#1405)", () => {
     );
     const section = screen.queryByRole("region", { name: "May conflict with other cards" });
     const lists = [...(section?.querySelectorAll("ul") ?? [])];
-    expect(lists[0]?.className.includes("gap-2")).toBe(true);
+    expect(lists[0]?.className ?? "").toContain("gap-2");
   });
 
   test("the badge wraps inside a narrow card and carries an icon, with its full text (#1486)", () => {

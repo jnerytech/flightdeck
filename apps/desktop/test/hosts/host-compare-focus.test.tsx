@@ -133,7 +133,7 @@ describe("host-compare-focus: the host page takes a Health ask (#2588)", () => {
     const store = fakeStore();
     render(page(store, undefined));
     await act(async () => {});
-    expect(focused() === HEALTH).toBe(false);
+    expect(focused()).not.toBe(HEALTH);
   });
 });
 
