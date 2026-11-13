@@ -12,7 +12,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/index.ts";
 import { RulesSection } from "../permissions/index.ts";
-import { TerminalButton } from "../terminal/index.ts";
+import { TerminalButton } from "../terminal/ui.ts";
 import { AddProject } from "./add-project.tsx";
 import { HostBoardLanding } from "./board-landing.tsx";
 import { FindProjects } from "./find-projects.tsx";

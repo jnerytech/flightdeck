@@ -185,6 +185,15 @@ describe("arch-imports: the domain borders (#1591)", () => {
     ]);
   });
 
+  test("a desktop feature's components entry (ui.ts) is a public entry too (#2451)", async () => {
+    const found = await planted({
+      "apps/desktop/src/features/board/board.tsx":
+        'import { Button } from "../terminal/ui.ts";\nexport const b = Button;\n',
+      "apps/desktop/src/features/terminal/ui.ts": "export const Button = 1;\n",
+    });
+    expect(found).toEqual([]);
+  });
+
   test("a feature that imports lib/ or its own subfolders is no cross-feature import (#1624)", async () => {
     const found = await planted({
       "apps/desktop/src/features/board/board.tsx":

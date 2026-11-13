@@ -45,7 +45,7 @@ import {
 } from "../features/shortcuts/index.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
 import { TabSwitcherHost, tabIntent } from "../features/tabs/index.ts";
-import { TerminalCloseDialog } from "../features/terminal/index.ts";
+import { TerminalCloseDialog } from "../features/terminal/ui.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { useStoreState } from "../lib/use-store.ts";

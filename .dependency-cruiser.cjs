@@ -31,11 +31,11 @@ module.exports = {
     {
       name: "desktop-no-deep-cross-domain",
       comment:
-        "A desktop feature reaches another feature through its public entry (index.ts) only (#1624, folder map: docs/decisions/2026-11-12-desktop-folder-map.md).",
+        "A desktop feature reaches another feature through its public entries only: index.ts (state and wiring) or ui.ts (components, #2451) (#1624, folder map: docs/decisions/2026-11-12-desktop-folder-map.md).",
       severity: "error",
       from: { path: `${DESKTOP}features/([^/]+)/` },
       to: {
-        path: `${DESKTOP}features/([^/]+)/(?!index\\.ts$)`,
+        path: `${DESKTOP}features/([^/]+)/(?!(index|ui)\\.ts$)`,
         pathNot: `${DESKTOP}features/$1/`,
       },
     },
