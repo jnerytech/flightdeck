@@ -29,6 +29,7 @@ async function open(lastUsedAt = USED_AT) {
   await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   const value = "row-layout-value-0123456789";
   const meta = await store.secrets.add({ name: "deploy", type: "password", value });
+  if (meta === null) throw new Error("the fake daemon refused the secret");
   await store.vault.restore({ ...meta, lastUsedAt }, value);
   store.secrets.update(meta.id, {});
   render(<VaultPage store={store} />);
