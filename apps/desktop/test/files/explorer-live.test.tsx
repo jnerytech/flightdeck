@@ -50,7 +50,7 @@ function host() {
       }
       return { ok: true, data: { target: "session:abc", root: "/r", base: null, files: [] } };
     },
-    canOpenPaths: () => false,
+    system: { canOpenPaths: () => false },
     watchChanges: (_host: string, _target: string, listener: (update: ChangesUpdated) => void) => {
       live = listener;
       return () => {};

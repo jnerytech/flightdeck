@@ -147,7 +147,7 @@ export function ChangesPanel(
     });
     if (!sent) return;
     store.success(t(`changes.sentVia.${sent.via}`));
-    if (sent.via === "copy") await store.copyText(sent.text);
+    if (sent.via === "copy") await store.system.copyText(sent.text);
     await loadComments();
   };
 
@@ -271,10 +271,10 @@ export function ChangesPanel(
     return <p className="text-muted-foreground text-sm">{t("changes.loading")}</p>;
   }
   // A file can be shown in the folder only where the host's paths are the machine's own.
-  const folder = store.canOpenPaths(hostId)
+  const folder = store.system.canOpenPaths(hostId)
     ? {
         onShowInFolder: (file: DiffFile) =>
-          void store.revealPath(hostId, `${changes.root}/${file.path}`),
+          void store.system.revealPath(hostId, `${changes.root}/${file.path}`),
       }
     : {};
   return (

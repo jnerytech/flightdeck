@@ -97,11 +97,10 @@ async function show(language: "en" | "pt-BR", anchored = 1, comments = COMMENTS)
     hostCommand: async (_host: string, type: string) =>
       type === "review.list" ? { comments } : null,
     watchChanges: () => () => {},
-    canOpenPaths: () => false,
+    system: { canOpenPaths: () => false, copyText: async () => {} },
     later: () => () => {},
     now: () => Date.now(),
     success: () => {},
-    copyText: async () => {},
   } as never;
   render(
     <TContext.Provider value={translator(language)}>

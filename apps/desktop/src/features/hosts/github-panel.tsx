@@ -112,7 +112,11 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
             <code className="font-mono text-lg tracking-wider">{device.code}</code>
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => void store.copyText(device.code)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void store.system.copyText(device.code)}
+            >
               {t("github.copyCode")}
             </Button>
             <Button size="sm" onClick={() => store.openLink(device.url)}>

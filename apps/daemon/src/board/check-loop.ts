@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import type { Card, PermissionMode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { WatchSettings } from "../watch/watch.ts";
+import type { WatchSettings } from "../watch/settings.ts";
 import type { Board } from "./board.ts";
 
 /** Why the switch stays off. */
