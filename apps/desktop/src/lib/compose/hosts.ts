@@ -119,6 +119,8 @@ interface HostsDeps {
 export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): HostSlices {
   const { platform } = deps;
   const projectList = wireProjects(kernel);
+  const health = wireHealth(kernel);
+  const account = wireAccount(kernel);
   const hostUpdate = wireHostUpdate(kernel, {
     patch: (hostId, patch) => deps.updateHost(hostId, (h) => ({ ...h, ...patch })),
     open: (hostId) => deps.link.open(hostId),
@@ -157,6 +159,8 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
           setupProbes,
         });
         hostUpdate.forget(hostId);
+        health.forget(hostId);
+        account.forget(hostId);
       },
       setName: (hostId, name) => deps.updateHost(hostId, (h) => ({ ...h, name })),
       rememberToken: deps.rememberToken,
@@ -169,7 +173,7 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
       success: (text) => kernel.success(text),
       t: () => kernel.t(),
     }),
-    health: wireHealth(kernel),
+    health,
     hostUpdate,
     ssh: wireSsh(kernel, {
       hasSecret: deps.hasSecret,
@@ -183,7 +187,7 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
           hostId,
         }),
     }),
-    account: wireAccount(kernel),
+    account,
     runEnv: new RunEnvSlice({
       state: () => kernel.state(),
       update: (patch) => kernel.update(patch),
