@@ -149,6 +149,7 @@ describe("reader-live-elsewhere: the stored conversation of a session alive in a
     cleanup();
     await openReader(true, "answered");
     await stays(() => screen.queryByText(/Esperando você no outro terminal/) === null, 200);
+    expect(screen.queryByText(/Esperando você no outro terminal/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a conversation nobody runs elsewhere opens at once, with no question", async () => {

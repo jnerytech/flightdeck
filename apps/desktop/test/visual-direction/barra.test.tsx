@@ -196,7 +196,7 @@ describe("direcao-visual: barra lateral", () => {
     expect(inAside().queryByRole("button", { name: "Fixadas" })).not.toBeNull();
     // No element of the bar carries a native title, the pinned rows included: a cut name shows in
     // a tooltip instead (texto-cortado, #1850).
-    expect(aside().querySelectorAll("[title]").length).toBe(0);
+    expect(aside().querySelectorAll("[title]").length).toBe(0); // NOSONAR: a failed length check on DOM elements prints each node
     // The section folds, and unfolds.
     const section = inAside().queryByRole("button", { name: "Fixadas" });
     expect(section?.getAttribute("aria-expanded")).toBe("true");

@@ -236,7 +236,7 @@ describe("home-simple-ui: where simple mode begins", () => {
   test("Given the host, Then Home says which computer the tasks run on and that it is connected", () => {
     view();
     expect(screen.queryByText("Tasks run on Office PC (connected).")).not.toBeNull();
-    expect(screen.queryByRole("alert") === null).toBe(true);
+    expect(screen.queryByRole("alert") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     cleanup();
     view({ lang: "pt-BR" });
     expect(screen.queryByText("As tarefas rodam em Office PC (conectado).")).not.toBeNull();
@@ -249,7 +249,7 @@ describe("home-simple-ui: where simple mode begins", () => {
       .querySelector("button") as HTMLElement;
     const line = screen.getByText("Tasks run on Office PC (connected).");
     // 4 = DOCUMENT_POSITION_FOLLOWING: the line follows the card.
-    expect((card.compareDocumentPosition(line) & 4) === 4).toBe(true);
+    expect(card.compareDocumentPosition(line) & 4).toBe(4);
   });
 
   test("Given the host is offline, Then a notice says tasks cannot start until it is back", () => {
@@ -268,7 +268,7 @@ describe("home-simple-ui: where simple mode begins", () => {
     expect(calls).toEqual(["settings"]);
     cleanup();
     view({ folders: ["/work"] });
-    expect(screen.queryByText(/No folder is set up yet/) === null).toBe(true);
+    expect(screen.queryByText(/No folder is set up yet/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Given the host does not accept this app or needs an update, Then the notice says that, not 'check it is on'", () => {
@@ -298,7 +298,7 @@ describe("home-simple-ui: where simple mode begins", () => {
 
   test("Given the host's folders are not known yet, Then Home does not say none is set up", () => {
     view({ folders: null });
-    expect(screen.queryByText(/No folder is set up yet/) === null).toBe(true);
+    expect(screen.queryByText(/No folder is set up yet/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Given a card that edits files, Then it says so without promising a question each time", () => {
@@ -313,6 +313,6 @@ describe("home-simple-ui: where simple mode begins", () => {
 
   test("Given no ready-made tasks and no task yet, Then no steps point at cards that are not there", () => {
     view({ templates: [] });
-    expect(screen.queryByRole("list", { name: "How a task goes" }) === null).toBe(true);
+    expect(screen.queryByRole("list", { name: "How a task goes" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

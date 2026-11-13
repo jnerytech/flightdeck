@@ -79,7 +79,7 @@ describe("Add project: the first focus is the folder field (#1544)", () => {
       setup(language);
       const input = screen.queryByRole("textbox", { name: field });
       expect(input).not.toBeNull();
-      expect(document.activeElement === input).toBe(true);
+      expect(document.activeElement === input).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
   }
 });
