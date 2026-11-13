@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { ALL_CLIENTS, UNASSIGNED } from "@/features/clients/index.ts";
-import { HostsBanner } from "@/features/hosts/index.ts";
+import { HostsBanner } from "@/features/hosts/ui.ts";
 import { activeWorktreeFilter, WorktreeChip } from "@/features/projects/index.ts";
 import type { Density } from "@/features/shell/index.ts";
 import { ScopeMenu } from "@/features/shell/index.ts";

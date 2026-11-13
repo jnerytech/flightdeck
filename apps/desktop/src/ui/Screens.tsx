@@ -3,14 +3,8 @@ import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TranscriptReader } from "@/features/history/index.ts";
-import {
-  awaitedHost,
-  draftUrl,
-  FirstRun,
-  type HostDraft,
-  HostForm,
-  HostOfflineBanner,
-} from "@/features/hosts/index.ts";
+import { awaitedHost, type HostDraft } from "@/features/hosts/index.ts";
+import { draftUrl, FirstRun, HostForm, HostOfflineBanner } from "@/features/hosts/ui.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
 import { EarlierTurns } from "@/features/sessions/earlier-turns";
@@ -33,7 +27,7 @@ import { ActivityBoard } from "../features/activity/board.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
-import { FolderPicker } from "../features/hosts/index.ts";
+import { FolderPicker } from "../features/hosts/ui.ts";
 import { NeedsYou } from "../features/needs-you/page.tsx";
 import { QuotaPanel } from "../features/quota/index.ts";
 import { NewSessionForm } from "../features/sessions/new-session-form.tsx";

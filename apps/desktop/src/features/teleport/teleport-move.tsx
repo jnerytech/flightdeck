@@ -10,7 +10,7 @@ import { useT } from "../../i18n/context.tsx";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { FolderPicker } from "../hosts/index.ts";
+import { FolderPicker } from "../hosts/ui.ts";
 import { isPlainRemote, plainText } from "./teleport.ts";
 import { failureText, TeleportDialog } from "./teleport-dialog.tsx";
 

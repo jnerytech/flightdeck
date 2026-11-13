@@ -20,7 +20,7 @@ import {
 } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { FolderPicker } from "../hosts/index.ts";
+import { FolderPicker } from "../hosts/ui.ts";
 import { InstallDialog, type InstallSource } from "./install-dialog.tsx";
 import { InventoryView } from "./inventory-view.tsx";
 import { UpdateDialog } from "./update-dialog.tsx";
