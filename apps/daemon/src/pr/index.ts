@@ -4,8 +4,15 @@
  * the safe text of their arguments and the reading of what they answer. A host's own adapter (the
  * GitHub one, the Azure DevOps one) builds on this; another domain imports from here.
  */
-export { CliProvider, cli, cliOk } from "./cli.ts";
-export { BUILD_LOG_BYTES, summarize, tail, urlName } from "./host-output.ts";
+export { CliProvider, cli, cliJsonWith, cliOk } from "./cli.ts";
+export {
+  BUILD_LOG_BYTES,
+  checkedId,
+  ISSUE_LIMIT,
+  summarize,
+  tail,
+  urlName,
+} from "./host-output.ts";
 export {
   type CommandRunner,
   type CreatePr,

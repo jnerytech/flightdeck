@@ -51,6 +51,10 @@ export interface ActivityCore {
 export class ActivitySlice {
   /** Hosts already asked since the app started; one that did not answer is asked again. */
   private readonly awayAsked = new Set<string>();
+  /** Hosts whose request is on its way. */
+  private readonly awayInFlight = new Set<string>();
+  /** Hosts that connected again while their request was on its way: that request may be a dead one. */
+  private readonly awayAskAgain = new Set<string>();
 
   constructor(private readonly core: ActivityCore) {}
 
@@ -58,27 +62,43 @@ export class ActivitySlice {
   async loadAway(): Promise<void> {
     const since = this.core.since();
     const state = () => this.core.state();
+    const isOnline = (id: string) =>
+      state().hosts.some((h) => h.id === id && h.status === "online");
     if (state().away.since !== since) this.core.update({ away: { ...state().away, since } });
     if (since === null) return;
-    const hosts = state().hosts.filter(
-      (h) =>
-        h.status === "online" &&
-        !this.awayAsked.has(h.id) &&
-        hasFeature(h.hostInfo?.features, "activity", false),
+    const online = state().hosts.filter(
+      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "activity", false),
     );
-    for (const host of hosts) this.awayAsked.add(host.id);
-    const answers = await Promise.all(
-      hosts.map(async (host) => ({
-        hostId: host.id,
-        asked: await this.core.request(host.id, since),
-      })),
-    );
-    // A host that did not answer is named, and asked again the next time it connects.
-    for (const { hostId, asked: answer } of answers) if (!answer.ok) this.awayAsked.delete(hostId);
+    for (const host of online) if (this.awayInFlight.has(host.id)) this.awayAskAgain.add(host.id);
+    const hosts = online.filter((h) => !this.awayAsked.has(h.id));
+    for (const host of hosts) {
+      this.awayAsked.add(host.id);
+      this.awayInFlight.add(host.id);
+    }
+    // An answer from a host removed meanwhile (`forget`) is dropped.
+    const answers = (
+      await Promise.all(
+        hosts.map(async (host) => ({
+          hostId: host.id,
+          asked: await this.core.request(host.id, since),
+        })),
+      )
+    ).filter(({ hostId }) => this.awayInFlight.delete(hostId));
+    // A host that did not answer is named, and asked again the next time it connects; one that
+    // connected again while it was asked is asked again now, and not named.
+    const retry: string[] = [];
+    for (const { hostId, asked: answer } of answers) {
+      const again = this.awayAskAgain.delete(hostId);
+      if (answer.ok) continue;
+      this.awayAsked.delete(hostId);
+      if (again && isOnline(hostId)) retry.push(hostId);
+    }
     const found = answers.flatMap(({ hostId, asked: answer }) =>
       answer.ok ? [{ hostId, result: answer.data }] : [],
     );
-    const failed = answers.flatMap(({ hostId, asked: answer }) => (answer.ok ? [] : [hostId]));
+    const failed = answers.flatMap(({ hostId, asked: answer }) =>
+      answer.ok || retry.includes(hostId) ? [] : [hostId],
+    );
     const answered = new Set(found.map((h) => h.hostId));
     const unreached = [
       ...state().away.unreached.filter((id) => !answered.has(id) && !failed.includes(id)),
@@ -86,6 +106,22 @@ export class ActivitySlice {
     ];
     this.core.update({
       away: { ...state().away, hosts: [...state().away.hosts, ...found], unreached },
+    });
+    if (retry.length > 0) await this.loadAway();
+  }
+
+  /** A removed host leaves the summary and is asked again if it is added back (#1733). */
+  forget(hostId: string): void {
+    this.awayAsked.delete(hostId);
+    this.awayInFlight.delete(hostId);
+    this.awayAskAgain.delete(hostId);
+    const away = this.core.state().away;
+    this.core.update({
+      away: {
+        ...away,
+        hosts: away.hosts.filter((h) => h.hostId !== hostId),
+        unreached: away.unreached.filter((id) => id !== hostId),
+      },
     });
   }
 

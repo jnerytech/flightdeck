@@ -15,7 +15,7 @@ import { APP_VERSION, hasFeature } from "../../lib/version.ts";
 import type { UsageHistoryTarget } from "../costs/index.ts";
 import { UsagePanel } from "../costs/usage-panel.tsx";
 import { MaintenanceSection } from "../maintenance/index.ts";
-import { TelemetrySection } from "../telemetry/index.ts";
+import { TelemetrySection } from "../telemetry/ui.ts";
 import { AllowedFolders } from "./allowed-folders.tsx";
 import { BypassSwitch } from "./bypass-switch.tsx";
 import { DaemonUpdate } from "./daemon-update.tsx";

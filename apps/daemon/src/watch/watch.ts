@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Board } from "../board/board.ts";
 import { prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
-import { TRUSTED_ASSOCIATIONS } from "../issues/providers.ts";
+import { TRUSTED_ASSOCIATIONS } from "../github/index.ts";
 import { parseJsonOr } from "../kernel/index.ts";
 import type { PrCheck, PrComment, PrProvider } from "../pr/index.ts";
 import { readWatchSettings, type WatchSettings } from "./settings.ts";
