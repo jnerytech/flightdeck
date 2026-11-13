@@ -234,24 +234,55 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     ).not.toBeNull();
   });
 
-  test("answering puts the focus on the card's title and says what was answered (#2675)", async () => {
+  const said = () => screen.queryAllByRole("status").map((el) => el.textContent);
+  /** The host took the answer: the session runs again, so its card leaves Needs you. */
+  const TAKEN: Specs = SPECS.map((s) =>
+    s.id === "ask" ? { id: "ask", name: "Fix login", status: "running", agoMs: 0 } : s,
+  );
+
+  test("an answer the host took puts the focus on the card's title and says what was answered (#2675)", async () => {
     const w = setup(SPECS);
-    render(w.view(SPECS));
+    const view = render(w.view(SPECS));
     const approve = control(column("Needs you"), "Approve Fix login");
     approve.focus();
     await act(async () => {
       fireEvent.click(approve);
     });
-    expect(document.activeElement?.textContent).toBe("Fix login");
-    expect(document.activeElement?.className).toContain("activity-card-title");
-    const said = () => screen.queryAllByRole("status").map((el) => el.textContent);
+    await act(async () => {
+      view.rerender(w.view(TAKEN));
+    });
     await settle(() => said().includes("Approved Fix login"));
     expect(said()).toContain("Approved Fix login");
+    expect(document.activeElement?.textContent).toBe("Fix login");
+    expect(document.activeElement?.className).toContain("activity-card-title");
+  });
+
+  test("Deny says it was denied (#2675)", async () => {
+    const w = setup(SPECS);
+    const view = render(w.view(SPECS));
     await act(async () => {
       fireEvent.click(control(column("Needs you"), "Deny Fix login"));
     });
+    await act(async () => {
+      view.rerender(w.view(TAKEN));
+    });
     await settle(() => said().includes("Denied Fix login"));
     expect(said()).toContain("Denied Fix login");
+  });
+
+  test("a request that is still waiting after the click says nothing and keeps the focus on its button (#2675)", async () => {
+    const w = setup(SPECS);
+    const view = render(w.view(SPECS));
+    const approve = control(column("Needs you"), "Approve Fix login");
+    approve.focus();
+    await act(async () => {
+      fireEvent.click(approve);
+    });
+    await act(async () => {
+      view.rerender(w.view(SPECS));
+    });
+    expect(said().some((text) => text?.includes("Approved"))).toBe(false);
+    expect(document.activeElement?.textContent).toBe("Approve");
   });
 
   test("a card that moved column after the answer still gets the focus back on its title (#2675)", async () => {
@@ -262,12 +293,8 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     await act(async () => {
       fireEvent.click(approve);
     });
-    // The host took the answer: the session runs again, so its card leaves Needs you.
-    const answered: Specs = SPECS.map((s) =>
-      s.id === "ask" ? { id: "ask", name: "Fix login", status: "running", agoMs: 0 } : s,
-    );
     await act(async () => {
-      view.rerender(w.view(answered));
+      view.rerender(w.view(TAKEN));
     });
     await settle(() => cardsOf("Working").includes("Fix login"));
     expect(document.activeElement?.textContent).toBe("Fix login");
@@ -275,14 +302,16 @@ describe("activity-ui: the Activity board (issue #151)", () => {
 
   test("in pt-BR the names and the line are in Portuguese (#2675)", async () => {
     const w = setup(SPECS, { language: "pt-BR" });
-    render(w.view(SPECS));
+    const view = render(w.view(SPECS));
     const needs = within(column("Precisa de você"));
     const approve = needs.queryByRole("button", { name: "Aprovar Fix login" });
     expect(needs.queryByRole("button", { name: "Negar Fix login" })).not.toBeNull();
     await act(async () => {
       fireEvent.click(approve as HTMLElement);
     });
-    const said = () => screen.queryAllByRole("status").map((el) => el.textContent);
+    await act(async () => {
+      view.rerender(w.view(TAKEN));
+    });
     await settle(() => said().includes("Aprovado: Fix login"));
     expect(said()).toContain("Aprovado: Fix login");
   });

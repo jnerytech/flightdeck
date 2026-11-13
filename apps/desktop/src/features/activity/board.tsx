@@ -56,24 +56,23 @@ export function ActivityBoard(
   ).join("|");
   const shown = useBoardTransition(data, signature);
   const columns = ACTIVITY_COLUMNS.filter((column) => showIdle || column !== "idle");
-  // #2675: an answer removes the request block (and the card may change column), so the focus goes
-  // back to the card's title and the board says what was answered.
+  // #2675: an answer removes the request block (and the card may change column). Once the request
+  // is gone, the board says what was answered and, if the focus fell to the page, puts it back on
+  // the card's title. A request that stays (the send failed, a high risk was not held) changes
+  // nothing: the focus stays on the button and nothing is said.
   const titles = useRef(new Map<string, HTMLButtonElement>());
-  const focusAfter = useRef<string | null>(null);
+  const answered = useRef<{ key: string; requestId: string; said: string } | null>(null);
   const [said, setSaid] = useState("");
   useEffect(() => {
-    const key = focusAfter.current;
-    if (key === null) return;
+    const done = answered.current;
+    if (!done) return;
     const card = ACTIVITY_COLUMNS.flatMap((column) => shown.columns[column]).find(
-      (item) => item.row.key === key,
+      (item) => item.row.key === done.key,
     );
-    if (!card) {
-      focusAfter.current = null;
-      return;
-    }
-    // Only a focus that fell to the page is put back: one the person moved is left where it is.
-    if (document.activeElement === document.body) titles.current.get(key)?.focus();
-    if (!card.pending) focusAfter.current = null;
+    if (card?.pending?.requestId === done.requestId) return;
+    answered.current = null;
+    setSaid(done.said);
+    if (card && document.activeElement === document.body) titles.current.get(done.key)?.focus();
   });
   const answer = (
     card: ActivityCard,
@@ -81,11 +80,15 @@ export function ActivityBoard(
     decision: "allow" | "deny",
     held: boolean | undefined,
   ) => {
-    focusAfter.current = card.row.key;
-    titles.current.get(card.row.key)?.focus();
-    const sent = store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {});
     const key = decision === "allow" ? "activityBoard.approved" : "activityBoard.denied";
-    return Promise.resolve(sent).then(() => setSaid(t(key, { title: card.row.title })));
+    // Cleared first, so the same words twice in a row are announced twice.
+    setSaid("");
+    answered.current = {
+      key: card.row.key,
+      requestId: request.requestId,
+      said: t(key, { title: card.row.title }),
+    };
+    return store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {});
   };
   const set = (patch: Partial<ActivityFilter>) => setFilter({ ...filter, ...patch });
   return (
