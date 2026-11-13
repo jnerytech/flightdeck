@@ -40,6 +40,11 @@ export function waitingIn(tail: string): Waiting | null {
   return null;
 }
 
+/** The plan a session waits for approval on, cut at the protocol's cap; none for any other wait (#1751). */
+export function planTextIn(_tail: string): string | null {
+  return null;
+}
+
 interface Entry {
   type?: unknown;
   isSidechain?: unknown;
