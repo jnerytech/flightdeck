@@ -6,6 +6,7 @@ import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { RequestError } from "./host-connection.ts";
 
 /** How often the list of live terminals is asked again. */
 const LIST_REFRESH_MS = 1000;
@@ -34,7 +35,12 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
       store.terminals
         .host(host.id)
         .list()
-        .then(setLive, () => setFailed(true));
+        .then(setLive, (error: unknown) => {
+          // A refusal is the host's answer (terminals are off there): nothing is open. Only a lost
+          // link leaves the list unknown, and keeps the last one.
+          if (error instanceof RequestError && error.code !== "offline") setLive([]);
+          else setFailed(true);
+        });
     void load();
     const timer = setInterval(load, LIST_REFRESH_MS);
     return () => clearInterval(timer);
