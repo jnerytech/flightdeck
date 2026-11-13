@@ -16,7 +16,7 @@ import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg } from "../kernel/index.ts";
 import { isCredentialPath } from "../permissions/index.ts";
-import { REMOVED_LINE } from "../watch/check-run.ts";
+import { REMOVED_LINE } from "../watch/index.ts";
 
 export interface ContextDeps {
   /** A card's worktree and base branch; refuses a card that does not exist. */
