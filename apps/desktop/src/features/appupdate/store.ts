@@ -82,6 +82,7 @@ export class AppUpdateSlice {
         `the check failed: ${(error as Error).message ?? String(error)}`,
       );
       this.patch({
+        upToDate: false,
         error: this.core.t()("messages.updateCheckFailed", {
           error: (error as Error).message ?? String(error),
         }),

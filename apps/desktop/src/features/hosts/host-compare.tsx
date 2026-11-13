@@ -176,7 +176,7 @@ function Cell(
 export const HostCompare = memo(function HostCompare(
   props: Readonly<{
     store: AppStore;
-    /** The host whose page this is: its Health section is on the same page, so its fix scrolls there. */
+    /** The host whose page this is: its Health section is on the same page, so its fix asks that page for it. */
     hostId?: string;
   }>,
 ) {
@@ -207,12 +207,12 @@ export const HostCompare = memo(function HostCompare(
     setOpen(!open);
     if (!open) void refresh();
   };
+  // The host page takes the ask (#2588): it scrolls to its Health heading and focuses it once the
+  // panel shows, for the open host as for another one. The open one keeps its history entry.
   const fixFor = (hostId: string) => () => {
-    if (hostId === props.hostId) {
-      document.querySelector("[data-slot='host-health']")?.scrollIntoView?.({ block: "start" });
-    } else {
-      store.router.push({ name: "host", host: hostId });
-    }
+    const ask = { name: "host", host: hostId, section: "health" } as const;
+    if (hostId === props.hostId) store.router.replace(ask);
+    else store.router.push(ask);
   };
   return (
     <Panel title={t("hostCompare.title")} label={t("hostCompare.title")} slot="host-compare">

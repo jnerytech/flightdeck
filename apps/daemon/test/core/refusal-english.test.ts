@@ -356,6 +356,7 @@ const MSGS5_FILES = [
   "runtime/claude-sdk-runtime.ts",
   "plugins/plugins.ts",
   "actions/actions.ts",
+  "actions/catalog.ts",
 ];
 
 /** The Portuguese words of the earlier detectors, plus the ones these files used. */
