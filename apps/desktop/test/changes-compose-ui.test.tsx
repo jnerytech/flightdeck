@@ -70,11 +70,10 @@ function fakeStore(comments: ReviewComment[] = []) {
       return null;
     },
     watchChanges: () => () => {},
-    canOpenPaths: () => false,
+    system: { canOpenPaths: () => false, copyText: async () => {} },
     later: () => () => {},
     now: () => Date.now(),
     success: () => {},
-    copyText: async () => {},
   };
   return { store: store as never, calls };
 }
