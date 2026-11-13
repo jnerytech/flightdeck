@@ -18,6 +18,10 @@ describe("git-args-ratchet: no git call gives a base or a branch to git unguarde
     expect(calls('await gitLimited(cwd, 1000, "diff", source);')).toHaveLength(1);
   });
 
+  test("the runner with input and environment is read like the others", () => {
+    expect(calls('await gitWith(repo, ["rev-list", base], { input });')).toHaveLength(1);
+  });
+
   test("a call that spans lines is read whole, and its line is the line of the call", () => {
     const found = unguardedGitCalls(
       ["const a = 1;", "await git(", "  repo,", '  "rebase",', "  base,", ");"].join("\n"),
