@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { BUILD_LOG_BYTES, tail } from "../../src/board/pr.ts";
+import { BUILD_LOG_BYTES, tail } from "../../src/pr/index.ts";
 import { buildPrompt } from "../../src/watch/fix.ts";
 import type { WatchSettings } from "../../src/watch/settings.ts";
 import { comment, failing } from "../support/watch-helpers.ts";

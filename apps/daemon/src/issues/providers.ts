@@ -4,8 +4,8 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
-import { cli, cliOk } from "../board/pr.ts";
 import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
+import { cli, cliOk } from "../pr/index.ts";
 
 /** Search of the issues assigned to you and still open. */
 export const GITHUB_DEFAULT_SEARCH = "assignee:@me is:open";

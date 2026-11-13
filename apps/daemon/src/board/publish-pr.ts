@@ -4,7 +4,7 @@
  */
 import type { SecretScanner } from "@flightdeck/protocol";
 import { FlightdeckError, killTree, runCommand, whichOnPath } from "../kernel/index.ts";
-import type { PrProvider } from "./pr.ts";
+import type { PrProvider } from "../pr/index.ts";
 import { refArg } from "./ref-arg.ts";
 
 /**

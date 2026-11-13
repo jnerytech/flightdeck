@@ -1,13 +1,22 @@
-import type { ChecksState, PrProviderKind, PrState } from "@flightdeck/protocol";
+import type { PrProviderKind, PrState } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import type { z } from "zod";
+import { FlightdeckError, runCommand } from "../kernel/index.ts";
 import {
-  type CommandResult,
-  FlightdeckError,
-  parseJsonWith,
-  runCommand,
-  whichOnPath,
-} from "../kernel/index.ts";
+  azureDetails,
+  BUILD_LOG_BYTES,
+  CliProvider,
+  type CommandRunner,
+  type CreatePr,
+  githubDetails,
+  type PrCheck,
+  type PrComment,
+  type PrHealth,
+  type PrProvider,
+  type PrStatus,
+  summarize,
+  tail,
+  urlName,
+} from "../pr/index.ts";
 import {
   AzEvaluations,
   AzPolicies,
@@ -18,7 +27,6 @@ import {
   AzThreads,
   AzTimeline,
 } from "./az-json.ts";
-import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import {
   GhCommentPages,
   GhMergeable,
@@ -29,38 +37,6 @@ import {
   parseChecks,
   parsePrUrl,
 } from "./gh-json.ts";
-import { azureDetails, githubDetails, type PrDetails } from "./pr-details.ts";
-
-export interface PrStatus extends Partial<PrDetails> {
-  state: PrState;
-  checks: ChecksState | null;
-  /** Phase 13: the names of the checks that failed, when the host says. */
-  failed?: string[];
-}
-
-export interface CreatePr {
-  cwd: string;
-  base: string;
-  head: string;
-  title: string;
-  body: string;
-}
-
-/** A review comment of a PR, read from the provider (phase 11); nothing is ever posted back. */
-export interface PrComment {
-  id: string;
-  /** `null` for a review's summary, which is about the whole PR. */
-  path: string | null;
-  line: number | null;
-  author: string;
-  /** GitHub's `author_association` (OWNER, MEMBER, COLLABORATOR, CONTRIBUTOR, NONE…). */
-  authorAssociation: string | null;
-  /** Azure DevOps' identity of the author: `uniqueName`, else the id. */
-  authorIdentity: string | null;
-  body: string;
-  resolved: boolean;
-  kind: "inline" | "review";
-}
 
 /** Which review threads are resolved: GitHub's REST API does not say. */
 const GH_THREADS = `query($owner: String!, $name: String!, $number: Int!) {
@@ -74,125 +50,6 @@ const GH_THREADS = `query($owner: String!, $name: String!, $number: Int!) {
 }`;
 
 const AZ_RESOLVED = new Set(["fixed", "closed", "wontFix", "byDesign"]);
-
-/** The chosen PR comments as one message to the agent, like the inline review. */
-export function prMessage(comments: readonly PrComment[]): string {
-  return [
-    "Comentários do PR:",
-    ...comments.map((c, i) => {
-      const line = c.line === null ? "" : " linha " + c.line;
-      const where = c.path ? `\`${c.path}\`${line} (${c.author})` : `revisão de ${c.author}`;
-      const body = c.body
-        .replace(/\r?\n$/, "")
-        .split(/\r?\n/)
-        .map((line) => `   ${line}`)
-        .join("\n");
-      return `${i + 1}. ${where}:\n${body}`;
-    }),
-  ].join("\n");
-}
-
-/** One check of a PR: a build or a policy the host evaluates (phase 22). */
-export interface PrCheck {
-  name: string;
-  state: "passing" | "failing" | "pending";
-  /** A build can be read for its log; any other policy cannot be fixed by code. */
-  kind: "build" | "policy";
-  /** The host's id of the build behind the check, to fetch its log. */
-  buildId: string | null;
-}
-
-/** What the PR watcher reads of a PR each round (phase 22). */
-export interface PrHealth {
-  checks: PrCheck[];
-  /** The PR cannot be merged into its target as it is. */
-  conflicts: boolean;
-}
-
-/** A PR host reached through its CLI, which must be installed and logged in on this host. */
-export interface PrProvider {
-  /** Opens the PR (or reuses the one already open for `head`) and returns its URL. */
-  create(opts: CreatePr): Promise<string>;
-  status(opts: { cwd: string; url: string }): Promise<PrStatus>;
-  /** URL of the open PR for `head`, if any. */
-  url(opts: { cwd: string; head: string }): Promise<string | null>;
-  /** The PR's review comments and review summaries. */
-  comments(opts: { cwd: string; url: string }): Promise<PrComment[]>;
-  /** Phase 22: the PR's builds and policies, and whether it conflicts with its target. */
-  health(opts: { cwd: string; url: string }): Promise<PrHealth>;
-  /** Phase 22: the end of the log of what failed in a build, at most 16 KB. */
-  buildLog(opts: { cwd: string; url: string; buildId: string }): Promise<string>;
-  /** #1196: merges the open PR (a merge commit or a squash); a provider without it cannot. */
-  merge?(opts: { cwd: string; url: string; method: "merge" | "squash" }): Promise<void>;
-}
-
-/** Starts a program that was found: runCommand, or a stand-in that starts nothing. */
-export type CommandRunner = (cmd: string[], cwd: string, input?: string) => Promise<CommandResult>;
-
-/** Runs a CLI looked up on the current PATH (so the tests' fakes win). */
-export async function cli(
-  name: string,
-  args: string[],
-  cwd: string,
-  input?: string,
-  run: CommandRunner = runCommand,
-): Promise<CommandResult> {
-  const bin = whichOnPath(name);
-  if (!bin)
-    throw new FlightdeckError("invalid_state", `${name} not found on the PATH`, "tool_missing", {
-      name,
-    });
-  // The Azure CLI's free text is made safe for its .cmd shim (az-text.ts); the others keep theirs.
-  const safe = name === "az" ? sanitizeAzArgs(args) : args;
-  return run([bin, ...safe], cwd, input).catch(mapSpawnError);
-}
-
-/** Stdout of a CLI call that must succeed; the error names the subcommand (`gh pr view`). */
-export async function cliOk(
-  name: string,
-  args: string[],
-  cwd: string,
-  input?: string,
-  run: CommandRunner = runCommand,
-): Promise<string> {
-  const result = await cli(name, args, cwd, input, run);
-  if (result.code !== 0) {
-    const what = [name, ...args.slice(0, name === "az" ? 3 : 2)].join(" ");
-    throw new FlightdeckError(
-      "invalid_state",
-      `${what} failed: ${result.stderr.trim()}`,
-      "command_failed",
-      { what, output: result.stderr.trim() },
-    );
-  }
-  return result.stdout;
-}
-
-/**
- * A name taken from a PR URL, before it goes into a CLI argument. `az` replaces an argument that
- * starts with @ (and every `name=@file`) by the content of that file, and `gh api -F name=@file`
- * does the same: a repository or project called "@..." would make the CLI read a local file and
- * send it away. A line break has no place in a name either.
- */
-function urlName(what: string, value: string): string {
-  const control = [...value].some((char) => (char.codePointAt(0) ?? 0) < 32);
-  if (value === "" || value.startsWith("@") || control) {
-    throw new FlightdeckError(
-      "invalid_state",
-      `invalid ${what} in the PR URL: ${JSON.stringify(value)}`,
-      "pr_url_part_invalid",
-      { what, value },
-    );
-  }
-  return value;
-}
-
-/** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */
-function summarize(results: Array<"passing" | "failing" | "pending">): ChecksState | null {
-  if (results.length === 0) return null;
-  if (results.includes("failing")) return "failing";
-  return results.includes("pending") ? "pending" : "passing";
-}
 
 const GH_STATES: Record<string, PrState> = { OPEN: "open", MERGED: "merged", CLOSED: "closed" };
 const GH_PASS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
@@ -229,50 +86,6 @@ const GH_BUCKETS: Record<string, PrCheck["state"]> = {
   fail: "failing",
   cancel: "failing",
 };
-
-/** What a build log keeps in all: the end of the logs of what failed. */
-export const BUILD_LOG_BYTES = 16 * 1024;
-
-/** The last `limit` bytes of a text, with a mark when something was left out. */
-export function tail(text: string, limit: number): string {
-  const bytes = Buffer.from(text);
-  if (bytes.length <= limit) return text;
-  return `[…]\n${bytes
-    .subarray(bytes.length - limit)
-    .toString("utf8")
-    .replace(/^\uFFFD+/, "")}`;
-}
-
-/**
- * A PR host over its CLI. `run` starts the program found on PATH: runCommand, or a stand-in a test
- * hands over so that no process starts (the lookup, the safe text and the errors stay the same).
- */
-abstract class CliProvider {
-  protected readonly run: CommandRunner;
-
-  constructor(opts: { run?: CommandRunner } = {}) {
-    this.run = opts.run ?? runCommand;
-  }
-
-  protected call(name: string, args: string[], cwd: string, input?: string) {
-    return cli(name, args, cwd, input, this.run);
-  }
-
-  protected ok(name: string, args: string[], cwd: string, input?: string) {
-    return cliOk(name, args, cwd, input, this.run);
-  }
-
-  /** The CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
-  protected async jsonWith<T>(
-    schema: z.ZodType<T>,
-    name: string,
-    args: string[],
-    cwd: string,
-    input?: string,
-  ): Promise<T> {
-    return parseJsonWith(schema, await this.ok(name, args, cwd, input));
-  }
-}
 
 /** GitHub through `gh`. */
 export class GithubCli extends CliProvider implements PrProvider {
