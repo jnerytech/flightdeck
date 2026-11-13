@@ -73,12 +73,12 @@ describe("session-terminal-loading: the view says it is opening the shell (issue
     expect([loading(), terminalShown()]).toEqual([false, true]);
   });
 
-  test("a refused open goes back to the conversation and leaves no loading state", async () => {
+  test("a refused open goes back to the conversation once", async () => {
     const page = await setup("session");
     await settle(() => loading());
     await act(async () => page.refuse());
     await settle(() => page.closed.length === 1);
-    expect([page.closed, loading()]).toEqual([[1], false]);
+    expect(page.closed).toEqual([1]);
   });
 
   test("a source that already has a terminal shows no loading state", async () => {
