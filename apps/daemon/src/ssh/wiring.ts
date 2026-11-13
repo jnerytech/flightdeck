@@ -85,13 +85,12 @@ export async function createSsh({
     exec: (job: Parameters<SshConnector["exec"]>[0]) => sshConnect.exec(job),
     /** The tags of the one destination with that name; none when the name is not unique. */
     tagsOf: (name: string) => {
-      const named = sshTargets.list().filter((t) => t.name === name);
-      return named.length === 1 ? (named[0]?.tags ?? []) : [];
+      return sshTargets.byName(name)?.tags ?? [];
     },
     /** The vault secret of a vault-key destination with that name; null otherwise. */
     vaultKeyOf: (name: string) => {
-      const named = sshTargets.list().filter((t) => t.name === name);
-      return named.length === 1 && named[0]?.auth === "vault-key" ? named[0].secretRef : null;
+      const target = sshTargets.byName(name);
+      return target?.auth === "vault-key" ? target.secretRef : null;
     },
     server: {
       targets: sshTargets,
