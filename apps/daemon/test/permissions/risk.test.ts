@@ -110,6 +110,10 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", 'echo "a>" ; echo x > /etc/cron.d/evil ; echo "b"'],
   ["high", `echo '>"' ; echo x >/etc/y ; echo '"'`],
   ["high", 'echo ">">"/etc/y"'],
+  // A glob in a target is read by the shell as whatever it matches, `.?` as `..`.
+  ["high", "echo x >.?/pwned"],
+  ["high", "echo x >.[.]/pwned"],
+  ["high", "echo x >*.log"],
   // zsh: `>!file` forces the write and `>=(cmd)` is a process substitution.
   ["high", "echo x >!/tmp/fora.txt"],
   ["high", "echo x >=(cat)"],
