@@ -15,7 +15,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
 import { SessionMessages } from "../messaging/session-messages.tsx";
 import { ChangesPanel } from "../review/ui.ts";
-import { TempoPanel } from "../telemetry/index.ts";
+import { TempoPanel } from "../telemetry/ui.ts";
 import { useLaunchTerminal, type XtermDeps } from "../terminal/index.ts";
 import { SessionTerminal } from "../terminal/ui.ts";
 import { SessionFinish } from "./session-finish.tsx";
