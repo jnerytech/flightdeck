@@ -92,7 +92,7 @@ const button = (name: string | RegExp) => screen.queryByRole("button", { name })
 const panel = () => document.querySelector('[data-slot="card-run"]')?.textContent ?? "";
 const press = async (name: string | RegExp) => {
   const target = button(name);
-  expect(target !== null).toBe(true);
+  expect(target !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   await act(async () => {
     fireEvent.click(target as HTMLElement);
   });
@@ -109,7 +109,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     await settle(() => w.asked.length === 1);
     expect(w.asked).toEqual(["project.detectProvider:p1"]);
     expect(panel()).toContain("no PR provider set");
-    expect(button("Open PR") === null).toBe(true);
+    expect(button("Open PR") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await press("Check the remote again");
     await settle(() => button("Open PR") !== null);
     expect(w.asked).toEqual(["project.detectProvider:p1", "project.detectProvider:p1"]);
@@ -125,7 +125,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     const w = setup({ answers: [{ outcome: "unsupported", host: "gitlab.com" }] });
     await settle(() => panel().includes("gitlab.com"));
     expect(panel()).toContain("not on github.com or Azure DevOps");
-    expect(button("Open PR") === null).toBe(true);
+    expect(button("Open PR") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(w.store.getState().projects.h1?.[0]?.prProvider).toBe("none");
   });
 
@@ -156,7 +156,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     // timing: a negative: the ask, if the card made one, goes out on mount; give it the time to reach the host
     await act(async () => Bun.sleep(30));
     expect(w.asked).toEqual([]);
-    expect(button("Check the remote again") === null).toBe(true);
+    expect(button("Check the remote again") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a project that has a provider is not looked at", async () => {
@@ -200,7 +200,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     (button("Check the remote again") as HTMLElement).focus();
     await press("Check the remote again");
     await settle(() => button("Open PR") !== null);
-    expect(document.activeElement === button("Open PR")).toBe(true);
+    expect(document.activeElement === button("Open PR")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a remote that is no host name, or git unable to read the repository, is said as it is", async () => {
