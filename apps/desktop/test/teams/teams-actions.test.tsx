@@ -21,7 +21,7 @@ const WORDS = {
     resume: "Resume login",
     close: "Close login",
     closeConfirm: "Close",
-    addWorker: "Add a worker to login",
+    addWorker: "Add worker to login",
     menu: "Actions for login",
     delete: "Delete team",
     newTeam: "New team",

@@ -27,6 +27,7 @@ import {
   FormActions,
   LoadingState,
   NativeSelect,
+  OpenedPanel,
   Page,
 } from "@/shared/layout/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
@@ -639,7 +640,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
             </NativeSelect>
           )}
           {!creating && (
-            <Button ref={newTeamRef} onClick={() => setCreating(true)}>
+            <Button ref={newTeamRef} data-opener="new-team" onClick={() => setCreating(true)}>
               {t("teamsUi.new")}
             </Button>
           )}
@@ -656,16 +657,18 @@ export const TeamsPage = memo(function TeamsPage(props: {
       )}
       {deleted && <InlineNotice tone="info">{deleted}</InlineNotice>}
       {creating && (
-        <NewTeam
-          store={store}
-          hostId={current}
-          onCreated={() => {
-            setCreating(false);
-            void load();
-          }}
-          onCancel={() => setCreating(false)}
-          onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
-        />
+        <OpenedPanel opener="new-team">
+          <NewTeam
+            store={store}
+            hostId={current}
+            onCreated={() => {
+              setCreating(false);
+              void load();
+            }}
+            onCancel={() => setCreating(false)}
+            onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
+          />
+        </OpenedPanel>
       )}
       {loading && !creating && <LoadingState label={t("teamsUi.loading")} />}
       {!loading && loadFailed && teams === null && !creating && (

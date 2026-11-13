@@ -7,6 +7,7 @@ export { Facts } from "./facts.tsx";
 export { CheckField, Field, FieldRow, Form, FormActions, NativeSelect } from "./form.tsx";
 export { ListRow } from "./list-row.tsx";
 export { Note } from "./note.tsx";
+export { OpenedPanel } from "./opened-panel.tsx";
 export { Page, Section } from "./page.tsx";
 export { Panel } from "./panel.tsx";
 export { SplitView } from "./split-view.tsx";

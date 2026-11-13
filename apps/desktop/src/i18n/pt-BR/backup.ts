@@ -31,6 +31,9 @@ export const backup = {
       vault: "Cofre",
     },
     line: "{kind}: {added} novos, {same} iguais, {conflicting} diferentes",
+    previewTitle: "Prévia do backup",
+    previewRead:
+      "Backup lido: {added} novos, {conflicting} diferentes. Nada muda até você apertar Restaurar.",
     conflictList: "Diferentes aqui",
     newHosts: "Hosts novos",
     choiceLegend: "Quando for diferente",

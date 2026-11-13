@@ -1,4 +1,4 @@
-import { useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ConflictChoice } from "@/features/vault/index.ts";
@@ -44,6 +44,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   const onDrive = scheduler.driveAvailable && from === "drive";
   const exportField = useRef<HTMLInputElement>(null);
   const importField = useRef<HTMLInputElement>(null);
+  const previewBox = useRef<HTMLElement>(null);
   const exporting = useBusy();
   const reading = useBusy();
   const restoring = useBusy();
@@ -102,6 +103,12 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
     setFilePassphrase("");
     importField.current?.focus();
   };
+
+  // #2653: the passphrase field is empty now and the preview mounts below it; take the person there.
+  const previewShown = preview !== null;
+  useEffect(() => {
+    if (previewShown) previewBox.current?.focus();
+  }, [previewShown]);
 
   const differing = preview
     ? KINDS.flatMap((kind) => {
@@ -216,7 +223,10 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
                     <legend className="sr-only">{t("backupAll.driveChoiceLegend")}</legend>
                     <Stack gap={1}>
                       {driveNames.map((name) => (
-                        <label key={name} className="flex items-center gap-2">
+                        <label
+                          key={name}
+                          className="flex min-w-0 items-center gap-2 [overflow-wrap:anywhere]"
+                        >
                           <input
                             type="radio"
                             className="hit-control"
@@ -269,66 +279,81 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
               <p className="text-muted-foreground text-sm">{t("backupAll.needsDesktop")}</p>
             )}
             {preview && (
-              <Form
-                variant="inline"
-                onSubmit={() =>
-                  differing.length > 0 && choice === "overwrite"
-                    ? setReplacing(true)
-                    : restoring.run(doRestore)
-                }
+              <section
+                ref={previewBox}
+                aria-label={t("backupAll.previewTitle")}
+                tabIndex={-1}
+                className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
               >
-                <Stack gap={1}>
-                  {KINDS.map((kind) => (
-                    <p key={kind}>
-                      {t("backupAll.line", {
-                        kind: t(`backupAll.kinds.${kind}` as Key),
-                        added: preview[kind].added.length,
-                        same: preview[kind].same.length,
-                        conflicting: preview[kind].conflicting.length,
-                      })}
-                    </p>
-                  ))}
-                </Stack>
-                {preview.hosts.added.length > 0 && (
-                  // A host brings its address and token: name each one before it is added.
-                  <Stack as="ul" gap={1} label={t("backupAll.newHosts")}>
-                    {preview.hosts.added.map((name) => (
-                      <li key={name}>{name}</li>
-                    ))}
-                  </Stack>
-                )}
-                {differing.length > 0 && (
-                  <>
-                    <Stack as="ul" gap={1} label={t("backupAll.conflictList")}>
-                      {differing.map((line) => (
-                        <li key={line}>{line}</li>
+                <Stack gap={4}>
+                  <InlineNotice tone="info">
+                    {t("backupAll.previewRead", { added, conflicting: differing.length })}
+                  </InlineNotice>
+                  <Form
+                    variant="inline"
+                    onSubmit={() =>
+                      differing.length > 0 && choice === "overwrite"
+                        ? setReplacing(true)
+                        : restoring.run(doRestore)
+                    }
+                  >
+                    <Stack gap={1}>
+                      {KINDS.map((kind) => (
+                        <p key={kind}>
+                          {t("backupAll.line", {
+                            kind: t(`backupAll.kinds.${kind}` as Key),
+                            added: preview[kind].added.length,
+                            same: preview[kind].same.length,
+                            conflicting: preview[kind].conflicting.length,
+                          })}
+                        </p>
                       ))}
                     </Stack>
-                    <fieldset>
-                      <legend className="sr-only">{t("backupAll.choiceLegend")}</legend>
-                      <Stack gap={1}>
-                        {CHOICES.map(([value, label]) => (
-                          <label key={value} className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              name={`${id}-choice`}
-                              checked={choice === value}
-                              onChange={() => setChoice(value)}
-                            />
-                            {t(label)}
-                          </label>
+                    {preview.hosts.added.length > 0 && (
+                      // A host brings its address and token: name each one before it is added.
+                      <Stack as="ul" gap={1} label={t("backupAll.newHosts")}>
+                        {preview.hosts.added.map((name) => (
+                          <li key={name}>{name}</li>
                         ))}
                       </Stack>
-                    </fieldset>
-                  </>
-                )}
-                <FormActions
-                  submit={t("backupAll.restore")}
-                  busy={restoring.busy}
-                  disabled={changes === 0}
-                  disabledReason={t("backupAll.nothingToRestore")}
-                />
-              </Form>
+                    )}
+                    {differing.length > 0 && (
+                      <>
+                        <Stack as="ul" gap={1} label={t("backupAll.conflictList")}>
+                          {differing.map((line) => (
+                            <li key={line} className="[overflow-wrap:anywhere]">
+                              {line}
+                            </li>
+                          ))}
+                        </Stack>
+                        <fieldset>
+                          <legend className="sr-only">{t("backupAll.choiceLegend")}</legend>
+                          <Stack gap={1}>
+                            {CHOICES.map(([value, label]) => (
+                              <label key={value} className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  className="hit-control"
+                                  name={`${id}-choice`}
+                                  checked={choice === value}
+                                  onChange={() => setChoice(value)}
+                                />
+                                {t(label)}
+                              </label>
+                            ))}
+                          </Stack>
+                        </fieldset>
+                      </>
+                    )}
+                    <FormActions
+                      submit={t("backupAll.restore")}
+                      busy={restoring.busy}
+                      disabled={changes === 0}
+                      disabledReason={t("backupAll.nothingToRestore")}
+                    />
+                  </Form>
+                </Stack>
+              </section>
             )}
             {importNote && <InlineNotice tone={importNote.tone}>{importNote.text}</InlineNotice>}
           </Stack>
