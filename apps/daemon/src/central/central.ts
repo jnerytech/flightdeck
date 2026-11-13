@@ -7,7 +7,7 @@ import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { FlightdeckError, writeFileAtomic } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import type { RiskClassifier } from "../permissions/risk.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 import { ExternalSessions } from "./external.ts";
 import { ExternalPermissions } from "./external-permissions.ts";
 import { type HookTarget, hooksStatus, installHooks, uninstallHooks } from "./hooks-install.ts";

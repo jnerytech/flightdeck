@@ -3,7 +3,7 @@ import type { RunStatus, StepRun, StepStatus, StepType } from "@flightdeck/proto
 import type { BoardEvent } from "../board/domain/columns.ts";
 import type { Card } from "../board/types.ts";
 import type { Prepare } from "../personas/index.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 import type { CheckRunner } from "./check-runner.ts";
 import type { CardsRaised, Finding } from "./findings.ts";
 import * as col from "./row-json.ts";

@@ -8,7 +8,7 @@ import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg, ulid } from "../kernel/index.ts";
 import { maskConfig, maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 import { linesOf, located, refuseCredential } from "./paths.ts";
 import { frameReviewerComment } from "./second-opinion.ts";
 import type { ChangesReader, ResolvedTarget } from "./target.ts";

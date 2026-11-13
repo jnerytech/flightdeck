@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { buildChildEnv, FlightdeckError } from "../kernel/index.ts";
-import { spawnProgram } from "./adapters/action-process.ts";
+import { type SpawnProgram, spawnProgram } from "./adapters/action-process.ts";
 import { type MaskedSecret, maskOutput } from "./mask.ts";
 import { type ActionDef, paramRegex, REFERENCE, secretsOf } from "./schema.ts";
 
@@ -36,7 +36,7 @@ export interface RunOptions {
   timeoutMs?: number;
   ssh?: SshExecutor;
   /** How a program starts and how its time limit is kept: real ones when absent (tests inject fakes). */
-  spawn?: typeof Bun.spawn;
+  spawn?: SpawnProgram;
   timer?: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
   /** The ssh destino's key from the vault: handed to the executor, and masked like a secret. */
   sshKey?: { id: string; value: string };
@@ -205,7 +205,7 @@ export async function runAction(
       };
     }
 
-    let proc: ReturnType<typeof Bun.spawn>;
+    let proc: ReturnType<SpawnProgram>;
     try {
       proc = (opts.spawn ?? spawnProgram)(argv, {
         cwd: action.cwd ? resolve(opts.base, fill(action.cwd)) : opts.base,

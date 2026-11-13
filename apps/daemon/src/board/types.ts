@@ -15,7 +15,7 @@ import type {
 import type { Prepare } from "../personas/prepare.ts";
 import type { PrProvider } from "../pr/index.ts";
 import type { Quota } from "../quota/index.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import type { BoundedCheckRunner, CheckRunner } from "../workflows/check-runner.ts";
 

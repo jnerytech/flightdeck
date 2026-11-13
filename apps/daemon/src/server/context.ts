@@ -6,7 +6,7 @@
 import type { SessionLine } from "@flightdeck/protocol";
 import { type LiveState, sessionLine } from "../history/session-line.ts";
 import type { ServerOptions } from "../server-options.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 import { featuresOf } from "./features.ts";
 import {
   type GatedGroup,

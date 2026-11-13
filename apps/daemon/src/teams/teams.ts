@@ -21,7 +21,7 @@ import { MANAGED_STATE } from "../messaging/endpoints.ts";
 import type { Messaging } from "../messaging/messages.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/index.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 import type { NewTeam, TeamPatch } from "./input.ts";
 import {
   coordinatorInstructions,
