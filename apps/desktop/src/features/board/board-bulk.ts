@@ -333,12 +333,3 @@ export function startConfirmLines(
   else if (lacking > 1) lines.push(t("board.noCriteria", { n: lacking }));
   return lines;
 }
-
-/** The other hosts a Start that would wait can go to: asked only while the Start confirm is open and ready. */
-export function startOffers<Offer>(
-  kind: BulkKind | null,
-  ready: boolean,
-  offers: () => Offer[],
-): Offer[] {
-  return kind === "start" && ready ? offers() : [];
-}
