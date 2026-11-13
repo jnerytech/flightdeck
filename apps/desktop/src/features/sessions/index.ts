@@ -9,7 +9,6 @@
  * Another domain imports from here, never a file inside.
  */
 
-export { awaitingApproval } from "./awaiting-approval.ts";
 export {
   browserClockDeps,
   CacheTimerSettings,
@@ -17,6 +16,17 @@ export {
   SharedClock,
 } from "./cache-timer-model.ts";
 export { SessionCommandsSlice } from "./commands.ts";
+export { awaitingApproval } from "./domain/awaiting-approval.ts";
+export { sessionKey } from "./domain/session-key.ts";
+export { sessionLabel } from "./domain/session-label.ts";
+export type { SessionState } from "./domain/session-state.ts";
+export {
+  type SessionView as SessionViewName,
+  SessionViews,
+  VIEW_LABEL,
+} from "./domain/session-views.ts";
+export { messageParts } from "./domain/tool-line.ts";
+export { type Turn, turnsOf } from "./domain/turns.ts";
 export { ExternalSessionsSlice } from "./external.ts";
 export {
   type Finish,
@@ -49,11 +59,7 @@ export { NewSessionPrefs } from "./new-session-prefs.ts";
 export { pendingText, pendingWhere } from "./pending-text.ts";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { rowRoute } from "./row-route.ts";
-export { sessionKey } from "./session-key.ts";
-export { sessionLabel } from "./session-label.ts";
-export type { SessionState } from "./session-state.ts";
 export type { SessionActions } from "./session-view.tsx";
-export { type SessionView as SessionViewName, SessionViews, VIEW_LABEL } from "./session-views.ts";
 export { elsewhereNotice, waitingCards } from "./start-elsewhere.ts";
 export {
   initialSessionsState,
@@ -79,8 +85,6 @@ export {
 } from "./tiles.ts";
 export { formatMs } from "./timing.ts";
 export { inputSummary } from "./tool-input.ts";
-export { messageParts } from "./tool-line.ts";
-export { type Turn, turnsOf } from "./turns.ts";
 export { useDraft } from "./use-draft.ts";
 export { useFollow } from "./use-follow.ts";
 export { useSessionCost } from "./use-session-cost.ts";

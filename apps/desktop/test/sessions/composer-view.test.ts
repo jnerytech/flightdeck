@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { commandItemsOf } from "../../src/features/sessions/command-menu.ts";
-import { queueStep, submitAction } from "../../src/features/sessions/composer-queue.ts";
+import { queueStep, submitAction } from "../../src/features/sessions/domain/composer-queue.ts";
 import {
   missedAfter,
   rememberPosition,
   type ScrollPosition,
-} from "../../src/features/sessions/scroll-memory.ts";
+} from "../../src/features/sessions/domain/scroll-memory.ts";
 
 /**
  * #1605 (Humble Object): what SessionView decides about the scroll memory and the composer queue,

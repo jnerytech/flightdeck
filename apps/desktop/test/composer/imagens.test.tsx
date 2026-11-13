@@ -6,7 +6,7 @@ const { act, cleanup, fireEvent, render, waitFor, within } = await import("@test
 const screen = liveScreen(within);
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
 const { emptySession, applyEnvelope } = await import(
-  "../../src/features/sessions/session-state.ts"
+  "../../src/features/sessions/domain/session-state.ts"
 );
 
 afterEach(cleanup);

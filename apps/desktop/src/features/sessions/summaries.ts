@@ -6,7 +6,7 @@ import type { SidebarSession } from "../../lib/app-store.ts";
 import type { InboxSlice } from "../inbox/index.ts";
 import { type AboutNotification, summaryNotifications } from "../inbox/notify.ts";
 import { decide, type NotifyPreferences, type NotifySource } from "../notifications/index.ts";
-import { sessionKey } from "./session-key.ts";
+import { sessionKey } from "./domain/session-key.ts";
 
 /** How long workers of one team finishing are gathered into one message. */
 const FOLD_MS = 10_000;
