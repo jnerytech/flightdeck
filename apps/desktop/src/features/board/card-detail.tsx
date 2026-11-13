@@ -13,7 +13,7 @@ import { PostMortem } from "@/features/board/post-mortem";
 import { RunAgain } from "@/features/board/run-again";
 import { PrWatchPanel } from "@/features/watch/pr-watch-panel.tsx";
 import { useT } from "@/i18n/context";
-import { reasonText } from "@/lib/notice-text";
+import { reasonText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
