@@ -1,6 +1,7 @@
 import { afterEach } from "bun:test";
 import type { AppStore } from "../src/lib/app-store.ts";
 import { memoryPlatform, seedHosts } from "./fixtures.ts";
+import { addedSecret } from "./vault/added-secret.ts";
 
 /** The commands a fake host got with no handler and no `fallback`: the test fails after it, naming them. */
 const unhandled: string[] = [];
@@ -63,7 +64,7 @@ export async function fakeHostStore(
   // Created through the store, as the Vault screen does; a host takes the secrets it is allowed.
   const secretIds: string[] = [];
   for (const name of options.secrets ?? []) {
-    const meta = await store.secrets.add({
+    const meta = await addedSecret(store, {
       name,
       type: "token",
       value: "v",

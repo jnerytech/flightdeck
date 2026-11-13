@@ -3,6 +3,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
 import { settlePlain as settle } from "../wait.ts";
+import { addedSecret } from "./added-secret.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -27,8 +28,8 @@ async function open(requests = true) {
   await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("external.watch"));
-  const github = await store.secrets.add({ name: "github", type: "token", value: VALUE });
-  const deploy = await store.secrets.add({ name: "deploy", type: "password", value: VALUE });
+  const github = await addedSecret(store, { name: "github", type: "token", value: VALUE });
+  const deploy = await addedSecret(store, { name: "deploy", type: "password", value: VALUE });
   if (requests) {
     daemon.push({
       type: "vault.request",
