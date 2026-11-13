@@ -4,7 +4,7 @@
  * changes and open permission requests, and a message to one opened with `flightdeckd claude`.
  */
 import type { ExternalSession, ExternalStatus, SessionLine } from "@flightdeck/protocol";
-import { messageExternal } from "../../central/central.ts";
+import { messageExternal } from "../../central/index.ts";
 import { FlightdeckError } from "../../kernel/index.ts";
 import type { ServerContext } from "../context.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";

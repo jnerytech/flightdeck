@@ -1,5 +1,5 @@
 /** Issue #1612: where a project's GitHub repository is, read from its `origin` remote in any of its forms. */
-import { stripRemote } from "../../central/project-key.ts";
+import { stripRemote } from "../../central/index.ts";
 
 /** `owner/repo` of a GitHub remote (`github.com` or an enterprise `github.*` host); else null. */
 export function githubCoords(url: string): string | null {

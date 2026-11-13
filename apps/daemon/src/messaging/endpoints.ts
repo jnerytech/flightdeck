@@ -11,7 +11,7 @@ import type {
   SessionStatus,
   SessionSummary,
 } from "@flightdeck/protocol";
-import type { ExternalSessions } from "../central/external.ts";
+import type { ExternalSessions } from "../central/index.ts";
 import { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "../history/parser.ts";
 import { requestLine } from "../history/session-line.ts";
 import { FlightdeckError } from "../kernel/index.ts";
