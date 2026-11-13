@@ -66,6 +66,9 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   // Redirection outside the cwd.
   ["high", "echo x > /tmp/fora.txt"],
   ["high", "echo x >> ../fora.txt"],
+  // A > after - or = is still a redirect for the shell (#2479).
+  ["high", "echo x -> /tmp/fora.txt"],
+  ["high", "echo a=>/tmp/fora.txt"],
   // Credentials, read or not.
   ["high", "cat ~/.ssh/id_rsa"],
   ["high", "cat .env"],
@@ -163,6 +166,23 @@ describe("risco", () => {
     expect(level("NotebookEdit", { notebook_path: "a.ipynb" })).toBe("medium");
     expect(risk.classify("Read", { file_path: "a.ts" }, CWD).network).toBe(false);
     expect(risk.classify("Bash", { command: "ls" }, CWD).reason).not.toBe("");
+  });
+
+  test("a write call with both file_path and notebook_path takes the stricter of the two (#2479)", () => {
+    const inside = join(CWD, "a");
+    const outside = join(HOME, "a");
+    for (const tool of ["Write", "Edit", "MultiEdit", "NotebookEdit"]) {
+      expect(level(tool, { file_path: inside, notebook_path: outside })).toBe("high");
+      expect(level(tool, { file_path: outside, notebook_path: inside })).toBe("high");
+      expect(level(tool, { file_path: inside, notebook_path: inside })).toBe("medium");
+    }
+    expect(
+      risk.classify(
+        "NotebookEdit",
+        { file_path: inside, notebook_path: join(HOME, ".ssh", "k") },
+        CWD,
+      ).reason,
+    ).toBe("escrita em caminho de credencial");
   });
 
   test("run_with_secret, de qualquer servidor MCP, é high e rede: comando livre com segredo nunca passa como rotina", () => {
