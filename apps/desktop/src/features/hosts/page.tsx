@@ -70,8 +70,10 @@ const NARROW_PANEL = `${PANEL} max-w-3xl`;
 /** The tab a section ask opens (#1484, #2588): Health is on the Overview, the others on Settings. */
 const tabOf = (section: HostSection) => (section === "health" ? "overview" : "settings");
 /** The panel whose heading takes the focus. */
-const slotOf = (section: HostSection) =>
-  `[data-slot="${section === "health" ? "host-health" : `host-section-${section}`}"]`;
+const slotOf = (section: HostSection) => {
+  const slot = section === "health" ? "host-health" : `host-section-${section}`;
+  return `[data-slot="${slot}"]`;
+};
 
 const HOOK_LABELS = {
   installed: "hostPage.hooksInstalled",

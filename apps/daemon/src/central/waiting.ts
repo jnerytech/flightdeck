@@ -32,7 +32,7 @@ export function waitingIn(tail: string): Waiting | null {
     if (entry.type === "user") return null;
     if (entry.type !== "assistant") continue;
     const content = entry.message?.content;
-    const last = Array.isArray(content) ? content[content.length - 1] : null;
+    const last = Array.isArray(content) ? content.at(-1) : null;
     // Own keys only: a tool named `constructor` or `__proto__` must not find an inherited member.
     const name = String(last?.name);
     return last?.type === "tool_use" && Object.hasOwn(WAITS, name) ? (WAITS[name] ?? null) : null;
@@ -43,7 +43,7 @@ export function waitingIn(tail: string): Waiting | null {
 interface Entry {
   type?: unknown;
   isSidechain?: unknown;
-  message?: { content?: Array<{ type?: unknown; name?: unknown }> | unknown };
+  message?: { content?: Array<{ type?: unknown; name?: unknown }> };
 }
 
 function parse(line: string): Entry | null {

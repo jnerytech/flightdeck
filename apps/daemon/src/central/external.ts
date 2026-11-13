@@ -306,7 +306,7 @@ export class ExternalSessions {
       const events = this.events.get(id) ?? 0;
       const info = await stat(row.transcript_path ?? "").catch(() => null);
       const before = this.looks.get(id);
-      if (before && info && before.size === info.size && before.mtimeMs === info.mtimeMs) return;
+      if (info && before?.size === info.size && before.mtimeMs === info.mtimeMs) return;
       // Only a regular file is read: a pipe given as a transcript path would block the read.
       const tail = info?.isFile()
         ? await (this.opts.readTail ?? tailOfFile)(row.transcript_path ?? "").catch(() => null)

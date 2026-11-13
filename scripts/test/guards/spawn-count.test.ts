@@ -75,6 +75,20 @@ describe("spawn-count (#1612)", () => {
     ).toEqual({ "apps/daemon/src/a.ts": 6 });
   });
 
+  test("a destructured Bun counts only when spawn or spawnSync is a whole name inside the braces", () => {
+    const count = (line: string) =>
+      spawnCounts([{ path: "apps/daemon/src/a.ts", text: line }])["apps/daemon/src/a.ts"] ?? 0;
+    expect([
+      count("const { spawn } = Bun;"),
+      count("const {spawnSync} = Bun;"), // no space after the brace: not read today
+      count("const { a, spawn, b } = Bun;"),
+      count("const { spawned } = Bun;"),
+      count("const { respawn } = Bun;"),
+      count("const { a } = Bun;"),
+      count("const { spawn } = other;"),
+    ]).toEqual([1, 0, 1, 0, 0, 0, 0]);
+  });
+
   test("a launch after a block comment on the same line counts; a trailing comment or a url does not hide or fake one", () => {
     expect(
       spawnCounts([

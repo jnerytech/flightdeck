@@ -1,4 +1,4 @@
-import type { BoardColumn, Card, ContractOverrides, Project } from "@flightdeck/protocol";
+import type { BoardColumn, Card, ContractOverrides } from "@flightdeck/protocol";
 import {
   Circle,
   CircleAlert,

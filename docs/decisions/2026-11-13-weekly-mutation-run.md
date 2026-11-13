@@ -4,12 +4,12 @@
 
 `.github/workflows/mutation.yml` runs StrykerJS once a week (Sunday 03:23 UTC) and by hand
 (`gh workflow run mutation.yml --ref main`). It never starts on a push, a pull request or a release,
-so it gates nothing; `scripts/test/ci/mutation-config.test.ts` keeps the triggers that way, and keeps
+so it gates no PR or release (it only turns red under a domain's `minScore`, see `2026-11-13-mutation-equivalent-survivors.md`); `scripts/test/ci/mutation-config.test.ts` keeps the triggers that way, and keeps
 `ci.yml` and `release.yml` free of Stryker. It runs on a GitHub runner, not on the Pi: one file took
 18 minutes there (see `2026-11-11-mutation-testing.md`) and the slot is shared.
 
 `bun run mutation:weekly` (`scripts/mutation-weekly.ts`) reads `mutation-domains.json`, a list of
-`{ name, mutate[], tests[] }`, and runs `stryker run` once per domain over the settings of
+`{ name, mutate[], tests[], minScore? }`, and runs `stryker run` once per domain over the settings of
 `stryker.config.json`. A domain's mutants are judged by that domain's own tests, never the suite.
 There are no `domain/` folders in the tree yet, so the list is a file; a domain is added by naming
 its source files and the test files that judge them. The by-hand `bun run mutation` stays as it was.

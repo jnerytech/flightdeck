@@ -86,7 +86,7 @@ const OUTPUT_MAX = 4000;
 /** ESC, which opens the ANSI sequences a check's colours and cursor moves are written in. */
 const ESC = String.fromCodePoint(0x1b);
 /** A CSI sequence (`ESC [ … final`) or a two-character escape (`ESC` and one of @ to _). */
-const ANSI = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]|${ESC}[@-_]`, "g");
+const ANSI = new RegExp(String.raw`${ESC}\[[0-9;?]*[ -/]*[@-~]|${ESC}[@-_]`, "g");
 
 /**
  * The code points taken out of a check's output, as ranges: control characters (C0 but tab and
@@ -316,7 +316,7 @@ export class CheckLoopEngine {
 
   /** Settles once every check the card still has running has exited. */
   async drain(cardId: string): Promise<void> {
-    await Promise.all([...(this.inflight.get(cardId) ?? [])]);
+    await Promise.all(this.inflight.get(cardId) ?? []);
   }
 
   /**

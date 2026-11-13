@@ -13,14 +13,17 @@ const SOURCE = /^(apps|packages)\/[^/]+\/src\/.+\.tsx?$/;
 /** A domain's `adapters/` folder in the daemon is where a launch belongs: the system's one entry. */
 const ADAPTER_FOLDER = /^apps\/daemon\/src\/(.+\/)?adapters\//;
 /** The kernel's two launchers are the shared ones the adapters call; a new kernel file that spawns fails. */
-const KERNEL_LAUNCHERS = ["apps/daemon/src/kernel/command.ts", "apps/daemon/src/kernel/exec.ts"];
+const KERNEL_LAUNCHERS = new Set([
+  "apps/daemon/src/kernel/command.ts",
+  "apps/daemon/src/kernel/exec.ts",
+]);
 
 /** Whether the check reads this tracked path: TypeScript under a package's src, minus declarations, adapter folders and the kernel's two launchers. */
 export function isScanned(path: string): boolean {
   return (
     SOURCE.test(path) &&
     !path.endsWith(".d.ts") &&
-    !KERNEL_LAUNCHERS.includes(path) &&
+    !KERNEL_LAUNCHERS.has(path) &&
     !ADAPTER_FOLDER.test(path)
   );
 }
@@ -30,7 +33,8 @@ const LAUNCHES = [
   /\bBun\s*\.\s*spawn(Sync)?\b/g,
   /\bBun\s*\[/g,
   /\bBun\s*\.\s*\$/g,
-  /\{[^}]*[{,\s](spawn|spawnSync)[,\s}:][^}]*\}\s*=\s*Bun\b/g,
+  // The name follows the brace, a comma or a space: a lookbehind, so the group before it does not backtrack over the same characters.
+  /\{[^}]+(?<=[{,\s])(spawn|spawnSync)[,\s}:][^}]*\}\s*=\s*Bun\b/g,
   /\bimport\s*\{[^}]*[{,\s](spawn|spawnSync|\$)[,\s}][^}]*\}\s*from\s*["']bun["']/g,
 ];
 const COMMENT_LINE = /^\s*(\/\/|\*|\/\*)/;
@@ -46,7 +50,7 @@ export function spawnCounts(files: { path: string; text: string }[]): Record<str
     for (const line of text.split("\n")) {
       if (COMMENT_LINE.test(line) && !/\*\/\s*\S/.test(line)) continue;
       const code = line.replace(COMMENT_SPAN, " ");
-      for (const re of LAUNCHES) n += code.match(re)?.length ?? 0;
+      for (const re of LAUNCHES) n += [...code.matchAll(re)].length;
     }
     if (n > 0) counts[path] = n;
   }
