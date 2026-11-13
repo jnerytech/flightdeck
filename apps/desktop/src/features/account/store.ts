@@ -29,28 +29,56 @@ export interface AccountCore {
 
 /** The Claude account of each host, shown and never asked for (phase 34; #1596: a slice of the store). */
 export class AccountSlice {
+  /** The cards watching each host: the stream goes off when the last one stops (#1752). */
+  private readonly watchers = new Map<string, Set<symbol>>();
+  /** The stream each host's watchers switched on: the last stop switches off that one. */
+  private readonly streams = new Map<string, AccountStream>();
+  /** Bumped when a host is removed: an answer that was on its way must not write back. */
+  private readonly removals = new Map<string, number>();
+
   constructor(private readonly core: AccountCore) {}
 
   /** Starts the host's account stream while its card is on screen; returns the function that ends it. */
   watch(hostId: string): () => void {
+    const me = Symbol(hostId);
+    const mine = this.watchers.get(hostId) ?? new Set<symbol>();
+    mine.add(me);
+    this.watchers.set(hostId, mine);
     // The stop ends the stream it started: a connection that comes later is not its to switch off.
     const stream = this.core.stream(hostId);
+    if (stream) this.streams.set(hostId, stream);
     stream?.watch(true);
     // What the host already knows comes at once; its first read follows through the stream.
     void stream?.get().then(
-      (state) => this.updated(hostId, state),
+      (state) => {
+        if (mine.has(me)) this.updated(hostId, state);
+      },
       () => {},
     );
-    return () => stream?.watch(false);
+    return () => {
+      if (!mine.delete(me) || mine.size > 0) return;
+      this.watchers.delete(hostId);
+      const on = this.streams.get(hostId);
+      this.streams.delete(hostId);
+      on?.watch(false);
+    };
   }
 
   /** Drops what a removed host left: its account and the watchers it had (#1752). */
-  forget(_hostId: string): void {}
+  forget(hostId: string): void {
+    this.removals.set(hostId, (this.removals.get(hostId) ?? 0) + 1);
+    this.watchers.get(hostId)?.clear();
+    this.watchers.delete(hostId);
+    this.streams.delete(hostId);
+    const { [hostId]: _gone, ...rest } = this.core.state().account;
+    this.core.update({ account: rest });
+  }
 
   /** Asks the host to read its account again now; `false` when it refused (the banner says why). */
   async refresh(hostId: string): Promise<boolean> {
+    const removals = this.removals.get(hostId);
     const state = await this.core.refresh(hostId);
-    if (state) this.updated(hostId, state);
+    if (state && this.removals.get(hostId) === removals) this.updated(hostId, state);
     return state !== null;
   }
 
