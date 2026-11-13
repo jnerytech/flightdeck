@@ -1,6 +1,6 @@
 /**
  * A git merge driver for the ratchet baselines keyed by path (#2270): `src-size-baseline.json` and
- * `json-parse-baseline.json` (path to a count that only goes down) and `fast-coverage-baseline.json`
+ * `json-parse-baseline.json` and `spawn-count-baseline.json` (path to a count that only goes down) and `fast-coverage-baseline.json`
  * (a sorted list of paths). The files are already sorted, one key per line, yet two branches that
  * rename neighbouring paths change adjacent lines, and git's line merge refuses those; this merge
  * works key by key instead. GitHub runs no custom driver: a PR still goes DIRTY, and the local

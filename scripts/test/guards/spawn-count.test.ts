@@ -19,6 +19,8 @@ describe("spawn-count (#1612)", () => {
     expect(isScanned("apps/daemon/src/git/adapters/run.ts")).toBe(false);
     expect(isScanned("apps/daemon/src/github/adapters/gh/run.ts")).toBe(false);
     expect(isScanned("apps/daemon/src/adapters-notes/x.ts")).toBe(true);
+    expect(isScanned("apps/desktop/src/features/x/adapters/y.ts")).toBe(true);
+    expect(isScanned("packages/protocol/src/adapters/y.ts")).toBe(true);
     expect(isScanned("scripts/lib/slot/index.ts")).toBe(false);
   });
 

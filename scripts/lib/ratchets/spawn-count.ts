@@ -7,8 +7,8 @@
  */
 
 const SOURCE = /^(apps|packages)\/[^/]+\/src\/.+\.tsx?$/;
-/** A folder named `adapters` is where a launch belongs: the system's one entry. */
-const ADAPTER_FOLDER = /(^|\/)adapters\//;
+/** A domain's `adapters/` folder in the daemon is where a launch belongs: the system's one entry. */
+const ADAPTER_FOLDER = /^apps\/daemon\/src\/(.+\/)?adapters\//;
 /** The kernel's own exec helper (`run`) is the shared launcher the adapters call. */
 const EXEC_HELPER = "apps/daemon/src/kernel/exec.ts";
 
