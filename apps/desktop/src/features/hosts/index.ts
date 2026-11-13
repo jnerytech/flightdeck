@@ -11,6 +11,8 @@ export { hostDownReason } from "./domain/host-down-reason.ts";
 export type { HostNameError } from "./domain/host-name.ts";
 export type { RetryState } from "./domain/host-offline.ts";
 export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
+export { holdAwake } from "./domain/keep-awake.ts";
+export { pairingErrorText } from "./domain/pairing-text.ts";
 export { type GithubHost, githubSignedIn } from "./github-session.ts";
 export {
   type HealthAnswer,
@@ -31,9 +33,7 @@ export type { HostDraft } from "./host-form.tsx";
 export { hostDotView, hostStatusView } from "./host-status.ts";
 export { HostTabs } from "./host-tabs.ts";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-export { holdAwake } from "./keep-awake.ts";
 export { HostLink, type HostRoutes, type OnlineStep } from "./link.ts";
-export { pairingErrorText } from "./pairing-text.ts";
 export { HostRosterSlice } from "./roster-store.ts";
 export {
   type HostUpdateCore,

@@ -23,7 +23,7 @@ import {
   needsYou,
   type RowEnv,
   uncoveredChecks,
-} from "./host-health-rows.ts";
+} from "./domain/host-health-rows.ts";
 
 const ICONS = { check: Check, warning: TriangleAlert, cross: X, dash: Minus } as const;
 /** The colour of a tone, as whole class names so Tailwind finds them. */

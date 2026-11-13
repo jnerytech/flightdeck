@@ -9,7 +9,7 @@ import {
   needsYou,
   type RowEnv,
   uncoveredChecks,
-} from "../../src/features/hosts/host-health-rows.ts";
+} from "../../src/features/hosts/domain/host-health-rows.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 const t = translator("en");

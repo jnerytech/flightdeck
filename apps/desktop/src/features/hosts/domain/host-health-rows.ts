@@ -1,5 +1,5 @@
 import type { DepResult, DoctorCheckResult } from "@flightdeck/protocol";
-import type { Key, T } from "../../i18n/index.ts";
+import type { Key, T } from "../../../i18n/index.ts";
 import {
   type DepLook,
   depLook,
@@ -7,7 +7,7 @@ import {
   fixFor,
   fixNoteFor,
   fixPageFor,
-} from "../deps/index.ts";
+} from "../../deps/index.ts";
 
 /** The dependency that already says what a doctor check says (the check is then shown once, as the dependency). */
 const COVERED_BY: Record<string, string> = {
