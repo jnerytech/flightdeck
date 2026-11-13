@@ -117,6 +117,8 @@ function composeClients(
   "clients" | "clientScope" | "clientBudgets" | "roi" | "roiFigures" | "webhooks" | "webhookFeed"
 > {
   const { platform } = deps;
+  // The slices refer to each other through closures that run only after this function returns,
+  // so a `const` declared further down is read late, never during construction.
   const clients: Clients = new Clients(platform, { onChange: () => clientScope.sync() });
   const roi = new RoiSettings(platform, { onChange: deps.roiChanged });
   const webhooks = new Webhooks({ platform, send: deps.relay, summaryFor: deps.recap });
