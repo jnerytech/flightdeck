@@ -77,6 +77,7 @@ describe("domain-purity (#1601)", () => {
             'const lazy = await import("@tauri-apps/plugin-shell");',
             'import { WebSocketServer } from "ws/lib/websocket-server.js";',
             'import type { Database } from "bun:sqlite";',
+            'import type, { spawn } from "bun";',
             'export type { Socket } from "ws";',
             'import { cmp } from "./compare.ts";',
           ].join("\n"),
@@ -89,6 +90,7 @@ describe("domain-purity (#1601)", () => {
       'apps/desktop/src/features/hosts/domain/health.ts:4 "bun:ffi"',
       'apps/desktop/src/features/hosts/domain/health.ts:5 "@tauri-apps/plugin-shell"',
       'apps/desktop/src/features/hosts/domain/health.ts:6 "ws/lib/websocket-server.js"',
+      'apps/desktop/src/features/hosts/domain/health.ts:8 "bun"',
     ]);
   });
 
