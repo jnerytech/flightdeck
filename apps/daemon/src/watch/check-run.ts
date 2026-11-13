@@ -3,7 +3,7 @@
  * the first that does not pass. What a check printed is masked whole, before anyone cuts it, so a
  * secret across a later cut is still caught (docs/decisions/2026-11-09-check-loop.md).
  */
-import { SecretScanner } from "../snippets/model.ts";
+import { SecretScanner } from "../snippets/index.ts";
 import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
 import { type CheckRefusal, checkCommandRefusal } from "./check-command.ts";
 

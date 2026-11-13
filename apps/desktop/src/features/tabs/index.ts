@@ -4,6 +4,6 @@
  * are components, in ui.ts (#2451).
  */
 
+export { tabIntent } from "./domain/tab-shortcut.ts";
+export type { TabOrder } from "./domain/tab-switcher.ts";
 export { tabFacts } from "./tab-facts.ts";
-export { tabIntent } from "./tab-shortcut.ts";
-export type { TabOrder } from "./tab-switcher.ts";

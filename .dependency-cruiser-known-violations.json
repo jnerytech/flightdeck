@@ -277,8 +277,8 @@
   {
     "type": "dependency",
     "from": "apps/desktop/src/features/shell/nav-active.ts",
-    "to": "apps/desktop/src/features/tabs/tab-badge.ts",
-    "unresolvedTo": "../tabs/tab-badge.ts",
+    "to": "apps/desktop/src/features/tabs/domain/tab-badge.ts",
+    "unresolvedTo": "../tabs/domain/tab-badge.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
