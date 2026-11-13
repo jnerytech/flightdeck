@@ -41,7 +41,7 @@ import type { PreparedPersonas } from "../personas/prepare.ts";
 import { snapshotOf } from "../personas/snapshot.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
 import { type EventStore, personaBadge } from "../store/event-store.ts";
-import { folderRemoving } from "../worktrees/locks.ts";
+import { folderRemoving } from "../worktrees/index.ts";
 import { ActivityClock, type ToolNote } from "./domain/activity-clock.ts";
 import type { QuietInfo } from "./domain/stall.ts";
 import { interruptedSessions, RESTART_REASON } from "./interrupted.ts";
