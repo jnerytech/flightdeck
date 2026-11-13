@@ -506,7 +506,7 @@ describe("pr-flow: open", () => {
   });
 
   test("#2442: --issue takes issue numbers only, and --refs stays one issue", async () => {
-    for (const bad of ["117,abc", "117,", ",117", "0", "117;118"]) {
+    for (const bad of ["117,abc", "117,", ",117", "0", "117;118", ""]) {
       const f = fake({
         pushed: ["batch"],
         subjects: { batch: ["fix(x): x (#117)"] },
@@ -516,6 +516,14 @@ describe("pr-flow: open", () => {
       expect(f.writes, bad).toEqual([]);
       expect(f.out(), bad).toContain("--issue takes issue numbers");
     }
+    const noValue = fake({
+      pushed: ["batch"],
+      subjects: { batch: ["fix(x): x (#117)"] },
+      issues: { 117: "First bug" },
+    });
+    expect(await prFlow(["open", "batch", "--issue"], noValue.deps)).toBe(2);
+    expect(noValue.writes).toEqual([]);
+    expect(noValue.out()).toContain("--issue takes issue numbers");
     const refs = fake({
       pushed: ["batch"],
       subjects: { batch: ["fix(x): x (#117)"] },
