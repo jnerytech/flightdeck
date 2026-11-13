@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AppStore } from "../src/lib/app-store.ts";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settlePlain as settle } from "./wait.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settlePlain as settle } from "../wait.ts";
 
 const stores: Array<{ dispose(): void }> = [];
 afterEach(() => {
@@ -133,7 +133,7 @@ describe("selo-barra-loja: the desktop shell (issue #233)", () => {
     expect(invokes[1]?.[1].rgba).toEqual([]);
   });
 
-  const root = join(import.meta.dir, "../src-tauri");
+  const root = join(import.meta.dir, "../../src-tauri");
   const rust = readFileSync(join(root, "src/lib.rs"), "utf8");
   const capability = JSON.parse(readFileSync(join(root, "capabilities/default.json"), "utf8")) as {
     permissions: Array<string | { identifier: string }>;

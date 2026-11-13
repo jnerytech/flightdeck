@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { gridStep } from "../src/features/shortcuts/grid-keys.ts";
+import { gridStep } from "../../src/features/shortcuts/grid-keys.ts";
 
 // Issue #669: the Board landing's cards are a grid whose column count follows its container, so
 // the arrows read the cards' positions: left and right walk the order, up and down change row.

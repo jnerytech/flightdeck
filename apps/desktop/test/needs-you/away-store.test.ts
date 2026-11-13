@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { AWAY_KEY } from "../src/features/needs-you/away.ts";
-import { daemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { AWAY_KEY } from "../../src/features/needs-you/away.ts";
+import { daemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 setDefaultTimeout(30_000);
 

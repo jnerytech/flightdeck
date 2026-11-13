@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AWAY_KEY, AWAY_MIN_MS, AwayClock } from "../src/features/needs-you/away.ts";
+import { AWAY_KEY, AWAY_MIN_MS, AwayClock } from "../../src/features/needs-you/away.ts";
 
 /** Issue #1344: the time the app was last active, read before this start writes its own. */
 const NOW = Date.parse("2026-11-09T08:00:00.000Z");
