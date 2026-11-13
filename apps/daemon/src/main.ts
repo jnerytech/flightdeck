@@ -605,11 +605,10 @@ async function bootDaemon(
   );
   await domains.add(
     createHostChecks({
-      config,
+      config: () => config,
       env,
       opencode,
       claude,
-      claudePath,
       account: async () => (await account?.get())?.status ?? null,
       options,
     }),
