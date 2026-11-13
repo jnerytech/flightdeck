@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Subprocess } from "bun";
 import type { Config } from "../config.ts";
 import { EXIT_ALREADY_RUNNING, present } from "../kernel/index.ts";
+import { spawnLogged, wslCommand } from "./adapters/wsl-process.ts";
 
 /** One WSL distro whose daemon the Windows daemon keeps running (config section `wsl`). */
 export interface WslItem {
@@ -23,11 +24,6 @@ export interface WslSupervisorOptions {
   portAlive?: (port: number) => Promise<boolean>;
   onRestart?: (item: WslItem, delayMs: number) => void;
   onHealthy?: (item: WslItem) => void;
-}
-
-/** `wsl.exe -d <distro> --exec bash -lc "<command>"`: a login shell, so ~/.profile applies. */
-export function wslCommand(item: WslItem): string[] {
-  return ["wsl.exe", "-d", item.distro, "--exec", "bash", "-lc", item.command];
 }
 
 /** True when something accepts TCP connections on 127.0.0.1:`port`. */
@@ -91,11 +87,7 @@ export class WslSupervisor {
   private async spawn(slot: Slot): Promise<void> {
     slot.timer = null;
     const log = await open(join(this.opts.logDir, `wsl-${slot.item.distro}.log`), "a");
-    const child = Bun.spawn((this.opts.command ?? wslCommand)(slot.item), {
-      stdin: "ignore",
-      stdout: log.fd,
-      stderr: log.fd,
-    });
+    const child = spawnLogged((this.opts.command ?? wslCommand)(slot.item), log.fd);
     slot.child = child;
     void child.exited.then(async (code) => {
       await log.close();
