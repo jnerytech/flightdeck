@@ -61,3 +61,25 @@ export function gitLimitedFor(
   // git-arg: the capped git helper: its callers are what the git-args ratchet checks
   return runLimited([whichOnPath("git") ?? "git", ...args], cwd, limit, timeoutMs, kill, more);
 }
+
+/**
+ * Like `git`, but the output comes back as bytes, stderr dropped: a file's content (`cat-file blob`)
+ * is not text, and decoding it would corrupt a binary file.
+ */
+export async function gitBytes(
+  cwd: string,
+  args: string[],
+): Promise<{ code: number; stdout: Buffer }> {
+  // git-arg: the byte-exact git helper: its callers are what the git-args ratchet checks
+  const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
+    cwd,
+    env: process.env,
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  const [stdout, code] = await Promise.all([
+    new Response(proc.stdout).arrayBuffer().then((b) => Buffer.from(b)),
+    proc.exited,
+  ]);
+  return { code, stdout };
+}

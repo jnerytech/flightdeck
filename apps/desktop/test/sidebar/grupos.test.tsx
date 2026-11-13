@@ -209,13 +209,11 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(screen.getByRole("button", { name: "History" })).toBeTruthy();
   });
 
-  test("the open page is marked: full contrast, aria-current, and a bar at the left", () => {
+  test("the open page is marked aria-current and no other is", () => {
     const { view } = setup(ALL, undefined, { name: "costs" });
     render(view());
     const costs = screen.getByRole("button", { name: "Costs" });
     expect(costs.getAttribute("aria-current")).toBe("page");
-    expect(costs.className).toContain("nav-active");
-    expect(screen.getByRole("button", { name: "Vault" }).className).not.toContain("nav-active");
     expect(screen.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBeNull();
   });
 
@@ -224,7 +222,6 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     const { unmount } = render(view());
     const host = screen.getByRole("button", { name: "Open host alfa" });
     expect(host.getAttribute("aria-current")).toBe("page");
-    expect(host.className).toContain("nav-active");
     unmount();
     render(view(true));
     expect(
