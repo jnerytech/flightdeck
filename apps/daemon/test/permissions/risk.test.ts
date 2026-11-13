@@ -180,6 +180,18 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", "-EncodedCommand abc"],
   ["high", "echo -EncodedCommand"],
   ["high", "base64 -w0 -d x | cat"],
+  // Redirect targets (#2519): a lone backslash at the end is still an escape that reads as `/`; a
+  // quoted name with a shell operator in it is never a plain name, whatever its length or quote;
+  // `\` as a Windows separator and as a bash escape each reach out of the cwd on their own.
+  ["high", "echo x >\\"],
+  ["high", 'echo x >"ab;c"'],
+  ["high", "echo x >'ab;c'"],
+  ["high", "echo x >..\\..\\evil"],
+  ["high", "echo x >.\\./x"],
+  // A `~`, `!` or `src/~` inside a name is only a character: editor backups and the like.
+  ["medium", "echo x >notes~1.txt"],
+  ["medium", "echo x >hello!"],
+  ["medium", "echo x >src/~"],
 ];
 
 describe("risco", () => {
@@ -290,6 +302,14 @@ describe("risco", () => {
 
   test("a read path that only ends in ~ is a relative path, not the home (#2519)", () => {
     expect(level("Read", { file_path: "src/~" })).toBe("low");
+  });
+
+  test("a redirect to ~ is the home: inside the cwd only when the cwd is the home (#2519)", () => {
+    const at = (cwd: string) => risk.classify("Bash", { command: "echo x > ~" }, cwd).level;
+    expect({ inProject: at(CWD), atHome: at(HOME) }).toEqual({
+      inProject: "high",
+      atHome: "medium",
+    });
   });
 
   test("a write call with both file_path and notebook_path takes the stricter of the two (#2479)", () => {
