@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { GithubBoards } from "../../src/boardsync/github.ts";
 import type { BoardProvider, ExternalItem } from "../../src/boardsync/provider.ts";
-import { runGh } from "../../src/github/gh.ts";
+import { runGh } from "../../src/github/adapters/gh.ts";
 import { type ContractHarness, item, providerContract } from "./contract.ts";
 import { BOARD, STATUS_FIELD } from "./fake.ts";
 

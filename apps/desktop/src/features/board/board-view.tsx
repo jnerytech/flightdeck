@@ -66,9 +66,8 @@ import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/ind
 import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/ui.ts";
 import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
-import { useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
-import { reasonText } from "@/lib/notice-text";
+import { reasonText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
@@ -76,9 +75,8 @@ import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, Inline, LoadingState, Page, Toolbar } from "@/shared/layout/index.ts";
 import { statusTone, useWidth } from "@/shared/lib/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
-import type { Key, T } from "../../i18n/index.ts";
+import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { boardTitle, COLUMNS, positionBefore, projectCards } from "../../lib/board.ts";
 import { issueNumber } from "../issues/index.ts";
 import { ExternalSeal, IssuesPanel } from "../issues/ui.ts";
 import { quietAlerts } from "../needs-you/index.ts";
@@ -101,6 +99,7 @@ import { cardKey } from "./board-card-keys.ts";
 import { askAbout, dragNeeds, type Lacking, missingFor } from "./board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./board-files.ts";
 import type { BoardKeyAction } from "./board-keys.ts";
+import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./board-model.ts";
 import {
   type BulkRefusal,
   COLUMN_GAP,
@@ -124,6 +123,7 @@ import { radarBadge } from "./conflict-radar.ts";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { NewCardDialog } from "./new-card-dialog.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
+import { useStartAsk } from "./use-start-ask.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
@@ -136,12 +136,6 @@ const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
 
 /** What a card's own text lacks: fixed in its fields, not on the card's run (#1197). */
 const FIELD_NEEDS: ReadonlySet<string> = new Set(["criteria", "validation", "spec"]);
-
-/** Why "Iniciar card" is off (queued or running), else null. */
-function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
-  if (block === "queued") return t("board.startQueued");
-  return block === "running" ? t("board.startRunning") : null;
-}
 
 function CardTile(
   props: Readonly<{

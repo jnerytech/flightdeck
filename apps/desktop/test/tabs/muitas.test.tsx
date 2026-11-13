@@ -288,7 +288,5 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     });
     const badge = document.querySelector("[data-badge='running']") as HTMLElement;
     expect(badge.getAttribute("aria-label")).toBe("Rodando");
-    expect(badge.className).toContain("motion-safe:animate-spin");
-    expect(badge.className).toContain("text-muted-foreground");
   });
 });

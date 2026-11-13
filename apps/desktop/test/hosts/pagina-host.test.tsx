@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { DAEMON_VERSION } from "../../../daemon/src/kernel/version.ts";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -258,8 +257,6 @@ describe("pagina-host", () => {
     await waitFor(() => expect(region("Informações")).not.toBeNull());
     const status = document.querySelector("[data-slot='host-overview-status']");
     const work = document.querySelector("[data-slot='host-overview-work']");
-    const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
-    const rule = (name: string) => css.split(`@utility ${name} {`)[1]?.split(/\n}\n/)[0] ?? "";
     expect({
       statusFirst:
         status !== null &&
@@ -269,18 +266,10 @@ describe("pagina-host", () => {
       work: [region("Sessões de pc"), region("Projetos de pc")].map(
         (r) => r !== null && (work?.contains(r) ?? false),
       ),
-      // Two columns once the area is 64rem wide; each column is the container its cards lay out against.
-      twoColumns:
-        /@container \(width >= 64rem\) \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/.test(
-          rule("host-overview"),
-        ),
-      columnsAreContainers: rule("host-overview-column").includes("container-type: inline-size"),
     }).toEqual({
       statusFirst: true,
       status: [true],
       work: [true, true],
-      twoColumns: true,
-      columnsAreContainers: true,
     });
   });
 

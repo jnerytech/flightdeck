@@ -1,9 +1,9 @@
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
-import { diagnosticsText } from "../../lib/app-log.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { APP_VERSION } from "../../lib/version.ts";
+import { diagnosticsText } from "./diagnostics-text.ts";
 
 /** The last lines "Copy diagnostics" carries. */
 const LINES = 50;

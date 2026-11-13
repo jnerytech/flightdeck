@@ -5,7 +5,7 @@
  * docs/issue-format.md. The logic is in lib/pr/issue-spec.ts.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { runCommand } from "../apps/daemon/src/board/command.ts";
+import { runCommand } from "../apps/daemon/src/kernel/command.ts";
 import { runIssue } from "./lib/pr/issue-spec.ts";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");

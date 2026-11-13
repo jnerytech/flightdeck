@@ -43,13 +43,18 @@ export async function createTeams({
   prepare,
   quota,
 }: TeamsWiringDeps) {
+  // Of a managed session only: the id of a terminal session is not one the manager knows.
+  const cardOf = (sessionId: string) => {
+    const cwd = manager.list().find((s) => s.id === sessionId)?.cwd;
+    return cwd ? (board.projectForCwd(cwd)?.card?.id ?? null) : null;
+  };
   // Phase 21: messages between sessions, delivered here and carried between hosts by the app.
   const endpoints = new LocalEndpoints({
     manager,
     external: central.external,
     nameOf: (claudeSessionId) => central.meta.get(claudeSessionId).name,
     projectKey: (cwd) => keys.known(cwd),
-    cardOf: (sessionId) => board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null,
+    cardOf,
     sendToLaunch: central.sendToLaunch.bind(central),
     autoApprove,
   });
@@ -76,7 +81,9 @@ export async function createTeams({
       resolve: async (id) => {
         try {
           return { id, name: (await personaStore.resolve({ id }, {})).persona.name };
-        } catch {
+        } catch (error) {
+          // A persona that cannot be read is not one that does not exist: the cause stays in the log.
+          console.error(`[flightdeckd] persona ${id} could not be read:`, error);
           return null;
         }
       },
@@ -109,11 +116,6 @@ export async function createTeams({
       void done.catch(() => {});
     },
   });
-  // Of a managed session only: the id of a terminal session is not one the manager knows.
-  const cardOf = (sessionId: string) => {
-    const cwd = manager.list().find((s) => s.id === sessionId)?.cwd;
-    return cwd ? (board.projectForCwd(cwd)?.card?.id ?? null) : null;
-  };
   // A session is named after its project, or after the card's project when it runs in a worktree.
   const keyedPath = (cwd: string) => board.projectForCwd(cwd)?.project.path ?? cwd;
   // Both folders, without blocking: naming, lists and messages read their keys right after. Nothing

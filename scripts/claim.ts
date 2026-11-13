@@ -6,7 +6,7 @@
  * `bun run claim --note <issue> <status> "<text>"` (#1526) is issue-note.sh's check before it posts:
  * exit 1 refuses a progress note whose "<session>: " prefix is not the owner.
  */
-import { runCommand } from "../apps/daemon/src/board/command.ts";
+import { runCommand } from "../apps/daemon/src/kernel/command.ts";
 import { claimIssue, noteCheck } from "./lib/pr/issue-claim.ts";
 
 /** gh with its stderr kept and a deadline. */

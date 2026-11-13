@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseChecks, parsePrUrl } from "../../src/board/gh-json.ts";
+import { parseChecks, parsePrUrl } from "../../src/github/adapters/gh-json.ts";
 
 describe("gh-json: what gh prints for a PR", () => {
   test("a check with no link reads as an empty link", () => {

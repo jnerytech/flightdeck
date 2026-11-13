@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCardTemplates } from "../../../apps/daemon/src/board/card-templates.ts";
+import { parseCardTemplates } from "../../../apps/daemon/src/board/domain/card-templates.ts";
 import { DEMO_CARD_TEMPLATE, demoCardTemplates } from "../../lib/demo/card-templates.ts";
 
 describe("demoCardTemplates (#1249)", () => {
