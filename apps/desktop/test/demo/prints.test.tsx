@@ -25,7 +25,7 @@ registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { createWebPlatform } = await import("../../src/platform/web/index.ts");
 
 const cleanups: Array<() => unknown> = [];

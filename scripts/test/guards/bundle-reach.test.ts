@@ -52,7 +52,7 @@ describe("bundle-lazy: what an entry point loads at start-up", () => {
 
   test("slashed gives a chain the same names on every platform", () => {
     expect(slashed("ui\\sub\\App.tsx", "\\")).toBe("ui/sub/App.tsx");
-    expect(slashed("ui/App.tsx", "/")).toBe("ui/App.tsx");
+    expect(slashed("app/App.tsx", "/")).toBe("app/App.tsx");
   });
 
   test("it follows relative and @/ imports and reports the chain to a watched package, not past a dynamic import", () => {
@@ -61,9 +61,9 @@ describe("bundle-lazy: what an entry point loads at start-up", () => {
       mkdirSync(dirname(join(root, file)), { recursive: true });
       writeFileSync(join(root, file), text);
     };
-    write("main.tsx", `import { App } from "./ui/App.tsx";\nimport { zod } from "zod";`);
+    write("main.tsx", `import { App } from "./app/App.tsx";\nimport { zod } from "zod";`);
     write(
-      "ui/App.tsx",
+      "app/App.tsx",
       `import { lib } from "@/lib/lib.ts";\nimport { Panel } from "../panel/index.tsx";`,
     );
     write("lib/lib.ts", `import { EditorView } from "@codemirror/view";`);
@@ -72,7 +72,7 @@ describe("bundle-lazy: what an entry point loads at start-up", () => {
     const reached = reachedPackages(["main.tsx"], root, ["@codemirror/", "age-encryption", "zod"]);
     expect(reached).toEqual([
       { package: "zod", via: ["main.tsx"] },
-      { package: "@codemirror/view", via: ["main.tsx", "ui/App.tsx", "lib/lib.ts"] },
+      { package: "@codemirror/view", via: ["main.tsx", "app/App.tsx", "lib/lib.ts"] },
     ]);
   });
 });

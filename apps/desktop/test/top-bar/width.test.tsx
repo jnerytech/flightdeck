@@ -12,7 +12,7 @@ const screen = liveScreen(within);
 const { AppShell } = await import("../../src/features/shell/app-shell.tsx");
 const { TopBarHost } = await import("../../src/features/shell/top-bar.tsx");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { memoryPlatform, TOKEN } = await import("../fixtures.ts");
 
 const settle = waiter(4000);
