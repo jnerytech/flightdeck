@@ -1,7 +1,7 @@
 import { type LucideIcon, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { KnowledgePanel } from "@/features/knowledge/index.ts";
+import { KnowledgePanel } from "@/features/knowledge/ui.ts";
 import type { HubRowState } from "@/features/sessions/index.ts";
 import { NAV_ICONS } from "@/features/shell/index.ts";
 import { TrustPanel } from "@/features/trust/ui.ts";
