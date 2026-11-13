@@ -306,6 +306,10 @@ const quotaDetailFor = (store: AppStore) => (close: () => void) => (
   <QuotaDetail store={store} onClose={close} />
 );
 
+/** One host's sessions as `id:status` pairs, so a change in any of them changes the text. */
+const sessionStates = (sessions: ReadonlyArray<{ id: string; status: string }>) =>
+  sessions.map((s) => `${s.id}:${s.status}`).join(",");
+
 /** The bar over the app's state: the quota glance of the online hosts, the counts and the update. */
 export function StatusBarSlot(
   props: Readonly<{
@@ -335,7 +339,7 @@ export function StatusBarSlot(
   // Issue #1404: a paused host's count is read again as its sessions change, whatever the page.
   const pausedActivity = online
     .filter((host) => host.hostInfo?.pause?.paused)
-    .map((host) => `${host.id}=${host.sessions.map((s) => `${s.id}:${s.status}`).join(",")}`)
+    .map((host) => `${host.id}=${sessionStates(host.sessions)}`)
     .join(";");
   useEffect(() => {
     if (!store || pausedActivity === "") return;
