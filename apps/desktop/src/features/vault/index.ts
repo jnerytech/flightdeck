@@ -17,6 +17,7 @@ export {
   VaultRulesSlice,
 } from "./rules-store.ts";
 export { type VaultScanCore, VaultScanSlice } from "./scan-store.ts";
+export type { SecretPickerProps } from "./secret-picker.tsx";
 export {
   type VaultFileFailure,
   type VaultSecretsCore,
@@ -31,4 +32,3 @@ export type { DeliveryRefusal, VaultPolicy } from "./vault-requests.ts";
 export { VaultRules } from "./vault-rules.ts";
 export { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 export { wireVaultApprovals, wireVaultRules, wireVaultSecrets } from "./wire.ts";
-export type { SecretPickerProps } from "./secret-picker.tsx";
