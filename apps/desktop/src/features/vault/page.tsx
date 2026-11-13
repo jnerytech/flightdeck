@@ -6,12 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { groupSecrets, selectedClient } from "@/features/clients/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { EmptyState, Page, Stack } from "@/shared/layout/index.ts";
+import { EmptyState, OpenedPanel, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { BackupPanel } from "./backup-panel.tsx";
 import { EditSecretForm } from "./edit-secret-form.tsx";
 import { NewSecretForm } from "./new-secret-form.tsx";
-import { VaultPanel } from "./panel.tsx";
 import { RulesEditor } from "./rules-editor.tsx";
 import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
@@ -242,28 +241,28 @@ export const VaultPage = memo(function VaultPage(props: {
         {phase === "hidden" && t("vault.hidden")}
       </output>
       {creating && (
-        <VaultPanel opener="new">
+        <OpenedPanel opener="new">
           <NewSecretForm
             store={store}
             onClose={() => setCreating(false)}
             {...(selected?.defaults.vaultTag ? { defaultTags: selected.defaults.vaultTag } : {})}
           />
-        </VaultPanel>
+        </OpenedPanel>
       )}
       {editing && (
-        <VaultPanel key={editing.id} opener={`edit:${editing.id}`}>
+        <OpenedPanel key={editing.id} opener={`edit:${editing.id}`}>
           <EditSecretForm store={store} secret={editing} onClose={() => setEditing(null)} />
-        </VaultPanel>
+        </OpenedPanel>
       )}
       {ruling && (
-        <VaultPanel key={ruling.id} opener={`rules:${ruling.id}`}>
+        <OpenedPanel key={ruling.id} opener={`rules:${ruling.id}`}>
           <RulesEditor
             store={store}
             secret={ruling}
             {...(props.rule?.secretId === ruling.id ? { seed: props.rule.match } : {})}
             onClose={() => setRuling(null)}
           />
-        </VaultPanel>
+        </OpenedPanel>
       )}
       <Tabs defaultValue="secrets">
         <TabsList aria-label={t("vault.tabs")}>
