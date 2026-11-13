@@ -102,7 +102,7 @@ export function RoiTable(
     const text = csvOf(shown, [...COLUMNS.map(label), t("roiUi.table.derivation")], (row) =>
       row.figures.derivation.map((d) => t(d.key as Key, d.vars)).join("; "),
     );
-    await store.saveFile(`roi-${from}_${to}.csv`, text);
+    await store.system.saveFile(`roi-${from}_${to}.csv`, text);
   };
 
   return (

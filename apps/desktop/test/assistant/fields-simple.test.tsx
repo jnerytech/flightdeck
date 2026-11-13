@@ -46,7 +46,7 @@ async function finishedTask(configured: boolean) {
   const fake = fakeAssistant({ run: () => ANSWER });
   if (configured) await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
   mem.platform.assistant = fake.assistant;
-  // The folder dialog exists only if the platform has it when the app draws (store.canPickFolder is
+  // The folder dialog exists only if the platform has it when the app draws (store.system.canPickFolder is
   // read at render, not watched): set it before the first render, and point it at the folder later (#737).
   let picked = "";
   mem.platform.pickFolder = async () => picked;

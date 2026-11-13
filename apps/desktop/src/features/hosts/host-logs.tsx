@@ -26,7 +26,7 @@ export function HostLogs(props: Readonly<{ store: AppStore; host: HostView }>) {
     const clean = scrubHome(
       new SecretScanner(() => store.scan.values()).redact(tail.lines.join("\n"), false),
     );
-    await store.copyText(clean);
+    await store.system.copyText(clean);
     store.success(t("diagnostics.hostCopied", { n: tail.lines.length }));
   };
   return (

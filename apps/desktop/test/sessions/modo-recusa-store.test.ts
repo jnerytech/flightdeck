@@ -15,12 +15,12 @@ describe("modo-recusa: the store tells the picker whether the host took the mode
     cleanups.push(() => store.dispose());
     const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
-    const none = await store.setMode("plan");
-    const id = (await store.createSession(hostId, { cwd: d.project, prompt: "a" })) as string;
+    const none = await store.commands.setMode("plan");
+    const id = (await store.commands.create(hostId, { cwd: d.project, prompt: "a" })) as string;
     await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status === "idle");
     store.select(hostId, id);
-    const stricter = await store.setMode("plan");
-    const looser = await store.setMode("acceptEdits");
+    const stricter = await store.commands.setMode("plan");
+    const looser = await store.commands.setMode("acceptEdits");
     expect([none, stricter, looser]).toEqual([false, true, false]);
   });
 });

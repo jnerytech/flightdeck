@@ -35,7 +35,7 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
     const { d, store, hostId } = await online("en-US");
     const vault = realTempDir("fd-vault-");
     await act(async () => {
-      await store.createSession(hostId, { cwd: vault, prompt: "hi" });
+      await store.commands.create(hostId, { cwd: vault, prompt: "hi" });
     });
     await settle(() => screen.queryAllByRole("alert").length === 1);
     const toast = screen.getAllByRole("alert")[0] as HTMLElement;
@@ -94,7 +94,7 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
     const { d, store, hostId } = await online("pt-BR");
     const vault = realTempDir("fd-vault-");
     await act(async () => {
-      await store.createSession(hostId, { cwd: vault, prompt: "oi" });
+      await store.commands.create(hostId, { cwd: vault, prompt: "oi" });
     });
     await settle(() => screen.queryAllByRole("alert").length === 1);
     const toast = screen.getAllByRole("alert")[0] as HTMLElement;

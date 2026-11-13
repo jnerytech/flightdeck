@@ -119,7 +119,7 @@ export function TerminalPage(
         windows: isWindowsHost(navigator.userAgent),
         clipboard: {
           copy: async (text) => {
-            await store.copyText(text);
+            await store.system.copyText(text);
           },
           read: () => navigator.clipboard.readText(),
         },
@@ -477,8 +477,8 @@ async function showPath(
 ): Promise<void> {
   const cwd = await folder;
   const full = cwd ? resolvePath(cwd, path) : path;
-  if (store.canOpenPaths(hostId)) await store.revealPath(hostId, full);
-  else await store.copyText(full);
+  if (store.system.canOpenPaths(hostId)) await store.system.revealPath(hostId, full);
+  else await store.system.copyText(full);
 }
 
 /**

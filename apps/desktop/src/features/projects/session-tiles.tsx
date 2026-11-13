@@ -114,7 +114,7 @@ function SessionTile(
     const value = text.trim();
     if (!value) return undefined;
     setText("");
-    return store.sendTo(hostId, sessionId, value);
+    return store.commands.sendTo(hostId, sessionId, value);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (wand?.onKeyDown(e)) return;

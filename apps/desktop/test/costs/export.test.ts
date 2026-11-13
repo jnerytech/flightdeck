@@ -17,9 +17,11 @@ function fake(answers: Record<string, File | (() => File)>) {
       const answer = answers[id];
       return typeof answer === "function" ? answer() : (answer ?? null);
     },
-    async saveFile(name: string, text: string) {
-      saved.push({ name, text });
-      return true;
+    system: {
+      async saveFile(name: string, text: string) {
+        saved.push({ name, text });
+        return true;
+      },
     },
   };
   // biome-ignore lint/suspicious/noExplicitAny: the two methods exportCosts uses
