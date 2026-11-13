@@ -1,5 +1,6 @@
 import { constants } from "node:fs";
 import { open, stat } from "node:fs/promises";
+import { WAITING_PLAN_MAX } from "@flightdeck/protocol";
 import { parseJsonText } from "../kernel/index.ts";
 
 /** What a session started in a terminal waits for, read from the end of its transcript (#1736). */
@@ -23,6 +24,23 @@ const WAITS: Record<string, Waiting> = { ExitPlanMode: "plan", AskUserQuestion: 
  * Claude Code writes one entry per content block, so the call is the entry's last block.
  */
 export function waitingIn(tail: string): Waiting | null {
+  const call = waitCall(tail);
+  return call ? (WAITS[String(call.name)] ?? null) : null;
+}
+
+/** The plan a session waits for approval on, cut at the protocol's cap; none for any other wait (#1751). */
+export function planTextIn(tail: string): string | null {
+  const call = waitCall(tail);
+  const plan = call?.name === "ExitPlanMode" ? call.input?.plan : null;
+  if (typeof plan !== "string" || plan === "") return null;
+  if (plan.length <= WAITING_PLAN_MAX) return plan;
+  // The ellipsis takes the last place; a cut between the halves of an emoji drops the half left.
+  const cut = plan.slice(0, WAITING_PLAN_MAX - 1);
+  return `${/[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut}…`;
+}
+
+/** The unanswered `ExitPlanMode` or `AskUserQuestion` call that ends the tail, if there is one. */
+function waitCall(tail: string): Block | null {
   const lines = tail.split("\n");
   for (let at = lines.length - 1; at >= 0; at--) {
     const entry = parse(lines[at] ?? "");
@@ -34,21 +52,21 @@ export function waitingIn(tail: string): Waiting | null {
     const content = entry.message?.content;
     const last = Array.isArray(content) ? content.at(-1) : null;
     // Own keys only: a tool named `constructor` or `__proto__` must not find an inherited member.
-    const name = String(last?.name);
-    return last?.type === "tool_use" && Object.hasOwn(WAITS, name) ? (WAITS[name] ?? null) : null;
+    return last?.type === "tool_use" && Object.hasOwn(WAITS, String(last.name)) ? last : null;
   }
   return null;
 }
 
-/** The plan a session waits for approval on, cut at the protocol's cap; none for any other wait (#1751). */
-export function planTextIn(_tail: string): string | null {
-  return null;
+interface Block {
+  type?: unknown;
+  name?: unknown;
+  input?: { plan?: unknown };
 }
 
 interface Entry {
   type?: unknown;
   isSidechain?: unknown;
-  message?: { content?: Array<{ type?: unknown; name?: unknown }> };
+  message?: { content?: Block[] };
 }
 
 function parse(line: string): Entry | null {
