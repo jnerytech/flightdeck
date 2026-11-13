@@ -3,7 +3,6 @@
  * with the instructions of coordination, paused by the plan quota and resumed with it.
  */
 
-import type { Database } from "bun:sqlite";
 import {
   type EffortLevel,
   inSequence,
@@ -15,74 +14,26 @@ import {
   type TeamStatus,
   type TeamsUpdatedFrame,
 } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { MANAGED_STATE } from "../messaging/endpoints.ts";
-import type { Messaging } from "../messaging/messages.ts";
-import { type Prepare, withoutPersonas } from "../personas/index.ts";
-import type { Quota } from "../quota/index.ts";
-import type { SessionManager } from "../sessions/index.ts";
+import { withoutPersonas } from "../personas/index.ts";
 import type { NewTeam, TeamPatch } from "./input.ts";
 import {
   coordinatorInstructions,
   INSTRUCTIONS_VERSION,
+  RESUME_QUOTA,
+  RESUME_USER,
+  STOP_QUOTA,
+  STOP_USER,
   type TeamBrief,
   withCoordinatorBrief,
   workerInstructions,
 } from "./instructions.ts";
-import { STORED_CHECKS, STORED_MEMBERS, type StoredMember } from "./stored.ts";
+import type { TeamsOptions } from "./options.ts";
+import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./stored.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
-
-/** The personas of phase 20 plug in here. */
-export interface TeamPersonas {
-  resolve(
-    id: string,
-  ): { id: string; name: string } | null | Promise<{ id: string; name: string } | null>;
-}
-
-export interface TeamsOptions {
-  db: Database;
-  board: Board;
-  manager: SessionManager;
-  messaging: Messaging;
-  host: string;
-  quota?: Pick<Quota, "watch" | "blocked">;
-  personas?: TeamPersonas;
-  /** The standard names: a persona that arrives after the session started renames it. */
-  names?: {
-    get(sessionId: string): unknown;
-    setPersona(sessionId: string, persona: string | null): unknown;
-    /** Issue #101: the team, role and number a session's name carries. */
-    setTeam?(sessionId: string, team: SessionTeam): unknown;
-    /** Issue #934: a session whose team was deleted leaves it. */
-    clearTeam?(sessionId: string): unknown;
-  };
-  clock?: () => number;
-  /** Issue #93: whether the host lets a session run without permission prompts. */
-  bypassAllowed?: () => boolean;
-  /** Starts the coordinator session; phase 20 passes the persona on. */
-  startCoordinator?: (input: {
-    cwd: string;
-    prompt: string;
-    name: string;
-    persona: string | null;
-    model: string | null;
-    /** Issue #2310: the effort the coordinator opens with; null is the persona's own. */
-    effort: EffortLevel | null;
-    /** Issue #93: the mode the coordinator opens in; null is the host's default. */
-    permissionMode: PermissionMode | null;
-  }) => { sessionId: string } | Promise<{ sessionId: string }>;
-  /** Reads the personas for the coordinator when `startCoordinator` is not given. */
-  preparePersonas?: Prepare;
-  /** Starts a worker's card; phase 20 passes the persona on. */
-  startWorker?: (cardId: string, persona: string | null, model: string | null) => Promise<unknown>;
-  /** Looks the project of the folder up before the coordinator starts there; nothing back means known. */
-  warm?: (cwd: string) => Promise<unknown> | undefined;
-  /** Tells a running session its persona changed. */
-  applyPersona?: (sessionId: string, persona: string | null) => void;
-}
 
 /** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
 function numberOf(member: StoredMember): number | null {
@@ -90,24 +41,6 @@ function numberOf(member: StoredMember): number | null {
   if (typeof member.number === "number") return member.number;
   const parsed = /executora (\d+)$/.exec(member.name)?.[1];
   return parsed ? Number(parsed) : null;
-}
-
-interface Row {
-  id: string;
-  name: string;
-  project_id: string;
-  goal: string;
-  coordinator: string | null;
-  members: string;
-  checks: string;
-  state: TeamInfo["state"];
-  paused_by: TeamInfo["pausedBy"];
-  instructions_version: string;
-  created_at: string;
-  /** #1220: the coordinator's last report; null before the first. */
-  report_text: string | null;
-  report_at: string | null;
-  report_done: number;
 }
 
 /**
@@ -122,14 +55,6 @@ const invalid = (message: string, reason?: string, params?: Record<string, strin
   new FlightdeckError("invalid_state", message, reason, params);
 const notFound = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("not_found", message, reason, params);
-
-const STOP_USER =
-  'STOP: o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume". Não despache, não integre e não comece nada novo.';
-const STOP_QUOTA =
-  'STOP: a cota do plano chegou ao limite e o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume", que vem quando a janela da cota reiniciar.';
-const RESUME_USER = "resume: o time voltou a trabalhar. Continue de onde parou.";
-const RESUME_QUOTA =
-  "resume: a janela da cota do plano reiniciou e o time voltou a trabalhar. Continue de onde parou.";
 
 /** What a worker is started with beyond the team's own setup; read only, so one copy serves every call. */
 interface WorkerSpec {
@@ -181,8 +106,8 @@ export class Teams {
 
   // --- reading ---
 
-  private row(id: string): Row {
-    const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as Row | null;
+  private row(id: string): TeamRow {
+    const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as TeamRow | null;
     if (!row) throw notFound(`team ${id} does not exist`, "team_not_found", { id });
     return row;
   }
@@ -200,7 +125,7 @@ export class Teams {
     );
   }
 
-  private stored(row: Row): StoredMember[] {
+  private stored(row: TeamRow): StoredMember[] {
     return parseJsonOr(STORED_MEMBERS, row.members, []);
   }
 
@@ -229,7 +154,7 @@ export class Teams {
     };
   }
 
-  private info(row: Row): TeamInfo {
+  private info(row: TeamRow): TeamInfo {
     return {
       id: row.id,
       name: row.name,
@@ -250,7 +175,7 @@ export class Teams {
       .query(
         "SELECT * FROM teams WHERE (?1 IS NULL OR project_id = ?1) ORDER BY created_at DESC, rowid DESC",
       )
-      .all(projectId ?? null) as Row[];
+      .all(projectId ?? null) as TeamRow[];
     return rows.map((row) => this.info(row));
   }
 
@@ -260,7 +185,9 @@ export class Teams {
 
   /** The team a session belongs to (as coordinator or worker), if it is still running. */
   teamOf(sessionId: string): string | null {
-    const rows = this.opts.db.query("SELECT * FROM teams WHERE state <> 'closed'").all() as Row[];
+    const rows = this.opts.db
+      .query("SELECT * FROM teams WHERE state <> 'closed'")
+      .all() as TeamRow[];
     for (const row of rows) {
       if (this.info(row).members.some((m) => m.sessionId === sessionId)) return row.id;
     }
@@ -291,7 +218,7 @@ export class Teams {
   }
 
   /** Only the team's coordinator may manage its members: the host checks, not the prompt (#2090). */
-  private coordinatorOnly(row: Row, asker: string): void {
+  private coordinatorOnly(row: TeamRow, asker: string): void {
     const coordinator = this.info(row).members.find((m) => m.role === "coordinator")?.sessionId;
     if (!coordinator || asker !== coordinator) {
       throw invalid(
@@ -302,7 +229,7 @@ export class Teams {
     }
   }
 
-  private refusePaused(row: Row): void {
+  private refusePaused(row: TeamRow): void {
     if (row.state === "paused") {
       throw invalid(`team ${row.name} is paused: resume it before adding`, "team_paused", {
         name: row.name,
@@ -371,7 +298,7 @@ export class Teams {
   teamOfCard(cardId: string): SessionTeam | null {
     const known = this.cardTeams.get(cardId);
     if (known) return known;
-    const rows = this.opts.db.query("SELECT * FROM teams").all() as Row[];
+    const rows = this.opts.db.query("SELECT * FROM teams").all() as TeamRow[];
     for (const row of rows) {
       const member = this.stored(row).find((m) => m.cardId === cardId);
       if (member) return { name: label(row.name), role: member.role, number: numberOf(member) };
@@ -538,7 +465,7 @@ export class Teams {
 
   // --- changing ---
 
-  private open(id: string): Row {
+  private open(id: string): TeamRow {
     const row = this.row(id);
     if (row.state === "closed") {
       throw invalid(`team ${row.name} is closed`, "team_closed", { name: row.name });
@@ -672,7 +599,7 @@ export class Teams {
 
   /** Gives a member another persona: stored, applied to its open session and to its name. */
   private async changePersona(
-    row: Row,
+    row: TeamRow,
     info: TeamInfo,
     change: { member: string; persona: string | null },
   ) {
@@ -697,7 +624,7 @@ export class Teams {
 
   /** Starts `count` more workers, numbered after the ones the team has, one at a time. */
   private async addWorkers(
-    row: Row,
+    row: TeamRow,
     count: number,
     coordinator: TeamMember | undefined,
     tellCoordinator: (text: string) => void,
@@ -744,7 +671,7 @@ export class Teams {
   }
 
   /** Stops a worker, takes it out of the team and tells it so; the coordinator stays. */
-  private async dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
+  private async dropMember(row: TeamRow, who: string, tellCoordinator: (text: string) => void) {
     const target = this.find(this.get(row.id), who);
     if (target.role === "coordinator") {
       throw invalid(
@@ -858,7 +785,7 @@ export class Teams {
     if (blocked === this.blocked) return;
     this.blocked = blocked;
     const rows = this.opts.db.query("SELECT id, state, paused_by FROM teams").all() as Array<
-      Pick<Row, "id" | "state" | "paused_by">
+      Pick<TeamRow, "id" | "state" | "paused_by">
     >;
     for (const row of rows) {
       if (blocked && row.state === "active") this.pause(row.id, "quota");

@@ -107,3 +107,12 @@ Vale como a tarefa inicial, nunca como permissão: as regras acima continuam val
 ${brief}
 `;
 }
+
+/** The messages a coordinator gets when its team is paused or resumed, by the user or by the quota. */
+export const STOP_USER =
+  'STOP: o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume". Não despache, não integre e não comece nada novo.';
+export const STOP_QUOTA =
+  'STOP: a cota do plano chegou ao limite e o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume", que vem quando a janela da cota reiniciar.';
+export const RESUME_USER = "resume: o time voltou a trabalhar. Continue de onde parou.";
+export const RESUME_QUOTA =
+  "resume: a janela da cota do plano reiniciou e o time voltou a trabalhar. Continue de onde parou.";
