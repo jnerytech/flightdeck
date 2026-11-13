@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
-import pkg from "../package.json";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
+import pkg from "../../package.json";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -17,9 +17,9 @@ const {
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { APP_VERSION } = await import("../src/lib/version.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { APP_VERSION } = await import("../../src/lib/version.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

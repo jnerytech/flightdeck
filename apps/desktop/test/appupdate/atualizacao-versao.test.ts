@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isNewer } from "../src/lib/version.ts";
+import { isNewer } from "../../src/lib/version.ts";
 
 describe("atualizacao-versao: which version is newer", () => {
   test("compares the dotted numbers one by one, not as text", () => {

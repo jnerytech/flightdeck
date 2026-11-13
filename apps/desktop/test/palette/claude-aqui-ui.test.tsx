@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { basename } from "node:path";
 import type { ExternalSession } from "@flightdeck/protocol";
-import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { userLine, writeTranscript } from "../../../daemon/test/support/history-helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 
 registerDom();
 const {
@@ -15,10 +15,10 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { TerminalButton } = await import("../src/features/terminal/terminal-button.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { TerminalButton } = await import("../../src/features/terminal/terminal-button.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
