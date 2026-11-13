@@ -14,6 +14,7 @@ import {
   whichOnPath,
   writeFileAtomic,
 } from "../kernel/index.ts";
+import { runClaudePlugin } from "./adapters/claude-plugin.ts";
 import { inspectPlugin, type PluginInventory } from "./inventory.ts";
 import { AnyJson, JsonObject, PinsJson } from "./json-reads.ts";
 
@@ -674,19 +675,7 @@ export function claudeCli(
     run: async (args) => {
       const executable = (options.executable ?? (() => whichOnPath("claude")))();
       if (!executable) throw invalid("claude was not found on the PATH", "claude_not_found");
-      const proc = Bun.spawn([executable, "plugin", ...args], {
-        env: process.env,
-        stdin: "ignore",
-        stdout: "pipe",
-        stderr: "pipe",
-        timeout: options.timeoutMs ?? 120_000,
-      });
-      const [stdout, stderr, code] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-        proc.exited,
-      ]);
-      return { code, stdout, stderr };
+      return runClaudePlugin(executable, args, options.timeoutMs ?? 120_000);
     },
   };
 }

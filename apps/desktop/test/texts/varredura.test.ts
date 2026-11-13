@@ -7,7 +7,9 @@ const ROOT = resolve(import.meta.dir, "../..");
 
 /** Where text for a person can hide outside the JSX: the lib, the screens, the hooks, the parts, the platform. */
 const FILES = [
-  ...new Bun.Glob("src/{lib,ui,hooks,components,platform,features}/**/*.{ts,tsx}").scanSync(ROOT),
+  ...new Bun.Glob("src/{lib,ui,app,hooks,components,platform,features}/**/*.{ts,tsx}").scanSync(
+    ROOT,
+  ),
   // `simple-words.ts` is the list of words simple mode must not show: data, not text on screen.
 ].filter((file) => !file.endsWith("simple-words.ts"));
 

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/shared/hooks/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
-import { Screen } from "./Screens.tsx";
+import { Screen } from "../ui/Screens.tsx";
 
 /** Below this height the one area's tabs share the top bar's row (issue #488). */
 export const SHORT_WINDOW = "(max-height: 599px)";

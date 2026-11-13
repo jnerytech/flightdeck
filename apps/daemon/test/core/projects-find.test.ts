@@ -4,12 +4,8 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
-import {
-  cloneRepo,
-  type GitRunner,
-  gitRunner,
-  scanRepos,
-} from "../../src/projects/project-find.ts";
+import { gitRunner } from "../../src/projects/adapters/git-clone.ts";
+import { cloneRepo, type GitRunner, scanRepos } from "../../src/projects/project-find.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { BASELINE_FEATURES, newManager, poll, reasonOf, tempDir } from "../support/helpers.ts";
 
