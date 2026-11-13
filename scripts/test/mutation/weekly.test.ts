@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MutationDomain, MutationReport } from "../../lib/mutation/report.ts";
-import { configPathFor, runWeekly } from "../../lib/mutation/weekly.ts";
+import { configPathFor, exitCodeOf, runWeekly } from "../../lib/mutation/weekly.ts";
 
 const domain = (name: string): MutationDomain => ({
   name,
@@ -73,6 +73,42 @@ describe("weekly mutation run: one Stryker run per domain (#1607)", () => {
     expect(outcome.results.map((r) => r.domain)).toEqual(["a"]);
   });
 
+  test("a domain scoring under its minScore baseline is listed with both figures", () => {
+    // reportOf("Killed", "Survived") scores 50%
+    const { deps } = setup({});
+    const outcome = runWeekly({
+      ...deps,
+      domains: [{ ...domain("a"), minScore: 60 }, domain("b")],
+    });
+    expect(outcome.belowBaseline).toEqual([{ domain: "a", score: 50, minScore: 60 }]);
+  });
+
+  test("a domain scoring exactly its baseline, or with no baseline, is not listed", () => {
+    const { deps } = setup({});
+    const outcome = runWeekly({
+      ...deps,
+      domains: [{ ...domain("a"), minScore: 50 }, domain("b")],
+    });
+    expect(outcome.belowBaseline).toEqual([]);
+  });
+
+  test("a domain with a baseline whose report counts no mutant is below it, not skipped", () => {
+    const { deps } = setup({ reports: { a: reportOf() } });
+    const outcome = runWeekly({ ...deps, domains: [{ ...domain("a"), minScore: 50 }] });
+    expect(outcome.belowBaseline).toEqual([{ domain: "a", score: null, minScore: 50 }]);
+  });
+
+  test("a minScore that is not a number from 0 to 100 is refused before any run", () => {
+    for (const bad of [Number.NaN, -1, 940, "94" as unknown as number]) {
+      const { deps, ran } = setup({});
+      expect(
+        () => runWeekly({ ...deps, domains: [{ ...domain("a"), minScore: bad }] }),
+        String(bad),
+      ).toThrow(/unsafe/);
+      expect(ran).toEqual([]);
+    }
+  });
+
   test("the config of a domain lives in that domain's report folder", () => {
     expect(configPathFor(domain("permissions-risk"))).toBe(
       "reports/mutation/permissions-risk/stryker.config.json",
@@ -92,5 +128,18 @@ describe("weekly mutation run: one Stryker run per domain (#1607)", () => {
       );
       expect(ran, "nothing runs when a later domain is unsafe").toEqual([]);
     }
+  });
+});
+
+describe("weekly mutation run: exit code (#1607)", () => {
+  const ok = { results: [], failed: [], belowBaseline: [] };
+  test("a clean outcome exits 0", () => {
+    expect(exitCodeOf(ok)).toBe(0);
+  });
+  test("a failed domain run exits 1", () => {
+    expect(exitCodeOf({ ...ok, failed: ["a"] })).toBe(1);
+  });
+  test("a domain under its baseline exits 1", () => {
+    expect(exitCodeOf({ ...ok, belowBaseline: [{ domain: "a", score: 1, minScore: 2 }] })).toBe(1);
   });
 });

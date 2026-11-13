@@ -114,78 +114,96 @@ const json = (value: unknown): CardCliResult => ({
 });
 const said = (...out: string[]): CardCliResult => ({ code: 0, out: out.map(plain), err: [] });
 
-async function perform(
+type Note = { wrote: boolean };
+
+async function listCards(args: CardCliArgs, daemon: DaemonClient): Promise<CardCliResult> {
+  const { projects } = await daemon.call("project.list", {});
+  const chosen = args.project === undefined ? projects : [pick(projects, args.project)];
+  const boards = await Promise.all(
+    chosen.map((project) => daemon.call("board.get", { projectId: project.id })),
+  );
+  const rows = boards.flatMap((board) =>
+    board.columns.flatMap(({ column, cards }) =>
+      cards.map((card) => ({ project: board.project.name, column, card })),
+    ),
+  );
+  if (args.json)
+    return json(
+      rows.map(({ project, column, card }) => ({
+        project,
+        id: card.id,
+        title: card.title,
+        column,
+        queued: card.queued,
+        queueReason: card.queueReason,
+      })),
+    );
+  return said(
+    ...rows.map(({ project, column, card }) => {
+      const wait = waitOf(card);
+      const tail = wait === null ? "" : ` (${wait})`;
+      return `${project}  ${card.id}  ${column}  ${card.title}${tail}`;
+    }),
+  );
+}
+
+async function showCard(args: CardCliArgs, daemon: DaemonClient): Promise<CardCliResult> {
+  const card = await daemon.call("card.get", { cardId: args.id ?? "" });
+  if (args.json) return json(card);
+  const wait = waitOf(card);
+  return said(
+    `${card.id}  ${card.title}`,
+    `column: ${card.column}`,
+    ...(card.branch ? [`branch: ${card.branch}`] : []),
+    ...(card.prUrl ? [`pr: ${card.prUrl}`] : []),
+    ...(wait ? [`waiting: ${wait}`] : []),
+    ...(card.notice ? [`notice: ${card.notice}`] : []),
+  );
+}
+
+async function newCard(
   args: CardCliArgs,
   daemon: DaemonClient,
-  note: { wrote: boolean },
+  note: Note,
 ): Promise<CardCliResult> {
+  const { projects } = await daemon.call("project.list", {});
+  const project = pick(projects, args.project);
+  note.wrote = true;
+  const card = await daemon.call("card.create", {
+    projectId: project.id,
+    title: args.title ?? "",
+    description: args.description ?? "",
+  });
+  return args.json ? json(card) : said(`created ${card.id}  ${card.title}`);
+}
+
+async function startCard(
+  args: CardCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+): Promise<CardCliResult> {
+  note.wrote = true;
+  const card = await daemon.call("card.start", {
+    cardId: args.id ?? "",
+    ...(args.workflow ? { workflow: args.workflow } : {}),
+  });
+  if (args.json) return json(card);
+  const wait = waitOf(card);
+  return said(
+    wait ? `queued ${card.id}  ${card.title}: ${wait}` : `started ${card.id}  ${card.title}`,
+  );
+}
+
+function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CardCliResult> {
   switch (args.action) {
-    case "list": {
-      const { projects } = await daemon.call("project.list", {});
-      const chosen = args.project === undefined ? projects : [pick(projects, args.project)];
-      const boards = await Promise.all(
-        chosen.map((project) => daemon.call("board.get", { projectId: project.id })),
-      );
-      const rows = boards.flatMap((board) =>
-        board.columns.flatMap(({ column, cards }) =>
-          cards.map((card) => ({ project: board.project.name, column, card })),
-        ),
-      );
-      if (args.json)
-        return json(
-          rows.map(({ project, column, card }) => ({
-            project,
-            id: card.id,
-            title: card.title,
-            column,
-            queued: card.queued,
-            queueReason: card.queueReason,
-          })),
-        );
-      return said(
-        ...rows.map(({ project, column, card }) => {
-          const wait = waitOf(card);
-          const tail = wait === null ? "" : ` (${wait})`;
-          return `${project}  ${card.id}  ${column}  ${card.title}${tail}`;
-        }),
-      );
-    }
-    case "show": {
-      const card = await daemon.call("card.get", { cardId: args.id ?? "" });
-      if (args.json) return json(card);
-      const wait = waitOf(card);
-      return said(
-        `${card.id}  ${card.title}`,
-        `column: ${card.column}`,
-        ...(card.branch ? [`branch: ${card.branch}`] : []),
-        ...(card.prUrl ? [`pr: ${card.prUrl}`] : []),
-        ...(wait ? [`waiting: ${wait}`] : []),
-        ...(card.notice ? [`notice: ${card.notice}`] : []),
-      );
-    }
-    case "new": {
-      const { projects } = await daemon.call("project.list", {});
-      const project = pick(projects, args.project);
-      note.wrote = true;
-      const card = await daemon.call("card.create", {
-        projectId: project.id,
-        title: args.title ?? "",
-        description: args.description ?? "",
-      });
-      return args.json ? json(card) : said(`created ${card.id}  ${card.title}`);
-    }
-    case "start": {
-      note.wrote = true;
-      const card = await daemon.call("card.start", {
-        cardId: args.id ?? "",
-        ...(args.workflow ? { workflow: args.workflow } : {}),
-      });
-      if (args.json) return json(card);
-      const wait = waitOf(card);
-      return said(
-        wait ? `queued ${card.id}  ${card.title}: ${wait}` : `started ${card.id}  ${card.title}`,
-      );
-    }
+    case "list":
+      return listCards(args, daemon);
+    case "show":
+      return showCard(args, daemon);
+    case "new":
+      return newCard(args, daemon, note);
+    case "start":
+      return startCard(args, daemon, note);
   }
 }
 
