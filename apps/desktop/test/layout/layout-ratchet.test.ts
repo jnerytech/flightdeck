@@ -11,7 +11,11 @@ import {
 
 const DESKTOP = resolve(import.meta.dir, "../..");
 // A screen moves from `ui/` to its feature folder (#1597): both are counted.
-const SCREENS = [resolve(DESKTOP, "src/ui"), resolve(DESKTOP, "src/features")];
+const SCREENS = [
+  resolve(DESKTOP, "src/app"),
+  resolve(DESKTOP, "src/ui"),
+  resolve(DESKTOP, "src/features"),
+];
 const BASELINE = resolve(DESKTOP, "layout-baseline.json");
 
 const baseline = (): LayoutBaseline =>

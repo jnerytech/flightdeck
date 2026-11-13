@@ -842,7 +842,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
   // #785: the area around a screen scrolls only for a screen that is not a Page.
   test("the area that holds a screen is named, and stops scrolling when the screen is a Page", () => {
     const areas = readFileSync(
-      join(import.meta.dir, "../../../apps/desktop/src/ui/Areas.tsx"),
+      join(import.meta.dir, "../../../apps/desktop/src/app/Areas.tsx"),
       "utf8",
     );
     const css = readStyles(join(import.meta.dir, "../../../apps/desktop/src/styles.css"));

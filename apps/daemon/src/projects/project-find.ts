@@ -2,6 +2,7 @@ import { lstat, readdir, realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { ProjectsCloneResult, ProjectsScanResult } from "@flightdeck/protocol";
 import { FlightdeckError, isInside } from "../kernel/index.ts";
+import { gitRunner } from "./adapters/git-clone.ts";
 
 export interface ScanOptions {
   /** How many levels below a root are looked at (2 by default). */
@@ -217,33 +218,5 @@ export async function cloneRepo(
 }
 
 const CLONE_TIMEOUT_MS = 5 * 60_000;
-/** How long the text of stderr is waited for once git itself has ended. */
-const STDERR_GRACE_MS = 2_000;
-
-/** A `git` runner: no prompt for a password, and a command still running after `timeoutMs` is stopped. */
-export const gitRunner =
-  (timeoutMs: number): GitRunner =>
-  async (args) => {
-    // git-arg: the clone runner: the url comes after `--` and the path is under an allowed root
-    const proc = Bun.spawn(["git", ...args], {
-      stdout: "ignore",
-      stderr: "pipe",
-      stdin: "ignore",
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "echo" },
-    });
-    const timer = setTimeout(() => proc.kill(), timeoutMs);
-    try {
-      const stderr = new Response(proc.stderr).text();
-      const code = await proc.exited;
-      // A child that outlives a killed git can hold the pipe open: its text is not worth the wait.
-      return {
-        code,
-        stderr: await Promise.race([stderr, Bun.sleep(STDERR_GRACE_MS).then(() => "")]),
-      };
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-
 /** The real `git`, with the five minutes a clone gets. */
 export const spawnGit: GitRunner = gitRunner(CLONE_TIMEOUT_MS);

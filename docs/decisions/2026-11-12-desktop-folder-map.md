@@ -80,7 +80,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | Entry | Target | Note |
 |---|---|---|
 | `App.tsx` | `app/` (new, with `main.tsx` wiring) | the root; moves last |
-| `Areas.tsx` | `app/` | imports `Screen` from `Screens.tsx`: move it with or after `Screens.tsx` to avoid a cycle |
+| `Areas.tsx` | `app/` | moved (#1597): it imports `Screen` from `ui/Screens.tsx`, which moves later with `App.tsx` |
 | `BoardView.tsx` | **theirs** (`features/board/`) | **moved** (`board-view.tsx`) |
 | `ConfirmDialog.tsx` | `shared/feedback/` | **moved** (#2101 to `components/feedback/`, then with the folder) |
 | `ExternalView.tsx` | **theirs** (`features/sessions/`) | **moved** (`external-session-view.tsx`) |
