@@ -1,7 +1,7 @@
 import type { BoardColumn, Card } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
-import type { cardStartBlock } from "./card-start-block.ts";
+import type { cardStartBlock } from "./domain/card-start-block.ts";
 
 export const COLUMNS: ReadonlyArray<{ id: BoardColumn }> = [
   { id: "backlog" },

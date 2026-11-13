@@ -26,8 +26,8 @@ import { GateCard, RunPanel, RunTimeline } from "../runenv/ui.ts";
 import { projectCards } from "./board-model.ts";
 import { CardConflicts } from "./card-conflicts.tsx";
 import { CardDeps } from "./card-deps.tsx";
-import { canMergeCardPr } from "./card-merge-pr-model.ts";
-import { opensOnChanges } from "./card-next-step.ts";
+import { canMergeCardPr } from "./domain/card-merge-pr-model.ts";
+import { opensOnChanges } from "./domain/card-next-step.ts";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
 

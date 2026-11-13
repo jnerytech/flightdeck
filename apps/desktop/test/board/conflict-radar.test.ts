@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { radarBadge, radarMergeLine } from "../../src/features/board/conflict-radar.ts";
+import { radarBadge, radarMergeLine } from "../../src/features/board/domain/conflict-radar.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 /**
