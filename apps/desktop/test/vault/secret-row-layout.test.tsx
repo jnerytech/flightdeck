@@ -47,7 +47,7 @@ describe("cofre-ui: a secret row on a narrow screen (#2605)", () => {
   test("the last use is written the way the rest of the app writes a date and time", async () => {
     const store = await open();
     const when = store.formatDateTime(new Date(USED_AT).toISOString());
-    expect(screen.queryByText(`Último uso: ${when}`) === null).toBe(false);
+    expect(screen.queryByText(`Último uso: ${when}`) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a last use no date can hold does not stop the page from showing", async () => {

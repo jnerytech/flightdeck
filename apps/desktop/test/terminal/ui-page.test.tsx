@@ -186,8 +186,8 @@ describe("terminal-ui: the terminal screen", () => {
     const menu = screen.queryByRole("menu", { name: "Terminal" });
     expect(menu).not.toBeNull();
     // null: the key was stopped before it reached the page, so SplitView cannot read it.
-    expect(await escapeReachesPageUnhandled(menu as HTMLElement)).toBe(null);
-    expect(screen.queryByRole("menu", { name: "Terminal" }) === null).toBe(true);
+    expect(await escapeReachesPageUnhandled(menu as HTMLElement)).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Terminal" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("closing asks: Desanexar keeps the process, Encerrar processo ends it, Cancelar does nothing", async () => {
