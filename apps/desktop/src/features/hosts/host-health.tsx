@@ -130,7 +130,7 @@ export function HostHealth(
                   size="icon"
                   className="size-6"
                   aria-label={t("hostDeps.copy", { name: row.name })}
-                  onClick={() => void store.copyText(row.copy as string)}
+                  onClick={() => void store.system.copyText(row.copy as string)}
                 >
                   <Copy aria-hidden="true" />
                 </Button>
@@ -243,7 +243,7 @@ export function HostHealth(
                   size="icon"
                   className="size-6"
                   aria-label={t("hostHealth.service.copyLinger")}
-                  onClick={() => void store.copyText(lingerLine)}
+                  onClick={() => void store.system.copyText(lingerLine)}
                 >
                   <Copy aria-hidden="true" />
                 </Button>

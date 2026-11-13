@@ -3,6 +3,7 @@ import type { Board } from "../board/board.ts";
 import { closingLine } from "../issues/providers.ts";
 import { trimEndOf } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/model.ts";
+import { REMOVED_LINE } from "./check-run.ts";
 import type { FixRound, PrFixer } from "./fix.ts";
 
 /** One session that worked on a card, for the trail of its PR (phase 22). */
@@ -61,9 +62,6 @@ interface RunRow {
   queued_at: string;
   started_at: string | null;
 }
-
-/** What takes the place of a line that looked like a secret. */
-export const REMOVED_LINE = "[line removed: it looked like a secret]";
 
 /** A PR link without what the page adds to it: the query, the fragment, the slash at the end. */
 const plain = (url: string) => trimEndOf(url.split(/[?#]/)[0] ?? "", "/");

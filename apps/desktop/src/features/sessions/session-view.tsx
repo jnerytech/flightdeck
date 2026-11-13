@@ -64,7 +64,7 @@ const END_SLACK = 24;
 const PERSON_SCROLL_MS = 600;
 
 export interface SessionActions {
-  /** Copies a text (the approval's folder); the app's store does. */
+  /** Copies a text (the approval's folder); the store's `sessionActions` does. */
   copyText?(text: string): Promise<boolean>;
   send(text: string, images?: SessionImage[]): Promise<void>;
   /** Changes the permission mode / the model (null: the default) of the open session. */

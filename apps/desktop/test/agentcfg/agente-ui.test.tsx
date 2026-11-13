@@ -142,7 +142,7 @@ async function setup(
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id as string;

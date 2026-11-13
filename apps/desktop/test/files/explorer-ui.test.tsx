@@ -79,7 +79,7 @@ function host(refuse = false) {
         },
       };
     },
-    canOpenPaths: () => false,
+    system: { canOpenPaths: () => false },
     watchChanges: (_host: string, _target: string, listener: (update: ChangesUpdated) => void) => {
       live = listener;
       return () => {};

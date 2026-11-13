@@ -34,11 +34,11 @@ describe("abas: não lida", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     const hostId = await act(() =>
-      store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN }),
+      store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN }),
     );
     await waitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"));
     const sessionId = (await act(() =>
-      store.createSession(hostId, { cwd: d.project, prompt: "oi", name: "s1" }),
+      store.commands.create(hostId, { cwd: d.project, prompt: "oi", name: "s1" }),
     )) as string;
     const key = sessionKey(hostId, sessionId);
     await waitFor(() => expect(store.getState().sessions[key]?.status).toBe("idle"));
@@ -46,7 +46,7 @@ describe("abas: não lida", () => {
     expect(unread()).toBeNull();
     await act(async () => {
       store.tabs.open({ name: "hub" });
-      await store.send("de novo");
+      await store.commands.send("de novo");
     });
     await waitFor(() => expect(unread()).not.toBeNull());
     await act(async () => {
@@ -65,16 +65,16 @@ describe("abas: não lida", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     const hostId = await act(() =>
-      store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN }),
+      store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN }),
     );
     await waitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"));
     const sessionId = (await act(() =>
-      store.createSession(hostId, { cwd: d.project, prompt: "oi", name: "s1" }),
+      store.commands.create(hostId, { cwd: d.project, prompt: "oi", name: "s1" }),
     )) as string;
     const key = sessionKey(hostId, sessionId);
     await waitFor(() => expect(store.getState().sessions[key]?.status).toBe("idle"));
     await act(async () => {
-      await store.send("de novo");
+      await store.commands.send("de novo");
     });
     await waitFor(() =>
       expect(store.getState().sessions[key]?.items.filter((i) => i.kind === "result")).toHaveLength(

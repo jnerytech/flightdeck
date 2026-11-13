@@ -22,12 +22,12 @@ afterEach(async () => {
 async function twoHosts() {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const one = await store.addHost({
+  const one = await store.roster.add({
     name: "one",
     url: makeDaemon(cleanups).listen().url,
     token: TOKEN,
   });
-  const two = await store.addHost({
+  const two = await store.roster.add({
     name: "two",
     url: makeDaemon(cleanups).listen().url,
     token: TOKEN,
@@ -57,7 +57,7 @@ describe("nova-sessao-host: the host is a choice on the form (issue #186, J3)", 
   test("with one host there is no Host field to choose from", async () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
-    const only = await store.addHost({
+    const only = await store.roster.add({
       name: "only",
       url: makeDaemon(cleanups).listen().url,
       token: TOKEN,

@@ -63,9 +63,9 @@ async function tile(options: { configured?: boolean } = {}) {
     store.assistant.setPrefs({ provider: "anthropic" });
     await store.assistant.refreshKeys();
   }
-  const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
-  const id = (await store.createSession(hostId, {
+  const id = (await store.commands.create(hostId, {
     cwd: d.project,
     prompt: "oi",
     name: "um",
@@ -88,9 +88,9 @@ describe("assistant-fields-tiles: the message box of a session tile (issue #160)
   test("the message improves with the wand and is not sent by it", async () => {
     const { store, fake } = await tile();
     const sent: string[] = [];
-    store.sendTo = (async (_host: string, _id: string, text: string) => {
+    store.commands.sendTo = (async (_host: string, _id: string, text: string) => {
       sent.push(text);
-    }) as typeof store.sendTo;
+    }) as typeof store.commands.sendTo;
     await act(async () => {
       fireEvent.change(box() as HTMLElement, { target: { value: "login test broken" } });
     });

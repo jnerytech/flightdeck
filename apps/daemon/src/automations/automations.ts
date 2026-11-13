@@ -8,11 +8,12 @@ import type { Database } from "bun:sqlite";
 import type { Automation, AutomationRun, Issue } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
-import { type Issues, UNTRUSTED_MARK } from "../issues/issues.ts";
-import { FlightdeckError, ulid } from "../kernel/index.ts";
+import type { Issues } from "../issues/issues.ts";
+import { FlightdeckError, UNTRUSTED_MARK, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { localDay } from "../quota/usage.ts";
 import { type CronError, type CronSpec, cronMatches, parseCron, validTimeZone } from "./cron.ts";
+import { actionOf, triggerOf } from "./row-json.ts";
 
 export type AutomationEvent =
   | {
@@ -97,8 +98,8 @@ const toAutomation = (row: Row): Automation => ({
   projectId: row.project_id,
   name: row.name,
   enabled: row.enabled === 1,
-  trigger: JSON.parse(row.trigger),
-  action: JSON.parse(row.action),
+  trigger: triggerOf(row.trigger),
+  action: actionOf(row.action),
   maxRunsPerDay: row.max_runs_per_day,
   allowExternalAuthors: row.allow_external_authors === 1,
   createdAt: row.created_at,
@@ -175,12 +176,12 @@ export class Automations {
   }
 
   list(projectId: string): Automation[] {
-    return this.db
+    const rows = this.db
       .query<Row, [string]>(
         "SELECT * FROM automations WHERE project_id = ? ORDER BY created_at, rowid",
       )
-      .all(projectId)
-      .map(toAutomation);
+      .all(projectId);
+    return this.readable(rows);
   }
 
   /** Creates or edits an automation. It always ends up off: turning it on is a decision. */
@@ -550,10 +551,26 @@ export class Automations {
   }
 
   private enabled(): Automation[] {
-    return this.db
+    const rows = this.db
       .query<Row, []>("SELECT * FROM automations WHERE enabled = 1 ORDER BY created_at, rowid")
-      .all()
-      .map(toAutomation);
+      .all();
+    return this.readable(rows);
+  }
+
+  /**
+   * The automations of `rows` that can be read. A row whose JSON no longer fits (written by a newer
+   * daemon, or edited by hand) is logged by id and left out: it must not stop the scheduler, the
+   * boot or the others, and it can still be removed.
+   */
+  private readable(rows: Row[]): Automation[] {
+    return rows.flatMap((row) => {
+      try {
+        return [toAutomation(row)];
+      } catch (error) {
+        this.opts.log?.(`automations: ${row.id} is unreadable: ${(error as Error).message}`);
+        return [];
+      }
+    });
   }
 
   private row(id: string): Row | null {

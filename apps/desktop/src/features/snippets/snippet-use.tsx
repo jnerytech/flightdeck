@@ -166,7 +166,7 @@ export const SnippetUse = memo(function SnippetUse(props: {
           claudeSessionId: external.claudeSessionId,
           text,
         });
-      } else await store.send(text);
+      } else await store.commands.send(text);
       return done();
     }
     const result = await store.hostRequest(choice.hostId, "snippets.use", {
@@ -215,7 +215,7 @@ export const SnippetUse = memo(function SnippetUse(props: {
       text = result.data.text;
     }
     if (text === null) return;
-    await store.copyText(text);
+    await store.system.copyText(text);
     done();
   };
 

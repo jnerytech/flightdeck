@@ -82,7 +82,7 @@ async function open(over: Record<string, unknown> = {}, features: string[] = [])
   daemon.features.push("watch", ...features);
   daemon.watch.card = card(over);
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     daemon.push({ type: "card.updated", card: card(over) });

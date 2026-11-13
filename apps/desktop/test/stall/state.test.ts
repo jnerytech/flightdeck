@@ -160,9 +160,9 @@ describe("stall-state: the quiet sessions come from the live summaries (issue #1
 describe("stall-state: Not stuck, and the ways on", () => {
   test("Not stuck hides the session for an hour, only that session", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { now: () => NOW });
-    store.snoozeQuiet("h", "s1");
+    store.quietSnooze.snooze("h", "s1");
     expect(store.getState().quietSnooze).toEqual({ "h/s1": NOW + 60 * 60_000 });
-    store.snoozeQuiet("h", "s2");
+    store.quietSnooze.snooze("h", "s2");
     expect(Object.keys(store.getState().quietSnooze).sort((a, b) => a.localeCompare(b))).toEqual([
       "h/s1",
       "h/s2",
@@ -184,7 +184,7 @@ describe("stall-state: Not stuck, and the ways on", () => {
         return {};
       },
     });
-    await store.interruptSession("h", "s1");
+    await store.commands.interruptOn("h", "s1");
     expect(sent).toEqual([["session.interrupt", { sessionId: "s1" }]]);
   });
 });
@@ -196,14 +196,14 @@ describe("stall-state: the snooze says until when, and survives a reload (#1554)
   test("Not stuck says when the row comes back", () => {
     const store = new AppStore(platform(), { now: () => NOW });
     store.i18n.start();
-    store.snoozeQuiet("h", "s1");
+    store.quietSnooze.snooze("h", "s1");
     const hour = store.formatTime(later(60));
     expect(store.getState().notices.map((notice) => notice.text)).toEqual([
       `Hidden until ${hour}.`,
     ]);
     const pt = new AppStore(memoryPlatform(false, "pt-BR").platform, { now: () => NOW });
     pt.i18n.start();
-    pt.snoozeQuiet("h", "s1");
+    pt.quietSnooze.snooze("h", "s1");
     expect(pt.getState().notices.map((notice) => notice.text)).toEqual([
       `Oculta até ${pt.formatTime(later(60))}.`,
     ]);
@@ -212,8 +212,8 @@ describe("stall-state: the snooze says until when, and survives a reload (#1554)
   test("a snooze is kept until its time: a new app start sees it, a later one does not", () => {
     const shared = platform();
     const first = new AppStore(shared, { now: () => NOW });
-    first.snoozeQuiet("h", "s1");
-    first.snoozeQuiet("h", "s2");
+    first.quietSnooze.snooze("h", "s1");
+    first.quietSnooze.snooze("h", "s2");
     const reloaded = new AppStore(shared, { now: () => NOW + 10 * MIN });
     expect(reloaded.getState().quietSnooze).toEqual({
       "h/s1": NOW + 60 * MIN,

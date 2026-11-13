@@ -146,7 +146,9 @@ export function RecapPanel(
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void store.copyText(lines.map(([l, x]) => `${l}: ${x}`).join("\n"))}
+            onClick={() =>
+              void store.system.copyText(lines.map(([l, x]) => `${l}: ${x}`).join("\n"))
+            }
           >
             {t("recap.copy")}
           </Button>
