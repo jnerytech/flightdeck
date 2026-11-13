@@ -14,6 +14,7 @@ import {
   whichOnPath,
 } from "../kernel/index.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
+import { launchClaude } from "./adapters/claude-launch.ts";
 
 /** What the daemon publishes about the receiver it runs: where it listens. */
 const Published = z.object({ url: z.string() });
@@ -410,25 +411,21 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       ...(await systemPromptArgs(opts, args, persona, `${launchId}.md`, write)),
       ...(await agentArgs(opts, { claude, args, print, launchId }, write)),
     );
-    const proc = Bun.spawn(
+    return await launchClaude(
       buildClaudeLaunch({
         claude,
         args: [...added, ...args],
         mcpConfigPath: channel,
       }),
       {
-        env: {
-          ...env,
-          // Print mode is not a session of a terminal: no exporter.
-          ...wrapperTelemetryEnv(env, print ? null : await telemetryTarget(opts.config)),
-          FLIGHTDECK_LAUNCH_ID: launchId,
-          // The badge only (never the body): the SessionStart hook forwards it to the central.
-          ...personaBadge(persona),
-        },
-        stdio: ["inherit", "inherit", "inherit"],
+        ...env,
+        // Print mode is not a session of a terminal: no exporter.
+        ...wrapperTelemetryEnv(env, print ? null : await telemetryTarget(opts.config)),
+        FLIGHTDECK_LAUNCH_ID: launchId,
+        // The badge only (never the body): the SessionStart hook forwards it to the central.
+        ...personaBadge(persona),
       },
     );
-    return await proc.exited;
   } finally {
     // `claude --bg` returns at once and the session goes on: its channel config and persona
     // files are still read, so they stay (a few small files per background session).
