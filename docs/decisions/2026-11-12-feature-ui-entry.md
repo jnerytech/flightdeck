@@ -24,3 +24,5 @@ fails an `index.ts` re-exporting `.tsx` comes with the last move, so it adds no 
 ## Consequences
 Each move lowers the cycle count by the files only its screens kept in the cycle (terminal: 157 to
 148). Two entries per feature instead of one; `ui.ts` is a re-export list like `index.ts`.
+After the last move (2026-11-13) the `desktop-entry-exports-no-component` rule fails an `index.ts`
+that re-exports a `.tsx` value; a type-only export passes.
