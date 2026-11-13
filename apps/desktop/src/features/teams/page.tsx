@@ -300,12 +300,18 @@ function Team(
     );
   };
   /** A text a worker took is sent; one every worker refused stays, to be sent again. */
+  const sending = useRef(false);
   const sendAll = async () => {
-    if (!text.trim()) return;
-    const result = await store.hostCommand(hostId, "teams.message", { team: team.id, text });
-    if (!result) return;
-    setNotice({ text: t("teamsUi.sentAll", result), refused: false });
-    if (result.delivered >= 1) setText("");
+    if (!text.trim() || sending.current) return;
+    sending.current = true;
+    try {
+      const result = await store.hostCommand(hostId, "teams.message", { team: team.id, text });
+      if (!result) return;
+      setNotice({ text: t("teamsUi.sentAll", result), refused: result.delivered === 0 });
+      if (result.delivered >= 1) setText("");
+    } finally {
+      sending.current = false;
+    }
   };
   /** Runs a team command and says what came of it; `focus` is where the focus goes after it. */
   const act = async (
