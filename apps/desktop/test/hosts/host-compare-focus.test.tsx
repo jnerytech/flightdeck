@@ -150,14 +150,14 @@ describe("host-compare-focus: Fix asks for the Health section of the host it nam
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: en.hostCompare.show }));
     });
-    await settleMaybe(() => screen.queryByRole("button", { name: "Fix on gama" }) !== null);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Fix Hooks on gama" }) !== null);
     return store;
   };
 
   test("on another host's page, the route that opens gama carries the Health ask", async () => {
     const store = await mount("alfa");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Fix on gama" }));
+      fireEvent.click(screen.getByRole("button", { name: "Fix Hooks on gama" }));
     });
     expect(store.router.current).toEqual({ name: "host", host: "gama", section: "health" });
   });
@@ -167,7 +167,7 @@ describe("host-compare-focus: Fix asks for the Health section of the host it nam
     const before = store.router.current;
     store.router.push({ name: "host", host: "gama" });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Fix on gama" }));
+      fireEvent.click(screen.getByRole("button", { name: "Fix Hooks on gama" }));
     });
     const asked = store.router.current;
     store.router.back();
