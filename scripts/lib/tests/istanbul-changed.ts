@@ -17,6 +17,8 @@ export interface IstanbulChangedDeps {
   /** The files added, changed or renamed since the base; null when git could not say. */
   changed: (base: string) => Promise<string[] | null>;
   mkdir: (path: string) => void;
+  /** Writes a file: the run's list of files to instrument. */
+  write: (path: string, text: string) => void;
   spawn: (argv: string[], env: Record<string, string>) => Promise<{ exit: number; log: string }>;
   print: (line: string) => void;
 }
@@ -53,6 +55,7 @@ export async function istanbulChanged(
   }
   deps.mkdir(out);
   const plan = shardRun("istanbul", files, out, istanbulTargets(deps.tracked));
+  if (plan.targetsFile) deps.write(plan.targetsFile.path, plan.targetsFile.text);
   const { exit, log } = await deps.spawn(plan.argv, plan.env);
   for (const line of log.split("\n")) deps.print(line);
   return exit !== 0 || failedCount(log) > 0 ? 1 : 0;
