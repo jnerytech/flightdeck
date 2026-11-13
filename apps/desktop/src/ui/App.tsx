@@ -31,7 +31,7 @@ import {
   TopBarActions,
   TopBarHost,
 } from "@/features/shell/ui.ts";
-import { SnippetUse } from "@/features/snippets/index.ts";
+import { SnippetUse } from "@/features/snippets/ui.ts";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
