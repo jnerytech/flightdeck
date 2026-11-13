@@ -101,7 +101,7 @@ function setup(
   const calls: Call[] = [];
   /** The boards the app loaded to count the other host's running cards. */
   const loaded: string[] = [];
-  store.loadBoard = (async (hostId: string, projectId: string) => {
+  store.boardCards.load = (async (hostId: string, projectId: string) => {
     loaded.push(`${hostId}/${projectId}`);
   }) as never;
   const project = (id: string, key: string) => ({
