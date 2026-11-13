@@ -1,4 +1,4 @@
-# Mutation survivors accepted as equivalent, and a score baseline per domain (issue #1607)
+# Mutation scores accepted, and a baseline per domain (issue #1607)
 
 ## Decision
 
@@ -17,7 +17,7 @@ survivors, never lower it to make a run pass.
 
 ## Survivors read and why they are equivalent
 
-Local Stryker runs over line ranges (`--mutate <file>:<from>-<to>`, about 2 s per mutant) covered
+Line numbers below are those of `main` at commit 739e5c98a. Local Stryker runs over line ranges (`--mutate <file>:<from>-<to>`, about 2 s per mutant) covered
 `rule-risk.ts` 100-140, `sensitive-paths.ts` 85-165, `risk.ts` 260-290 and `risk.ts` 330-340. Every
 survivor there changes no observable result:
 

@@ -38,7 +38,10 @@ const SAFE_PATH = /^[\w./-]+$/;
 function assertSafe(domain: MutationDomain): void {
   const paths = [...domain.mutate, ...domain.tests];
   const unsafePath = paths.find((path) => !SAFE_PATH.test(path) || path.split("/").includes(".."));
-  if (!SAFE_NAME.test(domain.name) || unsafePath !== undefined) {
+  const badScore =
+    domain.minScore !== undefined &&
+    !(typeof domain.minScore === "number" && domain.minScore >= 0 && domain.minScore <= 100);
+  if (!SAFE_NAME.test(domain.name) || unsafePath !== undefined || badScore) {
     throw new Error(`unsafe mutation domain: ${domain.name} ${unsafePath ?? ""}`.trim());
   }
 }
