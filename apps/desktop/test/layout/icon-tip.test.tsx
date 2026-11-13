@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { IconTip } = await import("../src/shared/feedback/index.ts");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
+const { IconTip } = await import("../../src/shared/feedback/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -118,7 +118,7 @@ describe("icon-tip: the narrow sidebar uses it (issue #165)", () => {
 describe("icon-tip: the client switcher keeps its title only as a tooltip in the rail (issue #165)", () => {
   test("its source has no native title", () => {
     const source = readFileSync(
-      join(import.meta.dir, "../src/features/clients/client-switcher.tsx"),
+      join(import.meta.dir, "../../src/features/clients/client-switcher.tsx"),
       "utf8",
     );
     expect(source).not.toMatch(/\btitle=\{/);

@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Keycap, ShortcutKeys } = await import("../src/features/shortcuts/keycap.tsx");
-const { keysText } = await import("../src/features/shortcuts/shortcuts.ts");
+const { Keycap, ShortcutKeys } = await import("../../src/features/shortcuts/keycap.tsx");
+const { keysText } = await import("../../src/features/shortcuts/shortcuts.ts");
 
 afterEach(cleanup);
 
@@ -75,7 +75,7 @@ describe("keycap: the one component that prints a key (issue #165)", () => {
 });
 
 describe("keycap: no screen draws its own (issue #165)", () => {
-  const root = join(import.meta.dir, "../src").replaceAll("\\", "/");
+  const root = join(import.meta.dir, "../../src").replaceAll("\\", "/");
   const files = (dir: string): string[] =>
     readdirSync(join(root, dir), { withFileTypes: true, recursive: true })
       .filter((e) => e.isFile() && e.name.endsWith(".tsx"))

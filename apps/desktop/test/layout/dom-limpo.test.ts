@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 
