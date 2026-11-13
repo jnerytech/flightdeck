@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { normalizeCwd } from "../history/indexer.ts";
+import { normalizeCwd } from "../history/index.ts";
 
 export interface SessionFile {
   path: string;
