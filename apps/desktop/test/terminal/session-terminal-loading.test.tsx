@@ -18,12 +18,12 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-const OPENING = "Opening the terminal…";
+const OPENING = "Abrindo o terminal…";
 const loading = () => screen.queryByRole("status", { name: OPENING }) !== null;
 const terminalShown = () => screen.queryByRole("heading", { name: "Terminal" }) !== null;
 
 /**
- * Issue #2591-adjacent #2607: a session's Terminal view while its shell opens. The host's answer to
+ * Issue #2607: a session's Terminal view while its shell opens. The host's answer to
  * `terminal.openSession` is held by the test until it says so.
  */
 async function setup(source: "session" | "terminal") {
