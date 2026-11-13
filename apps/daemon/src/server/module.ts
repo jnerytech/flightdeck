@@ -36,19 +36,19 @@ export function createModuleRunner(): ModuleRunner {
   const list: AnyModule[] = [];
   const phase = (m: AnyModule) => m.stopPhase ?? "normal";
   const stopAll = async (modules: readonly AnyModule[]) => {
-    for (const m of modules) await m.stop?.();
+    for (const m of modules) await m.stop?.(); // NOSONAR: modules stop one after the other, in the order the phase gives
   };
   return {
     add: async (built) => {
       for (const m of built.modules) {
         list.push(m);
-        await m.start?.();
+        await m.start?.(); // NOSONAR: a module starts after the ones before it
       }
       return built;
     },
     server: () => Object.assign({}, ...list.map((m) => m.server ?? {})),
     started: async () => {
-      for (const m of list) await m.started?.();
+      for (const m of list) await m.started?.(); // NOSONAR: started() runs in list order
     },
     stop: async (stopServer) => {
       const reversed = [...list].reverse();
