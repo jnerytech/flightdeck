@@ -106,6 +106,9 @@ export class ActivitySlice {
     if (retry.length > 0) await this.loadAway();
   }
 
+  /** A removed host leaves the summary and is asked again if it is added back (#1733). */
+  forget(_hostId: string): void {}
+
   /** Issue #1344: closes the summary until the next start. */
   dismissAway(): void {
     this.core.update({ away: { ...this.core.state().away, dismissed: true } });

@@ -33,6 +33,9 @@ function slice() {
   return {
     activity: new ActivitySlice(core),
     away: () => state.away,
+    setStatus: (status: string) => {
+      state = { ...state, hosts: state.hosts.map((h) => ({ ...h, status })) };
+    },
     asked: () => pending.length,
     answer: (index: number, answer: Answer) => pending[index]?.(answer),
   };
@@ -77,6 +80,35 @@ describe("away slice: what happened on the hosts while the app was away (#1709)"
     s.answer(0, { ok: true, data: RESULT });
     await first;
     expect(s.asked()).toBe(1);
+    expect(s.away().hosts.map((h) => h.hostId)).toEqual(["h1"]);
+  });
+
+  test("a host that went offline while its request was in flight and failed is named unreached, not dropped", async () => {
+    const s = slice();
+    const first = s.activity.loadAway();
+    await settlePlain(() => s.asked() === 1);
+    await s.activity.loadAway();
+    s.setStatus("offline");
+    s.answer(0, { ok: false });
+    await first;
+    expect(s.away().unreached).toEqual(["h1"]);
+    expect(s.asked()).toBe(1);
+  });
+
+  test("a removed host leaves the summary, and is asked again if it is added back", async () => {
+    const s = slice();
+    const first = s.activity.loadAway();
+    await settlePlain(() => s.asked() === 1);
+    s.answer(0, { ok: true, data: RESULT });
+    await first;
+    expect(s.away().hosts.map((h) => h.hostId)).toEqual(["h1"]);
+    s.activity.forget("h1");
+    expect(s.away().hosts).toEqual([]);
+    expect(s.away().unreached).toEqual([]);
+    const again = s.activity.loadAway();
+    await settlePlain(() => s.asked() === 2);
+    s.answer(1, { ok: true, data: RESULT });
+    await again;
     expect(s.away().hosts.map((h) => h.hostId)).toEqual(["h1"]);
   });
 });
