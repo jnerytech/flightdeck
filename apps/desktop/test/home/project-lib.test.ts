@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { UsageSummary } from "@flightdeck/protocol";
-import { HomeCache, homeHostData, homeKey } from "../../src/features/home/home-cache.ts";
-import { homeKpis } from "../../src/features/home/home-kpis.ts";
+import { HomeCache, homeHostData, homeKey } from "../../src/features/home/domain/home-cache.ts";
+import { homeKpis } from "../../src/features/home/domain/home-kpis.ts";
 
 const row = (projectKey: string, costUsd: number) => ({
   day: "2026-10-10",

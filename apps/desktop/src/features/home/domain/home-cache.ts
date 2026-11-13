@@ -1,7 +1,7 @@
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
 import { z } from "zod";
 import { readStored } from "@/shared/lib/index.ts";
-import type { Platform } from "../../platform/types.ts";
+import type { Platform } from "../../../platform/types.ts";
 import type { HomeCosts, HomeUsage } from "./home-kpis.ts";
 
 const KEY = "flightdeck.home.v1";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { HIDDEN_TERMS, hiddenTermsIn } from "../../src/features/home/simple-words.ts";
+import { HIDDEN_TERMS, hiddenTermsIn } from "../../src/features/home/domain/simple-words.ts";
 import { type Key, LANGS, translator } from "../../src/i18n/index.ts";
 import { SIMPLE_RENAMES } from "../../src/i18n/simple.ts";
 

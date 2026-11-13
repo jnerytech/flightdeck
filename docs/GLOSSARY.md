@@ -146,7 +146,7 @@ As palavras que o modo simples põe no lugar das do modo completo (`apps/desktop
 
 Nome de ferramenta, JSON, id de sessão, nomes de worktree e de branch, hooks, MCP, plugins, cofre,
 nomes de modo de permissão, terminal, "Continuar no terminal" e "Copiar comando". A lista que o
-teste `simple-vocabulary` varre está em `apps/desktop/src/features/home/simple-words.ts` (as duas línguas).
+teste `simple-vocabulary` varre está em `apps/desktop/src/features/home/domain/simple-words.ts` (as duas línguas).
 
 ## Domains
 

@@ -14,7 +14,7 @@ import type { ConnectionStatus } from "@/features/hosts/index.ts";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, FieldRow, NativeSelect, Note } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
-import type { TaskState } from "./simple-task.ts";
+import type { TaskState } from "./domain/simple-task.ts";
 
 export interface HomeTask {
   sessionId: string;

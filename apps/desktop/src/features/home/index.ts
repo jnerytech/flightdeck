@@ -4,9 +4,9 @@
  * its components come from `ui.ts` (#2451).
  */
 
-export { HomeCache } from "./home-cache.ts";
+export { HomeCache } from "./domain/home-cache.ts";
 export {
   loadChoices,
   type UiMode,
   UiModeSlice,
-} from "./simple-mode.ts";
+} from "./domain/simple-mode.ts";
