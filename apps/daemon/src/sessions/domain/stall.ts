@@ -2,8 +2,8 @@ import type { SessionSummary } from "@flightdeck/protocol";
 import type { ToolNote } from "./activity-clock.ts";
 
 export interface StallTimers {
-  setInterval(fn: () => unknown, ms: number): ReturnType<typeof setInterval>;
-  clearInterval(id: ReturnType<typeof setInterval>): void;
+  setInterval: (fn: () => unknown, ms: number) => ReturnType<typeof setInterval>;
+  clearInterval: (id: ReturnType<typeof setInterval>) => void;
 }
 
 /** What marks a session quiet: when it went silent and the last tool it called. */

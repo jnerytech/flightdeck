@@ -1,8 +1,8 @@
 import type { SessionSummary } from "@flightdeck/protocol";
 
 export interface SleeperTimers {
-  setInterval(fn: () => unknown, ms: number): ReturnType<typeof setInterval>;
-  clearInterval(id: ReturnType<typeof setInterval>): void;
+  setInterval: (fn: () => unknown, ms: number) => ReturnType<typeof setInterval>;
+  clearInterval: (id: ReturnType<typeof setInterval>) => void;
 }
 
 export interface SleeperOptions {
