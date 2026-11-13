@@ -2,7 +2,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AssistantBlock, EffortLevel, McpLiveStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { AsyncQueue, ulid, whichOnPath } from "../kernel/index.ts";
+import { git } from "../git/index.ts";
+import { AsyncQueue, ulid } from "../kernel/index.ts";
 import { describeCommands } from "./commands.ts";
 import type {
   AgentRun,
@@ -394,16 +395,8 @@ class FakeRun implements AgentRun {
       ],
       async (args) => {
         // git-arg: the fake runtime's git, for tests: its arguments are fixed
-        const git = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
-          cwd: this.opts.cwd,
-          // The daemon's current environment, not the one it started with (see kernel/command.ts).
-          env: process.env,
-          stdin: "ignore",
-          stdout: "ignore",
-          stderr: "pipe",
-        });
-        const [error, code] = await Promise.all([new Response(git.stderr).text(), git.exited]);
-        if (code !== 0) throw new Error(`git ${args[0]}: ${error.trim()}`);
+        const { code, stderr } = await git(this.opts.cwd, ...args);
+        if (code !== 0) throw new Error(`git ${args[0]}: ${stderr.trim()}`);
       },
     );
   }
