@@ -77,6 +77,15 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", "echo x >|/tmp/fora.txt"],
   ["high", "echo x>a>/tmp/fora.txt"],
   ["high", "true&&>/tmp/fora.txt"],
+  // A target the shell reads as more than the text next to the `>` (#2496): a quoted prefix before an
+  // escaping tail, a brace expansion, a backslash escape, a process substitution, a read-write open.
+  ["high", 'echo x >"a"/../../etc/x'],
+  ["high", "echo x >'a'/../../etc/x"],
+  ["high", "echo x >{/tmp/fora.txt,b}"],
+  ["high", "echo x >\\/tmp/fora.txt"],
+  ["high", "echo x >(tee /tmp/fora.txt)"],
+  ["high", "cat <>/tmp/fora.txt"],
+  ["high", "exec 3<>/tmp/fora.txt"],
   // Credentials, read or not.
   ["high", "cat ~/.ssh/id_rsa"],
   ["high", "cat .env"],
@@ -103,6 +112,16 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "echo x >| saida.txt"],
   ["medium", "echo x>a>b"],
   ["medium", "npm test &>/dev/null"],
+  // What the rows of #2496 must not catch: a quoted name with a space, a quoted prefix with a tail
+  // that stays inside, a subshell, a Windows-style relative path, a read-write open inside the cwd.
+  ["medium", 'echo x >"my file.txt"'],
+  ["medium", "echo x >'a b'/c.txt"],
+  ["medium", 'echo x >"a"/b.txt'],
+  ["medium", "(cd src && make > log.txt)"],
+  ["medium", "echo x > .\\saida.txt", "PowerShell"],
+  ["medium", "exec 3<>fifo"],
+  ["medium", "cat <&3"],
+  ["medium", 'echo x >"sem fim'],
   ["medium", "echo ok > /dev/null"],
   ["medium", "dir > NUL"],
   ["medium", "bun test > saida.txt"],
