@@ -1,6 +1,5 @@
 import type { ChecksState } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { PrCheck } from "./port.ts";
 
 /**
  * A name taken from a PR URL, before it goes into a CLI argument. `az` replaces an argument that

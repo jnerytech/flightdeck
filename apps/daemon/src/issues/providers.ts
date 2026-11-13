@@ -5,7 +5,6 @@
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
 import { GithubIssues } from "../github/index.ts";
-import { FlightdeckError } from "../kernel/index.ts";
 import { checkedId, cli, cliJsonWith, cliOk, ISSUE_LIMIT } from "../pr/index.ts";
 
 /** Active work items assigned to you, with the fields an issue needs. */
