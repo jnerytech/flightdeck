@@ -14,7 +14,7 @@ const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
 const { applyEnvelope, emptySession } = await import(
-  "../../src/features/sessions/session-state.ts"
+  "../../src/features/sessions/domain/session-state.ts"
 );
 const { App } = await import("../../src/ui/App.tsx");
 

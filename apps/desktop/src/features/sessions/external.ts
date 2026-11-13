@@ -9,7 +9,7 @@ import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
 import type { InboxSlice } from "../inbox/index.ts";
 import { externalRequestNotification } from "../inbox/notify.ts";
-import { sessionKey } from "./session-key.ts";
+import { sessionKey } from "./domain/session-key.ts";
 
 type ExternalState = Pick<AppState, "hosts" | "externals" | "meta" | "externalRequests" | "hub">;
 type ExternalPatch = Partial<Pick<AppState, "externals" | "meta" | "externalRequests">>;

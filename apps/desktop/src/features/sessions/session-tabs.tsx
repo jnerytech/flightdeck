@@ -18,7 +18,6 @@ import { ChangesPanel } from "../review/ui.ts";
 import { TempoPanel } from "../telemetry/ui.ts";
 import { useLaunchTerminal, type XtermDeps } from "../terminal/index.ts";
 import { SessionTerminal } from "../terminal/ui.ts";
-import { SessionFinish } from "./session-finish.tsx";
 import {
   offeredViews,
   type SessionView,
@@ -28,7 +27,8 @@ import {
   VIEW_LABEL,
   type ViewKey,
   viewKeyTarget,
-} from "./session-views.ts";
+} from "./domain/session-views.ts";
+import { SessionFinish } from "./session-finish.tsx";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";

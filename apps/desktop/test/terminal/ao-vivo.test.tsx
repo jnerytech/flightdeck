@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TerminalButton } = await import("../../src/features/terminal/terminal-button.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
-const { liveElsewhere } = await import("../../src/features/sessions/live-elsewhere.ts");
+const { liveElsewhere } = await import("../../src/features/sessions/domain/live-elsewhere.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

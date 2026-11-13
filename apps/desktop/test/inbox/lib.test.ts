@@ -7,7 +7,7 @@ import {
   applyEnvelope,
   emptySession,
   endStreaming,
-} from "../../src/features/sessions/session-state.ts";
+} from "../../src/features/sessions/domain/session-state.ts";
 
 const env = (seq: number, event: SessionEvent): EventEnvelope => ({
   type: "event",

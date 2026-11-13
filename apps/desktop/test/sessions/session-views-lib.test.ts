@@ -10,7 +10,7 @@ import {
   terminalSourceOf,
   type ViewKey,
   viewKeyTarget,
-} from "../../src/features/sessions/session-views.ts";
+} from "../../src/features/sessions/domain/session-views.ts";
 
 describe("session-views-lib: the views of the page on screen (issue #107)", () => {
   test("the views are numbered in a fixed order, conversation first", () => {

@@ -11,7 +11,7 @@ import {
   offerKey,
   saveAutoResume,
   unanswered,
-} from "./resume-offer.ts";
+} from "./domain/resume-offer.ts";
 
 /** The offer to resume a host's interrupted sessions: shown (open) or put off for the host page. */
 export interface ResumeOffer {

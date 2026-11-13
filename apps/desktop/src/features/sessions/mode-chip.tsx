@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { T } from "../../i18n/index.ts";
-import type { ModeRow } from "./mode-menu.ts";
+import type { ModeRow } from "./domain/mode-menu.ts";
 
 /** The chip's words for a mode: its name and what it does, from the dictionaries. */
 const nameOf = (t: T, mode: PermissionMode | null) =>

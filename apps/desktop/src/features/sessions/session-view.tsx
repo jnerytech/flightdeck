@@ -28,12 +28,16 @@ import type { Answer } from "../../lib/app-store.ts";
 import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
 import { commandItemsOf, slashFill } from "./command-menu.ts";
-import { composerModeMenu, offersModelPicker } from "./composer-pickers.ts";
-import { queueStep, submitAction } from "./composer-queue.ts";
+import { composerModeMenu, offersModelPicker } from "./domain/composer-pickers.ts";
+import { queueStep, submitAction } from "./domain/composer-queue.ts";
+import { nextMode } from "./domain/mode-menu.ts";
+import { missedAfter, rememberPosition, type ScrollPosition } from "./domain/scroll-memory.ts";
+import { activityOf } from "./domain/session-activity.ts";
+import { type ImageRefusal, readImage, refuseImage } from "./domain/session-images.ts";
+import type { ChatItem, SessionState } from "./domain/session-state.ts";
 import { EndWithChangesDialog } from "./end-with-changes-dialog.tsx";
 import { MessageActions } from "./message-actions";
 import { ModeChip } from "./mode-chip";
-import { nextMode } from "./mode-menu.ts";
 import { ModelChip } from "./model-chip";
 import { ModelOptions } from "./model-options.tsx";
 import {
@@ -46,10 +50,6 @@ import {
   Timeline,
 } from "./parts";
 import { RuntimeBadge } from "./runtime-badge";
-import { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
-import { activityOf } from "./session-activity.ts";
-import { type ImageRefusal, readImage, refuseImage } from "./session-images.ts";
-import type { ChatItem, SessionState } from "./session-state.ts";
 import { StatusBadge } from "./status-badge.tsx";
 import { SessionStatusLine } from "./status-line";
 import { ToolCall } from "./tool-call.tsx";
