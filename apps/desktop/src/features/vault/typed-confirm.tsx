@@ -62,8 +62,9 @@ export function TypedConfirm(
           autoComplete="off"
           onChange={(event) => setTyped(event.target.value)}
           onKeyDown={(event) => {
-            // The same way out as the button, so the dialog closes like it does.
-            if (event.key === "Enter" && matches) {
+            // The same way out as the button, so the dialog closes like it does. An Enter that only
+            // ends an input-method composition is not a confirmation.
+            if (event.key === "Enter" && matches && !event.nativeEvent.isComposing) {
               event.preventDefault();
               action.current?.click();
             }

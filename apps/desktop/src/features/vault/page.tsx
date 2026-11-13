@@ -156,6 +156,10 @@ export const VaultPage = memo(function VaultPage(props: {
   const [phase, setPhase] = useState<"shown" | "soon" | "hidden" | null>(null);
   // The button that opened a confirmation, so the focus can go back to it when it closes.
   const opener = useRef<HTMLElement | null>(null);
+  // Where the focus lands when the opener's row is gone (a removed secret).
+  const newSecretButton = useRef<HTMLButtonElement>(null);
+  const focusAfterClose = () =>
+    opener.current?.isConnected ? opener.current : newSecretButton.current;
 
   useEffect(() => {
     if (!shown) return;
@@ -206,7 +210,11 @@ export const VaultPage = memo(function VaultPage(props: {
       title={t("vault.title")}
       subtitle={t("vault.subtitle")}
       actions={
-        !creating && <Button onClick={() => setCreating(true)}>{t("vault.newSecret")}</Button>
+        !creating && (
+          <Button ref={newSecretButton} onClick={() => setCreating(true)}>
+            {t("vault.newSecret")}
+          </Button>
+        )
       }
     >
       <output className="text-muted-foreground text-sm">
@@ -317,7 +325,7 @@ export const VaultPage = memo(function VaultPage(props: {
           word={t("vault.revealWord")}
           inputLabel={t("vault.revealPrompt", { word: t("vault.revealWord") })}
           confirmLabel={t("vault.reveal")}
-          returnFocus={() => opener.current}
+          returnFocus={focusAfterClose}
           onConfirm={() => void reveal(asking)}
           onCancel={() => setAsking(null)}
         />
@@ -329,7 +337,7 @@ export const VaultPage = memo(function VaultPage(props: {
           inputLabel={t("vault.removePrompt", { word: removing.name })}
           confirmLabel={t("vault.remove")}
           destructive
-          returnFocus={() => opener.current}
+          returnFocus={focusAfterClose}
           onConfirm={() => {
             void store.secrets.remove(removing.id);
             setRemoving(null);
