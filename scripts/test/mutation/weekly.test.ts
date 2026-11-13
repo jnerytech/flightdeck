@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MutationDomain, MutationReport } from "../../lib/mutation/report.ts";
-import { configPathFor, runWeekly } from "../../lib/mutation/weekly.ts";
+import { configPathFor, exitCodeOf, runWeekly } from "../../lib/mutation/weekly.ts";
 
 const domain = (name: string): MutationDomain => ({
   name,
@@ -117,5 +117,18 @@ describe("weekly mutation run: one Stryker run per domain (#1607)", () => {
       );
       expect(ran, "nothing runs when a later domain is unsafe").toEqual([]);
     }
+  });
+});
+
+describe("weekly mutation run: exit code (#1607)", () => {
+  const ok = { results: [], failed: [], belowBaseline: [] };
+  test("a clean outcome exits 0", () => {
+    expect(exitCodeOf(ok)).toBe(0);
+  });
+  test("a failed domain run exits 1", () => {
+    expect(exitCodeOf({ ...ok, failed: ["a"] })).toBe(1);
+  });
+  test("a domain under its baseline exits 1", () => {
+    expect(exitCodeOf({ ...ok, belowBaseline: [{ domain: "a", score: 1, minScore: 2 }] })).toBe(1);
   });
 });
