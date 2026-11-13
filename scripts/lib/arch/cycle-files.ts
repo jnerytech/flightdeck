@@ -11,9 +11,9 @@ export type CruiseModule = {
   dependencies: { resolved: string; dependencyTypes: string[] }[];
 };
 
-/** A pure barrel: an `index.ts` whose every import is a re-export, so it holds no code to depend on. */
+/** A pure barrel: a feature entry (`index.ts`, or `ui.ts` for its components, #2451) whose every import is a re-export, so it holds no code to depend on. */
 const isBarrel = (module: CruiseModule): boolean =>
-  /(^|\/)index\.tsx?$/.test(module.source) &&
+  /(^|\/)(index|ui)\.tsx?$/.test(module.source) &&
   module.dependencies.length > 0 &&
   module.dependencies.every((dep) => dep.dependencyTypes.includes("export"));
 
