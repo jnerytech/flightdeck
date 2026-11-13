@@ -10,7 +10,13 @@ export { FlightdeckError, featureOff, refusalOf } from "./errors.ts";
 export { type Exec, spawnExec } from "./exec.ts";
 export { layoutLike, parseJsonOr, parseJsonText, parseJsonWith } from "./json-text.ts";
 export { linesOf } from "./lines.ts";
-export { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING, readLockPid } from "./lock.ts";
+export {
+  AlreadyRunningError,
+  acquireLock,
+  EXIT_ALREADY_RUNNING,
+  readLockPid,
+  withLock,
+} from "./lock.ts";
 export type { Logger } from "./logger.ts";
 export { DEFAULT_ALLOWED_NETWORKS, ipInNetworks, parseCidr } from "./networks.ts";
 export { ntfsName } from "./ntfs-name.ts";

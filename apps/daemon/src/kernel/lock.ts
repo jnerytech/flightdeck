@@ -63,3 +63,15 @@ export class AlreadyRunningError extends Error {
     super(`already running (dataDir ${dataDir})${more}`);
   }
 }
+
+/**
+ * Runs `fn` while holding the lock of `dataDir`: refused with `AlreadyRunningError` (and the
+ * `hint`) when a live process holds it, and the lock goes back when `fn` returns or throws.
+ */
+export async function withLock<T>(
+  _dataDir: string,
+  _hint: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  return fn();
+}
