@@ -276,7 +276,12 @@ export const VaultPage = memo(function VaultPage(props: {
                         hostName={(hostId) =>
                           state.hosts.find((h) => h.id === hostId)?.name ?? hostId
                         }
-                        formatWhen={(ms) => store.formatDateTime(new Date(ms).toISOString())}
+                        formatWhen={(ms) =>
+                          // A moment no date can hold (a bad value from the daemon) shows as nothing, not a crash.
+                          Number.isFinite(new Date(ms).getTime())
+                            ? store.formatDateTime(new Date(ms).toISOString())
+                            : ""
+                        }
                       />
                     ))}
                   </ul>
