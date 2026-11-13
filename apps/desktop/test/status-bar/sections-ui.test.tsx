@@ -195,6 +195,10 @@ describe("status bar items open their host section (#1484)", () => {
     store: ReturnType<typeof fakeStore>,
     onSectionDone: () => void,
     decoy = false,
+    ask: { section: "pause" | "health"; host: typeof fakeHost } = {
+      section: "pause",
+      host: fakeHost,
+    },
   ) => (
     <TContext.Provider value={store.i18n.t}>
       {decoy && (
@@ -205,8 +209,8 @@ describe("status bar items open their host section (#1484)", () => {
       )}
       <HostPage
         store={store}
-        host={fakeHost as never}
-        section="pause"
+        host={ask.host as never}
+        section={ask.section}
         onSectionDone={onSectionDone}
         onRename={() => null}
         onReconnect={() => {}}
@@ -255,5 +259,34 @@ describe("status bar items open their host section (#1484)", () => {
       "Elsewhere",
       [1],
     ]);
+  });
+
+  /** #197: the Health ask waits until the host says it can check its dependencies or run the doctor. */
+  describe("the Health section ask", () => {
+    const withFeatures = (features: string[]) => ({
+      ...fakeHost,
+      hostInfo: { ...fakeHost.hostInfo, features },
+    });
+    for (const feature of ["depsCheck", "doctor.run"]) {
+      test(`moves the focus to the Health panel once the host announces ${feature}`, async () => {
+        const store = fakeStore();
+        let done = 0;
+        const host = withFeatures([feature]);
+        render(hostPage(store, () => void done++, false, { section: "health", host }));
+        await settleMaybe(() => done > 0);
+        const heading = document.activeElement?.textContent;
+        expect([heading, done]).toEqual([en.hostHealth.title, 1]);
+      });
+    }
+    test("does not move the focus while the host announces neither", async () => {
+      const store = fakeStore();
+      let done = 0;
+      const host = withFeatures(["hostPause"]);
+      render(hostPage(store, () => void done++, false, { section: "health", host }));
+      // The page's reads answer empty at once: two flushes let its effects run before the check.
+      await act(async () => {});
+      await act(async () => {});
+      expect(done).toBe(0);
+    });
   });
 });
