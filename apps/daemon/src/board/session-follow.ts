@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { PersonaRef, SessionEvent, SessionStatus } from "@flightdeck/protocol";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import type { Card } from "./types.ts";

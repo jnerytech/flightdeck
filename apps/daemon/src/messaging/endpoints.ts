@@ -16,7 +16,7 @@ import { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "../history/parser.ts";
 import { requestLine } from "../history/session-line.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
+import type { SessionManager } from "../sessions/index.ts";
 
 export interface EndpointInfo {
   id: string;
