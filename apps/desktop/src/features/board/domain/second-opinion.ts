@@ -1,5 +1,5 @@
 import type { ReviewComment } from "@flightdeck/protocol";
-import type { T } from "../../i18n/index.ts";
+import type { T } from "../../../i18n/index.ts";
 
 /**
  * The reviewer drafts still open on a card (#1446, the second-opinion review): the findings of the

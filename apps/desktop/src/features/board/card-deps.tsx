@@ -6,7 +6,7 @@ import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, FieldRow, Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { type ChainNode, chainOf, pickable } from "./deps.ts";
+import { type ChainNode, chainOf, pickable } from "./domain/deps.ts";
 
 /** The blockers as an indented list: each with its column, and what it waits for in turn. */
 function Chain(

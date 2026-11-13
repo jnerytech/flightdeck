@@ -1,5 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
-import type { T } from "../../i18n/index.ts";
+import type { T } from "../../../i18n/index.ts";
 
 /**
  * The conflict radar's words (#1405, host feature `conflictRadar`): the host says which other cards
