@@ -65,6 +65,24 @@ describe("health slice: a host's dependencies and doctor", () => {
     expect(s.state().healthError).toEqual({});
   });
 
+  test("a half that fails keeps its older data beside the new error", async () => {
+    const s = slice(["depsCheck", "doctor.run"]);
+    await s.health.check("h1");
+    s.answer({ doctor: { ok: false, message: "no doctor" } });
+    await s.health.check("h1");
+    expect(s.state().doctor.h1).toBe(DOCTOR);
+    expect(s.state().healthError.h1).toBe("no doctor");
+  });
+
+  test("when both halves fail, every message is kept: dependencies first, then doctor", async () => {
+    const s = slice(["depsCheck", "doctor.run"], {
+      deps: { ok: false, message: "no deps" },
+      doctor: { ok: false, message: "no doctor" },
+    });
+    await s.health.check("h1");
+    expect(s.state().healthError.h1).toBe("no deps; no doctor");
+  });
+
   test("two asks at once share one read", async () => {
     const s = slice(["depsCheck"]);
     await Promise.all([s.health.check("h1"), s.health.check("h1")]);
