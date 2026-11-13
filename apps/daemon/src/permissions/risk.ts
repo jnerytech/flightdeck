@@ -102,6 +102,16 @@ export { credential as isCredentialPath };
 const words = (command: string) => command.split(/[\s"'`;|&<>()=,]+/).filter((w) => w !== "");
 
 /** Separate commands (`;`, `&&`, `||`, `|`, `&`, newlines), each as its words. */
+/**
+ * A backslash before a newline is a line continuation: bash reads the two lines as one (`.e\<LF>nv`
+ * is `.env`). An escaped backslash, `\\<LF>`, is not one. This is a second reading, never a
+ * replacement: a comment, `\<CR><LF>` and PowerShell end the line, so the text as written is judged
+ * too (#2496).
+ */
+function joinContinuations(command: string): string {
+  return command.replace(/(?<!\\)((?:\\\\)*)\\\r?\n/g, "$1");
+}
+
 function segments(command: string): string[][] {
   return command
     .split(/&&|\|\||[;|&\n]/)
@@ -266,7 +276,7 @@ export class RiskClassifier {
     if (SHELL_TOOLS.has(toolName)) {
       // A shell tool's command that is there but not text cannot be read, so a person decides.
       if (oddCommand(input)) return [["high", "the command is not text"]];
-      return this.shell(text("command"), cwd);
+      return this.shellCandidates(text("command"), cwd);
     }
     if (toolName === "TodoWrite") return [["low", "lista de tarefas"]];
     const fields = READ_TOOLS[toolName];
@@ -296,10 +306,14 @@ export class RiskClassifier {
     return [["medium", "ferramenta que o classificador não conhece"]];
   }
 
-  private shell(rawCommand: string, cwd: string): Candidate[] {
-    // A backslash before a newline is a line continuation: the shell reads the two lines as one
-    // (`.e\<LF>nv` is `.env`). An escaped backslash, `\\<LF>`, is not one (#2496).
-    const command = rawCommand.replace(/(?<!\\)((?:\\\\)*)\\\r?\n/g, "$1");
+  /** The command as written, and as a shell that joins continuation lines reads it. */
+  private shellCandidates(command: string, cwd: string): Candidate[] {
+    const joined = joinContinuations(command);
+    const written = this.shell(command, cwd);
+    return joined === command ? written : [...written, ...this.shell(joined, cwd)];
+  }
+
+  private shell(command: string, cwd: string): Candidate[] {
     const out: Candidate[] = [["medium", "comando de shell"]];
     // A pipe hands its output to the next command: split on single pipes to know who is fed.
     for (const statement of command.split(/&&|\|\||[;&\n]/)) {
@@ -348,11 +362,13 @@ export class RiskClassifier {
     // A command that is not text fails closed, as its level does (`candidates`).
     if (oddCommand(input)) return true;
     const command = typeof input.command === "string" ? input.command : "";
-    return segments(command).some((segment) => {
-      const { prog, args } = invocation(segment);
-      const sub = prog === "git" ? gitCommand(args).sub : "";
-      return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
-    });
+    return [command, joinContinuations(command)].some((text) =>
+      segments(text).some((segment) => {
+        const { prog, args } = invocation(segment);
+        const sub = prog === "git" ? gitCommand(args).sub : "";
+        return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
+      }),
+    );
   }
 
   /** Inside the cwd or one of `allowedRoots`. */
