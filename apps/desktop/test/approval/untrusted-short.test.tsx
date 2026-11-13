@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { en } from "../src/i18n/en.ts";
-import { translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
+import { en } from "../../src/i18n/en.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { UntrustedNotice } = await import("../src/features/trust/untrusted-notice.tsx");
-const { ShortArea, SessionPane } = await import("../src/features/sessions/parts.tsx");
+const { UntrustedNotice } = await import("../../src/features/trust/untrusted-notice.tsx");
+const { ShortArea, SessionPane } = await import("../../src/features/sessions/parts.tsx");
 
 afterEach(() => cleanup());
 

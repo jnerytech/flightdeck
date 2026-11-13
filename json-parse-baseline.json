@@ -1,6 +1,4 @@
 {
   "apps/daemon/src/board/pr.ts": 1,
-  "apps/desktop/src/features/costs/page.tsx": 2,
-  "apps/desktop/src/features/sessions/sessions-hub.tsx": 1,
   "packages/protocol/src/index.ts": 1
 }

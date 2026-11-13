@@ -22,6 +22,7 @@ import { ScopeMenu } from "@/features/shell/index.ts";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
+import { useKeyed } from "@/shared/hooks/index.ts";
 import { CardGrid, EmptyState, NativeSelect, Page, Toolbar } from "@/shared/layout/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
@@ -276,11 +277,10 @@ export function SessionsHub(
   });
   /** Estimated cost of each row's session, by row key (hosts with costs, phase 8). */
   const [costs, setCosts] = useState<Record<string, number>>({});
-  const asked = JSON.stringify(costAsks(state.hosts, rows));
+  const asked = useKeyed(costAsks(state.hosts, rows));
   useEffect(() => {
-    const byHost = JSON.parse(asked) as Array<[string, string[]]>;
     void Promise.all(
-      byHost.map(async ([hostId, ids]) => {
+      asked.map(async ([hostId, ids]) => {
         const result = await store.hostCommand(hostId, "costs.sessions", {
           claudeSessionIds: ids.slice(0, 500),
         });
