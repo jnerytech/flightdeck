@@ -173,8 +173,8 @@ export function CardWork(
     if (!conversation)
       return <p className="text-muted-foreground text-sm">{t("cardUi.noSession")}</p>;
     return (
-      <div
-        role="log"
+      <section
+        // A named region, not a log: the conversation inside is the log, and logs do not nest (#2674).
         aria-label={
           shown
             ? t("cardUi.stepConversation", { step: shown.step.stepId })
@@ -191,7 +191,7 @@ export function CardWork(
           focusRequestId={null}
           alwaysAllow={props.alwaysAllow}
         />
-      </div>
+      </section>
     );
   };
   return (

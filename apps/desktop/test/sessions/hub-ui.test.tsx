@@ -338,7 +338,7 @@ describe("hub-ui", () => {
     expect(group("central")).not.toContain("Do histórico");
 
     await rowAction("repo-run", "Renomear");
-    const field = screen.queryByLabelText("Novo nome") as HTMLInputElement | null;
+    const field = screen.queryByLabelText("Nome de repo-run") as HTMLInputElement | null;
     expect(field).not.toBeNull();
     await act(async () => {
       fireEvent.change(field as HTMLInputElement, { target: { value: "Servidor" } });
