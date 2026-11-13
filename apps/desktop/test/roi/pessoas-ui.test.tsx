@@ -6,7 +6,7 @@ import {
   blocking,
   describeViolation,
 } from "../../../../scripts/lib/browser/axe.ts";
-import { usd } from "../../src/features/costs/costs.ts";
+import { usd } from "../../src/features/costs/domain/costs.ts";
 import { en } from "../../src/i18n/en.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";

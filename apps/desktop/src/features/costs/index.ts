@@ -5,6 +5,13 @@
  * charts and tables) is left out on purpose: `app/Screens.tsx` loads it as a lazy chunk, and
  * exporting it here would pull it into the main bundle.
  */
+
+export {
+  type ClientBudgetsCore,
+  ClientBudgetsSlice,
+  type ClientBudgetsSliceState,
+  initialClientBudgetsState,
+} from "./client-budgets-store.ts";
 export {
   ACTION_LABELS,
   type BudgetAlert,
@@ -15,18 +22,12 @@ export {
   estimateNote,
   projectName,
   share,
-} from "./budgets.ts";
+} from "./domain/budgets.ts";
 export {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
   evaluateClientBudgets,
-} from "./client-budgets.ts";
-export {
-  type ClientBudgetsCore,
-  ClientBudgetsSlice,
-  type ClientBudgetsSliceState,
-  initialClientBudgetsState,
-} from "./client-budgets-store.ts";
+} from "./domain/client-budgets.ts";
 export {
   ALL_HOSTS,
   addDays,
@@ -37,7 +38,7 @@ export {
   projectLabels,
   projectPath,
   usd,
-} from "./costs.ts";
+} from "./domain/costs.ts";
 export {
   ALL_SCOPE,
   activeScope,
@@ -48,12 +49,12 @@ export {
   scopeHosts,
   scopeOfValue,
   scopeValue,
-} from "./data-scope.ts";
+} from "./domain/data-scope.ts";
+export { projectLabel as usageProjectLabel, type UsageHistoryTarget } from "./domain/usage-rows.ts";
 export {
   type BudgetsCore,
   BudgetsSlice,
   type BudgetsSliceState,
   initialBudgetsState,
 } from "./store.ts";
-export { projectLabel as usageProjectLabel, type UsageHistoryTarget } from "./usage-rows.ts";
 export { wireBudgets, wireClientBudgets } from "./wire.ts";

@@ -4,7 +4,7 @@ import {
   DATA_SCOPE_KEY,
   DataScopeController,
   hubHostScope,
-} from "../../src/features/costs/data-scope.ts";
+} from "../../src/features/costs/domain/data-scope.ts";
 import { HOSTS_KEY } from "../../src/features/hosts/hosts.ts";
 import {
   HUB_FILTER_KEY,
