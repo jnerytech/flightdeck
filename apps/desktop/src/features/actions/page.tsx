@@ -93,10 +93,10 @@ export function ActionsPage(
 ) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
-  const problemsId = useId();
   const base = useId();
-  /** The id of an action's runs list, which its Runs button controls. */
-  const runsId = (key: string) => `${base}-${key.replaceAll(/\W/g, "_")}`;
+  const problemsId = `${base}-problems`;
+  /** The id of an action's runs list, which its Runs button controls (by its place, so no two share one). */
+  const runsId = (index: number) => `${base}-runs-${index}`;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   /** The runs of the actions whose history is open, by `source:name`. */
@@ -110,6 +110,8 @@ export function ActionsPage(
   const loading = useMinLoading(actions === null && !loadFailed);
 
   const load = useCallback(async () => {
+    // A retry shows the loading shape again, so the person sees it was taken.
+    setLoadFailed(false);
     // The page has its own retry, so the toast offers none that would throw the answer away.
     const list = await store.hostCommand(hostId, "actions.list", { projectId }, { retry: false });
     // `hostCommand` raises the toast with the reason and answers null for a refused request.
@@ -177,7 +179,7 @@ export function ActionsPage(
           {t("actionsUi.sameUser")}
         </p>
         {loading && <LoadingState label={t("actionsUi.loading")} />}
-        {!loading && actions === null && loadFailed && (
+        {!loading && loadFailed && (
           <ErrorState
             message={t("actionsUi.loadFailed")}
             retryLabel={t("actionsUi.retry")}
@@ -193,10 +195,10 @@ export function ActionsPage(
         )}
         {errors.length > 0 && (
           // An alert: what a remove or a save leaves in the file is announced as it appears.
-          <section role="alert" aria-labelledby={problemsId}>
-            <h3 id={problemsId} className="font-medium text-status-error text-xs">
+          <section role="alert">
+            <h2 id={problemsId} className="font-medium text-status-error text-xs">
               {t("actionsUi.problems")}
-            </h3>
+            </h2>
             <ul
               aria-labelledby={problemsId}
               className="flex flex-col gap-1 text-status-error text-xs"
@@ -208,7 +210,7 @@ export function ActionsPage(
           </section>
         )}
         <ul aria-label={t("actionsUi.list")} className="flex flex-col gap-2">
-          {(actions ?? []).map((action) => {
+          {(actions ?? []).map((action, index) => {
             const secrets = [...action.secrets.values, ...action.secrets.files];
             const params = Object.keys(action.params);
             const key = `${action.source}:${action.name}`;
@@ -245,13 +247,18 @@ export function ActionsPage(
                     name: action.name,
                   })}
                   aria-expanded={Boolean(history[key])}
-                  aria-controls={history[key] ? runsId(key) : undefined}
+                  aria-controls={history[key] ? runsId(index) : undefined}
                   onClick={() => toggleRuns(action)}
                 >
                   {t(history[key] ? "actionsUi.hideRunsButton" : "actionsUi.runsButton")}
                 </ActionButton>
                 {history[key] && (
-                  <Runs id={runsId(key)} store={store} action={action} runs={history[key] ?? []} />
+                  <Runs
+                    id={runsId(index)}
+                    store={store}
+                    action={action}
+                    runs={history[key] ?? []}
+                  />
                 )}
                 {action.source === "app" && (
                   <span className="flex gap-1 self-start">

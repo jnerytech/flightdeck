@@ -130,6 +130,7 @@ export function ActionForm(
   const save = async () => {
     // The old error goes while the new request is out, so a repeated one shows (and scrolls) again.
     setError(null);
+    setProblems([]);
     const result = await store.hostRequest(props.hostId, "actions.save", {
       projectId: props.projectId,
       definition: definitionOf(draft, initial),
