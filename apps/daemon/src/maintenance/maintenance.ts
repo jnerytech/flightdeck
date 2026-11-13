@@ -50,8 +50,9 @@ const LastPruneFields: z.ZodType<LastPrune> = z.object({
     events: z.number(),
     permission_requests: z.number(),
     external_sessions: z.number(),
-    usage_entries: z.number(),
-    quota_samples: z.number(),
+    // Counted from 2026-10-29 on: a file an older daemon wrote lacks them, and reads as none.
+    usage_entries: z.number().default(0),
+    quota_samples: z.number().default(0),
   }),
 });
 /** Loose: a key the file holds but `State` does not name is kept when the file is saved again. */
