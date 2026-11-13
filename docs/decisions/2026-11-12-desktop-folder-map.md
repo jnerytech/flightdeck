@@ -96,7 +96,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `Sidebar.tsx` | `features/shell/` | **moved** as `sidebar.tsx`, unsplit (about 980 lines): split by reason to change (nav list, project tree, footer) in a later PR, not in the move |
 | `StartScreen.tsx` | **theirs** (`features/sessions/`) | **moved** (`start-screen.tsx`) |
 | `ToolCall.tsx` | **theirs** (`features/sessions/`) | **moved** (`tool-call.tsx`, `tool-call-body.tsx`) |
-| `lazy-screen.ts` | `app/` | goes with `Screens.tsx` |
+| `lazy-screen.ts` | `app/` | **moved** to `app/lazy-screen.ts` (#1597, 2026-11-13): it reads nothing but React, so it does not wait for `Screens.tsx`, its one reader |
 | `simple/SimpleApp.tsx` | `features/home/` | with `components/simple/` (**moved**, `simple-app.tsx`) |
 
 ## `lib/`

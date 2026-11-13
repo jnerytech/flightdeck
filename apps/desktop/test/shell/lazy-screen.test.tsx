@@ -13,7 +13,7 @@ import { settlePlain } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
-const { lazyScreen, preloadAllScreens } = await import("../../src/ui/lazy-screen.ts");
+const { lazyScreen, preloadAllScreens } = await import("../../src/app/lazy-screen.ts");
 const screen = liveScreen(within);
 
 function Late() {
