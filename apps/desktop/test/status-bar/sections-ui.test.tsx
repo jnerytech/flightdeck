@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
-import { settleMaybe, waiter } from "../wait.ts";
+import { settleMaybe, stays, waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -283,10 +283,7 @@ describe("status bar items open their host section (#1484)", () => {
       let done = 0;
       const host = withFeatures(["hostPause"]);
       render(hostPage(store, () => void done++, false, { section: "health", host }));
-      // The page's reads answer empty at once: two flushes let its effects run before the check.
-      await act(async () => {});
-      await act(async () => {});
-      expect(done).toBe(0);
+      await stays(() => done === 0);
     });
   });
 });
