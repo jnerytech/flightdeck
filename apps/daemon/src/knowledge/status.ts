@@ -1,7 +1,7 @@
 import { chmod, lstat, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type { KnowledgeEntry, KnowledgeStatus } from "@flightdeck/protocol";
-import { frontmatter } from "../agentcfg/files.ts";
+import { frontmatter } from "../agentcfg/index.ts";
 import { FlightdeckError, readRegularSized, ulid } from "../kernel/index.ts";
 import { listKnowledge, READ_BYTES, shownHash } from "./list.ts";
 import { parseKnowledge } from "./parse.ts";
