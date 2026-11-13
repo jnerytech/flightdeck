@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli, GithubCli } from "../../src/board/pr.ts";
+import { AzureDevOpsCli } from "../../src/board/pr.ts";
+import { GithubCli } from "../../src/github/index.ts";
 import { AzureIssues } from "../../src/issues/providers.ts";
 import {
   AZ_CUT_NOTE,
