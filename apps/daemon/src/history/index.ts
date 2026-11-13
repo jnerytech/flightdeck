@@ -5,4 +5,6 @@
  */
 export { normalizeCwd } from "./folder.ts";
 export { HistoryIndexer } from "./indexer.ts";
+export { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "./parser.ts";
+export { type LiveState, requestLine, sessionLine } from "./session-line.ts";
 export { promptText } from "./transcript-text.ts";
