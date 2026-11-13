@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { emptySummary } from "../../src/features/clients/client-costs.ts";
-import { CLIENT_BUDGET_ALERTS_KEY } from "../../src/features/costs/client-budgets.ts";
 import {
   type ClientBudgetsCore,
   ClientBudgetsSlice,
 } from "../../src/features/costs/client-budgets-store.ts";
+import { CLIENT_BUDGET_ALERTS_KEY } from "../../src/features/costs/domain/client-budgets.ts";
 
 /** A slice over a storage that holds what a test plants; the host answers with a month of nothing. */
 function sliceOver(announced: string) {

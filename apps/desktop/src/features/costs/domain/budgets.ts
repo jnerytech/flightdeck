@@ -1,6 +1,6 @@
 import type { Budget } from "@flightdeck/protocol";
-import { type Key, type T, translator } from "../../i18n/index.ts";
-import type { AppState } from "../../lib/app-store.ts";
+import { type Key, type T, translator } from "../../../i18n/index.ts";
+import type { AppState } from "../../../lib/app-store.ts";
 import { usd } from "./costs.ts";
 
 export const ACTION_LABELS: Record<Budget["action"], string> = {

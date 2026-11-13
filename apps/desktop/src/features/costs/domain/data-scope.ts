@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parseJsonText } from "@/shared/lib/index.ts";
-import type { Platform } from "../../platform/types.ts";
-import type { ConnectionStatus } from "../hosts/index.ts";
+import type { Platform } from "../../../platform/types.ts";
+import type { ConnectionStatus } from "../../hosts/index.ts";
 
 /** Where the data scope is kept across starts (#126). */
 export const DATA_SCOPE_KEY = "flightdeck.dataScope";

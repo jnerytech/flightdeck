@@ -5,7 +5,7 @@ import {
   labelledKeys,
   periodProjectKeys,
   withFilter,
-} from "../../src/features/costs/costs-derive.ts";
+} from "../../src/features/costs/domain/costs-derive.ts";
 
 const host = (id: string, status: string, features?: string[]) => ({
   id,

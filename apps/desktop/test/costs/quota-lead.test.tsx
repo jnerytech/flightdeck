@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Quota } from "../../../daemon/src/quota/quota.ts";
-import { usd } from "../../src/features/costs/costs.ts";
+import { usd } from "../../src/features/costs/domain/costs.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { waiter } from "../wait.ts";

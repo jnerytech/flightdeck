@@ -14,8 +14,8 @@ import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
   evaluateClientBudgets,
-} from "./client-budgets.ts";
-import { usd } from "./costs.ts";
+} from "./domain/client-budgets.ts";
+import { usd } from "./domain/costs.ts";
 
 const Announced = validValues(z.array(z.number()));
 
