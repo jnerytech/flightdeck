@@ -77,6 +77,46 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", "echo x >|/tmp/fora.txt"],
   ["high", "echo x>a>/tmp/fora.txt"],
   ["high", "true&&>/tmp/fora.txt"],
+  // A target the shell reads as more than the text next to the `>` (#2496): a quoted prefix before an
+  // escaping tail, a brace expansion, a backslash escape, a process substitution, a read-write open.
+  ["high", 'echo x >"a"/../../etc/x'],
+  ["high", "echo x >'a'/../../etc/x"],
+  ["high", "echo x >{/tmp/fora.txt,b}"],
+  ["high", "echo x >\\/tmp/fora.txt"],
+  ["high", "echo x >(tee /tmp/fora.txt)"],
+  ["high", "cat <>/tmp/fora.txt"],
+  ["high", "exec 3<>/tmp/fora.txt"],
+  // An escaped quote does not open a quoted string, so the `>` after it is still a redirect.
+  ["high", 'echo x >a\\"b>/tmp/fora.txt "z"'],
+  // A backslash before a newline is a line continuation: the shell joins the two lines.
+  ["high", "echo x >src\\\n/../../etc/x"],
+  ["high", "echo x >src\\\r\n/../../etc/x"],
+  // `~user` and `~+` expand to another folder; only `~` and `~/` are the home.
+  ["high", "echo x >~root/.bashrc"],
+  ["high", "echo x >~+/../x"],
+  // The join is for the whole command, not only the redirect scan: `.e\<LF>nv` is `.env`.
+  ["high", "cat .e\\\nnv"],
+  ["high", "r\\\nm -rf x"],
+  // The join only adds a reading: it never hides the lines as written. A comment ends at the
+  // newline whatever precedes it, `\<CR><LF>` ends the command, and `\` is a PowerShell separator.
+  ["high", "echo hi # x \\\nrm -rf x"],
+  ["high", "cd src\\\r\nrm -rf build"],
+  ["high", "cd src\\\nRemove-Item -Recurse -Force build"],
+  // An escaped `>` is part of the target; the real redirect after it still counts.
+  ["high", "echo x >a\\>>/etc/y"],
+  // `\\` is a literal backslash, so the newline after it ends the command; it is no continuation.
+  ["high", "echo x >a\\\\\n>/etc/y"],
+  // A `>` inside quotes must not let the quoted text swallow the real redirect after it.
+  ["high", 'echo "a>" ; echo x > /etc/cron.d/evil ; echo "b"'],
+  ["high", `echo '>"' ; echo x >/etc/y ; echo '"'`],
+  ["high", 'echo ">">"/etc/y"'],
+  // A glob in a target is read by the shell as whatever it matches, `.?` as `..`.
+  ["high", "echo x >.?/pwned"],
+  ["high", "echo x >.[.]/pwned"],
+  ["high", "echo x >*.log"],
+  // zsh: `>!file` forces the write and `>=(cmd)` is a process substitution.
+  ["high", "echo x >!/tmp/fora.txt"],
+  ["high", "echo x >=(cat)"],
   // Credentials, read or not.
   ["high", "cat ~/.ssh/id_rsa"],
   ["high", "cat .env"],
@@ -103,6 +143,16 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "echo x >| saida.txt"],
   ["medium", "echo x>a>b"],
   ["medium", "npm test &>/dev/null"],
+  // What the rows of #2496 must not catch: a quoted name with a space, a quoted prefix with a tail
+  // that stays inside, a subshell, a Windows-style relative path, a read-write open inside the cwd.
+  ["medium", 'echo x >"my file.txt"'],
+  ["medium", "echo x >'a b'/c.txt"],
+  ["medium", 'echo x >"a"/b.txt'],
+  ["medium", "(cd src && make > log.txt)"],
+  ["medium", "echo x > .\\saida.txt", "PowerShell"],
+  ["medium", "exec 3<>fifo"],
+  ["medium", "cat <&3"],
+  ["medium", 'echo x >"sem fim'],
   ["medium", "echo ok > /dev/null"],
   ["medium", "dir > NUL"],
   ["medium", "bun test > saida.txt"],
@@ -173,6 +223,10 @@ describe("risco", () => {
       level: "medium",
       network: true,
     });
+    // A continuation hides the program name from the raw text: `cu\<LF>rl` runs curl.
+    expect(risk.classify("Bash", { command: "cu\\\nrl https://x.example" }, CWD).network).toBe(
+      true,
+    );
     expect(level("mcp__db__drop_table", { table: "t" })).toBe("high");
     expect(level("mcp__fs__delete_file", { path: "a" })).toBe("high");
     expect(level("mcp__infra__destroy", {})).toBe("high");

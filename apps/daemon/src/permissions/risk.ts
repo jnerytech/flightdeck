@@ -101,6 +101,16 @@ export { credential as isCredentialPath };
 /** The words of a command, without quotes, split also where a path cannot go on. */
 const words = (command: string) => command.split(/[\s"'`;|&<>()=,]+/).filter((w) => w !== "");
 
+/**
+ * A backslash before a newline is a line continuation: bash reads the two lines as one (`.e\<LF>nv`
+ * is `.env`). An escaped backslash, `\\<LF>`, is not one. This is a second reading, never a
+ * replacement: a comment, `\<CR><LF>` and PowerShell end the line, so the text as written is judged
+ * too (#2496).
+ */
+function joinContinuations(command: string): string {
+  return command.replace(/(?<!\\)((?:\\\\)*)\\\r?\n/g, "$1");
+}
+
 /** Separate commands (`;`, `&&`, `||`, `|`, `&`, newlines), each as its words. */
 function segments(command: string): string[][] {
   return command
@@ -266,7 +276,7 @@ export class RiskClassifier {
     if (SHELL_TOOLS.has(toolName)) {
       // A shell tool's command that is there but not text cannot be read, so a person decides.
       if (oddCommand(input)) return [["high", "the command is not text"]];
-      return this.shell(text("command"), cwd);
+      return this.shellCandidates(text("command"), cwd);
     }
     if (toolName === "TodoWrite") return [["low", "lista de tarefas"]];
     const fields = READ_TOOLS[toolName];
@@ -296,6 +306,13 @@ export class RiskClassifier {
     return [["medium", "ferramenta que o classificador não conhece"]];
   }
 
+  /** The command as written, and as a shell that joins continuation lines reads it. */
+  private shellCandidates(command: string, cwd: string): Candidate[] {
+    const joined = joinContinuations(command);
+    const written = this.shell(command, cwd);
+    return joined === command ? written : [...written, ...this.shell(joined, cwd)];
+  }
+
   private shell(command: string, cwd: string): Candidate[] {
     const out: Candidate[] = [["medium", "comando de shell"]];
     // A pipe hands its output to the next command: split on single pipes to know who is fed.
@@ -309,15 +326,25 @@ export class RiskClassifier {
     if (/\bbase64\b[^|;&\n]*\s(-d|-D|--decode)\b[^|;&\n]*\|/.test(command)) {
       out.push(["high", "base64 -d em pipe"]);
     }
-    // `>`, `>>`, `&>`, `&>>`, `>&file` and `>|file`; `>&2` and `>&-` copy or close a descriptor. The
-    // lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`, match too.
+    // `>`, `>>`, `&>`, `&>>`, `>&file`, `>|file` and `<>file`; `>&2` and `>&-` copy or close a
+    // descriptor. The lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`,
+    // match too, unless that first `>` is escaped. The target is one shell word: quoted and bare
+    // parts glued together (#2496).
     for (const match of command.matchAll(
-      /(?<![<>])&?\d?>{1,2}([&|])?\s*("[^"]*"|'[^']*'|[^\s;&|<>]+)/g,
+      /(?<!(?<!\\)[<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g,
     )) {
-      const target = (match[2] as string).replace(/^["']|["']$/g, "");
+      const word = match[2] as string;
+      const target = word.replace(/["']/g, "");
       if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;
       if (SINKS.has(target.toLowerCase())) continue;
-      if (/[$%]/.test(target) || !this.inside(target, cwd, [])) {
+      // A `>` that is only quoted text can start a match whose "quoted target" runs over a real
+      // redirect further on; a quoted part with a shell operator in it is never a plain name.
+      const spans = /"[^"]*[;&|<>\n]|'[^']*[;&|<>\n]/.test(word);
+      if (
+        spans ||
+        /[$%{*?[]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) ||
+        !this.insideAny(target, cwd)
+      ) {
         out.push(["high", "redirecionamento para fora do cwd"]);
       }
     }
@@ -339,16 +366,28 @@ export class RiskClassifier {
     // A command that is not text fails closed, as its level does (`candidates`).
     if (oddCommand(input)) return true;
     const command = typeof input.command === "string" ? input.command : "";
-    return segments(command).some((segment) => {
-      const { prog, args } = invocation(segment);
-      const sub = prog === "git" ? gitCommand(args).sub : "";
-      return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
-    });
+    return [command, joinContinuations(command)].some((text) =>
+      segments(text).some((segment) => {
+        const { prog, args } = invocation(segment);
+        const sub = prog === "git" ? gitCommand(args).sub : "";
+        return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
+      }),
+    );
   }
 
   /** Inside the cwd or one of `allowedRoots`. */
   private allowed(path: string, cwd: string): boolean {
     return this.inside(path, cwd, this.opts.allowedRoots);
+  }
+
+  /**
+   * A redirect target read three ways: as written, with `\` as a separator (Windows) and with `\`
+   * as an escape (bash, where `\/etc/x` is `/etc/x`). Outside the cwd in any of them is outside.
+   */
+  private insideAny(target: string, cwd: string): boolean {
+    return [target, target.replaceAll("\\", "/"), target.replaceAll("\\", "")].every((reading) =>
+      this.inside(reading, cwd, []),
+    );
   }
 
   private inside(path: string, cwd: string, roots: readonly string[]): boolean {
