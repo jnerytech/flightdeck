@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { MissingToolsCards } from "@/features/deps/index.ts";
-import { ShortcutKeys } from "@/features/shortcuts/index.ts";
+import { ShortcutKeys } from "@/features/shortcuts/ui.ts";
 import { useT } from "@/i18n/context";
 import { Inline, Page, Section, Stack } from "@/shared/layout/index.ts";
 import { basename } from "@/shared/lib/index.ts";
