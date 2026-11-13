@@ -8,7 +8,7 @@ import type { Database } from "bun:sqlite";
 import type { Automation, AutomationRun, Issue } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
-import type { Issues } from "../issues/issues.ts";
+import type { Issues } from "../issues/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import { localDay } from "../quota/index.ts";

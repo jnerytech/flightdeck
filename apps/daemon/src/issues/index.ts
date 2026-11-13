@@ -1,7 +1,9 @@
 /**
- * The issues domain's public entry (#1589). It exports, for now, only the issues service, as the
- * automations' wiring builds it; the rest of the domain moves behind this entry with the remaining
- * deep imports. Another domain imports from here.
+ * The issues domain's public entry (#1589): the issues service the automations' wiring builds, and
+ * the issue references and remotes a card's pull request names. Another domain imports from here,
+ * never a file inside.
  */
 
 export { Issues } from "./issues.ts";
+export { closingLine } from "./providers.ts";
+export { azureCoords } from "./remote.ts";
