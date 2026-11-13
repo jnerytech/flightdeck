@@ -18,6 +18,7 @@ import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { MENU_ITEM, moveInMenu } from "./menu-keys.ts";
 import { insideFolder, resolvePath } from "./terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "./terminal-session.ts";
 import {
@@ -175,13 +176,16 @@ export function TerminalPage(
   // A click anywhere else closes the menu.
   useEffect(() => {
     if (!menu) return;
-    const close = () => setMenu(null);
+    const close = () => {
+      setMenu(null);
+      screen.current?.focus();
+    };
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   }, [menu]);
   // The menu takes the focus, on the first thing it can do.
   useEffect(() => {
-    if (menu) menuRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+    if (menu) menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus();
   }, [menu]);
   const fromMenu = (action: "copy" | "paste" | "selectAll") => {
     setMenu(null);
@@ -360,10 +364,12 @@ export function TerminalPage(
               // Handled here: left unmarked, the key closes the detail too (#2591).
               e.preventDefault();
               setMenu(null);
-            }
+              screen.current?.focus();
+            } else moveInMenu(e, menuRef.current);
           }}
         >
           <Button
+            role="menuitem"
             variant="ghost"
             size="sm"
             className="justify-start"
@@ -373,6 +379,7 @@ export function TerminalPage(
             {t("terminalUi.copy")}
           </Button>
           <Button
+            role="menuitem"
             variant="ghost"
             size="sm"
             className="justify-start"
@@ -381,6 +388,7 @@ export function TerminalPage(
             {t("terminalUi.paste")}
           </Button>
           <Button
+            role="menuitem"
             variant="ghost"
             size="sm"
             className="justify-start"

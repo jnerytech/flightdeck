@@ -74,7 +74,9 @@ async function hookSession(d: Awaited<ReturnType<typeof setup>>, launch: string)
 }
 
 const state = (name: string) => screen.queryByText(name);
-const button = (name: string) => screen.queryByRole("button", { name });
+// The right-click menu's items are menu items (#2608), the rest of the screen's controls are buttons.
+const button = (name: string) =>
+  screen.queryByRole("button", { name }) ?? screen.queryByRole("menuitem", { name });
 const click = async (name: string) => {
   const target = button(name);
   expect(target).not.toBeNull();
