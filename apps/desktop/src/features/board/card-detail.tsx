@@ -1,5 +1,6 @@
 import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { memo, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CardSyncLog } from "@/features/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/features/board/card-adjustment";
 import { CardArena } from "@/features/board/card-arena";
@@ -17,7 +18,7 @@ import { reasonText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
-import { Page } from "@/shared/layout/index.ts";
+import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -133,11 +134,26 @@ export const CardDetail = memo(function CardDetail(props: {
 
   // A route straight to a card (a link, a notification) has not loaded its board: ask the host.
   const missing = card === undefined;
+  /** The host answered the lookup (#2599): until then the page loads, after it a missing card is gone. */
+  const [asked, setAsked] = useState(false);
   useEffect(() => {
-    if (missing) void store.hostCommand(hostId, "card.get", { cardId });
+    setAsked(false);
+    if (missing) void store.hostCommand(hostId, "card.get", { cardId }).then(() => setAsked(true));
   }, [store, hostId, cardId, missing]);
 
-  if (!card) return <p className="p-6 text-muted-foreground text-sm">{t("cardUi.notFound")}</p>;
+  if (!card) {
+    if (!asked) return <LoadingState label={t("cardUi.loadingTitle")} />;
+    return (
+      <EmptyState
+        title={t("cardUi.notFound")}
+        action={
+          <Button variant="outline" onClick={props.onBack}>
+            {t("cardUi.back")}
+          </Button>
+        }
+      />
+    );
+  }
 
   /** The steps of the run that wait at a gate for the person (#227). */
   const waiting =
