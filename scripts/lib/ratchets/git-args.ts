@@ -175,7 +175,7 @@ function exposed(argument: string): boolean {
   );
 }
 
-/** Calls of `git(` and `gitLimited(` in `source` that pass a base or branch without a guard (issue #345). */
+/** Calls of `git(`, `gitLimited(` and `gitWith(` in `source` that pass a base or branch without a guard (issue #345). */
 export function unguardedGitCalls(source: string, file = ""): GitArgFinding[] {
   const masked = mask(source);
   const lines = source.split("\n");
