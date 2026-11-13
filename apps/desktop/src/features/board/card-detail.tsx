@@ -29,6 +29,7 @@ import { CardConflicts } from "./card-conflicts.tsx";
 import { CardDeps } from "./card-deps.tsx";
 import { canMergeCardPr } from "./domain/card-merge-pr-model.ts";
 import { opensOnChanges } from "./domain/card-next-step.ts";
+import { useCardCosts } from "./use-card-costs.ts";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
 
@@ -77,9 +78,6 @@ export const CardDetail = memo(function CardDetail(props: {
   const withMergePr = has("cardPrMerge");
   /** The Merge PR confirm is open (issue #1196). */
   const [mergeOpen, setMergeOpen] = useState(false);
-  /** Estimated cost of every session of the card, and of the open run's (phase 8). */
-  const [cardCost, setCardCost] = useState<number | null>(null);
-  const [runCost, setRunCost] = useState<number | null>(null);
   const runId = card?.workflowRunId ?? null;
   const run = runId ? state.runs[sessionKey(hostId, runId)] : undefined;
   /** Step opened from the timeline: its conversation or its check output. */
@@ -101,17 +99,7 @@ export const CardDetail = memo(function CardDetail(props: {
 
   // Again whenever the card or its run moves on.
   const cardMoment = `${card?.updatedAt}/${run?.status}/${run?.steps.length}`;
-  useEffect(() => {
-    if (!withCosts || !cardMoment) return;
-    void store
-      .hostCommand(hostId, "costs.card", { cardId })
-      .then((r) => setCardCost(r?.costUsd ?? null));
-    if (runId) {
-      void store
-        .hostCommand(hostId, "costs.run", { runId })
-        .then((r) => setRunCost(r?.costUsd ?? null));
-    }
-  }, [store, hostId, cardId, runId, withCosts, cardMoment]);
+  const { cardCost, runCost } = useCardCosts(store, hostId, cardId, runId, withCosts, cardMoment);
 
   useEffect(() => {
     // The project is known once the card is (a direct route loads it).
