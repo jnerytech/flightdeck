@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe, stays } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
@@ -102,5 +102,48 @@ describe("the vault page reads a value only to describe a new row (#2612)", () =
     });
     await settle(() => screen.queryByText("glpat-…2222") !== null);
     expect(screen.queryByText("ghp_…1111")).toBeNull();
+  });
+});
+
+describe("the page's derivation loop follows the page (#2612)", () => {
+  test("leaving the page mid-way stops the reads: nothing is derived once it is gone", async () => {
+    const { platform } = memoryPlatform();
+    const reads: string[] = [];
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const get = platform.vault.get.bind(platform.vault);
+    platform.vault.get = async (id) => {
+      reads.push(id);
+      // The first read waits, so the page can be left while the loop is on its first secret.
+      if (reads.length === 1) await gate;
+      return get(id);
+    };
+    const store = new AppStore(platform, { baseDelayMs: 60_000 });
+    store.scan.refresh = async () => {};
+    await addedSecret(store, { name: "github", type: "token", value: TOKEN_A });
+    await addedSecret(store, { name: "gitlab", type: "token", value: TOKEN_B });
+    const page = render(<VaultPage store={store} />);
+    await settle(() => reads.length === 1);
+    page.unmount();
+    release();
+    await stays(() => reads.length === 1);
+  });
+
+  test("a secret the vault cannot read hides only its own details, not the others'", async () => {
+    const { platform } = memoryPlatform();
+    const get = platform.vault.get.bind(platform.vault);
+    const store = new AppStore(platform, { baseDelayMs: 60_000 });
+    store.scan.refresh = async () => {};
+    const broken = await addedSecret(store, { name: "github", type: "token", value: TOKEN_A });
+    await addedSecret(store, { name: "gitlab", type: "token", value: TOKEN_B });
+    platform.vault.get = async (id) => {
+      if (id === broken.id) throw new Error("keyring refused");
+      return get(id);
+    };
+    render(<VaultPage store={store} />);
+    const shown = await settleMaybe(() => screen.queryByText("glpat-…2222") !== null);
+    expect(shown).toBe(true);
   });
 });
