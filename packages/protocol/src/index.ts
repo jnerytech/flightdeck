@@ -14,6 +14,7 @@ import {
   TeamsUpdatedFrame,
 } from "./collaboration.ts";
 import { cmd } from "./command.ts";
+import { parseFrame } from "./frame.ts";
 import { HistoryChanged, type HistoryResults, historyCommands } from "./history.ts";
 import { type HostResults, hostCommands } from "./host.ts";
 import {
@@ -466,7 +467,7 @@ export type ServerMessage = z.infer<typeof ServerMessage>;
 
 /** Parses a raw JSON frame into a `ServerMessage`, throwing on invalid input. */
 export function parseServerMessage(raw: string): ServerMessage {
-  return ServerMessage.parse(JSON.parse(raw));
+  return parseFrame(ServerMessage, raw);
 }
 
 export * from "./activity.ts";
