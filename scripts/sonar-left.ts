@@ -4,7 +4,7 @@
  * open findings on main, `STALE?` where the file changed on main since Sonar's last analysed
  * commit. The logic is in lib/sonar/left.ts. The API is public: no token is read.
  */
-import { runCommand } from "../apps/daemon/src/board/command.ts";
+import { runCommand } from "../apps/daemon/src/kernel/command.ts";
 import { sonarLeft } from "./lib/sonar/left.ts";
 
 const git = async (args: string[]) => {

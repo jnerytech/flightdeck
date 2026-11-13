@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
-const { Notices } = await import("../../src/components/feedback/notices.tsx");
+const { Notices } = await import("../../src/features/shell/notices.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

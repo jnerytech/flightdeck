@@ -539,7 +539,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     const controller = new AbortController();
     controller.abort();
     const ran: string[][] = [];
-    const run: typeof import("../../src/board/command.ts").runLimited = async (cmd) => {
+    const run: typeof import("../../src/kernel/command.ts").runLimited = async (cmd) => {
       ran.push(cmd);
       return { code: 1, stdout: "", stderr: "", truncated: false };
     };
@@ -557,7 +557,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     const { repo } = await setup();
     const gate = Promise.withResolvers<void>();
     // The held searches ignore the abort and end only when the gate opens: a slow kill.
-    const run: typeof import("../../src/board/command.ts").runLimited = async (cmd) => {
+    const run: typeof import("../../src/kernel/command.ts").runLimited = async (cmd) => {
       if (cmd.includes("held")) await gate.promise;
       return { code: 1, stdout: "", stderr: "", truncated: false };
     };
@@ -589,7 +589,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     const other = Promise.withResolvers<void>();
     const answer = { code: 1, stdout: "", stderr: "", truncated: false };
     // "first" runs until it is aborted or the second search has run; "other" is on its own connection.
-    const run: typeof import("../../src/board/command.ts").runLimited = async (
+    const run: typeof import("../../src/kernel/command.ts").runLimited = async (
       cmd,
       _cwd,
       _limit,

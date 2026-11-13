@@ -6,83 +6,22 @@ import type {
   SessionRecap,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
-import { initialAccountState } from "../features/account/index.ts";
-import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import {
-  type ClientScopeSlice,
-  Clients,
-  knownProjects,
-  UNASSIGNED,
-  wireClientScope,
-} from "../features/clients/index.ts";
-import {
-  type BudgetsSlice,
-  type ClientBudgetsSlice,
-  hubHostScope,
-  localDay,
-  wireBudgets,
-  wireClientBudgets,
-} from "../features/costs/index.ts";
-import { type HistorySlice, wireHistory } from "../features/history/index.ts";
-import {
-  type ConnectionStatus,
-  type HostConnection,
-  HostLink,
-  type HostRoutes,
-  HostTabs,
-  initialHealthState,
-  loadHosts,
-  type OnlineStep,
-  RequestError,
-  saveHosts,
-  statusLine,
-} from "../features/hosts/index.ts";
+import { type BudgetsSlice, localDay, wireBudgets } from "../features/costs/index.ts";
+import { HostLink, HostTabs, loadHosts, RequestError, saveHosts } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
-import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
-import { initialQuotaState } from "../features/quota/index.ts";
-import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
-import { RoiSettings } from "../features/roi/roi-settings.ts";
-import {
-  type ExternalSessionsSlice,
-  type FinishedSlice,
-  HISTORY_LIST_LIMIT,
-  hubRows,
-  type SessionActions,
-  type SessionCommandsSlice,
-  type SessionListsSlice,
-  type SessionStreamSlice,
-  type SessionSubscriptions,
-  type SessionsSlice,
-  SessionViews,
-  type SummariesSlice,
-  sessionKey,
-  takeHubHost,
-  wireExternalSessions,
-  wireFinished,
-  wireSessionActions,
-  wireSessionCommands,
-  wireSessionLists,
-  wireSessionStream,
-  wireSessionSubscriptions,
-  wireSessions,
-  wireSummaries,
-} from "../features/sessions/index.ts";
+import { SessionViews, sessionKey } from "../features/sessions/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
-import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import type { DeliveryRefusal } from "../features/vault/index.ts";
-import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
-import { Webhooks } from "../features/webhook/webhooks.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n } from "../i18n/index.ts";
@@ -97,7 +36,13 @@ import type {
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
-import { composeHosts, type HostSlices, newHostView } from "./compose/hosts.ts";
+import {
+  composeHosts,
+  composeLinkHandlers,
+  type HostSlices,
+  type LinkHandlers,
+} from "./compose/hosts.ts";
+import { composeLifecycle, type Lifecycle } from "./compose/lifecycle.ts";
 import { composeShell, type ShellSlices } from "./compose/shell.ts";
 import { composeVault, type VaultSlices } from "./compose/vault.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
@@ -118,9 +63,6 @@ export type {
 } from "./app-state.ts";
 export { HISTORY_PAGE, needsYou } from "./app-state.ts";
 export type { HostCommandType, HostResult } from "./kernel.ts";
-
-/** How often the app writes that it is still active (issue #1344). */
-const AWAY_MARK_MS = 60_000;
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
@@ -166,48 +108,22 @@ export class AppStore {
       this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
     selected: () => this.state.selected,
     watched: () => this.subscriptions.followed(),
-    onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
-    // Read at connect: the table is a field declared after this one.
-    routes: () => this.routes,
-    // Read at load, after the `host.info` answer: also declared after this field.
-    onlineSteps: () => this.onlineSteps,
+    onStatus: (hostId, conn, status) => this.handlers.onStatus(hostId, conn, status),
+    // Read at connect and at load: the handlers are built at the end of the constructor.
+    routes: () => this.handlers.routes,
+    onlineSteps: () => this.handlers.onlineSteps,
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
-  /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
-  readonly tray: TraySlice;
-  /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
-  readonly permissions: PermissionsSlice;
+  /** What the host link calls: its frames, its steps when a host comes online and its status (#2376). */
+  private readonly handlers: LinkHandlers;
+  /** The start and the stop of the app, with the timers they own (#2376). */
+  private readonly lifecycle: Lifecycle;
   private noticeSeq = 0;
-  /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
-  readonly summaries: SummariesSlice;
-  /** What a host tells about the Claude sessions started in a terminal (#1596). */
-  readonly external: ExternalSessionsSlice;
-  /** What the Sessions screen lists from the online hosts (#1596). */
-  readonly sessionLists: SessionListsSlice;
-  /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
-  readonly finished: FinishedSlice;
-  /** What a host's session events do to the conversations the app holds (#1596). */
-  readonly stream: SessionStreamSlice;
-  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
-  readonly subscriptions: SessionSubscriptions;
-  /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
-  readonly commands: SessionCommandsSlice;
-  /** What a conversation screen asks of the app: the commands, copying a text, answering a request. */
-  readonly sessionActions: SessionActions;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
-  private offQuit: (() => void) | null = null;
 
-  /** The history read from every host (#1596): its global search. */
-  readonly history: HistorySlice;
-  /** What happened on the hosts while the app was away (issue #1344, #1596). */
-  readonly activity: ActivitySlice;
-  /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
-  readonly sessions: SessionsSlice;
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
-  /** What each client with a month limit spent against it (phase 9, #1596). */
-  readonly clientBudgets: ClientBudgetsSlice;
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
   readonly personas: PersonasSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
@@ -242,6 +158,20 @@ export class AppStore {
         formatTime: (iso) => this.formatTime(iso),
         secretValues: () => this.scan.values(),
         openSearch: () => this.history.openSearch(),
+        searchTimeoutMs: options.searchTimeoutMs,
+        timers: options.timers ?? REAL_TIMERS,
+        showSession: (hostId, sessionId) =>
+          this.router.push({ name: "session", host: hostId, id: sessionId }),
+        settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
+        backgroundChanged: (hostId, list) => this.background.changed(hostId, list),
+        webhookFeed: () => this.webhookFeed,
+        notify: (...args) => this.inbox.notify(...args),
+        copyText: (text) => this.system.copyText(text),
+        projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
+        shown: () => this.shownSessions(),
+        later: (fn, ms) => void this.later(fn, ms),
+        respondTo: (hostId, requestId, decision) =>
+          void this.respondTo(hostId, requestId, decision),
         palette: {
           loadProjects: (hostId) => this.projectList.load(hostId),
           loadBoard: (hostId, projectId) => this.boardCards.load(hostId, projectId),
@@ -263,6 +193,7 @@ export class AppStore {
         detach: (hostId) => {
           this.hostTabs.removeHost(hostId);
           this.vaultApprovals.hostGone(hostId);
+          this.activity.forget(hostId);
           this.link.remove(hostId);
         },
         rememberToken: (token) => this.scan.rememberToken(token),
@@ -286,18 +217,14 @@ export class AppStore {
         notify: (...args) => this.inbox.notify(...args),
         keepUsage: () => this.keepUsage(),
         copyText: (text) => this.system.copyText(text),
-        projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
+        today: () => this.today(),
+        keyOf: (hostId, project) => this.projectList.keyOf(hostId, project),
+        relay: (request) => this.relayWebhook(request),
+        recap: (hostId, claudeSessionId, extra) =>
+          this.sessionRecap(hostId, claudeSessionId, extra),
+        roiChanged: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
       }),
     );
-    this.history = wireHistory(this.kernel, {
-      searchTimeoutMs: options.searchTimeoutMs,
-      select: (hostId, sessionId) => this.subscriptions.select(hostId, sessionId),
-      listLimit: HISTORY_LIST_LIMIT,
-      offline: () => new RequestError("offline", "unknown host"),
-      reason: (error) => (error instanceof RequestError ? error.reason : undefined),
-    });
-    this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
-    this.sessions = wireSessions(this.kernel, { storage: platform.storage });
     this.personas = wirePersonas(this.kernel, {
       storage: platform.storage,
       language: () => this.i18n.lang,
@@ -336,59 +263,6 @@ export class AppStore {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
       this.clearShownUnread();
     });
-    this.clients = new Clients(platform, { onChange: () => this.clientScope.sync() });
-    this.clientScope = wireClientScope(this.kernel, {
-      storage: platform.storage,
-      clients: () => this.clients,
-      projects: () =>
-        knownProjects([
-          ...hubRows(this.state),
-          ...Object.entries(this.state.projects).flatMap(([hostId, list]) =>
-            list.map((p) => ({
-              hostId,
-              cwd: p.path,
-              projectKey: this.projectList.keyOf(hostId, p),
-            })),
-          ),
-        ]),
-      changed: () => {
-        this.vaultRules.scopeChanged();
-        this.clientBudgets.onLimitsChanged();
-      },
-    });
-    this.clientBudgets = wireClientBudgets(this.kernel, {
-      storage: platform.storage,
-      limits: () => this.clients.budgets(),
-      today: () => this.today(),
-      scope: () => this.clientScope.get(),
-      clients: () => this.state.clientList,
-      feed: (name, clientId, percent, limit) =>
-        this.webhookFeed.clientBudget(name, clientId, percent, limit),
-      notify: (notification, clientId) =>
-        this.inbox.notify(notification, { name: "costs", client: clientId }, undefined, {
-          event: "budget-quota",
-        }),
-    });
-    this.roi = new RoiSettings(platform, {
-      onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
-    });
-    this.webhooks = new Webhooks({
-      platform,
-      send: (request) => this.relayWebhook(request),
-      summaryFor: (hostId, claudeSessionId, extra) =>
-        this.sessionRecap(hostId, claudeSessionId, extra),
-    });
-    this.webhookFeed = new WebhookFeed(this.webhooks, (hostId, cwd) => {
-      const clientId = cwd ? this.clientScope.get().clientOfFolder(hostId, cwd) : UNASSIGNED;
-      return clientId === UNASSIGNED ? null : clientId;
-    });
-    this.roiFigures = wireRoi(this.kernel, {
-      clientOf: (projectKey) => {
-        const clientId = this.clientScope.get().clientOf(projectKey);
-        return clientId === UNASSIGNED ? null : clientId;
-      },
-      settings: () => this.roi,
-    });
     this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
@@ -423,73 +297,30 @@ export class AppStore {
       setBadge: (count) => this.platform.setBadge?.(count),
     });
     this.i18n = new I18n(platform);
-    this.commands = wireSessionCommands(this.kernel, {
-      opened: (hostId, sessionId) => {
-        this.subscriptions.select(hostId, sessionId);
-        // A new session opens, wherever it was created from (phase 10).
-        this.history.closeSearch();
-        this.router.push({ name: "session", host: hostId, id: sessionId });
-      },
-    });
-    this.permissions = wirePermissions(this.kernel, {
-      needsYou: () => needsYou(this.state, this.i18n.t),
-      settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
-      sendSelected: (response) =>
-        this.commands.onSelected((conn) => conn.request("permission.respond", response)),
-      showWindow: () => void this.platform.showMainWindow(),
-      act: (action) => this.tray.act(action),
-    });
-    this.sessionActions = wireSessionActions(this.commands, {
-      copyText: (text) => this.system.copyText(text),
-      respond: (requestId, decision, answer) =>
-        this.permissions.respond(requestId, decision, answer ?? {}),
-    });
-    this.external = wireExternalSessions(this.kernel, {
-      projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
-      isFocused: () => this.platform.isFocused(),
-      notify: (...args) => this.inbox.notify(...args),
-      feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
-      feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
-    });
-    this.sessionLists = wireSessionLists(this.kernel, {
-      backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
-    });
-    this.subscriptions = wireSessionSubscriptions(this.kernel);
-    this.stream = wireSessionStream(this.kernel, {
-      summary: (hostId, event) => this.summaries.apply(hostId, [event]),
-    });
-    this.finished = wireFinished(this.kernel, {
-      storage: platform.storage,
-      isFocused: () => this.platform.isFocused(),
-      shown: () => this.shownSessions(),
-    });
-    this.summaries = wireSummaries(this.kernel, {
-      setSessions: (hostId, sessions) => this.updateHost(hostId, (h) => ({ ...h, sessions })),
-      shown: () => this.shownSessions(),
-      projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
-      isSimple: (hostId) => this.uiModes.mode(hostId).mode === "simple",
-      isFocused: () => this.platform.isFocused(),
-      prefs: () => this.notifyPrefs.value,
-      notify: (...args) => this.inbox.notify(...args),
-      feed: (host, prev, next) => this.webhookFeed.managed(host, prev, next),
-      finished: (hostId, prev, next) => this.finished.record(hostId, prev, next),
-      later: (fn, ms) => void this.later(fn, ms),
-    });
-    this.tray = wireTray(this.kernel, {
-      platform,
-      needsYou: () => needsYou(this.state, this.i18n.t),
-      uiHostId: () => this.uiModes.hostId(),
-      isSimple: (hostId) => this.uiModes.mode(hostId).mode === "simple",
-      answer: (hostId, requestId, decision) => void this.respondTo(hostId, requestId, decision),
-      open: (item) => this.permissions.open(item),
-      timers: options.timers ?? REAL_TIMERS,
-    });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = initialAppState(platform, {
       now: (options.now ?? Date.now)(),
       vaultUsage: this.usage.list(),
       clientList: this.clients.list(),
       clientOverrides: this.clients.overrides(),
+    });
+    this.handlers = composeLinkHandlers(this.kernel, {
+      slices: () => this,
+      link: () => this.link,
+      updateHost: (hostId, change) => this.updateHost(hostId, change),
+      nextNoticeId: () => ++this.noticeSeq,
+      keepUsage: () => this.keepUsage(),
+      onRun: (hostId, run) => this.onRun(hostId, run),
+      historyChanged: (hostId, change) => {
+        for (const listener of this.historyListeners) listener(hostId, change);
+      },
+      refreshSetup: (hostId, options) => this.refreshSetup(hostId, options),
+    });
+    this.lifecycle = composeLifecycle(this.kernel, {
+      platform,
+      slices: () => this,
+      link: () => this.link,
+      clientBudgetIntervalMs: () => this.options.clientBudgetIntervalMs,
     });
   }
 
@@ -510,7 +341,6 @@ export class AppStore {
   readonly terminals: TerminalsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
-  private awayTimer: ReturnType<typeof setInterval> | null = null;
   /** The screen in use and its history (phase 10). */
   readonly router: Navigation;
   /** Each host's own tabs and the shared screens (issue #644). */
@@ -572,59 +402,8 @@ export class AppStore {
     return () => this.listeners.delete(listener);
   };
 
-  async init(): Promise<void> {
-    this.inbox.load();
-    this.finished.load();
-    this.inbox.syncBadge();
-    // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
-    this.dispose();
-    this.link.listenForWake();
-    this.theme.start();
-    void this.assistant.refreshKeys();
-    this.i18n.start();
-    this.update({
-      hosts: [],
-      hostsLoaded: false,
-      sessions: {},
-      selected: null,
-      cards: {},
-      runs: {},
-      ...initialQuotaState(),
-      ...initialAccountState(),
-      ...initialHealthState(),
-    });
-    await this.settings.load();
-    // Client budgets are looked at every few minutes, and when a host with costs comes online.
-    this.clientBudgets.start(this.options.clientBudgetIntervalMs);
-    this.appUpdates.start();
-    // Issue #1344: the time the app is active, for the next start's "While you were away".
-    this.awayClock.mark();
-    if (this.awayTimer) clearInterval(this.awayTimer);
-    this.awayTimer = setInterval(() => this.awayClock.mark(), AWAY_MARK_MS);
-    // A schedule that cannot start (storage full) must not stop the app from starting.
-    this.backupScheduler.start().catch(() => {});
-    await this.settings.registerSaved();
-    this.tray.start();
-    this.offQuit?.();
-    this.offQuit = this.platform.onQuitRequested(() => void this.appUpdates.quit());
-    await inSequence(loadHosts(this.platform.storage), async (config) => {
-      // A host added while init ran (#1718) is already listed and connecting.
-      if (this.state.hosts.some((host) => host.id === config.id)) return;
-      this.update({ hosts: [...this.state.hosts, newHostView(config)] });
-      const token = await this.platform.secrets.get(config.id);
-      if (token) this.link.connect(config, token);
-    });
-    this.update({ hostsLoaded: true });
-    // #126 slice 2: the hub's own host filter (a name) becomes the data scope once, unless one
-    // was chosen already; either way it leaves the hub, which now follows the scope.
-    const hubHost = takeHubHost(this.platform.storage);
-    if (hubHost && !this.dataScope.chosen) {
-      this.dataScope.set(hubHostScope(hubHost, this.state.hosts));
-    }
-    // Last: the saved hosts must not wait for it.
-    if (this.platform.terminal.supported) {
-      this.update({ terminalEnv: await this.platform.terminal.probe() });
-    }
+  init(): Promise<void> {
+    return this.lifecycle.init();
   }
 
   /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
@@ -896,19 +675,7 @@ export class AppStore {
   }
 
   dispose(): void {
-    this.messaging.dispose();
-    if (this.awayTimer) clearInterval(this.awayTimer);
-    this.awayTimer = null;
-    this.link.dispose();
-    this.tray.stop();
-    this.offQuit?.();
-    this.offQuit = null;
-    this.appUpdates.dispose();
-    this.hostUpdate.dispose();
-    this.backupScheduler.dispose();
-    this.clientBudgets.dispose();
-    this.vaultRules.dispose();
-    this.theme.stop();
+    this.lifecycle.dispose();
   }
 
   /** The session a move made, opened on its new host. */
@@ -918,134 +685,6 @@ export class AppStore {
   };
 
   // -- internals ------------------------------------------------------------
-
-  /** The frames of a host's connection, each to the slice that takes it (#1596). */
-  private readonly routes: HostRoutes = {
-    onSubscribed: (config, sessionId, result) =>
-      this.stream.onSubscribed(config.id, sessionId, result),
-    onEvent: (config, envelope) => this.stream.onEvent(config.id, envelope),
-    onSummaries: (config, summaries) => this.summaries.apply(config.id, summaries),
-    onCardUpdated: (config, card) => this.boardCards.onCard(config.id, card),
-    onExternal: (config, frame) => this.external.onExternal(config.id, frame),
-    onVaultRequest: (config, request) => void this.vaultApprovals.onRequest(config, request),
-    onVaultUsed: (config, used) => {
-      this.usage.recordUsed(config.id, used);
-      this.keepUsage();
-    },
-    // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
-    onTeams: (config, frame) => this.teams.onFrame(config.id, frame),
-    onMessagingAlert: (config, alert) => this.messaging.onLoopAlert(config.id, alert),
-    onWatch: (config, frame) => this.prWatch.keep(config.id, frame.watch),
-    onMessages: (config, frame) => this.messaging.onFrame(config.id, frame),
-    onVaultAlert: (_config, alert) => {
-      const notice: Notice = {
-        id: ++this.noticeSeq,
-        kind: "error",
-        code: "vault_alert",
-        text: alert.message,
-      };
-      this.update({ notices: [...this.state.notices, notice] });
-      this.inbox.notify({
-        title: this.i18n.t("vaultAudit.alertTitle"),
-        body: alert.message,
-      });
-    },
-    onRunUpdated: (config, run) => this.onRun(config.id, run),
-    onRunEnvUpdated: (config, state) => this.runEnv.updated(config.id, state),
-    onQuotaUpdated: (config, state) => this.quota.updated(config.id, state),
-    onAccountUpdated: (config, state) => this.account.updated(config.id, state),
-    onBudgetUpdated: (config, update) => this.budgets.onUpdated(config.id, update),
-    onTerminal: (config, frame) => this.terminals.deliver(config.id, frame),
-    onHistoryChanged: (config, change) => {
-      for (const listener of this.historyListeners) listener(config.id, change);
-    },
-    onAskpass: (config, request) => void this.ssh.onAskpass(config.id, request),
-  };
-
-  /** What runs when a host comes online or its info is reloaded, in this order (#1596). */
-  private readonly onlineSteps: readonly OnlineStep[] = [
-    {
-      run: ({ hostId, hostInfo }) =>
-        this.updateHost(hostId, (h) => {
-          // Back on the version it was updating to: the update is over.
-          const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
-          if (done) this.hostUpdate.settled(hostId);
-          return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
-        }),
-    },
-    // The setup checklist reads what this host has: its hooks, GitHub, projects.
-    { run: ({ hostId, connect }) => void this.refreshSetup(hostId, { connect }) },
-    // Issue #1344: a host that can say what happened while the app was closed is asked once.
-    { gate: "activity", run: () => void this.activity.loadAway() },
-    // ssh asks for passwords through the daemon: this app is who answers.
-    { gate: "ssh", run: ({ conn }) => void conn.request("askpass.watch", {}).catch(() => null) },
-    // Phase 21: this app carries the host's messages for the other hosts.
-    { gate: "watch", run: ({ conn }) => void conn.request("watch.watch", {}).catch(() => null) },
-    {
-      gate: "teams",
-      run: ({ hostId, conn }) => {
-        void conn.request("teams.watch", {}).catch(() => null);
-        // The sessions that belong to teams, so the workers' notifications can be folded.
-        void conn
-          .request("teams.list", {})
-          .then((result) => {
-            for (const team of result.teams) this.summaries.rememberTeam(hostId, team);
-          })
-          .catch(() => null);
-      },
-    },
-    {
-      gate: "messaging",
-      run: ({ conn }) => {
-        void conn.request("messages.watch", {}).catch(() => null);
-        this.messaging.startPeersSync();
-      },
-    },
-    // Phase 19: the daemon decides a request with the rules the app hands it.
-    { gate: "actions", run: ({ hostId, conn }) => this.vaultRules.onConnect(hostId, conn) },
-    { run: ({ hostId }) => void this.health.check(hostId) },
-    // Not awaited, as the health check: a reload of the host's info never waits on the offer.
-    {
-      gate: FEATURE_RESUME_OFFER,
-      run: ({ hostId, conn }) => void this.sessions.offerResume(hostId, conn),
-    },
-    {
-      gate: "costs",
-      awaited: true,
-      run: async ({ hostId, conn }) => {
-        const list = await conn.request("budget.list", {}).catch(() => null);
-        if (list) this.budgets.replace(hostId, list.budgets);
-      },
-    },
-  ];
-
-  private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
-    const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
-    const line = statusLine(name, status, conn.lastDrop);
-    this.appLog.log(line.level, "host", line.text);
-    this.updateHost(hostId, (h) => ({
-      ...h,
-      status,
-      info: conn.info,
-      incompatibility: conn.incompatibility,
-      retry: conn.retry,
-    }));
-    if (status === "online") {
-      void this.link.loadHostInfo(hostId, conn, true);
-      // Daemons before phase 7 have no quota: quietly nothing.
-      void conn.request("quota.get", {}).then(
-        (state) => this.quota.updated(hostId, state),
-        () => {},
-      );
-    }
-    if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") {
-      this.stream.dropPartialText(hostId);
-      // The cards that waited on the old connection leave the queue: the new one never saw them.
-      // The deny may not reach the daemon; it ends the request at its own deadline.
-      this.vaultApprovals.hostGone(hostId);
-    }
-  }
 
   /** `hostId/projectId` of the project whose folder holds `cwd`, if any. */
   private sessionProject(hostId: string, cwd: string | null | undefined): string | undefined {
@@ -1083,18 +722,6 @@ export class AppStore {
   ): Promise<{ ok: true; value: string } | { ok: false; code: DeliveryRefusal }> {
     return this.vaultApprovals.secretFor(hostId, secretId, purpose);
   }
-
-  /** Phase 29: the clients, their rules and overrides, kept by the app. */
-  readonly clients: Clients;
-  /** Phase 36: the rates, the plan price and the people, kept by the app. */
-  readonly roi: RoiSettings;
-  /** The ROI figures: the day they end on, each host's summary and a project's money (#1596). */
-  readonly roiFigures: RoiSlice;
-  /** Phase 30: the webhook targets and the sending. */
-  readonly webhooks: Webhooks;
-  private readonly webhookFeed: WebhookFeed;
-  /** Which client the person works for: the selection of the work screens and each project's client (#1596). */
-  readonly clientScope: ClientScopeSlice;
 
   private keepUsage(): void {
     this.update({ vaultUsage: this.usage.list() });

@@ -93,6 +93,7 @@ describe("src-size (#1592)", () => {
     const file = join(ROOT, "src-size-baseline.json");
     const baseline = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
     expect(overBaseline(counts, baseline)).toEqual([]);
-    expect(counts["apps/desktop/src/lib/app-store.ts"]).toBeGreaterThan(SRC_LIMIT);
+    // Proof that the measure sees oversized files at all: some file is still past the limit.
+    expect(Math.max(0, ...Object.values(counts))).toBeGreaterThan(SRC_LIMIT);
   });
 });

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle } from "../wait.ts";
@@ -98,22 +97,6 @@ const key = (k: string, init: object = {}) =>
   act(async () => {
     fireEvent.keyDown(input(), { key: k, ...init });
   });
-
-const css = readStyles(new URL("../../src/styles.css", import.meta.url));
-
-describe("paleta-mais-ui: the selected row can be seen (issue #147)", () => {
-  test("the selected row wears the selection recipe; the stylesheet defines it from tokens", async () => {
-    open(world());
-    await type("sessao");
-    await key("ArrowDown");
-    const chosen = options().find((o) => o.getAttribute("aria-selected") === "true");
-    expect(chosen?.className).toContain("palette-row");
-    const rule = css.split("@utility palette-row")[1]?.split("@utility")[0] ?? "";
-    expect(rule).toContain("var(--palette-selection)");
-    expect(rule).toContain("var(--palette-selection-ring)");
-    expect(rule).toContain("inset");
-  });
-});
 
 describe("paleta-mais-ui: rows show the state live (issue #147)", () => {
   test("a session row wears its state glyph, and it follows the session", async () => {

@@ -85,6 +85,22 @@ export class SshTargets {
     return row ? toTarget(row) : null;
   }
 
+  /** The one destination with that exact name; null when none has it or more than one does. */
+  byName(name: string): SshTarget | null {
+    const rows = this.opts.db
+      .query("SELECT * FROM ssh_targets WHERE name = ? LIMIT 2")
+      .all(name) as Row[];
+    return rows.length === 1 && rows[0] ? toTarget(rows[0]) : null;
+  }
+
+  /** How many destinations have that exact name: tells "none" from "more than one" when byName is null. */
+  countNamed(name: string): number {
+    const row = this.opts.db
+      .query("SELECT COUNT(*) AS n FROM ssh_targets WHERE name = ?")
+      .get(name) as { n: number };
+    return row.n;
+  }
+
   save(input: SshTargetInput): SshTarget {
     const previous = input.id ? this.row(input.id) : null;
     if (input.id && !previous) throw notFound();

@@ -308,8 +308,12 @@ describe("planCoverageFuncs", () => {
       "./apps/daemon/test/a.test.ts",
     ]);
     expect(plan.env).toEqual({
-      COVERAGE_FUNCS_FILES: JSON.stringify(["apps/daemon/src/a.ts"]),
+      COVERAGE_FUNCS_FILES_PATH: "/tmp/cov-files.json",
       COVERAGE_FUNCS_OUT: "/tmp/cov.json",
+    });
+    expect(plan.targetsFile).toEqual({
+      path: "/tmp/cov-files.json",
+      text: JSON.stringify(["apps/daemon/src/a.ts"]),
     });
   });
 
@@ -323,7 +327,7 @@ describe("planCoverageFuncs", () => {
       "coverage:funcs: 1 test file(s) for 1 file(s)\n  apps/daemon/test/a.test.ts  given",
     );
     expect(plan.command?.slice(-1)).toEqual(["./apps/daemon/test/a.test.ts"]);
-    expect(plan.env.COVERAGE_FUNCS_FILES).toBe(JSON.stringify(["apps/daemon/src/a.ts"]));
+    expect(plan.targetsFile?.text).toBe(JSON.stringify(["apps/daemon/src/a.ts"]));
   });
 
   test("a test named by hand that is not tracked is refused", () => {

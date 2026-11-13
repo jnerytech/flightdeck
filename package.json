@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "mutation": "stryker run",
+    "mutation:weekly": "bun run scripts/mutation-weekly.ts",
+    "mutation:cache-key": "bun run scripts/mutation-cache-key.ts",
     "typecheck": "bun run scripts/lane.ts bun run scripts/typecheck.ts",
     "lint": "bun run scripts/lane.ts bun x biome check . --max-diagnostics=none",
     "format": "biome check --write .",

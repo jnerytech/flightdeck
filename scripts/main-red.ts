@@ -3,7 +3,7 @@
  * `bun run main-red [-- claim "<cause>" [--by <name>]]` (issue #1246). The logic is in
  * lib/pr/main-red.ts. The owner of a claim is --by, else FLIGHTDECK_SESSION, else the tmux session.
  */
-import { runCommand } from "../apps/daemon/src/board/command.ts";
+import { runCommand } from "../apps/daemon/src/kernel/command.ts";
 import { mainRed } from "./lib/pr/main-red.ts";
 
 /** gh with its stderr kept (a missing label is told by it) and a deadline. */
