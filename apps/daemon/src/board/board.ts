@@ -11,8 +11,7 @@ import type {
   WorkflowTemplate,
   WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
-import { UNTRUSTED_MARK } from "../issues/issues.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
@@ -24,9 +23,9 @@ import { CardPrFlow } from "./card-pr-flow.ts";
 import { CardState } from "./card-state.ts";
 import { CardView } from "./card-view.ts";
 import { Cards } from "./cards.ts";
-import type { CheckLoopEngine } from "./check-loop-engine.ts";
 import { CheckLoopHost } from "./check-loop-host.ts";
-import type { BoardEvent } from "./columns.ts";
+import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
+import type { BoardEvent } from "./domain/columns.ts";
 import { Launcher, PENDING_NOTICE } from "./launch.ts";
 import { type PrComment, prProvider } from "./pr.ts";
 import { PrPoll } from "./pr-poll.ts";

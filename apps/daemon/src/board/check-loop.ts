@@ -4,11 +4,10 @@
  * outside its permission mode: outside `bypassPermissions` the person confirms that, and the
  * confirmation is bound to what it confirmed (the checks, `checkEnv` and the mode).
  */
-import { createHash } from "node:crypto";
 import type { Card, PermissionMode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { WatchSettings } from "../watch/settings.ts";
-import type { Board } from "./board.ts";
+import { confirmationHash } from "./domain/check-loop-engine.ts";
 
 /** Why the switch stays off. */
 export type CheckLoopRefusal =
@@ -41,17 +40,23 @@ export function checkLoopRefusal(input: {
   return null;
 }
 
-/** What a confirmation covers: a change of the checks, `checkEnv` or the mode needs a new one. */
-export function confirmationHash(
-  checks: readonly string[],
-  env: readonly string[],
-  mode: PermissionMode,
-): string {
-  return createHash("sha256").update(JSON.stringify({ checks, env, mode })).digest("hex");
+/** What the switch needs of the board: a port, so this file does not import the board. */
+interface CheckLoopBoard {
+  getCard(id: string): Card;
+  getProject(id: string): { path: string };
+  storeCheckLoop(
+    id: string,
+    value: {
+      on: boolean;
+      rounds: number | null;
+      confirmedAt: string | null;
+      confirmedHash: string | null;
+    },
+  ): Card;
 }
 
 export interface CheckLoopDeps {
-  board: Pick<Board, "getCard" | "getProject" | "storeCheckLoop">;
+  board: CheckLoopBoard;
   settings(projectId: string): WatchSettings;
   isTrusted(path: string): boolean;
   /** The mode the card's session runs in now, or would start in. */

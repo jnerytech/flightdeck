@@ -374,197 +374,6 @@
     }
   },
   {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/board/check-loop-engine.ts",
-    "unresolvedTo": "./check-loop-engine.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/check-loop-engine.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/board/check-loop-host.ts",
-    "unresolvedTo": "./check-loop-host.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/check-loop-host.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop-engine.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/board/launch.ts",
-    "unresolvedTo": "./launch.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/launch.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop-engine.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/board/session-follow.ts",
-    "unresolvedTo": "./session-follow.ts",
-    "dependencyTypes": ["local", "export", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/session-follow.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop-engine.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/issues/issues.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/check-loop-host.ts",
-    "to": "apps/daemon/src/board/check-loop.ts",
-    "unresolvedTo": "./check-loop.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/check-loop.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop-host.ts",
-        "dependencyTypes": ["local", "import"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/launch.ts",
-    "to": "apps/daemon/src/board/session-follow.ts",
-    "unresolvedTo": "./session-follow.ts",
-    "dependencyTypes": ["local", "export", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/session-follow.ts",
-        "dependencyTypes": ["local", "export", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop-engine.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/launch.ts",
-        "dependencyTypes": ["local", "import"]
-      }
-    ]
-  },
-  {
     "type": "dependency",
     "from": "apps/daemon/src/account/account.ts",
     "to": "apps/daemon/src/quota/quota.ts",
@@ -833,7 +642,7 @@
     "from": "apps/daemon/src/automations/automations.ts",
     "to": "apps/daemon/src/issues/issues.ts",
     "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -866,17 +675,6 @@
     "from": "apps/daemon/src/bg/service.ts",
     "to": "apps/daemon/src/board/command.ts",
     "unresolvedTo": "../board/command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -962,17 +760,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/check-loop-engine.ts",
-    "to": "apps/daemon/src/watch/check-run.ts",
-    "unresolvedTo": "../watch/check-run.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/check-loop-host.ts",
     "to": "apps/daemon/src/watch/check-run.ts",
     "unresolvedTo": "../watch/check-run.ts",
@@ -1020,6 +807,17 @@
     "from": "apps/daemon/src/board/diff.ts",
     "to": "apps/daemon/src/permissions/sensitive-paths.ts",
     "unresolvedTo": "../permissions/sensitive-paths.ts",
+    "dependencyTypes": ["local", "import"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/board/domain/check-loop-engine.ts",
+    "to": "apps/daemon/src/watch/check-run.ts",
+    "unresolvedTo": "../../watch/check-run.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -1175,17 +973,6 @@
     "to": "apps/daemon/src/board/types.ts",
     "unresolvedTo": "../board/types.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/boardsync/engine.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -1570,7 +1357,7 @@
     "from": "apps/daemon/src/github/start.ts",
     "to": "apps/daemon/src/issues/issues.ts",
     "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -1835,17 +1622,6 @@
     "to": "apps/daemon/src/sessions/session-manager.ts",
     "unresolvedTo": "../sessions/session-manager.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/messaging/header.ts",
-    "to": "apps/daemon/src/issues/issues.ts",
-    "unresolvedTo": "../issues/issues.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -3493,8 +3269,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/workflows/engine-types.ts",
-    "to": "apps/daemon/src/board/columns.ts",
-    "unresolvedTo": "../board/columns.ts",
+    "to": "apps/daemon/src/board/domain/columns.ts",
+    "unresolvedTo": "../board/domain/columns.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",

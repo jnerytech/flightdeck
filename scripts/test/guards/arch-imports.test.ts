@@ -102,6 +102,18 @@ describe("arch-imports: the domain borders (#1591)", () => {
     ]);
   });
 
+  test("the daemon's kernel/ may import itself, never a domain, not even its entry (#1611)", async () => {
+    const found = await planted({
+      "apps/daemon/src/kernel/lines.ts":
+        'import { ulid } from "./ulid.ts";\nimport { list } from "../board/index.ts";\nexport const l = [ulid, list];\n',
+      "apps/daemon/src/kernel/ulid.ts": "export const ulid = 1;\n",
+      "apps/daemon/src/board/index.ts": "export const list = 1;\n",
+    });
+    expect(found).toEqual([
+      "shared-depends-on-no-domain apps/daemon/src/kernel/lines.ts -> apps/daemon/src/board/index.ts",
+    ]);
+  });
+
   test("a new cycle between two domains fails", async () => {
     const found = await planted({
       "apps/daemon/src/board/index.ts":

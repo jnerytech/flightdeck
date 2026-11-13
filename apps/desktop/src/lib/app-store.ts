@@ -7,8 +7,9 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
-import { isInside, nullOnError } from "@/shared/lib/index.ts";
+import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { initialAccountState } from "../features/account/index.ts";
 import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
@@ -126,11 +127,8 @@ const isRun = (value: unknown): value is WorkflowRun =>
 
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
-  try {
-    return JSON.parse(storage.getItem(WORKSPACE_KEY) ?? "null");
-  } catch {
-    return null;
-  }
+  // `Workspace.restore` checks the shape area by area, so anything that is JSON passes here.
+  return readStored(storage, WORKSPACE_KEY, z.unknown(), null);
 }
 
 export { PALETTE_RECENTS_KEY } from "@/features/palette/palette-store.ts";

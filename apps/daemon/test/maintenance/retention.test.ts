@@ -255,4 +255,59 @@ describe("retention: state file", () => {
     });
     await expect(maintenance.lastPrune()).rejects.toThrow();
   });
+
+  test("a state file that is JSON but does not fit is an error too, not a wrong last cleanup (#1609)", async () => {
+    const dataDir = tempDir("fd-maint-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    writeFileSync(join(dataDir, "maintenance.json"), '{"lastPrune":"yesterday"}');
+    const maintenance = new Maintenance({
+      db: store.db,
+      dataDir,
+      retention: { eventsDays: 30, sessionsDays: 90 } as never,
+    });
+    await expect(maintenance.lastPrune()).rejects.toThrow("does not fit");
+  });
+
+  test("a state file with a last cleanup that fits reads back (#1609)", async () => {
+    const dataDir = tempDir("fd-maint-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const counts = {
+      events: 1,
+      permission_requests: 2,
+      external_sessions: 3,
+      usage_entries: 4,
+      quota_samples: 5,
+    };
+    const lastPrune = { at: "2026-10-30T12:00:00.000Z", dryRun: false, counts };
+    writeFileSync(join(dataDir, "maintenance.json"), JSON.stringify({ lastPrune, note: "kept" }));
+    const maintenance = new Maintenance({
+      db: store.db,
+      dataDir,
+      retention: { eventsDays: 30, sessionsDays: 90 } as never,
+    });
+    expect(await maintenance.lastPrune()).toEqual(lastPrune);
+  });
+
+  test("a state file an older daemon wrote, without the later counts, still reads and prunes (#1609)", async () => {
+    const dataDir = tempDir("fd-maint-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const old = {
+      at: "2026-09-01T12:00:00.000Z",
+      dryRun: false,
+      counts: { events: 4, permission_requests: 1, external_sessions: 2 },
+    };
+    writeFileSync(join(dataDir, "maintenance.json"), JSON.stringify({ lastPrune: old }));
+    const maintenance = new Maintenance({
+      db: store.db,
+      dataDir,
+      retention: { eventsDays: 30, externalSessionsDays: 30, usageDays: 400 },
+    });
+    const read = (await maintenance.lastPrune().catch(() => null))?.counts;
+    expect([read?.events, read?.usage_entries, read?.quota_samples]).toEqual([4, 0, 0]);
+    await maintenance.prune(true);
+    expect((await maintenance.lastPrune())?.dryRun).toBe(true);
+  });
 });

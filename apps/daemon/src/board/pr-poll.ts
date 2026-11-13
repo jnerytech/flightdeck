@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { inSequence } from "@flightdeck/protocol";
-import type { BoardEvent } from "./columns.ts";
+import type { BoardEvent } from "./domain/columns.ts";
 import { prProvider } from "./pr.ts";
 import type { BoardOptions, Card, Project } from "./types.ts";
 

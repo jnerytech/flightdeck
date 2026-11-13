@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { PermissionMode } from "@flightdeck/protocol";
-import { confirmationHash } from "../../src/board/check-loop.ts";
 import {
   CheckLoopEngine,
+  confirmationHash,
   type LoopCard,
   type RoundRecord,
   roundMessage,
   roundsCap,
-} from "../../src/board/check-loop-engine.ts";
+} from "../../src/board/domain/check-loop-engine.ts";
 import type { CheckOutcome } from "../../src/watch/check-run.ts";
 
 /**
