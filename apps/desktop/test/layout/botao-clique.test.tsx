@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { InstantClock } from "./in-flight-clock.tsx";
-import { settle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { InstantClock } from "../in-flight-clock.tsx";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ActionButton: Button } = await import("../src/shared/feedback/index.ts");
+const { ActionButton: Button } = await import("../../src/shared/feedback/index.ts");
 
 afterEach(cleanup);
 

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { Card, PermissionMode } from "@flightdeck/protocol";
 import { createCheckLoop } from "../../src/board/wiring.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { readWatchSettings, type WatchSettings } from "../../src/watch/watch.ts";
+import { readWatchSettings, type WatchSettings } from "../../src/watch/settings.ts";
 
 /**
  * The check loop as main.ts builds it (issue #1593): the board reads the settings from the
