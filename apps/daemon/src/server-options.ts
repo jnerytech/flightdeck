@@ -94,7 +94,7 @@ import type { TerminalManager } from "./terminal/terminal-manager.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
-import type { Vault } from "./vault/vault.ts";
+import type { Vault } from "./vault/index.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
 import type { Worktrees } from "./worktrees/worktrees.ts";

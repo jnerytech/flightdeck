@@ -6,7 +6,7 @@ import { ASSISTANT_FEATURE, type HostRuntime } from "@flightdeck/protocol";
 import { DAEMON_VERSION, present } from "../kernel/index.ts";
 import { logPathFor } from "../logs/serve.ts";
 import type { OpenCodeInfo } from "../runtime/opencode-discovery.ts";
-import { isVaultTransport } from "../vault/vault.ts";
+import { isVaultTransport } from "../vault/index.ts";
 import type { ServerContext } from "./context.ts";
 import { when } from "./features.ts";
 

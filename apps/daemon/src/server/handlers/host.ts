@@ -4,7 +4,7 @@
  * ones that change what the host may run need a near connection, as before the split.
  */
 import { FlightdeckError, featureOff } from "../../kernel/index.ts";
-import { requireVaultTransport } from "../../vault/vault.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
 import { hostInfo } from "../host-info.ts";
 
