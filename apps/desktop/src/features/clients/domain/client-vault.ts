@@ -1,4 +1,4 @@
-import type { SecretMeta } from "../vault/index.ts";
+import type { SecretMeta } from "../../vault/index.ts";
 import type { ClientScope } from "./client-scope.ts";
 import { type Client, UNASSIGNED } from "./clients.ts";
 

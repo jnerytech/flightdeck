@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { KnownProject } from "../../src/features/clients/client-rules-model.ts";
-import { applySuggestion, suggestClients } from "../../src/features/clients/client-suggest.ts";
-import { CLIENTS_KEY, Clients } from "../../src/features/clients/clients.ts";
+import type { KnownProject } from "../../src/features/clients/domain/client-rules-model.ts";
+import {
+  applySuggestion,
+  suggestClients,
+} from "../../src/features/clients/domain/client-suggest.ts";
+import { CLIENTS_KEY, Clients } from "../../src/features/clients/domain/clients.ts";
 
 const keys = (...list: string[]): KnownProject[] => list.map((key) => ({ key, cwds: [] }));
 const none = { clients: [], overrides: {} };

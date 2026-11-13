@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { KnownProject } from "../../src/features/clients/client-rules-model.ts";
+import type { KnownProject } from "../../src/features/clients/domain/client-rules-model.ts";
 import {
   ALL_CLIENTS,
   CLIENT_SELECTION_KEY,
@@ -7,8 +7,12 @@ import {
   loadSelection,
   saveSelection,
   sessionProjectKeys,
-} from "../../src/features/clients/client-scope.ts";
-import { type Client, type ClientRule, UNASSIGNED } from "../../src/features/clients/clients.ts";
+} from "../../src/features/clients/domain/client-scope.ts";
+import {
+  type Client,
+  type ClientRule,
+  UNASSIGNED,
+} from "../../src/features/clients/domain/clients.ts";
 
 const remote = (pattern: string): ClientRule => ({ id: `r:${pattern}`, kind: "remote", pattern });
 const folder = (path: string, host?: string): ClientRule => ({

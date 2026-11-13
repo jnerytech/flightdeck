@@ -1,6 +1,6 @@
 import type { CostsFilter, CostsSummary } from "@flightdeck/protocol";
-import { ALL_CLIENTS, type ClientScope } from "./client-scope.ts";
-import { type ClientColor, UNASSIGNED } from "./clients.ts";
+import { ALL_CLIENTS, type ClientScope } from "./domain/client-scope.ts";
+import { type ClientColor, UNASSIGNED } from "./domain/clients.ts";
 
 /** The summary of nothing, for a period. */
 export function emptySummary(from: string, to: string): CostsSummary {

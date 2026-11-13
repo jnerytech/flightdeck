@@ -4,8 +4,8 @@ import {
   ClientScope,
   selectedClient,
   tagsFirst,
-} from "../../src/features/clients/client-scope.ts";
-import { type Client, UNASSIGNED } from "../../src/features/clients/clients.ts";
+} from "../../src/features/clients/domain/client-scope.ts";
+import { type Client, UNASSIGNED } from "../../src/features/clients/domain/clients.ts";
 import { paletteSections } from "../../src/features/palette/palette.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
