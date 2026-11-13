@@ -1,4 +1,4 @@
-import type { AgentConfig } from "../agentcfg/files.ts";
+import type { AgentConfig } from "../agentcfg/index.ts";
 import type { AgentPublishRequest } from "./store.ts";
 
 const quoted = (value: string) => JSON.stringify(value);

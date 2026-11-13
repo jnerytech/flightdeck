@@ -9,7 +9,7 @@ import { createReadStream } from "node:fs";
 import { lstat, readdir, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
-import { frontmatter } from "../agentcfg/files.ts";
+import { frontmatter } from "../agentcfg/index.ts";
 import { FlightdeckError, isInside, parseJsonWith } from "../kernel/index.ts";
 import { AnyJson } from "./json-reads.ts";
 
