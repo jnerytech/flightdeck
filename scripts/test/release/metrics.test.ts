@@ -360,6 +360,58 @@ describe("metrics: the snapshot", () => {
     expect(snapshot.prSize.last30Days.reworkShare).toBe(1);
   });
 
+  test("the pull requests are asked from two days before the CI runs, so the feat behind a first-day fix is read (#2027)", async () => {
+    const { deps } = fakeGit();
+    const firstRange = (args: string[], flag: string) =>
+      String(args[args.indexOf(flag) + 1])
+        .replace("merged:", "")
+        .split("..")[0] ?? "";
+    let ci = "";
+    let pr = "";
+    const asked: MetricsDeps = {
+      ...deps,
+      gh: async (args) => {
+        if (args.includes("pr")) pr ||= firstRange(args, "--search");
+        else if (args.includes("run") && !args.includes("main"))
+          ci ||= firstRange(args, "--created");
+        return deps.gh(args);
+      },
+    };
+    await buildSnapshot(asked, "v0.2.0");
+    const days = (Date.parse(ci) - Date.parse(pr)) / 86_400_000;
+    expect(days).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a pull request whose files are not a list of paths is read from the commits, not a crash (#2027)", async () => {
+    const { deps } = fakeGit();
+    const rows = [
+      {
+        additions: 1,
+        deletions: 1,
+        mergedAt: "2026-11-08T00:00:00Z",
+        title: "feat(x): one",
+        files: [null],
+      },
+      {
+        additions: 1,
+        deletions: 1,
+        mergedAt: "2026-11-09T06:00:00Z",
+        title: "fix(x): bug",
+        files: [{}],
+      },
+    ];
+    const broken: MetricsDeps = {
+      ...deps,
+      gh: async (args) =>
+        args.includes("pr") ? { code: 0, stdout: JSON.stringify(rows) } : deps.gh(args),
+    };
+    const snapshot = (await buildSnapshot(broken, "v0.2.0").catch(() => null)) as Record<
+      string,
+      any
+    > | null;
+    expect(snapshot?.prSize.last30Days.merged).toBe(2);
+  });
+
   test("coverage is the summary of the full run on the tag's commit", async () => {
     const { deps } = fakeGit();
     const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
