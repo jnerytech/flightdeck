@@ -11,6 +11,7 @@ import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
+import { lazyScreen } from "../app/lazy-screen.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
@@ -27,7 +28,6 @@ import type { AppState, AppStore, PendingItem } from "../lib/app-store.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
-import { lazyScreen } from "./lazy-screen.ts";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
