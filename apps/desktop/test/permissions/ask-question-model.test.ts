@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { approvalView, fields } from "../../src/features/permissions/approval.ts";
+import { approvalView, fields } from "../../src/features/permissions/domain/approval.ts";
 import {
   answeredInput,
   buildAnswers,
   parseQuestions,
-} from "../../src/features/permissions/ask-question.ts";
+} from "../../src/features/permissions/domain/ask-question.ts";
 
 const INPUT = {
   questions: [

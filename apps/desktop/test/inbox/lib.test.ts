@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { EventEnvelope, PendingPermission, SessionEvent } from "@flightdeck/protocol";
 import { backoffDelay, statusTone } from "@/shared/lib/index.ts";
 import { summaryNotifications } from "../../src/features/inbox/notify.ts";
-import { toolDiff } from "../../src/features/permissions/diff.ts";
+import { toolDiff } from "../../src/features/permissions/domain/diff.ts";
 import {
   applyEnvelope,
   emptySession,

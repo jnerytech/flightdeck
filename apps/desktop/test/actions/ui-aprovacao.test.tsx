@@ -9,7 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
-const { requestLink } = await import("../../src/features/permissions/request-link.ts");
+const { requestLink } = await import("../../src/features/permissions/domain/request-link.ts");
 const { App } = await import("../../src/app/App.tsx");
 
 setDefaultTimeout(30_000);

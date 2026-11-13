@@ -4,9 +4,9 @@
  * project. Another domain imports from here, never a file inside.
  */
 
-export { fields, shortPath } from "./approval.ts";
 export type { ApprovalRequest } from "./approval-card.tsx";
-export { HIGH_RISK_HOLD_MS } from "./hold.ts";
-export { parseRequestLink, requestLink } from "./request-link.ts";
+export { fields, shortPath } from "./domain/approval.ts";
+export { HIGH_RISK_HOLD_MS } from "./domain/hold.ts";
+export { parseRequestLink, requestLink } from "./domain/request-link.ts";
 export { PermissionsSlice } from "./store.ts";
 export { wirePermissions } from "./wire.ts";

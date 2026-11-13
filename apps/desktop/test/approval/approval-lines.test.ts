@@ -3,7 +3,7 @@ import {
   autoLine,
   resolutionLine,
   savedAnswers,
-} from "../../src/features/permissions/approval-lines.ts";
+} from "../../src/features/permissions/domain/approval-lines.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 const t = translator("en");
