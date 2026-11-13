@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { keepNewest } from "../src/features/backup/backup-target.ts";
-import { DriveError, driveTarget } from "../src/features/backup/drive-target.ts";
-import { fakeDrive } from "./fake-google.ts";
+import { keepNewest } from "../../src/features/backup/backup-target.ts";
+import { DriveError, driveTarget } from "../../src/features/backup/drive-target.ts";
+import { fakeDrive } from "../fake-google.ts";
 
 /**
  * Issue #1444: the Drive target keeps the already-encrypted bundle in the app's own hidden folder

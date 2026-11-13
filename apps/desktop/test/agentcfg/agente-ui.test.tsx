@@ -1,25 +1,25 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { stays, waiter } from "./wait.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { stays, waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 // Real git, real MCP servers and a real daemon: more than the default 5 s.
 setDefaultTimeout(30_000);
 
-const ECO = resolve(import.meta.dir, "../../daemon/test/fixtures/mcp/eco-server.ts");
+const ECO = resolve(import.meta.dir, "../../../daemon/test/fixtures/mcp/eco-server.ts");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

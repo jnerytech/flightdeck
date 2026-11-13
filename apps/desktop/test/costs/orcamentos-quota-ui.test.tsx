@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { Budgets } from "../../daemon/src/costs/budgets.ts";
-import { Quota } from "../../daemon/src/quota/quota.ts";
-import { manualTime } from "../../daemon/test/support/time-helpers.ts";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { Budgets } from "../../../daemon/src/costs/budgets.ts";
+import { Quota } from "../../../daemon/src/quota/quota.ts";
+import { manualTime } from "../../../daemon/test/support/time-helpers.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];

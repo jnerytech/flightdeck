@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { CardHours } = await import("../src/features/roi/card-hours.tsx");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { CardHours } = await import("../../src/features/roi/card-hours.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 afterEach(cleanup);
 
