@@ -5,6 +5,7 @@ import { z } from "zod";
 import { type HookTarget, hooksStatus, installHooks } from "../central/index.ts";
 import type { Config } from "../config.ts";
 import { type Logger, parseJsonOr } from "../kernel/index.ts";
+import { binaryVersion } from "./adapters/flightdeckd-process.ts";
 import {
   installService,
   type ServiceContext,
@@ -91,33 +92,6 @@ export async function waitHealthy(url: string, timeoutMs: number, intervalMs: nu
     }
     if (Date.now() >= deadline) return false;
     await Bun.sleep(intervalMs); // NOSONAR: polling: each look follows the wait before it
-  }
-}
-
-const VERSION_LINE = /^flightdeckd (\d+\.\d+\.\d+)/;
-
-/** What `<bin> --version` says, or null when it does not answer like flightdeckd in time. */
-export async function binaryVersion(bin: string, timeoutMs: number): Promise<string | null> {
-  try {
-    const proc = Bun.spawn([bin, "--version"], {
-      stdout: "pipe",
-      stderr: "ignore",
-      stdin: "ignore",
-      env: process.env,
-    });
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const late = new Promise<false>((resolve) => {
-      timer = setTimeout(() => resolve(false), timeoutMs);
-    });
-    const done = await Promise.race([proc.exited.then(() => true), late]);
-    clearTimeout(timer);
-    if (!done) {
-      proc.kill();
-      return null;
-    }
-    return VERSION_LINE.exec(await new Response(proc.stdout).text())?.[1] ?? null;
-  } catch {
-    return null;
   }
 }
 

@@ -2,7 +2,7 @@ import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TranscriptReader } from "@/features/history/index.ts";
+import { TranscriptReader } from "@/features/history/ui.ts";
 import { awaitedHost, type HostDraft } from "@/features/hosts/index.ts";
 import { draftUrl, FirstRun, HostForm, HostOfflineBanner } from "@/features/hosts/ui.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/ui.ts";
@@ -23,6 +23,7 @@ import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
 import { basename, holdsFolder, isBusy } from "@/shared/lib/index.ts";
+import { lazyScreen } from "../app/lazy-screen.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { CheckpointsButton } from "../features/checkpoints/ui.ts";
 import type { TopSession } from "../features/costs/page.tsx";
@@ -48,7 +49,6 @@ import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import type { Route } from "../lib/router.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
-import { lazyScreen } from "./lazy-screen.ts";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`

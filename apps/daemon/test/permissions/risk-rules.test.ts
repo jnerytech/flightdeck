@@ -318,6 +318,10 @@ describe("risk rules: git (#2474)", () => {
         "git -c push status",
         "git --git-dir push status",
         "git --work-tree push status",
+        // The flag is read after the subcommand: a folder named `-f` is not a force.
+        "git -C -f push origin x",
+        "git -C --hard reset HEAD",
+        "git -C -f clean -n",
         "git",
         "echo git push -f",
       ]),
@@ -369,6 +373,45 @@ describe("risk rules: redirections and credential words in a command (#2474)", (
         ["ls;echo x > /tmp/f", out],
       ]),
     ).toEqual([]);
+  });
+
+  test("a descriptor copy stays medium, but a word that only starts or ends like one is a file", () => {
+    const out = "redirecionamento para fora do cwd";
+    expect(notHigh(["ls >&2", "ls >&-", "ls >&2-", "ls 2>&1", "ls >&22"])).toEqual([]);
+    expect(
+      wrongReasons([
+        ["echo x >&2/../../etc/x", out],
+        ["echo x >&2-/../../etc/x", out],
+        ["echo x >&-/../../etc/x", out],
+        ["echo x >&/tmp/f-", out],
+        ["echo x >&/tmp/f2", out],
+        ["echo x >&/tmp/f", out],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a quoted file name with a parenthesis in it is a plain name, only a leading one is a substitution", () => {
+    const out = "redirecionamento para fora do cwd";
+    expect(
+      notHigh(['echo x > "report (1).txt"', 'echo x > "a=(1).txt"', "echo x > 'f(x)'"]),
+    ).toEqual([]);
+    expect(
+      wrongReasons([
+        ["echo x > (cat)", out],
+        ["echo x > =(cat)", out],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a home path is joined to the home folder: `~/` cannot climb out of it back into the project", () => {
+    // The home folder sits inside the project here, so only the join decides where `~/..` lands.
+    const inner = new RiskClassifier({ allowedRoots: [], home: join(CWD, "home") });
+    const shell = (command: string) => inner.classify("Bash", { command }, CWD);
+    expect(shell("echo x > ~/f")).toMatchObject({ level: "medium", reason: MEDIUM });
+    expect(shell("echo x > ~/../../etc/x")).toMatchObject({
+      level: "high",
+      reason: "redirecionamento para fora do cwd",
+    });
   });
 
   test("a credential path inside a command is high, wherever the quotes and separators put it", () => {
@@ -579,6 +622,11 @@ describe("risk rules: tools other than the shell (#2474)", () => {
     expect(classify("Write", { file_path: join(CWD, ".config", "other", "p.js") }).level).toBe(
       "medium",
     );
+    // A path that is not text cannot be judged: a person decides, and the prompt says why.
+    expect(classify("Write", { file_path: 5 })).toMatchObject({
+      level: "high",
+      reason: "the path is not text",
+    });
   });
 
   test("MCP, OpenCode and unknown tools: the reason says which", () => {
@@ -601,6 +649,11 @@ describe("risk rules: tools other than the shell (#2474)", () => {
       reason: "descarta o card, a worktree e a branch",
     });
     expect(classify("mcp__other__finish_card", { outcome: "discard" }).level).toBe("high");
+    // Only a discard of a card is rated: another tool with the same input is an ordinary MCP call.
+    expect(classify("mcp__x__list_things", { outcome: "discard" })).toMatchObject({
+      level: "medium",
+      reason: "ferramenta MCP",
+    });
     for (const input of [{ outcome: "done" }, {}, { outcome: "Discard" }]) {
       expect(classify("mcp__flightdeck__finish_card", input)).toMatchObject({
         level: "medium",
