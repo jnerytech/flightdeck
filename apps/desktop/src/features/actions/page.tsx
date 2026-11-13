@@ -1,12 +1,12 @@
 import type { ActionInfo, ActionList, ActionRunInfo } from "@flightdeck/protocol";
 import { Plus, Terminal } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SecretMeta } from "@/features/vault/index.ts";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { actionIssueText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -28,14 +28,24 @@ function usesProdSecret(action: ActionInfo, secrets: SecretMeta[]): boolean {
 }
 
 /** One action's runs, newest first; the output is shown as the daemon masked it. */
-function Runs(props: Readonly<{ store: AppStore; action: ActionInfo; runs: ActionRunInfo[] }>) {
+function Runs(
+  props: Readonly<{ id: string; store: AppStore; action: ActionInfo; runs: ActionRunInfo[] }>,
+) {
   const { store, action } = props;
   const { t } = store.i18n;
   if (props.runs.length === 0) {
-    return <p className="text-muted-foreground text-xs">{t("actionsUi.noRuns")}</p>;
+    return (
+      <p id={props.id} className="text-muted-foreground text-xs">
+        {t("actionsUi.noRuns")}
+      </p>
+    );
   }
   return (
-    <ul aria-label={t("actionsUi.runs", { name: action.name })} className="flex flex-col gap-2">
+    <ul
+      id={props.id}
+      aria-label={t("actionsUi.runs", { name: action.name })}
+      className="flex flex-col gap-2"
+    >
       {props.runs.map((run) => (
         <li key={run.id} className="flex flex-col gap-1 text-xs">
           <span className="flex flex-wrap items-baseline gap-x-2">
@@ -83,6 +93,10 @@ export function ActionsPage(
 ) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
+  const base = useId();
+  const problemsId = `${base}-problems`;
+  /** The id of an action's runs list, which its Runs button controls (by its place, so no two share one). */
+  const runsId = (index: number) => `${base}-runs-${index}`;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   /** The runs of the actions whose history is open, by `source:name`. */
@@ -91,10 +105,17 @@ export function ActionsPage(
   /** `"new"` for the creation, an action made in the app for its editing. */
   const [editing, setEditing] = useState<ActionInfo | "new" | null>(props.draft ? "new" : null);
   const [removing, setRemoving] = useState<ActionInfo | null>(null);
-  const loading = useMinLoading(actions === null);
+  /** `actions.list` failed (#2609): the page says so and offers a retry, not a loading shape for good. */
+  const [loadFailed, setLoadFailed] = useState(false);
+  const loading = useMinLoading(actions === null && !loadFailed);
 
   const load = useCallback(async () => {
-    const list = await store.hostCommand(hostId, "actions.list", { projectId });
+    // A retry shows the loading shape again, so the person sees it was taken.
+    setLoadFailed(false);
+    // The page has its own retry, so the toast offers none that would throw the answer away.
+    const list = await store.hostCommand(hostId, "actions.list", { projectId }, { retry: false });
+    // `hostCommand` raises the toast with the reason and answers null for a refused request.
+    setLoadFailed(!list);
     if (!list) return;
     setActions(list.actions);
     setErrors(problemsOf(list, t));
@@ -158,6 +179,13 @@ export function ActionsPage(
           {t("actionsUi.sameUser")}
         </p>
         {loading && <LoadingState label={t("actionsUi.loading")} />}
+        {!loading && loadFailed && (
+          <ErrorState
+            message={t("actionsUi.loadFailed")}
+            retryLabel={t("actionsUi.retry")}
+            onRetry={() => void load()}
+          />
+        )}
         {actions?.length === 0 && (
           <EmptyState
             icon={Terminal}
@@ -166,17 +194,23 @@ export function ActionsPage(
           />
         )}
         {errors.length > 0 && (
-          <ul
-            aria-label={t("actionsUi.problems")}
-            className="flex flex-col gap-1 text-status-error text-xs"
-          >
-            {errors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
+          // An alert: what a remove or a save leaves in the file is announced as it appears.
+          <section role="alert">
+            <h2 id={problemsId} className="font-medium text-status-error text-xs">
+              {t("actionsUi.problems")}
+            </h2>
+            <ul
+              aria-labelledby={problemsId}
+              className="flex flex-col gap-1 text-status-error text-xs"
+            >
+              {errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          </section>
         )}
         <ul aria-label={t("actionsUi.list")} className="flex flex-col gap-2">
-          {(actions ?? []).map((action) => {
+          {(actions ?? []).map((action, index) => {
             const secrets = [...action.secrets.values, ...action.secrets.files];
             const params = Object.keys(action.params);
             const key = `${action.source}:${action.name}`;
@@ -205,18 +239,27 @@ export function ActionsPage(
                     {t("actionsUi.secrets", { names: secrets.join(", ") })}
                   </span>
                 )}
-                <Button
+                <ActionButton
                   variant="ghost"
                   size="sm"
                   className="self-start"
                   aria-label={t(history[key] ? "actionsUi.hideRuns" : "actionsUi.showRuns", {
                     name: action.name,
                   })}
-                  onClick={() => void toggleRuns(action)}
+                  aria-expanded={Boolean(history[key])}
+                  aria-controls={history[key] ? runsId(index) : undefined}
+                  onClick={() => toggleRuns(action)}
                 >
                   {t(history[key] ? "actionsUi.hideRunsButton" : "actionsUi.runsButton")}
-                </Button>
-                {history[key] && <Runs store={store} action={action} runs={history[key] ?? []} />}
+                </ActionButton>
+                {history[key] && (
+                  <Runs
+                    id={runsId(index)}
+                    store={store}
+                    action={action}
+                    runs={history[key] ?? []}
+                  />
+                )}
                 {action.source === "app" && (
                   <span className="flex gap-1 self-start">
                     <Button

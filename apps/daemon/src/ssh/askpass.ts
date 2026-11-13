@@ -4,7 +4,7 @@ import type { AskpassRequest, SshTarget } from "@flightdeck/protocol";
 import { readConfig } from "../costs/statusline.ts";
 import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
-import type { Timers } from "../quota/quota.ts";
+import type { Timers } from "../quota/index.ts";
 import type { AskpassHook } from "./connect.ts";
 
 export interface AskpassBrokerOptions {

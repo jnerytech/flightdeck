@@ -39,6 +39,7 @@ import {
   columnCards,
   dropPositions,
   idsByColumn,
+  moveLabel,
   queueMaxOf,
   refusalNames,
   showingColumn,
@@ -90,7 +91,6 @@ import {
   requestResult,
   runMany,
   startConfirmLines,
-  startOffers,
   startQuotaLines,
   updateMany,
   updateSummary,
@@ -815,7 +815,7 @@ export const BoardView = memo(function BoardView(props: {
     max: queueMax ?? null,
     running: runningOnHost,
   });
-  const otherHosts = startOffers(bulk, startReady, () => elsewhere.offers(waiting));
+  const otherHosts = bulk === "start" && startReady ? elsewhere.offers(waiting) : [];
   /** Hands the cards that would wait to another host: made and started there, then Done here. */
   const startOnOther = async (hostIdOther: string) => {
     const target = otherHosts.find((o) => o.hostId === hostIdOther);
@@ -908,12 +908,7 @@ export const BoardView = memo(function BoardView(props: {
     const { index, moves } = cardMoves(columnOf(card.column), card);
     return moves.map(({ key, column, targetId, disabled }) => ({
       key,
-      label:
-        key === "up"
-          ? t("board.moveUp")
-          : key === "down"
-            ? t("board.moveDown")
-            : t("board.moveTo", { column: t(`kanban.columns.${key}` as Key) }),
+      label: moveLabel(t, key),
       ...(disabled !== undefined ? { disabled } : {}),
       onSelect: () => {
         refocus.current = { cardId: card.id, column: card.column, index };
