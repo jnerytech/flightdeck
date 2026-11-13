@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cpSync } from "node:fs";
 import { join } from "node:path";
-import { UNTRUSTED_MARK } from "../../src/issues/issues.ts";
+import { UNTRUSTED_MARK } from "../../src/kernel/index.ts";
 import { CARDS_PER_RUN, type Finding } from "../../src/workflows/findings.ts";
 import { newBoard } from "../support/board-helpers.ts";
 

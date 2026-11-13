@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { seedDemoHosts } from "../src/demo/boot.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { seedDemoHosts } from "../../src/demo/boot.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 /**
  * A store whose oldest waiting item is an open gate of a workflow run, then a permission request,

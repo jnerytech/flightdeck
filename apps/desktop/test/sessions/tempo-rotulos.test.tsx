@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TContext } = await import("../src/i18n/context.tsx");
-const { TimingBreakdown } = await import("../src/features/costs/TimingBreakdown.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { TimingBreakdown } = await import("../../src/features/costs/TimingBreakdown.tsx");
 
-import type { AppStore } from "../src/lib/app-store.ts";
+import type { AppStore } from "../../src/lib/app-store.ts";
 
 afterEach(cleanup);
 

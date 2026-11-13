@@ -5,7 +5,8 @@ import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts
 import { runGh } from "../../src/github/gh.ts";
 import { GithubService } from "../../src/github/service.ts";
 import { type GithubStartRequest, startFromGithub } from "../../src/github/start.ts";
-import { Issues, UNTRUSTED_MARK } from "../../src/issues/issues.ts";
+import { Issues } from "../../src/issues/issues.ts";
+import { UNTRUSTED_MARK } from "../../src/kernel/index.ts";
 import type { GitRunner } from "../../src/projects/project-find.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 

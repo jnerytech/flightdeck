@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { UNTRUSTED_MARK } from "../../src/issues/issues.ts";
+import { UNTRUSTED_MARK } from "../../src/kernel/index.ts";
 import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories and several turns per test: more than the default 5 s.
