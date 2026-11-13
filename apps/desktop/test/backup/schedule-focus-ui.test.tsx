@@ -67,7 +67,10 @@ describe("backup-schedule-focus-ui: the passphrase form moves the focus and anno
     open();
     await press("Choose folder");
     await choose("Every day");
-    expect(document.activeElement === passphraseField()).toBe(true);
+    expect([passphraseField() !== null, document.activeElement === passphraseField()]).toEqual([
+      true,
+      true,
+    ]);
   });
 
   test("saving the passphrase puts the focus on the Passphrase set line, which is a status", async () => {
