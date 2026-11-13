@@ -36,7 +36,8 @@ export interface NewTeamForm {
 export type TeamConfirm =
   | { kind: "close" }
   | { kind: "delete" }
-  | { kind: "remove"; member: string };
+  /** `label` is what the row calls the member (else its name); the line that says it is gone uses it. */
+  | { kind: "remove"; member: string; label?: string };
 
 /**
  * Whether a member's effort select shows, and its choice is sent: the host announces it and the

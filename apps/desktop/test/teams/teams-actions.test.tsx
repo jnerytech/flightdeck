@@ -33,7 +33,7 @@ const WORDS = {
     closed: "Team login closed",
     deleted: "Team login deleted",
     removed: "Worker w1 removed",
-    notDone: "Not done: the team has a worker at work",
+    notDone: "Not done:",
   },
   "pt-BR": {
     row: "Time login",
@@ -53,7 +53,7 @@ const WORDS = {
     closed: "Time login encerrado",
     deleted: "Time login excluído",
     removed: "Executora w1 removida",
-    notDone: "Não foi feito: the team has a worker at work",
+    notDone: "Não foi feito:",
   },
 };
 
@@ -233,6 +233,7 @@ describe.each(["en", "pt-BR"] as const)("teams-actions (%s)", (language) => {
     await click(words.pause);
     await settleMaybe(() => said(words.notDone), 3000);
     expect(said(words.notDone)).toBe(true);
+    expect(said("the team has a worker at work")).toBe(true);
     expect(button(words.pause) !== null).toBe(true);
     expect(said(words.paused)).toBe(false);
   });
