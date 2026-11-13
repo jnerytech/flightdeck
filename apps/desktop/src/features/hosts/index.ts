@@ -2,7 +2,7 @@
  * The hosts' public entry in the app (#1589, #1596): what each host's checks say about its health and
  * its daemon's update, and the pieces other screens show for a host.
  * Another domain imports from here, never a file inside; the components come from `ui.ts` (#2451). The page (`page.tsx`) is left out on
- * purpose: `ui/Screens.tsx` loads it as a lazy chunk, and exporting it here would pull it into the
+ * purpose: `app/Screens.tsx` loads it as a lazy chunk, and exporting it here would pull it into the
  * main bundle.
  */
 

@@ -122,7 +122,6 @@ describe("areas: a tela se adapta à largura da sua área", () => {
   test("a screen never picks its columns from the window width: no sm:, md:, lg: or xl: in a screen (dialogs and sheets size to the window)", () => {
     const root = resolve(import.meta.dir, "../../src");
     const files = [
-      ...readdirSync(join(root, "ui")).map((f) => join(root, "ui", f)),
       ...readdirSync(join(root, "app")).map((f) => join(root, "app", f)),
       ...readdirSync(join(root, "features"), { withFileTypes: true })
         .filter((entry) => entry.isDirectory())

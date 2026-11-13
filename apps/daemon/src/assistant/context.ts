@@ -13,9 +13,8 @@ import {
   type SecretScanner,
 } from "@flightdeck/protocol";
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
-import { refArg } from "../board/ref-arg.ts";
 import { git } from "../git/index.ts";
-import { FlightdeckError, readRegular } from "../kernel/index.ts";
+import { FlightdeckError, readRegular, refArg } from "../kernel/index.ts";
 import { isCredentialPath } from "../permissions/risk.ts";
 import { REMOVED_LINE } from "../watch/check-run.ts";
 

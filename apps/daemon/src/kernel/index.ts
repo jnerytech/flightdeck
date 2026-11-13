@@ -31,6 +31,7 @@ export { ntfsName } from "./ntfs-name.ts";
 export { isInside, resolveAllowedCwd, rootNames, samePath } from "./paths.ts";
 export { present } from "./present.ts";
 export { readRegular, readRegularSized } from "./read-regular.ts";
+export { assertBranchName, HEAD, type Rev, refArg } from "./ref-arg.ts";
 export { settled } from "./settled.ts";
 export { tokenMatches } from "./token.ts";
 export { trimEndOf, trimStartOf } from "./trim.ts";

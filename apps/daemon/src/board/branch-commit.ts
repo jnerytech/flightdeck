@@ -12,11 +12,11 @@ import {
   type CommandResult,
   type FlightdeckError,
   killTree,
+  type Rev,
   runCommand,
   whichOnPath,
 } from "../kernel/index.ts";
 import { SAFE, TIMEOUT_MS } from "../teleport/git.ts";
-import type { Rev } from "./ref-arg.ts";
 
 /** What can go wrong, each refused by the caller under its own reason. */
 export type BranchCommitFailure = "no_head" | "identity" | "branch_taken" | "git";

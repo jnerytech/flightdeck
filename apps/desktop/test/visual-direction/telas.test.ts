@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const UI = resolve(import.meta.dir, "../../src/ui");
+const SRC = resolve(import.meta.dir, "../../src");
 
 /**
  * The classes of the first stylesheet (removed in phase 10): a screen that still uses one is
@@ -106,25 +106,24 @@ function classTokens(source: string): string[] {
 
 /** Every screen of the app. */
 // A screen moves into its feature folder (#1597): it is still a screen.
-const FEATURES = resolve(UI, "../features");
+const FEATURES = resolve(SRC, "features");
 const SCREENS = [
-  ...readdirSync(UI).filter((file) => file.endsWith(".tsx")),
-  ...readdirSync(resolve(UI, "../app"))
+  ...readdirSync(resolve(SRC, "app"))
     .filter((file) => file.endsWith(".tsx"))
-    .map((file) => `../app/${file}`),
+    .map((file) => `app/${file}`),
   ...readdirSync(FEATURES, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .flatMap((entry) =>
       readdirSync(resolve(FEATURES, entry.name))
         .filter((file) => file.endsWith(".tsx"))
-        .map((file) => `../features/${entry.name}/${file}`),
+        .map((file) => `features/${entry.name}/${file}`),
     ),
 ];
 
 describe("direcao-visual: telas", () => {
   test("as classes do estilo antigo saem de todas as telas", () => {
     const violations = SCREENS.flatMap((file) =>
-      classTokens(readFileSync(resolve(UI, file), "utf8"))
+      classTokens(readFileSync(resolve(SRC, file), "utf8"))
         .filter((token) => LEGACY.has(token))
         .map((token) => `${file}: ${token}`),
     );
@@ -133,7 +132,7 @@ describe("direcao-visual: telas", () => {
 
   test("nenhuma tela usa um <button> cru, sem estilo: os botões são o Button do shadcn ou levam classes", () => {
     const bare = SCREENS.flatMap((file) =>
-      readFileSync(resolve(UI, file), "utf8")
+      readFileSync(resolve(SRC, file), "utf8")
         .split(/\r?\n/)
         .map((text, i) => ({ text, line: i + 1 }))
         .filter(

@@ -1,6 +1,7 @@
 {
   "src/app/App.tsx": 3,
   "src/app/Areas.tsx": 4,
+  "src/app/Screens.tsx": 6,
   "src/features/actions/action-form.tsx": 8,
   "src/features/actions/page.tsx": 21,
   "src/features/agentcfg/agent-files.tsx": 25,
@@ -180,6 +181,5 @@
   "src/features/watch/watch-settings-section.tsx": 2,
   "src/features/workflows/alert-picker.tsx": 3,
   "src/features/workflows/page.tsx": 12,
-  "src/features/workflows/workflow-templates.tsx": 5,
-  "src/ui/Screens.tsx": 6
+  "src/features/workflows/workflow-templates.tsx": 5
 }
