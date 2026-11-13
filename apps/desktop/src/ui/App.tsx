@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Notices } from "@/components/feedback/notices";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/index.ts";
+import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/ui.ts";
 import { SimpleApp } from "@/features/home/ui.ts";
 import { pairingErrorText } from "@/features/hosts/index.ts";
 import { draftFromLink } from "@/features/hosts/ui.ts";
