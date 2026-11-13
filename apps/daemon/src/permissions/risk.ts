@@ -296,7 +296,10 @@ export class RiskClassifier {
     return [["medium", "ferramenta que o classificador não conhece"]];
   }
 
-  private shell(command: string, cwd: string): Candidate[] {
+  private shell(rawCommand: string, cwd: string): Candidate[] {
+    // A backslash before a newline is a line continuation: the shell reads the two lines as one
+    // (`.e\<LF>nv` is `.env`). An escaped backslash, `\\<LF>`, is not one (#2496).
+    const command = rawCommand.replace(/(?<!\\)((?:\\\\)*)\\\r?\n/g, "$1");
     const out: Candidate[] = [["medium", "comando de shell"]];
     // A pipe hands its output to the next command: split on single pipes to know who is fed.
     for (const statement of command.split(/&&|\|\||[;&\n]/)) {
@@ -311,15 +314,15 @@ export class RiskClassifier {
     }
     // `>`, `>>`, `&>`, `&>>`, `>&file`, `>|file` and `<>file`; `>&2` and `>&-` copy or close a
     // descriptor. The lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`,
-    // match too. The target is one shell word: quoted and bare parts glued together (#2496). A
-    // backslash before a newline is a line continuation, so the lines are joined first.
-    for (const match of command
-      .replace(/\\\r?\n/g, "")
-      .matchAll(/(?<![<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g)) {
+    // match too, unless that first `>` is escaped. The target is one shell word: quoted and bare
+    // parts glued together (#2496).
+    for (const match of command.matchAll(
+      /(?<!(?<!\\)[<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g,
+    )) {
       const target = (match[2] as string).replace(/["']/g, "");
       if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;
       if (SINKS.has(target.toLowerCase())) continue;
-      if (/[$%{]|^\(|^~(?![\\/]|$)/.test(target) || !this.insideAny(target, cwd)) {
+      if (/[$%{]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) || !this.insideAny(target, cwd)) {
         out.push(["high", "redirecionamento para fora do cwd"]);
       }
     }

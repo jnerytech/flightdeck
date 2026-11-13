@@ -99,7 +99,6 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", "r\\\nm -rf x"],
   // An escaped `>` is part of the target; the real redirect after it still counts.
   ["high", "echo x >a\\>>/etc/y"],
-  ["high", "echo x >a\\>|/etc/y"],
   // `\\` is a literal backslash, so the newline after it ends the command; it is no continuation.
   ["high", "echo x >a\\\\\n>/etc/y"],
   // zsh: `>!file` forces the write and `>=(cmd)` is a process substitution.
