@@ -198,3 +198,56 @@ describe("metrics: PR size and rework", () => {
     expect(prSize(prs, [feat, soon, late, other], WINDOW).reworkShare).toBeCloseTo(1 / 3, 5);
   });
 });
+
+describe("metrics: rework share per pull request (#2027)", () => {
+  const pr = (title: string, mergedAt: string, files: string[]): MergedPr => ({
+    additions: 1,
+    deletions: 1,
+    mergedAt,
+    title,
+    files: files.map((path) => ({ path })),
+  });
+  const feat = pr("feat(x): one", "2026-11-01T00:00:00Z", [
+    "apps/daemon/src/a.ts",
+    "apps/daemon/src/b.ts",
+  ]);
+
+  test("a fix pull request 30 hours after a feat pull request on most of the same source files counts", () => {
+    const fix = pr("fix(x): the bug", "2026-11-02T06:00:00Z", [
+      "apps/daemon/src/a.ts",
+      "apps/daemon/src/b.ts",
+    ]);
+    expect(prSize([feat, fix], [], WINDOW).reworkShare).toBe(1);
+  });
+
+  test("a fix pull request 60 hours after the feat pull request does not count", () => {
+    const fix = pr("fix(x): late", "2026-11-03T12:00:00Z", ["apps/daemon/src/a.ts"]);
+    expect(prSize([feat, fix], [], WINDOW).reworkShare).toBe(0);
+  });
+
+  test("a fix pull request that shares only a file every pull request touches does not count", () => {
+    const hot = pr("feat(y): hot", "2026-11-01T00:00:00Z", ["apps/daemon/src/hot.ts"]);
+    const fix = pr("fix(z): elsewhere", "2026-11-02T00:00:00Z", [
+      "apps/daemon/src/hot.ts",
+      "apps/daemon/src/c.ts",
+      "apps/daemon/src/d.ts",
+    ]);
+    expect(prSize([hot, fix], [], WINDOW).reworkShare).toBe(0);
+  });
+
+  test("no fix pull request in the window gives null, and a fix commit is not counted when the pull requests are read", () => {
+    const commits: LogCommit[] = [
+      { hash: "f", date: "2026-11-01T00:00:00Z", subject: "feat(x): one", files: ["a.ts"] },
+      { hash: "x", date: "2026-11-02T06:00:00Z", subject: "fix(x): soon", files: ["a.ts"] },
+    ];
+    expect(prSize([feat], commits, WINDOW).reworkShare).toBeNull();
+  });
+
+  test("only the fix pull requests merged in the window are counted, against feat pull requests merged before it", () => {
+    const early = pr("feat(x): early", "2026-10-15T00:00:00Z", ["apps/daemon/src/a.ts"]);
+    const edge = pr("fix(x): first day", "2026-10-16T10:00:00Z", ["apps/daemon/src/a.ts"]);
+    const before = pr("fix(x): out of window", "2026-10-10T00:00:00Z", ["apps/daemon/src/a.ts"]);
+    // The feat is 34 hours before the fix, outside the window's start: it still counts as the cause.
+    expect(prSize([early, edge, before], [], WINDOW).reworkShare).toBe(1);
+  });
+});
