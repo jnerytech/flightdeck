@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionNameInfo } from "@flightdeck/protocol";
-import { hubRowOrder, hubRows } from "../src/features/sessions/hub.ts";
-import { sessionLabel } from "../src/features/sessions/session-label.ts";
-import { translator } from "../src/i18n/index.ts";
-import type { AppState } from "../src/lib/app-store.ts";
+import { hubRowOrder, hubRows } from "../../src/features/sessions/hub.ts";
+import { sessionLabel } from "../../src/features/sessions/session-label.ts";
+import { translator } from "../../src/i18n/index.ts";
+import type { AppState } from "../../src/lib/app-store.ts";
 
 /**
  * Issue #668: a session outside a team keeps its standard name, but in the person's language. The

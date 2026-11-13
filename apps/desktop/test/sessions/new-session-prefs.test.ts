@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   NEW_SESSION_PREFS_KEY,
   NewSessionPrefs,
-} from "../src/features/sessions/new-session-prefs.ts";
+} from "../../src/features/sessions/new-session-prefs.ts";
 
 /** A storage that keeps what it is given. */
 function storage(initial?: string) {
