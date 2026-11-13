@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
-import { QuotaGuard } from "@/features/quota/index.ts";
+import { QuotaGuard } from "@/features/quota/ui.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";

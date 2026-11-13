@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type IstanbulChangedDeps, istanbulChanged } from "../../lib/tests/istanbul-changed.ts";
 import { shardRun, spawnLogged } from "../../lib/tests/shard-gate.ts";
@@ -20,18 +21,20 @@ function fakes(changed: string[] | null, run = { exit: 0, log: " 3 pass\n 0 fail
   const spawned: Array<{ argv: string[]; env: Record<string, string> }> = [];
   const printed: string[] = [];
   const made: string[] = [];
+  const written = new Map<string, string>();
   const deps: IstanbulChangedDeps = {
     root: "/repo",
     tracked: TRACKED,
     changed: async () => changed,
     mkdir: (path) => void made.push(path),
+    write: (path, text) => void written.set(path, text),
     spawn: async (argv, env) => {
       spawned.push({ argv, env });
       return run;
     },
     print: (line) => void printed.push(line),
   };
-  return { deps, spawned, printed, made };
+  return { deps, spawned, printed, made, written };
 }
 
 /**
@@ -55,7 +58,14 @@ describe("istanbul-changed (#1493)", () => {
       OUT,
       sources,
     );
-    expect([code, f.spawned, f.made]).toEqual([0, [expected], [OUT]]);
+    expect([code, f.spawned, f.made]).toEqual([
+      0,
+      [{ argv: expected.argv, env: expected.env }],
+      [OUT],
+    ]);
+    // The sources go in a file the env names, not in the env itself (#2504).
+    expect(f.written).toEqual(new Map([[`${OUT}/funcs-files.json`, JSON.stringify(sources)]]));
+    expect(expected.env.COVERAGE_FUNCS_FILES_PATH).toBe(`${OUT}/funcs-files.json`);
   });
 
   test("with no changed test file nothing runs: a bare bun test would run the whole suite", async () => {
@@ -116,6 +126,7 @@ describe("istanbul-changed (#1493)", () => {
     const plan = shardRun("istanbul", [`${dir}/serialized.fixture.ts`], out, [
       `${dir}/serialized.ts`,
     ]);
+    if (plan.targetsFile) writeFileSync(plan.targetsFile.path, plan.targetsFile.text);
     const proc = Bun.spawn(plan.argv, {
       cwd: ROOT,
       env: { ...process.env, ...plan.env },
