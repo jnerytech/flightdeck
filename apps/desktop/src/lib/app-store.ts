@@ -9,6 +9,15 @@ import type {
 import { z } from "zod";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
+import {
+  composeHosts,
+  composeLinkHandlers,
+  type HostSlices,
+  type LinkHandlers,
+} from "../app/compose/hosts.ts";
+import { composeLifecycle, type Lifecycle } from "../app/compose/lifecycle.ts";
+import { composeShell, type ShellSlices } from "../app/compose/shell.ts";
+import { composeVault, type VaultSlices } from "../app/compose/vault.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BudgetsSlice, localDay, wireBudgets } from "../features/costs/index.ts";
@@ -36,15 +45,6 @@ import type {
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
-import {
-  composeHosts,
-  composeLinkHandlers,
-  type HostSlices,
-  type LinkHandlers,
-} from "./compose/hosts.ts";
-import { composeLifecycle, type Lifecycle } from "./compose/lifecycle.ts";
-import { composeShell, type ShellSlices } from "./compose/shell.ts";
-import { composeVault, type VaultSlices } from "./compose/vault.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
