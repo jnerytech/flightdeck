@@ -163,6 +163,35 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     }
   });
 
+  test("a scroll by hand to the end of the strip stays there: no snap back to the active tab (#2728)", async () => {
+    // The active tab is at the far left. Wheeling the strip to its end drops the right arrow, which
+    // widens the strip; that is not a reason to bring the active tab back.
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const at = (left: number, right: number) => ({ left, right }) as DOMRect;
+      const scrolled = (document.querySelector(".tab-scroller") as HTMLElement).scrollLeft;
+      if (this.classList.contains("tab-scroller")) return at(0, 500);
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
+        return at(0 - scrolled, 60 - scrolled);
+      return at(0, 0);
+    };
+    try {
+      const { scroller } = await many();
+      scroller.scrollLeft = 0;
+      Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+      Object.defineProperty(scroller, "clientWidth", { value: 500, configurable: true });
+      await act(async () => {
+        fireEvent.scroll(scroller);
+      });
+      await act(async () => {
+        fireEvent.wheel(scroller, { deltaY: 1500 });
+      });
+      expect(scroller.scrollLeft).toBe(1500);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+
   test("the list of all tabs is a filterable list, not a menu: icon, title, host, the active one marked (#576)", async () => {
     const { store } = await openList();
     expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
