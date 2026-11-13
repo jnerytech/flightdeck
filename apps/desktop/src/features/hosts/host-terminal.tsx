@@ -22,6 +22,8 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
   const enabled = hasFeature(info?.features, "terminal", false);
   // null until a read worked: a failed read keeps the last list, and says so only if there is none (#2587).
   const [live, setLive] = useState<TerminalInfo[] | null>(null);
+  /** A read failed: with no list yet, that is what the panel says (before it, it says nothing). */
+  const [failed, setFailed] = useState(false);
   const [asking, setAsking] = useState<"on" | "off" | null>(null);
 
   // Terminals open and end elsewhere too (another tab, another app, by themselves): the list
@@ -32,7 +34,7 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
       store.terminals
         .host(host.id)
         .list()
-        .then(setLive, () => {});
+        .then(setLive, () => setFailed(true));
     void load();
     const timer = setInterval(load, LIST_REFRESH_MS);
     return () => clearInterval(timer);
@@ -52,9 +54,10 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
       <Panel title={t("hostTerminal.title")}>
         {enabled ? (
           <>
-            {live === null ? (
+            {live === null && failed && (
               <p className="text-muted-foreground text-sm">{t("hostTerminal.unreadable")}</p>
-            ) : running.length === 0 ? (
+            )}
+            {live === null ? null : running.length === 0 ? (
               <p className="text-muted-foreground text-sm">{t("hostTerminal.none")}</p>
             ) : (
               <ul className="flex flex-col gap-1 text-sm">
