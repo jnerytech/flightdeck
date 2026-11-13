@@ -50,7 +50,7 @@ describe("copy diagnostics: one answer per copy (#2595)", () => {
   test("a working clipboard shows exactly one success toast", async () => {
     const w = setup("works");
     await copyDiagnostics(w);
-    expect(w.copied.length).toBe(1);
+    expect(w.copied).toHaveLength(1);
     expect(kinds(w.store)).toEqual(["success"]);
     expect(w.store.getState().notices[0]?.text).toContain("Diagnostics copied");
   });

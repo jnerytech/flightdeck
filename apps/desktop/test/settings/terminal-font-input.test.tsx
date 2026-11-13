@@ -88,10 +88,10 @@ describe("terminal font size box (#2594)", () => {
 
   test("the allowed range is written next to the box, in both languages", async () => {
     await openSettings("pt-BR", LABEL);
-    expect(screen.queryByText("Entre 10 e 24 px.") !== null).toBe(true);
+    expect(screen.queryByText("Entre 10 e 24 px.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     cleanup();
     await openSettings("en", "Terminal font size");
-    expect(screen.queryByText("Between 10 and 24 px.") !== null).toBe(true);
+    expect(screen.queryByText("Between 10 and 24 px.") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the box is tied to the range text for a screen reader", async () => {

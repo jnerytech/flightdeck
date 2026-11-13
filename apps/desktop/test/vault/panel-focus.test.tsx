@@ -42,7 +42,7 @@ async function open() {
 
 const button = (name: string) => screen.queryByRole("button", { name }) as HTMLElement;
 const click = async (name: string) => {
-  expect(screen.queryByRole("button", { name }) === null).toBe(false);
+  expect(screen.queryByRole("button", { name }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   await act(async () => {
     fireEvent.click(button(name));
   });
@@ -80,7 +80,7 @@ describe("cofre-ui: a panel takes the focus when it opens and gives it back when
     await open();
     await click("Regras de deploy");
     const region = screen.queryByRole("region", { name: "Regras de deploy" });
-    expect(region === null).toBe(false);
+    expect(region === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(region?.contains(document.activeElement)).toBe(true);
     expect(focusedOn(region?.querySelector("select") ?? null)).toBe(true);
     expect(scrolled.some((el) => el.tagName === "SECTION")).toBe(true);
