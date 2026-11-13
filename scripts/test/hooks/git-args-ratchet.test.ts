@@ -18,6 +18,10 @@ describe("git-args-ratchet: no git call gives a base or a branch to git unguarde
     expect(calls('await gitLimited(cwd, 1000, "diff", source);')).toHaveLength(1);
   });
 
+  test("the runner with input and environment is read like the others", () => {
+    expect(calls('await gitWith(repo, ["rev-list", base], { input });')).toHaveLength(1);
+  });
+
   test("the byte-exact runner is read like the others", () => {
     expect(calls('await gitBytes(repo, ["cat-file", "blob", base]);')).toHaveLength(1);
   });

@@ -24,7 +24,7 @@ import type { Lang } from "@/i18n/index";
 import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
 import { basename, holdsFolder, isBusy } from "@/shared/lib/index.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
-import { CheckpointsButton } from "../features/checkpoints/index.ts";
+import { CheckpointsButton } from "../features/checkpoints/ui.ts";
 import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
 import { FolderPicker } from "../features/hosts/ui.ts";

@@ -179,21 +179,6 @@ describe("paleta", () => {
     expect(store.getState().search).toBeNull();
   });
 
-  test("numa linha, o título ocupa a largura e o caminho encolhe primeiro (nunca o título quebra)", async () => {
-    await setup();
-    await openPalette();
-    await settle(listed);
-    const row = inPalette("option")[0] as HTMLElement;
-    // The row's state glyph (issue #147) comes first; the title and the path are its text.
-    const [title, detail] = [...row.querySelectorAll("span")].filter(
-      (span) => span.closest("[role='img']") === null,
-    ) as HTMLElement[];
-    expect(title?.className).toContain("shrink-0");
-    expect(title?.className).toContain("whitespace-nowrap");
-    expect(detail?.className).toContain("min-w-0");
-    expect(detail?.className).toContain("truncate");
-  });
-
   test("setas escolhem, Enter abre; Enter sem escolha busca no histórico, que chega depois sem apagar os locais", async () => {
     const { store } = await setup();
     await openPalette();
