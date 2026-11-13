@@ -18,7 +18,7 @@ import {
 } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
-import { UntrustedNotice } from "@/features/trust/index.ts";
+import { UntrustedNotice } from "@/features/trust/ui.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
