@@ -16,7 +16,7 @@ import type { Prepare } from "../personas/index.ts";
 import type { PrProvider } from "../pr/index.ts";
 import type { Quota } from "../quota/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
-import type { SecretScanner } from "../snippets/model.ts";
+import type { SecretScanner } from "../snippets/index.ts";
 import type { BoundedCheckRunner, CheckRunner } from "../workflows/check-runner.ts";
 
 // The board's shapes are the protocol's: what the daemon stores is what goes on the wire.

@@ -77,7 +77,7 @@ import { startServer } from "./server.ts";
 import { daemonCommand, osServiceContext } from "./service/index.ts";
 import { createServiceInstall } from "./service/wiring.ts";
 import { createSessionManager, createSessionSettings } from "./sessions/wiring.ts";
-import { SecretScanner } from "./snippets/model.ts";
+import { SecretScanner } from "./snippets/index.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
 import { EventStore } from "./store/index.ts";
