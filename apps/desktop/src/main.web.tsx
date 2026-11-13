@@ -1,6 +1,7 @@
 // Web entry point (the demo and its prints): the browser platform, already paired with the demo's
 // hosts; all logic lives in demo/boot.ts and is covered there.
 import { createRoot } from "react-dom/client";
+import { reactRootErrorHandlers } from "./app/app-log.ts";
 import {
   applyDemoPrefs,
   demoPlatform,
@@ -10,7 +11,6 @@ import {
   parseDemoHosts,
   seedDemoHosts,
 } from "./demo/boot.ts";
-import { reactRootErrorHandlers } from "./lib/app-log.ts";
 import { AppStore } from "./lib/app-store.ts";
 import { createWebPlatform } from "./platform/web/index.ts";
 import { App } from "./ui/App.tsx";
