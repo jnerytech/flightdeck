@@ -1,9 +1,9 @@
 import type { SessionSummary } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
+import { IdleSleeper, type SleeperOptions } from "./domain/sleeper.ts";
+import { type StallOptions, StallWatcher } from "./domain/stall.ts";
 import { SessionManager, type SessionManagerOptions, type TurnEdge } from "./session-manager.ts";
-import { IdleSleeper, type SleeperOptions } from "./sleeper.ts";
-import { type StallOptions, StallWatcher } from "./stall.ts";
 
 /** What the sessions' idle sleep, stall watch and bypass switch are built from. */
 export interface SessionSettingsDeps {
