@@ -10,7 +10,7 @@ import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixture
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 // Real git, a daemon and a fake runtime: more than the default 5 s.
 setDefaultTimeout(30_000);

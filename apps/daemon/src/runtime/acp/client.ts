@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { linesOf, parseJsonWith } from "../../kernel/index.ts";
+import { parseJsonWith } from "../../kernel/index.ts";
 
 /** The JSON-RPC codes this client sends or produces itself. */
 export const ACP_METHOD_NOT_FOUND = -32601;
@@ -202,35 +202,4 @@ export interface SpawnedAcp extends AcpTransport {
   exited: Promise<number>;
   /** For a tree kill on Windows (`taskkill /PID <pid> /T /F`). */
   pid: number;
-}
-
-/** Starts the agent with piped stdio; its stderr is dropped (it may echo prompts). */
-export function spawnAcp(
-  argv: string[],
-  opts: { cwd: string; env: Record<string, string> },
-): SpawnedAcp {
-  const child = Bun.spawn(argv, {
-    cwd: opts.cwd,
-    env: opts.env,
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "ignore",
-    // Its own process group on POSIX, so a tree kill reaches what it started.
-    detached: process.platform !== "win32",
-  });
-  return {
-    lines: linesOf(child.stdout),
-    write(line) {
-      child.stdin.write(`${line}\n`);
-      void child.stdin.flush();
-    },
-    close() {
-      void child.stdin.end();
-    },
-    kill() {
-      child.kill();
-    },
-    exited: child.exited,
-    pid: child.pid,
-  };
 }

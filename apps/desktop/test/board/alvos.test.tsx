@@ -9,7 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { HostsBanner } = await import("../../src/features/hosts/hosts-banner.tsx");
 const { DiffView } = await import("../../src/features/review/diff-view.tsx");
 
