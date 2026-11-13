@@ -4,14 +4,14 @@ import {
   type SessionEventOf,
   type SessionSubscribeResult,
 } from "@flightdeck/protocol";
-import { sessionKey } from "./session-key.ts";
+import { sessionKey } from "./domain/session-key.ts";
 import {
   applyEnvelope,
   emptySession,
   endStreaming,
   markGap,
   type SessionState,
-} from "./session-state.ts";
+} from "./domain/session-state.ts";
 
 /** What the stream reads and asks through the app's store. */
 export interface SessionStreamCore {

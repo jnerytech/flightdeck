@@ -8,7 +8,7 @@ const { MessageActions } = await import("../../src/features/sessions/message-act
 const { translator } = await import("../../src/i18n/index.ts");
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
 const { applyEnvelope, emptySession } = await import(
-  "../../src/features/sessions/session-state.ts"
+  "../../src/features/sessions/domain/session-state.ts"
 );
 
 afterEach(cleanup);

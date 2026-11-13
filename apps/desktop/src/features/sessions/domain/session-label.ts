@@ -1,5 +1,5 @@
 import { NAME_GENERAL, NAME_NO_PROJECT, type SessionNameInfo } from "@flightdeck/protocol";
-import type { T } from "../../i18n/index.ts";
+import type { T } from "../../../i18n/index.ts";
 
 /** What a session may be called, from every place a name comes from. */
 export interface LabelInput {

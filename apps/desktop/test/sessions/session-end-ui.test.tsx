@@ -6,7 +6,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { translator } = await import("../../src/i18n/index.ts");
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
-const { emptySession } = await import("../../src/features/sessions/session-state.ts");
+const { emptySession } = await import("../../src/features/sessions/domain/session-state.ts");
 
 afterEach(cleanup);
 

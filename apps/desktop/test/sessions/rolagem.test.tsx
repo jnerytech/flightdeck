@@ -11,7 +11,7 @@ const personScrolls = (el: Element) => {
 };
 const screen = liveScreen(within);
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
-const { emptySession } = await import("../../src/features/sessions/session-state.ts");
+const { emptySession } = await import("../../src/features/sessions/domain/session-state.ts");
 
 afterEach(cleanup);
 
