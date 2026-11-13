@@ -18,6 +18,9 @@ export type ArchInputs = {
   desktopCycles?: { today: number; baseline: number };
   /** Calls to an I/O or clock global in a `domain/` file today (#1601); none is allowed, so the baseline is 0. */
   domainImpureCalls?: number;
+  /** Process launches (`Bun.spawn`) per file outside an `adapters/` folder today and in spawn-count-baseline.json (#1612); absent when not counted. */
+  spawnCounts?: Record<string, number>;
+  spawnBaseline?: Record<string, number>;
   /** Source files over the size limit today and in src-size-baseline.json. */
   srcOversized: Record<string, number>;
   srcBaseline: Record<string, number>;
