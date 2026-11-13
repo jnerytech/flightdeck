@@ -2,7 +2,7 @@ import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TranscriptReader } from "@/features/history/index.ts";
+import { TranscriptReader } from "@/features/history/ui.ts";
 import { awaitedHost, type HostDraft } from "@/features/hosts/index.ts";
 import { draftUrl, FirstRun, HostForm, HostOfflineBanner } from "@/features/hosts/ui.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/ui.ts";
