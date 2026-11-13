@@ -5,7 +5,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { dirname } from "node:path";
 import type { MutationDomain, MutationReport } from "./lib/mutation/report.ts";
 import { summaryMarkdown } from "./lib/mutation/report.ts";
-import { runWeekly } from "./lib/mutation/weekly.ts";
+import { exitCodeOf, runWeekly } from "./lib/mutation/weekly.ts";
 
 const SURVIVOR_LIMIT = 40;
 
@@ -37,4 +37,4 @@ for (const b of outcome.belowBaseline) {
 }
 console.log(text);
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
-process.exit(outcome.failed.length > 0 || outcome.belowBaseline.length > 0 ? 1 : 0);
+process.exit(exitCodeOf(outcome));

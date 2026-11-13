@@ -73,5 +73,5 @@ export function runWeekly(deps: WeeklyDeps): WeeklyOutcome {
 
 /** The weekly run is red when a domain failed to run or fell under its baseline. */
 export function exitCodeOf(outcome: WeeklyOutcome): number {
-  return 0;
+  return outcome.failed.length > 0 || outcome.belowBaseline.length > 0 ? 1 : 0;
 }
