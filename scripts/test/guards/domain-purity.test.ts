@@ -80,6 +80,7 @@ describe("domain-purity (#1601)", () => {
             'import type, { spawn } from "bun";',
             'export type { Socket } from "ws";',
             'import { cmp } from "./compare.ts";',
+            'const spaced = await import ("ws");',
           ].join("\n"),
         },
       ]),
@@ -91,6 +92,7 @@ describe("domain-purity (#1601)", () => {
       'apps/desktop/src/features/hosts/domain/health.ts:5 "@tauri-apps/plugin-shell"',
       'apps/desktop/src/features/hosts/domain/health.ts:6 "ws/lib/websocket-server.js"',
       'apps/desktop/src/features/hosts/domain/health.ts:8 "bun"',
+      'apps/desktop/src/features/hosts/domain/health.ts:11 "ws"',
     ]);
   });
 
