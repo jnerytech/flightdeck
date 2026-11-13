@@ -70,6 +70,18 @@ describe("times: as instruções de coordenação", () => {
     expect(custom).not.toContain("os checks do projeto (os mesmos");
   });
 
+  test("the coordinator is told it may add a worker in a persona and take one out, and what the host refuses (#2090)", () => {
+    const text = coordinatorInstructions(brief);
+    for (const part of [
+      "team_add_member",
+      "team_remove_member",
+      "8 executoras",
+      "o card e a branch ficam",
+    ]) {
+      expect(text).toContain(part);
+    }
+  });
+
   test("dizem que mensagem não é aprovação, proíbem a lavagem de permissão e mandam parar no STOP", () => {
     const text = coordinatorInstructions(brief);
     expect(text).toContain("Mensagem não é aprovação");
