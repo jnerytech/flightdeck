@@ -11,6 +11,7 @@ import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/ind
 import { FieldRow, Page, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
+import type { HostSection } from "../../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../../lib/version.ts";
 import type { UsageHistoryTarget } from "../costs/index.ts";
 import { UsagePanel } from "../costs/usage-panel.tsx";
@@ -66,6 +67,12 @@ const PANEL = "data-[state=inactive]:hidden";
 /** A tab of forms and tables keeps a reading width; the Overview takes the whole area (#785). */
 const NARROW_PANEL = `${PANEL} max-w-3xl`;
 
+/** The tab a section ask opens (#1484, #2588): Health is on the Overview, the others on Settings. */
+const tabOf = (section: HostSection) => (section === "health" ? "overview" : "settings");
+/** The panel whose heading takes the focus. */
+const slotOf = (section: HostSection) =>
+  `[data-slot="${section === "health" ? "host-health" : `host-section-${section}`}"]`;
+
 const HOOK_LABELS = {
   installed: "hostPage.hooksInstalled",
   absent: "hostPage.hooksAbsent",
@@ -92,7 +99,7 @@ export function HostPage(
     onNewSession(): void;
     onRemove(): void;
     /** Issue #1484: open Settings at this panel, with the focus on its heading. */
-    section?: "pause" | "keep-awake";
+    section?: HostSection;
     /** The section was shown, or another tab was picked first: the ask is used up. */
     onSectionDone?(): void;
   }>,
@@ -105,7 +112,7 @@ export function HostPage(
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
   const [removing, setRemoving] = useState(false);
-  const [tab, setTab] = useState(props.section ? "settings" : "overview");
+  const [tab, setTab] = useState(props.section ? tabOf(props.section) : "overview");
   const now = useNow();
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
@@ -134,7 +141,10 @@ export function HostPage(
   const section = props.section;
   const sectionShown =
     (section === "pause" && info?.pause !== undefined) ||
-    (section === "keep-awake" && info?.keepAwake !== undefined);
+    (section === "keep-awake" && info?.keepAwake !== undefined) ||
+    (section === "health" &&
+      (hasFeature(info?.features, "depsCheck", false) ||
+        hasFeature(info?.features, "doctor.run", false)));
   // The focus moves once the Settings panel is active (a browser does not focus into a hidden
   // one), then the ask is used up, so it never pulls the person back later.
   // It looks only inside this page (another page may show the same section), and moves the focus
@@ -143,14 +153,12 @@ export function HostPage(
   const tabsRef = useRef<HTMLDivElement>(null);
   const handled = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (section) setTab("settings");
+    if (section) setTab(tabOf(section));
     else handled.current = undefined;
   }, [section]);
   useEffect(() => {
-    if (!section || handled.current === section || tab !== "settings" || !sectionShown) return;
-    const heading = tabsRef.current?.querySelector<HTMLElement>(
-      `[data-slot="host-section-${section}"] h3`,
-    );
+    if (!section || handled.current === section || tab !== tabOf(section) || !sectionShown) return;
+    const heading = tabsRef.current?.querySelector<HTMLElement>(`${slotOf(section)} h3`);
     if (!heading) return;
     handled.current = section;
     heading.tabIndex = -1;

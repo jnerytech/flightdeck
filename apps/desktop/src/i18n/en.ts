@@ -106,6 +106,7 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    terminalFontRange: "Between {min} and {max} px.",
     terminalReader: "Screen reader support in the terminal",
     terminalReaderHint:
       "Lets a screen reader read the terminal's output. Long output draws more slowly.",
