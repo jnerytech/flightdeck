@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { SecretPicker } from "@/features/vault/index.ts";
+import { SecretPicker } from "@/features/vault/ui.ts";
 import { actionIssueText, refusalText } from "@/i18n/errors";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";

@@ -7,6 +7,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
 import { FlightdeckError } from "../kernel/index.ts";
+import { spawnGrouped } from "./adapters/opencode-spawn.ts";
 import { OPENCODE_API_TIMEOUT_MS, opencodeConfig, opencodeEnv } from "./opencode-config.ts";
 import type { RunResult } from "./opencode-discovery.ts";
 import { REAL_KILL_DEPS, treeKiller } from "./opencode-kill.ts";
@@ -31,15 +32,8 @@ export async function runCommand(
   argv: string[],
   opts: { cwd: string; env: Record<string, string>; timeoutMs: number },
 ): Promise<RunResult> {
-  const child = Bun.spawn(argv, {
-    cwd: opts.cwd,
-    env: opts.env,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "ignore",
-    // Its own process group on POSIX, so the deadline reaches what it started.
-    detached: process.platform !== "win32",
-  });
+  // Its own process group on POSIX, so the deadline reaches what it started.
+  const child = spawnGrouped(argv, opts);
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
