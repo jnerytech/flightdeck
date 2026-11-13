@@ -170,10 +170,7 @@ export interface HubGroup {
 }
 
 /** The quiet fields of a session's summary, when the host marked it quiet. */
-function quietOf(session: {
-  quietSince?: string | undefined;
-  quietTool?: string | null | undefined;
-}) {
+function quietOf(session: { quietSince?: string; quietTool?: string | null }) {
   return session.quietSince
     ? { quietSince: session.quietSince, quietTool: session.quietTool ?? null }
     : {};
