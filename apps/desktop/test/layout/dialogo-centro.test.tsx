@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 
-const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 const rule = (selector: string) => {
   const at = css.indexOf(`${selector} {`);
   return at < 0 ? "" : css.slice(at, css.indexOf("}", at));

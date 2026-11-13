@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Breadcrumb } = await import("../src/features/shell/breadcrumb.tsx");
+const { Breadcrumb } = await import("../../src/features/shell/breadcrumb.tsx");
 
 afterEach(cleanup);
 
-const DESKTOP = resolve(import.meta.dir, "..");
+const DESKTOP = resolve(import.meta.dir, "../..");
 const styles = () => readStyles(resolve(DESKTOP, "src/styles.css"));
 
 /** The text from the first `marker` of the stylesheet to the end of its block. */

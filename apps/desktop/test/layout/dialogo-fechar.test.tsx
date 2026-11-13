@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TContext } = await import("../src/i18n/context.tsx");
-const { Dialog, DialogTitle } = await import("../src/components/ui/dialog.tsx");
-const { AppDialogContent } = await import("../src/shared/feedback/index.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { Dialog, DialogTitle } = await import("../../src/components/ui/dialog.tsx");
+const { AppDialogContent } = await import("../../src/shared/feedback/index.ts");
 
 afterEach(cleanup);
 

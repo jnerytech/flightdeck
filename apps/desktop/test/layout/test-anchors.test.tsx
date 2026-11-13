@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, render } = await import("@testing-library/react");
-const { Page, Section } = await import("../src/shared/layout/page.tsx");
+const { Page, Section } = await import("../../src/shared/layout/page.tsx");
 
-const SRC = resolve(import.meta.dir, "../src");
+const SRC = resolve(import.meta.dir, "../../src");
 
 /** The app's own .tsx files (the vendored components/ui are shadcn's, not ours). */
 function ownSources(dir = SRC): string[] {
@@ -47,7 +47,7 @@ describe("test-anchors: how tests find what they check", () => {
 
   test("the count of data-testid only goes down (apps/desktop/testid-baseline.json)", () => {
     const { count } = JSON.parse(
-      readFileSync(resolve(import.meta.dir, "../testid-baseline.json"), "utf8"),
+      readFileSync(resolve(import.meta.dir, "../../testid-baseline.json"), "utf8"),
     ) as { count: number };
     expect(testids().length).toBeLessThanOrEqual(count);
   });
