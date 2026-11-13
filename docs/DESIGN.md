@@ -54,7 +54,7 @@ control, and 8 px between buttons.
 
 ## Layout: named styles, not utility soup
 
-- A screen (`src/ui/*.tsx`) composes layout primitives (`Page`, `Section`, `Panel`, `Stack`,
+- A screen (`src/app/*.tsx`, `src/features/*/*.tsx`) composes layout primitives (`Page`, `Section`, `Panel`, `Stack`,
   `Inline`, `Grid`, `FieldRow`) and the named styles of `styles.css` (`@utility …`).
 - The layout ratchet (`apps/desktop/layout-baseline.json`) counts the raw layout utilities each
   screen still holds. A screen may never go over its count. When a change lowers a count, run
@@ -146,7 +146,7 @@ should rely on them.
 
 | Guard | Where | What a failure says |
 |---|---|---|
-| Layout ratchet | `apps/desktop/test/layout/layout-ratchet.test.ts` | `src/ui/X.tsx: 12 > 11`: the screen gained a raw layout utility. Use a primitive or a named style. |
+| Layout ratchet | `apps/desktop/test/layout/layout-ratchet.test.ts` | `src/app/X.tsx: 12 > 11`: the screen gained a raw layout utility. Use a primitive or a named style. |
 | Style lint | `scripts/lib/styles/style-lint.ts` | A palette colour or a fixed measure in `style`. |
 | One definition per named style | `apps/desktop/test/layout/css-utilities.test.ts` | The names defined twice. |
 | Contrast | `scripts/test/demo/theme-contrast.test.ts` | The token pair and theme under its ratio. Also any field that draws a border without `border-input`. |
