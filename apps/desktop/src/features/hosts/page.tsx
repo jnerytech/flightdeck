@@ -11,6 +11,7 @@ import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/ind
 import { FieldRow, Page, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
+import type { HostSection } from "../../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../../lib/version.ts";
 import type { UsageHistoryTarget } from "../costs/index.ts";
 import { UsagePanel } from "../costs/usage-panel.tsx";
@@ -67,10 +68,9 @@ const PANEL = "data-[state=inactive]:hidden";
 const NARROW_PANEL = `${PANEL} max-w-3xl`;
 
 /** The tab a section ask opens (#1484, #2588): Health is on the Overview, the others on Settings. */
-const tabOf = (section: "pause" | "keep-awake" | "health") =>
-  section === "health" ? "overview" : "settings";
+const tabOf = (section: HostSection) => (section === "health" ? "overview" : "settings");
 /** The panel whose heading takes the focus. */
-const slotOf = (section: "pause" | "keep-awake" | "health") =>
+const slotOf = (section: HostSection) =>
   `[data-slot="${section === "health" ? "host-health" : `host-section-${section}`}"]`;
 
 const HOOK_LABELS = {
@@ -99,7 +99,7 @@ export function HostPage(
     onNewSession(): void;
     onRemove(): void;
     /** Issue #1484: open Settings at this panel, with the focus on its heading. */
-    section?: "pause" | "keep-awake" | "health";
+    section?: HostSection;
     /** The section was shown, or another tab was picked first: the ask is used up. */
     onSectionDone?(): void;
   }>,
