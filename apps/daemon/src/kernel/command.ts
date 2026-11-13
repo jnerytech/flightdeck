@@ -1,4 +1,4 @@
-import { whichOnPath } from "../kernel/index.ts";
+import { whichOnPath } from "./which.ts";
 
 export interface CommandResult {
   code: number;
@@ -91,12 +91,6 @@ export async function runCommand(
   };
 }
 
-/** `git` from the current PATH, always with an explicit working directory. */
-export function git(cwd: string, ...args: string[]): Promise<CommandResult> {
-  // git-arg: the shared git helper: its callers are what the git-args ratchet checks
-  return runCommand([whichOnPath("git") ?? "git", ...args], cwd);
-}
-
 /** The rarer settings of a capped run (S107: no eighth positional parameter). */
 export interface LimitedMore {
   /** The byte the output is cut after when it goes past `limit`: a line break, or NUL for `-z`. */
@@ -133,35 +127,6 @@ export interface SpawnOptions {
 
 const spawnPiped = (cmd: string[], options: SpawnOptions): Spawned =>
   Bun.spawn(cmd, { ...options, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
-
-/**
- * Like `git`, but reads at most `limit` bytes of output: when git writes more it is killed and the
- * result says `truncated`, with the output cut at its last whole line (a change of 200 MB must not
- * be held in memory, issue #329).
- */
-export function gitLimited(
-  cwd: string,
-  limit: number,
-  ...args: string[]
-): Promise<CommandResult & { truncated: boolean }> {
-  return gitLimitedFor(cwd, limit, args);
-}
-
-/**
- * Like `gitLimited`, with a time limit (issue #100): a git still running at `timeoutMs` is killed
- * with everything it started, and the result says `timedOut`.
- */
-export function gitLimitedFor(
-  cwd: string,
-  limit: number,
-  args: string[],
-  timeoutMs?: number,
-  kill: (pid: number) => Promise<void> = killTree,
-  more?: LimitedMore,
-): Promise<CommandResult & { truncated: boolean }> {
-  // git-arg: the capped git helper: its callers are what the git-args ratchet checks
-  return runLimited([whichOnPath("git") ?? "git", ...args], cwd, limit, timeoutMs, kill, more);
-}
 
 /** The most stderr `runLimited` keeps; the rest is read and dropped (#806). */
 const STDERR_MAX = 64 * 1024;

@@ -1,5 +1,4 @@
-import { FlightdeckError } from "../kernel/index.ts";
-import { runCommand } from "./command.ts";
+import { FlightdeckError, runCommand } from "../kernel/index.ts";
 
 /** `cmd.exe /d /s /c` on Windows (ComSpec), `sh -c` elsewhere. */
 export function shellCommand(script: string, platform = process.platform): string[] {

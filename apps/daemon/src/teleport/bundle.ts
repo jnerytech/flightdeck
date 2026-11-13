@@ -13,8 +13,8 @@
  */
 import { copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
-import { gitLimitedFor } from "../board/command.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
+import { gitLimitedFor } from "../git/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { git, must, SAFE, TIMEOUT_MS } from "./git.ts";
 import { secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";

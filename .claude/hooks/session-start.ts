@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runCommand } from "../../apps/daemon/src/board/command.ts";
+import { runCommand } from "../../apps/daemon/src/kernel/command.ts";
 import { registerMergeDriver } from "../../scripts/lib/ci/baseline-merge.ts";
 import { gatherFacts, sessionContext } from "../../scripts/lib/hooks/session-context.ts";
 import { mainRedWithin } from "../../scripts/lib/pr/main-red.ts";

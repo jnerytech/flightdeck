@@ -29,9 +29,14 @@ import {
   inSequence,
   type SecretScanner,
 } from "@flightdeck/protocol";
-import { type CommandResult, killTree, runCommand } from "../board/command.ts";
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import {
+  type CommandResult,
+  FlightdeckError,
+  killTree,
+  runCommand,
+  whichOnPath,
+} from "../kernel/index.ts";
 import type { ChangesReader } from "./target.ts";
 
 export interface SessionCommitDeps {

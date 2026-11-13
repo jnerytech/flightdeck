@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { WatchSettings } from "@flightdeck/protocol";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { killTree, runCommand } from "../../src/board/command.ts";
+import { killTree, runCommand } from "../../src/kernel/command.ts";
 import { shellCheckRunner } from "../../src/workflows/check-runner.ts";
 import { tempDir } from "../support/helpers.ts";
 import { cleanups, fixture, work } from "../support/watch-helpers.ts";
