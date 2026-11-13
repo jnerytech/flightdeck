@@ -4,8 +4,8 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
-import { cli, cliJsonWith, cliOk } from "../board/pr.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { cli, cliOk } from "../board/pr.ts";
+import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
 
 /** Search of the issues assigned to you and still open. */
 export const GITHUB_DEFAULT_SEARCH = "assignee:@me is:open";
@@ -16,6 +16,14 @@ export const AZURE_DEFAULT_WIQL =
   "AND [System.State] NOT IN ('Closed','Done','Removed') AND [System.TeamProject] = @project " +
   "ORDER BY [System.ChangedDate] DESC";
 const LIMIT = 50;
+
+/** A CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
+const cliJsonWith = async <T>(
+  schema: z.ZodType<T>,
+  name: string,
+  args: string[],
+  cwd: string,
+): Promise<T> => parseJsonWith(schema, await cliOk(name, args, cwd));
 
 /**
  * An issue id goes to the CLI as an argument of its own, so it is digits and nothing else: a
