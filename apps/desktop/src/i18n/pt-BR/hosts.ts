@@ -360,7 +360,11 @@ export const hosts = {
     featuresMore: "e mais {n}",
     featuresFewer: "Mostrar menos",
     down: "Não comparado: {status}.",
-    fix: "Corrigir em {host}",
+    fix: "Corrigir {field} em {host}",
+    reading: "Lendo {names}…",
+    readingCell: "Lendo…",
+    readDone: "Comparação atualizada.",
+    readDoneFailed: "Leitura concluída. Sem resposta de {names}.",
     fields: {
       os: "Sistema operacional",
       daemon: "Versão do daemon",

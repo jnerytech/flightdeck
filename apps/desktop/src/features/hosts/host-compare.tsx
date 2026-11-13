@@ -3,6 +3,7 @@ import { memo, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { FieldRow, Panel, Stack, WideTable } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
@@ -18,7 +19,7 @@ import {
   hostFacts,
 } from "./domain/host-compare-model.ts";
 
-const COMPARE_KEYS = ["hosts", "doctor", "deps"] as const;
+const COMPARE_KEYS = ["hosts", "doctor", "deps", "healthError"] as const;
 const DASH = "—";
 /** A long list of differing features shows this many, then "and N more". */
 const FOLD_AT = 3;
@@ -123,10 +124,15 @@ function Cell(
     t: T;
     fix: (() => void) | null;
     host: string;
+    /** The host is being read now: a fact it has not given yet is on its way, not unknown. */
+    reading: boolean;
   }>,
 ) {
-  const { cell, row, t, fix, host } = props;
+  const { cell, row, t, fix, host, reading } = props;
   const padding = "py-1 pr-3 align-top";
+  if (cell.value === null && reading) {
+    return <td className={cn(padding, "text-muted-foreground")}>{t("hostCompare.readingCell")}</td>;
+  }
   if (cell.value === null) {
     return (
       <td className={padding}>
@@ -160,7 +166,7 @@ function Cell(
           row.cells.map((c) => c.value),
         ) && (
           <Button variant="link" size="sm" onClick={fix}>
-            {t("hostCompare.fix", { host })}
+            {t("hostCompare.fix", { field: t(`hostCompare.fields.${row.field}` as Key), host })}
           </Button>
         )}
     </td>
@@ -184,13 +190,26 @@ export const HostCompare = memo(function HostCompare(
   const t = useT();
   const state = useStoreSlice(store, COMPARE_KEYS);
   const [open, setOpen] = useState(false);
+  // #2652: the hosts whose health is being read now, and whether a read has ended since it opened.
+  const [reading, setReading] = useState<readonly string[]>([]);
+  const [finished, setFinished] = useState(false);
   const tableId = useId();
   const { hosts } = state;
   if (hosts.length < 2) return null;
   const refresh = async () => {
+    const online = hosts.filter((host) => host.status === "online");
+    setFinished(false);
+    // Nobody to ask: there is nothing to say about a read.
+    if (online.length === 0) return;
+    setReading(online.map((host) => host.id));
     await Promise.all(
-      hosts.filter((host) => host.status === "online").map((host) => store.health.check(host.id)),
+      online.map((host) =>
+        store.health
+          .check(host.id)
+          .finally(() => setReading((ids) => ids.filter((id) => id !== host.id))),
+      ),
     );
+    setFinished(true);
   };
   const rows = compareHosts(
     hosts.map((host) =>
@@ -205,8 +224,20 @@ export const HostCompare = memo(function HostCompare(
   );
   const toggle = () => {
     setOpen(!open);
-    if (!open) void refresh();
+    if (open) setFinished(false);
+    else void refresh();
   };
+  const nameOf = (id: string) => hosts.find((host) => host.id === id)?.name ?? id;
+  const unanswered = hosts.filter((host) => host.status === "online" && state.healthError[host.id]);
+  let status = "";
+  if (open && reading.length > 0) {
+    status = t("hostCompare.reading", { names: reading.map(nameOf).join(", ") });
+  } else if (open && finished) {
+    status =
+      unanswered.length > 0
+        ? t("hostCompare.readDoneFailed", { names: unanswered.map((host) => host.name).join(", ") })
+        : t("hostCompare.readDone");
+  }
   // The host page takes the ask (#2588): it scrolls to its Health heading and focuses it once the
   // panel shows, for the open host as for another one. The open one keeps its history entry.
   const fixFor = (hostId: string) => () => {
@@ -234,10 +265,17 @@ export const HostCompare = memo(function HostCompare(
             </ActionButton>
           )}
         </FieldRow>
+        <p role="status" className="text-muted-foreground text-sm empty:hidden">
+          {status}
+        </p>
         <div id={tableId}>
           {open && (
             <WideTable name={t("hostCompare.table")}>
-              <table aria-label={t("hostCompare.table")} className="w-full text-left text-sm">
+              <table
+                aria-label={t("hostCompare.table")}
+                aria-busy={reading.length > 0}
+                className="w-full text-left text-sm"
+              >
                 <thead>
                   <tr>
                     <td className={CORNER} />
@@ -277,6 +315,7 @@ export const HostCompare = memo(function HostCompare(
                             row={row}
                             t={t}
                             host={host?.name ?? cell.hostId}
+                            reading={reading.includes(cell.hostId)}
                             fix={fixFor(cell.hostId)}
                           />
                         );
