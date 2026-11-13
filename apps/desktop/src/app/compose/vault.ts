@@ -33,9 +33,9 @@ import {
 } from "../../features/vault/index.ts";
 import { WebhookFeed } from "../../features/webhook/webhook-feed.ts";
 import { Webhooks } from "../../features/webhook/webhooks.ts";
+import type { AppState, AppStoreOptions } from "../../lib/app-state.ts";
+import type { AppKernel } from "../../lib/kernel.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../../platform/types.ts";
-import type { AppState, AppStoreOptions } from "../app-state.ts";
-import type { AppKernel } from "../kernel.ts";
 
 /**
  * The vault, what is asked of it, the backups that carry it, and the clients its rules are scoped

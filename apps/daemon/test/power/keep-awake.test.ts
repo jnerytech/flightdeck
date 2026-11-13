@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { spawnHolder } from "../../src/power/adapters/holder.ts";
 import {
   type Holder,
   holderCommand,
   KeepAwake,
   osPowerContext,
   type PowerContext,
-  spawnHolder,
   windowsScript,
 } from "../../src/power/keep-awake.ts";
 import { poll } from "../support/helpers.ts";
