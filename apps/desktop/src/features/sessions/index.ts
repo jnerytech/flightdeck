@@ -17,7 +17,6 @@ export {
 } from "./cache-timer-model.ts";
 export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
-export { byProject, CONTINUATION } from "./domain/resume-offer.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
 export type { SessionState } from "./domain/session-state.ts";
@@ -26,7 +25,6 @@ export {
   SessionViews,
   VIEW_LABEL,
 } from "./domain/session-views.ts";
-export { SessionStreamSlice } from "./domain/stream.ts";
 export { messageParts } from "./domain/tool-line.ts";
 export { type Turn, turnsOf } from "./domain/turns.ts";
 export { ExternalSessionsSlice } from "./external.ts";
@@ -59,6 +57,7 @@ export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { newSessionHost } from "./new-session-host.ts";
 export { NewSessionPrefs } from "./new-session-prefs.ts";
 export { pendingText, pendingWhere } from "./pending-text.ts";
+export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { rowRoute } from "./row-route.ts";
 export type { SessionActions } from "./session-view.tsx";
 export { elsewhereNotice, waitingCards } from "./start-elsewhere.ts";
@@ -69,6 +68,7 @@ export {
   SessionsSlice,
   type SessionsSliceState,
 } from "./store.ts";
+export { SessionStreamSlice } from "./stream.ts";
 export type { SessionSubscriptions } from "./subscriptions.ts";
 export { SummariesSlice } from "./summaries.ts";
 export { sessionTabOffers } from "./tab-offers.ts";

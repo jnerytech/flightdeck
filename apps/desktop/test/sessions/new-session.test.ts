@@ -9,7 +9,7 @@ import {
   startChoices,
   startFolder,
   underRoot,
-} from "../../src/features/sessions/domain/new-session.ts";
+} from "../../src/features/sessions/new-session.ts";
 
 describe("joinPath", () => {
   test("joins with the root's own separator and drops the separators around the subfolder", () => {

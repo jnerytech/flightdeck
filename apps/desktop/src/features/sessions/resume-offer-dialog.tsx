@@ -13,7 +13,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { basename } from "@/shared/lib/index.ts";
-import { byProject, CONTINUATION } from "./domain/resume-offer.ts";
+import { byProject, CONTINUATION } from "./resume-offer.ts";
 
 type Outcome = { ok: true } | { ok: false; reason: string };
 

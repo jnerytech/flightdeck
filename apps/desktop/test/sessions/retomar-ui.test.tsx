@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/ui/App.tsx");
 const { loadAutoResume, saveAutoResume } = await import(
-  "../../src/features/sessions/domain/resume-offer.ts"
+  "../../src/features/sessions/resume-offer.ts"
 );
 
 setDefaultTimeout(30_000);
