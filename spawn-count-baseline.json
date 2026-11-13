@@ -2,7 +2,6 @@
   "apps/daemon/src/central/wrapper.ts": 1,
   "apps/daemon/src/kernel/command.ts": 3,
   "apps/daemon/src/projects/project-find.ts": 1,
-  "apps/daemon/src/runenv/host.ts": 1,
   "apps/daemon/src/runtime/acp/client.ts": 1,
   "apps/daemon/src/runtime/opencode-kill.ts": 1,
   "apps/daemon/src/runtime/opencode-process.ts": 1,
