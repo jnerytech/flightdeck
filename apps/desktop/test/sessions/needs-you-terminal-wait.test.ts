@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { ExternalSession } from "@flightdeck/protocol";
+import { activityBoard, NO_ACTIVITY_FILTER } from "../../src/features/activity/activity.ts";
 import { pendingText } from "../../src/features/sessions/pending-text.ts";
 import { trayMenu } from "../../src/features/tray/tray.ts";
 import { translator } from "../../src/i18n/index.ts";
-import { type AppState, needsYou } from "../../src/lib/app-store.ts";
+import { type AppState, AppStore, needsYou } from "../../src/lib/app-store.ts";
+import { activityState, NOW } from "../activity/fixtures.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 /**
  * Issue #1751: a terminal session waiting at a plan approval or a question needs the person, so
@@ -105,6 +108,20 @@ describe("needs-you-terminal-wait: a terminal session at a plan or a question ne
       "plan waiting for your approval",
       "has a question for you",
       "plano esperando sua aprovação",
+    ]);
+  });
+
+  test("the Activity card of a waiting terminal session offers no approve or deny", () => {
+    const base = new AppStore(memoryPlatform(false, "en").platform, {
+      baseDelayMs: 600_000,
+    }).getState();
+    const state = {
+      ...activityState([], base),
+      externals: { "h1/c1": external({ waiting: "plan" }) },
+    };
+    const { columns } = activityBoard(state, NOW, NO_ACTIVITY_FILTER, false);
+    expect(columns.needs_you.map((card) => [card.row.claudeSessionId, card.pending])).toEqual([
+      ["c1", null],
     ]);
   });
 });

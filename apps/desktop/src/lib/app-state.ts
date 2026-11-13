@@ -401,6 +401,34 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
             cwd: session?.cwd ?? null,
           };
         }),
+      // A terminal session waiting at a plan or a question (#1751): no request to answer here, the
+      // person answers in the terminal, so the item can only be opened. A session whose hook already
+      // holds a request is listed by that request.
+      ...Object.entries(state.externals)
+        .filter(([key]) => key.startsWith(`${host.id}/`))
+        .flatMap(([, session]) => {
+          const id = session.claudeSessionId;
+          const waiting = session.waiting;
+          const held = Object.entries(state.externalRequests).some(
+            ([key, request]) => key.startsWith(`${host.id}/`) && request.claudeSessionId === id,
+          );
+          if (!waiting || session.status === "ended" || held) return [];
+          return [
+            {
+              hostId: host.id,
+              hostName: host.name,
+              sessionId: id,
+              sessionName:
+                label(id, state.meta[sessionKey(host.id, id)]?.name) ?? basename(session.cwd ?? id),
+              requestId: `waiting:${waiting}:${id}`,
+              toolName: waiting === "plan" ? "ExitPlanMode" : "AskUserQuestion",
+              createdAt: session.lastEventAt,
+              external: true,
+              waiting,
+              cwd: session.cwd,
+            },
+          ];
+        }),
       // Open gates of the host's workflow runs.
       ...Object.entries(state.runs)
         .filter(([key]) => key.startsWith(`${host.id}/`))

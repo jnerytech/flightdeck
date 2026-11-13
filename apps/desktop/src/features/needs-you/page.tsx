@@ -11,7 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { sessionProjectKeys } from "@/features/clients/index.ts";
 import { ApprovalCard, GateText } from "@/features/permissions/ui.ts";
-import { type Finish, hubRows, pendingWhere, sinceLastLook } from "@/features/sessions/index.ts";
+import {
+  type Finish,
+  hubRows,
+  pendingText,
+  pendingWhere,
+  sinceLastLook,
+} from "@/features/sessions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { EmptyState, Inline, SplitView, Stack } from "@/shared/layout/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
@@ -266,6 +272,24 @@ function RequestActions(
   );
 }
 
+/**
+ * A terminal session at a plan or a question (#1751): the person answers it there, so the app says
+ * what it waits for and opens the session. There is no request to approve.
+ */
+function WaitDetail(props: Readonly<{ item: PendingItem; t: T; onOpen(item: PendingItem): void }>) {
+  const { item, t } = props;
+  return (
+    <Stack gap={2}>
+      <p className="text-sm">{pendingText(item, t)}</p>
+      <div>
+        <Button variant="outline" onClick={() => props.onOpen(item)}>
+          {t("approval.openSession")}
+        </Button>
+      </div>
+    </Stack>
+  );
+}
+
 /** The chosen request: how many are left, and its approval card. */
 function RequestDetail(
   props: Readonly<{
@@ -286,38 +310,47 @@ function RequestDetail(
           {props.left === 1 ? t("needsYou.leftOne") : t("needsYou.leftMany", { n: props.left })}
         </p>
         <p className="text-sm">{pendingWhere(item)}</p>
-        <ApprovalCard
-          key={item.requestId}
-          request={{
-            requestId: item.requestId,
-            toolName: item.gate
-              ? t("needsYou.gateTool", { step: item.gate.stepId })
-              : item.toolName,
-            input: item.input ?? {},
-            cwd: item.cwd ?? null,
-            createdAt: item.createdAt,
-            ...(item.risk ? { risk: item.risk } : {}),
-            ...(item.riskReason ? { riskReason: item.riskReason } : {}),
-          }}
-          t={t}
-          nowMs={store.now()}
-          onCopyPath={(text) => void store.system.copyText(text)}
-          {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
-          onRespond={(decision, message, _updates, updatedInput, held) => {
-            if (item.gate) {
-              const verdict = decision === "allow" ? "approve" : "reject";
-              return store.respondGate(item.hostId, item.gate, verdict, message);
+        {item.waiting ? (
+          <WaitDetail item={item} t={t} onOpen={props.onOpenRequest} />
+        ) : (
+          <ApprovalCard
+            key={item.requestId}
+            request={{
+              requestId: item.requestId,
+              toolName: item.gate
+                ? t("needsYou.gateTool", { step: item.gate.stepId })
+                : item.toolName,
+              input: item.input ?? {},
+              cwd: item.cwd ?? null,
+              createdAt: item.createdAt,
+              ...(item.risk ? { risk: item.risk } : {}),
+              ...(item.riskReason ? { riskReason: item.riskReason } : {}),
+            }}
+            t={t}
+            nowMs={store.now()}
+            onCopyPath={(text) => void store.system.copyText(text)}
+            {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
+            onRespond={(decision, message, _updates, updatedInput, held) => {
+              if (item.gate) {
+                const verdict = decision === "allow" ? "approve" : "reject";
+                return store.respondGate(item.hostId, item.gate, verdict, message);
+              }
+              return store.respondTo(item.hostId, item.requestId, decision, {
+                message,
+                updatedInput,
+                held,
+              });
+            }}
+            actions={
+              <RequestActions
+                item={item}
+                store={store}
+                go={go}
+                onOpenRequest={props.onOpenRequest}
+              />
             }
-            return store.respondTo(item.hostId, item.requestId, decision, {
-              message,
-              updatedInput,
-              held,
-            });
-          }}
-          actions={
-            <RequestActions item={item} store={store} go={go} onOpenRequest={props.onOpenRequest} />
-          }
-        />
+          />
+        )}
       </Stack>
     </div>
   );
