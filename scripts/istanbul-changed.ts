@@ -4,7 +4,7 @@
  * files under istanbul, as the full run's istanbul shards run them. The logic is in
  * lib/tests/istanbul-changed.ts. <out> is outside the checkout (the counters are written there).
  */
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { istanbulChanged } from "./lib/tests/istanbul-changed.ts";
 import { spawnLogged } from "./lib/tests/shard-gate.ts";
@@ -23,6 +23,7 @@ process.exit(
       return diff.exitCode === 0 ? lines(diff.stdout) : null;
     },
     mkdir: (path) => mkdirSync(path, { recursive: true }),
+    write: (path, text) => writeFileSync(path, text),
     spawn: spawnLogged(ROOT),
     print: (line) => console.log(line),
   }),

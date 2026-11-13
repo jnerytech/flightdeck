@@ -29,7 +29,7 @@ import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
 import { FolderPicker } from "../features/hosts/ui.ts";
 import { NeedsYou } from "../features/needs-you/page.tsx";
-import { QuotaPanel } from "../features/quota/index.ts";
+import { QuotaPanel } from "../features/quota/ui.ts";
 import { NewSessionForm } from "../features/sessions/new-session-form.tsx";
 import { SessionTabs } from "../features/sessions/session-tabs.tsx";
 import { SessionView } from "../features/sessions/session-view.tsx";

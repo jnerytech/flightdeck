@@ -38,6 +38,7 @@ if (plan.slotHeavy) logHook("coverage-funcs", "slot-heavy", plan.slotHeavy);
 (plan.code === 0 ? console.log : console.error)(plan.output);
 let code = plan.code;
 if (plan.command) {
+  if (plan.targetsFile) writeFileSync(plan.targetsFile.path, plan.targetsFile.text);
   const [cmd = "bun", ...rest] = plan.command;
   const proc = Bun.spawn([cmd === "bun" ? process.execPath : cmd, ...rest], {
     cwd: ROOT,
@@ -45,7 +46,7 @@ if (plan.command) {
     stdio: ["inherit", "inherit", "inherit"],
   });
   code = await proc.exited;
-  const targets = (JSON.parse(plan.env.COVERAGE_FUNCS_FILES ?? "[]") as string[]).map((file) => ({
+  const targets = (JSON.parse(plan.targetsFile?.text ?? "[]") as string[]).map((file) => ({
     file,
     source: readFileSync(resolve(ROOT, file), "utf8"),
   }));
