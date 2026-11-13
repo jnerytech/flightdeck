@@ -64,6 +64,8 @@ export const en: Dictionary = {
     loadingSessions: "Loading sessions",
     loadingProjects: "Loading projects",
     loadingBoard: "Loading the board",
+    loadBoardFailed: "The board did not load.",
+    retry: "Try again",
     emptyHistory: "No sessions in the history.",
     emptyHistoryHint: "Start a session and it shows up here once it ends.",
     emptyHistoryLink: "New session",
