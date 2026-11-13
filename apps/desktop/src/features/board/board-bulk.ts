@@ -1,6 +1,6 @@
 import type { Budget, Card, ContractOverrides } from "@flightdeck/protocol";
+import { reasonText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
-import { reasonText } from "../../lib/notice-text.ts";
 import { onSubscription, quotaBars } from "../quota/index.ts";
 import { startNeeds } from "./board-contracts.ts";
 import { answerOf, type BulkRefusal } from "./board-select.ts";

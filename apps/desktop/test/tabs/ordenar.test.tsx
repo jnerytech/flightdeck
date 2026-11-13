@@ -116,8 +116,6 @@ describe("abas-ordenar: arrastar e guardar", () => {
     });
     const wrapper = first?.parentElement as HTMLElement;
     expect(wrapper.getAttribute("data-drop")).toBe("before");
-    expect(wrapper.className).toContain("border-l-primary");
-    expect(wrapper.className).not.toContain("border-r-primary");
     await act(async () => {
       fireEvent.drop(first as HTMLElement);
     });

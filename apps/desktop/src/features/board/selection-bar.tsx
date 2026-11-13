@@ -12,7 +12,7 @@ import {
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { FieldRow } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
-import { COLUMNS } from "../../lib/board.ts";
+import { COLUMNS } from "./board-model.ts";
 
 /** Above the board while cards are selected: how many, and what to do with them. */
 export function SelectionBar(

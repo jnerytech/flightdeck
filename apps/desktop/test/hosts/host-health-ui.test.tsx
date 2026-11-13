@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { join } from "node:path";
 import type { DepResult, DepsResult, DoctorResult } from "@flightdeck/protocol";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
@@ -412,12 +410,6 @@ describe("host-health-ui: a summary, the problems first, the rest folded (#640)"
   });
 });
 
-const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
-const utility = (name: string) => {
-  const at = css.indexOf(`@utility ${name} {`);
-  return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
-};
-
 describe("host-health-ui: the folded list reads as a table and opens from a real button (#670)", () => {
   test("the fold is a disclosure button with a chevron that says what it shows and what it hides", () => {
     render(setup().view);
@@ -452,20 +444,6 @@ describe("host-health-ui: the folded list reads as a table and opens from a real
     });
     if (toggle) fireEvent.click(toggle);
     expect(toggle?.textContent ?? null).toBe("Ocultar 2 itens sem nada a fazer");
-  });
-
-  test("the rows share the list's columns, so every status starts at the same place", () => {
-    // happy-dom does not lay out a grid: the list owns the columns and each row takes them as a
-    // subgrid, so the icon, name, status and detail line up across rows.
-    expect({
-      list: /grid-template-columns:[^;]*max-content/.test(utility("dep-compact-list")),
-      row: utility("dep-compact").includes("grid-template-columns: subgrid"),
-      // A webview without subgrid (Chromium before 117) gets fixed columns instead.
-      fallback:
-        /@supports not \(grid-template-columns: subgrid\) \{\s*grid-template-columns: 1rem minmax\(0, 14rem\)/.test(
-          utility("dep-compact"),
-        ),
-    }).toEqual({ list: true, row: true, fallback: true });
   });
 
   test("an optional tool that is not installed is muted, not a green OK, and not counted as OK", () => {

@@ -85,4 +85,45 @@ describe("account slice: the Claude account of a host", () => {
     expect(await refused.account.refresh("h1")).toBe(false);
     expect(refused.state().account).toEqual({ h1: ALFA });
   });
+
+  test("the stream stays on while another card still watches the host, and goes off once with the last stop", async () => {
+    const s = slice();
+    const first = s.account.watch("h1");
+    const second = s.account.watch("h1");
+    first();
+    first();
+    expect(s.watching.filter((line) => line.startsWith("off"))).toEqual([]);
+    second();
+    expect(s.watching.filter((line) => line.startsWith("off"))).toEqual(["off h1"]);
+  });
+
+  test("a stop of one host does not touch the stream of another", async () => {
+    const s = slice();
+    const one = s.account.watch("h1");
+    s.account.watch("h2");
+    one();
+    expect(s.watching).toEqual(["on h1", "on h2", "off h1"]);
+  });
+
+  test("an answer that comes after the stop is not kept", async () => {
+    const s = slice();
+    const stop = s.account.watch("h1");
+    stop();
+    await Promise.resolve();
+    expect(s.state().account).toEqual({});
+  });
+
+  test("a removed host keeps no account, and an answer that comes after is not kept", async () => {
+    const s = slice();
+    s.account.updated("h1", ALFA);
+    s.account.updated("h2", BETA);
+    const refreshing = s.account.refresh("h1");
+    const stop = s.account.watch("h1");
+    s.account.forget("h1");
+    await refreshing;
+    await Promise.resolve();
+    expect(s.state().account).toEqual({ h2: BETA });
+    stop();
+    expect(s.watching.filter((line) => line.startsWith("off"))).toEqual([]);
+  });
 });

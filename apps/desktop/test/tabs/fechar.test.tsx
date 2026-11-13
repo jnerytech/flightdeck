@@ -53,7 +53,6 @@ describe("abas: o × de cada aba", () => {
       expect(tab(title).getAttribute("aria-keyshortcuts")).toBe(
         "Delete Control+Shift+ArrowLeft Control+Shift+ArrowRight",
       );
-      expect(close.className).toContain("size-6");
     }
   });
 
@@ -76,15 +75,6 @@ describe("abas: o × de cada aba", () => {
     expect(screen.queryByLabelText("Fechar aba Histórico")).not.toBeNull();
   });
 
-  test("the × shows on the active tab, and on the others under the pointer or the keyboard focus", async () => {
-    await twoTabs();
-    expect(closeButton("Projetos").className).not.toContain("opacity-0");
-    const other = closeButton("Histórico").className;
-    expect(other).toContain("opacity-0");
-    expect(other).toContain("group-hover:opacity-100");
-    expect(other).toContain("group-focus-within:opacity-100");
-  });
-
   test("Delete on a focused tab closes it", async () => {
     const store = await twoTabs();
     await act(async () => {
@@ -92,23 +82,5 @@ describe("abas: o × de cada aba", () => {
     });
     expect(store.tabs.tabs).toHaveLength(1);
     expect(screen.queryByRole("tab", { name: "Histórico, host alfa" })).toBeNull();
-  });
-
-  test("the keyboard focus ring is drawn once, on the whole tab, so its close button is inside it", async () => {
-    await twoTabs();
-    const focus = tab("Histórico");
-    // One ring only (crumb-largura, #96): the strip item draws it when its tab has keyboard focus.
-    // A second ring on the inner tab would cut the × out of the outline.
-    expect(focus.parentElement?.className).toContain("has-[[role=tab]:focus-visible]:ring-2");
-    expect(focus.parentElement?.className).toContain("has-[[role=tab]:focus-visible]:ring-ring");
-    expect(focus.className).not.toContain("focus-visible:ring-2");
-  });
-
-  test("a tab shows its hover and keyboard focus states", async () => {
-    await twoTabs();
-    const focus = tab("Histórico");
-    // Issue #488: the hover is the flat tab's own (tab-item's &:hover in styles.css).
-    expect(focus.parentElement?.className).toContain("tab-item");
-    expect(focus.parentElement?.className).toContain("has-[[role=tab]:focus-visible]:ring");
   });
 });

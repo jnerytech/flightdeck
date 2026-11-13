@@ -62,6 +62,14 @@ describe("away-store (#1344)", () => {
     ]).toEqual([iso(NOW - 8 * HOUR), [hostId], 2, ["s2", "s1"], false]);
   });
 
+  test("removing a host takes it out of the summary (#1733)", async () => {
+    const { store, hostId } = await start();
+    await settle(() => store.getState().away.hosts.length === 1);
+    await store.roster.remove(hostId);
+    const away = store.getState().away;
+    expect([away.hosts, away.unreached]).toEqual([[], []]);
+  });
+
   test("a host that does not announce the feature is left out", async () => {
     const { store } = await start({ features: [] });
     await store.activity.loadAway();

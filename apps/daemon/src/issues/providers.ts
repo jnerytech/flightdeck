@@ -4,39 +4,16 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
-import { cli, cliOk } from "../board/pr.ts";
-import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
+import { GithubIssues } from "../github/index.ts";
+import { FlightdeckError } from "../kernel/index.ts";
+import { checkedId, cli, cliJsonWith, cliOk, ISSUE_LIMIT } from "../pr/index.ts";
 
-/** Search of the issues assigned to you and still open. */
-export const GITHUB_DEFAULT_SEARCH = "assignee:@me is:open";
 /** Active work items assigned to you, with the fields an issue needs. */
 export const AZURE_DEFAULT_WIQL =
   "SELECT [System.Id], [System.Title], [System.Description], [System.CreatedBy], " +
   "[System.CreatedDate], [System.Tags] FROM WorkItems WHERE [System.AssignedTo] = @Me " +
   "AND [System.State] NOT IN ('Closed','Done','Removed') AND [System.TeamProject] = @project " +
   "ORDER BY [System.ChangedDate] DESC";
-const LIMIT = 50;
-
-/** A CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
-const cliJsonWith = async <T>(
-  schema: z.ZodType<T>,
-  name: string,
-  args: string[],
-  cwd: string,
-): Promise<T> => parseJsonWith(schema, await cliOk(name, args, cwd));
-
-/**
- * An issue id goes to the CLI as an argument of its own, so it is digits and nothing else: a
- * value like `-R other/repo` or `@file` must never reach gh or az as an option or a file.
- */
-function checkedId(id: string): string {
-  if (!/^\d+$/.test(id)) {
-    throw new FlightdeckError("invalid_state", `invalid issue id: ${id}`, "issue_id_invalid", {
-      id,
-    });
-  }
-  return id;
-}
 
 export interface IssueProvider {
   /** `github:owner/repo#id` or `azure:org/project#id`. */
@@ -44,87 +21,6 @@ export interface IssueProvider {
   list(cwd: string, query?: string): Promise<Issue[]>;
   get(cwd: string, id: string): Promise<Issue>;
   comment(cwd: string, id: string, text: string): Promise<void>;
-}
-
-/** GitHub authors whose content is yours: you, and people with write access to the repository. */
-export const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
-export const GH_FIELDS = "number,title,body,url,author,labels,createdAt,authorAssociation";
-
-/** One issue as `gh issue list|view --json GH_FIELDS` prints it. */
-export const GhIssueRow = z.object({
-  number: z.number(),
-  title: z.string(),
-  body: z.string().nullish(),
-  url: z.string(),
-  author: z.object({ login: z.string().optional() }).nullish(),
-  labels: z.array(z.object({ name: z.string() })).optional(),
-  createdAt: z.string(),
-  authorAssociation: z.string().optional(),
-});
-export type GhIssue = z.infer<typeof GhIssueRow>;
-
-export class GithubIssues implements IssueProvider {
-  constructor(readonly repo: string) {}
-
-  refOf(id: string): string {
-    return `github:${this.repo}#${id}`;
-  }
-
-  async list(cwd: string, query?: string): Promise<Issue[]> {
-    const issues = await cliJsonWith(
-      z.array(GhIssueRow),
-      "gh",
-      [
-        "issue",
-        "list",
-        "--search",
-        query ?? GITHUB_DEFAULT_SEARCH,
-        "--json",
-        GH_FIELDS,
-        "--limit",
-        String(LIMIT),
-      ],
-      cwd,
-    );
-    const me = await this.me(cwd);
-    return issues.map((issue) => this.toIssue(issue, me));
-  }
-
-  async get(cwd: string, id: string): Promise<Issue> {
-    const issue = await cliJsonWith(
-      GhIssueRow,
-      "gh",
-      ["issue", "view", checkedId(id), "--json", GH_FIELDS],
-      cwd,
-    );
-    return this.toIssue(issue, await this.me(cwd));
-  }
-
-  async comment(cwd: string, id: string, text: string): Promise<void> {
-    await cliOk("gh", ["issue", "comment", checkedId(id), "--body", text], cwd);
-  }
-
-  /** Your login, when `gh` can tell. */
-  private async me(cwd: string): Promise<string | null> {
-    const result = await cli("gh", ["api", "user", "--jq", ".login"], cwd);
-    return result.code === 0 ? result.stdout.trim().toLowerCase() || null : null;
-  }
-
-  toIssue(issue: GhIssue, me: string | null): Issue {
-    const author = issue.author?.login ?? "";
-    const yours = me !== null && author.toLowerCase() === me;
-    return {
-      ref: this.refOf(String(issue.number)),
-      id: String(issue.number),
-      title: issue.title,
-      body: issue.body ?? "",
-      url: issue.url,
-      author,
-      labels: (issue.labels ?? []).map((label) => label.name),
-      external: !yours && !TRUSTED_ASSOCIATIONS.has((issue.authorAssociation ?? "").toUpperCase()),
-      createdAt: issue.createdAt,
-    };
-  }
 }
 
 interface AzIdentity {
@@ -187,7 +83,7 @@ export class AzureIssues implements IssueProvider {
     );
     const me = await this.me(cwd);
     return Promise.all(
-      items.slice(0, LIMIT).map(async (item) => {
+      items.slice(0, ISSUE_LIMIT).map(async (item) => {
         // A WIQL of your own may not select the fields an issue needs.
         const full = item.fields["System.Title"] ? item : await this.show(cwd, String(item.id));
         return this.toIssue(full, me);

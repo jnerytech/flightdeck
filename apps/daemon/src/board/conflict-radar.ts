@@ -1,4 +1,5 @@
-import { type CommandResult, gitLimitedFor } from "./command.ts";
+import { gitLimitedFor } from "../git/index.ts";
+import type { CommandResult } from "../kernel/index.ts";
 import type { Rev } from "./ref-arg.ts";
 
 /** Issue #1405: the most files one overlap lists. */

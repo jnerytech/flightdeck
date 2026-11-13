@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { trimEndOf, whichOnPath } from "../kernel/index.ts";
+import { git } from "../git/index.ts";
+import { trimEndOf } from "../kernel/index.ts";
 
 export type GitResult = { code: number; stdout: string };
 /** Asks git without waiting for the process: the event loop keeps serving while git runs. */
@@ -15,13 +16,7 @@ const exists = (path: string): Promise<boolean> =>
 
 export const runGitAsync: AsyncGitRunner = async (args) => {
   // git-arg: a forwarder: the arguments are the fixed commands of commonDirArgs and remoteArgs
-  const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
-    env: process.env,
-    stdout: "pipe",
-    stderr: "ignore",
-    stdin: "ignore",
-  });
-  const [stdout, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  const { code, stdout } = await git(process.cwd(), ...args);
   return { code, stdout };
 };
 

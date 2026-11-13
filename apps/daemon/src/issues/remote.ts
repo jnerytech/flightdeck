@@ -9,12 +9,6 @@ const decode = (text: string) => {
   }
 };
 
-/** `owner/repo` of a GitHub remote (`github.com` or an enterprise `github.*` host); else null. */
-export function githubCoords(url: string): string | null {
-  const [host = "", owner, repo, ...rest] = stripRemote(url).split("/");
-  return host.includes("github") && owner && repo && rest.length === 0 ? `${owner}/${repo}` : null;
-}
-
 /** Organization and project of an Azure DevOps remote (https, ssh or the old visualstudio.com). */
 export function azureCoords(url: string): { org: string; project: string } | null {
   const segments = stripRemote(url).split("/").map(decode);

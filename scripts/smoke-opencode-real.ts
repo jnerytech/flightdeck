@@ -3,7 +3,7 @@
  * The real OpenCode, opt-in (phase 39): `bun run smoke:opencode-real [--model <id>]`. Never in the
  * suite or CI; run on a host with OpenCode installed and signed in, at each OpenCode upgrade.
  *
- * It builds a hostile project in a scratch folder (scripts/lib/opencode-real.ts: a plugin, an MCP
+ * It builds a hostile project in a scratch folder (scripts/lib/smoke/opencode-real.ts: a plugin, an MCP
  * server and a `/hello` command that each leave a marker, allow-all rules, an agent named
  * `flightdeck`), with a scratch XDG_CONFIG_HOME, and checks against the real OpenCode through a
  * daemon: the host lists OpenCode (its canary passed); a session in that project asks before its
@@ -26,7 +26,7 @@ import {
   markerPath,
   parseRealArgs,
   savedRuleIds,
-} from "./lib/opencode-real.ts";
+} from "./lib/smoke/opencode-real.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 

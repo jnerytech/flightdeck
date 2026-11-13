@@ -2,8 +2,7 @@ import type { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import type { BgList, BgSession } from "@flightdeck/protocol";
 import { z } from "zod";
-import { runCommand } from "../board/command.ts";
-import { FlightdeckError, parseJsonOr, resolveAllowedCwd } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonOr, resolveAllowedCwd, runCommand } from "../kernel/index.ts";
 
 export interface BgServiceOptions {
   db: Database;
