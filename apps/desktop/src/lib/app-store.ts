@@ -193,6 +193,7 @@ export class AppStore {
         detach: (hostId) => {
           this.hostTabs.removeHost(hostId);
           this.vaultApprovals.hostGone(hostId);
+          this.activity.forget(hostId);
           this.link.remove(hostId);
         },
         rememberToken: (token) => this.scan.rememberToken(token),
