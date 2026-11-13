@@ -9,7 +9,7 @@ import {
   parseRealArgs,
   rejectOptionId,
   savedRuleIds,
-} from "../../lib/opencode-real.ts";
+} from "../../lib/smoke/opencode-real.ts";
 
 const OPTIONS = [
   { optionId: "once", kind: "allow_once" },
