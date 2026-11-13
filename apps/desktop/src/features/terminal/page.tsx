@@ -269,8 +269,11 @@ export function TerminalPage(
                 if (flag) {
                   e.preventDefault();
                   flip(flag);
-                } else if (e.key === "Escape") stopSearch();
-                else if (e.key === "Enter") find(needle, e.shiftKey ? "previous" : "next");
+                } else if (e.key === "Escape") {
+                  // Handled here: left unmarked, the key closes the detail too (#2591).
+                  e.preventDefault();
+                  stopSearch();
+                } else if (e.key === "Enter") find(needle, e.shiftKey ? "previous" : "next");
               }}
             />
             {FIND_TOGGLES.map(([flag, label, glyph, keys]) => (
@@ -353,7 +356,11 @@ export function TerminalPage(
           className="fixed z-50 flex flex-col rounded-md border bg-popover p-1 text-sm shadow-md"
           style={{ left: menu.x, top: menu.y }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") setMenu(null);
+            if (e.key === "Escape") {
+              // Handled here: left unmarked, the key closes the detail too (#2591).
+              e.preventDefault();
+              setMenu(null);
+            }
           }}
         >
           <Button

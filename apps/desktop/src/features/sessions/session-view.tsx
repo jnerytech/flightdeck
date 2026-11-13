@@ -1006,7 +1006,11 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             }}
             onKeyDown={(e) => {
               if (wand?.onKeyDown(e)) return;
-              if (e.key === "Escape" && working) void actions.interrupt();
+              if (e.key === "Escape" && working) {
+                // Handled here: left unmarked, the key reaches SplitView and closes the detail too (#2591).
+                e.preventDefault();
+                void actions.interrupt();
+              }
               if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
                 // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
                 const next = nextMode(modeMenu, mode);
