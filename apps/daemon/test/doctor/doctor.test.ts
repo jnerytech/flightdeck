@@ -236,4 +236,45 @@ describe("doctor command", () => {
     // Warnings do not fail the run.
     expect(exits).toEqual([0]);
   });
+
+  test("the claude row shows the claude that flightdeckd setup wrote into the config, as Dependencies does (#1673)", async () => {
+    const dir = tempDir("fd-doctor-claude-");
+    const configured = join(dir, "bin", "claude-from-setup");
+    mkdirSync(join(dir, "bin"));
+    writeFileSync(configured, "#!/bin/sh\n");
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        token: "t".repeat(32),
+        dataDir: dir,
+        port: 1,
+        allowedRoots: [dir],
+        claude: { executablePath: configured },
+      }),
+    );
+    const out: string[] = [];
+    const cliDeps: CliDeps = {
+      env: {},
+      log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+      exit: () => {},
+      onSignal: () => {},
+      exec: async () => ({ code: 1, stdout: "" }),
+      serviceContext: (dryRun) => ({
+        platform: "linux",
+        home: dir,
+        user: "u",
+        command: ["/h/flightdeckd"],
+        systemRoot: "",
+        tempDir: "/tmp",
+        dryRun,
+        exec: async () => ({ code: 1, stdout: "" }),
+        writeFile: () => {},
+        removeFile: () => {},
+        which: () => null,
+      }),
+    };
+    await runCli(["doctor", "--config", file], cliDeps);
+    expect(out.join("\n")).toContain(`OK   claude           ${configured}`);
+  });
 });
