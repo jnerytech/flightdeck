@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { en } from "../src/i18n/en.ts";
-import { translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
+import { en } from "../../src/i18n/en.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
 
 type Leaf = { one: string; other: string };
 

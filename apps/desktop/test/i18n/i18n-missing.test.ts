@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
+import { translator } from "../../src/i18n/index.ts";
 
 describe("i18n-missing: a key the dictionary lacks shows its last part instead of throwing (HD-M2)", () => {
   test("a missing entry, whole or in the middle of the path, gives the last part of the key in both languages", () => {
