@@ -66,7 +66,7 @@ async function build(prepare: Prepare = withoutPersonas) {
     quota,
   });
   cleanups.push(() => module.stop?.());
-  return { board, manager, module, watching, repo, personaStore };
+  return { board, manager, module, watching, repo, personaStore, central };
 }
 
 describe("teams-wiring: the sessions that work together, as the daemon builds them (#2094)", () => {
@@ -121,5 +121,17 @@ describe("teams-wiring: the sessions that work together, as the daemon builds th
       }),
     ).rejects.toThrow("stop here");
     expect(efforts).toEqual(["high"]);
+  });
+
+  test("a terminal session sends a message: its id is not one the manager knows, and nothing throws (#1694)", async () => {
+    const { module, central, repo } = await build();
+    central.external.apply("SessionStart", { session_id: "term-1", cwd: repo });
+    const sent = () =>
+      module.server?.messaging?.messages?.send({
+        as: { session: "term-1" },
+        to: "nobody",
+        text: "hello",
+      });
+    expect(sent).not.toThrow();
   });
 });
