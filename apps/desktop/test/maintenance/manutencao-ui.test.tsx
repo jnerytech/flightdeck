@@ -27,7 +27,7 @@ async function confirmWith(name: string) {
   });
 }
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { formatBytes } = await import("../../src/features/maintenance/maintenance-section.tsx");
 
 const cleanups: Array<() => unknown> = [];

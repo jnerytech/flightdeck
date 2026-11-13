@@ -14,7 +14,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 // Real git, real MCP servers and a real daemon: more than the default 5 s.
 setDefaultTimeout(30_000);

@@ -8,7 +8,7 @@ import { settle, uiIdle } from "../wait.ts";
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 // Four in-process hosts and the app at 200 sessions: more than the default 5 s on a loaded runner.
 setDefaultTimeout(30_000);

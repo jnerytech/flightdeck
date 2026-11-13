@@ -9,7 +9,7 @@ import { settle, stays } from "../wait.ts";
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
