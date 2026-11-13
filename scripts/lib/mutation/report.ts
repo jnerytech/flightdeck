@@ -74,7 +74,10 @@ export function survivorsOf(report: MutationReport): Survivor[] {
       });
     }
   }
-  return found.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file < b.file ? -1 : 1));
+  return found.sort((a, b) => {
+    if (a.file !== b.file) return a.file < b.file ? -1 : 1;
+    return a.line - b.line;
+  });
 }
 
 export function strykerConfigFor(

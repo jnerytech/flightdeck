@@ -127,7 +127,7 @@ describe("shots-holds: the page's WebSocket", () => {
     socket.addEventListener("message", (event) => got.push(event.data));
     socket.send(ask("r1", "budget.list"));
     socket.play(ack("r1", { budgets: [notify] }));
-    expect(JSON.parse(String(got[0])).data.budgets.length).toBe(2);
+    expect(JSON.parse(String(got[0])).data.budgets).toHaveLength(2);
   });
 
   // From the review of #1418: a helper Bun's transpile puts outside a function would be missing in

@@ -253,9 +253,9 @@ export function TranscriptReader(
       />
       {awaiting && (
         <Note>
-          <p role="status" className="text-status-needs-you">
+          <output className="block text-status-needs-you">
             {t(awaiting === "plan" ? "reader.awaitingPlan" : "reader.awaitingQuestion")}
-          </p>
+          </output>
         </Note>
       )}
       {session && blocked && (
