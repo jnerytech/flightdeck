@@ -133,6 +133,34 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     }
   });
 
+  test("the active tab stays in view once the scroll arrows take their room from the strip (#2728)", async () => {
+    // The strip is 500 px wide, 24 px less once the right arrow shows; the active tab ends at 500.
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const at = (left: number, right: number) => ({ left, right }) as DOMRect;
+      if (this.classList.contains("tab-scroller")) {
+        const arrow = document.querySelector('[aria-label="Rolar as abas para a direita"]');
+        return at(0, arrow ? 476 : 500);
+      }
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
+        return at(440, 500);
+      return at(0, 0);
+    };
+    try {
+      const { scroller } = await many();
+      scroller.scrollLeft = 0;
+      Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+      Object.defineProperty(scroller, "clientWidth", { value: 500, configurable: true });
+      await act(async () => {
+        fireEvent.scroll(scroller);
+      });
+      expect(screen.queryByRole("button", { name: "Rolar as abas para a direita" })).not.toBeNull();
+      expect(scroller.scrollLeft).toBe(24);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+
   test("the list of all tabs is a filterable list, not a menu: icon, title, host, the active one marked (#576)", async () => {
     const { store } = await openList();
     expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
