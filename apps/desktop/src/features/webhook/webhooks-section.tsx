@@ -1,4 +1,4 @@
-import { useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -37,6 +37,12 @@ function urlHelp(editing: boolean, type: WebhookType, t: (key: Key) => string): 
   return type === "ntfy" ? t("webhooks.ntfyHelp") : undefined;
 }
 
+/** One button of a row, by the `data-action` it carries. */
+const rowButton = (section: HTMLElement, id: string, action: "edit" | "toggle") =>
+  section.querySelector<HTMLElement>(
+    `[data-webhook="${CSS.escape(id)}"] [data-action="${action}"]`,
+  );
+
 interface Draft {
   id?: string;
   name: string;
@@ -62,6 +68,19 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
   const [removing, setRemoving] = useState<WebhookTarget | null>(null);
+  // #2677: what a row action did, said politely, and the problem of one that failed.
+  const [said, setSaid] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+  const root = useRef<HTMLElement>(null);
+  // Where the focus goes once the list has re-rendered, as a lookup in the rendered section.
+  const focusAfter = useRef<((section: HTMLElement) => HTMLElement | null | undefined) | null>(
+    null,
+  );
+  useEffect(() => {
+    const pick = focusAfter.current;
+    focusAfter.current = null;
+    if (pick && root.current) pick(root.current)?.focus();
+  });
   const saving = useBusy();
   const testing = useBusy();
   const targets = store.webhooks.targets.list();
@@ -98,12 +117,54 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
         });
       }
       setDraft(EMPTY);
+      if (editing) {
+        focusAfter.current = (section) => rowButton(section, editing.id, "edit");
+        setSaid(t("webhooks.saved", { name: draft.name }));
+      }
       refresh();
     } catch (cause) {
       const code = cause instanceof WebhookTargetError ? cause.code : "invalid_url";
       setError(t(`webhooks.errors.${code}` as Key));
     }
   };
+
+  const toggle = async (target: WebhookTarget) => {
+    setProblem(null);
+    focusAfter.current = (section) => rowButton(section, target.id, "toggle");
+    try {
+      await store.webhooks.edit(target.id, { enabled: !target.enabled });
+      setSaid(
+        t(target.enabled ? "webhooks.nowDisabled" : "webhooks.nowEnabled", { name: target.name }),
+      );
+      refresh();
+    } catch (cause) {
+      setProblem(failure(cause, "webhooks.errors.change_failed", target.name));
+    }
+  };
+
+  const remove = async (target: WebhookTarget) => {
+    setProblem(null);
+    const index = targets.findIndex((item) => item.id === target.id);
+    try {
+      await store.webhooks.targets.remove(target.id);
+    } catch (cause) {
+      setProblem(failure(cause, "webhooks.errors.remove_failed", target.name));
+      return;
+    }
+    // The next row's first button, the one before it for the last row, else the Add form.
+    focusAfter.current = (section) => {
+      const rows = section.querySelectorAll<HTMLElement>("[data-webhook]");
+      const row = rows[Math.min(index, rows.length - 1)];
+      return row?.querySelector("button") ?? section.querySelector("form input");
+    };
+    setSaid(t("webhooks.removed", { name: target.name }));
+    refresh();
+  };
+
+  const failure = (cause: unknown, fallback: Key, name: string) =>
+    cause instanceof WebhookTargetError && cause.code === "not_found"
+      ? t("webhooks.errors.not_found")
+      : t(fallback, { name });
 
   const test = async (target: WebhookTarget) => {
     const result = await store.webhooks.test(target.id);
@@ -117,7 +178,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   };
 
   return (
-    <section>
+    <section ref={root}>
       <Panel title={t("webhooks.title")}>
         <Stack gap={3}>
           <p className="text-muted-foreground text-sm">{t("webhooks.intro")}</p>
@@ -128,7 +189,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           ) : (
             <Stack gap={2} as="ul">
               {targets.map((target) => (
-                <li key={target.id}>
+                <li key={target.id} data-webhook={target.id}>
                   <Stack gap={1}>
                     <ListRow
                       boxed
@@ -164,7 +225,10 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                             variant="ghost"
                             size="sm"
                             aria-label={t("webhooks.edit", { name: target.name })}
-                            onClick={() =>
+                            data-action="edit"
+                            onClick={() => {
+                              setProblem(null);
+                              focusAfter.current = (section) => section.querySelector("form input");
                               setDraft({
                                 id: target.id,
                                 name: target.name,
@@ -173,8 +237,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                                 signing: "",
                                 hostScope: target.hostScope ?? "",
                                 kinds: target.kinds,
-                              })
-                            }
+                              });
+                            }}
                           >
                             {t("webhooks.edit", { name: "" }).trim()}
                           </Button>
@@ -184,11 +248,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                             aria-label={t(target.enabled ? "webhooks.disable" : "webhooks.enable", {
                               name: target.name,
                             })}
-                            onClick={() =>
-                              void store.webhooks
-                                .edit(target.id, { enabled: !target.enabled })
-                                .then(refresh)
-                            }
+                            data-action="toggle"
+                            onClick={() => void toggle(target)}
                           >
                             {t(target.enabled ? "webhooks.disable" : "webhooks.enable", {
                               name: "",
@@ -215,6 +276,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
               ))}
             </Stack>
           )}
+          <output className="sr-only">{said}</output>
+          {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
           <Form
             variant="inline"
             aria-label={editing ? t("webhooks.edit", { name: editing.name }) : t("webhooks.add")}
@@ -329,7 +392,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           confirmLabel={t("webhooks.removeConfirm")}
           destructive
           onConfirm={() => {
-            void store.webhooks.targets.remove(removing.id).then(refresh);
+            void remove(removing);
             setRemoving(null);
           }}
           onCancel={() => setRemoving(null)}
