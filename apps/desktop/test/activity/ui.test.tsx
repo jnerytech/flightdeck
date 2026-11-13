@@ -189,10 +189,10 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     const w = setup(SPECS);
     render(w.view(SPECS));
     await act(async () => {
-      fireEvent.click(control(column("Needs you"), "Approve"));
+      fireEvent.click(control(column("Needs you"), "Approve Fix login"));
     });
     await act(async () => {
-      fireEvent.click(control(column("Needs you"), "Deny"));
+      fireEvent.click(control(column("Needs you"), "Deny Fix login"));
     });
     expect(w.responded).toEqual([
       ["h1", "r-ask", "allow"],
@@ -200,12 +200,99 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     ]);
   });
 
+  test("every Approve and Deny names its session and starts with the visible text (#2675)", () => {
+    const specs: Specs = [
+      { id: "a", name: "Fix login", status: "awaiting_permission", agoMs: MIN },
+      { id: "b", name: "Deploy api", status: "awaiting_permission", agoMs: 2 * MIN },
+    ];
+    const w = setup(specs);
+    render(w.view(specs));
+    const buttons = [...column("Needs you").querySelectorAll("button")].filter((b) =>
+      /^(Approve|Deny)/.test(b.textContent ?? ""),
+    );
+    const names = buttons.map((b) => b.getAttribute("aria-label") ?? b.textContent ?? "").sort();
+    expect(names).toEqual([
+      "Approve Deploy api",
+      "Approve Fix login",
+      "Deny Deploy api",
+      "Deny Fix login",
+    ]);
+    const startsWithVisible = buttons.every((b) =>
+      (b.getAttribute("aria-label") ?? "").startsWith(b.textContent ?? "?"),
+    );
+    expect(startsWithVisible).toBe(true);
+  });
+
+  test("a high-risk request's hold button also names its session (#2675)", () => {
+    const specs: Specs = [
+      { id: "a", name: "Fix login", status: "awaiting_permission", agoMs: MIN, risk: "high" },
+    ];
+    const w = setup(specs);
+    render(w.view(specs));
+    expect(
+      within(column("Needs you")).queryByRole("button", { name: "Hold to approve Fix login" }),
+    ).not.toBeNull();
+  });
+
+  test("answering puts the focus on the card's title and says what was answered (#2675)", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    const approve = control(column("Needs you"), "Approve Fix login");
+    approve.focus();
+    await act(async () => {
+      fireEvent.click(approve);
+    });
+    expect(document.activeElement?.textContent).toBe("Fix login");
+    expect(document.activeElement?.className).toContain("activity-card-title");
+    const said = () => screen.queryAllByRole("status").map((el) => el.textContent);
+    await settle(() => said().includes("Approved Fix login"));
+    expect(said()).toContain("Approved Fix login");
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Deny Fix login"));
+    });
+    await settle(() => said().includes("Denied Fix login"));
+    expect(said()).toContain("Denied Fix login");
+  });
+
+  test("a card that moved column after the answer still gets the focus back on its title (#2675)", async () => {
+    const w = setup(SPECS);
+    const view = render(w.view(SPECS));
+    const approve = control(column("Needs you"), "Approve Fix login");
+    approve.focus();
+    await act(async () => {
+      fireEvent.click(approve);
+    });
+    // The host took the answer: the session runs again, so its card leaves Needs you.
+    const answered: Specs = SPECS.map((s) =>
+      s.id === "ask" ? { id: "ask", name: "Fix login", status: "running", agoMs: 0 } : s,
+    );
+    await act(async () => {
+      view.rerender(w.view(answered));
+    });
+    await settle(() => cardsOf("Working").includes("Fix login"));
+    expect(document.activeElement?.textContent).toBe("Fix login");
+  });
+
+  test("in pt-BR the names and the line are in Portuguese (#2675)", async () => {
+    const w = setup(SPECS, { language: "pt-BR" });
+    render(w.view(SPECS));
+    const needs = within(column("Precisa de você"));
+    const approve = needs.queryByRole("button", { name: "Aprovar Fix login" });
+    expect(needs.queryByRole("button", { name: "Negar Fix login" })).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(approve as HTMLElement);
+    });
+    const said = () => screen.queryAllByRole("status").map((el) => el.textContent);
+    await settle(() => said().includes("Aprovado: Fix login"));
+    expect(said()).toContain("Aprovado: Fix login");
+  });
+
   test("a high-risk request is approved only by holding the button", async () => {
     const specs: Specs = [{ id: "ask", status: "awaiting_permission", agoMs: MIN, risk: "high" }];
     const w = setup(specs);
     render(w.view(specs));
-    expect(within(column("Needs you")).queryByRole("button", { name: "Approve" })).toBeNull();
-    const hold = control(column("Needs you"), "Hold to approve");
+    expect(within(column("Needs you")).queryByRole("button", { name: /^Approve/ })).toBeNull();
+    const hold = control(column("Needs you"), "Hold to approve ask");
     await act(async () => {
       fireEvent.click(hold);
     });
@@ -263,7 +350,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     }) as never;
     render(w.view(specs));
     await act(async () => {
-      fireEvent.pointerDown(control(column("Needs you"), "Hold to approve"));
+      fireEvent.pointerDown(control(column("Needs you"), "Hold to approve ask"));
     });
     await settle(() => done.length === 1);
     await act(async () => {
@@ -282,7 +369,7 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     ];
     const w = setup(specs);
     render(w.view(specs));
-    expect(within(column("Needs you")).queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(within(column("Needs you")).queryByRole("button", { name: /^Approve/ })).toBeNull();
   });
 
   test("filters combine and the count says n of m shown", async () => {
