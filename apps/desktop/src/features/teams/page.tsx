@@ -754,7 +754,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
     // The workers' branches are on their cards: the page asks for its teams' boards, as the app
     // may open here first (#1220), without holding the teams' states back.
     void inSequence([...new Set(list.teams.map((team) => team.projectId))], (projectId) =>
-      store.loadBoard(current, projectId),
+      store.boardCards.load(current, projectId),
     );
     const next: Record<string, TeamStatus> = {};
     await inSequence(list.teams, async (team) => {
@@ -766,7 +766,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
   useEffect(() => {
     if (current) void store.projectList.load(current);
     void load();
-    return store.onTeamsUpdated(() => void load());
+    return store.teams.onUpdated(() => void load());
   }, [store, current, load]);
 
   if (!host) {

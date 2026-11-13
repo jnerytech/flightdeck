@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe, stays } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settleMaybe, stays } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { PostMortem } = await import("../src/features/board/post-mortem.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { PostMortem } = await import("../../src/features/board/post-mortem.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

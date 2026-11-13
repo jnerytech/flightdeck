@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { IN_FLIGHT, InFlightTimers, inFlightStage } from "../src/shared/hooks/use-in-flight.ts";
-import { useMinLoading } from "../src/shared/hooks/use-min-loading.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { IN_FLIGHT, InFlightTimers, inFlightStage } from "../../src/shared/hooks/use-in-flight.ts";
+import { useMinLoading } from "../../src/shared/hooks/use-min-loading.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ActionButton } = await import("../src/shared/feedback/index.ts");
-const { FormActions } = await import("../src/shared/layout/form.tsx");
-const { LoadingState } = await import("../src/shared/layout/states.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { ActionButton } = await import("../../src/shared/feedback/index.ts");
+const { FormActions } = await import("../../src/shared/layout/form.tsx");
+const { LoadingState } = await import("../../src/shared/layout/states.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 afterEach(cleanup);
 

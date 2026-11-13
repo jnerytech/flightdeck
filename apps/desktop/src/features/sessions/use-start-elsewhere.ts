@@ -54,7 +54,7 @@ export function useStartElsewhere(options: {
         }));
         // The limit is the host's, so the cards running in all its projects count against it.
         if (projects.some((p) => p.key === sourceKey)) {
-          await Promise.all(projects.map((p) => store.loadBoard(host.id, p.id)));
+          await Promise.all(projects.map((p) => store.boardCards.load(host.id, p.id)));
         }
         if (mine !== asked.current) return;
         setListed((before) => ({

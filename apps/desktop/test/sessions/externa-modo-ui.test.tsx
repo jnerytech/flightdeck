@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ExternalSession } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { cleanup, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { ExternalView } = await import("../src/features/sessions/external-session-view.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { ExternalView } = await import("../../src/features/sessions/external-session-view.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 /** Issue #935: a session started in a terminal shows the mode its hooks last reported. */
 setDefaultTimeout(20_000);
