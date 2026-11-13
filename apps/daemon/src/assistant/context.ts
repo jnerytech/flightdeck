@@ -15,7 +15,7 @@ import {
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg } from "../kernel/index.ts";
-import { isCredentialPath } from "../permissions/risk.ts";
+import { isCredentialPath } from "../permissions/index.ts";
 import { REMOVED_LINE } from "../watch/check-run.ts";
 
 export interface ContextDeps {
