@@ -1,7 +1,7 @@
 /**
  * Issue #1288: the watch domain: a card's pull request watched and fixed (phase 22).
  */
-import { requireVaultTransport } from "../../vault/vault.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 /**

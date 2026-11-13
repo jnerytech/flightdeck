@@ -1,6 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { requireVaultTransport } from "../vault/vault.ts";
+import { requireVaultTransport } from "../vault/index.ts";
 
 /**
  * Phase 30: posts a webhook for the app. The URL is the secret (Slack and Discord put the token in

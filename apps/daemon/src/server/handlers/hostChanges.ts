@@ -4,7 +4,7 @@
  */
 import { FlightdeckError } from "../../kernel/index.ts";
 import { addAllowedRoot } from "../../projects/index.ts";
-import { requireVaultTransport } from "../../vault/vault.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const hostChangesHandlers = {
