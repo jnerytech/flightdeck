@@ -6,7 +6,7 @@ import type {
   SessionRecap,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
@@ -15,17 +15,12 @@ import { initialAccountState } from "../features/account/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BudgetsSlice, hubHostScope, localDay, wireBudgets } from "../features/costs/index.ts";
 import {
-  type ConnectionStatus,
-  type HostConnection,
   HostLink,
-  type HostRoutes,
   HostTabs,
   initialHealthState,
   loadHosts,
-  type OnlineStep,
   RequestError,
   saveHosts,
-  statusLine,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
@@ -51,7 +46,13 @@ import type {
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
-import { composeHosts, type HostSlices, newHostView } from "./compose/hosts.ts";
+import {
+  composeHosts,
+  composeLinkHandlers,
+  type HostSlices,
+  type LinkHandlers,
+  newHostView,
+} from "./compose/hosts.ts";
 import { composeShell, type ShellSlices } from "./compose/shell.ts";
 import { composeVault, type VaultSlices } from "./compose/vault.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
@@ -120,14 +121,15 @@ export class AppStore {
       this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
     selected: () => this.state.selected,
     watched: () => this.subscriptions.followed(),
-    onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
-    // Read at connect: the table is a field declared after this one.
-    routes: () => this.routes,
-    // Read at load, after the `host.info` answer: also declared after this field.
-    onlineSteps: () => this.onlineSteps,
+    onStatus: (hostId, conn, status) => this.handlers.onStatus(hostId, conn, status),
+    // Read at connect and at load: the handlers are built at the end of the constructor.
+    routes: () => this.handlers.routes,
+    onlineSteps: () => this.handlers.onlineSteps,
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
+  /** What the host link calls: its frames, its steps when a host comes online and its status (#2376). */
+  private readonly handlers: LinkHandlers;
   private noticeSeq = 0;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   private offQuit: (() => void) | null = null;
@@ -313,6 +315,18 @@ export class AppStore {
       vaultUsage: this.usage.list(),
       clientList: this.clients.list(),
       clientOverrides: this.clients.overrides(),
+    });
+    this.handlers = composeLinkHandlers(this.kernel, {
+      slices: () => this,
+      link: () => this.link,
+      updateHost: (hostId, change) => this.updateHost(hostId, change),
+      nextNoticeId: () => ++this.noticeSeq,
+      keepUsage: () => this.keepUsage(),
+      onRun: (hostId, run) => this.onRun(hostId, run),
+      historyChanged: (hostId, change) => {
+        for (const listener of this.historyListeners) listener(hostId, change);
+      },
+      refreshSetup: (hostId, options) => this.refreshSetup(hostId, options),
     });
   }
 
@@ -741,134 +755,6 @@ export class AppStore {
   };
 
   // -- internals ------------------------------------------------------------
-
-  /** The frames of a host's connection, each to the slice that takes it (#1596). */
-  private readonly routes: HostRoutes = {
-    onSubscribed: (config, sessionId, result) =>
-      this.stream.onSubscribed(config.id, sessionId, result),
-    onEvent: (config, envelope) => this.stream.onEvent(config.id, envelope),
-    onSummaries: (config, summaries) => this.summaries.apply(config.id, summaries),
-    onCardUpdated: (config, card) => this.boardCards.onCard(config.id, card),
-    onExternal: (config, frame) => this.external.onExternal(config.id, frame),
-    onVaultRequest: (config, request) => void this.vaultApprovals.onRequest(config, request),
-    onVaultUsed: (config, used) => {
-      this.usage.recordUsed(config.id, used);
-      this.keepUsage();
-    },
-    // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
-    onTeams: (config, frame) => this.teams.onFrame(config.id, frame),
-    onMessagingAlert: (config, alert) => this.messaging.onLoopAlert(config.id, alert),
-    onWatch: (config, frame) => this.prWatch.keep(config.id, frame.watch),
-    onMessages: (config, frame) => this.messaging.onFrame(config.id, frame),
-    onVaultAlert: (_config, alert) => {
-      const notice: Notice = {
-        id: ++this.noticeSeq,
-        kind: "error",
-        code: "vault_alert",
-        text: alert.message,
-      };
-      this.update({ notices: [...this.state.notices, notice] });
-      this.inbox.notify({
-        title: this.i18n.t("vaultAudit.alertTitle"),
-        body: alert.message,
-      });
-    },
-    onRunUpdated: (config, run) => this.onRun(config.id, run),
-    onRunEnvUpdated: (config, state) => this.runEnv.updated(config.id, state),
-    onQuotaUpdated: (config, state) => this.quota.updated(config.id, state),
-    onAccountUpdated: (config, state) => this.account.updated(config.id, state),
-    onBudgetUpdated: (config, update) => this.budgets.onUpdated(config.id, update),
-    onTerminal: (config, frame) => this.terminals.deliver(config.id, frame),
-    onHistoryChanged: (config, change) => {
-      for (const listener of this.historyListeners) listener(config.id, change);
-    },
-    onAskpass: (config, request) => void this.ssh.onAskpass(config.id, request),
-  };
-
-  /** What runs when a host comes online or its info is reloaded, in this order (#1596). */
-  private readonly onlineSteps: readonly OnlineStep[] = [
-    {
-      run: ({ hostId, hostInfo }) =>
-        this.updateHost(hostId, (h) => {
-          // Back on the version it was updating to: the update is over.
-          const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
-          if (done) this.hostUpdate.settled(hostId);
-          return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
-        }),
-    },
-    // The setup checklist reads what this host has: its hooks, GitHub, projects.
-    { run: ({ hostId, connect }) => void this.refreshSetup(hostId, { connect }) },
-    // Issue #1344: a host that can say what happened while the app was closed is asked once.
-    { gate: "activity", run: () => void this.activity.loadAway() },
-    // ssh asks for passwords through the daemon: this app is who answers.
-    { gate: "ssh", run: ({ conn }) => void conn.request("askpass.watch", {}).catch(() => null) },
-    // Phase 21: this app carries the host's messages for the other hosts.
-    { gate: "watch", run: ({ conn }) => void conn.request("watch.watch", {}).catch(() => null) },
-    {
-      gate: "teams",
-      run: ({ hostId, conn }) => {
-        void conn.request("teams.watch", {}).catch(() => null);
-        // The sessions that belong to teams, so the workers' notifications can be folded.
-        void conn
-          .request("teams.list", {})
-          .then((result) => {
-            for (const team of result.teams) this.summaries.rememberTeam(hostId, team);
-          })
-          .catch(() => null);
-      },
-    },
-    {
-      gate: "messaging",
-      run: ({ conn }) => {
-        void conn.request("messages.watch", {}).catch(() => null);
-        this.messaging.startPeersSync();
-      },
-    },
-    // Phase 19: the daemon decides a request with the rules the app hands it.
-    { gate: "actions", run: ({ hostId, conn }) => this.vaultRules.onConnect(hostId, conn) },
-    { run: ({ hostId }) => void this.health.check(hostId) },
-    // Not awaited, as the health check: a reload of the host's info never waits on the offer.
-    {
-      gate: FEATURE_RESUME_OFFER,
-      run: ({ hostId, conn }) => void this.sessions.offerResume(hostId, conn),
-    },
-    {
-      gate: "costs",
-      awaited: true,
-      run: async ({ hostId, conn }) => {
-        const list = await conn.request("budget.list", {}).catch(() => null);
-        if (list) this.budgets.replace(hostId, list.budgets);
-      },
-    },
-  ];
-
-  private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
-    const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
-    const line = statusLine(name, status, conn.lastDrop);
-    this.appLog.log(line.level, "host", line.text);
-    this.updateHost(hostId, (h) => ({
-      ...h,
-      status,
-      info: conn.info,
-      incompatibility: conn.incompatibility,
-      retry: conn.retry,
-    }));
-    if (status === "online") {
-      void this.link.loadHostInfo(hostId, conn, true);
-      // Daemons before phase 7 have no quota: quietly nothing.
-      void conn.request("quota.get", {}).then(
-        (state) => this.quota.updated(hostId, state),
-        () => {},
-      );
-    }
-    if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") {
-      this.stream.dropPartialText(hostId);
-      // The cards that waited on the old connection leave the queue: the new one never saw them.
-      // The deny may not reach the daemon; it ends the request at its own deadline.
-      this.vaultApprovals.hostGone(hostId);
-    }
-  }
 
   /** `hostId/projectId` of the project whose folder holds `cwd`, if any. */
   private sessionProject(hostId: string, cwd: string | null | undefined): string | undefined {

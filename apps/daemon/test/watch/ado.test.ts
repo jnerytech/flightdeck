@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli, type PrProvider } from "../../src/board/pr.ts";
+import { AzureDevOpsCli } from "../../src/board/pr.ts";
+import type { PrProvider } from "../../src/pr/index.ts";
 import { PrWatcher, type WatchTrigger } from "../../src/watch/watch.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";

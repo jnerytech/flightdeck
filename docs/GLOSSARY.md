@@ -202,6 +202,7 @@ test's baseline, with the issue that renames them.
 | `personas` | persona | Engineering roles a session takes, the pack and their storage |
 | `plugins` | plugin | Claude Code plugins of the host, through the `claude plugin` CLI |
 | `power` | keep awake | Keeps the computer awake while sessions run |
+| `pr` | PR provider | What every PR host has in common: the `PrProvider` port and its answers, the CLI runner for `gh` and `az`, the safe text of their arguments and the reading of what they answer (#1612) |
 | `projects` | project | The projects of a host: add, find and start from GitHub, the sidebar tree, the Projects and Project screens, the overview and the session tiles |
 | `quota` | quota | The plan's 5-hour and 7-day windows and the queue they hold |
 | `releases` | release | The product's GitHub releases, read and cached |

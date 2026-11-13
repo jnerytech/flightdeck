@@ -1233,17 +1233,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/github/adapters/gh.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/github/github.ts",
     "to": "apps/daemon/src/issues/providers.ts",
     "unresolvedTo": "../issues/providers.ts",
@@ -1380,17 +1369,6 @@
     "to": "apps/daemon/src/permissions/auto-approve.ts",
     "unresolvedTo": "../permissions/auto-approve.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/issues/providers.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -3151,17 +3129,6 @@
     "to": "apps/daemon/src/board/branch-commit.ts",
     "unresolvedTo": "../board/branch-commit.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/template-add.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
