@@ -11,7 +11,7 @@ const { act, cleanup, render } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
 const { useStoreSlice, useStoreState } = await import("../../src/lib/use-store.ts");
-const { Screen } = await import("../../src/ui/Screens.tsx");
+const { Screen } = await import("../../src/app/Screens.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 

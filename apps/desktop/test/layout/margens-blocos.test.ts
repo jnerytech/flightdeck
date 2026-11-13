@@ -18,7 +18,7 @@ function tsxFiles(dir: string): string[] {
 // on Personas and Snippets). The space between blocks belongs to their container, not to a block.
 describe("margens-blocos: blocks take their space from their container's gap", () => {
   test("no screen or component puts a 16 px bottom margin on a block", () => {
-    const found = [join(SRC, "ui"), join(SRC, "components")].flatMap(tsxFiles).flatMap((file) =>
+    const found = [join(SRC, "app"), join(SRC, "components")].flatMap(tsxFiles).flatMap((file) =>
       readFileSync(file, "utf8")
         .split("\n")
         .flatMap((line, i) =>

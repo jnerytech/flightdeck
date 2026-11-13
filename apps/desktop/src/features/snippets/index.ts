@@ -1,7 +1,7 @@
 /**
  * The snippets' public entry in the app (#1589, #1596): the saved commands and prompts, the hosts'
  * and the app's own. Another domain imports from here, never a file inside. The page itself
- * (`page.tsx`) is left out on purpose: `ui/Screens.tsx` loads it as a lazy chunk, and
+ * (`page.tsx`) is left out on purpose: `app/Screens.tsx` loads it as a lazy chunk, and
  * exporting it here would pull it into the main bundle.
  */
 

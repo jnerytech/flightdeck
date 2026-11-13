@@ -83,7 +83,7 @@ describe("keycap: no screen draws its own (issue #165)", () => {
       .map((e) => join(e.parentPath, e.name).replaceAll("\\", "/"));
 
   test("a kbd appears only in the keycap component (the vendored ui folder aside)", () => {
-    const found = ["ui", "components", "features"]
+    const found = ["app", "components", "features"]
       .flatMap(files)
       .filter((file) => !file.includes("/components/ui/"))
       .filter((file) => !file.endsWith("features/shortcuts/keycap.tsx"))
