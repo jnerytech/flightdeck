@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { isMac, keysText } from "./shortcuts.ts";
+import { isMac, keysText } from "./domain/shortcuts.ts";
 
 /** A key, or a combination, as printed beside what it does: the one `<kbd>` of the app. */
 export function Keycap(props: Readonly<{ children: ReactNode; className?: string }>) {

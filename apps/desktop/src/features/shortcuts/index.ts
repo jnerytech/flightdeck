@@ -3,9 +3,9 @@
  * global shortcut check. Another domain imports from here, never a file inside. The sheet and the
  * keycap are components, in ui.ts (#2451).
  */
-export { gridStep } from "./grid-keys.ts";
-export { typing } from "./keys.ts";
-export { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
+export { gridStep } from "./domain/grid-keys.ts";
+export { typing } from "./domain/keys.ts";
+export { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./domain/shortcut.ts";
 export {
   CHORD_TIMEOUT_MS,
   type ChordState,
@@ -15,4 +15,4 @@ export {
   NO_CHORD,
   type ShortcutAction,
   shortcutOf,
-} from "./shortcuts.ts";
+} from "./domain/shortcuts.ts";
