@@ -134,8 +134,9 @@ export class Vault {
     return next;
   }
 
+  /** The value goes first: when the keyring refuses, the secret stays listed and can be removed again. */
   async remove(id: string): Promise<void> {
-    this.save(this.list().filter((s) => s.id !== id));
     await this.platform.vault.delete(id);
+    this.save(this.list().filter((s) => s.id !== id));
   }
 }

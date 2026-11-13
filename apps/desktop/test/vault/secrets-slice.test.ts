@@ -21,6 +21,7 @@ function slice(
     picked?: { text: string } | null;
     pickFails?: boolean;
     workFactor?: number;
+    changedThrows?: boolean;
   } = {},
 ) {
   const events: string[] = [];
@@ -37,6 +38,7 @@ function slice(
     vault: vault as unknown as VaultSecretsCore["vault"],
     secretsChanged: () => {
       events.push("changed");
+      if (over.changedThrows) throw new Error("a listener broke");
     },
     workFactor: () => over.workFactor ?? 4,
     copyText: async () => true,
@@ -63,6 +65,37 @@ describe("vault secrets slice", () => {
     expect(secrets.update("s1", { name: "deploy 2" })).toBe(META);
     await secrets.remove("s1");
     expect(events).toEqual(["changed", "changed", "changed"]);
+  });
+
+  test("a secret that cannot be saved or removed is a failure to show: add gives null, remove stays quiet, nothing is announced as changed (#2601)", async () => {
+    const broken = {
+      create: async () => {
+        throw new Error("the disk is full");
+      },
+      remove: async () => {
+        throw new Error("the keyring is locked");
+      },
+    };
+    const { secrets, events } = slice({ vault: broken });
+    const added = await secrets.add({ name: "deploy", type: "token", value: "v-123" }).then(
+      (meta) => meta,
+      () => "threw",
+    );
+    expect(added).toBeNull();
+    const removed = await secrets.remove("s1").then(
+      () => "returned",
+      () => "threw",
+    );
+    expect(removed).toBe("returned");
+    expect(events).toEqual(["fail the disk is full", "fail the keyring is locked"]);
+  });
+
+  test("a listener that breaks after a secret is stored is not a refused save: no failure notice, so the form never retries into a duplicate (#2601)", async () => {
+    const { secrets, events } = slice({ changedThrows: true });
+    await expect(secrets.add({ name: "deploy", type: "token", value: "v" })).rejects.toThrow(
+      "a listener broke",
+    );
+    expect(events).toEqual(["changed"]);
   });
 
   test("a key that cannot be generated or imported is a failure to show, not a stored secret", async () => {

@@ -33,8 +33,16 @@ export interface VaultSecretsCore {
 export class VaultSecretsSlice {
   constructor(private readonly core: VaultSecretsCore) {}
 
-  async add(input: NewSecret): Promise<SecretMeta> {
-    const meta = await this.core.vault.create(input);
+  /** Stores a secret; null when the vault refuses it, after telling the person (never with the value). */
+  async add(input: NewSecret): Promise<SecretMeta | null> {
+    let meta: SecretMeta;
+    try {
+      meta = await this.core.vault.create(input);
+    } catch (error) {
+      this.core.fail(error);
+      return null;
+    }
+    // Outside the try: the secret is stored, so a broken listener must not read as a refused save.
     this.core.secretsChanged();
     return meta;
   }
@@ -78,8 +86,14 @@ export class VaultSecretsSlice {
     return true;
   }
 
+  /** Removes a secret; a refusal is told to the person and the secret stays listed. */
   async remove(id: string): Promise<void> {
-    await this.core.vault.remove(id);
+    try {
+      await this.core.vault.remove(id);
+    } catch (error) {
+      this.core.fail(error);
+      return;
+    }
     this.core.secretsChanged();
   }
 

@@ -1,6 +1,6 @@
 import { inSequence } from "@flightdeck/protocol";
 import { KeyRound } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { groupSecrets, selectedClient } from "@/features/clients/index.ts";
@@ -20,6 +20,8 @@ import { describeSecret, type SecretInfo } from "./vault-types.ts";
 
 const REVEAL_MS = 10_000;
 const CLEAR_MS = 30_000;
+/** How long before a revealed value hides that the person is told once. */
+const WARN_MS = 5_000;
 
 /** What describes a secret on its row, without revealing it. */
 function infoText(info: SecretInfo, fingerprint: (value: string) => string): string {
@@ -33,9 +35,10 @@ function SecretRow(
     info: SecretInfo;
     /** The value, while it is revealed. */
     revealed: string | null;
-    onReveal(): void;
+    /** Handed the button, so the focus can come back to it when the confirmation closes. */
+    onReveal(button: HTMLElement): void;
     onCopy(): void;
-    onRemove(): void;
+    onRemove(button: HTMLElement): void;
     onEdit(): void;
     /** Phase 19: the secret's usage rules. */
     onRules(): void;
@@ -76,7 +79,7 @@ function SecretRow(
           variant="outline"
           size="sm"
           aria-label={t("vault.revealFor", { name: secret.name })}
-          onClick={props.onReveal}
+          onClick={(event) => props.onReveal(event.currentTarget)}
         >
           {t("vault.reveal")}
         </Button>
@@ -113,7 +116,7 @@ function SecretRow(
           variant="outline"
           size="sm"
           aria-label={t("vault.removeFor", { name: secret.name })}
-          onClick={props.onRemove}
+          onClick={(event) => props.onRemove(event.currentTarget)}
         >
           {t("vault.remove")}
         </Button>
@@ -149,10 +152,28 @@ export const VaultPage = memo(function VaultPage(props: {
   const [removing, setRemoving] = useState<SecretMeta | null>(null);
   const [shown, setShown] = useState<{ id: string; value: string } | null>(null);
 
+  // What a screen reader hears about the value (never the value): shown, about to hide, hidden.
+  const [phase, setPhase] = useState<"shown" | "soon" | "hidden" | null>(null);
+  // The button that opened a confirmation, so the focus can go back to it when it closes.
+  const opener = useRef<HTMLElement | null>(null);
+  // Where the focus lands when the opener's row is gone (a removed secret).
+  const newSecretButton = useRef<HTMLButtonElement>(null);
+  const focusAfterClose = () =>
+    opener.current?.isConnected ? opener.current : newSecretButton.current;
+
   useEffect(() => {
     if (!shown) return;
-    const timer = setTimeout(() => setShown(null), revealMs);
-    return () => clearTimeout(timer);
+    setPhase("shown");
+    const soon =
+      revealMs > WARN_MS ? setTimeout(() => setPhase("soon"), revealMs - WARN_MS) : undefined;
+    const timer = setTimeout(() => {
+      setShown(null);
+      setPhase("hidden");
+    }, revealMs);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(soon);
+    };
   }, [shown, revealMs]);
 
   const reveal = async (secret: SecretMeta) => {
@@ -189,9 +210,19 @@ export const VaultPage = memo(function VaultPage(props: {
       title={t("vault.title")}
       subtitle={t("vault.subtitle")}
       actions={
-        !creating && <Button onClick={() => setCreating(true)}>{t("vault.newSecret")}</Button>
+        !creating && (
+          <Button ref={newSecretButton} onClick={() => setCreating(true)}>
+            {t("vault.newSecret")}
+          </Button>
+        )
       }
     >
+      <output className="text-muted-foreground text-sm">
+        {phase === "shown" &&
+          t("vault.shownFor", { seconds: Math.max(1, Math.round(revealMs / 1000)) })}
+        {phase === "soon" && t("vault.hidesSoon", { seconds: WARN_MS / 1000 })}
+        {phase === "hidden" && t("vault.hidden")}
+      </output>
       {creating && (
         <NewSecretForm
           store={store}
@@ -250,9 +281,15 @@ export const VaultPage = memo(function VaultPage(props: {
                         secret={secret}
                         info={infos[secret.id] ?? {}}
                         revealed={shown?.id === secret.id ? shown.value : null}
-                        onReveal={() => setAsking(secret)}
+                        onReveal={(button) => {
+                          opener.current = button;
+                          setAsking(secret);
+                        }}
                         onCopy={() => void store.secrets.copy(secret.id, clearMs)}
-                        onRemove={() => setRemoving(secret)}
+                        onRemove={(button) => {
+                          opener.current = button;
+                          setRemoving(secret);
+                        }}
                         onEdit={() => setEditing(secret)}
                         onRules={() => setRuling(secret)}
                         onCopyPublicKey={() =>
@@ -288,6 +325,7 @@ export const VaultPage = memo(function VaultPage(props: {
           word={t("vault.revealWord")}
           inputLabel={t("vault.revealPrompt", { word: t("vault.revealWord") })}
           confirmLabel={t("vault.reveal")}
+          returnFocus={focusAfterClose}
           onConfirm={() => void reveal(asking)}
           onCancel={() => setAsking(null)}
         />
@@ -299,6 +337,7 @@ export const VaultPage = memo(function VaultPage(props: {
           inputLabel={t("vault.removePrompt", { word: removing.name })}
           confirmLabel={t("vault.remove")}
           destructive
+          returnFocus={focusAfterClose}
           onConfirm={() => {
             void store.secrets.remove(removing.id);
             setRemoving(null);

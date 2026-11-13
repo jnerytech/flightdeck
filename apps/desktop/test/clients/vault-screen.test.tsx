@@ -3,6 +3,7 @@ import { SCOPE_RULE_PREFIX } from "../../src/features/clients/client-vault.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { settle } from "../wait.ts";
 
 registerDom();
@@ -49,7 +50,7 @@ async function open(options: { tag?: string; allowedHosts?: (hostId: string) => 
   const beta = store.clients.add("Beta");
   store.clients.addRule(beta?.id ?? "", { kind: "remote", pattern: "github.com/beta/*" });
   if (options.tag) store.clients.setDefaults(acme?.id ?? "", { vaultTag: options.tag });
-  const secret = await store.secrets.add({
+  const secret = await addedSecret(store, {
     name: "token",
     type: "token",
     value: "v",

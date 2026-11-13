@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { uiIdle, waiter } from "../wait.ts";
 import { sshDaemon, sshTarget } from "./daemon.ts";
 
@@ -42,19 +43,19 @@ async function open(
   cleanups.push(() => store.dispose());
   const hostId = await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
   const allowedHosts = input.allowed === false ? ["local"] : [hostId];
-  const key = await store.secrets.add({
+  const key = await addedSecret(store, {
     name: "deploy key",
     type: "ssh-key",
     value: KEY,
     allowedHosts,
   });
-  const password = await store.secrets.add({
+  const password = await addedSecret(store, {
     name: "box password",
     type: "password",
     value: PASSWORD,
     allowedHosts,
   });
-  await store.secrets.add({
+  await addedSecret(store, {
     name: "a token",
     type: "token",
     value: "ghp_aTokenThatIsNotAKey123456",

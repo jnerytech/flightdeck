@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { settle, stays } from "../wait.ts";
 
 registerDom();
@@ -36,7 +37,7 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     );
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
-      store.secrets.add({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
+      addedSecret(store, { name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
     );
     await act(async () => {
       store.router.push({ name: "needs-you" });
@@ -75,7 +76,7 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     );
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
-      store.secrets.add({ name: "staging", type: "token", value: "v", allowedHosts: [hostId] }),
+      addedSecret(store, { name: "staging", type: "token", value: "v", allowedHosts: [hostId] }),
     );
     const push = (requestId: string, once: boolean) =>
       act(async () => {
@@ -127,7 +128,7 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     );
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
-      store.secrets.add({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
+      addedSecret(store, { name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
     );
     await act(async () => {
       store.router.push({ name: "needs-you" });
