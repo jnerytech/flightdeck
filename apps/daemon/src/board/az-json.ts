@@ -49,7 +49,7 @@ export const AzTimeline = z.object({
     z.object({
       type: z.string(),
       name: z.string(),
-      result: z.string().nullable(),
+      result: z.string().nullish(),
       log: z.object({ id: z.number() }).nullish(),
     }),
   ),
@@ -64,7 +64,7 @@ export const AzThreads = z.object({
       isDeleted: z.boolean().nullish(),
       threadContext: z
         .object({
-          filePath: z.string(),
+          filePath: z.string().nullish(),
           rightFileStart: z.object({ line: z.number() }).nullish(),
         })
         .nullish(),

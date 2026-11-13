@@ -658,8 +658,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
             evaluation.configuration.settings?.displayName ??
             evaluation.configuration.type.displayName,
           state: AZ_CHECK_STATES[evaluation.status] ?? "pending",
-          kind: buildId === undefined ? "policy" : "build",
-          buildId: buildId === undefined ? null : String(buildId),
+          kind: buildId == null ? "policy" : "build",
+          buildId: buildId == null ? null : String(buildId),
         };
       }),
       conflicts: pr.mergeStatus === "conflicts",
@@ -775,7 +775,7 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
           .map(
             (comment): PrComment => ({
               id: `${thread.id}/${comment.id}`,
-              path: thread.threadContext?.filePath.replace(/^\//, "") ?? null,
+              path: thread.threadContext?.filePath?.replace(/^\//, "") ?? null,
               line: thread.threadContext?.rightFileStart?.line ?? null,
               author: comment.author.displayName,
               authorAssociation: null,

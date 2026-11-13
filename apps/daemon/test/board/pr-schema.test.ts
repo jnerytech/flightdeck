@@ -183,4 +183,27 @@ describe("pr schema: Azure DevOps", () => {
     expect((await provider.status(azWhere())).state).toBe("open");
     expect((await provider.comments(azWhere())).map((c) => c.author)).toEqual(["Ann"]);
   });
+
+  test("health and buildLog read replies with null context, no result and a thread with no path", async () => {
+    const show = { mergeStatus: "succeeded", repository: { project: { id: "p1" } } };
+    const evaluation = {
+      status: "approved",
+      configuration: { type: { displayName: "Build" }, settings: null },
+      context: { buildId: null },
+    };
+    const provider = az([
+      { args: PR_SHOW, stdout: JSON.stringify(show) },
+      {
+        args: ["devops", "invoke", "evaluations"],
+        stdout: JSON.stringify({ value: [evaluation] }),
+      },
+      {
+        args: ["devops", "invoke", "timeline"],
+        stdout: JSON.stringify({ records: [{ type: "Stage", name: "s", log: null }] }),
+      },
+    ]);
+    const health = await provider.health(azWhere());
+    expect(health.checks).toMatchObject([{ name: "Build", kind: "policy", buildId: null }]);
+    expect(await provider.buildLog({ ...azWhere(), buildId: "9" })).toBe("");
+  });
 });
