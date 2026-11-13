@@ -580,10 +580,12 @@ describe("times: deleting a team", () => {
   test("the members' sessions and cards stay, and the sessions are taken out of the team", async () => {
     const { teams, team, board, manager, names } = await closedTeam({}, true);
     const sessions = team.members.flatMap((m) => (m.sessionId ? [m.sessionId] : []));
-    for (const sessionId of sessions) {
-      names.assign(sessionId, {
+    expect(sessions).toHaveLength(3);
+    for (const member of team.members) {
+      const coordinator = member.name === team.coordinator;
+      names.assign(member.sessionId as string, {
         project: "app",
-        team: { name: "time", role: "worker", number: 1 },
+        team: { name: "time", role: coordinator ? "coordinator" : "worker", number: null },
       });
     }
     expect(sessions.map((id) => names.get(id)?.team?.name)).toEqual(sessions.map(() => "time"));
