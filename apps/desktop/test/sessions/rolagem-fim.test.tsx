@@ -10,7 +10,7 @@ const personScrolls = (el: Element) => {
   fireEvent.scroll(el);
 };
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
-const { emptySession } = await import("../../src/features/sessions/session-state.ts");
+const { emptySession } = await import("../../src/features/sessions/domain/session-state.ts");
 
 /** A ResizeObserver the test drives: `grow()` is a layout change (an image, a code block, a panel). */
 const observers: Array<() => void> = [];

@@ -7,7 +7,10 @@ import {
 } from "../../../../scripts/lib/browser/axe.ts";
 import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
 import { hiddenTermsIn } from "../../src/features/home/simple-words.ts";
-import { emptySession, type SessionState } from "../../src/features/sessions/session-state.ts";
+import {
+  emptySession,
+  type SessionState,
+} from "../../src/features/sessions/domain/session-state.ts";
 import { type Lang, translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 

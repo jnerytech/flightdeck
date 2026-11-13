@@ -16,7 +16,7 @@ import {
   recallCommit,
   rememberCommit,
   whyNot,
-} from "./session-finish.ts";
+} from "./domain/session-finish.ts";
 
 /** The hooks a commit runs, in a line: none set, or not known. */
 function hooksText(t: ReturnType<typeof useT>, hooks: string[] | undefined): string {

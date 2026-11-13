@@ -2,6 +2,7 @@ import { statfs } from "node:fs/promises";
 import { cpus, freemem, loadavg, totalmem } from "node:os";
 import { type Config, updateConfigFile } from "../config.ts";
 import type { DomainModule } from "../server/index.ts";
+import { getconf } from "./adapters/getconf.ts";
 import { MemoryGate, type MemoryReading, osMemoryReading } from "./memory-gate.ts";
 import { procfsReader } from "./procfs.ts";
 import { type ProcReader, Resources } from "./resources.ts";
@@ -125,21 +126,6 @@ export async function defaultSysconf(
   const value = await ask(name);
   if (value !== null && Number.isFinite(value) && value > 0) return value;
   return name === "PAGESIZE" ? 4096 : 100;
-}
-
-/** Asks `getconf`; null when it is not there or answers something else. */
-export async function getconf(
-  name: "PAGESIZE" | "CLK_TCK",
-  spawn: typeof Bun.spawn = Bun.spawn,
-): Promise<number | null> {
-  try {
-    const child = spawn(["getconf", name], { stdout: "pipe", stderr: "ignore" });
-    const [text, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
-    const value = Number.parseInt(text.trim(), 10);
-    return code === 0 && Number.isFinite(value) ? value : null;
-  } catch {
-    return null;
-  }
 }
 
 /** What the memory hold on new cards is built from (issue #1343). */

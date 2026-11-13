@@ -10,7 +10,7 @@ import {
 import {
   applyEnvelope,
   emptySession,
-} from "../../../desktop/src/features/sessions/session-state.ts";
+} from "../../../desktop/src/features/sessions/domain/session-state.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
