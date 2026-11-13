@@ -5,12 +5,10 @@
  * hour because each answer is a network call. Neither blocks the event loop.
  */
 
-import { z } from "zod";
-import { parseJsonOr, whichOnPath } from "../kernel/index.ts";
+import { type ClosedIssues, closedIssues } from "../github/index.ts";
+import { whichOnPath } from "../kernel/index.ts";
 
-export type IssuesResult =
-  | { count: number }
-  | { error: "gh_missing" | "gh_logged_out" | "gh_failed" };
+export type IssuesResult = ClosedIssues;
 
 export interface RoiSignalsOptions {
   now?: () => number;
@@ -67,31 +65,8 @@ export class RoiSignals {
     const key = `${cwd}\0${from}\0${to}`;
     const hit = this.kept.get(key);
     if (hit && this.now() - hit.at < KEEP_MS) return { count: hit.count };
-    const gh = whichOnPath("gh");
-    if (!gh) return { error: "gh_missing" };
-    const answer = await run(
-      [
-        gh,
-        "issue",
-        "list",
-        "--state",
-        "closed",
-        "--search",
-        `closed:${from}..${to}`,
-        "--limit",
-        "100",
-        "--json",
-        "number",
-      ],
-      cwd,
-    ).catch(() => null);
-    if (!answer) return { error: "gh_failed" };
-    if (answer.code !== 0) {
-      return { error: /gh auth login/.test(answer.stderr) ? "gh_logged_out" : "gh_failed" };
-    }
-    const list = parseJsonOr(z.array(z.unknown()), answer.stdout, null);
-    if (list === null) return { error: "gh_failed" };
-    this.kept.set(key, { at: this.now(), count: list.length });
-    return { count: list.length };
+    const answer = await closedIssues(cwd, from, to);
+    if ("count" in answer) this.kept.set(key, { at: this.now(), count: answer.count });
+    return answer;
   }
 }
