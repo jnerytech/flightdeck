@@ -5,11 +5,10 @@
  */
 import type { Database } from "bun:sqlite";
 import type { ActionInfo, ActionList, RuleIssue } from "@flightdeck/protocol";
-import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { userHome } from "../config.ts";
 import { git } from "../git/index.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError, refArg } from "../kernel/index.ts";
 import { definitionOf, pinnedFilesOf } from "./row-json.ts";
 import { type ActionDef, approvalOf, parseActions, secretsOf, validateAction } from "./schema.ts";
 import { changes, type Fingerprint, fingerprint } from "./trust.ts";

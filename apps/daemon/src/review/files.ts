@@ -18,13 +18,13 @@ import {
   type FileSearchResult,
   inSequence,
 } from "@flightdeck/protocol";
-import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { git } from "../git/index.ts";
 import {
   FlightdeckError,
   isInside,
   readRegularSized,
+  refArg,
   resolveAllowedCwd,
   ulid,
 } from "../kernel/index.ts";

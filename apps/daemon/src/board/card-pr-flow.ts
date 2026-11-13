@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { git } from "../git/index.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { assertBranchName, FlightdeckError, refArg } from "../kernel/index.ts";
 import { type PrComment, prMessage } from "../pr/index.ts";
 import { cardDiff } from "./diff.ts";
 import type { BoardEvent } from "./domain/columns.ts";
@@ -14,7 +14,6 @@ import {
 } from "./merge.ts";
 import { prProvider } from "./pr.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
-import { assertBranchName, refArg } from "./ref-arg.ts";
 import type { BoardOptions, Card, CardDiff, Project } from "./types.ts";
 
 /** A card's session in one of these is still working: no rebase or merge under it. */
