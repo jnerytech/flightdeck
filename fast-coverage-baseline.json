@@ -196,7 +196,6 @@
   "apps/desktop/src/i18n/pt-BR.ts",
   "apps/desktop/src/i18n/simple.ts",
   "apps/desktop/src/lib/measures.ts",
-  "apps/desktop/src/lib/notice-text.ts",
   "apps/desktop/src/lib/unique-keys.ts",
   "apps/desktop/src/lib/use-store.ts",
   "apps/desktop/src/lib/utils.ts",

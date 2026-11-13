@@ -1,8 +1,8 @@
 import type { BoardColumn, Card, WorkflowInfo } from "@flightdeck/protocol";
 import { cardInFilter, type WorktreeFilter } from "@/features/projects/index.ts";
+import { reasonText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import { COLUMNS, filterCards, positionsBefore } from "../../lib/board.ts";
-import { reasonText } from "../../lib/notice-text.ts";
 import { hasFeature } from "../../lib/version.ts";
 import type { BulkRefusal } from "./board-select.ts";
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { reasonText } from "../../src/i18n/errors.ts";
 import { translator } from "../../src/i18n/index.ts";
-import { reasonText } from "../../src/lib/notice-text.ts";
 
 describe("notice-text: a card's or run's problem reads in the app's language", () => {
   const params = { code: 3, output: "deu ruim" };
