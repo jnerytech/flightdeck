@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { type FakeCli, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { killTree as killTreeOfCommand, runCommand } from "../../src/board/command.ts";
+import { killTree as killTreeOfCommand, runCommand } from "../../src/kernel/command.ts";
 import { killTree } from "../../src/runenv/host.ts";
 
 let fake: FakeCli | null = null;

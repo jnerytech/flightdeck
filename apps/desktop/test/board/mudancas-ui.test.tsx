@@ -291,6 +291,8 @@ describe("mudancas-ui", () => {
     await click("Reverter novo.txt");
     await click("Reverter arquivo");
     await settle(() => !files().includes("novo.txt"));
+    // Same as below: the undo and its status come with the revert answer, not with the file list.
+    await settle(() => screen.queryByRole("button", { name: "Desfazer" }) !== null);
     expect(files()).not.toContain("novo.txt");
     expect(
       screen
@@ -309,6 +311,8 @@ describe("mudancas-ui", () => {
     await click("Reverter README.md");
     await click("Reverter arquivo");
     await settle(() => !files().includes("README.md"));
+    // Another refresh can drop the file before the revert answer sets the undo: wait for the button.
+    await settle(() => screen.queryByRole("button", { name: "Desfazer" }) !== null);
     // git on Windows may write the committed file back with CRLF line ends.
     expect(readFileSync(join(ctx.repo, "README.md"), "utf8").replaceAll("\r\n", "\n")).toBe(
       "# repo\nlinha dois\nlinha três\n",

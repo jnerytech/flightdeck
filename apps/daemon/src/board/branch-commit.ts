@@ -8,9 +8,14 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import {
+  type CommandResult,
+  type FlightdeckError,
+  killTree,
+  runCommand,
+  whichOnPath,
+} from "../kernel/index.ts";
 import { SAFE, TIMEOUT_MS } from "../teleport/git.ts";
-import { type CommandResult, killTree, runCommand } from "./command.ts";
 import type { Rev } from "./ref-arg.ts";
 
 /** What can go wrong, each refused by the caller under its own reason. */

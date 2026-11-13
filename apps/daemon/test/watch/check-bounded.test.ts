@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
-import { runLimited } from "../../src/board/command.ts";
+import { runLimited } from "../../src/kernel/command.ts";
 import { whichOnPath } from "../../src/kernel/which.ts";
 import { checkCommandRefusal } from "../../src/watch/check-command.ts";
 import { boundedCheckRunner, checkEnvironment } from "../../src/workflows/check-runner.ts";
