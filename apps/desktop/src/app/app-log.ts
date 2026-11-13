@@ -1,7 +1,6 @@
 import { SecretScanner, scrubHome } from "@flightdeck/protocol";
+import type { LogLevel } from "@/shared/lib/index.ts";
 import type { LogSink } from "../platform/types.ts";
-
-export type LogLevel = "info" | "warn" | "error";
 
 export interface AppLogOptions {
   sink?: LogSink;
