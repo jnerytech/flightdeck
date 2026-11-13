@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { Stack } from "@/shared/layout/index.ts";
 import type { HostView } from "../../lib/app-store.ts";
-import { mayBeRefusedAddress, offlineHint } from "./host-offline.ts";
+import { mayBeRefusedAddress, offlineHint } from "./domain/host-offline.ts";
 import { useNow } from "./use-now.ts";
 
 const COMMAND = "rounded bg-muted px-1 font-mono text-xs";
