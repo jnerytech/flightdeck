@@ -1,5 +1,4 @@
 {
-  "apps/daemon/src/deps/probe.ts": 1,
   "apps/daemon/src/kernel/command.ts": 3,
   "apps/daemon/src/plugins/plugins.ts": 1,
   "apps/daemon/src/projects/project-find.ts": 1,
@@ -7,6 +6,5 @@
   "apps/daemon/src/runtime/acp/client.ts": 1,
   "apps/daemon/src/runtime/opencode-kill.ts": 1,
   "apps/daemon/src/runtime/opencode-process.ts": 1,
-  "apps/daemon/src/runtime/opencode-serve.ts": 1,
-  "apps/daemon/src/service/update.ts": 1
+  "apps/daemon/src/runtime/opencode-serve.ts": 1
 }
