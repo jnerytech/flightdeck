@@ -477,6 +477,52 @@ describe("terminal-ui: the terminal screen", () => {
     ]).toEqual([true, 1]);
   });
 
+  test("Up with the focus off the items goes to the last one, as Down goes to the first", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, true);
+    act(() => menu.focus());
+    await pressInMenu(menu, "ArrowUp");
+    expect(focusedItem()).toBe("Selecionar tudo");
+    act(() => menu.focus());
+    await pressInMenu(menu, "ArrowDown");
+    expect(focusedItem()).toBe("Copiar");
+  });
+
+  test("Esc closes the menu and is marked handled even when the focus has left it", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    act(() => (document.activeElement as HTMLElement).blur());
+    const before = x.focuses();
+    let notMarked = true;
+    await act(async () => {
+      notMarked = fireEvent.keyDown(document.body, { key: "Escape" });
+    });
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      notMarked,
+      x.focuses() - before,
+    ]).toEqual([true, false, 1]);
+  });
+
+  test("a click on another control closes the menu and leaves the focus on that control", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    const other = document.createElement("input");
+    document.body.append(other);
+    other.focus();
+    const before = x.focuses();
+    await act(async () => {
+      fireEvent.click(other);
+    });
+    const kept = document.activeElement === other;
+    other.remove();
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      kept,
+      x.focuses() - before,
+    ]).toEqual([true, true, 0]);
+  });
+
   test("a link in the output opens in the browser, http and https only", async () => {
     const { x, platform } = await setup();
     await settle(() => state("Ao vivo"));
