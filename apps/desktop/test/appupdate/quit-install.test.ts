@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
 
 describe("quit-install: the tray's Quit asks the app first (issue #402)", () => {
   test("the app hears quit-requested from the Rust shell, and quitNow asks the shell to exit", async () => {

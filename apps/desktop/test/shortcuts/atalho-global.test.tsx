@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 const { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } = await import(
-  "../src/features/shortcuts/shortcut.ts"
+  "../../src/features/shortcuts/shortcut.ts"
 );
-const { App } = await import("../src/ui/App.tsx");
+const { App } = await import("../../src/ui/App.tsx");
 
 afterEach(() => cleanup());
 
