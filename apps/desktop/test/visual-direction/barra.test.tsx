@@ -347,9 +347,16 @@ describe("direcao-visual: Precisa de você", () => {
     expect(row?.getAttribute("aria-pressed")).toBe("true");
     expect(within(main).queryByRole("group", { name: "Pedido de Bash" })).not.toBeNull();
     expect(within(main).queryByRole("button", { name: "Abrir sessão" })).not.toBeNull();
-    // Esc closes the detail and the list stays.
+    // Esc inside the card only leaves the card (#2591): the detail stays.
     await act(async () => {
       fireEvent.keyDown(within(main).queryByRole("group", { name: "Pedido de Bash" }) as Element, {
+        key: "Escape",
+      });
+    });
+    expect(within(main).queryByRole("group", { name: "Pedido de Bash" })).not.toBeNull();
+    // Esc from the list closes the detail and the list stays.
+    await act(async () => {
+      fireEvent.keyDown(within(main).queryByRole("button", { name: rowName }) as Element, {
         key: "Escape",
       });
     });

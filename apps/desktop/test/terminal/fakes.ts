@@ -12,6 +12,7 @@ export function fakeXterm() {
   const findOptions: Array<Record<string, unknown> | undefined> = [];
   let onResults: (results: { resultIndex: number; resultCount: number }) => void = () => {};
   let selectedAll = 0;
+  let focuses = 0;
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
@@ -34,7 +35,7 @@ export function fakeXterm() {
     open: () => {},
     write: (bytes) => void drawn.push(Buffer.from(bytes).toString()),
     reset: () => void drawn.push("<reset>"),
-    focus: () => {},
+    focus: () => void focuses++,
     paste: (text) => void pasted.push(text),
     selectAll: () => {
       selectedAll++;
@@ -122,6 +123,8 @@ export function fakeXterm() {
     foundResults: (resultIndex: number, resultCount: number) =>
       onResults({ resultIndex, resultCount }),
     selectedAll: () => selectedAll,
+    /** How many times the screen was given the focus. */
+    focuses: () => focuses,
     terminal,
     fonts: () => fonts,
     disposed: () => disposed,

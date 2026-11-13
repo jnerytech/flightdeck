@@ -18,6 +18,7 @@ import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { MENU_ITEM, moveInMenu } from "./menu-keys.ts";
 import { insideFolder, resolvePath } from "./terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "./terminal-session.ts";
 import {
@@ -172,16 +173,36 @@ export function TerminalPage(
     };
   }, [store, hostId, terminalId, props.deps]);
 
-  // A click anywhere else closes the menu.
+  // A click anywhere else closes the menu. The terminal gets the focus back unless the click put
+  // it on another control (#2608).
   useEffect(() => {
     if (!menu) return;
-    const close = () => setMenu(null);
+    const close = () => {
+      setMenu(null);
+      const held = document.activeElement;
+      if (!held || held === document.body || menuRef.current?.contains(held)) {
+        screen.current?.focus();
+      }
+    };
     window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
+    // Esc closes the menu wherever the focus is. It is the menu's key: it goes no further (capture
+    // phase), so it does not close the detail (#2591) or reach the shell as an ESC.
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setMenu(null);
+      screen.current?.focus();
+    };
+    document.addEventListener("keydown", onEsc, true);
+    return () => {
+      window.removeEventListener("click", close);
+      document.removeEventListener("keydown", onEsc, true);
+    };
   }, [menu]);
   // The menu takes the focus, on the first thing it can do.
   useEffect(() => {
-    if (menu) menuRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+    if (menu) menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus();
   }, [menu]);
   const fromMenu = (action: "copy" | "paste" | "selectAll") => {
     setMenu(null);
@@ -269,8 +290,11 @@ export function TerminalPage(
                 if (flag) {
                   e.preventDefault();
                   flip(flag);
-                } else if (e.key === "Escape") stopSearch();
-                else if (e.key === "Enter") find(needle, e.shiftKey ? "previous" : "next");
+                } else if (e.key === "Escape") {
+                  // Handled here: left unmarked, the key closes the detail too (#2591).
+                  e.preventDefault();
+                  stopSearch();
+                } else if (e.key === "Enter") find(needle, e.shiftKey ? "previous" : "next");
               }}
             />
             {FIND_TOGGLES.map(([flag, label, glyph, keys]) => (
@@ -352,11 +376,10 @@ export function TerminalPage(
           tabIndex={-1}
           className="fixed z-50 flex flex-col rounded-md border bg-popover p-1 text-sm shadow-md"
           style={{ left: menu.x, top: menu.y }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setMenu(null);
-          }}
+          onKeyDown={(e) => moveInMenu(e, menuRef.current)}
         >
           <Button
+            role="menuitem"
             variant="ghost"
             size="sm"
             className="justify-start"
@@ -366,6 +389,7 @@ export function TerminalPage(
             {t("terminalUi.copy")}
           </Button>
           <Button
+            role="menuitem"
             variant="ghost"
             size="sm"
             className="justify-start"
@@ -374,6 +398,7 @@ export function TerminalPage(
             {t("terminalUi.paste")}
           </Button>
           <Button
+            role="menuitem"
             variant="ghost"
             size="sm"
             className="justify-start"
