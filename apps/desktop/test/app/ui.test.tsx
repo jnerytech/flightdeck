@@ -42,7 +42,7 @@ async function openHostMenu(host: string) {
 }
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { emptySession } = await import("../../src/features/sessions/domain/session-state.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
 type SessionState = import("../../src/features/sessions/domain/session-state.ts").SessionState;
 

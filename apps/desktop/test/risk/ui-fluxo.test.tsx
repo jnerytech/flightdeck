@@ -16,7 +16,7 @@ const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
 const { applyEnvelope, emptySession } = await import(
   "../../src/features/sessions/domain/session-state.ts"
 );
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

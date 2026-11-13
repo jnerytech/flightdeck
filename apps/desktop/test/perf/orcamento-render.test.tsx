@@ -9,7 +9,7 @@ registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { useSessionState, useStoreState } = await import("../../src/lib/use-store.ts");
 
 setDefaultTimeout(30_000);

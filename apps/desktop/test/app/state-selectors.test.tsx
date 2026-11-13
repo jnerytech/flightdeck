@@ -9,7 +9,7 @@ import { settle, stays, uiIdle } from "../wait.ts";
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { useStoreSlice, useStoreState } = await import("../../src/lib/use-store.ts");
 const { Screen } = await import("../../src/ui/Screens.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
