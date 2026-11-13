@@ -110,10 +110,10 @@ export function FolderPicker(
   const current = (loading ? target.path : listing?.path) ?? undefined;
   const root = current ? roots.find((r) => isInside(current, r)) : undefined;
   const crumbs = current && root ? breadcrumbSteps(current, root) : [];
-  const nativeDialog = store.canPickFolder() && isLocalUrl(host.url);
+  const nativeDialog = store.system.canPickFolder() && isLocalUrl(host.url);
 
   const chooseWithSystem = async () => {
-    const picked = await store.pickFolder();
+    const picked = await store.system.pickFolder();
     if (!picked) return;
     const result = await store.hostRequest(host.id, "fs.dirs", { path: picked });
     if (result.ok && result.data.path) props.onPick(result.data.path);

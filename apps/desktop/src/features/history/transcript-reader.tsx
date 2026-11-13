@@ -218,7 +218,7 @@ export function TranscriptReader(
                   <IconActionButton
                     label={t("reader.copyCommand")}
                     onClick={() =>
-                      void store
+                      void store.system
                         .copyText(`claude --resume ${target.claudeSessionId}`)
                         .then((ok) => setCopied(ok))
                     }

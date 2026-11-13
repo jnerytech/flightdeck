@@ -16,7 +16,7 @@ const LINES = 50;
 export function DiagnosticsPanel(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
-  const logs = store.platformLogs();
+  const logs = store.system.logs();
   if (!logs) return null;
   const copy = async () => {
     // The lines still on their way to the file go first, so the tail has them (issue #259).
@@ -35,7 +35,7 @@ export function DiagnosticsPanel(props: Readonly<{ store: AppStore }>) {
       lines,
       values: () => store.scan.values(),
     });
-    await store.copyText(text);
+    await store.system.copyText(text);
     store.success(t("diagnostics.copied"));
   };
   return (

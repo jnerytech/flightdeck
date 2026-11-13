@@ -256,7 +256,7 @@ export const VaultPage = memo(function VaultPage(props: {
                         onEdit={() => setEditing(secret)}
                         onRules={() => setRuling(secret)}
                         onCopyPublicKey={() =>
-                          void store.copyText(infos[secret.id]?.publicKey ?? "")
+                          void store.system.copyText(infos[secret.id]?.publicKey ?? "")
                         }
                         hostName={(hostId) =>
                           state.hosts.find((h) => h.id === hostId)?.name ?? hostId

@@ -886,7 +886,7 @@ export function Sidebar(
           version={version}
           density={density}
           onDensity={(next) => props.store.density.set(next)}
-          onCopy={(text) => void props.store.copyText(text)}
+          onCopy={(text) => void props.store.system.copyText(text)}
           hideBadges={shellPrefs.hideBadges}
           onHideBadges={(hide) => props.store.shellPrefs.set({ hideBadges: hide })}
           hideWhatsNew={shellPrefs.hideWhatsNew}

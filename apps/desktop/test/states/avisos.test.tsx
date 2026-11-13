@@ -108,7 +108,7 @@ describe("estados-avisos", () => {
   test("sucesso em toast curto: copiar o comando e iniciar um card", async () => {
     const { store, copied } = await online();
     await act(async () => {
-      expect(await store.copyText("flightdeckd claude --resume x")).toBe(true);
+      expect(await store.system.copyText("flightdeckd claude --resume x")).toBe(true);
     });
     expect(copied).toEqual(["flightdeckd claude --resume x"]);
     await settle(() => (document.body.textContent ?? "").includes("Copiado"));
