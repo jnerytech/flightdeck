@@ -3,7 +3,6 @@ import { visibleLiterals } from "./lib/guards/i18n-sweep.ts";
 
 const FEATURES = "apps/desktop/src/features";
 const dirs = [
-  "apps/desktop/src/ui",
   "apps/desktop/src/app",
   "apps/desktop/src/shared/feedback",
   "apps/desktop/src/shared/layout",

@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { staticImports } from "../../lib/bundle/bundle-reach.ts";
 
-const UI = resolve(import.meta.dir, "../../../apps/desktop/src/ui");
+const APP = resolve(import.meta.dir, "../../../apps/desktop/src/app");
 
 /**
  * The screens the entry chunk does not need to open the first one: each is loaded with
@@ -36,10 +36,10 @@ const LAZY_SCREENS = [
  * Where Screens.tsx loads a lazy screen from (#1597): a screen that moved into its feature folder
  * is `features/<name without "Page", lowercased>/page.tsx`, or in the plural folder (`HostPage` is
  * in `features/hosts`); a screen that is a file of its domain, not its `page.tsx`, is named in
- * `FILE_OF`; the rest are still `ui/<name>.tsx`. Looking at the disk means a move into a
+ * `FILE_OF`; the rest are still `app/<name>.tsx`. Looking at the disk means a move into a
  * `page.tsx` does not edit this test.
  */
-const FEATURES = resolve(UI, "../features");
+const FEATURES = resolve(APP, "../features");
 /** A screen whose domain folder is not its name (GLOSSARY Domains): the Agent screen is agentcfg, Conversations is messaging, Connections is ssh, the auto-approvals screen is permissions, the Preview screen is runenv. */
 const DOMAIN_OF: Record<string, string> = {
   AgentPage: "agentcfg",
@@ -66,8 +66,8 @@ const specifierOf = (name: string) => {
 };
 
 describe("screens-lazy: the secondary screens are not in the entry chunk", () => {
-  const read = (file: string) => readFileSync(resolve(UI, file), "utf8");
-  const SRC = resolve(UI, "..");
+  const read = (file: string) => readFileSync(resolve(APP, file), "utf8");
+  const SRC = resolve(APP, "..");
   // A specifier as the absolute file it names, whether it is written with `@/` or relative.
   const target = (from: string, specifier: string) =>
     specifier.startsWith("@/")
@@ -75,10 +75,10 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
       : resolve(dirname(from), specifier);
 
   test("no file the entry loads imports a lazy screen statically", () => {
-    const loaders = ["Screens.tsx", "../app/App.tsx", "../features/shell/sidebar.tsx"].map((file) =>
-      resolve(UI, file),
+    const loaders = ["Screens.tsx", "App.tsx", "../features/shell/sidebar.tsx"].map((file) =>
+      resolve(APP, file),
     );
-    const lazyFiles = LAZY_SCREENS.map((name) => resolve(UI, specifierOf(name)));
+    const lazyFiles = LAZY_SCREENS.map((name) => resolve(APP, specifierOf(name)));
     const eager = loaders.flatMap((file) =>
       staticImports(readFileSync(file, "utf8"))
         .filter((specifier) => lazyFiles.includes(target(file, specifier)))
