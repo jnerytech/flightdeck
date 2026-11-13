@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
 import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
-import { BudgetsSection } from "@/features/costs/index.ts";
+import { BudgetsSection } from "@/features/costs/ui.ts";
 import { NotificationPrefs } from "@/features/notifications/ui.ts";
 import type { CacheTtl } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
