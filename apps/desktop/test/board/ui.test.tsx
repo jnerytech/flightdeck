@@ -235,7 +235,7 @@ describe("board-ui", () => {
     expect(count("Em revisão")).toBe("1");
   });
 
-  test("uma coluna vazia mostra uma caixa tracejada e quieta que diz Vazio", async () => {
+  test("uma coluna vazia mostra um botão que diz Vazio e adiciona um card", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     const done = screen.getByRole("region", { name: "Concluído" });
@@ -243,33 +243,32 @@ describe("board-ui", () => {
     const empty = within(done).queryByRole("button", { name: "Vazio, Adicionar card" });
     expect(empty).not.toBeNull();
     expect(empty?.textContent).toBe("Vazio");
-    expect(empty?.className).toContain("border-dashed");
   });
 
-  // #114 (board, Orca's lane): since the cards' list fills the lane (#713), an empty lane put its
-  // Empty box at the bottom and a filter's "no matches" was a bare line under it. Now the box sits
-  // under the head and "no matches" is a quiet box there too. The lane has a border, and its head
-  // a line under it.
-  test("an empty lane's box sits under its head, and no matches is a box there too", async () => {
+  // #114 (board, Orca's lane): a filter's "no matches" was a bare line under an empty list. The lane
+  // says it in a box under its head. The lane's border, the head's line and the box's height are
+  // computed styles: the e2e `layout-medido` journey measures them in the browser (#1870).
+  test("a filter that matches nothing says so in the lane and hides its card, and clearing it brings the card back", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     await createCard("Corrigir login");
     const lane = (name: string) => screen.queryByRole("region", { name }) as HTMLElement;
-    const list = lane("Concluído")?.querySelector("ul");
-    const before = {
-      emptyListHidden:
-        list !== null && list?.children.length === 0 && list.className.includes("empty:hidden"),
-    };
     await type("Filtrar cards", "nada disso");
-    const noMatch = within(lane("Backlog")).queryByText("Nenhuma correspondência");
-    // The lane's border, the column head's line and the empty box's height are computed styles:
-    // the e2e `layout-medido` journey measures them in the browser (#1870).
-    expect({ ...before, noMatchBox: noMatch?.classList.contains("column-empty") ?? false }).toEqual(
-      {
-        emptyListHidden: true,
-        noMatchBox: true,
+    const filtered = {
+      noMatch: within(lane("Backlog")).queryByText("Nenhuma correspondência") !== null,
+      card: cardItem("Corrigir login") !== null,
+    };
+    await type("Filtrar cards", "");
+    expect({
+      filtered,
+      cleared: {
+        noMatch: within(lane("Backlog")).queryByText("Nenhuma correspondência") !== null,
+        card: cardItem("Corrigir login") !== null,
       },
-    );
+    }).toEqual({
+      filtered: { noMatch: true, card: false },
+      cleared: { noMatch: false, card: true },
+    });
   });
 
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {
