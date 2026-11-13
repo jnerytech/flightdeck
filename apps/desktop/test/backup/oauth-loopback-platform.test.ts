@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
 
 /**
  * Issue #1462: the desktop shell's loopback listener, reached through three Rust commands. The
