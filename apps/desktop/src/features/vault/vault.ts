@@ -160,7 +160,6 @@ export class Vault {
     const list = this.list();
     const current = list.find((s) => s.id === id);
     if (!current) return null;
-    this.infos.delete(id);
     const next = { ...current, ...patch };
     this.save(list.map((s) => (s.id === id ? next : s)));
     return next;
