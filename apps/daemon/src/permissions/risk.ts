@@ -274,13 +274,19 @@ export class RiskClassifier {
     if (WRITE_TOOLS.has(toolName)) {
       // A call that names both keys is judged by each path, and the stricter one wins (#2479).
       const named = [text("file_path"), text("notebook_path")].filter((p) => p !== "");
-      return (named.length > 0 ? named : [""]).map((path): Candidate => {
+      // A path key that is there but is not text cannot be judged, so a person decides (#2484).
+      const odd = ["file_path", "notebook_path"].some(
+        (key) => input[key] !== undefined && input[key] !== null && typeof input[key] !== "string",
+      );
+      const out = (named.length > 0 ? named : [""]).map((path): Candidate => {
         if (credential(path)) return ["high", "escrita em caminho de credencial"];
         if (opencodeConfig(path)) return ["high", "writes OpenCode's configuration"];
         return this.allowed(path, cwd)
           ? ["medium", "escrita dentro do projeto"]
           : ["high", "escrita fora do cwd e de allowedRoots"];
       });
+      if (odd) out.push(["high", "the path is not text"]);
+      return out;
     }
     if (NETWORK_TOOLS.has(toolName)) return [["medium", "acessa a rede"]];
     // Phase 39: an OpenCode tool the normalizer could not map (Code Mode, another MCP server).
@@ -303,10 +309,13 @@ export class RiskClassifier {
     if (/\bbase64\b[^|;&\n]*\s(-d|-D|--decode)\b[^|;&\n]*\|/.test(command)) {
       out.push(["high", "base64 -d em pipe"]);
     }
+    // `>`, `>>`, `&>`, `&>>`, `>&file` and `>|file`; `>&2` and `>&-` copy or close a descriptor. The
+    // lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`, match too.
     for (const match of command.matchAll(
-      /(?:^|[^>&<])\d?>{1,2}\s*("[^"]*"|'[^']*'|[^\s;&|<>]+)/g,
+      /(?<![<>])&?\d?>{1,2}([&|])?\s*("[^"]*"|'[^']*'|[^\s;&|<>]+)/g,
     )) {
-      const target = (match[1] as string).replace(/^["']|["']$/g, "");
+      const target = (match[2] as string).replace(/^["']|["']$/g, "");
+      if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;
       if (SINKS.has(target.toLowerCase())) continue;
       if (/[$%]/.test(target) || !this.inside(target, cwd, [])) {
         out.push(["high", "redirecionamento para fora do cwd"]);

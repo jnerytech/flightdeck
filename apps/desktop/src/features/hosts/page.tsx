@@ -2,7 +2,7 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HarnessTemplatesSection } from "@/features/harness/index.ts";
+import { HarnessTemplatesSection } from "@/features/harness/ui.ts";
 import type { ProjectCard } from "@/features/projects/index.ts";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";

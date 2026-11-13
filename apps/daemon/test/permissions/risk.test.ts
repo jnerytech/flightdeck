@@ -69,6 +69,14 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   // A > after - or = is still a redirect for the shell (#2479).
   ["high", "echo x -> /tmp/fora.txt"],
   ["high", "echo a=>/tmp/fora.txt"],
+  // Every other form of a redirect to a file the shell has (#2484).
+  ["high", "echo x &>/tmp/fora.txt"],
+  ["high", "echo x &>>/tmp/fora.txt"],
+  ["high", "echo x >&/tmp/fora.txt"],
+  ["high", "echo x >& /tmp/fora.txt"],
+  ["high", "echo x >|/tmp/fora.txt"],
+  ["high", "echo x>a>/tmp/fora.txt"],
+  ["high", "true&&>/tmp/fora.txt"],
   // Credentials, read or not.
   ["high", "cat ~/.ssh/id_rsa"],
   ["high", "cat .env"],
@@ -86,6 +94,15 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "git log --format=%H"],
   ["medium", "git push origin main"],
   ["medium", "npm test 2>&1"],
+  // A copy of a descriptor, a close and a write into the cwd stay medium, whatever the form (#2484).
+  ["medium", "npm test >&2"],
+  ["medium", "npm test 2>&-"],
+  ["medium", "npm test &> saida.txt"],
+  ["medium", "npm test &>> saida.txt"],
+  ["medium", "npm test >& saida.txt"],
+  ["medium", "echo x >| saida.txt"],
+  ["medium", "echo x>a>b"],
+  ["medium", "npm test &>/dev/null"],
   ["medium", "echo ok > /dev/null"],
   ["medium", "dir > NUL"],
   ["medium", "bun test > saida.txt"],
@@ -183,6 +200,17 @@ describe("risco", () => {
         CWD,
       ).reason,
     ).toBe("escrita em caminho de credencial");
+  });
+
+  test("a write call whose path key is there but is not text cannot be judged, so a person decides (#2484)", () => {
+    const inside = join(CWD, "a");
+    for (const tool of ["Write", "Edit", "MultiEdit", "NotebookEdit"]) {
+      expect(level(tool, { file_path: inside, notebook_path: 5 })).toBe("high");
+      expect(level(tool, { file_path: { path: inside } })).toBe("high");
+      expect(level(tool, { notebook_path: ["a.ipynb"] })).toBe("high");
+      // A key that is absent or null is not an odd one.
+      expect(level(tool, { file_path: inside, notebook_path: null })).toBe("medium");
+    }
   });
 
   test("run_with_secret, de qualquer servidor MCP, é high e rede: comando livre com segredo nunca passa como rotina", () => {

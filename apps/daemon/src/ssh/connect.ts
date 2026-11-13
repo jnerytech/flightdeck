@@ -230,8 +230,8 @@ export class SshConnector {
     timeoutS: number;
     privateKey?: string;
   }): Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean }> {
-    const named = this.opts.targets.list().filter((t) => t.name === req.target);
-    if (named.length === 0) {
+    const target = this.opts.targets.byName(req.target);
+    if (!target && this.opts.targets.countNamed(req.target) === 0) {
       throw new FlightdeckError(
         "not_found",
         `destination ${req.target} not found`,
@@ -239,7 +239,7 @@ export class SshConnector {
         { name: req.target },
       );
     }
-    if (named.length > 1) {
+    if (!target) {
       throw new FlightdeckError(
         "invalid_state",
         `more than one destination is named ${req.target}`,
@@ -247,7 +247,6 @@ export class SshConnector {
         { name: req.target },
       );
     }
-    const target = named[0] as SshTarget;
     if (target.auth === "password") {
       throw new FlightdeckError(
         "invalid_state",
