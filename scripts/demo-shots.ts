@@ -161,7 +161,7 @@ async function selectCards(page: Page): Promise<void> {
     "Tela do carrinho",
     "Revisar o fluxo de login",
   ]) {
-    await page
+    await page // NOSONAR: the cards are Ctrl-clicked one after the other, in this order
       .locator("li[data-card]", { hasText: title })
       .first()
       .click({ modifiers: ["Control"], position: { x: 40, y: 4 } });
