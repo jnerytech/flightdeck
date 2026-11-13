@@ -104,6 +104,7 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   // A `>` inside quotes must not let the quoted text swallow the real redirect after it.
   ["high", 'echo "a>" ; echo x > /etc/cron.d/evil ; echo "b"'],
   ["high", `echo '>"' ; echo x >/etc/y ; echo '"'`],
+  ["high", 'echo ">">"/etc/y"'],
   // zsh: `>!file` forces the write and `>=(cmd)` is a process substitution.
   ["high", "echo x >!/tmp/fora.txt"],
   ["high", "echo x >=(cat)"],

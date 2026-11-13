@@ -319,10 +319,14 @@ export class RiskClassifier {
     for (const match of command.matchAll(
       /(?<!(?<!\\)[<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g,
     )) {
-      const target = (match[2] as string).replace(/["']/g, "");
+      const word = match[2] as string;
+      const target = word.replace(/["']/g, "");
       if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;
       if (SINKS.has(target.toLowerCase())) continue;
-      if (/[$%{]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) || !this.insideAny(target, cwd)) {
+      // A `>` that is only quoted text can start a match whose "quoted target" runs over a real
+      // redirect further on; a quoted part with a shell operator in it is never a plain name.
+      const spans = /"[^"]*[;&|<>\n]|'[^']*[;&|<>\n]/.test(word);
+      if (spans || /[$%{]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) || !this.insideAny(target, cwd)) {
         out.push(["high", "redirecionamento para fora do cwd"]);
       }
     }
