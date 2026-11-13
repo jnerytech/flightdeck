@@ -56,7 +56,7 @@ export interface PrSize {
 
 const HOUR_MS = 3_600_000;
 /** A `fix` this soon after a `feat` that touched one of its files counts as rework. */
-const REWORK_MS = 48 * HOUR_MS;
+export const REWORK_MS = 48 * HOUR_MS;
 /**
  * Closer than this, a fix is the review of its own pull request (its commits come a few minutes
  * apart), not a rework of what was shipped: with every commit counted the share read 83% (#2019).
@@ -129,7 +129,14 @@ export function mainRed(runs: CiRun[], window: TimeWindow): MainRed {
 
 type TitledPr = MergedPr & { title: string; files: { path: string }[] };
 const isTitled = (pr: MergedPr): pr is TitledPr =>
-  typeof pr.title === "string" && Array.isArray(pr.files);
+  typeof pr.title === "string" &&
+  Array.isArray(pr.files) &&
+  pr.files.every(
+    (file) =>
+      typeof file === "object" &&
+      file !== null &&
+      typeof (file as { path?: unknown }).path === "string",
+  );
 
 const isFix = (title: string) => /^fix(\(|:|!)/.test(title);
 const isFeat = (title: string) => /^feat(\(|:|!)/.test(title);
