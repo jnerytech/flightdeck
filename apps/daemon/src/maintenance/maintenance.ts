@@ -1,7 +1,8 @@
 import type { Database } from "bun:sqlite";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { writeFileAtomic } from "../kernel/index.ts";
+import { z } from "zod";
+import { parseJsonWith, writeFileAtomic } from "../kernel/index.ts";
 import { type BackupInfo, backupNow, keepLast, listBackups } from "./backup.ts";
 import { type PruneCounts, prune, type RetentionPolicy } from "./retention.ts";
 
@@ -41,9 +42,21 @@ const DEFAULT_KEEP = 7;
 /** Bookkeeping kept next to the database (not in it: no migration for a timestamp). */
 const STATE_FILE = "maintenance.json";
 
-interface State {
-  lastPrune?: LastPrune;
-}
+/** The last cleanup as `prune` records it (#1609: parse, don't validate). */
+const LastPruneFields: z.ZodType<LastPrune> = z.object({
+  at: z.string(),
+  dryRun: z.boolean(),
+  counts: z.object({
+    events: z.number(),
+    permission_requests: z.number(),
+    external_sessions: z.number(),
+    usage_entries: z.number(),
+    quota_samples: z.number(),
+  }),
+});
+/** Loose: a key the file holds but `State` does not name is kept when the file is saved again. */
+const StateFile = z.looseObject({ lastPrune: LastPruneFields.optional() });
+type State = z.infer<typeof StateFile>;
 
 /** Daily upkeep of a host's database: retention and backup at boot and every 24 h. */
 export class Maintenance {
@@ -124,7 +137,7 @@ export class Maintenance {
 
   private async state(): Promise<State> {
     try {
-      return JSON.parse(await readFile(this.file, "utf8")) as State;
+      return parseJsonWith(StateFile, await readFile(this.file, "utf8"));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
       throw error;
