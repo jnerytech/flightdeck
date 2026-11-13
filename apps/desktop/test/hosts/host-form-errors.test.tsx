@@ -153,6 +153,34 @@ for (const [lang, t] of [
       expect(screen.queryAllByText(t.hostForm.probeRefused).length).toBe(1);
     });
 
+    test("pasting a link that carries a token answers the refused one", async () => {
+      form(lang, t.hostForm.probeRefused);
+      await fill(t.hostForm.link, "flightdeck://127.0.0.1:46507?name=alfa&token=fresh-token");
+      expect(invalid(t.hostForm.token)).toBe(false);
+    });
+
+    test("a submit the form itself refuses does not bring the refused-token mark back", async () => {
+      form(lang, t.hostForm.probeRefused);
+      await fill(t.hostForm.name, "pc");
+      await fill(t.hostForm.address, "127.0.0.1");
+      await fill(t.hostForm.token, "new");
+      await fill(t.hostForm.port, "99999");
+      await submit(t.hostForm.submit);
+      expect([invalid(t.hostForm.token), invalid(t.hostForm.port)]).toEqual([false, true]);
+    });
+
+    test("pasting a link that fills the fields clears their 'fill in' marks", async () => {
+      form(lang);
+      await submit(t.hostForm.submit);
+      expect(invalid(t.hostForm.name)).toBe(true);
+      await fill(t.hostForm.link, "flightdeck://127.0.0.1:46507?name=alfa&token=fresh-token");
+      expect([
+        invalid(t.hostForm.name),
+        invalid(t.hostForm.address),
+        invalid(t.hostForm.token),
+      ]).toEqual([false, false, false]);
+    });
+
     test("editing the refused token clears that mark", async () => {
       form(lang, t.hostForm.probeRefused);
       await fill(t.hostForm.token, "new");
