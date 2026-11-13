@@ -291,6 +291,17 @@ describe("board-ui", () => {
     expect(column("Backlog")).toEqual(["C", "B"]);
     const moved = board.listProjects()[0];
     expect(board.getBoard(moved?.id ?? "").columns[3]?.cards.map((c) => c.title)).toEqual(["A"]);
+    // A column looks different while a card is over it and goes back when the card leaves.
+    const over = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
+    const resting = over.className;
+    await act(async () => {
+      fireEvent.dragEnter(over);
+    });
+    expect(over.className === resting).toBe(false);
+    await act(async () => {
+      fireEvent.dragLeave(over);
+    });
+    expect(over.className === resting).toBe(true);
     // Dropping without dragging anything does nothing.
     await act(async () => {
       fireEvent.drop(screen.queryByRole("region", { name: "Concluído" }) as HTMLElement);
@@ -569,8 +580,8 @@ describe("board-ui", () => {
 
   // #641: the board's columns scrolled sideways inside the page's own scroller, and their
   // scrollbar sat under the tallest column, below the window. The board fills the page now: the
-  // columns row takes the rest of the height and is the sideways scroller at the window's bottom,
-  // and each column's cards scroll by themselves. A narrow board snaps one column at a time.
+  // columns row sits outside the page's scroll area. How it scrolls and snaps is CSS, which this
+  // DOM cannot check; the test keeps the structure: the row outside the scroller, a list per column.
   test("the board fills its page outside the page's scroll area, with one list per column", async () => {
     const { repo } = await setup();
     await openBoard(repo);
