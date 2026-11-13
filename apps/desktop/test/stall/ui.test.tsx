@@ -99,7 +99,7 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
     await settle(() => document.body.textContent?.includes("Nothing is waiting for you.") === true);
     expect(rows()).toEqual([]);
     expect(store.getState().quietSnooze).toEqual({ "h1/s1": NOW + 60 * 60_000 });
-    expect(document.activeElement === document.body).toBe(false);
+    expect(document.activeElement === document.body).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Stop the turn and Send continue that make the row go also leave the focus on the list, not on the body", async () => {
@@ -115,7 +115,7 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
       await settle(
         () => document.body.textContent?.includes("Nothing is waiting for you.") === true,
       );
-      expect(document.activeElement === document.body).toBe(false);
+      expect(document.activeElement === document.body).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     }
   });
 

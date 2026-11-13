@@ -26,11 +26,16 @@ import {
   resolveAllowedCwd,
   ulid,
 } from "../kernel/index.ts";
-import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-approve.ts";
-import { summarizeInput } from "../permissions/index.ts";
-import { PermissionBroker } from "../permissions/permission-broker.ts";
-import { type Risk, RiskClassifier } from "../permissions/risk.ts";
-import { type DiskView, writeTarget } from "../permissions/rule-risk.ts";
+import {
+  type AutoApproveRequest,
+  type AutoApprover,
+  type DiskView,
+  PermissionBroker,
+  type Risk,
+  RiskClassifier,
+  summarizeInput,
+  writeTarget,
+} from "../permissions/index.ts";
 import { clampPermissionMode } from "../personas/model.ts";
 import type { PreparedPersonas } from "../personas/prepare.ts";
 import { snapshotOf } from "../personas/snapshot.ts";

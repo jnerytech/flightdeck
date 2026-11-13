@@ -59,7 +59,7 @@ describe("move-focus-ui: a card made is focused once it shows, and not after its
     await act(async () => {
       rerender(<Board cards={[made]} until={Date.now() + 5000} />);
     });
-    expect(document.activeElement === container.querySelector("[data-card-open]")).toBe(true);
+    expect(document.activeElement === container.querySelector("[data-card-open]")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the card shows after the time has passed: the focus stays where the person put it", async () => {
@@ -69,6 +69,6 @@ describe("move-focus-ui: a card made is focused once it shows, and not after its
     await act(async () => {
       rerender(<Board cards={[made]} until={Date.now() - 1} />);
     });
-    expect(document.activeElement === elsewhere).toBe(true);
+    expect(document.activeElement === elsewhere).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

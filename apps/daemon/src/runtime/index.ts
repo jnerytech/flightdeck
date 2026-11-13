@@ -10,6 +10,9 @@ export { type OpenCodeState, openCodeState } from "./opencode-wiring.ts";
 export type {
   AgentRun,
   AgentRuntime,
+  CompleteOptions,
+  CompleteResult,
+  PermissionDecision,
   QuotaReading,
   RewindFilesResult,
   RuntimeEvent,

@@ -7,7 +7,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { SessionImage } from "@flightdeck/protocol";
 import { AsyncQueue, FlightdeckError, isInside, settled } from "../kernel/index.ts";
-import { credential } from "../permissions/risk.ts";
+import { credential } from "../permissions/index.ts";
 import { ACP_CLOSED, AcpClient, AcpError, REAL_TIMERS, type SpawnedAcp } from "./acp/client.ts";
 import { spawnAcp } from "./adapters/acp-process.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";

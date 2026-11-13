@@ -94,7 +94,7 @@ describe("approval-focus-ui: after Approve the focus goes to what comes next (#1
       if (first) fireEvent.click(first);
     });
     await settle(() => document.activeElement === card("r2"), 5000, "focus on the next request");
-    expect(document.activeElement === card("r2")).toBe(true);
+    expect(document.activeElement === card("r2")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("with none waiting, it goes to the request just answered, which says what was decided", async () => {
