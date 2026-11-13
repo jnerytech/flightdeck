@@ -22,9 +22,9 @@ import { ClientDefaults } from "./client-defaults.tsx";
 import { ClientDot } from "./client-dot";
 import { ClientRate } from "./client-rate.tsx";
 import { ClientRules } from "./client-rules.tsx";
-import { CLIENT_COLORS, type Client, type ClientColor } from "./clients.ts";
 import { ClientsSuggest } from "./clients-suggest.tsx";
 import { ClientsTransfer } from "./clients-transfer.tsx";
+import { CLIENT_COLORS, type Client, type ClientColor } from "./domain/clients.ts";
 
 /** Phase 29: the clients that group projects across hosts, with their rules. */
 export function ClientsPage(

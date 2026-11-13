@@ -12,7 +12,7 @@ import {
   Stack,
 } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import type { Client, ClientRule, RuleInput } from "./clients.ts";
+import type { Client, ClientRule, RuleInput } from "./domain/clients.ts";
 
 const ruleValue = (rule: ClientRule) => (rule.kind === "remote" ? rule.pattern : rule.path);
 

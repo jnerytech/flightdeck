@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Budgets } from "../../../daemon/src/costs/budgets.ts";
-import { CLIENTS_KEY, UNASSIGNED } from "../../src/features/clients/clients.ts";
+import { CLIENTS_KEY, UNASSIGNED } from "../../src/features/clients/domain/clients.ts";
 import { chooseFromAccountMenu } from "../account/menu.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
