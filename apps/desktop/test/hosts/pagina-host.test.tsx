@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
-import { DAEMON_VERSION } from "../../daemon/src/kernel/version.ts";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
+import { DAEMON_VERSION } from "../../../daemon/src/kernel/version.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -29,8 +29,8 @@ async function confirmWith(name: string) {
     fireEvent.click(button as HTMLElement);
   });
 }
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -258,7 +258,7 @@ describe("pagina-host", () => {
     await waitFor(() => expect(region("Informações")).not.toBeNull());
     const status = document.querySelector("[data-slot='host-overview-status']");
     const work = document.querySelector("[data-slot='host-overview-work']");
-    const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+    const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
     const rule = (name: string) => css.split(`@utility ${name} {`)[1]?.split(/\n}\n/)[0] ?? "";
     expect({
       statusFirst:

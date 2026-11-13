@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { switcherHosts } from "../src/features/hosts/switcher-hosts.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { switcherHosts } from "../../src/features/hosts/switcher-hosts.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectsOverview } = await import("../src/features/projects/overview.tsx");
-const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
-const { settleMaybe } = await import("./wait.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { ProjectsOverview } = await import("../../src/features/projects/overview.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
+const { settleMaybe } = await import("../wait.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

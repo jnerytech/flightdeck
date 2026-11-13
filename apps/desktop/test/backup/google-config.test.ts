@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { googleConfig } from "../src/features/backup/google-config.ts";
+import { googleConfig } from "../../src/features/backup/google-config.ts";
 
 /** Issue #1444: the Google client id comes from the build's config; with none, Drive stays hidden. */
 describe("googleConfig", () => {

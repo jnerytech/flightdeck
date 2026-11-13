@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 
 registerDom();
 const {
@@ -12,10 +12,10 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { paletteSections } = await import("../src/features/palette/palette.ts");
-const { translator } = await import("../src/i18n/index.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { paletteSections } = await import("../../src/features/palette/palette.ts");
+const { translator } = await import("../../src/i18n/index.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

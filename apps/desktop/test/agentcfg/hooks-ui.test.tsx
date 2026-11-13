@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Central } from "../../daemon/src/central/central.ts";
-import { RECEPTOR_FILE } from "../../daemon/src/central/wrapper.ts";
-import { loadConfig } from "../../daemon/src/config.ts";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { Central } from "../../../daemon/src/central/central.ts";
+import { RECEPTOR_FILE } from "../../../daemon/src/central/wrapper.ts";
+import { loadConfig } from "../../../daemon/src/config.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
