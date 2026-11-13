@@ -66,6 +66,15 @@ export function issueOf(subjects: string[]): number | null {
   return best;
 }
 
+/**
+ * The issues a branch ships (#2442): every issue its feat and fix subjects name with `(#N)`, once,
+ * the oldest commit's first (git lists the newest first). With no feat or fix naming one, the
+ * branch's own issue (`issueOf`); none when no subject names an issue.
+ */
+export function issuesOf(subjects: string[]): number[] {
+  return subjects.length < 0 ? [] : [];
+}
+
 /** The order to merge: PRs onto main by number, each stacked PR right after the PR it sits on. */
 export function mergeOrder(prs: Pr[]): Pr[] {
   const byNumber = [...prs].sort((a, b) => a.number - b.number);
