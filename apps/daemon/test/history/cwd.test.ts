@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { normalizeCwd } from "../../src/history/indexer.ts";
+import { normalizeCwd } from "../../src/history/folder.ts";
 
 // The folder a transcript belongs to is compared in one form, so `C:\proj\` and `c:/proj` are one.
 describe("history: the comparable form of a folder", () => {
