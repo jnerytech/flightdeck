@@ -5,7 +5,7 @@ import type {
   WorkflowTemplate,
   WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
-import type { PrProvider } from "../../src/board/pr.ts";
+import type { PrProvider } from "../../src/pr/index.ts";
 import { startServer } from "../../src/server.ts";
 import { git } from "../support/board-helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
