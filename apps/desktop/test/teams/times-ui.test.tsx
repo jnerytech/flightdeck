@@ -1065,6 +1065,18 @@ describe("times-ui: where the focus goes around the new team form (#2645, #2646)
     expect(focused() === before, `focus is on ${where()}`).toBe(true);
   });
 
+  test("adding the eighth worker row moves the focus to it, off the button that turns off", async () => {
+    await open();
+    await click("Novo time");
+    await workerRows(7);
+    await press("Adicionar executora ao novo time");
+    await settle(() => screen.queryAllByLabelText(/^Modelo da executora \d+$/).length === 8);
+    const eighth = screen.queryByLabelText("Persona da executora 8 (opcional)");
+    expect(eighth).not.toBeNull();
+    await settleMaybe(() => focused() === eighth, 1500);
+    expect(focused() === eighth, `focus is on ${where()}`).toBe(true);
+  });
+
   test("Remover on the only worker row is disabled and says why", async () => {
     await open();
     await click("Novo time");
