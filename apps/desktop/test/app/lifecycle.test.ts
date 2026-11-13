@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
+import { HOSTS_KEY } from "../../src/features/hosts/hosts.ts";
 import { AWAY_KEY } from "../../src/features/needs-you/away.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";
@@ -76,5 +77,36 @@ describe("app lifecycle: init and dispose (#2376)", () => {
     expect(calls).toEqual(["quitNow"]);
     store.dispose();
     expect(quit.ask).toBeNull();
+  });
+
+  test("the saved hosts are listed once each, and one that was listed already is not added again", async () => {
+    const { store, mem } = start();
+    mem.platform.storage.setItem(
+      HOSTS_KEY,
+      JSON.stringify([
+        { id: "h1", name: "alfa", url: "ws://x" },
+        { id: "h2", name: "beta", url: "ws://x" },
+        { id: "h1", name: "alfa", url: "ws://x" },
+      ]),
+    );
+    await store.init();
+    expect(store.state.hosts.map((host) => host.id)).toEqual(["h1", "h2"]);
+    store.dispose();
+  });
+
+  test("a backup schedule that cannot start does not stop the app from starting", async () => {
+    const { store, mem } = start();
+    mem.platform.backupFolder = {
+      pick: async () => null,
+      current: () => {
+        throw new Error("storage full");
+      },
+      write: async () => {},
+      list: async () => [],
+      remove: async () => {},
+    };
+    await store.init();
+    expect(store.state.hostsLoaded).toBe(true);
+    store.dispose();
   });
 });
