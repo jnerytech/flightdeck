@@ -259,7 +259,7 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
 
 describe("resources-wiring: getconf when it cannot run", () => {
   test("a getconf that cannot be started, or answers something else, is no answer", async () => {
-    const { getconf } = await import("../../src/resources/wiring.ts");
+    const { getconf } = await import("../../src/resources/adapters/getconf.ts");
     const broken = (() => {
       throw new Error("spawn getconf ENOENT");
     }) as unknown as typeof Bun.spawn;
@@ -284,7 +284,7 @@ describe("resources-wiring: getconf when it cannot run", () => {
 
 describe("resources-wiring: getconf", () => {
   test("the machine's own page size and clock are asked, and are whole positive numbers", async () => {
-    const { getconf } = await import("../../src/resources/wiring.ts");
+    const { getconf } = await import("../../src/resources/adapters/getconf.ts");
     if (process.platform === "win32") return;
     expect(await getconf("PAGESIZE")).toBeGreaterThanOrEqual(4096);
     expect(await getconf("CLK_TCK")).toBeGreaterThan(0);
