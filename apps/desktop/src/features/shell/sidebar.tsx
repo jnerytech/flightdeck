@@ -41,7 +41,7 @@ import { activeWorktreeFilter, projectTree } from "@/features/projects/index.ts"
 import { ProjectTree, RailFlyout } from "@/features/projects/ui.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { setupProgress, setupSteps } from "@/features/setup/index.ts";
-import { ShortcutKeys } from "@/features/shortcuts/index.ts";
+import { ShortcutKeys } from "@/features/shortcuts/ui.ts";
 import type { Key, T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
 import type { Route } from "@/lib/router.ts";

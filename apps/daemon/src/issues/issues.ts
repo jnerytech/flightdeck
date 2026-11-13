@@ -7,11 +7,11 @@ import type { Issue } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import type { Card } from "../board/types.ts";
 import { git } from "../git/index.ts";
-import { GithubIssues } from "../github/index.ts";
+import { GithubIssues, githubCoords } from "../github/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { AzureIssues, type IssueProvider, parseIssueRef } from "./providers.ts";
-import { azureCoords, githubCoords } from "./remote.ts";
+import { azureCoords } from "./remote.ts";
 
 export type { Issue };
 
