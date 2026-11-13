@@ -4,7 +4,7 @@
  * domain that needs them.
  */
 import type { SessionLine } from "@flightdeck/protocol";
-import { type LiveState, sessionLine } from "../history/session-line.ts";
+import { type LiveState, sessionLine } from "../history/index.ts";
 import type { ServerOptions } from "../server-options.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import { featuresOf } from "./features.ts";

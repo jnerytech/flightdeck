@@ -11,8 +11,7 @@ import type {
   SessionSummary,
 } from "@flightdeck/protocol";
 import { userHome } from "../../config.ts";
-import type { HistoryIndexer } from "../../history/indexer.ts";
-import type { LiveState } from "../../history/session-line.ts";
+import type { HistoryIndexer, LiveState } from "../../history/index.ts";
 import { resolveAllowedCwd } from "../../kernel/index.ts";
 import {
   pathKinds,

@@ -47,7 +47,7 @@ function setup(language: "en" | "pt-BR" = "en") {
   store.projectList.load = (async () => {}) as never;
   const sent: Array<[string, string, unknown]> = [];
   let teams = [team("t-closed", "old-crew", "closed"), team("t-open", "live-crew", "active")];
-  store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
+  const answer = async (hostId: string, type: string, payload: unknown) => {
     sent.push([hostId, type, payload]);
     if (type === "teams.list") return { teams };
     if (type === "teams.delete") {
@@ -56,6 +56,14 @@ function setup(language: "en" | "pt-BR" = "en") {
       return gone ?? null;
     }
     return null;
+  };
+  store.hostCommand = answer as never;
+  // The team's actions ask for the refusal too (#2650): no answer is a refusal.
+  store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
+    const data = await answer(hostId, type, payload);
+    return data === null
+      ? { ok: false, code: "internal", message: "no answer" }
+      : { ok: true, data };
   }) as never;
   render(
     <TContext.Provider value={store.i18n.t}>

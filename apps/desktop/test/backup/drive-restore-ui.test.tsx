@@ -195,5 +195,6 @@ describe("backup-drive-restore-ui: restore from Google Drive (#1462)", () => {
     await waitFor(() => control("Procurar no Google Drive") !== null);
     await click("Procurar no Google Drive");
     await waitFor(() => control(NAME(9)) !== null);
+    expect(control(NAME(9)) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });
