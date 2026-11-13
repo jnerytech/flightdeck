@@ -197,6 +197,29 @@ describe("team-manage: the coordinator adds and removes a member (#2090)", () =>
     expect([full, room, workersOf(teams, team.id).length]).toEqual(["team_full", "ok", 8]);
   });
 
+  test("two members asked for at once do not pass the cap together, and a removal during an add is not lost", async () => {
+    const { teams, team, coordinator } = await boot(7);
+    const both = await Promise.all([
+      refused(() => teams.addMember(team.id, coordinator, { brief: "a" })),
+      refused(() => teams.addMember(team.id, coordinator, { brief: "b" })),
+    ]);
+    const names = workersOf(teams, team.id);
+    const [removal, addition] = await Promise.all([
+      refused(() => teams.removeMember(team.id, coordinator, "login · executora 8")),
+      refused(() => teams.addMember(team.id, coordinator, { brief: "c" })),
+    ]);
+    const after = workersOf(teams, team.id);
+    expect([
+      both.toSorted((a, b) => a.localeCompare(b)),
+      names.length,
+      new Set(names).size,
+      removal,
+      addition,
+      after.length,
+      after.includes("login · executora 8"),
+    ]).toEqual([["ok", "team_full"], 8, 8, "ok", "ok", 8, true]);
+  });
+
   test("removing a worker stops it and takes it out of the team; its card stays; the coordinator stays", async () => {
     const { teams, ctx, team, coordinator, first } = await boot(2);
     const frames: TeamsUpdatedFrame[] = [];
