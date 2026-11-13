@@ -3,13 +3,14 @@ import { WebhookSender } from "../../../daemon/src/webhook/sender.ts";
 import { registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
-import { waiter } from "../wait.ts";
+import { settleMaybe, waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { WebhooksSection } = await import("../../src/features/webhook/webhooks-section.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
+const { WebhookTargetError } = await import("../../src/features/webhook/webhook-targets.ts");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
@@ -322,5 +323,149 @@ describe("webhook-ui", () => {
     await click("Salvar webhook");
     await settle(() => screen.queryByText(/não é um token de acesso do ntfy/) !== null);
     expect(screen.queryByText(/não é um token de acesso do ntfy/)).not.toBeNull();
+  });
+});
+
+/** #2677: what a person who cannot see the list hears and where the focus goes after each action. */
+const NAMES = {
+  en: { name: "Name", url: "Webhook URL", needs: "Needs you", save: "Save webhook" },
+  "pt-BR": {
+    name: "Nome",
+    url: "URL do webhook",
+    needs: "Precisa de você",
+    save: "Salvar webhook",
+  },
+} as const;
+
+async function addNamed(lang: "en" | "pt-BR", name: string) {
+  const says = NAMES[lang];
+  await fill(says.name, name);
+  await fill(says.url, SECRET);
+  await act(async () => {
+    fireEvent.click(screen.getByRole("checkbox", { name: says.needs }));
+  });
+  await click(says.save);
+  await settle(() => screen.queryByText(name) !== null);
+}
+
+/** A boolean: a failed diff of two DOM nodes can take gigabytes. */
+const hasFocus = (el: HTMLElement) => document.activeElement === el;
+const said = (text: string) => screen.queryByText(text)?.tagName === "OUTPUT";
+
+describe("webhook-ui: focus and words after each row action (#2677)", () => {
+  test("Edit puts the focus in the form's first field, which names the webhook it edits", async () => {
+    await open("en");
+    await addNamed("en", "Team");
+    await click("Edit Team");
+    await settleMaybe(() => hasFocus(screen.getByLabelText("Name")));
+    expect(hasFocus(screen.getByLabelText("Name"))).toBe(true);
+    expect(screen.queryByRole("form", { name: "Edit Team" })).not.toBeNull();
+  });
+
+  test("a saved edit says so and returns the focus to that row's Edit button", async () => {
+    await open("en");
+    await addNamed("en", "Team");
+    await click("Edit Team");
+    await fill("Name", "Ops");
+    await click("Save changes");
+    await settleMaybe(() => said("Ops saved"));
+    expect(said("Ops saved")).toBe(true);
+    expect(hasFocus(screen.getByRole("button", { name: "Edit Ops" }))).toBe(true);
+  });
+
+  for (const lang of ["en", "pt-BR"] as const) {
+    const words =
+      lang === "en"
+        ? { off: "Disable Team", on: "Enable Team", wasOff: "Team disabled", wasOn: "Team enabled" }
+        : {
+            off: "Desativar Team",
+            on: "Ativar Team",
+            wasOff: "Team desativado",
+            wasOn: "Team ativado",
+          };
+    test(`Enable and Disable say what happened and keep the focus on the button (${lang})`, async () => {
+      await open(lang);
+      await addNamed(lang, "Team");
+      await act(async () => {
+        screen.getByRole("button", { name: words.off }).focus();
+      });
+      await click(words.off);
+      await settleMaybe(() => said(words.wasOff));
+      expect(said(words.wasOff)).toBe(true);
+      expect(hasFocus(screen.getByRole("button", { name: words.on }))).toBe(true);
+      await click(words.on);
+      await settleMaybe(() => said(words.wasOn));
+      expect(said(words.wasOn)).toBe(true);
+      expect(hasFocus(screen.getByRole("button", { name: words.off }))).toBe(true);
+    });
+  }
+
+  test("Remove says which webhook went and moves the focus to the next row's first button", async () => {
+    await open("en");
+    await addNamed("en", "Team");
+    await addNamed("en", "Ops");
+    await click("Remove Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    });
+    await settleMaybe(() => said("Team removed"));
+    expect(said("Team removed")).toBe(true);
+    await settleMaybe(() => hasFocus(screen.getByRole("button", { name: "Test Ops" })));
+    expect(hasFocus(screen.getByRole("button", { name: "Test Ops" }))).toBe(true);
+  });
+
+  test("removing the last webhook leaves the focus in the Add form's first field (pt-BR)", async () => {
+    await open("pt-BR");
+    await addNamed("pt-BR", "Team");
+    await click("Remover Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remover" }));
+    });
+    await settleMaybe(() => said("Team removido"));
+    expect(said("Team removido")).toBe(true);
+    await settleMaybe(() => hasFocus(screen.getByLabelText("Nome")));
+    expect(hasFocus(screen.getByLabelText("Nome"))).toBe(true);
+  });
+
+  test("a toggle that fails says so in an alert and changes nothing", async () => {
+    const { store } = await open("en");
+    await addNamed("en", "Team");
+    (store.webhooks as { edit: unknown }).edit = async () => {
+      throw new Error("vault locked");
+    };
+    await click("Disable Team");
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toBe("Could not change Team. Try again.");
+    expect(screen.queryByRole("button", { name: "Disable Team" })).not.toBeNull();
+  });
+
+  test("a webhook that is already gone says so when it is toggled (pt-BR)", async () => {
+    const { store } = await open("pt-BR");
+    await addNamed("pt-BR", "Team");
+    (store.webhooks as { edit: unknown }).edit = async () => {
+      throw new WebhookTargetError("not_found");
+    };
+    await click("Desativar Team");
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toBe("Esse webhook não existe mais.");
+  });
+
+  test("a remove that fails keeps the row and says so in an alert", async () => {
+    const { store } = await open("en");
+    await addNamed("en", "Team");
+    store.webhooks.targets.remove = async () => {
+      throw new Error("vault locked");
+    };
+    await click("Remove Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    });
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toBe("Could not remove Team. Try again.");
+    expect(screen.queryByRole("button", { name: "Remove Team" })).not.toBeNull();
+    expect(said("Team removed")).toBe(false);
   });
 });
