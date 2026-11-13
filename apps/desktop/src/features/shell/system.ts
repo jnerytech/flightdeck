@@ -59,10 +59,11 @@ export class SystemSlice {
     return this.core.platform.logs;
   }
 
-  async copyText(text: string): Promise<boolean> {
+  /** Copies to the clipboard and answers with one toast: `done` when it says more than "copied". */
+  async copyText(text: string, done?: string): Promise<boolean> {
     try {
       await this.core.platform.copyText(text);
-      this.core.success(this.core.copiedText());
+      this.core.success(done ?? this.core.copiedText());
       return true;
     } catch (error) {
       this.core.fail(error);

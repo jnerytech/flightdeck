@@ -35,8 +35,7 @@ export function DiagnosticsPanel(props: Readonly<{ store: AppStore }>) {
       lines,
       values: () => store.scan.values(),
     });
-    await store.system.copyText(text);
-    store.success(t("diagnostics.copied"));
+    await store.system.copyText(text, t("diagnostics.copied"));
   };
   return (
     <Panel title={t("diagnostics.title")} label={t("diagnostics.title")}>
