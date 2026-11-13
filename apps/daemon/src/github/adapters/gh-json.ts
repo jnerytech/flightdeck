@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
+import { parseJsonOr, parseJsonWith } from "../../kernel/index.ts";
 
 const CheckRows = z.array(
   z.object({ name: z.string(), bucket: z.string(), link: z.string().catch("") }),
