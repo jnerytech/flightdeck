@@ -34,3 +34,17 @@ export function submitAction(
   if (!value && attached === 0) return "focus";
   return working ? "queue" : "send";
 }
+
+/**
+ * Esc in the message box of a working session interrupts it. The key is marked handled: left
+ * unmarked, it reaches SplitView and closes the detail too (#2591).
+ */
+export function interruptOnEscape(
+  event: { key: string; preventDefault(): void },
+  working: boolean,
+  interrupt: () => Promise<unknown>,
+): void {
+  if (event.key !== "Escape" || !working) return;
+  event.preventDefault();
+  void interrupt();
+}
