@@ -358,7 +358,11 @@ export const hosts = {
     featuresMore: "and {n} more",
     featuresFewer: "Show fewer",
     down: "Not compared: {status}.",
-    fix: "Fix on {host}",
+    fix: "Fix {field} on {host}",
+    reading: "Reading {names}…",
+    readingCell: "Reading…",
+    readDone: "Comparison up to date.",
+    readDoneFailed: "Read finished. No answer from {names}.",
     fields: {
       os: "Operating system",
       daemon: "Daemon version",
