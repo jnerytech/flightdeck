@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 export function HoldButton(
   props: Readonly<{
     label: string;
+    /** The accessible name when it must say more than the label (it starts with the label). */
+    name?: string;
     holdMs: number;
     onHeld(): void;
     /** Off while the last hold is being answered. */
@@ -43,6 +45,7 @@ export function HoldButton(
   const button = (
     <Button
       type="button"
+      aria-label={props.name}
       aria-describedby={props.hint ? hintId : undefined}
       disabled={props.disabled}
       data-holding={holding ? "true" : "false"}
