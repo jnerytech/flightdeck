@@ -396,6 +396,85 @@ describe("terminal-ui: the terminal screen", () => {
     expect(screen.queryByRole("menu", { name: "Terminal" })).toBeNull();
   });
 
+  // Issue #2608: the right-click menu is a menu: items, arrow keys, and the focus back on the terminal.
+  async function openMenu(x: Awaited<ReturnType<typeof setup>>["x"], selected: boolean) {
+    await settle(() => state("Ao vivo"));
+    if (selected) x.select("trecho");
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement;
+    await act(async () => {
+      fireEvent.contextMenu(area, { clientX: 40, clientY: 50 });
+    });
+    return screen.queryByRole("menu", { name: "Terminal" }) as HTMLElement;
+  }
+  const focusedItem = () => document.activeElement?.textContent ?? "";
+  const pressInMenu = (menu: HTMLElement, key: string) =>
+    act(async () => {
+      fireEvent.keyDown(document.activeElement ?? menu, { key });
+    });
+
+  test("the menu's three items are menu items, and Copiar is disabled with nothing selected", async () => {
+    const { x } = await setup();
+    await openMenu(x, false);
+    const items = screen.queryAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Copiar", "Colar", "Selecionar tudo"]);
+    expect((items[0] as HTMLButtonElement).disabled).toBe(true);
+    expect(focusedItem()).toBe("Colar");
+  });
+
+  test("Down and Up move between the enabled items and wrap; Home and End go to the ends", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, true);
+    expect(focusedItem()).toBe("Copiar");
+    const path: string[] = [];
+    for (const key of ["ArrowDown", "ArrowDown", "ArrowDown", "ArrowUp", "End", "Home"]) {
+      await pressInMenu(menu, key);
+      path.push(focusedItem());
+    }
+    expect(path).toEqual([
+      "Colar",
+      "Selecionar tudo",
+      "Copiar",
+      "Selecionar tudo",
+      "Selecionar tudo",
+      "Copiar",
+    ]);
+  });
+
+  test("a disabled Copiar is skipped by the arrow keys", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, false);
+    const path: string[] = [];
+    for (const key of ["ArrowUp", "ArrowDown", "Home"]) {
+      await pressInMenu(menu, key);
+      path.push(focusedItem());
+    }
+    expect(path).toEqual(["Selecionar tudo", "Colar", "Colar"]);
+  });
+
+  test("Esc closes the menu and gives the focus back to the terminal", async () => {
+    const { x } = await setup();
+    const menu = await openMenu(x, true);
+    const before = x.focuses();
+    await pressInMenu(menu, "Escape");
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      x.focuses() - before,
+    ]).toEqual([true, 1]);
+  });
+
+  test("a click outside closes the menu and gives the focus back to the terminal", async () => {
+    const { x } = await setup();
+    await openMenu(x, true);
+    const before = x.focuses();
+    await act(async () => {
+      fireEvent.click(document.body);
+    });
+    expect([
+      screen.queryByRole("menu", { name: "Terminal" }) === null,
+      x.focuses() - before,
+    ]).toEqual([true, 1]);
+  });
+
   test("a link in the output opens in the browser, http and https only", async () => {
     const { x, platform } = await setup();
     await settle(() => state("Ao vivo"));
