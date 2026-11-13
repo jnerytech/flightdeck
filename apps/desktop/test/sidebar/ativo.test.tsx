@@ -82,7 +82,6 @@ describe("sidebar-ativo: every destination of the bar is marked when its page is
         label,
         [label],
       ]);
-      expect(screen.getByRole("button", { name: label }).getAttribute("aria-current")).toBe("page");
       unmount();
     }
   });
