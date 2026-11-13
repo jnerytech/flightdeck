@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
+import { createSessionSettings } from "../../src/sessions/wiring.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { newManager, poll, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -175,5 +176,55 @@ describe("sleep-main: sessions of cards are left to the board", () => {
     expect(ctx.board.hasRunSession(sessionId)).toBe(true);
     expect(ctx.board.hasRunSession("not-a-session")).toBe(false);
     ctx.board.stop();
+  });
+});
+
+describe("sleep.set: the file first, then the config, then the sleeper (issue #1682)", () => {
+  function settings(configFile: string, minutes = 10) {
+    const config = {
+      allowBypassPermissions: false,
+      sessions: { sleepAfterMinutes: minutes },
+      stall: { afterMinutes: 0 },
+    } as unknown as Parameters<typeof createSessionSettings>[0]["config"];
+    const { modules } = createSessionSettings({
+      manager: {
+        list: () => [],
+        sleep: async () => "slept",
+        activity: () => ({ lastEventAt: null, tool: null }),
+        markQuiet: () => {},
+      } as unknown as Parameters<typeof createSessionSettings>[0]["manager"],
+      config,
+      configFile,
+      stallUnitMs: undefined,
+    });
+    cleanups.push(() => modules[0].stop?.());
+    const sleep = modules[0].server?.sessionSettings?.sleep;
+    if (!sleep) throw new Error("the sessions module serves no sleep switch");
+    return { config, sleep };
+  }
+
+  test("a config file that cannot be written leaves the sleeper and the config on the old minutes and fails the request", async () => {
+    const dir = tempDir("fd-sleep-set-");
+    const file = join(dir, "config.json");
+    // A directory where the file should be: the read fails, with no permission bits to rely on.
+    mkdirSync(file);
+    const { config, sleep } = settings(file);
+    await expect(sleep.set(45)).rejects.toThrow();
+    expect(sleep.minutes()).toBe(10);
+    expect(config.sessions.sleepAfterMinutes).toBe(10);
+  });
+
+  test("a writable config file holds the new minutes, and so do the config and the sleeper", async () => {
+    const dir = tempDir("fd-sleep-set-");
+    const file = join(dir, "config.json");
+    writeFileSync(file, JSON.stringify({ sessions: { other: 1 } }));
+    const { config, sleep } = settings(file);
+    await sleep.set(45);
+    expect(JSON.parse(readFileSync(file, "utf8")).sessions).toEqual({
+      other: 1,
+      sleepAfterMinutes: 45,
+    });
+    expect(config.sessions.sleepAfterMinutes).toBe(45);
+    expect(sleep.minutes()).toBe(45);
   });
 });

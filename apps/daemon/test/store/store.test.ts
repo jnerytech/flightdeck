@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
@@ -105,4 +105,25 @@ describe("store", () => {
       store.close();
     }
   });
+});
+
+describe("EventStore: a failed open gives its handle back (issue #1677)", () => {
+  // The open files of this process are listed by /proc: only Linux has them.
+  test.skipIf(process.platform !== "linux")(
+    "a corrupt file makes the constructor throw and leaves no descriptor on it",
+    () => {
+      const path = join(tempDir(), "flightdeck.db");
+      writeFileSync(path, "this is not a database file ".repeat(100));
+      const openOn = () =>
+        readdirSync("/proc/self/fd").filter((fd) => {
+          try {
+            return readlinkSync(`/proc/self/fd/${fd}`) === path;
+          } catch {
+            return false;
+          }
+        }).length;
+      expect(() => new EventStore(path)).toThrow();
+      expect(openOn()).toBe(0);
+    },
+  );
 });
