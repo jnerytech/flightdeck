@@ -2,6 +2,7 @@
 
 import { whichOnPath } from "../kernel/index.ts";
 import { detectWsl, realWslProbe } from "../wsl/index.ts";
+import { spawnHolder } from "./adapters/holder.ts";
 
 export type WakeMethod = "powershell" | "systemd-inhibit" | "caffeinate";
 /** Why nothing is held although it was asked: the app words each code in both languages. */
@@ -194,19 +195,6 @@ export class KeepAwake {
     this.holder = null;
     this.method = null;
     holder?.kill();
-  }
-}
-
-/** A holder started as a child process of the daemon. */
-export function spawnHolder(cmd: string[]): Holder | null {
-  try {
-    const proc = Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore", stdin: "ignore" });
-    return {
-      kill: () => proc.kill(),
-      exited: proc.exited.then(() => undefined),
-    };
-  } catch {
-    return null;
   }
 }
 
