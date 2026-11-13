@@ -30,7 +30,11 @@ const WORDS = {
  * text stayed after it was sent and the field kept a fixed width. `result` is what the host
  * answers to `teams.message`.
  */
-async function openTeam(language: "en" | "pt-BR", result: { delivered: number; refused: number }) {
+async function openTeam(
+  language: "en" | "pt-BR",
+  result: { delivered: number; refused: number },
+  held: Promise<void> = Promise.resolve(),
+) {
   const messages: Array<{ team: string; text: string }> = [];
   const host = await fakeHostStore(
     {
@@ -46,8 +50,9 @@ async function openTeam(language: "en" | "pt-BR", result: { delivered: number; r
           },
         ],
       }),
-      "teams.message": (payload: { team: string; text: string }) => {
+      "teams.message": async (payload: { team: string; text: string }) => {
         messages.push(payload);
+        await held;
         return result;
       },
     },
@@ -127,6 +132,31 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
     await settleMaybe(() => screen.queryByText(words.sent(0, 2)) !== null, 3000);
     expect(screen.queryByText(words.sent(0, 2)) !== null).toBe(true);
     expect(field.value).toBe("stand up");
+  });
+
+  test("a second Enter before the host answers sends nothing more", async () => {
+    let answer = () => {};
+    const held = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    const { field, messages } = await openTeam(language, { delivered: 1, refused: 0 }, held);
+    await type(field, "stand up");
+    await submit(field);
+    await submit(field);
+    answer();
+    await settleMaybe(() => messages.length >= 1, 3000);
+    expect(messages.length).toBe(1);
+  });
+
+  test("a text every worker refused is announced as an alert, not as a calm status", async () => {
+    const { words } = await openTeam(language, { delivered: 0, refused: 2 });
+    await type(screen.getByLabelText(words.field) as HTMLInputElement, "stand up");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: words.send }));
+    });
+    await settleMaybe(() => screen.queryByText(words.sent(0, 2)) !== null, 3000);
+    const line = screen.getByText(words.sent(0, 2));
+    expect(line.closest("[role=alert]") !== null).toBe(true);
   });
 
   test("the field has no fixed width, so it fills a narrow window", async () => {
