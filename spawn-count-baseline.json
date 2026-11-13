@@ -1,6 +1,5 @@
 {
   "apps/daemon/src/central/wrapper.ts": 1,
-  "apps/daemon/src/deps/probe.ts": 1,
   "apps/daemon/src/kernel/command.ts": 3,
   "apps/daemon/src/plugins/plugins.ts": 1,
   "apps/daemon/src/projects/project-find.ts": 1,
