@@ -36,9 +36,9 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
         .host(host.id)
         .list()
         .then(setLive, (error: unknown) => {
-          // A refusal is the host's answer (terminals are off there): nothing is open. Only a lost
-          // link leaves the list unknown, and keeps the last one.
-          if (error instanceof RequestError && error.code !== "offline") setLive([]);
+          // The host says its terminals are off: nothing is open. Any other failure leaves the list
+          // unknown, and keeps the last one.
+          if (error instanceof RequestError && error.code === "terminal_disabled") setLive([]);
           else setFailed(true);
         });
     void load();

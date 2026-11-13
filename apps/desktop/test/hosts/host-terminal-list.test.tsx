@@ -25,7 +25,7 @@ const UNREADABLE = {
   "pt-BR": "Não foi possível ler os terminais deste host.",
 } as const;
 
-type Read = { ok: object[] } | "fail" | "refuse" | "pending";
+type Read = { ok: object[] } | "fail" | "refuse" | "internal" | "pending";
 
 /** The page of an online host whose list answers the given reads in order, the last one for good. */
 async function openPage(lang: "en" | "pt-BR", reads: Read[]) {
@@ -37,8 +37,9 @@ async function openPage(lang: "en" | "pt-BR", reads: Read[]) {
         list: async () => {
           const read = reads[Math.min(next++, reads.length - 1)];
           if (read === "fail") throw new RequestError("offline", "connection lost");
-          // The host answered: terminals are off there (a command it refuses, not a lost link).
-          if (read === "refuse") throw new RequestError("feature_off", "terminals are off");
+          // The host answered: its terminals are off.
+          if (read === "refuse") throw new RequestError("terminal_disabled", "terminals are off");
+          if (read === "internal") throw new RequestError("internal", "it failed");
           if (read === "pending") return new Promise<never>(() => {});
           return read?.ok ?? [];
         },
@@ -102,6 +103,13 @@ for (const [lang, t] of [
       expect(attach() === null).toBe(true);
       expect(none() !== null).toBe(true);
       expect(unreadable() === null).toBe(true);
+    });
+
+    test("any other refusal leaves the list unknown: the last one stays", async () => {
+      const page = await openPage(lang, [{ ok: [ONE] }, "internal"]);
+      await page.refresh();
+      expect(attach() !== null).toBe(true);
+      expect(none() === null).toBe(true);
     });
 
     test("a good read after the failed first one replaces the message with the list", async () => {
