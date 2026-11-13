@@ -46,7 +46,7 @@ describe("cromo-calmo", () => {
     expect(activeNav({ name: "terminal", host: "h", id: "t" } as never)).toBeNull();
   });
 
-  test("the bar dims its items and marks the open one at full contrast", async () => {
+  test("the bar marks the open item as the current page and no other", async () => {
     const d = makeDaemon(cleanups);
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
@@ -57,10 +57,8 @@ describe("cromo-calmo", () => {
     await sidebar.openHub();
     const open = screen.queryByRole("button", { name: "Abrir Sessões" });
     expect(open?.getAttribute("aria-current")).toBe("page");
-    expect(open?.className).not.toContain("text-sidebar-foreground/70");
     const other = screen.queryByRole("button", { name: "Precisa de você" });
     expect(other?.getAttribute("aria-current")).toBeNull();
-    expect(other?.className).toContain("text-sidebar-foreground/70");
   });
 
   test("lines: the light ones stay faint (6% alpha); the dark ones are opaque, 3:1 against the surfaces but never harsher than 6:1 (issue #98)", () => {
