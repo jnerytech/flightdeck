@@ -1060,11 +1060,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // Copy is off with nothing selected, and on after Select all: what the clipboard gets is the screen.
     const area = c.page.locator("[data-terminal-area]");
     const menu = c.page.getByRole("menu", { name: c.t("terminalUi.title"), exact: true });
-    const copy = menu.getByRole("button", { name: c.t("terminalUi.copy"), exact: true });
+    const copy = menu.getByRole("menuitem", { name: c.t("terminalUi.copy"), exact: true });
     await area.click({ button: "right" });
     await copy.waitFor({ timeout: WAIT });
     if (await copy.isEnabled()) throw new Error("Copy deveria estar desligado sem seleção");
-    await menu.getByRole("button", { name: c.t("terminalUi.selectAll"), exact: true }).click();
+    await menu.getByRole("menuitem", { name: c.t("terminalUi.selectAll"), exact: true }).click();
     await area.click({ button: "right" });
     await waitFor(async () => copy.isEnabled(), "o Copiar ligado depois de selecionar");
     await copy.click();
