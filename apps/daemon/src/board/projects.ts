@@ -14,13 +14,13 @@ import {
 import { z } from "zod";
 import { git } from "../git/index.ts";
 import {
+  assertBranchName,
   FlightdeckError,
   parseJsonOr,
   parseJsonWith,
   resolveAllowedCwd,
   ulid,
 } from "../kernel/index.ts";
-import { assertBranchName } from "./ref-arg.ts";
 import type {
   BoardColumn,
   BoardOptions,
