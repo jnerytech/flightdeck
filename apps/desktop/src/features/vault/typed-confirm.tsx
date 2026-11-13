@@ -22,6 +22,8 @@ export function TypedConfirm(
     inputLabel: string;
     confirmLabel: string;
     destructive?: boolean;
+    /** Where the focus goes when the dialog closes (the button that opened it), if it is still on the page. */
+    returnFocus?(): HTMLElement | null;
     onConfirm(): void;
     onCancel(): void;
   }>,
@@ -40,7 +42,15 @@ export function TypedConfirm(
         if (!open && !confirmed.current) props.onCancel();
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          const back = props.returnFocus?.();
+          if (back?.isConnected) {
+            event.preventDefault();
+            back.focus();
+          }
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{props.confirmLabel}</AlertDialogTitle>
           <AlertDialogDescription>{props.message}</AlertDialogDescription>
