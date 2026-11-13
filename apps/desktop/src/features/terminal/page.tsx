@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SnippetPicker } from "@/features/snippets/index.ts";
+import { SnippetPicker } from "@/features/snippets/ui.ts";
 import { useT } from "@/i18n/context";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { Page } from "@/shared/layout/index.ts";
