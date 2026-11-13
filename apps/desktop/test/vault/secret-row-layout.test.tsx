@@ -22,14 +22,14 @@ const settle = waiter(4000);
 const USED_AT = Date.UTC(2026, 9, 30, 12);
 
 /** The page over a store with one secret that was last used at `USED_AT`. */
-async function open() {
+async function open(lastUsedAt = USED_AT) {
   const { platform } = memoryPlatform();
   const store = new AppStore(platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
   await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   const value = "row-layout-value-0123456789";
   const meta = await store.secrets.add({ name: "deploy", type: "password", value });
-  await store.vault.restore({ ...meta, lastUsedAt: USED_AT }, value);
+  await store.vault.restore({ ...meta, lastUsedAt }, value);
   store.secrets.update(meta.id, {});
   render(<VaultPage store={store} />);
   await settle(() => screen.queryByRole("button", { name: "Editar deploy" }) !== null);
@@ -47,5 +47,15 @@ describe("cofre-ui: a secret row on a narrow screen (#2605)", () => {
     const store = await open();
     const when = store.formatDateTime(new Date(USED_AT).toISOString());
     expect(screen.queryByText(`Último uso: ${when}`) === null).toBe(false);
+  });
+
+  test("a last use no date can hold does not stop the page from showing", async () => {
+    let failed = false;
+    try {
+      await open(1e300);
+    } catch {
+      failed = true;
+    }
+    expect(failed).toBe(false);
   });
 });
