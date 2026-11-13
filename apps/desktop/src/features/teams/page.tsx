@@ -18,7 +18,7 @@ import { PersonaPicker } from "@/features/personas/ui.ts";
 import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, FieldRow, NativeSelect, Page } from "@/shared/layout/index.ts";
+import { EmptyState, FieldRow, NativeSelect, OpenedPanel, Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hostsWith } from "../../lib/version.ts";
@@ -526,7 +526,11 @@ export const TeamsPage = memo(function TeamsPage(props: {
               ))}
             </NativeSelect>
           )}
-          {!creating && <Button onClick={() => setCreating(true)}>{t("teamsUi.new")}</Button>}
+          {!creating && (
+            <Button data-opener="new-team" onClick={() => setCreating(true)}>
+              {t("teamsUi.new")}
+            </Button>
+          )}
         </div>
       }
     >
@@ -539,16 +543,18 @@ export const TeamsPage = memo(function TeamsPage(props: {
         </InlineNotice>
       )}
       {creating && (
-        <NewTeam
-          store={store}
-          hostId={current}
-          onCreated={() => {
-            setCreating(false);
-            void load();
-          }}
-          onCancel={() => setCreating(false)}
-          onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
-        />
+        <OpenedPanel opener="new-team">
+          <NewTeam
+            store={store}
+            hostId={current}
+            onCreated={() => {
+              setCreating(false);
+              void load();
+            }}
+            onCancel={() => setCreating(false)}
+            onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
+          />
+        </OpenedPanel>
       )}
       {teams.length === 0 && !creating && (
         <EmptyState

@@ -364,7 +364,7 @@ describe("times-ui: the teams of a host", () => {
         },
       );
     });
-    await click("Trocar a persona de t3 · executora 1", row("t3"));
+    await click("Trocar persona de t3 · executora 1", row("t3"));
     // The persona shows by its name, not its id (#101).
     await settle(() => (row("t3")?.textContent ?? "").includes("QA / testes"));
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
@@ -823,7 +823,7 @@ describe("times-ui: the teams of a host", () => {
       );
     }
     const change = within(item).queryByRole("button", {
-      name: "Trocar a persona de grade · executora 1",
+      name: "Trocar persona de grade · executora 1",
     });
     expect(change?.getAttribute("data-variant") ?? "").toBe("outline");
     const remove = within(item).queryByRole("button", { name: "Remover grade · executora 1" });
@@ -841,14 +841,14 @@ describe("times-ui: the teams of a host", () => {
       const item = row("links");
       return item ? within(item).queryByRole("button", { name }) : null;
     };
-    await settle(() => memberButton("Abrir a sessão de links · coordenadora") !== null);
-    await click("Abrir a sessão de links · coordenadora", row("links") as HTMLElement);
+    await settle(() => memberButton("Abrir sessão de links · coordenadora") !== null);
+    await click("Abrir sessão de links · coordenadora", row("links") as HTMLElement);
     expect(store.router.current).toMatchObject({ name: "session" });
     await act(async () => {
       store.router.push({ name: "teams" });
     });
-    await settle(() => memberButton("Abrir o card de links · executora 1") !== null);
-    await click("Abrir o card de links · executora 1", row("links") as HTMLElement);
+    await settle(() => memberButton("Card de links · executora 1") !== null);
+    await click("Card de links · executora 1", row("links") as HTMLElement);
     expect(store.router.current).toMatchObject({
       name: "card",
       projectId: project?.id,
