@@ -80,7 +80,7 @@ import { createSessionManager, createSessionSettings } from "./sessions/wiring.t
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
-import { EventStore } from "./store/event-store.ts";
+import { EventStore } from "./store/index.ts";
 import { createSummary } from "./summary/wiring.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
