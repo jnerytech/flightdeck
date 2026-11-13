@@ -198,6 +198,8 @@ export const HostCompare = memo(function HostCompare(
   const refresh = async () => {
     const online = hosts.filter((host) => host.status === "online");
     setFinished(false);
+    // Nobody to ask: there is nothing to say about a read.
+    if (online.length === 0) return;
     setReading(online.map((host) => host.id));
     await Promise.all(
       online.map((host) =>
