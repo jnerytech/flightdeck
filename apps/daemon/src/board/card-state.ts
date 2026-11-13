@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { refusalOf } from "../kernel/index.ts";
-import { type BoardEvent, nextColumn } from "./columns.ts";
+import { type BoardEvent, nextColumn } from "./domain/columns.ts";
 import type { Card } from "./types.ts";
 
 const now = () => new Date().toISOString();

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { BoardColumn, SessionStatus } from "@flightdeck/protocol";
 import fc from "fast-check";
 import { holds } from "../../../../scripts/test/property.ts";
-import { type BoardEvent, nextColumn, type Placement } from "../../src/board/columns.ts";
+import { type BoardEvent, nextColumn, type Placement } from "../../src/board/domain/columns.ts";
 
 const column = fc.constantFrom(...BoardColumn.options);
 

@@ -8,8 +8,8 @@ import {
 import { FlightdeckError, parseJsonWith, refusalOf } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/prepare.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
-import type { BoardEvent } from "./columns.ts";
 import { git } from "./command.ts";
+import type { BoardEvent } from "./domain/columns.ts";
 import { pinnedPrompt } from "./pins.ts";
 import { refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
@@ -34,7 +34,7 @@ export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 export type { FixResult } from "./session-follow.ts";
 
 import type { WorkflowEngine } from "../workflows/engine.ts";
-import type { CheckLoopEngine } from "./check-loop-engine.ts";
+import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
 import type { FixResult } from "./session-follow.ts";
 import type { BoardOptions, Card, Project, RunRow } from "./types.ts";
 

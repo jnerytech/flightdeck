@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { RunStatus, StepRun, StepStatus, StepType } from "@flightdeck/protocol";
-import type { BoardEvent } from "../board/columns.ts";
+import type { BoardEvent } from "../board/domain/columns.ts";
 import type { Card } from "../board/types.ts";
 import type { Prepare } from "../personas/index.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";

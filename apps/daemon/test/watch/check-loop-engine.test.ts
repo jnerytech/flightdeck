@@ -7,7 +7,7 @@ import {
   type RoundRecord,
   roundMessage,
   roundsCap,
-} from "../../src/board/check-loop-engine.ts";
+} from "../../src/board/domain/check-loop-engine.ts";
 import type { CheckOutcome } from "../../src/watch/check-run.ts";
 
 /**
