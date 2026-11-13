@@ -32,6 +32,9 @@ export const backup = {
       vault: "Vault",
     },
     line: "{kind}: {added} new, {same} the same, {conflicting} different",
+    previewTitle: "Backup preview",
+    previewRead:
+      "Backup read: {added} new, {conflicting} different. Nothing changes until you press Restore.",
     conflictList: "Different here",
     newHosts: "New hosts",
     choiceLegend: "When it differs",

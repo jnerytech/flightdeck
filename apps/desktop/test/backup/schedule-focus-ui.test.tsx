@@ -123,7 +123,7 @@ describe("backup-schedule-focus-ui: a long folder path wraps (#2655)", () => {
     open({ folder: LONG_FOLDER });
     await press("Choose folder");
     const path = screen.queryByText(LONG_FOLDER, { exact: false });
-    const classes = path?.parentElement?.className.split(" ") ?? [];
+    const classes = path?.closest("p")?.className.split(" ") ?? [];
     expect(classes.includes("[overflow-wrap:anywhere]")).toBe(true);
   });
 });
