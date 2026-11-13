@@ -4,4 +4,4 @@
  * optional byte and time limit); another domain imports from here.
  */
 
-export { git, gitBytes, gitLimited, gitLimitedFor } from "./adapters/git.ts";
+export { git, gitBytes, gitLimited, gitLimitedFor, gitWith } from "./adapters/git.ts";

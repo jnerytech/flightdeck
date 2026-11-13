@@ -14,6 +14,26 @@ export function git(cwd: string, ...args: string[]): Promise<CommandResult> {
 }
 
 /**
+ * Like `git`, with the two things a few callers add: text for git's stdin (`check-ignore --stdin`)
+ * and variables for its environment (the snapshots' own index file and author).
+ */
+export function gitWith(
+  cwd: string,
+  args: string[],
+  more: { input?: string; env?: Record<string, string> } = {},
+): Promise<CommandResult> {
+  // git-arg: the git helper with stdin and environment: its callers are what the git-args ratchet checks
+  return runCommand(
+    [whichOnPath("git") ?? "git", ...args],
+    cwd,
+    more.input,
+    undefined,
+    killTree,
+    more.env,
+  );
+}
+
+/**
  * Like `git`, but reads at most `limit` bytes of output: when git writes more it is killed and the
  * result says `truncated`, with the output cut at its last whole line (a change of 200 MB must not
  * be held in memory, issue #329).

@@ -9,7 +9,8 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import { gitWith } from "../git/index.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 export interface SnapshotRow {
   claudeSessionId: string;
@@ -118,13 +119,7 @@ async function git(
   env: Record<string, string> = {},
 ): Promise<{ code: number; stdout: string }> {
   // git-arg: the checkpoints' own git: refs and trees made by the daemon
-  const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
-    cwd,
-    env: { ...process.env, ...env },
-    stdout: "pipe",
-    stderr: "ignore",
-  });
-  const [stdout, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  const { code, stdout } = await gitWith(cwd, args, { env });
   return { code, stdout: stdout.trim() };
 }
 

@@ -43,9 +43,9 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 - `hooks/` is outside the three folders this map covers; a hook follows its domain the same way.
   **Moved** (#1597): `use-project-cards` to `features/projects/`, `use-switcher-hosts` to
   `features/hosts/` (with its `switcher-hosts.ts`, the pure rule that left `tabs/tab-scope.ts`, so hosts no
-  longer reads the tabs) and `use-start-elsewhere` to `features/sessions/`, each behind its index. Two stay in
-  `hooks/` for now: `use-project-labels` (it reads the costs index, which reaches the store) and
-  `use-start-ask` (it reads the board index, which reaches the projects and sessions indexes): moving them
+  longer reads the tabs) and `use-start-elsewhere` to `features/sessions/`, each behind its index, and `use-start-ask` to `features/board/` behind a new `ui.ts` (#1597, 2026-11-13: it holds the
+  board's contract dialog, so it is not in the lazy-free `index.ts`). One stays in `hooks/` for now:
+  `use-project-labels` (it reads the costs index, which reaches the store): moving it
   adds import cycles, and the cycle count only goes down (#1624).
 - Hooks that only one feature reads moved into it (#1597): `use-move-focus` to `features/board/`,
   `use-board-transition` to `features/activity/` and `use-now` to `features/hosts/`, each imported by file
@@ -117,7 +117,7 @@ prefix. Tests move with their file in the same PR.
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
 | `notify.ts` | `features/inbox/` (**moved**): it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | `platform/tauri/` (**moved**: a pure pixel helper with no imports, read only by `platform/tauri/index.ts`, so the platform adapter no longer reaches into `lib/`) |
-| `notice-*.ts` | `notice-lifetime.ts` goes to `app/` (it reads the `Notice` type and the store; **moved**: it is the first file in `app/`, read by `features/shell/notices.tsx` and `lib/app-store.ts`); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) stays until `i18n` has a home |
+| `notice-*.ts` | `notice-lifetime.ts` goes to `app/` (it reads the `Notice` type and the store; **moved**: it is the first file in `app/`, read by `features/shell/notices.tsx` and `lib/app-store.ts`); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) **moved** to `i18n/errors.ts` next to `translateError` (#1597, 2026-11-13): `shared/` may not import it (`shared-depends-on-no-domain`), and it only wraps `translateError` |
 | `incident-text.ts` | **theirs** (`features/board/`, only `post-mortem.tsx` reads it) |
 | `review.ts`, `word-diff.ts` | **moved**: `review.ts` to `features/review/`; `word-diff.ts` to `features/assistant/`, not `features/review/` as the row above says: its only reader is `wand-controls.tsx`, so it needs no review entry and no assistant to review cycle |
 | `quiet*.ts` | `features/needs-you/` (**moved**; the quiet badge of the board and the needs-you rows) |

@@ -8,7 +8,7 @@ import { ApprovalCard } from "@/features/permissions/ui.ts";
 import { PersonaSwitch } from "@/features/personas/ui.ts";
 import type { PromptSnippets } from "@/features/snippets/index.ts";
 import { PromptMenu } from "@/features/snippets/ui.ts";
-import { RecapPanel } from "@/features/summary/index.ts";
+import { RecapPanel } from "@/features/summary/ui.ts";
 import { Stack } from "@/shared/layout/index.ts";
 import { isBusy } from "@/shared/lib/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
