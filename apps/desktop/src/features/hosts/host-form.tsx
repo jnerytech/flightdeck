@@ -3,8 +3,8 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { InlineNotice, useBusy } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
-import { type BoundToken, maskOnLeave, readLinkEdit } from "./pairing-mask.ts";
-import { pairingErrorText } from "./pairing-text.ts";
+import { type BoundToken, maskOnLeave, readLinkEdit } from "./domain/pairing-mask.ts";
+import { pairingErrorText } from "./domain/pairing-text.ts";
 
 export interface HostDraft {
   name: string;

@@ -1,6 +1,6 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { AppStore } from "../../lib/app-store.ts";
-import { switcherHosts } from "./switcher-hosts.ts";
+import { switcherHosts } from "./domain/switcher-hosts.ts";
 
 /**
  * The host the top bar's switcher names (#932): the active tab's host, else the one the window
