@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { usd } from "../costs/index.ts";
-import { DiffView } from "../review/index.ts";
+import { DiffView } from "../review/ui.ts";
 import { StatusBadge } from "../sessions/ui.ts";
 
 /** A variant that has not stopped working cannot be chosen yet. */

@@ -12,7 +12,7 @@ import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { languageFor, loadLanguage } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { DiffView } from "../review/index.ts";
+import { DiffView } from "../review/ui.ts";
 
 /** Token colors from the theme's tokens, so both themes keep their contrast. */
 const TOKENS = HighlightStyle.define([
