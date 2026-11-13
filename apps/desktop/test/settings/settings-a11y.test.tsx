@@ -134,6 +134,24 @@ describe("the rail mark follows the page as it scrolls (#2598)", () => {
     expect(marked()).toEqual(["Atualizações"]);
   });
 
+  test("a click keeps its mark while the page scrolls to it, and the next wheel turn hands the mark back to the scroll", async () => {
+    const seen = fakeObserver();
+    setup();
+    const section = (name: string) => screen.getByRole("region", { name });
+    await act(async () => {
+      fireEvent.click(within(rail()).getByRole("button", { name: "Janela" }));
+    });
+    await act(async () => {
+      seen.callback?.([{ target: section("Atualizações"), isIntersecting: true }]);
+    });
+    expect(marked()).toEqual(["Janela"]);
+    await act(async () => {
+      fireEvent.wheel(window);
+      seen.callback?.([{ target: section("Notificações"), isIntersecting: true }]);
+    });
+    expect(marked()).toEqual(["Notificações"]);
+  });
+
   test("with two sections on screen the upper one is the mark", async () => {
     const seen = fakeObserver();
     setup();
