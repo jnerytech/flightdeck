@@ -1,6 +1,7 @@
 import type { HistoryChanged, WorkflowRun } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER } from "@flightdeck/protocol";
 import { SystemSlice } from "@/features/shell/system.ts";
+import type { AppLog } from "../../app/app-log.ts";
 import { type AccountSlice, wireAccount } from "../../features/account/index.ts";
 import type { ActivitySlice } from "../../features/activity/index.ts";
 import { type BackgroundSlice, wireBackground } from "../../features/background/index.ts";
@@ -45,7 +46,6 @@ import type {
 import { type WatchSlice, wireWatch } from "../../features/watch/index.ts";
 import type { WebhookFeed } from "../../features/webhook/webhook-feed.ts";
 import type { Platform } from "../../platform/types.ts";
-import type { AppLog } from "../app-log.ts";
 import type { AppState, HostView, Notice } from "../app-state.ts";
 import type { AppKernel } from "../kernel.ts";
 import { hasFeature } from "../version.ts";
