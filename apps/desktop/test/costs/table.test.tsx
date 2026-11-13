@@ -59,20 +59,10 @@ function size(frame: HTMLElement, sizes: { left: number; client: number; scroll:
 
 const hasMore = (frame: HTMLElement) => frame.classList.contains("table-wide-more");
 
-// Issue #786, Costs: the cost per delivery table. Its sort headers were 19 px tall (the target
-// size is 24), and at 640 and 390 px the table scrolled sideways inside its frame with nothing
-// to say there was more on the right.
-describe("costs-table: the sort headers are 24 px targets and a table that scrolls shows it", () => {
-  test("every sort button carries the 24 px minimum height", async () => {
-    const { store } = await table();
-    const buttons = Array.from(document.querySelectorAll("thead th button"));
-    expect({
-      count: buttons.length,
-      tall: buttons.filter((b) => b.classList.contains("min-h-6")).length,
-    }).toEqual({ count: 9, tall: 9 });
-    store.dispose();
-  });
-
+// Issue #786, Costs: the cost per delivery table. At 640 and 390 px it scrolled sideways inside its
+// frame with nothing to say there was more on the right. Its sort headers were 19 px tall (the
+// target size is 24): axe's target-size rule measures that on the roi-custos-tabelas print.
+describe("costs-table: a table that scrolls shows it", () => {
   test("canScrollRight is true until the right edge, with a pixel of slack", () => {
     expect({
       start: canScrollRight(0, 560, 957),
