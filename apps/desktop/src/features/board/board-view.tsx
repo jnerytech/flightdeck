@@ -66,7 +66,6 @@ import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/ind
 import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/ui.ts";
 import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
-import { useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
@@ -123,6 +122,7 @@ import { radarBadge } from "./conflict-radar.ts";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { NewCardDialog } from "./new-card-dialog.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
+import { useStartAsk } from "./use-start-ask.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
