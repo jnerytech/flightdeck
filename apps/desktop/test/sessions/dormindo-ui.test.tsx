@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { hubRows } from "../src/features/sessions/hub.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { unfoldAll } from "./unfold.ts";
-import { settle } from "./wait.ts";
+import { hubRows } from "../../src/features/sessions/hub.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { unfoldAll } from "../unfold.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { SessionsHub } = await import("../src/features/sessions/sessions-hub.tsx");
-const { SleepSetting } = await import("../src/features/hosts/sleep-setting.tsx");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { SessionsHub } = await import("../../src/features/sessions/sessions-hub.tsx");
+const { SleepSetting } = await import("../../src/features/hosts/sleep-setting.tsx");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
