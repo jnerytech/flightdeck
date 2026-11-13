@@ -145,8 +145,8 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
       name: "um",
     })) as string;
     await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status !== undefined);
-    store.select(hostId, null);
-    await store.refreshHub();
+    store.subscriptions.select(hostId, null);
+    await store.sessionLists.refresh();
     const projectKey = hubRows(store.getState())[0]?.projectKey as string;
     render(<Live store={store} hostId={hostId} projectKey={projectKey} />);
     const group = screen.getByRole("group", { name: "Layout" });

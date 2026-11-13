@@ -51,7 +51,7 @@ function setup(
   });
   store.i18n.start();
   store.projectList.load = (async () => []) as never;
-  store.refreshHub = (async () => {}) as never;
+  store.sessionLists.refresh = (async () => {}) as never;
   const sent: Array<[string, unknown]> = [];
   // What the host's files say after a change that went through, so the list read again shows it.
   const applied = new Map<string, KnowledgeEntry["status"]>();

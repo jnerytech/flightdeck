@@ -169,7 +169,7 @@ describe("clients-vault: when the client's projects change", () => {
       managed("s1", "github.com/acme/api"),
       managed("s2", "github.com/acme/web"),
     ];
-    await act(() => store.refreshHub());
+    await act(() => store.sessionLists.refresh());
     await settle(() => ids(lastFor(secret.id)?.rules).length > before.length);
     expect(ids(lastFor(secret.id)?.rules)).toHaveLength(before.length + 1);
     await settle(() => said.length > 0);

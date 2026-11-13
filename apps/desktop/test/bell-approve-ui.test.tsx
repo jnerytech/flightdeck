@@ -88,7 +88,7 @@ async function setup(
     waiting = waiting.filter((p) => p.requestId !== id);
     await act(async () => patch(waiting));
   }) as never;
-  store.refreshHub = (async () => {}) as never;
+  store.sessionLists.refresh = (async () => {}) as never;
   render(<App store={store} />);
   await act(async () => patch(waiting));
   /** The host's list of what waits changes: another screen or another person answered. */

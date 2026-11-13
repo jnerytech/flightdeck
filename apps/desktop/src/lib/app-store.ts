@@ -322,7 +322,7 @@ export class AppStore {
           loadPersonas: (hostId) => this.personas.load(hostId),
           listSnippets: (hostId) => nullOnError(this.dispatch(hostId, "snippets.list", {})),
           keepSnippets: (hostId, snippets) => this.snippets.keep(hostId, snippets),
-          refreshHub: () => this.refreshHub(),
+          refreshHub: () => this.sessionLists.refresh(),
         },
       }),
     );
@@ -338,7 +338,7 @@ export class AppStore {
     });
     this.history = wireHistory(this.kernel, {
       searchTimeoutMs: options.searchTimeoutMs,
-      select: (hostId, sessionId) => this.select(hostId, sessionId),
+      select: (hostId, sessionId) => this.subscriptions.select(hostId, sessionId),
       listLimit: HISTORY_LIST_LIMIT,
       offline: () => new RequestError("offline", "unknown host"),
       reason: (error) => (error instanceof RequestError ? error.reason : undefined),
@@ -625,7 +625,7 @@ export class AppStore {
     });
     this.commands = wireSessionCommands(this.kernel, {
       opened: (hostId, sessionId) => {
-        this.select(hostId, sessionId);
+        this.subscriptions.select(hostId, sessionId);
         // A new session opens, wherever it was created from (phase 10).
         this.history.closeSearch();
         this.router.push({ name: "session", host: hostId, id: sessionId });
@@ -903,11 +903,6 @@ export class AppStore {
     return this.platform.onDeepLink(handler);
   }
 
-  /** Selects a session: only the open one keeps a subscription to its full event stream. */
-  select(hostId: string, sessionId: string | null): void {
-    this.subscriptions.select(hostId, sessionId);
-  }
-
   /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
   activeHostId(): string | null {
     return this.hostTabs.hostId;
@@ -1011,14 +1006,6 @@ export class AppStore {
     this.boardCards.onResult(hostId, result);
     if (isRun(result)) this.onRun(hostId, result);
     return result;
-  }
-
-  /**
-   * Loads what the Sessões screen lists from every online host. Quiet: a host without history or
-   * hub (older daemon) just contributes less.
-   */
-  refreshHub(): Promise<void> {
-    return this.sessionLists.refresh();
   }
 
   /**
@@ -1160,7 +1147,7 @@ export class AppStore {
 
   /** The session a move made, opened on its new host. */
   readonly openMovedSession = (hostId: string, sessionId: string): void => {
-    this.select(hostId, sessionId);
+    this.subscriptions.select(hostId, sessionId);
     this.router.push({ name: "session", host: hostId, id: sessionId });
   };
 

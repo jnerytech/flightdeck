@@ -30,7 +30,7 @@ describe("lado-a-lado: following several sessions at once", () => {
     await waitFor(() => said(store, hostId, a).includes("para A"), "A streams while B is open");
 
     // Opening nothing does not drop what the tiles follow.
-    store.select(hostId, null);
+    store.subscriptions.select(hostId, null);
     await store.commands.sendTo(hostId, b, "para B");
     await waitFor(() => said(store, hostId, b).includes("para B"), "B streams unselected");
 

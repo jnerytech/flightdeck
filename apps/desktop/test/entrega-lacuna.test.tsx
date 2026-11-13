@@ -33,7 +33,7 @@ async function follow() {
   daemon.streams.s1 = [1, 2, 3, 4].map(said);
   const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.status === "online");
-  store.select(hostId, "s1");
+  store.subscriptions.select(hostId, "s1");
   const key = `${hostId}/s1`;
   await settle(() => store.getState().sessions[key]?.lastSeq === 4);
   const asked = () =>

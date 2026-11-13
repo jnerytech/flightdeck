@@ -75,7 +75,7 @@ describe("host-abrir-projeto: a project on the host page opens (issue #207)", ()
     const { store, d, repo } = await setup();
     await act(async () => {
       await d.start({ cwd: repo, prompt: "ola" });
-      await store.refreshHub();
+      await store.sessionLists.refresh();
     });
     // The sidebar's project tree has a "repo" button of its own: the card is the page's.
     const page = () => within(screen.getByRole("main"));

@@ -65,7 +65,7 @@ async function asking(prompt: string) {
   const events = record(ctx.manager, sessionId);
   cleanups.push(() => events.unsubscribe());
   await poll(() => events.find("permission.requested")[0], 3000);
-  await act(async () => ctx.store.select(ctx.hostId, sessionId));
+  await act(async () => ctx.store.subscriptions.select(ctx.hostId, sessionId));
   await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);
   const result = () => poll(() => events.find("tool.result")[0]?.content, 3000);
   return { ...ctx, sessionId, result };
@@ -269,7 +269,7 @@ describe("permitir-ui", () => {
     const hostId = store.getState().hosts[0]?.id ?? "";
     const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "[bash] y" });
     await poll(() => d.eventStore.pendingPermissions(sessionId).length > 0, 3000);
-    await act(async () => store.select(hostId, sessionId));
+    await act(async () => store.subscriptions.select(hostId, sessionId));
     await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Sempre neste projeto" })).toBeNull();

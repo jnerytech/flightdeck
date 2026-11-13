@@ -53,11 +53,11 @@ describe("state-selectors: a quiet app does not refetch or redraw what did not c
 
   test("a refresh of the hub that finds the same lists keeps the state it had and tells nobody", async () => {
     const { store } = await threeHosts();
-    await store.refreshHub();
+    await store.sessionLists.refresh();
     const first = store.getState();
     let told = 0;
     const stop = store.subscribe(() => told++);
-    await store.refreshHub();
+    await store.sessionLists.refresh();
     stop();
     expect(told).toBe(0);
     const second = store.getState();
@@ -87,7 +87,7 @@ describe("state-selectors: a screen that reads some parts of the state renders f
     );
     expect(view.container.textContent).toBe("false/0");
     const mounted = commits;
-    await act(async () => store.select("nowhere", null)); // `selected` is not read
+    await act(async () => store.subscriptions.select("nowhere", null)); // `selected` is not read
     await act(async () => store.snippets.choose(null)); // neither is `snippetChoice`
     expect(commits).toBe(mounted);
     await act(async () => store.history.openSearch()); // `searchOpen` is

@@ -174,7 +174,7 @@ describe("host-switch: the window says the switch, with a way back", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     cleanups.push(() => store.dispose());
     await store.init();
-    store.select("h1", null);
+    store.subscriptions.select("h1", null);
     const before = store.getState().notices.length;
     store.router.push(project("h1", "p-api"));
     expect({

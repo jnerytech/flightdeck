@@ -118,7 +118,7 @@ describe("opencode-session-ui", () => {
       }
     };
     await act(async () => {
-      await store.refreshHub();
+      await store.sessionLists.refresh();
       store.router.push({ name: "hub" });
     });
     await settleMaybe(() => screen.queryByRole("button", { name: "Expand all" }) !== null);
