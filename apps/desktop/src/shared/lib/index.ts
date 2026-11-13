@@ -11,6 +11,7 @@ export {
   LIST_WIDTH_KEY,
   loadListWidth,
 } from "./list-width.ts";
+export type { LogLevel } from "./log-level.ts";
 export { nullOnError } from "./null-on-error.ts";
 export {
   basename,
