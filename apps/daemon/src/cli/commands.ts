@@ -1,6 +1,5 @@
-import { resolve } from "node:path";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { defaultConfigPath, expandHome, loadConfig } from "../config.ts";
+import { loadConfig } from "../config.ts";
 import { type Logger, settled } from "../kernel/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
 import { exitWhenClosed } from "./exit.ts";
@@ -83,7 +82,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runClaude } = await import("../central/index.ts");
     const { daemonCommand } = await import("../service/index.ts");
     // Its own arguments all go to claude, so the config comes from the environment.
-    const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
+    const file = configPath({ ...args, config: deps.env.FLIGHTDECK_CONFIG });
     return runClaude({
       args: args.claudeArgs ?? [],
       cwd: deps.cwd ?? process.cwd(),
@@ -99,7 +98,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   askpass: async (args, deps) => {
     const { runAskpass } = await import("../ssh/index.ts");
     // ssh runs this with only the prompt, so the config comes from the environment.
-    const file = resolve(expandHome(deps.env.FLIGHTDECK_CONFIG ?? defaultConfigPath()));
+    const file = configPath({ ...args, config: deps.env.FLIGHTDECK_CONFIG });
     const secret = await runAskpass({
       configFile: file,
       ticket: deps.env.FLIGHTDECK_ASKPASS_TICKET,
