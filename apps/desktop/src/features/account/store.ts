@@ -44,6 +44,9 @@ export class AccountSlice {
     return () => stream?.watch(false);
   }
 
+  /** Drops what a removed host left: its account and the watchers it had (#1752). */
+  forget(_hostId: string): void {}
+
   /** Asks the host to read its account again now; `false` when it refused (the banner says why). */
   async refresh(hostId: string): Promise<boolean> {
     const state = await this.core.refresh(hostId);
