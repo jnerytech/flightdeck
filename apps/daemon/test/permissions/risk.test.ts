@@ -101,6 +101,9 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", "echo x >a\\>>/etc/y"],
   // `\\` is a literal backslash, so the newline after it ends the command; it is no continuation.
   ["high", "echo x >a\\\\\n>/etc/y"],
+  // A `>` inside quotes must not let the quoted text swallow the real redirect after it.
+  ["high", 'echo "a>" ; echo x > /etc/cron.d/evil ; echo "b"'],
+  ["high", `echo '>"' ; echo x >/etc/y ; echo '"'`],
   // zsh: `>!file` forces the write and `>=(cmd)` is a process substitution.
   ["high", "echo x >!/tmp/fora.txt"],
   ["high", "echo x >=(cat)"],
