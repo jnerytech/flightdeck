@@ -1,7 +1,13 @@
 import type { ChecksState, PrProviderKind, PrState } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { z } from "zod";
-import { FlightdeckError, parseJsonWith, whichOnPath } from "../kernel/index.ts";
+import {
+  type CommandResult,
+  FlightdeckError,
+  parseJsonWith,
+  runCommand,
+  whichOnPath,
+} from "../kernel/index.ts";
 import {
   AzEvaluations,
   AzPolicies,
@@ -13,7 +19,6 @@ import {
   AzTimeline,
 } from "./az-json.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
-import { type CommandResult, runCommand } from "./command.ts";
 import {
   GhCommentPages,
   GhMergeable,

@@ -5,6 +5,13 @@
  */
 export { AsyncQueue } from "./async-queue.ts";
 export { writeFileAtomic } from "./atomic-write.ts";
+export {
+  type CommandResult,
+  killTree,
+  type LimitedMore,
+  runCommand,
+  runLimited,
+} from "./command.ts";
 export { API_KEY_VARS, buildChildEnv } from "./env.ts";
 export { FlightdeckError, featureOff, refusalOf } from "./errors.ts";
 export { type Exec, spawnExec } from "./exec.ts";

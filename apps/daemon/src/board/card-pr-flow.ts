@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
+import { git } from "../git/index.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { FlightdeckError } from "../kernel/index.ts";
-import { git } from "./command.ts";
 import { cardDiff } from "./diff.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import {

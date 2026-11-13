@@ -11,7 +11,7 @@ const ROOT = resolve(import.meta.dir, "../../..");
 
 describe("spawn-count (#1612)", () => {
   test("source under a package's src is scanned; tests, declarations, adapters and the kernel exec helper are not", () => {
-    expect(isScanned("apps/daemon/src/board/command.ts")).toBe(true);
+    expect(isScanned("apps/daemon/src/kernel/command.ts")).toBe(true);
     expect(isScanned("packages/protocol/src/index.ts")).toBe(true);
     expect(isScanned("apps/daemon/test/board/command.test.ts")).toBe(false);
     expect(isScanned("apps/daemon/src/text-modules.d.ts")).toBe(false);

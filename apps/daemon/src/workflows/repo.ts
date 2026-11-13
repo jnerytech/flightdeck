@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { git } from "../board/command.ts";
 import { type Rev, refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
+import { git } from "../git/index.ts";
 
 /** Where workflows live in the repository, read from the base branch only. */
 export const WORKFLOWS_DIR = ".flightdeck/workflows";
