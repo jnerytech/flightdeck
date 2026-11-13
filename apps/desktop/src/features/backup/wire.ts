@@ -10,9 +10,15 @@ import { BackupSlice } from "./store.ts";
  */
 export function wireBackup(
   kernel: AppKernel<object>,
-  deps: { platform: Platform; scheduler: BackupScheduler; vaultWorkFactor: number | undefined },
+  deps: {
+    platform: Platform;
+    scheduler: BackupScheduler;
+    vaultWorkFactor: number | undefined;
+    /** A restore writes the vault through its own instance: the store's vault forgets what it derived. */
+    vaultRestored(): void;
+  },
 ): BackupSlice {
-  const { platform, scheduler, vaultWorkFactor } = deps;
+  const { platform, scheduler, vaultWorkFactor, vaultRestored } = deps;
   return new BackupSlice({
     createText: async (passphrase, confirmation) => {
       const { createBackup } = await import("./backup-bundle.ts");
@@ -28,7 +34,12 @@ export function wireBackup(
     },
     applyPreview: async (preview, onConflict) => {
       const { applyRestore } = await import("./backup-bundle.ts");
-      return applyRestore(platform, preview, onConflict);
+      try {
+        return await applyRestore(platform, preview, onConflict);
+      } finally {
+        // Also after a refused or half-undone restore: what was derived may no longer match the keyring.
+        vaultRestored();
+      }
     },
     driveNames: () => scheduler.driveBackups(),
     driveText: (name) => scheduler.driveBackupText(name),

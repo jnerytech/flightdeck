@@ -66,10 +66,8 @@ export function driveTarget(deps: { fetch: typeof fetch; auth: DriveAuth }): Bac
         pageSize: "100",
       });
       if (page) query.set("pageToken", page);
-      const body = (await (await ok(`${FILES}?${query}`)).json()) as {
-        files?: Array<{ id: string; name: string }>;
-        nextPageToken?: string;
-      };
+      type DrivePage = { files?: Array<{ id: string; name: string }>; nextPageToken?: string };
+      const body = (await (await ok(`${FILES}?${query}`)).json()) as DrivePage; // NOSONAR: each Drive page names the next one, so the pages are read in order
       found.push(...(body.files ?? []));
       page = body.nextPageToken;
     } while (page);

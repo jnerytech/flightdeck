@@ -6,6 +6,6 @@ import { createReleases } from "../../src/releases/wiring.ts";
 describe("releases-wiring: the module the server takes `releases` from", () => {
   test("it supplies a release feed under the `releases` key", () => {
     const { modules } = createReleases();
-    expect(modules[0].server?.releases instanceof ReleaseFeed).toBe(true);
+    expect(modules[0].server?.releases).toBeInstanceOf(ReleaseFeed);
   });
 });

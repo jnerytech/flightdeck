@@ -42,7 +42,7 @@ describe("createBoardSync: the loop runs on the host's timers", () => {
   test("a started loop asks gh at once and, after a failed run, again once the backoff has passed", async () => {
     const { loop, ghCalls } = await wired();
     loop.start();
-    expect(ghCalls.length).toBe(0); // the first run is a timer of 0 ms, not a call inside start()
+    expect(ghCalls).toHaveLength(0); // the first run is a timer of 0 ms, not a call inside start()
     jest.advanceTimersByTime(0);
     await drain();
     const first = ghCalls.length;
@@ -50,7 +50,7 @@ describe("createBoardSync: the loop runs on the host's timers", () => {
     expect(ghCalls[0]?.slice(0, 2)).toEqual(["api", "graphql"]);
     jest.advanceTimersByTime(FIRST_FAILURE_BACKOFF_MS - 1);
     await drain();
-    expect(ghCalls.length).toBe(first); // not before the backoff
+    expect(ghCalls).toHaveLength(first); // not before the backoff
     jest.advanceTimersByTime(1);
     await drain();
     expect(ghCalls.length).toBeGreaterThan(first); // weaker: the second run's call count is the engine's business too
@@ -62,6 +62,6 @@ describe("createBoardSync: the loop runs on the host's timers", () => {
     loop.stop();
     jest.advanceTimersByTime(FIRST_FAILURE_BACKOFF_MS * 2);
     await drain();
-    expect(ghCalls.length).toBe(0);
+    expect(ghCalls).toHaveLength(0);
   });
 });

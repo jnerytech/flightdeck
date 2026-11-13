@@ -6,7 +6,7 @@
 import { readdir, readFile, realpath } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { claudeMds, frontmatter } from "../agentcfg/files.ts";
+import { claudeMds, frontmatter } from "../agentcfg/index.ts";
 import { displayPath } from "./display-path.ts";
 import { exists } from "./exists.ts";
 

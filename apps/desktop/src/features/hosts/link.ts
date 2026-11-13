@@ -168,7 +168,7 @@ export class HostLink {
       if (step.gate && !hasFeature(hostInfo?.features, step.gate, false)) continue;
       const done = step.run(ctx);
       if (step.awaited)
-        await done; // NOSONAR: an awaited step finishes before the next one starts, in order
+        await done; // NOSONAR: only a step marked awaited is waited for, and the steps run in order
       else void done;
     }
   }
