@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   AlreadyRunningError,
@@ -120,6 +120,35 @@ describe("lock: takeover and release (issue #1677)", () => {
       ).toHaveLength(1);
       await locks.find((lock) => lock !== null)?.release();
     }
+  });
+
+  test("many callers racing for one stale lock: exactly one takes it, and no helper file is left", async () => {
+    const pid = await deadPid();
+    for (let round = 0; round < 150; round++) {
+      const { dataDir } = config();
+      mkdirSync(dataDir, { recursive: true });
+      writeFileSync(join(dataDir, LOCK_FILE), String(pid));
+      const locks = await Promise.all(Array.from({ length: 5 }, () => acquireLock(dataDir)));
+      expect(
+        locks.filter((lock) => lock !== null),
+        `round ${round}`,
+      ).toHaveLength(1);
+      await locks.find((lock) => lock !== null)?.release();
+      expect(readdirSync(dataDir), `round ${round}`).toEqual([]);
+    }
+  });
+
+  test("a takeover guard left by a process that died does not block the next takeover", async () => {
+    const { dataDir } = config();
+    mkdirSync(dataDir, { recursive: true });
+    const dead = String(await deadPid());
+    writeFileSync(join(dataDir, LOCK_FILE), dead);
+    writeFileSync(join(dataDir, `${LOCK_FILE}.takeover`), dead);
+    const lock = await acquireLock(dataDir);
+    expect(lock).not.toBeNull();
+    expect(readFileSync(join(dataDir, LOCK_FILE), "utf8")).toBe(String(process.pid));
+    await lock?.release();
+    expect(readdirSync(dataDir)).toEqual([]);
   });
 
   test("release leaves a lock that now holds another pid", async () => {
