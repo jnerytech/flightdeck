@@ -104,7 +104,7 @@ export async function startElsewhere(run: {
   const { t, target, ask } = run;
   const outcome: ElsewhereOutcome = { moved: [], refused: [], unmarked: [], orphaned: [] };
   for (const card of run.cards) {
-    // One card at a time, so the target's queue sees them in the board's order.
+    // NOSONAR: one card at a time, so the target's queue sees them in the board's order
     const draft = { projectId: target.projectId, title: card.title, description: card.description };
     const made = await ask(target.hostId, "card.create", draft); // NOSONAR: one card at a time, each step needs the one before
     if (!made.ok) {
