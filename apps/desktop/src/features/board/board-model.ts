@@ -1,0 +1,59 @@
+import type { BoardColumn, Card } from "@flightdeck/protocol";
+import type { T } from "../../i18n/index.ts";
+import type { AppState } from "../../lib/app-store.ts";
+import type { cardStartBlock } from "./card-start-block.ts";
+
+export const COLUMNS: ReadonlyArray<{ id: BoardColumn }> = [
+  { id: "backlog" },
+  { id: "in_progress" },
+  { id: "waiting" },
+  { id: "review" },
+  { id: "done" },
+];
+
+/** The project's cards on one host, in board order. */
+export function projectCards(
+  state: Pick<AppState, "cards">,
+  hostId: string,
+  projectId: string,
+): Card[] {
+  return Object.entries(state.cards)
+    .filter(([key, card]) => key.startsWith(`${hostId}/`) && card.projectId === projectId)
+    .map(([, card]) => card)
+    .sort((a, b) => a.position - b.position || a.createdAt.localeCompare(b.createdAt));
+}
+
+/** Cards whose title or description contain `text`, ignoring case. */
+export function filterCards(cards: Card[], text: string): Card[] {
+  const needle = text.trim().toLowerCase();
+  return cards.filter((card) =>
+    `${card.title}\n${card.description}`.toLowerCase().includes(needle),
+  );
+}
+
+/** Position that puts a card right before `targetId` among `cards` (sorted, without it). */
+export function positionBefore(cards: Card[], targetId: string): number {
+  const index = cards.findIndex((card) => card.id === targetId);
+  const target = cards[index]?.position ?? 0;
+  const previous = cards[index - 1];
+  return previous ? (previous.position + target) / 2 : target - 1;
+}
+
+/** `n` positions that put a group right before `targetId` among `cards` (sorted, without the group), in order. */
+export function positionsBefore(cards: Card[], targetId: string, n: number): number[] {
+  const index = cards.findIndex((card) => card.id === targetId);
+  const target = cards[index]?.position ?? 0;
+  const lower = cards[index - 1]?.position ?? target - 1;
+  return Array.from({ length: n }, (_, i) => lower + ((target - lower) * (i + 1)) / (n + 1));
+}
+
+/** The board's title: "Board of <name>", or the plain "Board" until the project's name is known. */
+export function boardTitle(t: T, name: string | undefined): string {
+  return name ? t("kanban.boardOf", { project: name }) : t("sidebar.board");
+}
+
+/** Why "Iniciar card" is off (queued or running), else null. */
+export function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
+  if (block === "queued") return t("board.startQueued");
+  return block === "running" ? t("board.startRunning") : null;
+}

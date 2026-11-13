@@ -1,558 +1,35 @@
-import type { ChecksState, PrProviderKind, PrState } from "@flightdeck/protocol";
+import type { PrProviderKind, PrState } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
-import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
-import { type CommandResult, runCommand } from "./command.ts";
-import { parseChecks, parsePrUrl } from "./gh-json.ts";
-import { azureDetails, githubDetails, type PrDetails } from "./pr-details.ts";
-
-export interface PrStatus extends Partial<PrDetails> {
-  state: PrState;
-  checks: ChecksState | null;
-  /** Phase 13: the names of the checks that failed, when the host says. */
-  failed?: string[];
-}
-
-export interface CreatePr {
-  cwd: string;
-  base: string;
-  head: string;
-  title: string;
-  body: string;
-}
-
-/** A review comment of a PR, read from the provider (phase 11); nothing is ever posted back. */
-export interface PrComment {
-  id: string;
-  /** `null` for a review's summary, which is about the whole PR. */
-  path: string | null;
-  line: number | null;
-  author: string;
-  /** GitHub's `author_association` (OWNER, MEMBER, COLLABORATOR, CONTRIBUTOR, NONE…). */
-  authorAssociation: string | null;
-  /** Azure DevOps' identity of the author: `uniqueName`, else the id. */
-  authorIdentity: string | null;
-  body: string;
-  resolved: boolean;
-  kind: "inline" | "review";
-}
-
-interface GhComment {
-  id: number;
-  path: string;
-  line?: number | null;
-  original_line?: number | null;
-  user: { login: string };
-  author_association?: string | null;
-  body: string;
-}
-
-interface GhReview {
-  id: string;
-  author: { login: string };
-  authorAssociation?: string | null;
-  body: string;
-}
-
-interface GhThreads {
-  data: {
-    repository: {
-      pullRequest: {
-        reviewThreads: {
-          nodes: Array<{ isResolved: boolean; comments: { nodes: Array<{ databaseId: number }> } }>;
-        };
-      };
-    };
-  };
-}
-
-/** Which review threads are resolved: GitHub's REST API does not say. */
-const GH_THREADS = `query($owner: String!, $name: String!, $number: Int!) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-      reviewThreads(first: 100) {
-        nodes { isResolved comments(first: 100) { nodes { databaseId } } }
-      }
-    }
-  }
-}`;
-
-interface AzThread {
-  id: number;
-  status: string;
-  isDeleted?: boolean;
-  threadContext: { filePath: string; rightFileStart?: { line: number } | null } | null;
-  comments: Array<{
-    id: number;
-    author: { displayName: string; uniqueName?: string; id?: string };
-    content: string;
-    commentType: string;
-  }>;
-}
+import { GithubCli } from "../github/index.ts";
+import { FlightdeckError } from "../kernel/index.ts";
+import {
+  azureDetails,
+  BUILD_LOG_BYTES,
+  CliProvider,
+  type CommandRunner,
+  type CreatePr,
+  githubDetails,
+  type PrCheck,
+  type PrComment,
+  type PrHealth,
+  type PrProvider,
+  type PrStatus,
+  summarize,
+  tail,
+  urlName,
+} from "../pr/index.ts";
+import {
+  AzEvaluations,
+  AzPolicies,
+  AzPr,
+  AzPrHealth,
+  AzPrList,
+  AzPrStatus,
+  AzThreads,
+  AzTimeline,
+} from "./az-json.ts";
 
 const AZ_RESOLVED = new Set(["fixed", "closed", "wontFix", "byDesign"]);
-
-/** The chosen PR comments as one message to the agent, like the inline review. */
-export function prMessage(comments: readonly PrComment[]): string {
-  return [
-    "Comentários do PR:",
-    ...comments.map((c, i) => {
-      const line = c.line === null ? "" : " linha " + c.line;
-      const where = c.path ? `\`${c.path}\`${line} (${c.author})` : `revisão de ${c.author}`;
-      const body = c.body
-        .replace(/\r?\n$/, "")
-        .split(/\r?\n/)
-        .map((line) => `   ${line}`)
-        .join("\n");
-      return `${i + 1}. ${where}:\n${body}`;
-    }),
-  ].join("\n");
-}
-
-/** One check of a PR: a build or a policy the host evaluates (phase 22). */
-export interface PrCheck {
-  name: string;
-  state: "passing" | "failing" | "pending";
-  /** A build can be read for its log; any other policy cannot be fixed by code. */
-  kind: "build" | "policy";
-  /** The host's id of the build behind the check, to fetch its log. */
-  buildId: string | null;
-}
-
-/** What the PR watcher reads of a PR each round (phase 22). */
-export interface PrHealth {
-  checks: PrCheck[];
-  /** The PR cannot be merged into its target as it is. */
-  conflicts: boolean;
-}
-
-/** A PR host reached through its CLI, which must be installed and logged in on this host. */
-export interface PrProvider {
-  /** Opens the PR (or reuses the one already open for `head`) and returns its URL. */
-  create(opts: CreatePr): Promise<string>;
-  status(opts: { cwd: string; url: string }): Promise<PrStatus>;
-  /** URL of the open PR for `head`, if any. */
-  url(opts: { cwd: string; head: string }): Promise<string | null>;
-  /** The PR's review comments and review summaries. */
-  comments(opts: { cwd: string; url: string }): Promise<PrComment[]>;
-  /** Phase 22: the PR's builds and policies, and whether it conflicts with its target. */
-  health(opts: { cwd: string; url: string }): Promise<PrHealth>;
-  /** Phase 22: the end of the log of what failed in a build, at most 16 KB. */
-  buildLog(opts: { cwd: string; url: string; buildId: string }): Promise<string>;
-  /** #1196: merges the open PR (a merge commit or a squash); a provider without it cannot. */
-  merge?(opts: { cwd: string; url: string; method: "merge" | "squash" }): Promise<void>;
-}
-
-/** Starts a program that was found: runCommand, or a stand-in that starts nothing. */
-export type CommandRunner = (cmd: string[], cwd: string, input?: string) => Promise<CommandResult>;
-
-/** Runs a CLI looked up on the current PATH (so the tests' fakes win). */
-export async function cli(
-  name: string,
-  args: string[],
-  cwd: string,
-  input?: string,
-  run: CommandRunner = runCommand,
-): Promise<CommandResult> {
-  const bin = whichOnPath(name);
-  if (!bin)
-    throw new FlightdeckError("invalid_state", `${name} not found on the PATH`, "tool_missing", {
-      name,
-    });
-  // The Azure CLI's free text is made safe for its .cmd shim (az-text.ts); the others keep theirs.
-  const safe = name === "az" ? sanitizeAzArgs(args) : args;
-  return run([bin, ...safe], cwd, input).catch(mapSpawnError);
-}
-
-/** Stdout of a CLI call that must succeed; the error names the subcommand (`gh pr view`). */
-export async function cliOk(
-  name: string,
-  args: string[],
-  cwd: string,
-  input?: string,
-  run: CommandRunner = runCommand,
-): Promise<string> {
-  const result = await cli(name, args, cwd, input, run);
-  if (result.code !== 0) {
-    const what = [name, ...args.slice(0, name === "az" ? 3 : 2)].join(" ");
-    throw new FlightdeckError(
-      "invalid_state",
-      `${what} failed: ${result.stderr.trim()}`,
-      "command_failed",
-      { what, output: result.stderr.trim() },
-    );
-  }
-  return result.stdout;
-}
-
-/**
- * A name taken from a PR URL, before it goes into a CLI argument. `az` replaces an argument that
- * starts with @ (and every `name=@file`) by the content of that file, and `gh api -F name=@file`
- * does the same: a repository or project called "@..." would make the CLI read a local file and
- * send it away. A line break has no place in a name either.
- */
-function urlName(what: string, value: string): string {
-  const control = [...value].some((char) => (char.codePointAt(0) ?? 0) < 32);
-  if (value === "" || value.startsWith("@") || control) {
-    throw new FlightdeckError(
-      "invalid_state",
-      `invalid ${what} in the PR URL: ${JSON.stringify(value)}`,
-      "pr_url_part_invalid",
-      { what, value },
-    );
-  }
-  return value;
-}
-
-const cliJson = async <T>(
-  name: string,
-  args: string[],
-  cwd: string,
-  input?: string,
-  run: CommandRunner = runCommand,
-): Promise<T> => JSON.parse(await cliOk(name, args, cwd, input, run)) as T;
-
-/** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */
-function summarize(results: Array<"passing" | "failing" | "pending">): ChecksState | null {
-  if (results.length === 0) return null;
-  if (results.includes("failing")) return "failing";
-  return results.includes("pending") ? "pending" : "passing";
-}
-
-const GH_STATES: Record<string, PrState> = { OPEN: "open", MERGED: "merged", CLOSED: "closed" };
-const GH_PASS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
-const GH_FAIL = new Set(["FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED"]);
-
-interface GhCheck {
-  conclusion?: string | null;
-  state?: string | null;
-  name?: string;
-  context?: string;
-}
-
-/** The parts of a GitHub PR URL, the names checked before they reach `gh`. */
-function ghParts(url: string): { owner: string; repo: string; number: string; prUrl: string } {
-  const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
-  if (!match)
-    throw new FlightdeckError("invalid_state", `invalid GitHub PR URL: ${url}`, "pr_url_invalid", {
-      provider: "GitHub",
-      url,
-    });
-  const [, rawOwner, rawRepo, number] = match as unknown as [string, string, string, string];
-  const owner = urlName("dono", rawOwner);
-  const repo = urlName("repositório", rawRepo);
-  // Rebuilt: the stored URL may carry anything around the part that matched.
-  return { owner, repo, number, prUrl: `https://github.com/${owner}/${repo}/pull/${number}` };
-}
-
-/** A CLI's words with what looks like a token left out: GitHub tokens, auth headers and URL credentials. */
-function withoutTokens(text: string): string {
-  return text
-    .replace(/\bgh[pousr]_\w+/g, "[token]")
-    .replace(/\bgithub_pat_\w+/g, "[token]")
-    .replace(/\bBearer\s+\S+/gi, "[token]")
-    .replace(/\bBasic\s+\S+/g, "[token]")
-    .replace(/\/\/[^/@\s]+@/g, "//[token]@");
-}
-
-const GH_BUCKETS: Record<string, PrCheck["state"]> = {
-  pass: "passing",
-  skipping: "passing",
-  fail: "failing",
-  cancel: "failing",
-};
-
-/** What a build log keeps in all: the end of the logs of what failed. */
-export const BUILD_LOG_BYTES = 16 * 1024;
-
-/** The last `limit` bytes of a text, with a mark when something was left out. */
-export function tail(text: string, limit: number): string {
-  const bytes = Buffer.from(text);
-  if (bytes.length <= limit) return text;
-  return `[…]\n${bytes
-    .subarray(bytes.length - limit)
-    .toString("utf8")
-    .replace(/^\uFFFD+/, "")}`;
-}
-
-/**
- * A PR host over its CLI. `run` starts the program found on PATH: runCommand, or a stand-in a test
- * hands over so that no process starts (the lookup, the safe text and the errors stay the same).
- */
-abstract class CliProvider {
-  protected readonly run: CommandRunner;
-
-  constructor(opts: { run?: CommandRunner } = {}) {
-    this.run = opts.run ?? runCommand;
-  }
-
-  protected call(name: string, args: string[], cwd: string, input?: string) {
-    return cli(name, args, cwd, input, this.run);
-  }
-
-  protected ok(name: string, args: string[], cwd: string, input?: string) {
-    return cliOk(name, args, cwd, input, this.run);
-  }
-
-  protected json<T>(name: string, args: string[], cwd: string, input?: string) {
-    return cliJson<T>(name, args, cwd, input, this.run);
-  }
-}
-
-/** GitHub through `gh`. */
-export class GithubCli extends CliProvider implements PrProvider {
-  /**
-   * #1196: `gh pr merge <url> --merge|--squash`, and nothing else: no `--admin` (rules stay), no
-   * `--auto`, no branch delete, no message of ours. When gh refuses, it is asked once more, with a
-   * read, why the PR cannot be merged, so the refusal says that and not gh's own words.
-   */
-  async merge({
-    cwd,
-    url,
-    method,
-  }: {
-    cwd: string;
-    url: string;
-    method: "merge" | "squash";
-  }): Promise<void> {
-    // Rebuilt from its parts: the stored address never reaches gh as it is.
-    const { prUrl } = ghParts(url);
-    const result = await this.call("gh", ["pr", "merge", prUrl, `--${method}`], cwd);
-    if (result.code === 0) return;
-    const reason = await this.whyNotMergeable(cwd, prUrl);
-    // gh's words travel as the detail of the unknown refusal only, never the message, and without tokens.
-    const detail = withoutTokens(result.stderr.trim()).slice(0, 300);
-    throw new FlightdeckError("invalid_state", "the PR could not be merged", reason, {
-      url: prUrl,
-      ...(reason === "card_pr_merge_failed" ? { detail } : {}),
-    });
-  }
-
-  /** Why GitHub holds the PR back, from its merge state, its review decision and its checks. */
-  private async whyNotMergeable(cwd: string, url: string): Promise<string> {
-    const state = await this.json<{
-      mergeStateStatus?: string;
-      reviewDecision?: string | null;
-      statusCheckRollup?: GhCheck[];
-    }>(
-      "gh",
-      ["pr", "view", url, "--json", "mergeStateStatus,reviewDecision,statusCheckRollup"],
-      cwd,
-    ).catch(() => null);
-    if (state === null) return "card_pr_merge_failed";
-    if (state.mergeStateStatus === "DIRTY") return "card_pr_conflict";
-    if (
-      state.reviewDecision === "REVIEW_REQUIRED" ||
-      state.reviewDecision === "CHANGES_REQUESTED"
-    ) {
-      return "card_pr_review_required";
-    }
-    const checks = summarize(
-      (state.statusCheckRollup ?? []).map((check) => {
-        const result = (check.conclusion ?? check.state ?? "").toUpperCase();
-        if (GH_FAIL.has(result)) return "failing" as const;
-        return GH_PASS.has(result) ? ("passing" as const) : ("pending" as const);
-      }),
-    );
-    return checks === "failing" || checks === "pending"
-      ? "card_pr_checks_failing"
-      : "card_pr_merge_failed";
-  }
-
-  async create(opts: CreatePr): Promise<string> {
-    const existing = await this.url(opts);
-    if (existing) return existing;
-    const { cwd, base, head, title, body } = opts;
-    const args = ["pr", "create", "--base", base, "--head", head, "--title", title, "--body", body];
-    // gh prints progress lines before the URL.
-    const out = await this.ok("gh", args, cwd);
-    return out.trim().split(/\r?\n/).at(-1) ?? "";
-  }
-
-  async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
-    const pr = await this.json<
-      {
-        state: string;
-        statusCheckRollup?: GhCheck[];
-      } & Parameters<typeof githubDetails>[0]
-    >(
-      "gh",
-      [
-        "pr",
-        "view",
-        url,
-        "--json",
-        "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt",
-      ],
-      cwd,
-    );
-    const rollup = pr.statusCheckRollup ?? [];
-    const checks = rollup.map((check) => {
-      const result = (check.conclusion ?? check.state ?? "").toUpperCase();
-      if (GH_FAIL.has(result)) return "failing" as const;
-      return GH_PASS.has(result) ? ("passing" as const) : ("pending" as const);
-    });
-    const failed = rollup
-      .filter((_, i) => checks[i] === "failing")
-      .map((check) => check.name ?? check.context ?? "")
-      .filter((name) => name !== "");
-    return {
-      state: GH_STATES[pr.state] ?? "open",
-      checks: summarize(checks),
-      ...(failed.length > 0 ? { failed } : {}),
-      ...githubDetails(pr),
-    };
-  }
-
-  /**
-   * Review comments (REST), the summaries of the reviews, and which threads are resolved
-   * (GraphQL, a query: nothing is written).
-   */
-  async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
-    const { owner, repo, number, prUrl } = ghParts(url);
-    // Every page, 100 at a time (the REST default is 30): `--slurp` wraps the pages in an array.
-    // A plain GET: no -f/-F field, which would make `gh api` a POST.
-    const pages = await this.json<GhComment[][]>(
-      "gh",
-      [
-        "api",
-        "--paginate",
-        "--slurp",
-        `repos/${owner}/${repo}/pulls/${number}/comments?per_page=100`,
-      ],
-      cwd,
-    );
-    const inline = pages.flat();
-    const { reviews } = await this.json<{ reviews: GhReview[] }>(
-      "gh",
-      ["pr", "view", prUrl, "--json", "reviews"],
-      cwd,
-    );
-    const threads = await this.json<GhThreads>(
-      "gh",
-      [
-        "api",
-        "graphql",
-        // From stdin: the query's characters do not survive a .cmd wrapper on Windows.
-        "-F",
-        "query=@-",
-        // -f sends the value as it is; -F would read a file for a value starting with @.
-        "-f",
-        `owner=${owner}`,
-        "-f",
-        `name=${repo}`,
-        // The number is digits only (the URL pattern), typed as the Int the query declares.
-        "-F",
-        `number=${number}`,
-      ],
-      cwd,
-      GH_THREADS,
-    );
-    const resolved = new Set(
-      threads.data.repository.pullRequest.reviewThreads.nodes
-        .filter((thread) => thread.isResolved)
-        .flatMap((thread) => thread.comments.nodes.map((c) => c.databaseId)),
-    );
-    return [
-      ...inline.map(
-        (c): PrComment => ({
-          id: String(c.id),
-          path: c.path,
-          line: c.line ?? c.original_line ?? null,
-          author: c.user.login,
-          authorAssociation: c.author_association ?? null,
-          authorIdentity: null,
-          body: c.body,
-          resolved: resolved.has(c.id),
-          kind: "inline",
-        }),
-      ),
-      ...reviews
-        .filter((review) => review.body.trim())
-        .map(
-          (review): PrComment => ({
-            id: `review-${review.id}`,
-            path: null,
-            line: null,
-            author: review.author.login,
-            authorAssociation: review.authorAssociation ?? null,
-            authorIdentity: null,
-            body: review.body,
-            resolved: false,
-            kind: "review",
-          }),
-        ),
-    ];
-  }
-
-  /**
-   * `gh pr checks` (it exits non-zero while a check fails or is pending, with the JSON on
-   * stdout all the same) and the PR's `mergeable` state.
-   */
-  async health({ cwd, url }: { cwd: string; url: string }): Promise<PrHealth> {
-    const { prUrl } = ghParts(url);
-    const result = await this.call(
-      "gh",
-      ["pr", "checks", prUrl, "--json", "name,bucket,link"],
-      cwd,
-    );
-    if (!result.stdout.trim()) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `gh pr checks failed: ${result.stderr.trim()}`,
-        "command_failed",
-        { what: "gh pr checks", output: result.stderr.trim() },
-      );
-    }
-    const rows = parseChecks(result.stdout);
-    const { mergeable } = await this.json<{ mergeable: string }>(
-      "gh",
-      ["pr", "view", prUrl, "--json", "mergeable"],
-      cwd,
-    );
-    return {
-      checks: rows.map((row): PrCheck => {
-        const runId = /\/actions\/runs\/(\d+)/.exec(row.link)?.[1] ?? null;
-        return {
-          name: row.name,
-          state: GH_BUCKETS[row.bucket] ?? "pending",
-          kind: runId === null ? "policy" : "build",
-          buildId: runId,
-        };
-      }),
-      conflicts: mergeable === "CONFLICTING",
-    };
-  }
-
-  /** The end of what failed in a run of GitHub Actions, 16 KB at most. */
-  async buildLog({
-    cwd,
-    url,
-    buildId,
-  }: {
-    cwd: string;
-    url: string;
-    buildId: string;
-  }): Promise<string> {
-    const { owner, repo } = ghParts(url);
-    const text = await this.ok(
-      "gh",
-      ["run", "view", urlName("run", buildId), "--repo", `${owner}/${repo}`, "--log-failed"],
-      cwd,
-    );
-    return tail(text, BUILD_LOG_BYTES);
-  }
-
-  async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
-    const result = await this.call("gh", ["pr", "view", head, "--json", "url"], cwd);
-    return result.code === 0 ? parsePrUrl(result.stdout) : null;
-  }
-}
-
-interface AzPr {
-  pullRequestId: number;
-  repository: { webUrl: string };
-}
 
 const AZ_STATES: Record<string, PrState> = {
   active: "open",
@@ -599,26 +76,14 @@ const AZ_CHECK_STATES: Record<string, PrCheck["state"]> = {
   broken: "failing",
 };
 
-interface AzEvaluation {
-  status: string;
-  configuration: { type: { displayName: string }; settings?: { displayName?: string } };
-  context?: { buildId?: number } | null;
-}
-
-interface AzRecord {
-  type: string;
-  name: string;
-  result: string | null;
-  log: { id: number } | null;
-}
-
 /** Azure DevOps through `az repos` (organization and project detected from the remote). */
 export class AzureDevOpsCli extends CliProvider implements PrProvider {
   async create(opts: CreatePr): Promise<string> {
     const existing = await this.url(opts);
     if (existing) return existing;
     const { cwd, base, head, title, body } = opts;
-    const pr = await this.json<AzPr>(
+    const pr = await this.jsonWith(
+      AzPr,
       "az",
       [
         "repos",
@@ -642,12 +107,14 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
 
   async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
     const id = /\/pullrequest\/(\d+)/.exec(url)?.[1] ?? "";
-    const pr = await this.json<{ status: string } & Parameters<typeof azureDetails>[0]>(
+    const pr = await this.jsonWith(
+      AzPrStatus,
       "az",
       ["repos", "pr", "show", "--id", id, "--output", "json"],
       cwd,
     );
-    const policies = await this.json<Array<{ status: string }>>(
+    const policies = await this.jsonWith(
+      AzPolicies,
       "az",
       ["repos", "pr", "policy", "list", "--id", id, "--output", "json"],
       cwd,
@@ -669,12 +136,14 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
    */
   async health({ cwd, url }: { cwd: string; url: string }): Promise<PrHealth> {
     const { org, project, id } = azParts(url);
-    const pr = await this.json<{ mergeStatus?: string; repository: { project: { id: string } } }>(
+    const pr = await this.jsonWith(
+      AzPrHealth,
       "az",
       ["repos", "pr", "show", "--id", id, "--output", "json"],
       cwd,
     );
-    const { value } = await this.json<{ value: AzEvaluation[] }>(
+    const { value } = await this.jsonWith(
+      AzEvaluations,
       "az",
       [
         "devops",
@@ -704,8 +173,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
             evaluation.configuration.settings?.displayName ??
             evaluation.configuration.type.displayName,
           state: AZ_CHECK_STATES[evaluation.status] ?? "pending",
-          kind: buildId === undefined ? "policy" : "build",
-          buildId: buildId === undefined ? null : String(buildId),
+          kind: buildId == null ? "policy" : "build",
+          buildId: buildId == null ? null : String(buildId),
         };
       }),
       conflicts: pr.mergeStatus === "conflicts",
@@ -731,7 +200,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
       `project=${project}`,
       `buildId=${urlName("build", buildId)}`,
     ];
-    const { records } = await this.json<{ records: AzRecord[] }>(
+    const { records } = await this.jsonWith(
+      AzTimeline,
       "az",
       ["devops", "invoke", "--area", "build", "--resource", "timeline", ...route].concat([
         "--org",
@@ -773,7 +243,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
   }
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
-    const prs = await this.json<AzPr[]>(
+    const prs = await this.jsonWith(
+      AzPrList,
       "az",
       ["repos", "pr", "list", "--source-branch", head, "--status", "active", "--output", "json"],
       cwd,
@@ -788,7 +259,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
    */
   async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
     const { org, project, repo, id } = azParts(url);
-    const { value } = await this.json<{ value: AzThread[] }>(
+    const { value } = await this.jsonWith(
+      AzThreads,
       "az",
       [
         "devops",
@@ -818,13 +290,13 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
           .map(
             (comment): PrComment => ({
               id: `${thread.id}/${comment.id}`,
-              path: thread.threadContext?.filePath.replace(/^\//, "") ?? null,
+              path: thread.threadContext?.filePath?.replace(/^\//, "") ?? null,
               line: thread.threadContext?.rightFileStart?.line ?? null,
               author: comment.author.displayName,
               authorAssociation: null,
               authorIdentity: comment.author.uniqueName ?? comment.author.id ?? null,
-              body: comment.content,
-              resolved: AZ_RESOLVED.has(thread.status),
+              body: comment.content ?? "",
+              resolved: AZ_RESOLVED.has(thread.status ?? ""),
               kind: thread.threadContext ? "inline" : "review",
             }),
           ),

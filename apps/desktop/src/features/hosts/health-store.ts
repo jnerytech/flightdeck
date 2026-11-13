@@ -42,6 +42,8 @@ export interface HealthCore {
 /** What each host's dependencies and doctor say (#1596: a slice of the store). */
 export class HealthSlice {
   private readonly reads = new Map<string, Promise<void>>();
+  /** Bumped when a host is removed: a read that began before it must not write back. */
+  private readonly removals = new Map<string, number>();
 
   constructor(private readonly core: HealthCore) {}
 
@@ -53,7 +55,9 @@ export class HealthSlice {
   check(hostId: string): Promise<void> {
     const running = this.reads.get(hostId);
     if (running) return running;
-    const read = this.read(hostId).finally(() => this.reads.delete(hostId));
+    const read = this.read(hostId).finally(() => {
+      if (this.reads.get(hostId) === read) this.reads.delete(hostId);
+    });
     this.reads.set(hostId, read);
     return read;
   }
@@ -65,13 +69,31 @@ export class HealthSlice {
     await this.check(hostId);
   }
 
+  /** Drops what a removed host left: its health data and a read on its way (#1733). */
+  forget(hostId: string): void {
+    this.removals.set(hostId, (this.removals.get(hostId) ?? 0) + 1);
+    this.reads.delete(hostId);
+    const { deps, doctor, healthAt, healthError } = this.core.state();
+    const without = <T>(record: Record<string, T>): Record<string, T> =>
+      Object.fromEntries(Object.entries(record).filter(([id]) => id !== hostId));
+    this.core.update({
+      deps: without(deps),
+      doctor: without(doctor),
+      healthAt: without(healthAt),
+      healthError: without(healthError),
+    });
+  }
+
   private async read(hostId: string): Promise<void> {
     const features = this.core.features(hostId);
+    const removals = this.removals.get(hostId);
     const [deps, doctor] = await Promise.all([
       hasFeature(features, "depsCheck", false) ? this.core.deps(hostId) : Promise.resolve(null),
       hasFeature(features, "doctor.run", false) ? this.core.doctor(hostId) : Promise.resolve(null),
     ]);
-    const failed = [deps, doctor].find((half) => half !== null && !half.ok);
+    if (this.removals.get(hostId) !== removals) return;
+    // Every failed half says why, dependencies first; the older data of a failed half stays.
+    const failures = [deps, doctor].flatMap((half) => (half && !half.ok ? [half.message] : []));
     const state = this.core.state();
     const { [hostId]: _gone, ...rest } = state.healthError;
     const got = deps?.ok ? deps.data : null;
@@ -79,8 +101,10 @@ export class HealthSlice {
     this.core.update({
       ...(got ? { deps: { ...state.deps, [hostId]: got } } : {}),
       ...(heard ? { doctor: { ...state.doctor, [hostId]: heard } } : {}),
-      ...(got || heard ? { healthAt: { ...state.healthAt, [hostId]: this.core.now() } } : {}),
-      healthError: failed && !failed.ok ? { ...rest, [hostId]: failed.message } : rest,
+      // A failed read counts as a read: a host that refuses is not asked again within the max age.
+      ...(deps || doctor ? { healthAt: { ...state.healthAt, [hostId]: this.core.now() } } : {}),
+      healthError:
+        failures.length > 0 ? { ...rest, [hostId]: [...new Set(failures)].join("; ") } : rest,
     });
   }
 }

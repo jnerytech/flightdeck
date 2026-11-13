@@ -20,7 +20,7 @@ export interface DoctorDeps {
   refused?(): Promise<string | null>;
   tailscaleIp(): Promise<string | null>;
   hooks(): HooksState | Promise<HooksState>;
-  claudePath(): string | null;
+  claudePath(): string | null | Promise<string | null>;
   /** Whether the Flightdeck MCP server managed sessions get can start: its command, and whether that file exists. */
   mcp?(): Promise<{ command: string; exists: boolean }>;
   /** Whether the user's systemd keeps running without a login (Linux); null where it does not apply. */
@@ -270,7 +270,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   const address = `${config.bind}:${config.port}`;
   const healthy = await deps.healthy();
   const refused = healthy ? null : ((await deps.refused?.()) ?? null);
-  checks.push(daemonCheck(healthy, refused, address), claudeCheck(deps.claudePath()));
+  checks.push(daemonCheck(healthy, refused, address), claudeCheck(await deps.claudePath()));
 
   const opencode = await deps.opencode?.();
   if (opencode) checks.push(opencodeCheck(opencode));

@@ -2,9 +2,10 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli, GithubCli } from "../../src/board/pr.ts";
+import { AzureDevOpsCli } from "../../src/board/pr.ts";
 import type { PrProviderKind } from "../../src/board/types.ts";
 import { Config, loadConfig } from "../../src/config.ts";
+import { GithubCli } from "../../src/github/index.ts";
 import { cardWhen, git, newBoard, newBoardWithOrigin } from "../support/board-helpers.ts";
 import { must, tempDir } from "../support/helpers.ts";
 

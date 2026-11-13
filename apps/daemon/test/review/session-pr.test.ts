@@ -2,7 +2,7 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type PrProviderKind, SecretScanner } from "@flightdeck/protocol";
-import type { CreatePr } from "../../src/board/pr.ts";
+import type { CreatePr } from "../../src/pr/index.ts";
 import { Changes } from "../../src/review/changes.ts";
 import { SessionCommits } from "../../src/review/session-commit.ts";
 import { SessionPrs } from "../../src/review/session-pr.ts";

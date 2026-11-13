@@ -6,7 +6,7 @@
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { HistoryIndexer } from "../history/index.ts";
-import { AlreadyRunningError, acquireLock, type Logger } from "../kernel/index.ts";
+import { type Logger, withLock } from "../kernel/index.ts";
 import { historyExcludes } from "../permissions/index.ts";
 import { EventStore } from "../store/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
@@ -22,12 +22,8 @@ export interface HistoryCommandDeps {
  */
 export async function runReindex(args: CliArgs, deps: HistoryCommandDeps): Promise<void> {
   const config = await loadConfig(configPath(args));
-  const lock = await acquireLock(config.dataDir);
-  if (!lock) {
-    throw new AlreadyRunningError(config.dataDir, "stop the daemon before rebuilding the index");
-  }
-  // The lock goes back even when the store does not open (#1676).
-  try {
+  await withLock(config.dataDir, "stop the daemon before rebuilding the index", async () => {
+    // The lock goes back even when the store does not open (#1676).
     const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
     try {
       const history = new HistoryIndexer({
@@ -40,7 +36,5 @@ export async function runReindex(args: CliArgs, deps: HistoryCommandDeps): Promi
     } finally {
       store.close();
     }
-  } finally {
-    await lock.release();
-  }
+  });
 }

@@ -53,11 +53,13 @@ export function createSessionSettings({
     sleep: {
       minutes: () => sleeper.minutes(),
       set: async (minutes: number) => {
-        sleeper.setMinutes(minutes);
+        // The file first: when it cannot be written the sleeper and the config stay as they were.
         await updateConfigFile(configFile, (raw) => ({
           ...raw,
           sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
         }));
+        config.sessions.sleepAfterMinutes = minutes;
+        sleeper.setMinutes(minutes);
       },
     },
   };

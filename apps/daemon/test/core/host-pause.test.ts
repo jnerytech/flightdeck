@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HostPauseStatus } from "@flightdeck/protocol";
-import { HostPause } from "../../src/board/host-pause.ts";
+import { HostPause } from "../../src/board/domain/host-pause.ts";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
 import { MemoryGate } from "../../src/resources/memory-gate.ts";

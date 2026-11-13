@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
-import type { PrProvider, PrStatus } from "../../src/board/pr.ts";
+import type { PrProvider, PrStatus } from "../../src/pr/index.ts";
 import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
 
 // Real git (a worktree and a bare origin): more than the default 5 s.

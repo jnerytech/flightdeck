@@ -6,10 +6,10 @@
  * Any other status (3 here, 1 for a crash) makes the command run git's line merge and report a
  * conflict. %A is replaced whole (a temporary file, then a rename), so a failed write leaves it as
  * it was for that line merge.
- * The logic is in `scripts/lib/baseline-merge.ts`.
+ * The logic is in `scripts/lib/ci/baseline-merge.ts`.
  */
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
-import { conflictText, mergeBaselines } from "./lib/baseline-merge.ts";
+import { conflictText, mergeBaselines } from "./lib/ci/baseline-merge.ts";
 
 const [base, ours, theirs] = process.argv.slice(2);
 if (!base || !ours || !theirs) {

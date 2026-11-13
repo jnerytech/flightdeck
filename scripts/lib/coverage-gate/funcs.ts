@@ -73,6 +73,8 @@ export interface CoveragePlanDeps {
 export interface CoveragePlan extends Plan {
   /** Added to the environment of `command`: the preload reads the files and the output path from it. */
   env: Record<string, string>;
+  /** The files to instrument, as JSON: written to `path` before the run, whose env names it. */
+  targetsFile?: { path: string; text: string };
   /** A worker's plan over more than 20 test files (#674): refused, or let through on a reason. */
   slotHeavy?: "block" | "waived";
 }
@@ -121,6 +123,8 @@ export function planCoverageFuncs({
     }
     slotHeavy = "waived";
   }
+  // The list goes in a file next to the counters, and the env names it (#2504).
+  const listPath = `${out.replace(/\.json$/, "")}-files.json`;
   const run = [
     "bun",
     "--config=bunfig.area.toml",
@@ -133,7 +137,8 @@ export function planCoverageFuncs({
       ...related.map((r) => `  ${r.path}  ${r.why}`),
     ].join("\n"),
     command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
-    env: { COVERAGE_FUNCS_FILES: JSON.stringify(targets), COVERAGE_FUNCS_OUT: out },
+    env: { COVERAGE_FUNCS_FILES_PATH: listPath, COVERAGE_FUNCS_OUT: out },
+    targetsFile: { path: listPath, text: JSON.stringify(targets) },
     ...(slotHeavy ? { slotHeavy } : {}),
   };
 }

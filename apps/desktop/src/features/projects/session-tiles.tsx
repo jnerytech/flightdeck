@@ -20,11 +20,10 @@ import {
 } from "@/features/sessions/index.ts";
 import { ActionButton, IconTip } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
-import { statusTone } from "@/shared/lib/index.ts";
+import { statusTone, uniqueKeys } from "@/shared/lib/index.ts";
 import { StatusText } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { uniqueKeys } from "../../lib/unique-keys.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 
 const MOVES: Record<string, (at: number, columns: number) => number> = {

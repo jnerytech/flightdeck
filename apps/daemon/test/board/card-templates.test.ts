@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCardTemplates } from "../../src/board/card-templates.ts";
+import { parseCardTemplates } from "../../src/board/domain/card-templates.ts";
 
 const entry = (over: Record<string, unknown> = {}) => ({
   id: "bug",

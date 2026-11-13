@@ -7,7 +7,8 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import { gitBytes } from "../git/index.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { RewindFilesResult } from "../runtime/types.ts";
 import type { SnapshotRow, Snapshots } from "./snapshots.ts";
 
@@ -30,21 +31,6 @@ export interface RewindPreview {
 }
 
 const CHANGES: Record<string, string> = { M: "modified", A: "created", D: "deleted" };
-
-async function git(cwd: string, args: string[]): Promise<{ code: number; stdout: Buffer }> {
-  // git-arg: the rewind's own git: the trees and refs in its arguments were made by the checkpoints
-  const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
-    cwd,
-    env: process.env,
-    stdout: "pipe",
-    stderr: "ignore",
-  });
-  const [stdout, code] = await Promise.all([
-    new Response(proc.stdout).arrayBuffer().then((b) => Buffer.from(b)),
-    proc.exited,
-  ]);
-  return { code, stdout };
-}
 
 export class Rewinder {
   constructor(private readonly opts: { snapshots: Snapshots; sessions: RewindSessions }) {}
@@ -138,7 +124,7 @@ export class Rewinder {
   private async snapshotDiff(target: SnapshotRow) {
     const current = await this.opts.snapshots.currentTree(target.repo);
     const names = (
-      await git(target.repo, ["diff", "--name-status", "--no-renames", target.tree, current])
+      await gitBytes(target.repo, ["diff", "--name-status", "--no-renames", target.tree, current])
     ).stdout
       .toString()
       .trim();
@@ -150,7 +136,7 @@ export class Rewinder {
         })
       : [];
     const numstat = (
-      await git(target.repo, ["diff", "--numstat", "--no-renames", target.tree, current])
+      await gitBytes(target.repo, ["diff", "--numstat", "--no-renames", target.tree, current])
     ).stdout
       .toString()
       .trim();
@@ -173,7 +159,7 @@ export class Rewinder {
         await rm(path, { force: true });
         return;
       }
-      const blob = await git(target.repo, ["cat-file", "blob", `${target.tree}:${file.path}`]);
+      const blob = await gitBytes(target.repo, ["cat-file", "blob", `${target.tree}:${file.path}`]);
       await mkdir(dirname(path), { recursive: true });
       await writeFile(path, blob.stdout);
     });
