@@ -151,7 +151,7 @@ export function SessionsHub(
   // keeps failing to connect changes status on every attempt: only being online counts.
   const signature = refreshSignature(state.hosts);
   useEffect(() => {
-    if (signature) void store.refreshHub();
+    if (signature) void store.sessionLists.refresh();
   }, [store, signature]);
 
   // Background sessions change state on their own (a permission asked, a turn done): while the
@@ -163,7 +163,7 @@ export function SessionsHub(
     let cancel: (() => void) | undefined;
     const schedule = () => {
       cancel = store.later(() => {
-        void store.refreshHub().then(() => {
+        void store.sessionLists.refresh().then(() => {
           if (!stopped) schedule();
         });
       }, BG_REFRESH_MS);
@@ -501,7 +501,7 @@ export function SessionsHub(
           <Button
             size="sm"
             onClick={() => {
-              store.select(starter.id, null);
+              store.subscriptions.select(starter.id, null);
               store.router.push({ name: "new-session", host: starter.id });
             }}
           >

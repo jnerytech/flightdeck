@@ -55,7 +55,7 @@ function setup(options: { language?: "en" | "pt-BR"; cards?: number; refused?: b
   });
   store.i18n.start();
   store.projectList.load = (async () => []) as never;
-  store.refreshHub = (async () => {}) as never;
+  store.sessionLists.refresh = (async () => {}) as never;
   const asked = { board: false };
   store.hostCommand = (async (_host: string, type: string) => {
     if (type === "project.trust.state") {
@@ -234,7 +234,7 @@ describe("project-next-step: going back to the Board entry opens no dialog (#158
       cards: {},
     });
     store.projectList.load = (async () => []) as never;
-    store.refreshHub = (async () => {}) as never;
+    store.sessionLists.refresh = (async () => {}) as never;
     store.hostCommand = (async (_hostId: string, type: string) => {
       if (type === "project.trust.state") {
         return { items: [{ path: "/work/api", trusted: false, via: null }] };

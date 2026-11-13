@@ -185,7 +185,7 @@ describe("status bar items open their host section (#1484)", () => {
     // Nothing answers behind this host: the page's own reads come back empty.
     store.hostRequest = (async () => ({ ok: false, code: "x", message: "no" })) as never;
     store.hostCommand = (async () => null) as never;
-    store.refreshHub = (async () => {}) as never;
+    store.sessionLists.refresh = (async () => {}) as never;
     (store as unknown as { update(p: object): void }).update({ hosts: [fakeHost] });
     return store;
   };

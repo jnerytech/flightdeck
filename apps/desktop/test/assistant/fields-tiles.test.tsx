@@ -71,8 +71,8 @@ async function tile(options: { configured?: boolean } = {}) {
     name: "um",
   })) as string;
   await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status !== undefined);
-  store.select(hostId, null);
-  await store.refreshHub();
+  store.subscriptions.select(hostId, null);
+  await store.sessionLists.refresh();
   const projectKey = hubRows(store.getState())[0]?.projectKey as string;
   render(<Live store={store} hostId={hostId} projectKey={projectKey} />);
   await waitFor(() => screen.queryByLabelText(en.tiles.message.replace("{name}", "um")) !== null);
