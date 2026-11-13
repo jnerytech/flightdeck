@@ -272,8 +272,9 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     await click("Read backup");
     const region = () => screen.queryByRole("region", { name: "Backup preview" });
     await settleMaybe(() => region() !== null, 3000);
+    const focused = region() !== null && document.activeElement === region();
     expect([
-      region() !== null && document.activeElement === region(),
+      focused,
       said("Backup read: 4 new, 0 different. Nothing changes until you press Restore."),
       field("File passphrase")?.value,
     ]).toEqual([true, true, ""]);
@@ -287,11 +288,9 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     input.focus();
     await click("Read backup");
     await settleMaybe(() => said("could not be read"), 3000);
-    expect([
-      said("could not be read"),
-      screen.queryByRole("region", { name: "Backup preview" }) === null,
-      document.activeElement === input || document.activeElement === document.body,
-    ]).toEqual([true, true, true]);
+    const kept = document.activeElement === input;
+    const noPreview = screen.queryByRole("region", { name: "Backup preview" }) === null;
+    expect([said("could not be read"), noPreview, kept]).toEqual([true, true, true]);
   });
 
   async function readWithADifference() {
