@@ -61,7 +61,7 @@ import { quietBadge } from "@/features/board/quiet-badge-view";
 import { RadarBadge } from "@/features/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { BoardFilesPanel } from "@/features/files/index.ts";
-import { useSuggestedPersona } from "@/features/personas/index.ts";
+import { useSuggestedPersona } from "@/features/personas/ui.ts";
 import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/index.ts";

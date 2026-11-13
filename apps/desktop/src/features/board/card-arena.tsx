@@ -1,7 +1,7 @@
 import type { Arena, ArenaVariant, Card } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PersonaPicker } from "@/features/personas/index.ts";
+import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";

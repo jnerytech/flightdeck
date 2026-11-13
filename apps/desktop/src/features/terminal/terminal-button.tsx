@@ -1,7 +1,7 @@
 import { Copy, ExternalLink, SquareTerminal } from "lucide-react";
 import { useState } from "react";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { PersonaPicker } from "@/features/personas/index.ts";
+import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useT } from "@/i18n/context";
 import { ActionButton, IconActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TranscriptReader } from "@/features/history/index.ts";
 import { awaitedHost, type HostDraft } from "@/features/hosts/index.ts";
 import { draftUrl, FirstRun, HostForm, HostOfflineBanner } from "@/features/hosts/ui.ts";
-import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
+import { PersonaPicker, PersonaSwitch } from "@/features/personas/ui.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
 import { EarlierTurns } from "@/features/sessions/earlier-turns";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
