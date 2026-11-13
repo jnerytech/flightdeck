@@ -1,6 +1,6 @@
 import type { ProjectLoad, ProjectTrustState } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
-import { HarnessPanel } from "@/features/harness/index.ts";
+import { HarnessPanel } from "@/features/harness/ui.ts";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
