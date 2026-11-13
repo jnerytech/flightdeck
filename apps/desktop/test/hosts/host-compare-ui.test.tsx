@@ -590,6 +590,16 @@ describe("host-compare-ui: the panel says it is reading (#2652)", () => {
     expect(cells("Hooks")[2]).not.toContain("Reading");
   });
 
+  test("with no host online nothing is read, so the status line says nothing", async () => {
+    const { asked } = mount([
+      { id: "alfa", status: "offline" },
+      { id: "beta", status: "offline" },
+    ]);
+    await open();
+    await act(async () => {});
+    expect([asked.length, statusText()]).toEqual([0, ""]);
+  });
+
   test("Refresh reads again and says so again", async () => {
     const { store } = mount([
       { id: "alfa", ...FACTS },
