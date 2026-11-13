@@ -71,7 +71,10 @@ export const GhThreads = z.object({
           nodes: z.array(
             z.object({
               isResolved: z.boolean(),
-              comments: z.object({ nodes: z.array(z.object({ databaseId: z.number() })) }),
+              // GraphQL's databaseId can be null: such a comment is simply never matched.
+              comments: z.object({
+                nodes: z.array(z.object({ databaseId: z.number().nullable() })),
+              }),
             }),
           ),
         }),
