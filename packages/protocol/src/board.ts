@@ -116,7 +116,7 @@ export type CheckLoopReason = z.infer<typeof CheckLoopReason>;
 export const CheckLoopLine = z.object({
   state: z.enum(["sent", "ended"]),
   /** On an end; a reason a newer app does not know reads as `null`. */
-  reason: CheckLoopReason.nullable().catch(null),
+  reason: CheckLoopReason.nullable().catch(null), // NOSONAR: a zod .catch, not a promise chain
   /** The failed check's command, masked; `null` when no check failed. */
   command: z.string().nullable(),
   exitCode: z.number().int().nullable(),

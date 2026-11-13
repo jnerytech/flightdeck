@@ -87,7 +87,7 @@ import type { TeleportPackages } from "./teleport/package.ts";
 import type { TeleportInbox } from "./teleport/receive.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
 import type { TaskTracker } from "./templates/tasks.ts";
-import type { TerminalManager } from "./terminal/terminal-manager.ts";
+import type { TerminalManager } from "./terminal/index.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";

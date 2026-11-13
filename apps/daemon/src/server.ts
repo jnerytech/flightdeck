@@ -145,10 +145,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     const handler = HANDLERS[command.type] as Handler<CommandType> | undefined;
     if (handler) return runHandler(handler, command as never, call(ws));
 
-    switch (command.type) {
-      case "hello":
-        return onHello(ws, command);
-    }
+    if (command.type === "hello") return onHello(ws, command);
   }
 
   async function onCommand(ws: Socket, frame: unknown): Promise<void> {

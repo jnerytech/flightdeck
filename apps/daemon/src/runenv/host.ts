@@ -1,4 +1,4 @@
-import type { TerminalManager } from "../terminal/terminal-manager.ts";
+import type { TerminalManager } from "../terminal/index.ts";
 import { runTaskkill } from "./adapters/taskkill.ts";
 import type { RunHost } from "./manager.ts";
 

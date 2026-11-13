@@ -83,6 +83,20 @@ const NETWORK_PROGRAMS = new Set([
 ]);
 /** Redirection targets that go nowhere. */
 const SINKS = new Set(["/dev/null", "/dev/stdout", "/dev/stderr", "nul", "$null"]);
+
+/** One shell word: escaped characters, quoted parts and bare characters, glued together (#2496). */
+const SHELL_WORD = String.raw`(?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+`;
+/** `>`, `>>`, `&>`, `&>>`, `<>`, with a descriptor digit before the `>` (`2>`). */
+const REDIRECT_OPERATOR = String.raw`&?\d?(?:>{1,2}|<>)`;
+/**
+ * A redirect: the operator, an optional `&` or `|` (`>&file`, `>|file`), then its target word. The
+ * lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`, match too, unless
+ * the `>` before it is escaped.
+ */
+const REDIRECT = new RegExp(
+  String.raw`(?<!(?<!\\)[<>])${REDIRECT_OPERATOR}([&|])?\s*(${SHELL_WORD})`,
+  "g",
+);
 /** What may come before the program and is not it. */
 const PREFIXES = new Set(["command", "nohup", "time", "exec", "builtin", "env", "xargs"]);
 
@@ -330,9 +344,7 @@ export class RiskClassifier {
     // descriptor. The lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`,
     // match too, unless that first `>` is escaped. The target is one shell word: quoted and bare
     // parts glued together (#2496).
-    for (const match of command.matchAll(
-      /(?<!(?<!\\)[<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g,
-    )) {
+    for (const match of command.matchAll(REDIRECT)) {
       const word = match[2] as string;
       const target = word.replace(/["']/g, "");
       if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;

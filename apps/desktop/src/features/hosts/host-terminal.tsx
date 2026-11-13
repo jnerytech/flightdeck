@@ -1,5 +1,5 @@
 import type { TerminalInfo } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
@@ -54,6 +54,37 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
     await store.reloadHostInfo(host.id);
   };
   const running = live?.filter((terminal) => terminal.exitCode === null) ?? [];
+  let terminalList: ReactNode = null;
+  if (live !== null) {
+    terminalList =
+      running.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{t("hostTerminal.none")}</p>
+      ) : (
+        <ul className="flex flex-col gap-1 text-sm">
+          {running.map((terminal) => (
+            <li key={terminal.terminalId} className="flex items-center justify-between gap-2">
+              <span className="truncate font-mono text-xs">
+                {terminal.command} · {terminal.cwd}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label={t("hostTerminal.attach", { cwd: terminal.cwd })}
+                onClick={() =>
+                  store.hostTabs.show({
+                    name: "terminal",
+                    host: host.id,
+                    terminalId: terminal.terminalId,
+                  })
+                }
+              >
+                {t("hostTerminal.attachShort")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      );
+  }
 
   return (
     <section aria-label={t("hostTerminal.title")}>
@@ -63,33 +94,7 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
             {live === null && failed && (
               <p className="text-muted-foreground text-sm">{t("hostTerminal.unreadable")}</p>
             )}
-            {live === null ? null : running.length === 0 ? (
-              <p className="text-muted-foreground text-sm">{t("hostTerminal.none")}</p>
-            ) : (
-              <ul className="flex flex-col gap-1 text-sm">
-                {running.map((terminal) => (
-                  <li key={terminal.terminalId} className="flex items-center justify-between gap-2">
-                    <span className="truncate font-mono text-xs">
-                      {terminal.command} · {terminal.cwd}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-label={t("hostTerminal.attach", { cwd: terminal.cwd })}
-                      onClick={() =>
-                        store.hostTabs.show({
-                          name: "terminal",
-                          host: host.id,
-                          terminalId: terminal.terminalId,
-                        })
-                      }
-                    >
-                      {t("hostTerminal.attachShort")}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {terminalList}
             <div className="flex gap-2">
               <ActionButton size="sm" onClick={() => store.terminals.open(host.id)}>
                 {t("hostTerminal.open")}

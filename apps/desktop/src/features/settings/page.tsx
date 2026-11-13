@@ -344,9 +344,9 @@ export const Settings = memo(function Settings(props: {
                   {t("prefs.checkNow")}
                 </ActionButton>
                 {props.appUpdate.upToDate && (
-                  <p role="status" className="text-muted-foreground text-sm">
+                  <output className="block text-muted-foreground text-sm">
                     {t("prefs.upToDate")}
-                  </p>
+                  </output>
                 )}
                 {props.appUpdate.error && (
                   <p role="alert" className="text-status-needs-you">

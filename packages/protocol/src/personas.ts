@@ -66,7 +66,7 @@ export const PersonaRef = z
 export type PersonaRef = z.infer<typeof PersonaRef>;
 
 /** A persona as the daemon keeps it: every optional field is `null` when absent. */
-export type PersonaDef = PersonaFields;
+export type PersonaDef = PersonaFields; // NOSONAR: apps/daemon/src/personas imports this name
 
 const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const ICON = /^[a-z0-9-]{1,30}$/;
