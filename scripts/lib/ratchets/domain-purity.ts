@@ -27,7 +27,8 @@ const TIMER_OR_FETCH = new RegExp(String.raw`${GLOBAL}(?:fetch|setTimeout|setInt
 const IMPORTED = [
   /\bfrom\s*(["'])([^"']+)\1/g,
   /\bimport\s*(["'])([^"']+)\1/g,
-  /\b(?:import|require)\(\s*(["'])([^"']+)\1/g,
+  /\bimport\s*\(\s*(["'])([^"']+)\1/g,
+  /\brequire\(\s*(["'])([^"']+)\1/g,
 ];
 /** A package that does I/O: ws, Tauri, Bun's own modules. */
 const IMPURE_PACKAGE = /^(?:ws(?:\/.*)?|bun(?::\w+)?|@tauri-apps\/.+)$/;
