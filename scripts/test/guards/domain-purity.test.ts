@@ -37,6 +37,8 @@ describe("domain-purity (#1601)", () => {
             "const m = performance.now();",
             "const r = await fetch(url);",
             "setTimeout(tick, 10);",
+            "const g = globalThis.fetch(url) + window.setTimeout(tick) + fetch (url);",
+            "Bun.serve({ fetch }); await Bun.sleep(5); const h = process.hrtime.bigint();",
           ].join("\n"),
         },
       ]),
@@ -53,6 +55,12 @@ describe("domain-purity (#1601)", () => {
       "apps/daemon/src/board/domain/rules.ts:10 performance.now",
       "apps/daemon/src/board/domain/rules.ts:11 fetch(",
       "apps/daemon/src/board/domain/rules.ts:12 setTimeout(",
+      "apps/daemon/src/board/domain/rules.ts:13 globalThis.fetch(",
+      "apps/daemon/src/board/domain/rules.ts:13 window.setTimeout(",
+      "apps/daemon/src/board/domain/rules.ts:13 fetch (",
+      "apps/daemon/src/board/domain/rules.ts:14 Bun.serve(",
+      "apps/daemon/src/board/domain/rules.ts:14 Bun.sleep(",
+      "apps/daemon/src/board/domain/rules.ts:14 process.hrtime",
     ]);
   });
 
@@ -67,6 +75,9 @@ describe("domain-purity (#1601)", () => {
             'import { $ } from "bun";',
             'import { dlopen } from "bun:ffi";',
             'const lazy = await import("@tauri-apps/plugin-shell");',
+            'import { WebSocketServer } from "ws/lib/websocket-server.js";',
+            'import type { Database } from "bun:sqlite";',
+            'export type { Socket } from "ws";',
             'import { cmp } from "./compare.ts";',
           ].join("\n"),
         },
@@ -77,6 +88,7 @@ describe("domain-purity (#1601)", () => {
       'apps/desktop/src/features/hosts/domain/health.ts:3 "bun"',
       'apps/desktop/src/features/hosts/domain/health.ts:4 "bun:ffi"',
       'apps/desktop/src/features/hosts/domain/health.ts:5 "@tauri-apps/plugin-shell"',
+      'apps/desktop/src/features/hosts/domain/health.ts:6 "ws/lib/websocket-server.js"',
     ]);
   });
 
@@ -89,6 +101,7 @@ describe("domain-purity (#1601)", () => {
             "// Date.now() comes in through the port",
             " * Bun.spawn( is the adapter's job",
             "const d = new Date(ms);",
+            "const span = new DateRange(a, b);",
             "const s = card.Date.now() + run.fetch(x) + this.setTimeout(y);",
             "export const age = (now: () => number, at: number) => now() - at;",
           ].join("\n"),
