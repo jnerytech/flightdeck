@@ -108,14 +108,20 @@ export function NewSecretForm(
           onChange={(event) => setTags(event.target.value)}
         />
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={deleteOriginal}
-          onChange={(event) => setDeleteOriginal(event.target.checked)}
-        />
-        {t("vault.deleteOriginal")}
-      </label>
+      <div className="flex flex-col gap-1 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={deleteOriginal}
+            aria-describedby={`${id}-delete-hint`}
+            onChange={(event) => setDeleteOriginal(event.target.checked)}
+          />
+          {t("vault.deleteOriginal")}
+        </label>
+        <p id={`${id}-delete-hint`} className="text-muted-foreground text-xs">
+          {t("vault.deleteOriginalHint")}
+        </p>
+      </div>
       {publicKey && (
         <div className="flex flex-col gap-1 text-sm">
           <span>{t("vault.publicKey")}</span>
@@ -135,6 +141,7 @@ export function NewSecretForm(
         submit={t("vault.save")}
         busy={saving.busy}
         disabled={!named || value === ""}
+        disabledReason={t(named ? "vault.needValue" : "vault.needName")}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
