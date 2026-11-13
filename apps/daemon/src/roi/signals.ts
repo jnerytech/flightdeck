@@ -5,8 +5,8 @@
  * hour because each answer is a network call. Neither blocks the event loop.
  */
 
+import { git } from "../git/index.ts";
 import { type ClosedIssues, closedIssues } from "../github/index.ts";
-import { whichOnPath } from "../kernel/index.ts";
 
 export type IssuesResult = ClosedIssues;
 
@@ -16,25 +16,6 @@ export interface RoiSignalsOptions {
 
 const KEEP_MS = 3_600_000;
 const TRAILER = /^co-authored-by:.*claude/im;
-
-async function run(
-  cmd: string[],
-  cwd: string,
-): Promise<{ code: number; stdout: string; stderr: string }> {
-  const proc = Bun.spawn(cmd, {
-    cwd,
-    env: process.env,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { code, stdout, stderr };
-}
 
 export class RoiSignals {
   private readonly kept = new Map<string, { at: number; count: number }>();
@@ -47,15 +28,13 @@ export class RoiSignals {
 
   /** Commits of the period with the trailer, one per commit however many trailers it has. */
   async agentCommits(cwd: string, from: string, to: string): Promise<number> {
-    const answer = await run(
-      [
-        whichOnPath("git") ?? "git",
-        "log",
-        `--since=${from}T00:00:00Z`,
-        `--until=${to}T23:59:59Z`,
-        "--format=%B%x00",
-      ],
+    // git-arg: `from` and `to` are dates the ROI report built; each is the value of its own option
+    const answer = await git(
       cwd,
+      "log",
+      `--since=${from}T00:00:00Z`,
+      `--until=${to}T23:59:59Z`,
+      "--format=%B%x00",
     ).catch(() => null);
     if (answer?.code !== 0) return 0;
     return answer.stdout.split("\0").filter((message) => TRAILER.test(message)).length;

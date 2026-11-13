@@ -3,36 +3,17 @@
  * is the only place the ROI signals run `gh`; the domain gets a count or the reason there is none.
  */
 import { z } from "zod";
-import { parseJsonOr, whichOnPath } from "../../kernel/index.ts";
+import { parseJsonOr, runCommand, whichOnPath } from "../../kernel/index.ts";
 
 export type ClosedIssues =
   | { count: number }
   | { error: "gh_missing" | "gh_logged_out" | "gh_failed" };
 
-async function run(
-  cmd: string[],
-  cwd: string,
-): Promise<{ code: number; stdout: string; stderr: string }> {
-  const proc = Bun.spawn(cmd, {
-    cwd,
-    env: process.env,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { code, stdout, stderr };
-}
-
 /** The issues closed from `from` to `to` (dates, `YYYY-MM-DD`) in the repository at `cwd`, at most 100. */
 export async function closedIssues(cwd: string, from: string, to: string): Promise<ClosedIssues> {
   const gh = whichOnPath("gh");
   if (!gh) return { error: "gh_missing" };
-  const answer = await run(
+  const answer = await runCommand(
     [
       gh,
       "issue",
