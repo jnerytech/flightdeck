@@ -100,7 +100,8 @@ export class HostUpdateSlice {
 
   /** The store is closing: no timer outlives it. */
   dispose(): void {
-    for (const id of [...this.attempts.keys()]) this.settled(id);
+    // A Map iterator stays valid when the entry it just gave is deleted, as `settled` does.
+    for (const id of this.attempts.keys()) this.settled(id);
     this.autoChecks.clear();
   }
 

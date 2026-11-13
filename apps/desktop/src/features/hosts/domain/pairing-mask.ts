@@ -7,7 +7,7 @@ export const TOKEN_MASK = "••••";
 const DOT = "•";
 
 /** The value of every parameter but `name`, in text that may not read as a link: the key as typed or encoded. */
-const SECRET_VALUES = /([?&#](?!name=)[^=&\s#]*=)[^&]*/gi;
+const SECRET_VALUES = /([?&#](?!name=)[^=&\s#?]*=)[^&]*/gi;
 
 /** The `host:port` a pairing link was read with. */
 const WHERE = /^ws:\/\/(.+):(\d+)\/v1\/ws$/;

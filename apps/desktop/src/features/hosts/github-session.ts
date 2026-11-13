@@ -13,7 +13,7 @@ interface GithubCandidate {
   id: string;
   name: string;
   status: string;
-  hostInfo?: { features?: readonly string[] | undefined } | null | undefined;
+  hostInfo?: { features?: readonly string[] } | null;
 }
 
 /** A host whose `gh` is signed in to GitHub and can sign out from the app. */
