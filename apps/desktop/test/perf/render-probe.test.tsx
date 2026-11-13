@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { useState } from "react";
-import { registerDom } from "./dom.ts";
-import { renderProbe } from "./render-probe.tsx";
+import { registerDom } from "../dom.ts";
+import { renderProbe } from "../render-probe.tsx";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");

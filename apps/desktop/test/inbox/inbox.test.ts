@@ -11,7 +11,7 @@ import {
   markRead,
   saveInbox,
   unreadCount,
-} from "../src/features/inbox/inbox.ts";
+} from "../../src/features/inbox/inbox.ts";
 
 const entry = (id: string, at: string, read = false): InboxEntry => ({
   id,

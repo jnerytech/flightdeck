@@ -1,8 +1,8 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
 import { type ComponentType, useSyncExternalStore } from "react";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { scaleState, summaryBurst } from "./scale-fixture.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { scaleState, summaryBurst } from "../scale-fixture.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
@@ -13,7 +13,7 @@ const { act, cleanup, render } = await import("@testing-library/react");
  * row renders; the wrapper keeps the row's own memo, so a row that is not memoized counts every
  * render of the list.
  */
-const ROWS = "../src/features/needs-you/entry-row.tsx";
+const ROWS = "../../src/features/needs-you/entry-row.tsx";
 const real = await import(ROWS);
 let renders = 0;
 type Row =
@@ -34,9 +34,9 @@ afterAll(() => {
   mock.module(ROWS, () => real);
 });
 
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { useStoreState } = await import("../src/lib/use-store.ts");
-const { NeedsYou } = await import("../src/features/needs-you/page.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { useStoreState } = await import("../../src/lib/use-store.ts");
+const { NeedsYou } = await import("../../src/features/needs-you/page.tsx");
 
 afterEach(cleanup);
 

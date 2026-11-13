@@ -1,5 +1,5 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 
@@ -9,16 +9,16 @@ function CountedMarkdown(props: { text: string }) {
   drawn.markdown++;
   return <p>{props.text}</p>;
 }
-const realMarkdown = { ...(await import("../src/shared/markdown/markdown.tsx")) };
-mock.module("../src/shared/markdown/markdown.tsx", () => ({ Markdown: CountedMarkdown }));
+const realMarkdown = { ...(await import("../../src/shared/markdown/markdown.tsx")) };
+mock.module("../../src/shared/markdown/markdown.tsx", () => ({ Markdown: CountedMarkdown }));
 
 // A module mock outlives its file in Bun: later files (the agent files preview) would draw this
 // file's stand-in instead of the real renderer, and fail only in a full run. The check draws the
 // real one and waits for its lazy body: until that chunk is loaded the renderer is a plain-text
 // fallback, which is not a sign of the mock leaking.
 afterAll(async () => {
-  mock.module("../src/shared/markdown/markdown.tsx", () => realMarkdown);
-  const { Markdown } = await import("../src/shared/markdown/markdown.tsx");
+  mock.module("../../src/shared/markdown/markdown.tsx", () => realMarkdown);
+  const { Markdown } = await import("../../src/shared/markdown/markdown.tsx");
   const { findByRole, render: draw } = await import("@testing-library/react");
   const view = draw(<Markdown text={"# Título"} />);
   expect((await findByRole(view.container, "heading", { level: 1 })).textContent).toBe("Título");
@@ -26,8 +26,8 @@ afterAll(async () => {
 });
 
 const { act, cleanup, render } = await import("@testing-library/react");
-const { SessionView } = await import("../src/features/sessions/session-view.tsx");
-const { emptySession } = await import("../src/features/sessions/session-state.ts");
+const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
+const { emptySession } = await import("../../src/features/sessions/session-state.ts");
 
 afterEach(cleanup);
 

@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ErrorCode, type PendingPermission } from "@flightdeck/protocol";
-import { visibleLiterals } from "../../../scripts/lib/guards/i18n-sweep.ts";
-import { summaryNotifications } from "../src/features/inbox/notify.ts";
-import { trayMenu, trayStatus } from "../src/features/tray/tray.ts";
-import { en } from "../src/i18n/en.ts";
-import { refusalText, translateError } from "../src/i18n/errors.ts";
+import { visibleLiterals } from "../../../../scripts/lib/guards/i18n-sweep.ts";
+import { summaryNotifications } from "../../src/features/inbox/notify.ts";
+import { trayMenu, trayStatus } from "../../src/features/tray/tray.ts";
+import { en } from "../../src/i18n/en.ts";
+import { refusalText, translateError } from "../../src/i18n/errors.ts";
 import {
   formatAgo,
   formatDateTime,
@@ -13,21 +13,21 @@ import {
   formatTime,
   formatUsd,
   formatWhen,
-} from "../src/i18n/format.ts";
-import { I18n, LANG_KEY, languageFor, translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import type { TrayMenu, TrayStatus } from "../src/platform/types.ts";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+} from "../../src/i18n/format.ts";
+import { I18n, LANG_KEY, languageFor, translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import type { TrayMenu, TrayStatus } from "../../src/platform/types.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { tauriPlatform } = await import("../../src/platform/tauri/index.ts");
 
 afterEach(() => {
   cleanup();
