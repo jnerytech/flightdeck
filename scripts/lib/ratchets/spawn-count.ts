@@ -35,7 +35,7 @@ const LAUNCHES = [
 ];
 const COMMENT_LINE = /^\s*(\/\/|\*|\/\*)/;
 /** Comment text on a code line: a `/* ... *\/` span, or a `//` tail that follows a space (a url's `//` does not). */
-const COMMENT_SPAN = /\/\*.*?\*\/|(^|\s)\/\/.*$/g;
+const COMMENT_SPAN = /(?:\/\*.*?\*\/)|(?:(?:^|\s)\/\/.*$)/g;
 
 /** The scanned files that launch a process outside a comment, with how many launches each holds. */
 export function spawnCounts(files: { path: string; text: string }[]): Record<string, number> {
