@@ -71,11 +71,14 @@ describe("check for updates: the answer is at the button (#2597)", () => {
     expect(button().disabled).toBe(false);
   });
 
-  test("the up to date line is a status", () => {
+  test("the up to date line is a status, an <output> element (Sonar S6819)", () => {
     setup({ upToDate: true, error: null }, () => {});
     const line = screen.queryByText(UP_TO_DATE);
     expect(line).not.toBeNull();
-    expect(line?.getAttribute("role")).toBe("status");
+    expect([line?.tagName, screen.queryByRole("status")?.textContent]).toEqual([
+      "OUTPUT",
+      line?.textContent,
+    ]);
   });
 
   test("a failed check is shown beside the button as an alert", () => {
