@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { FolderPicker } from "@/features/hosts/index.ts";
+import { FolderPicker } from "@/features/hosts/ui.ts";
 import { shortPath } from "@/features/permissions/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";

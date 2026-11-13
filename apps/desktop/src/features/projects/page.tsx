@@ -10,7 +10,7 @@ import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, LoadingState, NativeSelect, Page, Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { FolderPicker } from "../hosts/index.ts";
+import { FolderPicker } from "../hosts/ui.ts";
 import { RulesSection } from "../permissions/index.ts";
 import { TerminalButton } from "../terminal/ui.ts";
 import { AddProject } from "./add-project.tsx";
