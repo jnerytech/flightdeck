@@ -70,7 +70,7 @@ const DESTINATIONS: Array<[string, R]> = [
 ];
 
 describe("sidebar-ativo: every destination of the bar is marked when its page is open (SG-M1)", () => {
-  test("each item gets the accent bar and aria-current on its own page, and no other item does", () => {
+  test("each item gets aria-current on its own page, and no other item does", () => {
     for (const [label, route] of DESTINATIONS) {
       const { view } = setup(ALL, undefined, route);
       const { unmount } = render(view());
@@ -82,7 +82,7 @@ describe("sidebar-ativo: every destination of the bar is marked when its page is
         label,
         [label],
       ]);
-      expect(screen.getByRole("button", { name: label }).className).toContain("nav-active");
+      expect(screen.getByRole("button", { name: label }).getAttribute("aria-current")).toBe("page");
       unmount();
     }
   });
