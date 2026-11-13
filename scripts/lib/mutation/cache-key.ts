@@ -1,9 +1,18 @@
 import { createHash } from "node:crypto";
 import type { MutationDomain } from "./report.ts";
 
-/** Every file whose change can change a mutant's verdict: the sources it mutates and the tests that judge it. */
+/** Files outside a domain's own lists that still decide a verdict: what runs the tests and what Stryker is told. */
+const SETTINGS = [
+  "bun.lock",
+  "bunfig.area.toml",
+  "mutation-domains.json",
+  "scripts/test/preload.ts",
+  "stryker.config.json",
+];
+
+/** Every file whose change can change a mutant's verdict: the sources it mutates, the tests that judge it and the settings. */
 export function keyFiles(domains: MutationDomain[]): string[] {
-  const paths = domains.flatMap((domain) => [...domain.mutate, ...domain.tests]);
+  const paths = [...domains.flatMap((domain) => [...domain.mutate, ...domain.tests]), ...SETTINGS];
   return [...new Set(paths)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
