@@ -30,10 +30,10 @@ function setup(language: "en" | "pt-BR" = "en", specs: Specs = SPECS) {
   const { hosts, hub, unread } = activityState(specs, store.getState());
   (store as unknown as { update(p: object): void }).update({ hosts, hub, unread });
   const sent: Array<[string, string, string?]> = [];
-  store.interruptSession = (async (host: string, id: string) => {
+  store.commands.interruptOn = (async (host: string, id: string) => {
     sent.push(["interrupt", `${host}/${id}`]);
   }) as never;
-  store.sendTo = (async (host: string, id: string, text: string) => {
+  store.commands.sendTo = (async (host: string, id: string, text: string) => {
     sent.push(["send", `${host}/${id}`, text]);
   }) as never;
   return { store, sent };

@@ -95,7 +95,7 @@ async function tiles(names: string[]) {
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
   const ids: string[] = [];
   for (const [at, name] of names.entries()) {
-    const id = (await store.createSession(hostId, {
+    const id = (await store.commands.create(hostId, {
       cwd: d.project,
       prompt: at === 0 ? "[tool]" : `oi ${name}`,
       name,

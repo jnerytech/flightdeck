@@ -206,7 +206,7 @@ describe("cota-ui-historico", () => {
     const hostId = store.getState().hosts[0]?.id ?? "";
     let sessionId = "";
     await act(async () => {
-      sessionId = (await store.createSession(hostId, { cwd: d.project, prompt: "oi" })) ?? "";
+      sessionId = (await store.commands.create(hostId, { cwd: d.project, prompt: "oi" })) ?? "";
     });
     await settle(() => d.manager.get(sessionId).status === "idle");
     spend(d, "kA", T0, 0.75, d.manager.get(sessionId).claudeSessionId as string);

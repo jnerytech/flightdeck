@@ -248,7 +248,7 @@ export function runPaletteTarget(
       const persona = store.personas.ref(
         store.clientScope.get().defaultPersona(target.hostId, target.cwd),
       );
-      void store.createSession(target.hostId, {
+      void store.commands.create(target.hostId, {
         cwd: target.cwd,
         prompt: target.prompt,
         permissionMode: mode,
