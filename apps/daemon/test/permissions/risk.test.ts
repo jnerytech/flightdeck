@@ -168,6 +168,7 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "format /fs:ntfs"],
   ["medium", "ri -rx a", "PowerShell"],
   ["medium", "ri a-r", "PowerShell"],
+  // `-ExecutionPolicy` starts with `-e` but is not the encoded-command flag, which is `-e`, `-ec` or `-en...`.
   ["medium", "pwsh -ExecutionPolicy Bypass -File a.ps1", "PowerShell"],
   ["medium", "pwsh a-e", "PowerShell"],
   ["medium", "echo reset --hard"],
@@ -175,7 +176,8 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["medium", "echo x > /dev/stdout"],
   ["medium", "echo x > /dev/stderr"],
   // The same rules, at their edges: a long form of the encoded-command flag, the flag with no
-  // program in front of it or no word after it, a base64 decode with options before `-d`.
+  // program in front of it or no word after it, a base64 decode with options before `-d`. The text
+  // rules are conservative on purpose: the flag as a word anywhere, and any decode fed to a pipe.
   ["high", "pwsh -encodedcomma x", "PowerShell"],
   ["high", "-EncodedCommand abc"],
   ["high", "echo -EncodedCommand"],
@@ -305,7 +307,8 @@ describe("risco", () => {
   });
 
   test("a redirect to ~ is the home: inside the cwd only when the cwd is the home (#2519)", () => {
-    const at = (cwd: string) => risk.classify("Bash", { command: "echo x > ~" }, cwd).level;
+    const own = new RiskClassifier({ allowedRoots: [], home: HOME });
+    const at = (cwd: string) => own.classify("Bash", { command: "echo x > ~" }, cwd).level;
     expect({ inProject: at(CWD), atHome: at(HOME) }).toEqual({
       inProject: "high",
       atHome: "medium",
