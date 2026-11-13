@@ -19,7 +19,7 @@ import type { AppUpdateState } from "../appupdate/index.ts";
 import { MessagingRulesSection } from "../messaging/rules-section.tsx";
 import type { TabOrder } from "../tabs/index.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../terminal/index.ts";
-import { WebhooksSection } from "../webhook/index.ts";
+import { WebhooksSection } from "../webhook/ui.ts";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
 
