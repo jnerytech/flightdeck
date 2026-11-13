@@ -45,21 +45,77 @@ export interface DomainResult extends MutationCounts {
 
 const MISSED = new Set(["Survived", "NoCoverage"]);
 
-export function scoreReport(_report: MutationReport): MutationCounts {
-  return { killed: 0, timedOut: 0, survived: 0, noCoverage: 0, score: null };
+export function scoreReport(report: MutationReport): MutationCounts {
+  const counts = { killed: 0, timedOut: 0, survived: 0, noCoverage: 0 };
+  for (const file of Object.values(report.files)) {
+    for (const mutant of file.mutants) {
+      if (mutant.status === "Killed") counts.killed++;
+      else if (mutant.status === "Timeout") counts.timedOut++;
+      else if (mutant.status === "Survived") counts.survived++;
+      else if (mutant.status === "NoCoverage") counts.noCoverage++;
+    }
+  }
+  const caught = counts.killed + counts.timedOut;
+  const total = caught + counts.survived + counts.noCoverage;
+  const score = total === 0 ? null : Math.round((caught / total) * 10000) / 100;
+  return { ...counts, score };
 }
 
-export function survivorsOf(_report: MutationReport): Survivor[] {
-  return [];
+export function survivorsOf(report: MutationReport): Survivor[] {
+  const found: Survivor[] = [];
+  for (const [file, { mutants }] of Object.entries(report.files)) {
+    for (const mutant of mutants) {
+      if (!MISSED.has(mutant.status)) continue;
+      found.push({
+        file,
+        line: mutant.location.start.line,
+        mutator: mutant.mutatorName,
+        replacement: mutant.replacement ?? "",
+      });
+    }
+  }
+  return found.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file < b.file ? -1 : 1));
 }
 
 export function strykerConfigFor(
-  _domain: MutationDomain,
-  _base: Record<string, unknown>,
+  domain: MutationDomain,
+  base: Record<string, unknown>,
 ): Record<string, unknown> {
-  return {};
+  const dir = `reports/mutation/${domain.name}`;
+  return {
+    ...base,
+    mutate: domain.mutate,
+    commandRunner: {
+      command: `env -u CLAUDECODE bun --config=bunfig.area.toml test ${domain.tests.join(" ")}`,
+    },
+    incremental: true,
+    incrementalFile: `${dir}/incremental.json`,
+    jsonReporter: { fileName: `${dir}/mutation.json` },
+    tempDirName: `.stryker-tmp/${domain.name}`,
+  };
 }
 
-export function summaryMarkdown(_results: DomainResult[], _survivorLimit: number): string {
-  return "";
+export function summaryMarkdown(results: DomainResult[], survivorLimit: number): string {
+  const lines = [
+    "## Mutation score per domain",
+    "",
+    "| Domain | Score | Killed | Timed out | Survived | No coverage |",
+    "| --- | --- | --- | --- | --- | --- |",
+  ];
+  for (const r of results) {
+    const score = r.score === null ? "-" : `${r.score}%`;
+    lines.push(
+      `| ${r.domain} | ${score} | ${r.killed} | ${r.timedOut} | ${r.survived} | ${r.noCoverage} |`,
+    );
+  }
+  for (const r of results) {
+    if (r.survivors.length === 0) continue;
+    lines.push("", `### Survivors: ${r.domain}`, "");
+    for (const s of r.survivors.slice(0, survivorLimit)) {
+      lines.push(`- ${s.file}:${s.line} ${s.mutator} → \`${s.replacement}\``);
+    }
+    const left = r.survivors.length - survivorLimit;
+    if (left > 0) lines.push(`- ${left} more in the JSON report`);
+  }
+  return `${lines.join("\n")}\n`;
 }
