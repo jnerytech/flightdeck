@@ -34,4 +34,15 @@ describe("log-app: the diagnostics a person pastes", () => {
     expect(text).toContain("line 30");
     expect(text).not.toContain("line 29 ");
   });
+
+  test("a home folder is ~ in the diagnostics", () => {
+    const text = diagnosticsText({
+      appVersion: "1",
+      os: "Windows (C:\\Users\\Ana\\x)",
+      hosts: [{ name: "/home/ana/box", version: null, features: [], status: "online" }],
+      lines: ["2026 INFO from /home/ana/z"],
+    });
+    expect(text).not.toContain("ana");
+    expect(text).not.toContain("Ana");
+  });
 });
