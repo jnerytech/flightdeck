@@ -67,7 +67,8 @@ import { createRunEnv } from "./runenv/wiring.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { claudeVersionProbe } from "./runtime/index.ts";
-import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
+import { createOpenCodeServer } from "./runtime/opencode-server.ts";
+import { createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { createModuleRunner, serverGroup } from "./server/index.ts";
 import { startServer } from "./server.ts";
@@ -208,6 +209,7 @@ export async function startDaemon(
   // #2094: the domains that give main.ts one module each; the rest still wire by hand below.
   const domains = createModuleRunner();
   await domains.add(hostLog);
+  await domains.add(createOpenCodeServer(opencode));
   const { quota, onQuota } = await domains.add(createQuota({ db: store.db, config, configFile }));
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
@@ -628,10 +630,6 @@ export async function startDaemon(
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
     manager,
-    opencode: {
-      info: () => opencode.info,
-      models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
-    },
     ...present({ assistant }),
     roots: serverGroup<"roots", "platform">()({
       ...present({ platform: options.rootsPlatform }),
