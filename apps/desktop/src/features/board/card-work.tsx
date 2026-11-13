@@ -6,7 +6,7 @@ import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { ExternalSeal, issueLabel, issueUrl } from "../issues/index.ts";
-import { CardReview, ChangesPanel, PrComments } from "../review/index.ts";
+import { CardReview, ChangesPanel, PrComments } from "../review/ui.ts";
 import type { SessionState } from "../sessions/index.ts";
 import { SessionView, StatusBadge } from "../sessions/ui.ts";
 import { TerminalButton } from "../terminal/ui.ts";
