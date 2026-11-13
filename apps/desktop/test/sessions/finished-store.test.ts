@@ -132,7 +132,7 @@ describe("finished-store: what finished since the last look (issue #1134)", () =
     const state = () => w.store.getState();
     expect(sinceLastLook(state().finished, state().finishedLook)).toHaveLength(1);
     w.clock.now = T0 + 2000;
-    w.store.finishedSeen();
+    w.store.finished.seen();
     expect(state().finishedLook).toBe(new Date(T0 + 2000).toISOString());
     expect(sinceLastLook(state().finished, state().finishedLook)).toEqual([]);
     expect(w.mem.items.get("flightdeck.finished")).toContain(new Date(T0 + 2000).toISOString());

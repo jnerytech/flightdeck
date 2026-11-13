@@ -28,7 +28,7 @@ const EMPTY_MESSAGES = {
 function fakeStore(language: "en" | "pt-BR", answers: Record<string, unknown>) {
   return {
     hostCommand: async (_host: string, command: string) => answers[command] ?? null,
-    onMessageUpdated: () => () => {},
+    messaging: { onUpdated: () => () => {} },
     formatDateTime: (iso: string) => iso,
     i18n: { t: translator(language) },
   } as unknown as AppStore;
