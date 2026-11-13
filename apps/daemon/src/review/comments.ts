@@ -3,7 +3,7 @@ import { realpath } from "node:fs/promises";
 import { relative } from "node:path";
 import { inSequence, type ReviewLanguage, reviewMessage } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
-import { type Central, messageExternal } from "../central/central.ts";
+import { type Central, messageExternal } from "../central/index.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg, ulid } from "../kernel/index.ts";
 import { credential, maskConfig, maskedConfig } from "../permissions/index.ts";
