@@ -176,12 +176,12 @@ export class Automations {
   }
 
   list(projectId: string): Automation[] {
-    return this.db
+    const rows = this.db
       .query<Row, [string]>(
         "SELECT * FROM automations WHERE project_id = ? ORDER BY created_at, rowid",
       )
-      .all(projectId)
-      .map(toAutomation);
+      .all(projectId);
+    return this.readable(rows);
   }
 
   /** Creates or edits an automation. It always ends up off: turning it on is a decision. */
@@ -551,10 +551,26 @@ export class Automations {
   }
 
   private enabled(): Automation[] {
-    return this.db
+    const rows = this.db
       .query<Row, []>("SELECT * FROM automations WHERE enabled = 1 ORDER BY created_at, rowid")
-      .all()
-      .map(toAutomation);
+      .all();
+    return this.readable(rows);
+  }
+
+  /**
+   * The automations of `rows` that can be read. A row whose JSON no longer fits (written by a newer
+   * daemon, or edited by hand) is logged by id and left out: it must not stop the scheduler, the
+   * boot or the others, and it can still be removed.
+   */
+  private readable(rows: Row[]): Automation[] {
+    return rows.flatMap((row) => {
+      try {
+        return [toAutomation(row)];
+      } catch (error) {
+        this.opts.log?.(`automations: ${row.id} is unreadable: ${(error as Error).message}`);
+        return [];
+      }
+    });
   }
 
   private row(id: string): Row | null {
