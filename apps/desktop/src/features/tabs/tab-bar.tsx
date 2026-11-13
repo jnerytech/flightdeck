@@ -165,7 +165,8 @@ export function TabBar(
   };
   const compact = row.length > COMPACT_AT;
   // The active tab is always in view (scrolled by hand, #1430); the strip is measured again when the
-  // tabs change.
+  // tabs change, and the tab is revealed again when an arrow shows or goes, as it narrows or widens
+  // the strip (#2728).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the active tab and the count are the triggers
   useEffect(() => {
     const active = tablist.current?.querySelector<HTMLElement>(
@@ -173,7 +174,7 @@ export function TabBar(
     );
     if (active && scroller.current) revealTab(scroller.current, active);
     measure();
-  }, [tabs.activeId, row.length, sharedActive, shared?.activeId, measure]);
+  }, [tabs.activeId, row.length, sharedActive, shared?.activeId, more.left, more.right, measure]);
   useEffect(() => {
     if (focusTab.current) {
       const id = focusTab.current;
