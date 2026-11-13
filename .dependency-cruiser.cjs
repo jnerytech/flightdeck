@@ -66,11 +66,11 @@ module.exports = {
     {
       name: "domain-is-pure",
       comment:
-        "A domain's rules (domain/) do no I/O: no SQLite, filesystem, process, WebSocket or Tauri module; time and I/O come in through a port (#1601). Bun.spawn, Bun.file and Date.now are globals, not imports: the domain-purity guard test checks those.",
+        "A domain's rules (domain/) do no I/O: no SQLite, filesystem, process, network or OS module; time and I/O come in through a port (#1601). The node_modules edges are excluded from the graph, and Bun.spawn, Bun.file and Date.now are globals, not imports: the domain-purity check (scripts/lib/ratchets/domain-purity.ts) reads ws, @tauri-apps, bun and those calls from the text.",
       severity: "error",
       from: { path: "/domain/" },
       to: {
-        path: "^(bun:sqlite|(node:)?(fs|fs/promises|child_process))$|(^|/node_modules/)(ws|@tauri-apps/[^/]+)(/|$)",
+        path: "^(bun:sqlite|(node:)?(fs|fs/promises|child_process|net|http|https|http2|os|dgram|worker_threads))$",
       },
     },
     {
