@@ -70,7 +70,7 @@ module.exports = {
       severity: "error",
       from: { path: "/domain/" },
       to: {
-        path: "^(bun:sqlite|(node:)?(fs|fs/promises|child_process|net|http|https|http2|os|dgram|worker_threads))$",
+        path: "^(bun:sqlite|(node:)?(fs|fs/promises|child_process|net|http|https|http2|os|dgram|worker_threads|timers|timers/promises|dns|dns/promises|tls|readline|cluster|perf_hooks)|node:sqlite)$",
       },
     },
     {

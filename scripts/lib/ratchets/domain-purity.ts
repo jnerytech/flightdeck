@@ -8,15 +8,17 @@
 const DOMAIN_FILE = /^(apps|packages)\/[^/]+\/src\/(.+\/)?domain\/.+\.tsx?$/;
 const COMMENT_LINE = /^\s*(\/\/|\*|\/\*)/;
 /**
- * A global that does I/O or reads the clock, not reached through another object (`card.Date`).
- * `Bun.spawnSync(` before `Bun.spawn(` so the longer name wins; `Date.now` also when passed by
- * reference; `new Date` only with no argument.
+ * A global that does I/O or reads the clock, bare or through `globalThis`/`window`, never through
+ * another object (`card.Date`). `Bun.spawnSync(` before `Bun.spawn(` so the longer name wins;
+ * `Date.now` also when passed by reference; `new Date` only with no argument (`DateRange` is not it).
  */
 const IMPURE_CALL =
-  /(?<![.\w$])(?:Bun\.(?:spawnSync|spawn|file|write)\(|Bun\.\$|Date\.now\b\(?|new Date(?:\(\s*\))?(?!\s*\()|performance\.now\b|fetch\(|set(?:Timeout|Interval)\()/g;
+  /(?<![.\w$])(?:(?:globalThis|window)\.)?(?:Bun\.(?:spawnSync|spawn|file|write|serve|connect|listen|sleepSync|sleep|nanoseconds)\(|Bun\.\$|Date\.now\b\(?|new Date\b(?:\(\s*\))?(?!\s*\()|performance\.now\b|process\.hrtime\b|(?:fetch|setTimeout|setInterval)\s*\()/g;
 /** An import (static, dynamic or `require`) of a package that does I/O: ws, Tauri, Bun's own modules. */
 const IMPURE_IMPORT =
-  /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\(\s*)(["'])(ws|bun(?::\w+)?|@tauri-apps\/[^"']+)\1/g;
+  /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\(\s*)(["'])(ws(?:\/[^"']*)?|bun(?::\w+)?|@tauri-apps\/[^"']+)\1/g;
+/** A type-only import or re-export: it names an adapter's type for a port and runs nothing. */
+const TYPE_ONLY = /^\s*(import|export)\s+type\b/;
 
 /** Whether the check reads this tracked path: TypeScript under a `domain/` folder of a package's src. */
 export function isDomainFile(path: string): boolean {
@@ -32,6 +34,7 @@ export function impureCalls(files: { path: string; text: string }[]): string[] {
       if (COMMENT_LINE.test(line)) return;
       const at = `${path}:${index + 1}`;
       for (const match of line.matchAll(IMPURE_CALL)) found.push(`${at} ${match[0]}`);
+      if (TYPE_ONLY.test(line)) return;
       for (const match of line.matchAll(IMPURE_IMPORT)) found.push(`${at} "${match[2]}"`);
     });
   }
