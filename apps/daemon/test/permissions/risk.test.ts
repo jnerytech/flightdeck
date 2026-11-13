@@ -88,6 +88,12 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", "exec 3<>/tmp/fora.txt"],
   // An escaped quote does not open a quoted string, so the `>` after it is still a redirect.
   ["high", 'echo x >a\\"b>/tmp/fora.txt "z"'],
+  // A backslash before a newline is a line continuation: the shell joins the two lines.
+  ["high", "echo x >src\\\n/../../etc/x"],
+  ["high", "echo x >src\\\r\n/../../etc/x"],
+  // `~user` and `~+` expand to another folder; only `~` and `~/` are the home.
+  ["high", "echo x >~root/.bashrc"],
+  ["high", "echo x >~+/../x"],
   // Credentials, read or not.
   ["high", "cat ~/.ssh/id_rsa"],
   ["high", "cat .env"],
