@@ -35,6 +35,8 @@ function counted() {
     return get(id);
   };
   const store = new AppStore(platform, { baseDelayMs: 60_000 });
+  // The history scan has its own reader of every value, outside this issue: the count is the page's.
+  store.scan.refresh = async () => {};
   return { store, reads };
 }
 
