@@ -238,6 +238,7 @@ export const hosts = {
       "Um terminal é um shell completo no host, com o usuário do daemon. Ligar os terminais deste host?",
     turnOffMessage: "Desligar encerra os terminais abertos neste host.",
     none: "Nenhum terminal aberto.",
+    unreadable: "Não foi possível ler os terminais deste host.",
   },
   hostForm: {
     fromLink: "Este link veio de fora do app. Confira os dados antes de salvar.",

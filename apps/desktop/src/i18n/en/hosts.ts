@@ -236,6 +236,7 @@ export const hosts = {
       "A terminal is a full shell on the host, as the daemon's user. Turn this host's terminals on?",
     turnOffMessage: "Turning them off ends the terminals open on this host.",
     none: "No terminal open.",
+    unreadable: "Could not read the terminals of this host.",
   },
   hostForm: {
     fromLink: "This link came from outside the app. Check the details before saving.",
