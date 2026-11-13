@@ -2,8 +2,8 @@
 
 import type { Database } from "bun:sqlite";
 import type { EffortLevel, PermissionMode, SessionTeam } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
-import type { Messaging } from "../messaging/messages.ts";
+import type { Board } from "../board/index.ts";
+import type { Messaging } from "../messaging/index.ts";
 import type { Prepare } from "../personas/index.ts";
 import type { Quota } from "../quota/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
