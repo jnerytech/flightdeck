@@ -28,9 +28,9 @@ const type = (text: string) =>
   act(async () => {
     fireEvent.change(box(), { target: { value: text } });
   });
-const enter = () =>
+const enter = (init: { isComposing?: boolean } = {}) =>
   act(async () => {
-    fireEvent.keyDown(box(), { key: "Enter" });
+    fireEvent.keyDown(box(), { key: "Enter", ...init });
   });
 
 describe("typed confirmation (#2602)", () => {
@@ -55,5 +55,14 @@ describe("typed confirmation (#2602)", () => {
     await enter();
     expect(calls).toEqual([]);
     expect(box().value).toBe("mostrar");
+  });
+
+  test("Enter that only ends an input-method composition does not confirm", async () => {
+    const calls = open();
+    await type("revelar");
+    await enter({ isComposing: true });
+    expect(calls).toEqual([]);
+    await enter();
+    expect(calls).toEqual(["confirm"]);
   });
 });

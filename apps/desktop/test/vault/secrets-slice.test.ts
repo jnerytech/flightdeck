@@ -21,6 +21,7 @@ function slice(
     picked?: { text: string } | null;
     pickFails?: boolean;
     workFactor?: number;
+    changedThrows?: boolean;
   } = {},
 ) {
   const events: string[] = [];
@@ -37,6 +38,7 @@ function slice(
     vault: vault as unknown as VaultSecretsCore["vault"],
     secretsChanged: () => {
       events.push("changed");
+      if (over.changedThrows) throw new Error("a listener broke");
     },
     workFactor: () => over.workFactor ?? 4,
     copyText: async () => true,
@@ -86,6 +88,14 @@ describe("vault secrets slice", () => {
     );
     expect(removed).toBe("returned");
     expect(events).toEqual(["fail the disk is full", "fail the keyring is locked"]);
+  });
+
+  test("a listener that breaks after a secret is stored is not a refused save: no failure notice, so the form never retries into a duplicate (#2601)", async () => {
+    const { secrets, events } = slice({ changedThrows: true });
+    await expect(secrets.add({ name: "deploy", type: "token", value: "v" })).rejects.toThrow(
+      "a listener broke",
+    );
+    expect(events).toEqual(["changed"]);
   });
 
   test("a key that cannot be generated or imported is a failure to show, not a stored secret", async () => {

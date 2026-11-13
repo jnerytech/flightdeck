@@ -3,6 +3,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
 import { settle } from "../wait.ts";
+import { addedSecret } from "./added-secret.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -100,17 +101,28 @@ describe("cofre-ui: a save or a removal that fails (#2601)", () => {
     const onUnhandled = (reason: unknown) => unhandled.push(reason);
     process.on("unhandledRejection", onUnhandled);
     cleanups.push(() => process.off("unhandledRejection", onUnhandled));
-    const meta = await store.secrets.add({ name: "github", type: "password", value: VALUE });
+    const meta = await addedSecret(store, { name: "github", type: "password", value: VALUE });
     keyring.deleteFails = true;
     await click("Remover github");
     await fill("Digite github para confirmar", "github");
     await click("Remover");
-    await Bun.sleep(50);
-    expect(unhandled).toEqual([]);
     await settle(() => errors(store).length > 0);
+    expect(unhandled).toEqual([]);
     expect(errors(store)).toEqual(["the keyring refused the delete"]);
-    expect(store.getState().secrets.map((s) => s.id)).toEqual([meta?.id ?? ""]);
+    expect(store.getState().secrets.map((s) => s.id)).toEqual([meta.id]);
     expect(store.vault.list().map((s) => s.name)).toEqual(["github"]);
-    expect(meta ? await store.vault.value(meta.id) : null).toBe(VALUE);
+    expect(await store.vault.value(meta.id)).toBe(VALUE);
+  });
+
+  test("after a removal the row is gone, so the focus goes to the New secret button, not to the top of the page (#2603)", async () => {
+    const { store } = await open();
+    await addedSecret(store, { name: "github", type: "password", value: VALUE });
+    await click("Remover github");
+    await fill("Digite github para confirmar", "github");
+    await click("Remover");
+    await settle(() => store.getState().secrets.length === 0);
+    const button = screen.getByRole("button", { name: "Novo segredo" });
+    await settle(() => document.activeElement === button);
+    expect(document.activeElement).toBe(button);
   });
 });
