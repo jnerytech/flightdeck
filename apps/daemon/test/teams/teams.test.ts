@@ -4,6 +4,7 @@ import { ExternalSessions } from "../../src/central/external.ts";
 import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
+import { Names } from "../../src/names/names.ts";
 import { INSTRUCTIONS_VERSION } from "../../src/teams/instructions.ts";
 import { Teams, type TeamsOptions } from "../../src/teams/teams.ts";
 import { cardWhen, newBoard, whenChanged } from "../support/board-helpers.ts";
@@ -16,8 +17,10 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function setup(over: Partial<TeamsOptions> = {}) {
+/** `realNames`: the team books its members in the host's own names table, not in a fake. */
+async function setup(over: Partial<TeamsOptions> = {}, realNames = false) {
   const ctx = newBoard({}, 1);
+  const names = new Names(ctx.store.db);
   cleanups.push(() => ctx.board.stop());
   const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
   const external = new ExternalSessions({ db: ctx.store.db, staleAfterS: 3600 });
@@ -45,6 +48,7 @@ async function setup(over: Partial<TeamsOptions> = {}) {
     manager: ctx.manager,
     messaging,
     host: "pc",
+    ...(realNames ? { names } : {}),
     ...over,
   });
   teamsRef = teams;
@@ -55,7 +59,7 @@ async function setup(over: Partial<TeamsOptions> = {}) {
     ctx.manager
       .eventsSince(sessionId, 0)
       .flatMap(({ event }) => (event.type === "message.user" ? [event.text] : []));
-  return { ...ctx, project, endpoints, messaging, teams, frames, sessionTexts };
+  return { ...ctx, project, endpoints, messaging, teams, frames, sessionTexts, names };
 }
 
 const failure = async (promise: Promise<unknown> | (() => unknown)) => {
@@ -541,8 +545,8 @@ describe("times: members of a running team", () => {
 
 // Issue #934: a closed team can be deleted, and nothing of its members goes with it.
 describe("times: deleting a team", () => {
-  async function closedTeam(over: Partial<TeamsOptions> = {}) {
-    const ctx = await setup(over);
+  async function closedTeam(over: Partial<TeamsOptions> = {}, realNames = false) {
+    const ctx = await setup(over, realNames);
     const created = await ctx.teams.create({ ...NEW, projectId: ctx.project.id, name: "time" });
     await whenChanged(ctx.board, () =>
       created.members.slice(1).every((m) => ctx.board.getCard(m.cardId as string).sessionId),
@@ -574,17 +578,17 @@ describe("times: deleting a team", () => {
   });
 
   test("the members' sessions and cards stay, and the sessions are taken out of the team", async () => {
-    const cleared: string[] = [];
-    const { teams, team, board, manager } = await closedTeam({
-      names: {
-        get: () => null,
-        setPersona: () => undefined,
-        clearTeam: (sessionId: string) => void cleared.push(sessionId),
-      },
-    });
+    const { teams, team, board, manager, names } = await closedTeam({}, true);
     const sessions = team.members.flatMap((m) => (m.sessionId ? [m.sessionId] : []));
+    for (const sessionId of sessions) {
+      names.assign(sessionId, {
+        project: "app",
+        team: { name: "time", role: "worker", number: 1 },
+      });
+    }
+    expect(sessions.map((id) => names.get(id)?.team?.name)).toEqual(sessions.map(() => "time"));
     teams.delete(team.id);
-    expect(cleared.sort()).toEqual([...sessions].sort());
+    expect(sessions.map((id) => names.get(id)?.team ?? null)).toEqual(sessions.map(() => null));
     for (const sessionId of sessions) expect(manager.get(sessionId).status).not.toBe("ended");
     for (const member of team.members) {
       if (member.cardId) expect(board.getCard(member.cardId).id).toBe(member.cardId);
