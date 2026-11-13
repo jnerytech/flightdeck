@@ -12,8 +12,7 @@ import {
   safeGit,
 } from "../board/branch-commit.ts";
 import { publishPr } from "../board/publish-pr.ts";
-import { assertBranchName, refArg } from "../board/ref-arg.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { assertBranchName, FlightdeckError, refArg } from "../kernel/index.ts";
 import type { PrProvider } from "../pr/index.ts";
 
 export interface TemplateAddDeps {

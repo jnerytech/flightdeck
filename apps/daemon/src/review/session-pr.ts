@@ -6,9 +6,8 @@
 import type { ChangesPrOpened, PrProviderKind, SecretScanner } from "@flightdeck/protocol";
 import { prProvider } from "../board/pr.ts";
 import { assertNoSecretInPr, publishPr, withoutCredentials } from "../board/publish-pr.ts";
-import { assertBranchName } from "../board/ref-arg.ts";
 import { git } from "../git/index.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { assertBranchName, FlightdeckError } from "../kernel/index.ts";
 import type { PrProvider } from "../pr/index.ts";
 import type { SessionCommits } from "./session-commit.ts";
 import type { ChangesReader } from "./target.ts";

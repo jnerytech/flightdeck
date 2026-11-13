@@ -3,7 +3,7 @@ import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../../src/board/diff.ts";
-import { refArg } from "../../src/board/ref-arg.ts";
+import { refArg } from "../../src/kernel/index.ts";
 import { Changes } from "../../src/review/changes.ts";
 import { ReviewComments } from "../../src/review/comments.ts";
 import { ReviewFiles } from "../../src/review/files.ts";

@@ -157,7 +157,9 @@ describe("adicionar-host", () => {
     type("Porta", "99999");
     type("Token", TOKEN);
     await submit();
-    expect(screen.getByRole("alert").textContent).toContain("porta inválida");
+    expect(screen.getByRole("alert").textContent).toContain(
+      "A porta deve ser um número de 1 a 65535.",
+    );
     expect(store.getState().hosts).toEqual([]);
   });
 });
