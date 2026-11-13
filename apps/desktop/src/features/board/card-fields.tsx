@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssistControl, WandBinding } from "@/features/assistant/index.ts";
 import { AssistField } from "@/features/assistant/ui.ts";
-import { CardHours } from "@/features/roi/index.ts";
+import { CardHours } from "@/features/roi/ui.ts";
 import { useDraft } from "@/features/sessions/index.ts";
 import type { Key } from "@/i18n";
 import { useT } from "@/i18n/context";
