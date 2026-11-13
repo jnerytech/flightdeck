@@ -94,7 +94,7 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
       git,
       log: (l) => lines.push(l),
     });
-    expect(lines.filter((l) => l.startsWith("CRITICAL")).length).toBe(3);
+    expect(lines.filter((l) => l.startsWith("CRITICAL"))).toHaveLength(3);
     expect(lines.some((l) => l.includes("lib/y.ts"))).toBe(false);
     const asked = urls.filter((u) => u.includes("/api/issues/search"));
     expect([asked.length, asked[0]?.includes("severities=CRITICAL%2CMAJOR")]).toEqual([2, true]);

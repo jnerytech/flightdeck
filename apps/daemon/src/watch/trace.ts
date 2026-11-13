@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Board } from "../board/board.ts";
-import { closingLine } from "../issues/providers.ts";
+import { closingLine } from "../issues/index.ts";
 import { trimEndOf } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import { REMOVED_LINE } from "./check-run.ts";

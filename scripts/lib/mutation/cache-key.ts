@@ -13,7 +13,7 @@ const SETTINGS = [
 /** Every file whose change can change a mutant's verdict: the sources it mutates, the tests that judge it and the settings. */
 export function keyFiles(domains: MutationDomain[]): string[] {
   const paths = [...domains.flatMap((domain) => [...domain.mutate, ...domain.tests]), ...SETTINGS];
-  return [...new Set(paths)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...new Set(paths)].sort((a, b) => (a < b ? -1 : Number(a > b)));
 }
 
 /**

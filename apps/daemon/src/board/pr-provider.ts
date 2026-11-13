@@ -3,7 +3,7 @@
  * remote existed does not have to be set by hand. GitHub (and enterprise hosts) and Azure DevOps only.
  */
 import { type AsyncGitRunner, runGitAsync, stripRemote } from "../central/index.ts";
-import { azureCoords } from "../issues/remote.ts";
+import { azureCoords } from "../issues/index.ts";
 
 export type DetectedProvider = "github" | "azure-devops";
 

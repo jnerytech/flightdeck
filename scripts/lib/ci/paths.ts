@@ -63,7 +63,11 @@ const E2E = [
  */
 const SHOTS = [
   /^scripts\/demo[^/]*\.ts$/,
-  /^scripts\/lib\/(?:browser\/(?:axe|browser|visual)|styles\/(?:layout-guards|print-theme)|shots(?:-[^/]*|\/[^/]+)|(?:e2e|demo)\/[^/]+|(?:e2e|demo)[^/]*)\.ts$/,
+  /^scripts\/lib\/browser\/(?:axe|browser|visual)\.ts$/,
+  /^scripts\/lib\/styles\/(?:layout-guards|print-theme)\.ts$/,
+  /^scripts\/lib\/shots(?:-[^/]*|\/[^/]+)\.ts$/,
+  /^scripts\/lib\/(?:e2e|demo)\/[^/]+\.ts$/,
+  /^scripts\/lib\/(?:e2e|demo)[^/]*\.ts$/,
   /^scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$/,
 ];
 
