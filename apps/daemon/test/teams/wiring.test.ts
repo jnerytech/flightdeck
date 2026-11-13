@@ -134,4 +134,20 @@ describe("teams-wiring: the sessions that work together, as the daemon builds th
       });
     expect(sent).not.toThrow();
   });
+
+  test("a persona that cannot be read is logged with its error, not only reported as unknown (#1694)", async () => {
+    const { board, module, personaStore, repo } = await build();
+    const project = await board.addProject({
+      path: repo,
+      prProvider: "github",
+      promptTemplate: "",
+    });
+    spyOn(personaStore, "resolve").mockRejectedValue(new Error("persona store unreadable"));
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    cleanups.push(() => logged.mockRestore());
+    await module.server?.messaging?.teams
+      ?.create({ projectId: project.id, goal: "g", workers: 1, coordinatorPersona: "qa" })
+      .catch(() => {});
+    expect(logged.mock.calls.flat().join(" ")).toContain("persona store unreadable");
+  });
 });
