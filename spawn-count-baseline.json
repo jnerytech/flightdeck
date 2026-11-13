@@ -5,7 +5,6 @@
   "apps/daemon/src/plugins/plugins.ts": 1,
   "apps/daemon/src/power/keep-awake.ts": 1,
   "apps/daemon/src/projects/project-find.ts": 1,
-  "apps/daemon/src/runenv/host.ts": 1,
   "apps/daemon/src/runtime/acp/client.ts": 1,
   "apps/daemon/src/runtime/opencode-kill.ts": 1,
   "apps/daemon/src/runtime/opencode-process.ts": 1,
