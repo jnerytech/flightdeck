@@ -56,6 +56,8 @@ export interface HubRow {
   quietTool?: string | null;
   /** Issue #1736: a terminal session waits at a plan approval or a question (read by the daemon). */
   waiting?: "plan" | "question";
+  /** Issue #1751: the plan a `plan` wait asks approval of (the daemon cut it). */
+  waitingPlan?: string;
 }
 
 export interface HubFilter {
