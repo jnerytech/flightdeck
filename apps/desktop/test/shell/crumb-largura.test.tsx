@@ -14,7 +14,7 @@ afterEach(cleanup);
  * the e2e `layout` journey (`crumbsProblem` and the tab-strip check in scripts/e2e/journeys.ts);
  * happy-dom has no layout.
  */
-describe("crumb-largura: a long path is folded into a menu, and no step carries a native title (issue #133)", () => {
+describe("crumb-largura: a long path is folded into a menu that goes to its steps, and a long step has no native title (issue #133)", () => {
   const crumbs = [
     { label: "wsl - Ubuntu 24.04 on a long machine name", route: { name: "hub" as const } },
     { label: "Projects", route: { name: "hub" as const } },
