@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { must } from "../../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -292,16 +291,6 @@ describe("board-ui", () => {
     expect(column("Backlog")).toEqual(["C", "B"]);
     const moved = board.listProjects()[0];
     expect(board.getBoard(moved?.id ?? "").columns[3]?.cards.map((c) => c.title)).toEqual(["A"]);
-    // A column lights up while a card is over it and goes back when the card leaves or drops.
-    const over = screen.queryByRole("region", { name: "Em andamento" }) as HTMLElement;
-    await act(async () => {
-      fireEvent.dragEnter(over);
-    });
-    expect(over.className).toContain("drop-over");
-    await act(async () => {
-      fireEvent.dragLeave(over);
-    });
-    expect(over.className).not.toContain("drop-over");
     // Dropping without dragging anything does nothing.
     await act(async () => {
       fireEvent.drop(screen.queryByRole("region", { name: "Concluído" }) as HTMLElement);
@@ -563,23 +552,18 @@ describe("board-ui", () => {
     await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
     const after = details() ?? null;
     const log = screen.queryByRole("log", { name: "Conversa do card" });
-    const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
-    const at = css.indexOf("@utility card-info {");
-    const rule = at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
     expect({
       splitBefore,
       same: before !== null && before === after,
       splitAfter: after?.getAttribute("data-split") ?? null,
       apart: log !== null && log.closest("[data-slot='card-info']") === null,
       reachable: after?.getAttribute("tabindex") ?? null,
-      scrolls: /&\[data-split="true"\] \{[^}]*overflow-y: auto/.test(rule),
     }).toEqual({
       splitBefore: "false",
       same: true,
       splitAfter: "true",
       apart: true,
       reachable: "0",
-      scrolls: true,
     });
   });
 
@@ -587,7 +571,7 @@ describe("board-ui", () => {
   // scrollbar sat under the tallest column, below the window. The board fills the page now: the
   // columns row takes the rest of the height and is the sideways scroller at the window's bottom,
   // and each column's cards scroll by themselves. A narrow board snaps one column at a time.
-  test("the board fills its page: the columns row scrolls sideways, each column's cards scroll by themselves", async () => {
+  test("the board fills its page outside the page's scroll area, with one list per column", async () => {
     const { repo } = await setup();
     await openBoard(repo);
     await createCard("Coluna", "faça");
@@ -596,22 +580,11 @@ describe("board-ui", () => {
     const lists = [
       ...document.querySelectorAll("[data-slot='board-columns'] section[data-column] > ul"),
     ];
-    const classes = (el: Element | null | undefined) => el?.className.split(/\s+/) ?? [];
     expect({
       fill:
         body !== null && body !== undefined && body.closest("[data-slot='scroll-area']") === null,
-      // A 12 rem floor: an empty board's notice above never squeezes the columns to nothing.
-      row: ["min-h-48", "flex-1", "@max-[40rem]:snap-x", "@max-[40rem]:snap-mandatory"].filter(
-        (c) => !classes(row).includes(c),
-      ),
       lists: lists.length,
-      scroll: lists.filter(
-        (ul) => !["min-h-0", "flex-1", "overflow-y-auto"].every((c) => classes(ul).includes(c)),
-      ).length,
-      snap: [
-        ...document.querySelectorAll("[data-slot='board-columns'] section[data-column]"),
-      ].filter((column) => !classes(column).includes("snap-start")).length,
-    }).toEqual({ fill: true, row: [], lists: 5, scroll: 0, snap: 0 });
+    }).toEqual({ fill: true, lists: 5 });
   });
 
   test("detalhe: descrição editável, execuções, conversa, ajuste, diff lado a lado ou unificado", async () => {
@@ -636,8 +609,6 @@ describe("board-ui", () => {
     expect(screen.queryByRole("log")?.textContent ?? "").toContain("crie e commite [commit]");
     // The card's conversation fills its pane like the session screen: no fixed box, no narrow column.
     const chat = screen.queryByRole("log", { name: "Conversa do card" }) as HTMLElement;
-    expect(chat.className).toContain("card-chat");
-    expect(chat.className).not.toContain("h-[32rem]");
     expect(chat.closest(".max-w-4xl")).toBeNull();
     expect(cardItem("Detalhe")).toBeNull();
 

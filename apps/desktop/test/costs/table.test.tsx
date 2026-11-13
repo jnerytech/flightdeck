@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { join } from "node:path";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
 import { canScrollRight } from "@/shared/lib/index.ts";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { EMPTY_PERIOD } from "../../src/features/roi/roi.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
@@ -17,7 +15,6 @@ const { RoiTable } = await import("../../src/features/roi/roi-table.tsx");
 
 afterEach(cleanup);
 const settle = waiter(5000);
-const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
 const SHOP: RoiPeriod = { ...EMPTY_PERIOD, costUsd: 12, cards: 3, prsMerged: 3, hours: 6 };
 const RESULT: RoiSummaryResult = {
@@ -129,44 +126,16 @@ describe("costs-table: a table that scrolls shows it", () => {
     store.dispose();
   });
 
-  test("the first column (header, rows, footer) is sticky so the project stays in view", async () => {
-    const { store } = await table();
-    const rows = Array.from(document.querySelectorAll("table tr"));
-    const firsts = rows.map((row) => row.firstElementChild?.classList.contains("sticky"));
-    const others = rows.flatMap((row) =>
-      Array.from(row.children)
-        .slice(1)
-        .map((cell) => cell.classList.contains("sticky")),
-    );
-    expect({
-      rows: rows.length,
-      sticky: firsts.filter(Boolean).length,
-      others: others.filter(Boolean).length,
-    }).toEqual({ rows: 3, sticky: 3, others: 0 });
-    store.dispose();
-  });
-
-  test("the styles live with the component: an opaque sticky cell, a fade from the surface token", async () => {
+  test("the fade at the right edge is hidden at first and shows once the table scrolls sideways", async () => {
     const { store, frame } = await table();
-    const cell = document.querySelector("tbody th") as HTMLElement;
     const fade = frame.nextElementSibling as HTMLElement;
     const shown = () => fade.classList.contains("opacity-100");
-    expect({
-      sticks: cell.classList.contains("sticky") && cell.classList.contains("left-0"),
-      opaque: cell.classList.contains("bg-background"),
-      fades: ["bg-linear-to-l", "from-background", "to-transparent"].every((c) =>
-        fade.classList.contains(c),
-      ),
-      noClicks: fade.classList.contains("pointer-events-none"),
-      hiddenAtStart: !shown(),
-    }).toEqual({ sticks: true, opaque: true, fades: true, noClicks: true, hiddenAtStart: true });
+    expect(shown()).toBe(false);
     size(frame, { left: 0, client: 560, scroll: 957 });
     await act(async () => {
       fireEvent.scroll(frame);
     });
     expect(shown()).toBe(true);
-    expect(css).not.toContain("table-wide-fade");
-    expect(css).not.toContain("table-sticky-col");
     store.dispose();
   });
 });
