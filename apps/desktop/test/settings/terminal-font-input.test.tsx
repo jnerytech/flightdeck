@@ -6,7 +6,7 @@ import { settle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
-const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TERMINAL_FONT_KEY } = await import("../../src/features/terminal/terminal-view.ts");
@@ -42,6 +42,23 @@ describe("terminal font size box (#2594)", () => {
     expect(box.value).toBe("14");
     expect(store.terminalFont.value).toBe(14);
     expect(mem.platform.storage.getItem(TERMINAL_FONT_KEY)).toBe("14");
+  });
+
+  test("a whole size inside the range applies at once, as the spinner and arrow keys step it", async () => {
+    const { store, box } = await openSettings("pt-BR", LABEL);
+    type(box, "15");
+    expect(store.terminalFont.value).toBe(15);
+    expect(box.value).toBe("15");
+  });
+
+  test("a size changed elsewhere (terminal zoom) replaces a half-typed draft", async () => {
+    const { store, box } = await openSettings("pt-BR", LABEL);
+    type(box, "1");
+    expect(box.value).toBe("1");
+    act(() => store.terminalFont.set(18));
+    expect(box.value).toBe("18");
+    fireEvent.blur(box);
+    expect(store.terminalFont.value).toBe(18);
   });
 
   test("99 and Enter stores the largest size and shows it", async () => {
