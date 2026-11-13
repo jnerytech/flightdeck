@@ -86,6 +86,8 @@ const COMMANDS: Array<[RiskLevel, string, "PowerShell"?]> = [
   ["high", "echo x >(tee /tmp/fora.txt)"],
   ["high", "cat <>/tmp/fora.txt"],
   ["high", "exec 3<>/tmp/fora.txt"],
+  // An escaped quote does not open a quoted string, so the `>` after it is still a redirect.
+  ["high", 'echo x >a\\"b>/tmp/fora.txt "z"'],
   // Credentials, read or not.
   ["high", "cat ~/.ssh/id_rsa"],
   ["high", "cat .env"],

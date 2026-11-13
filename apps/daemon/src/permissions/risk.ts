@@ -309,15 +309,16 @@ export class RiskClassifier {
     if (/\bbase64\b[^|;&\n]*\s(-d|-D|--decode)\b[^|;&\n]*\|/.test(command)) {
       out.push(["high", "base64 -d em pipe"]);
     }
-    // `>`, `>>`, `&>`, `&>>`, `>&file` and `>|file`; `>&2` and `>&-` copy or close a descriptor. The
-    // lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`, match too.
+    // `>`, `>>`, `&>`, `&>>`, `>&file`, `>|file` and `<>file`; `>&2` and `>&-` copy or close a
+    // descriptor. The lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`,
+    // match too. The target is one shell word: quoted and bare parts glued together (#2496).
     for (const match of command.matchAll(
-      /(?<![<>])&?\d?>{1,2}([&|])?\s*("[^"]*"|'[^']*'|[^\s;&|<>]+)/g,
+      /(?<![<>])&?\d?(?:>{1,2}|<>)([&|])?\s*((?:\\.?|"[^"]*"|'[^']*'|[^\s;&|<>\\])+)/g,
     )) {
-      const target = (match[2] as string).replace(/^["']|["']$/g, "");
+      const target = (match[2] as string).replace(/["']/g, "");
       if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;
       if (SINKS.has(target.toLowerCase())) continue;
-      if (/[$%]/.test(target) || !this.inside(target, cwd, [])) {
+      if (/[$%{]|^\(/.test(target) || !this.insideAny(target, cwd)) {
         out.push(["high", "redirecionamento para fora do cwd"]);
       }
     }
@@ -349,6 +350,16 @@ export class RiskClassifier {
   /** Inside the cwd or one of `allowedRoots`. */
   private allowed(path: string, cwd: string): boolean {
     return this.inside(path, cwd, this.opts.allowedRoots);
+  }
+
+  /**
+   * A redirect target read three ways: as written, with `\` as a separator (Windows) and with `\`
+   * as an escape (bash, where `\/etc/x` is `/etc/x`). Outside the cwd in any of them is outside.
+   */
+  private insideAny(target: string, cwd: string): boolean {
+    return [target, target.replaceAll("\\", "/"), target.replaceAll("\\", "")].every((reading) =>
+      this.inside(reading, cwd, []),
+    );
   }
 
   private inside(path: string, cwd: string, roots: readonly string[]): boolean {
