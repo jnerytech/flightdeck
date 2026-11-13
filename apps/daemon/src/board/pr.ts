@@ -2,6 +2,16 @@ import type { ChecksState, PrProviderKind, PrState } from "@flightdeck/protocol"
 import { inSequence } from "@flightdeck/protocol";
 import type { z } from "zod";
 import { FlightdeckError, parseJsonWith, whichOnPath } from "../kernel/index.ts";
+import {
+  AzEvaluations,
+  AzPolicies,
+  AzPr,
+  AzPrHealth,
+  AzPrList,
+  AzPrStatus,
+  AzThreads,
+  AzTimeline,
+} from "./az-json.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
 import {
@@ -57,19 +67,6 @@ const GH_THREADS = `query($owner: String!, $name: String!, $number: Int!) {
     }
   }
 }`;
-
-interface AzThread {
-  id: number;
-  status: string;
-  isDeleted?: boolean;
-  threadContext: { filePath: string; rightFileStart?: { line: number } | null } | null;
-  comments: Array<{
-    id: number;
-    author: { displayName: string; uniqueName?: string; id?: string };
-    content: string;
-    commentType: string;
-  }>;
-}
 
 const AZ_RESOLVED = new Set(["fixed", "closed", "wontFix", "byDesign"]);
 
@@ -185,14 +182,6 @@ function urlName(what: string, value: string): string {
   return value;
 }
 
-const cliJson = async <T>(
-  name: string,
-  args: string[],
-  cwd: string,
-  input?: string,
-  run: CommandRunner = runCommand,
-): Promise<T> => JSON.parse(await cliOk(name, args, cwd, input, run)) as T;
-
 /** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */
 function summarize(results: Array<"passing" | "failing" | "pending">): ChecksState | null {
   if (results.length === 0) return null;
@@ -266,10 +255,6 @@ abstract class CliProvider {
 
   protected ok(name: string, args: string[], cwd: string, input?: string) {
     return cliOk(name, args, cwd, input, this.run);
-  }
-
-  protected json<T>(name: string, args: string[], cwd: string, input?: string) {
-    return cliJson<T>(name, args, cwd, input, this.run);
   }
 
   /** The CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
@@ -531,11 +516,6 @@ export class GithubCli extends CliProvider implements PrProvider {
   }
 }
 
-interface AzPr {
-  pullRequestId: number;
-  repository: { webUrl: string };
-}
-
 const AZ_STATES: Record<string, PrState> = {
   active: "open",
   completed: "merged",
@@ -581,26 +561,14 @@ const AZ_CHECK_STATES: Record<string, PrCheck["state"]> = {
   broken: "failing",
 };
 
-interface AzEvaluation {
-  status: string;
-  configuration: { type: { displayName: string }; settings?: { displayName?: string } };
-  context?: { buildId?: number } | null;
-}
-
-interface AzRecord {
-  type: string;
-  name: string;
-  result: string | null;
-  log: { id: number } | null;
-}
-
 /** Azure DevOps through `az repos` (organization and project detected from the remote). */
 export class AzureDevOpsCli extends CliProvider implements PrProvider {
   async create(opts: CreatePr): Promise<string> {
     const existing = await this.url(opts);
     if (existing) return existing;
     const { cwd, base, head, title, body } = opts;
-    const pr = await this.json<AzPr>(
+    const pr = await this.jsonWith(
+      AzPr,
       "az",
       [
         "repos",
@@ -624,12 +592,14 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
 
   async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
     const id = /\/pullrequest\/(\d+)/.exec(url)?.[1] ?? "";
-    const pr = await this.json<{ status: string } & Parameters<typeof azureDetails>[0]>(
+    const pr = await this.jsonWith(
+      AzPrStatus,
       "az",
       ["repos", "pr", "show", "--id", id, "--output", "json"],
       cwd,
     );
-    const policies = await this.json<Array<{ status: string }>>(
+    const policies = await this.jsonWith(
+      AzPolicies,
       "az",
       ["repos", "pr", "policy", "list", "--id", id, "--output", "json"],
       cwd,
@@ -651,12 +621,14 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
    */
   async health({ cwd, url }: { cwd: string; url: string }): Promise<PrHealth> {
     const { org, project, id } = azParts(url);
-    const pr = await this.json<{ mergeStatus?: string; repository: { project: { id: string } } }>(
+    const pr = await this.jsonWith(
+      AzPrHealth,
       "az",
       ["repos", "pr", "show", "--id", id, "--output", "json"],
       cwd,
     );
-    const { value } = await this.json<{ value: AzEvaluation[] }>(
+    const { value } = await this.jsonWith(
+      AzEvaluations,
       "az",
       [
         "devops",
@@ -686,8 +658,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
             evaluation.configuration.settings?.displayName ??
             evaluation.configuration.type.displayName,
           state: AZ_CHECK_STATES[evaluation.status] ?? "pending",
-          kind: buildId === undefined ? "policy" : "build",
-          buildId: buildId === undefined ? null : String(buildId),
+          kind: buildId == null ? "policy" : "build",
+          buildId: buildId == null ? null : String(buildId),
         };
       }),
       conflicts: pr.mergeStatus === "conflicts",
@@ -713,7 +685,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
       `project=${project}`,
       `buildId=${urlName("build", buildId)}`,
     ];
-    const { records } = await this.json<{ records: AzRecord[] }>(
+    const { records } = await this.jsonWith(
+      AzTimeline,
       "az",
       ["devops", "invoke", "--area", "build", "--resource", "timeline", ...route].concat([
         "--org",
@@ -755,7 +728,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
   }
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
-    const prs = await this.json<AzPr[]>(
+    const prs = await this.jsonWith(
+      AzPrList,
       "az",
       ["repos", "pr", "list", "--source-branch", head, "--status", "active", "--output", "json"],
       cwd,
@@ -770,7 +744,8 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
    */
   async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
     const { org, project, repo, id } = azParts(url);
-    const { value } = await this.json<{ value: AzThread[] }>(
+    const { value } = await this.jsonWith(
+      AzThreads,
       "az",
       [
         "devops",
@@ -800,13 +775,13 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
           .map(
             (comment): PrComment => ({
               id: `${thread.id}/${comment.id}`,
-              path: thread.threadContext?.filePath.replace(/^\//, "") ?? null,
+              path: thread.threadContext?.filePath?.replace(/^\//, "") ?? null,
               line: thread.threadContext?.rightFileStart?.line ?? null,
               author: comment.author.displayName,
               authorAssociation: null,
               authorIdentity: comment.author.uniqueName ?? comment.author.id ?? null,
-              body: comment.content,
-              resolved: AZ_RESOLVED.has(thread.status),
+              body: comment.content ?? "",
+              resolved: AZ_RESOLVED.has(thread.status ?? ""),
               kind: thread.threadContext ? "inline" : "review",
             }),
           ),

@@ -109,6 +109,23 @@ describe("arch-report (#1610)", () => {
     expect(growing([row(1) as RatchetRow])).toHaveLength(1);
   });
 
+  test("process launches outside adapters get one row summed over the files; a launch over the baseline puts it above (#1612)", () => {
+    const row = (counts: Record<string, number>) =>
+      ratchetRows(
+        inputs({
+          spawnCounts: counts,
+          spawnBaseline: { "apps/daemon/src/a.ts": 3, "apps/daemon/src/b.ts": 1 },
+        }),
+      ).find((r) => r.ratchet.startsWith("spawn-count"));
+    expect(row({ "apps/daemon/src/a.ts": 2, "apps/daemon/src/b.ts": 1 })).toEqual({
+      ratchet: "spawn-count launches outside adapters",
+      baseline: 4,
+      today: 3,
+    });
+    expect(growing([row({ "apps/daemon/src/a.ts": 5 }) as RatchetRow])).toHaveLength(1);
+    expect(ratchetRows(inputs()).some((r) => r.ratchet.startsWith("spawn-count"))).toBe(false);
+  });
+
   test("a PR cannot raise the cycle baseline: the lower of main's file and its own counts (#1624)", () => {
     const file = (files: number) => JSON.stringify({ files });
     expect(cycleBaseline(file(172), file(160))).toBe(160);

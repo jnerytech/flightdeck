@@ -8,7 +8,7 @@ import type { Key } from "../../i18n/index.ts";
 import { ExternalSeal, issueLabel, issueUrl } from "../issues/index.ts";
 import { CardReview, ChangesPanel, PrComments } from "../review/index.ts";
 import { type SessionState, SessionView, StatusBadge } from "../sessions/index.ts";
-import { TerminalButton } from "../terminal/index.ts";
+import { TerminalButton } from "../terminal/ui.ts";
 import { CardSecondOpinion } from "./card-second-opinion.tsx";
 
 /** The card's header actions: back, its state, its issue and synced item, its PR and checks, the terminal. */
