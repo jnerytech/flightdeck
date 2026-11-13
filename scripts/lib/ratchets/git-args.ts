@@ -8,8 +8,8 @@ export interface GitArgFinding {
   call: string;
 }
 
-/** A call of the daemon's git helpers: `git(`, `gitLimited(`, `this.git(`, `deps.git(`. */
-const CALL = /(?<![\w$])(?:[\w$]+\.)*(?:git|gitLimited)\(/g;
+/** A call of the daemon's git helpers: `git(`, `gitLimited(`, `gitBytes(`, `this.git(`, `deps.git(`. */
+const CALL = /(?<![\w$])(?:[\w$]+\.)*(?:git|gitLimited|gitBytes)\(/g;
 /** A name that carries a branch or a revision in, from a project's settings or a protocol field. */
 const REF_TOKENS = [
   /^(?:base|branch|source|ref|against|upstream)\w*$/,
