@@ -23,6 +23,7 @@ import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
 import { basename, holdsFolder, isBusy } from "@/shared/lib/index.ts";
+import { lazyScreen } from "../app/lazy-screen.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import type { TopSession } from "../features/costs/page.tsx";
@@ -48,7 +49,6 @@ import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import type { Route } from "../lib/router.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
-import { lazyScreen } from "./lazy-screen.ts";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
