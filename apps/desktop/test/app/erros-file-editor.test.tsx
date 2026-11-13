@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { uiIdle } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
-const { FileEditor } = await import("../src/features/review/file-editor.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
+const { FileEditor } = await import("../../src/features/review/file-editor.tsx");
 
-import type { AppStore } from "../src/lib/app-store.ts";
+import type { AppStore } from "../../src/lib/app-store.ts";
 
 afterEach(cleanup);
 

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const SRC = join(import.meta.dir, "../src");
+const SRC = join(import.meta.dir, "../../src");
 
 /** The most files that may take the whole `AppState` as a prop. It only goes down; the goal is 10. */
 const MAX_WHOLE_STATE_PROPS = 8;

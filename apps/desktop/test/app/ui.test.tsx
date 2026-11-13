@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { unfoldAll } from "./unfold.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { unfoldAll } from "../unfold.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -40,11 +40,11 @@ async function openHostMenu(host: string) {
     });
   });
 }
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { emptySession } = await import("../src/features/sessions/session-state.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { SessionView } = await import("../src/features/sessions/session-view.tsx");
-type SessionState = import("../src/features/sessions/session-state.ts").SessionState;
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { emptySession } = await import("../../src/features/sessions/session-state.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
+type SessionState = import("../../src/features/sessions/session-state.ts").SessionState;
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

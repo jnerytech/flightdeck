@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Profiler, type ReactNode } from "react";
-import type { Route } from "../src/lib/router.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle, stays, uiIdle } from "./wait.ts";
+import type { Route } from "../../src/lib/router.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { settle, stays, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { useStoreSlice, useStoreState } = await import("../src/lib/use-store.ts");
-const { Screen } = await import("../src/ui/Screens.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { useStoreSlice, useStoreState } = await import("../../src/lib/use-store.ts");
+const { Screen } = await import("../../src/ui/Screens.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(60_000);
 const cleanups: Array<() => unknown> = [];
@@ -148,10 +148,10 @@ describe("state-selectors: an unrelated change of the state does not render the 
   }
 
   test("a parent that renders for every change does not render these (here: a search opening and closing)", async () => {
-    const { UpdateBanner } = await import("../src/features/appupdate/update-banner.tsx");
-    const { Notices } = await import("../src/components/feedback/notices.tsx");
-    const { TeamsPage } = await import("../src/features/teams/page.tsx");
-    const { PersonasPage } = await import("../src/features/personas/page.tsx");
+    const { UpdateBanner } = await import("../../src/features/appupdate/update-banner.tsx");
+    const { Notices } = await import("../../src/components/feedback/notices.tsx");
+    const { TeamsPage } = await import("../../src/features/teams/page.tsx");
+    const { PersonasPage } = await import("../../src/features/personas/page.tsx");
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
     cleanups.push(() => store.dispose());
     const screens: Array<[string, ReturnType<typeof counted>, (s: Store) => ReactNode]> = [
@@ -183,27 +183,27 @@ describe("state-selectors: an unrelated change of the state does not render the 
   });
 
   test("every screen that reads some parts of the state is a memo component, so a parent's render skips it", async () => {
-    const { UpdateBanner } = await import("../src/features/appupdate/update-banner.tsx");
-    const { Notices } = await import("../src/components/feedback/notices.tsx");
-    const { AskpassPrompt } = await import("../src/features/ssh/askpass-prompt.tsx");
-    const { QuotaPanel } = await import("../src/features/quota/quota-panel.tsx");
-    const { TeamsPage } = await import("../src/features/teams/page.tsx");
-    const { PluginsPage } = await import("../src/features/plugins/page.tsx");
-    const { PersonasPage } = await import("../src/features/personas/page.tsx");
-    const { SnippetsPage } = await import("../src/features/snippets/page.tsx");
-    const { CostsPage } = await import("../src/features/costs/page.tsx");
-    const { ConnectionsPage } = await import("../src/features/ssh/page.tsx");
-    const { ConversationsPage } = await import("../src/features/messaging/page.tsx");
-    const { Settings } = await import("../src/features/settings/page.tsx");
-    const { TargetForm } = await import("../src/features/ssh/target-form.tsx");
-    const { SnippetUse } = await import("../src/features/snippets/snippet-use.tsx");
-    const { EditSecretForm } = await import("../src/features/vault/edit-secret-form.tsx");
-    const { UsageLog } = await import("../src/features/vault/usage-log.tsx");
-    const { VaultReport } = await import("../src/features/vault/vault-report.tsx");
-    const { VaultPage } = await import("../src/features/vault/page.tsx");
-    const { BoardView } = await import("../src/features/board/board-view.tsx");
-    const { CardDetail } = await import("../src/features/board/card-detail.tsx");
-    const { BgPanel } = await import("../src/features/background/bg-panel.tsx");
+    const { UpdateBanner } = await import("../../src/features/appupdate/update-banner.tsx");
+    const { Notices } = await import("../../src/components/feedback/notices.tsx");
+    const { AskpassPrompt } = await import("../../src/features/ssh/askpass-prompt.tsx");
+    const { QuotaPanel } = await import("../../src/features/quota/quota-panel.tsx");
+    const { TeamsPage } = await import("../../src/features/teams/page.tsx");
+    const { PluginsPage } = await import("../../src/features/plugins/page.tsx");
+    const { PersonasPage } = await import("../../src/features/personas/page.tsx");
+    const { SnippetsPage } = await import("../../src/features/snippets/page.tsx");
+    const { CostsPage } = await import("../../src/features/costs/page.tsx");
+    const { ConnectionsPage } = await import("../../src/features/ssh/page.tsx");
+    const { ConversationsPage } = await import("../../src/features/messaging/page.tsx");
+    const { Settings } = await import("../../src/features/settings/page.tsx");
+    const { TargetForm } = await import("../../src/features/ssh/target-form.tsx");
+    const { SnippetUse } = await import("../../src/features/snippets/snippet-use.tsx");
+    const { EditSecretForm } = await import("../../src/features/vault/edit-secret-form.tsx");
+    const { UsageLog } = await import("../../src/features/vault/usage-log.tsx");
+    const { VaultReport } = await import("../../src/features/vault/vault-report.tsx");
+    const { VaultPage } = await import("../../src/features/vault/page.tsx");
+    const { BoardView } = await import("../../src/features/board/board-view.tsx");
+    const { CardDetail } = await import("../../src/features/board/card-detail.tsx");
+    const { BgPanel } = await import("../../src/features/background/bg-panel.tsx");
     const memo = Symbol.for("react.memo");
     for (const screen of [
       UpdateBanner,
