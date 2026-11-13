@@ -233,10 +233,18 @@ function clearToasts(card: HTMLElement | null): (() => void) | undefined {
   };
 }
 
-/** The floating rounded card of the message box and its buttons. */
-export function Composer(props: Readonly<{ children: ReactNode }>) {
+/**
+ * The floating rounded card of the message box and its buttons. `busy`: a turn runs, so "Queue" and
+ * "Stop" share the row, and a narrow dock gives the field its own line (#2727).
+ */
+export function Composer(props: Readonly<{ children: ReactNode; busy?: boolean }>) {
   return (
-    <div ref={clearToasts} data-slot="composer-card" className="composer-card">
+    <div
+      ref={clearToasts}
+      data-slot="composer-card"
+      data-busy={props.busy ? "true" : undefined}
+      className="composer-card"
+    >
       {props.children}
     </div>
   );
