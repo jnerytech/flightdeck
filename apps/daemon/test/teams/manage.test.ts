@@ -210,14 +210,15 @@ describe("team-manage: the coordinator adds and removes a member (#2090)", () =>
     ]);
     const after = workersOf(teams, team.id);
     expect([
-      both.toSorted((a, b) => a.localeCompare(b)),
+      both.includes("ok"),
+      both.includes("team_full"),
       names.length,
       new Set(names).size,
       removal,
       addition,
       after.length,
       after.includes("login · executora 8"),
-    ]).toEqual([["ok", "team_full"], 8, 8, "ok", "ok", 8, true]);
+    ]).toEqual([true, true, 8, 8, "ok", "ok", 8, true]);
   });
 
   test("removing a worker stops it and takes it out of the team; its card stays; the coordinator stays", async () => {

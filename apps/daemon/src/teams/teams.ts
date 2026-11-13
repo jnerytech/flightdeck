@@ -30,18 +30,12 @@ import {
   workerInstructions,
 } from "./instructions.ts";
 import type { TeamsOptions } from "./options.ts";
+import { PerKeyQueue } from "./serial.ts";
 import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./stored.ts";
+import { MAX_WORKERS, NO_SPEC, numberOf, type WorkerSpec, type WorkerStart } from "./worker.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
-
-/** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
-function numberOf(member: StoredMember): number | null {
-  if (member.role !== "worker") return null;
-  if (typeof member.number === "number") return member.number;
-  const parsed = /executora (\d+)$/.exec(member.name)?.[1];
-  return parsed ? Number(parsed) : null;
-}
 
 /**
  * The name the cards and sessions of a team carry. A card's branch comes from its title cut short,
@@ -56,26 +50,6 @@ const invalid = (message: string, reason?: string, params?: Record<string, strin
 const notFound = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("not_found", message, reason, params);
 
-/** What a worker is started with beyond the team's own setup; read only, so one copy serves every call. */
-interface WorkerSpec {
-  readonly persona: string | null;
-  readonly model: string | null;
-  readonly effort: EffortLevel | null;
-  readonly permission: PermissionMode | null;
-  /** #2090: what the coordinator tells this worker up front; it goes in the card after the standard instructions. */
-  readonly brief?: string;
-}
-/** A team holds at most this many workers, besides its coordinator (the cap of `teams.create`). */
-const MAX_WORKERS = 8;
-const NO_SPEC: WorkerSpec = { persona: null, model: null, effort: null, permission: null };
-
-/** One worker to start: its name, who it reports to, and what it is started with (null: the default). */
-interface WorkerStart extends WorkerSpec {
-  readonly name: string;
-  readonly coordinator: string | null;
-  readonly number: number | null;
-}
-
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
   private readonly unsubscribe: Array<() => void> = [];
@@ -83,6 +57,8 @@ export class Teams {
   private readonly cardPersonas = new Map<string, string>();
   /** The team, role and number each worker card was started with (issue #101). */
   private readonly cardTeams = new Map<string, SessionTeam>();
+  /** A team's member changes run one at a time (#2090). */
+  private readonly changes = new PerKeyQueue();
   private blocked: boolean;
 
   constructor(private readonly opts: TeamsOptions) {
@@ -703,6 +679,14 @@ export class Teams {
     asker: string,
     spec: { persona?: string; model?: string; brief: string },
   ): Promise<{ member: TeamMember; team: TeamInfo }> {
+    return this.changes.run(id, () => this.doAddMember(id, asker, spec));
+  }
+
+  private async doAddMember(
+    id: string,
+    asker: string,
+    spec: { persona?: string; model?: string; brief: string },
+  ): Promise<{ member: TeamMember; team: TeamInfo }> {
     const row = this.open(id);
     this.coordinatorOnly(row, asker);
     // The quota first: it pauses every active team, so a paused team in that window is the quota's.
@@ -728,16 +712,22 @@ export class Teams {
   }
 
   /** #2090: the coordinator takes a worker out; its card and branch stay, and its turn is interrupted. */
-  async removeMember(id: string, asker: string, member: string): Promise<TeamInfo> {
-    const row = this.open(id);
-    this.coordinatorOnly(row, asker);
-    await this.dropMember(row, member, (text) =>
-      this.notify(this.get(row.id), text, (m) => m.role === "coordinator"),
-    );
-    return this.changed(row.id);
+  removeMember(id: string, asker: string, member: string): Promise<TeamInfo> {
+    return this.changes.run(id, async () => {
+      const row = this.open(id);
+      this.coordinatorOnly(row, asker);
+      await this.dropMember(row, member, (text) =>
+        this.notify(this.get(row.id), text, (m) => m.role === "coordinator"),
+      );
+      return this.changed(row.id);
+    });
   }
 
-  async update(patch: TeamPatch): Promise<TeamInfo> {
+  update(patch: TeamPatch): Promise<TeamInfo> {
+    return this.changes.run(patch.team, () => this.doUpdate(patch));
+  }
+
+  private async doUpdate(patch: TeamPatch): Promise<TeamInfo> {
     const row = this.open(patch.team);
     const info = this.get(row.id);
     const coordinator = info.members[0];
