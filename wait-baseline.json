@@ -3,8 +3,8 @@
   "apps/daemon/test/core/shutdown.test.ts": 1,
   "apps/daemon/test/plugins/stop.test.ts": 1,
   "apps/daemon/test/support/fake-claude-main.ts": 1,
-  "apps/desktop/test/ao-vivo.test.tsx": 1,
   "apps/desktop/test/run/ambiente-ui.test.tsx": 1,
+  "apps/desktop/test/sessions/ao-vivo.test.tsx": 1,
   "apps/desktop/test/terminal/ui-abrir.test.tsx": 1,
   "apps/desktop/test/terminal/ui-page.test.tsx": 1
 }

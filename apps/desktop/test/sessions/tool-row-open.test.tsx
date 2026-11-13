@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { HistoryToolDetail } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { uiIdle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ToolRow } = await import("../src/features/sessions/tool-row.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
+const { ToolRow } = await import("../../src/features/sessions/tool-row.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
 afterEach(cleanup);
 

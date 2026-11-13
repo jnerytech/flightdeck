@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { Board } from "../../src/board/board.ts";
-import { confirmationHash } from "../../src/board/check-loop.ts";
+import { confirmationHash } from "../../src/board/check-loop-engine.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
