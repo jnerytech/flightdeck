@@ -16,22 +16,27 @@ afterEach(cleanup);
  * #2609: an actions list whose `actions.list` failed used to stay in its loading shape for good,
  * because the toast's Retry threw the answer away. The page now says the request failed and retries.
  */
-async function openActions(answers: Array<"fail" | "ok">) {
+async function openActions(answers: Array<"fail" | "ok" | "hang">) {
   const queue = [...answers];
   let lists = 0;
   const host = await fakeHostStore(
     {
       "actions.list": () => {
         lists += 1;
-        if ((queue.shift() ?? "ok") === "fail") throw new RequestError("internal", "host is down");
+        const answer = queue.shift() ?? "ok";
+        if (answer === "hang") return new Promise(() => {});
+        if (answer === "fail") throw new RequestError("internal", "host is down");
         return { actions: [], errors: [] };
       },
     },
     { hostId: "h1", language: "en", fallback: {} },
   );
   host.store.i18n.start();
-  render(<ActionsPage store={host.store} hostId="h1" projectId="p1" projectName="api" />);
-  return { lists: () => lists };
+  const page = (projectId: string) => (
+    <ActionsPage store={host.store} hostId="h1" projectId={projectId} projectName="api" />
+  );
+  const view = render(page("p1"));
+  return { lists: () => lists, goTo: (projectId: string) => view.rerender(page(projectId)) };
 }
 
 const retry = () => screen.queryByRole("button", { name: "Try again" });
@@ -77,5 +82,26 @@ describe("list-load-error", () => {
     await settleMaybe(() => empty() !== null, 3000);
     expect(empty()).not.toBeNull();
     expect(retry()).toBeNull();
+  });
+
+  test("while a retry is out, the error gives way to the loading shape", async () => {
+    await openActions(["fail", "hang"]);
+    await settleMaybe(() => retry() !== null, 3000);
+    await act(async () => {
+      fireEvent.click(retry() as HTMLElement);
+    });
+    await settleMaybe(() => loading() !== null, 3000);
+    expect(loading()).not.toBeNull();
+    expect(retry()).toBeNull();
+  });
+
+  test("a reload that fails over a list already shown says so, with the retry", async () => {
+    const page = await openActions(["ok", "fail"]);
+    await settleMaybe(() => empty() !== null, 3000);
+    await act(async () => {
+      page.goTo("p2");
+    });
+    await settleMaybe(() => retry() !== null, 3000);
+    expect(retry()).not.toBeNull();
   });
 });
