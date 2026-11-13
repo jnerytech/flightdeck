@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 
-const ROOT = resolve(import.meta.dir, "../../..");
+const ROOT = resolve(import.meta.dir, "../../../..");
 
 describe("proto-restore: DOM prototypes patched by a test file are put back after it", () => {
   test("two files that patch HTMLElement.prototype and never restore it do not see each other's patch", async () => {

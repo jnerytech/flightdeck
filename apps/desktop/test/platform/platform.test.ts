@@ -94,8 +94,8 @@ mock.module("@tauri-apps/plugin-global-shortcut", () => ({
   },
 }));
 
-const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
-const { createWebPlatform } = await import("../src/platform/web/index.ts");
+const { tauriPlatform } = await import("../../src/platform/tauri/index.ts");
+const { createWebPlatform } = await import("../../src/platform/web/index.ts");
 
 function fakeWindow(hash = "") {
   const items = new Map<string, string>();
@@ -142,7 +142,7 @@ function fakeWindow(hash = "") {
  * diagnostics through the exit code, so a real file is written and removed afterwards.
  */
 async function lint(paths: string[], code: string) {
-  const root = resolve(import.meta.dir, "../../..");
+  const root = resolve(import.meta.dir, "../../../..");
   const files = paths.map((path) => resolve(root, path));
   for (const file of files) {
     mkdirSync(dirname(file), { recursive: true });

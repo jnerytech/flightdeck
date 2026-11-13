@@ -12,10 +12,8 @@ import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { initialAccountState } from "../features/account/index.ts";
-import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BudgetsSlice, hubHostScope, localDay, wireBudgets } from "../features/costs/index.ts";
-import { type HistorySlice, wireHistory } from "../features/history/index.ts";
 import {
   type ConnectionStatus,
   type HostConnection,
@@ -30,39 +28,14 @@ import {
   statusLine,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
-import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
 import { initialQuotaState } from "../features/quota/index.ts";
-import {
-  type ExternalSessionsSlice,
-  type FinishedSlice,
-  HISTORY_LIST_LIMIT,
-  type SessionActions,
-  type SessionCommandsSlice,
-  type SessionListsSlice,
-  type SessionStreamSlice,
-  type SessionSubscriptions,
-  type SessionsSlice,
-  SessionViews,
-  type SummariesSlice,
-  sessionKey,
-  takeHubHost,
-  wireExternalSessions,
-  wireFinished,
-  wireSessionActions,
-  wireSessionCommands,
-  wireSessionLists,
-  wireSessionStream,
-  wireSessionSubscriptions,
-  wireSessions,
-  wireSummaries,
-} from "../features/sessions/index.ts";
+import { SessionViews, sessionKey, takeHubHost } from "../features/sessions/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
-import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import type { DeliveryRefusal } from "../features/vault/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
@@ -155,36 +128,10 @@ export class AppStore {
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
-  /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
-  readonly tray: TraySlice;
-  /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
-  readonly permissions: PermissionsSlice;
   private noticeSeq = 0;
-  /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
-  readonly summaries: SummariesSlice;
-  /** What a host tells about the Claude sessions started in a terminal (#1596). */
-  readonly external: ExternalSessionsSlice;
-  /** What the Sessions screen lists from the online hosts (#1596). */
-  readonly sessionLists: SessionListsSlice;
-  /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
-  readonly finished: FinishedSlice;
-  /** What a host's session events do to the conversations the app holds (#1596). */
-  readonly stream: SessionStreamSlice;
-  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
-  readonly subscriptions: SessionSubscriptions;
-  /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
-  readonly commands: SessionCommandsSlice;
-  /** What a conversation screen asks of the app: the commands, copying a text, answering a request. */
-  readonly sessionActions: SessionActions;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   private offQuit: (() => void) | null = null;
 
-  /** The history read from every host (#1596): its global search. */
-  readonly history: HistorySlice;
-  /** What happened on the hosts while the app was away (issue #1344, #1596). */
-  readonly activity: ActivitySlice;
-  /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
-  readonly sessions: SessionsSlice;
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
@@ -221,6 +168,20 @@ export class AppStore {
         formatTime: (iso) => this.formatTime(iso),
         secretValues: () => this.scan.values(),
         openSearch: () => this.history.openSearch(),
+        searchTimeoutMs: options.searchTimeoutMs,
+        timers: options.timers ?? REAL_TIMERS,
+        showSession: (hostId, sessionId) =>
+          this.router.push({ name: "session", host: hostId, id: sessionId }),
+        settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
+        backgroundChanged: (hostId, list) => this.background.changed(hostId, list),
+        webhookFeed: () => this.webhookFeed,
+        notify: (...args) => this.inbox.notify(...args),
+        copyText: (text) => this.system.copyText(text),
+        projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
+        shown: () => this.shownSessions(),
+        later: (fn, ms) => void this.later(fn, ms),
+        respondTo: (hostId, requestId, decision) =>
+          void this.respondTo(hostId, requestId, decision),
         palette: {
           loadProjects: (hostId) => this.projectList.load(hostId),
           loadBoard: (hostId, projectId) => this.boardCards.load(hostId, projectId),
@@ -273,15 +234,6 @@ export class AppStore {
         roiChanged: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
       }),
     );
-    this.history = wireHistory(this.kernel, {
-      searchTimeoutMs: options.searchTimeoutMs,
-      select: (hostId, sessionId) => this.subscriptions.select(hostId, sessionId),
-      listLimit: HISTORY_LIST_LIMIT,
-      offline: () => new RequestError("offline", "unknown host"),
-      reason: (error) => (error instanceof RequestError ? error.reason : undefined),
-    });
-    this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
-    this.sessions = wireSessions(this.kernel, { storage: platform.storage });
     this.personas = wirePersonas(this.kernel, {
       storage: platform.storage,
       language: () => this.i18n.lang,
@@ -354,67 +306,6 @@ export class AppStore {
       setBadge: (count) => this.platform.setBadge?.(count),
     });
     this.i18n = new I18n(platform);
-    this.commands = wireSessionCommands(this.kernel, {
-      opened: (hostId, sessionId) => {
-        this.subscriptions.select(hostId, sessionId);
-        // A new session opens, wherever it was created from (phase 10).
-        this.history.closeSearch();
-        this.router.push({ name: "session", host: hostId, id: sessionId });
-      },
-    });
-    this.permissions = wirePermissions(this.kernel, {
-      needsYou: () => needsYou(this.state, this.i18n.t),
-      settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
-      sendSelected: (response) =>
-        this.commands.onSelected((conn) => conn.request("permission.respond", response)),
-      showWindow: () => void this.platform.showMainWindow(),
-      act: (action) => this.tray.act(action),
-    });
-    this.sessionActions = wireSessionActions(this.commands, {
-      copyText: (text) => this.system.copyText(text),
-      respond: (requestId, decision, answer) =>
-        this.permissions.respond(requestId, decision, answer ?? {}),
-    });
-    this.external = wireExternalSessions(this.kernel, {
-      projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
-      isFocused: () => this.platform.isFocused(),
-      notify: (...args) => this.inbox.notify(...args),
-      feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
-      feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
-    });
-    this.sessionLists = wireSessionLists(this.kernel, {
-      backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
-    });
-    this.subscriptions = wireSessionSubscriptions(this.kernel);
-    this.stream = wireSessionStream(this.kernel, {
-      summary: (hostId, event) => this.summaries.apply(hostId, [event]),
-    });
-    this.finished = wireFinished(this.kernel, {
-      storage: platform.storage,
-      isFocused: () => this.platform.isFocused(),
-      shown: () => this.shownSessions(),
-    });
-    this.summaries = wireSummaries(this.kernel, {
-      setSessions: (hostId, sessions) => this.updateHost(hostId, (h) => ({ ...h, sessions })),
-      shown: () => this.shownSessions(),
-      projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
-      isSimple: (hostId) => this.uiModes.mode(hostId).mode === "simple",
-      isFocused: () => this.platform.isFocused(),
-      prefs: () => this.notifyPrefs.value,
-      notify: (...args) => this.inbox.notify(...args),
-      feed: (host, prev, next) => this.webhookFeed.managed(host, prev, next),
-      finished: (hostId, prev, next) => this.finished.record(hostId, prev, next),
-      later: (fn, ms) => void this.later(fn, ms),
-    });
-    this.tray = wireTray(this.kernel, {
-      platform,
-      needsYou: () => needsYou(this.state, this.i18n.t),
-      uiHostId: () => this.uiModes.hostId(),
-      isSimple: (hostId) => this.uiModes.mode(hostId).mode === "simple",
-      answer: (hostId, requestId, decision) => void this.respondTo(hostId, requestId, decision),
-      open: (item) => this.permissions.open(item),
-      timers: options.timers ?? REAL_TIMERS,
-    });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = initialAppState(platform, {
       now: (options.now ?? Date.now)(),

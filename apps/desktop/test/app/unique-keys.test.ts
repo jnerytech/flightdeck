@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { uniqueKeys } from "../src/lib/unique-keys.ts";
-import { sameKeyWarnings } from "./dom.ts";
+import { uniqueKeys } from "../../src/lib/unique-keys.ts";
+import { sameKeyWarnings } from "../dom.ts";
 
 describe("unique-keys: a key per row, even when two rows are the same session", () => {
   test("the first of a repeated id keeps it, later ones get a count, and the order does not matter", () => {

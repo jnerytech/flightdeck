@@ -113,11 +113,12 @@ describe("baseline-merge: registration", () => {
     expect(calls).toEqual([["config", "--get", `merge.${DRIVER_NAME}.driver`]]);
   });
 
-  test(".gitattributes names the three baselines with the driver", () => {
+  test(".gitattributes names the path-keyed baselines with the driver", () => {
     const attributes = readFileSync(join(import.meta.dir, "../../../.gitattributes"), "utf8");
     for (const file of [
       "src-size-baseline.json",
       "json-parse-baseline.json",
+      "spawn-count-baseline.json",
       "fast-coverage-baseline.json",
     ]) {
       expect(attributes).toContain(`${file} merge=${DRIVER_NAME}`);
