@@ -4,7 +4,7 @@ import type { T } from "../../i18n/index.ts";
 import type { Answer, AppState, PendingItem } from "../../lib/app-store.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
 import type { TrayAction } from "../../platform/types.ts";
-import { parseRequestLink } from "./request-link.ts";
+import { parseRequestLink } from "./domain/request-link.ts";
 
 /** The `permission.respond` request of an answer: only what the person gave goes in, and `held` rides on an allow only. */
 function permissionResponse(requestId: string, decision: "allow" | "deny", answer: Answer) {

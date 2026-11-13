@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { holdAwake, type Locks } from "../../src/features/hosts/keep-awake.ts";
+import { holdAwake, type Locks } from "../../src/features/hosts/domain/keep-awake.ts";
 
 /** Issue #939: the app holds a Web Lock for its life, so a hidden window's page is not frozen. */
 describe("keep-awake: a lock held for the app's life (#939)", () => {

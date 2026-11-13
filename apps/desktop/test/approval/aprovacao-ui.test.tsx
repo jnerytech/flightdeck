@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { loadConfig } from "../../../daemon/src/config.ts";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { poll } from "../../../daemon/test/support/helpers.ts";
-import { approvalView, shortPath } from "../../src/features/permissions/approval.ts";
+import { approvalView, shortPath } from "../../src/features/permissions/domain/approval.ts";
 import { inputSummary } from "../../src/features/sessions/tool-input.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
