@@ -8,22 +8,12 @@ import type {
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
-import { SystemSlice } from "@/features/shell/system.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
-import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
+import { initialAccountState } from "../features/account/index.ts";
 import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import { type BackgroundSlice, wireBackground } from "../features/background/index.ts";
-import {
-  type Attention,
-  BackupScheduler,
-  type BackupSlice,
-  googleConfig,
-  wireBackup,
-} from "../features/backup/index.ts";
-import { BoardCardsSlice } from "../features/board/index.ts";
 import {
   type ClientScopeSlice,
   Clients,
@@ -42,37 +32,24 @@ import {
 import { type HistorySlice, wireHistory } from "../features/history/index.ts";
 import {
   type ConnectionStatus,
-  type HealthSlice,
-  type HostConfig,
   type HostConnection,
   HostLink,
-  HostRosterSlice,
   type HostRoutes,
   HostTabs,
-  type HostUpdateSlice,
   initialHealthState,
   loadHosts,
   type OnlineStep,
   RequestError,
   saveHosts,
   statusLine,
-  wireHealth,
-  wireHostUpdate,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
-import { type MessagingSlice, wireMessaging } from "../features/messaging/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
-import {
-  ProjectKeys,
-  type ProjectsSlice,
-  type WorktreeFilter,
-  wireProjects,
-} from "../features/projects/index.ts";
-import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
+import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
+import { initialQuotaState } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import { RoiSettings } from "../features/roi/roi-settings.ts";
-import { RunEnvSlice } from "../features/runenv/store.ts";
 import {
   type ExternalSessionsSlice,
   type FinishedSlice,
@@ -98,29 +75,12 @@ import {
   wireSessions,
   wireSummaries,
 } from "../features/sessions/index.ts";
-import { SetupProbes, SetupSettings } from "../features/setup/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
-import { type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
-import { TeamsSlice } from "../features/teams/store.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
-import { isLocalUrl } from "../features/terminal/terminal.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
-import {
-  type DeliveryRefusal,
-  Vault,
-  type VaultApprovalsSlice,
-  VaultRules,
-  type VaultRulesSlice,
-  VaultScanSlice,
-  type VaultSecretsSlice,
-  VaultUsageLog,
-  wireVaultApprovals,
-  wireVaultRules,
-  wireVaultSecrets,
-} from "../features/vault/index.ts";
-import { type WatchSlice, wireWatch } from "../features/watch/index.ts";
+import type { DeliveryRefusal } from "../features/vault/index.ts";
 import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
 import { Webhooks } from "../features/webhook/webhooks.ts";
 import { refusalText } from "../i18n/errors.ts";
@@ -137,7 +97,9 @@ import type {
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
+import { composeHosts, type HostSlices, newHostView } from "./compose/hosts.ts";
 import { composeShell, type ShellSlices } from "./compose/shell.ts";
+import { composeVault, type VaultSlices } from "./compose/vault.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
@@ -178,19 +140,6 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-const newHostView = (config: HostConfig): HostView => ({
-  ...config,
-  status: "offline",
-  info: null,
-  hostInfo: null,
-  infoAt: 0,
-  retry: null,
-  incompatibility: null,
-  daemonUpdate: null,
-  updateCheck: null,
-  sessions: [],
-});
-
 function describeError(error: unknown): string {
   return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
 }
@@ -199,7 +148,7 @@ function describeError(error: unknown): string {
  * The slices each composition module builds are the store's fields: the constructor assigns them
  * (`Object.assign`), and the merged interface gives them their types (#2376).
  */
-export interface AppStore extends ShellSlices {}
+export interface AppStore extends ShellSlices, HostSlices, VaultSlices {}
 
 /**
  * All app state in one framework-free store: hosts and their connections, session timelines and
@@ -255,30 +204,12 @@ export class AppStore {
   readonly activity: ActivitySlice;
   /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
   readonly sessions: SessionsSlice;
-  /** The messages between sessions: the loops a host paused (phase 21, #1596). */
-  readonly messaging: MessagingSlice;
-  /** The teams of the hosts: their changes, told and notified (`features/teams/store.ts`). */
-  readonly teams: TeamsSlice;
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
   /** What each client with a month limit spent against it (phase 9, #1596). */
   readonly clientBudgets: ClientBudgetsSlice;
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
   readonly personas: PersonasSlice;
-  /** The ssh destinos of the hosts, the prompts ssh raises and its terminals (phase 15, #1596). */
-  readonly ssh: SshSlice;
-  /** What each host's dependencies and doctor say (#1596). */
-  readonly health: HealthSlice;
-  /** Claude Code's background sessions of each host (phase 27, #1596). */
-  readonly background: BackgroundSlice;
-  /** The plan quota of each host, its pause guard and the notices it raises (#1596). */
-  readonly quota: QuotaSlice;
-  /** The Claude account each host is signed in to (phase 34, #1596). */
-  readonly account: AccountSlice;
-  /** A card's run environment: run.yaml, trust, start and stop (`features/runenv/store.ts`). */
-  readonly runEnv: RunEnvSlice;
-  /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
-  readonly hostUpdate: HostUpdateSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
 
@@ -322,16 +253,42 @@ export class AppStore {
         },
       }),
     );
-    this.system = new SystemSlice({
-      platform,
-      localHost: (hostId) => {
-        const host = this.state.hosts.find((h) => h.id === hostId);
-        return host !== undefined && isLocalUrl(host.url);
-      },
-      fail: (error, text) => this.fail(error, text),
-      success: (text) => this.success(text),
-      copiedText: () => this.i18n.t("toast.copied"),
-    });
+    Object.assign(
+      this,
+      composeHosts(this.kernel, {
+        platform,
+        link: this.link,
+        updateHost: (hostId, change) => this.updateHost(hostId, change),
+        persistHosts: () => this.persistHosts(),
+        detach: (hostId) => {
+          this.hostTabs.removeHost(hostId);
+          this.vaultApprovals.hostGone(hostId);
+          this.link.remove(hostId);
+        },
+        rememberToken: (token) => this.scan.rememberToken(token),
+        hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
+        secretFor: (hostId, secretId) => this.vaultApprovals.secretFor(hostId, secretId, "ssh"),
+        showTerminal: (hostId, terminalId) =>
+          this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
+        notify: (...args) => this.inbox.notify(...args),
+        webhookFeed: () => this.webhookFeed,
+        rememberTeam: (hostId, team) => this.summaries.rememberTeam(hostId, team),
+        describeError,
+        daemonUpdateTimeoutMs: options.daemonUpdateTimeoutMs,
+        peersSyncMs: options.peersSyncMs,
+      }),
+    );
+    Object.assign(
+      this,
+      composeVault(this.kernel, {
+        platform,
+        options,
+        notify: (...args) => this.inbox.notify(...args),
+        keepUsage: () => this.keepUsage(),
+        copyText: (text) => this.system.copyText(text),
+        projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
+      }),
+    );
     this.history = wireHistory(this.kernel, {
       searchTimeoutMs: options.searchTimeoutMs,
       select: (hostId, sessionId) => this.subscriptions.select(hostId, sessionId),
@@ -345,60 +302,11 @@ export class AppStore {
       storage: platform.storage,
       language: () => this.i18n.lang,
     });
-    this.ssh = wireSsh(this.kernel, {
-      hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
-      secretFor: (hostId, secretId) => this.vaultApprovals.secretFor(hostId, secretId, "ssh"),
-    });
-    this.health = wireHealth(this.kernel);
-    this.hostUpdate = wireHostUpdate(this.kernel, {
-      patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
-      open: (hostId) => this.link.open(hostId),
-      describeError,
-      timeoutMs: options.daemonUpdateTimeoutMs,
-    });
-    this.background = wireBackground(this.kernel, {
-      showTerminal: (hostId, terminalId) =>
-        this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
-    });
-    this.quota = wireQuota(this.kernel, {
-      notify: (notice, hostId) =>
-        this.inbox.notify(notice, { name: "host", host: hostId }, undefined, {
-          event: "budget-quota",
-          hostId,
-        }),
-    });
-    this.account = wireAccount(this.kernel);
-    this.runEnv = new RunEnvSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      key: sessionKey,
-      config: (hostId, projectId) => this.hostCommand(hostId, "runenv.config", { projectId }),
-      trust: (hostId, projectId, hash) =>
-        this.hostCommand(hostId, "runenv.trust", { projectId, hash }),
-      start: (hostId, cardId) => this.hostCommand(hostId, "runenv.start", { cardId }),
-      stop: (hostId, cardId) => this.hostCommand(hostId, "runenv.stop", { cardId }),
-    });
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
     this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
       notify: (notification, route, source) =>
         this.inbox.notify(notification, route, undefined, source),
-    });
-    this.messaging = wireMessaging(this.kernel, {
-      notify: (notification) => this.inbox.notify(notification),
-      // Phase 21: only an online host with messaging takes part in the relay.
-      relayHosts: () =>
-        this.state.hosts.map((h) => ({
-          id: h.id,
-          hostName: h.hostInfo?.hostName ?? "",
-          online: h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
-        })),
-      peersSyncMs: this.options.peersSyncMs,
-    });
-    this.teams = new TeamsSlice({
-      remember: (hostId, team) => this.summaries.rememberTeam(hostId, team),
-      notify: (notification, route) => this.inbox.notify(notification, route),
-      t: () => this.i18n.t,
     });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
@@ -427,36 +335,6 @@ export class AppStore {
     this.hostTabs.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
       this.clearShownUnread();
-    });
-    this.vault = new Vault(platform);
-    this.vaultApprovals = wireVaultApprovals(this.kernel, {
-      vault: this.vault,
-      optionsPolicy: () => this.options.vaultPolicy,
-      notify: (title, body) => this.inbox.notify({ title, body, event: "needs-you" }),
-      recorded: (outcome) => {
-        this.usage.recordOutcome(outcome);
-        this.keepUsage();
-      },
-    });
-    this.secrets = wireVaultSecrets(this.kernel, {
-      vault: this.vault,
-      workFactor: () => this.options.vaultWorkFactor,
-      saveFile: (name, text) => this.platform.saveFile(name, text),
-      pickFile: () => this.platform.vault.pickFile(),
-      fail: (error) => this.fail(error),
-      copyText: (text) => this.system.copyText(text),
-      clearClipboardIn: (ms) => {
-        setTimeout(() => void this.platform.copyText("").catch(() => {}), ms);
-      },
-    });
-    this.scan = new VaultScanSlice({ vault: this.vault });
-    this.vaultRules = wireVaultRules(this.kernel, {
-      rules: new VaultRules(platform.storage),
-      secrets: () => this.vault.list(),
-      clients: () => this.state.clientList,
-      projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
-      fail: (error, text) => this.fail(error, text),
-      success: (text) => this.success(text),
     });
     this.clients = new Clients(platform, { onChange: () => this.clientScope.sync() });
     this.clientScope = wireClientScope(this.kernel, {
@@ -511,29 +389,10 @@ export class AppStore {
       },
       settings: () => this.roi,
     });
-    this.projectList = wireProjects(this.kernel);
-    this.prWatch = wireWatch(this.kernel, {
-      feed: (host, title, before, watch) => this.webhookFeed.watch(host, title, before, watch),
-      notify: (notification, route, fallbackUrl, source) =>
-        this.inbox.notify(notification, route, fallbackUrl, source),
-    });
-    this.usage = new VaultUsageLog(platform);
     this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
       language: () => this.i18n.lang,
-    });
-    this.setup = new SetupSettings(platform.storage);
-    this.setupProbes = new SetupProbes({
-      host: (hostId) => {
-        const host = this.state.hosts.find((h) => h.id === hostId);
-        return host && { status: host.status, features: host.hostInfo?.features };
-      },
-      projectsRead: (hostId) => this.state.projects[hostId] !== undefined,
-      request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
-      rememberProjects: (hostId, projects) => this.projectList.remember(hostId, projects),
-      probes: () => this.state.setupProbes,
-      setProbes: (setupProbes) => this.update({ setupProbes }),
     });
     this.terminals = wireTerminals(this.kernel, {
       showTab: (hostId, terminalId) =>
@@ -555,42 +414,6 @@ export class AppStore {
       spawn: (program, args) => this.platform.terminal.open(program, args),
       describeError,
     });
-    this.roster = new HostRosterSlice({
-      secrets: platform.secrets,
-      hosts: () => this.state.hosts,
-      list: (config) => this.update({ hosts: [...this.state.hosts, newHostView(config)] }),
-      persist: () => this.persistHosts(),
-      connect: (config, token) => this.link.connect(config, token),
-      stop: (hostId) => this.link.stop(hostId),
-      detach: (hostId) => {
-        this.hostTabs.removeHost(hostId);
-        this.vaultApprovals.hostGone(hostId);
-        this.link.remove(hostId);
-      },
-      forget: (hostId) => {
-        const ofOthers = <T>(all: Record<string, T>) =>
-          Object.fromEntries(Object.entries(all).filter(([key]) => !key.startsWith(`${hostId}/`)));
-        const { [hostId]: _gone, ...setupProbes } = this.state.setupProbes;
-        this.update({
-          hosts: this.state.hosts.filter((h) => h.id !== hostId),
-          sessions: ofOthers(this.state.sessions),
-          cards: ofOthers(this.state.cards),
-          selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
-          setupProbes,
-        });
-        this.hostUpdate.forget(hostId);
-      },
-      setName: (hostId, name) => this.updateHost(hostId, (h) => ({ ...h, name })),
-      rememberToken: (token) => this.scan.rememberToken(token),
-      addRoot: (hostId, path) => this.hostCommand(hostId, "roots.add", { path, confirm: true }),
-      setAllowedRoots: (hostId, allowedRoots) => {
-        const conn = this.link.connection(hostId);
-        if (conn?.info) conn.info = { ...conn.info, allowedRoots };
-        this.updateHost(hostId, (h) => (h.info ? { ...h, info: { ...h.info, allowedRoots } } : h));
-      },
-      success: (text) => this.success(text),
-      t: () => this.i18n.t,
-    });
     this.inbox = wireInbox(this.kernel, {
       storage: platform.storage,
       prefs: () => this.notifyPrefs.value,
@@ -599,26 +422,7 @@ export class AppStore {
       show: (notification) => this.platform.notify(notification),
       setBadge: (count) => this.platform.setBadge?.(count),
     });
-    // Built here, not in a board wire: a wire importing the kernel would join its import cycle (#1624).
-    this.boardCards = new BoardCardsSlice({
-      cards: () => this.kernel.state().cards,
-      setCards: (cards) => this.kernel.update({ cards }),
-      connection: (hostId) => this.kernel.connection(hostId),
-      notify: (notification, route, fallbackUrl) =>
-        this.inbox.notify(notification, route, fallbackUrl),
-      t: () => this.kernel.t(),
-    });
     this.i18n = new I18n(platform);
-    this.backupScheduler = new BackupScheduler(platform, {
-      onAttention: (kind) => this.onBackupAttention(kind),
-      google: options.google ?? { config: googleConfig() },
-      ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
-    });
-    this.backup = wireBackup(this.kernel, {
-      platform,
-      scheduler: this.backupScheduler,
-      vaultWorkFactor: options.vaultWorkFactor,
-    });
     this.commands = wireSessionCommands(this.kernel, {
       opened: (hostId, sessionId) => {
         this.subscriptions.select(hostId, sessionId);
@@ -696,28 +500,16 @@ export class AppStore {
     this.router.push({ name: "settings", section: "assistant" });
   /** Issue #107: the view each session tab was on, and the page now on screen. */
   readonly sessionViews = new SessionViews();
-  /** The setup checklist: hidden or not, and whether a test notification ever showed. */
-  readonly setup: SetupSettings;
-  /** #1596: what the setup checklist asked each host. */
-  private readonly setupProbes: SetupProbes;
   /** The project keys any screen has read, for one label per project everywhere (issue #881). */
   readonly projectKeys = new ProjectKeys();
   /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
   readonly inbox: InboxSlice;
-  /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
-  readonly boardCards: BoardCardsSlice;
   /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
   readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
-  /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
-  readonly roster: HostRosterSlice;
   /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
   readonly terminals: TerminalsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
-  /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
-  readonly backupScheduler: BackupScheduler;
-  /** The whole-app backup file: save, read, compare and restore (#1596). */
-  readonly backup: BackupSlice;
   private awayTimer: ReturnType<typeof setInterval> | null = null;
   /** The screen in use and its history (phase 10). */
   readonly router: Navigation;
@@ -856,18 +648,6 @@ export class AppStore {
     if (text === undefined) return null;
     this.update({ composerFill: rest });
     return text;
-  }
-
-  /** Issue #1327: a scheduled backup that cannot go reaches the bell, and a click opens its settings. */
-  private onBackupAttention(kind: Attention): void {
-    const t = this.i18n.t;
-    this.inbox.notify(
-      {
-        title: t(`backupSchedule.attention.${kind}.title`),
-        body: t(`backupSchedule.attention.${kind}.body`),
-      },
-      { name: "settings", section: "backup" },
-    );
   }
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
@@ -1304,19 +1084,6 @@ export class AppStore {
     return this.vaultApprovals.secretFor(hostId, secretId, purpose);
   }
 
-  /** Phase 16: the vault, whose values live in the system keyring. */
-  readonly vault: Vault;
-
-  /** Phase 19: each secret's usage rules, kept with the vault and handed to the hosts (#1596). */
-  readonly vaultRules: VaultRulesSlice;
-  /** The vault's secrets and their `.fdvault` file; `state.secrets` is the list the screens read. */
-  readonly secrets: VaultSecretsSlice;
-  /** The daemon's requests for a secret: the policy, the queue and the outcome listeners. */
-  readonly vaultApprovals: VaultApprovalsSlice;
-  /** What the app's log and the screens must never show: the hosts' tokens and the vault's values. */
-  readonly scan: VaultScanSlice;
-  /** The machine's dialogs, clipboard, log file and a local host's files (#1596). */
-  readonly system: SystemSlice;
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */
@@ -1328,8 +1095,6 @@ export class AppStore {
   private readonly webhookFeed: WebhookFeed;
   /** Which client the person works for: the selection of the work screens and each project's client (#1596). */
   readonly clientScope: ClientScopeSlice;
-  /** Phase 16: what was asked of the vault, kept in `storage`. */
-  readonly usage: VaultUsageLog;
 
   private keepUsage(): void {
     this.update({ vaultUsage: this.usage.list() });
@@ -1369,11 +1134,6 @@ export class AppStore {
       return null;
     }
   }
-
-  /** The PR watch of the cards: each card's watch, its commands and the screen a PR link opens (#1596). */
-  readonly prWatch: WatchSlice;
-  /** The projects each host lists: the list, a project's key and its PR provider (#1596). */
-  readonly projectList: ProjectsSlice;
 
   private onRun(hostId: string, run: WorkflowRun): void {
     this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });

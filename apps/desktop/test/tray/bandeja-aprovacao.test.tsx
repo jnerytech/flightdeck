@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { parseRequestLink, requestLink } from "../src/features/permissions/request-link.ts";
-import { TRAY_MENU_DELAY_MS, trayMenu } from "../src/features/tray/tray.ts";
-import { needsYou, type PendingItem } from "../src/lib/app-store.ts";
-import type { TrayAction, TrayActionKind, TrayMenu } from "../src/platform/types.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { parseRequestLink, requestLink } from "../../src/features/permissions/request-link.ts";
+import { TRAY_MENU_DELAY_MS, trayMenu } from "../../src/features/tray/tray.ts";
+import { needsYou, type PendingItem } from "../../src/lib/app-store.ts";
+import type { TrayAction, TrayActionKind, TrayMenu } from "../../src/platform/types.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { tauriPlatform } = await import("../src/platform/tauri/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { tauriPlatform } = await import("../../src/platform/tauri/index.ts");
 
 setDefaultTimeout(20_000);
 

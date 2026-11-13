@@ -23,6 +23,7 @@ import { type CruiseModule, cycleFiles } from "./lib/arch/cycle-files.ts";
 import { knipCounts } from "./lib/arch/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/guards/src-size.ts";
 import { CONFIG, KNOWN, newRules } from "./lib/ratchets/arch.ts";
+import { impureCalls, isDomainFile } from "./lib/ratchets/domain-purity.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/ratchets/json-parse.ts";
 import { flatTestCounts } from "./lib/tests/test-layout.ts";
 import { testTiers } from "./lib/tests/test-tiers.ts";
@@ -70,7 +71,7 @@ const tracked = (git(["ls-files", "apps", "packages", "scripts"]) ?? "")
   .filter(Boolean);
 // every tracked TypeScript source file under a package's src; one deleted in the working copy is skipped
 const sources = tracked
-  .filter((path) => isScanned(path) || isMeasured(path))
+  .filter((path) => isScanned(path) || isMeasured(path) || isDomainFile(path))
   .flatMap((path) => {
     const text = read(path);
     return text === null ? [] : [{ path, text }];
@@ -98,6 +99,7 @@ const rows = ratchetRows({
       read(CYCLES),
     ),
   },
+  domainImpureCalls: impureCalls(sources).length,
   srcOversized: oversizedSources(sources.filter(({ path }) => isMeasured(path))),
   srcBaseline: json("src-size-baseline.json"),
   flatCounts: flatTestCounts(tracked),

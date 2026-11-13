@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { NeedsYou } = await import("../src/features/needs-you/page.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { NeedsYou } = await import("../../src/features/needs-you/page.tsx");
 
 afterEach(() => cleanup());
 
