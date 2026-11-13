@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card, CheckLoopSwitch } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { CheckLoopPanel } = await import("../src/features/board/check-loop-panel.tsx");
-const { checkLoopLine } = await import("../src/features/board/check-loop.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { CheckLoopPanel } = await import("../../src/features/board/check-loop-panel.tsx");
+const { checkLoopLine } = await import("../../src/features/board/check-loop.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -112,8 +112,8 @@ describe("check-loop-ui: the line that says how the loop goes", () => {
 describe("check-loop-ui: every reason a loop ends with has its text", () => {
   test("each CheckLoopReason the daemon may send is named in en and pt-BR", async () => {
     const { CheckLoopReason } = await import("@flightdeck/protocol");
-    const { en } = await import("../src/i18n/en.ts");
-    const { ptBR } = await import("../src/i18n/pt-BR.ts");
+    const { en } = await import("../../src/i18n/en.ts");
+    const { ptBR } = await import("../../src/i18n/pt-BR.ts");
     const missing = (dict: { checkLoopUi?: { ended?: Record<string, string> } }) =>
       CheckLoopReason.options.filter((reason) => !dict.checkLoopUi?.ended?.[reason]);
     expect([missing(en), missing(ptBR)]).toEqual([[], []]);

@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Arena, ArenaVariant, CardDiff } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ArenaView } = await import("../src/features/board/arena-view.tsx");
+const { ArenaView } = await import("../../src/features/board/arena-view.tsx");
 
 afterEach(cleanup);
 

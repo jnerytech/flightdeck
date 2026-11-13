@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ChangesResult, ReviewComment } from "@flightdeck/protocol";
 import { reviewMessage } from "@flightdeck/protocol";
-import { translator } from "../src/i18n/index.ts";
-import { registerDom } from "./dom.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { ChangesPanel } = await import("../src/features/review/changes-panel.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { ChangesPanel } = await import("../../src/features/review/changes-panel.tsx");
 
 afterEach(() => cleanup());
 

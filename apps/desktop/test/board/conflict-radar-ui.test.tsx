@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settleMaybe } from "../wait.ts";
 
 registerDom();
 const { cleanup, render, screen, within } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { CardConflicts } = await import("../src/features/board/card-conflicts.tsx");
-const { RadarBadge } = await import("../src/features/board/radar-badge.tsx");
-const { CardMergePr } = await import("../src/features/board/card-merge-pr.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { CardConflicts } = await import("../../src/features/board/card-conflicts.tsx");
+const { RadarBadge } = await import("../../src/features/board/radar-badge.tsx");
+const { CardMergePr } = await import("../../src/features/board/card-merge-pr.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

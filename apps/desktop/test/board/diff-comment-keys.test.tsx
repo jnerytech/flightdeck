@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { DiffView } = await import("../src/features/review/diff-view.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { DiffView } = await import("../../src/features/review/diff-view.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 afterEach(cleanup);
 
