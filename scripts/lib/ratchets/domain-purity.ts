@@ -17,8 +17,8 @@ const IMPURE_CALL =
 /** An import (static, dynamic or `require`) of a package that does I/O: ws, Tauri, Bun's own modules. */
 const IMPURE_IMPORT =
   /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\(\s*)(["'])(ws(?:\/[^"']*)?|bun(?::\w+)?|@tauri-apps\/[^"']+)\1/g;
-/** A type-only import or re-export: it names an adapter's type for a port and runs nothing. */
-const TYPE_ONLY = /^\s*(import|export)\s+type\b/;
+/** A type-only import or re-export: it names an adapter's type for a port and runs nothing (`import type, {…}` is a value import). */
+const TYPE_ONLY = /^\s*(import|export)\s+type\s+(?!from\b|,)/;
 
 /** Whether the check reads this tracked path: TypeScript under a `domain/` folder of a package's src. */
 export function isDomainFile(path: string): boolean {
