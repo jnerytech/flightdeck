@@ -272,12 +272,15 @@ export class RiskClassifier {
     const fields = READ_TOOLS[toolName];
     if (fields) return this.readCandidates(toolName, fields, text, cwd);
     if (WRITE_TOOLS.has(toolName)) {
-      const path = text("file_path") || text("notebook_path");
-      if (credential(path)) return [["high", "escrita em caminho de credencial"]];
-      if (opencodeConfig(path)) return [["high", "writes OpenCode's configuration"]];
-      return this.allowed(path, cwd)
-        ? [["medium", "escrita dentro do projeto"]]
-        : [["high", "escrita fora do cwd e de allowedRoots"]];
+      // A call that names both keys is judged by each path, and the stricter one wins (#2479).
+      const named = [text("file_path"), text("notebook_path")].filter((p) => p !== "");
+      return (named.length > 0 ? named : [""]).map((path): Candidate => {
+        if (credential(path)) return ["high", "escrita em caminho de credencial"];
+        if (opencodeConfig(path)) return ["high", "writes OpenCode's configuration"];
+        return this.allowed(path, cwd)
+          ? ["medium", "escrita dentro do projeto"]
+          : ["high", "escrita fora do cwd e de allowedRoots"];
+      });
     }
     if (NETWORK_TOOLS.has(toolName)) return [["medium", "acessa a rede"]];
     // Phase 39: an OpenCode tool the normalizer could not map (Code Mode, another MCP server).
@@ -301,7 +304,7 @@ export class RiskClassifier {
       out.push(["high", "base64 -d em pipe"]);
     }
     for (const match of command.matchAll(
-      /(?:^|[^>&<=-])\d?>{1,2}\s*("[^"]*"|'[^']*'|[^\s;&|<>]+)/g,
+      /(?:^|[^>&<])\d?>{1,2}\s*("[^"]*"|'[^']*'|[^\s;&|<>]+)/g,
     )) {
       const target = (match[1] as string).replace(/^["']|["']$/g, "");
       if (SINKS.has(target.toLowerCase())) continue;

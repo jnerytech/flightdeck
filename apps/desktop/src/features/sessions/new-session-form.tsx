@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { AssistField } from "@/features/assistant/index.ts";
+import { AssistField } from "@/features/assistant/ui.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";

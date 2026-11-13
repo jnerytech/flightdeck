@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { AssistField } from "@/features/assistant/index.ts";
+import { AssistField } from "@/features/assistant/ui.ts";
 import type { AppSnippet } from "@/features/snippets";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";

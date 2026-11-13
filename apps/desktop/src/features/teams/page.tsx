@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AssistField } from "@/features/assistant/index.ts";
+import { AssistField } from "@/features/assistant/ui.ts";
 import { useSwitcherHostId } from "@/features/hosts/index.ts";
 import type { PermissionChoice } from "@/features/personas/index.ts";
 import {
