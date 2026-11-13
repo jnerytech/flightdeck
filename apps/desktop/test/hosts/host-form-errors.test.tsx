@@ -131,7 +131,7 @@ for (const [lang, t] of [
       await fill(t.hostForm.address, "127.0.0.1");
       await fill(t.hostForm.token, "abc");
       await submit(t.hostForm.submit);
-      expect(page.submitted.length).toBe(1);
+      expect(page.submitted).toHaveLength(1);
       expect(
         invalid(t.hostForm.name) || invalid(t.hostForm.address) || invalid(t.hostForm.token),
       ).toBe(false);
@@ -141,7 +141,10 @@ for (const [lang, t] of [
   describe(`host-form-errors (${lang}): the result of the connection test`, () => {
     test("an error of the test stays in one alert line and marks no field", () => {
       form(lang, t.hostForm.probeUnreachable);
-      expect(screen.queryAllByText(t.hostForm.probeUnreachable).length).toBe(1);
+      // Texts, not nodes: a failed diff of happy-dom nodes can take gigabytes.
+      expect(
+        screen.queryAllByText(t.hostForm.probeUnreachable).map((node) => node.textContent),
+      ).toHaveLength(1);
       expect(screen.queryByRole("alert")?.textContent).toBe(t.hostForm.probeUnreachable);
       expect(invalid(t.hostForm.token)).toBe(false);
     });
@@ -150,7 +153,10 @@ for (const [lang, t] of [
       form(lang, t.hostForm.probeRefused);
       expect(invalid(t.hostForm.token)).toBe(true);
       expect(described(field(t.hostForm.token))).toBe(t.hostForm.probeRefused);
-      expect(screen.queryAllByText(t.hostForm.probeRefused).length).toBe(1);
+      // Texts, not nodes: a failed diff of happy-dom nodes can take gigabytes.
+      expect(
+        screen.queryAllByText(t.hostForm.probeRefused).map((node) => node.textContent),
+      ).toHaveLength(1);
     });
 
     test("pasting a link that carries a token answers the refused one", async () => {
