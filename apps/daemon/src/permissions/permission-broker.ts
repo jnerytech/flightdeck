@@ -7,7 +7,7 @@ import type {
   ToolInput,
 } from "@flightdeck/protocol";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
-import type { PermissionDecision } from "../runtime/index.ts";
+import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/event-store.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
 import { bindInput } from "./bind-input.ts";
