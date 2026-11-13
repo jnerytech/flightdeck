@@ -24,7 +24,7 @@ const UNREADABLE = {
   "pt-BR": "Não foi possível ler os terminais deste host.",
 } as const;
 
-type Read = { ok: object[] } | "fail";
+type Read = { ok: object[] } | "fail" | "pending";
 
 /** The page of an online host whose list answers the given reads in order, the last one for good. */
 async function openPage(lang: "en" | "pt-BR", reads: Read[]) {
@@ -36,6 +36,7 @@ async function openPage(lang: "en" | "pt-BR", reads: Read[]) {
         list: async () => {
           const read = reads[Math.min(next++, reads.length - 1)];
           if (read === "fail") throw new Error("offline");
+          if (read === "pending") return new Promise<never>(() => {});
           return read?.ok ?? [];
         },
       }),
@@ -97,6 +98,12 @@ for (const [lang, t] of [
       await page.refresh();
       expect(attach()).not.toBeNull();
       expect(unreadable()).toBeNull();
+    });
+
+    test("before the first read answers it says neither that nothing is open nor that the list is unreadable", async () => {
+      await openPage(lang, ["pending"]);
+      expect(unreadable()).toBeNull();
+      expect(none()).toBeNull();
     });
 
     test("an empty list the host returned still reads as no terminal open", async () => {
