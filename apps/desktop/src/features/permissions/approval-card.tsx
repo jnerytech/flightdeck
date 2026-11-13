@@ -23,10 +23,15 @@ import { focusLost, useBusy } from "@/shared/hooks/index.ts";
 import { uniqueKeys } from "@/shared/lib/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import { AlwaysAllow } from "./always-allow.tsx";
-import { type ApprovalView, approvalView, shortPath } from "./approval.ts";
 import { ApprovalActions } from "./approval-actions.tsx";
-import { resolutionLine, savedAnswers } from "./approval-lines.ts";
-import { type AskPick, answeredInput, buildAnswers, parseQuestions } from "./ask-question.ts";
+import { type ApprovalView, approvalView, shortPath } from "./domain/approval.ts";
+import { resolutionLine, savedAnswers } from "./domain/approval-lines.ts";
+import {
+  type AskPick,
+  answeredInput,
+  buildAnswers,
+  parseQuestions,
+} from "./domain/ask-question.ts";
 import { QuestionForm } from "./question-form.tsx";
 
 /** One open (or answered) permission request, from any kind of session. */
