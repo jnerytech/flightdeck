@@ -82,6 +82,17 @@ module.exports = {
       },
     },
     {
+      name: "spawn-only-from-adapters",
+      comment:
+        "A process is launched from an adapter folder (or the kernel's command.ts and exec.ts), never from domain code: one anti-corruption layer per external system (#1612). Bun.spawn is a global, not an import: the spawn-count check (scripts/lib/ratchets/spawn-count.ts) reads it from the text.",
+      severity: "error",
+      from: {
+        path: DAEMON,
+        pathNot: `/adapters/|${DAEMON}kernel/(command|exec)\\.ts$`,
+      },
+      to: { path: "^(node:)?child_process$" },
+    },
+    {
       name: "domain-depends-on-no-adapter",
       comment: "A domain's rules (domain/) never import its I/O (adapters/): ports and adapters.",
       severity: "error",

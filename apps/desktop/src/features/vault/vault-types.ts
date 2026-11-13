@@ -1,4 +1,5 @@
-import type { SecretType } from "./vault.ts";
+/** The kinds of secret the vault holds. */
+export type SecretType = "ssh-key" | "password" | "token" | "env";
 
 /** What the screen may show about a secret without revealing it. */
 export interface SecretInfo {
