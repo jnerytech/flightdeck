@@ -194,6 +194,20 @@ describe("arch-imports: the domain borders (#1591)", () => {
     expect(found).toEqual([]);
   });
 
+  test("a feature's index.ts that re-exports a component fails; a type from it and ui.ts pass (#2451)", async () => {
+    const found = await planted({
+      "apps/desktop/src/features/board/index.ts":
+        'export { Card } from "./card.tsx";\nexport type { CardProps } from "./card-props.tsx";\n',
+      "apps/desktop/src/features/board/ui.ts": 'export { Card } from "./card.tsx";\n',
+      "apps/desktop/src/features/board/card.tsx": "export const Card = 1;\n",
+      "apps/desktop/src/features/board/card-props.tsx":
+        "export type CardProps = { id: string };\nexport const Other = 1;\n",
+    });
+    expect(found).toEqual([
+      "desktop-entry-exports-no-component apps/desktop/src/features/board/index.ts -> apps/desktop/src/features/board/card.tsx",
+    ]);
+  });
+
   test("a feature that imports lib/ or its own subfolders is no cross-feature import (#1624)", async () => {
     const found = await planted({
       "apps/desktop/src/features/board/board.tsx":

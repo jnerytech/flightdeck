@@ -75,7 +75,7 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
       : resolve(dirname(from), specifier);
 
   test("no file the entry loads imports a lazy screen statically", () => {
-    const loaders = ["Screens.tsx", "App.tsx", "../features/shell/sidebar.tsx"].map((file) =>
+    const loaders = ["Screens.tsx", "../app/App.tsx", "../features/shell/sidebar.tsx"].map((file) =>
       resolve(UI, file),
     );
     const lazyFiles = LAZY_SCREENS.map((name) => resolve(UI, specifierOf(name)));

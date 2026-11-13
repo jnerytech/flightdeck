@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { SplitView } = await import("../../src/shared/layout/split-view.tsx");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -123,6 +123,7 @@ describe("areas: a tela se adapta à largura da sua área", () => {
     const root = resolve(import.meta.dir, "../../src");
     const files = [
       ...readdirSync(join(root, "ui")).map((f) => join(root, "ui", f)),
+      ...readdirSync(join(root, "app")).map((f) => join(root, "app", f)),
       ...readdirSync(join(root, "features"), { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .flatMap((entry) =>

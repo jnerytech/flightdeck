@@ -19,7 +19,7 @@ const personScrolls = (el: Element) => {
 };
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 
 /** A ResizeObserver the test drives: `grow()` is a layout change (an image, a code block). */
 const observers: Array<() => void> = [];

@@ -1,4 +1,5 @@
 import { linesOf } from "../kernel/index.ts";
+import { spawnGrouped } from "./adapters/opencode-spawn.ts";
 import { REAL_KILL_DEPS, treeKiller } from "./opencode-kill.ts";
 
 /**
@@ -51,14 +52,10 @@ const LISTENING = /listening on (https?:\/\/\S+)/;
 export async function startPrivateServer(opts: ServeOptions): Promise<PrivateServer> {
   const timers = opts.timers ?? REAL_TIMERS;
   const password = crypto.randomUUID();
-  const child = Bun.spawn([opts.path, "serve", "--port", "0", "--hostname", "127.0.0.1"], {
+  // Its own process group on POSIX, so ending it reaches what it started.
+  const child = spawnGrouped([opts.path, "serve", "--port", "0", "--hostname", "127.0.0.1"], {
     cwd: opts.cwd,
     env: { ...opts.env, OPENCODE_SERVER_USERNAME: "opencode", OPENCODE_SERVER_PASSWORD: password },
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "ignore",
-    // Its own process group on POSIX, so ending it reaches what it started.
-    detached: process.platform !== "win32",
   });
   let stopping: Promise<void> | null = null;
   let listening = false;

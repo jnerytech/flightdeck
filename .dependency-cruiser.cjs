@@ -40,6 +40,14 @@ module.exports = {
       },
     },
     {
+      name: "desktop-entry-exports-no-component",
+      comment:
+        "A desktop feature's index.ts (state and wiring) re-exports no component; components go out through ui.ts. A .tsx re-export pulled every screen into the app-store import cycle (#2451, docs/decisions/2026-11-12-feature-ui-entry.md). A type from a .tsx passes.",
+      severity: "error",
+      from: { path: `${DESKTOP}features/[^/]+/index\\.ts$` },
+      to: { path: "\\.tsx$", dependencyTypesNot: ["type-only"] },
+    },
+    {
       name: "protocol-context-not-from-entry",
       comment:
         "A protocol context file never imports index.ts, which re-exports it: a load-time cycle breaks zod schemas (#1600).",

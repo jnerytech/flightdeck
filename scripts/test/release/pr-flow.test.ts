@@ -6,6 +6,7 @@ import {
   checksVerdict,
   headCi,
   issueOf,
+  issuesOf,
   mergeOrder,
   type Pr,
   type PrFlowDeps,
@@ -284,6 +285,26 @@ describe("pr-flow: the pure parts", () => {
     expect(issueOf(["docs: nothing here", "chore: #3 without parentheses"])).toBeNull();
   });
 
+  test("a branch ships every issue its feat and fix subjects name, once, the oldest commit's first (#2442)", () => {
+    expect(
+      issuesOf([
+        "feat(b): y (#8)",
+        "test(b): y (#8)",
+        "fix(a): x (#7)",
+        "test(a): x (#7)",
+        "docs: z (#3)",
+      ]),
+    ).toEqual([7, 8]);
+    expect(issuesOf(["feat(a): x (#7, #8)", "fix: y (#8)", "feat(a)!: z (#9)"])).toEqual([9, 8, 7]);
+    expect(issuesOf(["fix(a): y (#4)", "fix(a): x (#4)"])).toEqual([4]);
+  });
+
+  test("with no feat or fix naming an issue, the branch's own issue; with no issue at all, none (#2442)", () => {
+    expect(issuesOf(["test(a): x (#5)", "docs: y (#5)", "docs: z (#6)"])).toEqual([5]);
+    expect(issuesOf(["feat(a): x", "docs: nothing here"])).toEqual([]);
+    expect(issuesOf([])).toEqual([]);
+  });
+
   test("the merge order takes PRs onto main by number, each stacked PR right after its parent", () => {
     const order = mergeOrder([
       pr(30, "c", { base: "b" }),
@@ -447,6 +468,86 @@ describe("pr-flow: open", () => {
     expect(post).not.toContain("Refs #");
   });
 
+  test("#2442: --issue a,b,c closes each issue on its own line and is titled after the first (#2442)", async () => {
+    const f = fake({
+      pushed: ["batch"],
+      subjects: { batch: ["feat(x): z (#119)", "fix(x): y (#118)", "fix(x): x (#117)"] },
+      issues: { 117: "First bug", 118: "Second bug", 119: "Third bug" },
+    });
+    expect(await prFlow(["open", "batch", "--issue", "117,118,119"], f.deps)).toBe(0);
+    const post = f.writes[0] ?? "";
+    expect(post).toContain("-f title=First bug (#117)");
+    expect(post).toContain(
+      "-f body=Closes #117\nCloses #118\nCloses #119\n\n- feat(x): z (#119)\n- fix(x): y (#118)\n- fix(x): x (#117)",
+    );
+  });
+
+  test("#2442: --title names a batch, a repeated issue is listed once, and every issue must be readable", async () => {
+    const f = fake({
+      pushed: ["batch"],
+      subjects: { batch: ["fix(x): x (#117)"] },
+      issues: { 117: "First bug", 118: "Second bug" },
+    });
+    expect(
+      await prFlow(["open", "batch", "--issue", "117,118,117", "--title", "Both bugs"], f.deps),
+    ).toBe(0);
+    const post = f.writes[0] ?? "";
+    expect(post).toContain("-f title=Both bugs (#117)");
+    expect(post).toContain("-f body=Closes #117\nCloses #118\n\n- fix(x): x (#117)");
+    expect(post.match(/Closes #/g)).toHaveLength(2);
+    const missing = fake({
+      pushed: ["batch"],
+      subjects: { batch: ["fix(x): x (#117)"] },
+      issues: { 117: "First bug" },
+    });
+    expect(await prFlow(["open", "batch", "--issue", "117,999"], missing.deps)).toBe(1);
+    expect(missing.writes).toEqual([]);
+    expect(missing.out()).toContain("#999");
+  });
+
+  test("#2442: --issue takes issue numbers only, and --refs stays one issue", async () => {
+    for (const bad of ["117,abc", "117,", ",117", "0", "117;118", ""]) {
+      const f = fake({
+        pushed: ["batch"],
+        subjects: { batch: ["fix(x): x (#117)"] },
+        issues: { 117: "First bug" },
+      });
+      expect(await prFlow(["open", "batch", "--issue", bad], f.deps), bad).toBe(2);
+      expect(f.writes, bad).toEqual([]);
+      expect(f.out(), bad).toContain("--issue takes issue numbers");
+    }
+    const noValue = fake({
+      pushed: ["batch"],
+      subjects: { batch: ["fix(x): x (#117)"] },
+      issues: { 117: "First bug" },
+    });
+    expect(await prFlow(["open", "batch", "--issue"], noValue.deps)).toBe(2);
+    expect(noValue.writes).toEqual([]);
+    expect(noValue.out()).toContain("--issue takes issue numbers");
+    const refs = fake({
+      pushed: ["batch"],
+      subjects: { batch: ["fix(x): x (#117)"] },
+      issues: { 117: "First bug", 118: "Second bug" },
+    });
+    expect(await prFlow(["open", "batch", "--refs", "117,118"], refs.deps)).toBe(2);
+    expect(refs.writes).toEqual([]);
+    expect(refs.out()).toContain("--refs takes one issue");
+  });
+
+  test("#2442: with no --issue, every issue the feat and fix subjects name is closed, the oldest commit's first", async () => {
+    const f = fake({
+      pushed: ["batch"],
+      subjects: {
+        batch: ["feat(y): b (#118)", "test(y): b (#118)", "fix(x): a (#117)", "test(x): a (#117)"],
+      },
+      issues: { 117: "First bug", 118: "Second feature" },
+    });
+    expect(await prFlow(["open", "batch"], f.deps)).toBe(0);
+    const post = f.writes[0] ?? "";
+    expect(post).toContain("-f title=First bug (#117)");
+    expect(post).toContain("-f body=Closes #117\nCloses #118\n\n- feat(y): b (#118)");
+  });
+
   test("--refs writes Refs #n as the first body line, so nothing is linked for closing (#839)", async () => {
     const f = fake({
       pushed: ["slice"],
@@ -476,7 +577,7 @@ describe("pr-flow: open", () => {
   test("the usage text names --refs (#839) and --title (#909)", async () => {
     const f = fake();
     expect(await prFlow(["open"], f.deps)).toBe(2);
-    expect(f.out()).toContain("[--issue <n> | --refs <n>]");
+    expect(f.out()).toContain("[--issue <n[,n...]> | --refs <n>]");
     expect(f.out()).toContain("[--title <text>]");
   });
 

@@ -19,7 +19,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { HostStatusBadge } = await import("../../src/features/hosts/host-status-badge.tsx");
 const { ActionButton } = await import("../../src/shared/feedback/index.ts");
 const { ConfirmDialog } = await import("../../src/shared/feedback/index.ts");

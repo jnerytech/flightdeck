@@ -14,7 +14,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { App } = await import("../../src/ui/App.tsx");
+const { App } = await import("../../src/app/App.tsx");
 const { useT, TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 
@@ -31,6 +31,7 @@ const ROOT = resolve(import.meta.dir, "../../../..");
 /** Every screen and component with text: all of it comes from the dictionary. */
 const SOURCES = [
   "src/ui",
+  "src/app",
   "src/shared/feedback",
   "src/shared/layout",
   "src/shared/markdown",
