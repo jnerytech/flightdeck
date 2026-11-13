@@ -288,7 +288,11 @@ describe("times-ui: the teams of a host", () => {
       });
     });
     await click("Mandar a todos", row("t1"));
-    await settle(() => within(row("t1") as HTMLElement).queryByRole("status") !== null);
+    await settle(() =>
+      /\d+ entregues/.test(
+        within(row("t1") as HTMLElement).queryByRole("status")?.textContent ?? "",
+      ),
+    );
     expect(within(row("t1") as HTMLElement).queryByRole("status")?.textContent).toMatch(
       /\d+ entregues/,
     );
@@ -397,7 +401,13 @@ describe("times-ui: the teams of a host", () => {
     expect(row("t4")?.textContent).toContain("terminei a tarefa");
     await click("Remover t4 · executora 2", row("t4"));
     await click("Remover", screen.queryByRole("alertdialog"));
-    await settle(() => !(row("t4")?.textContent ?? "").includes("t4 · executora 2"));
+    // The confirmation line names the worker (#2650): the worker's own controls are what goes.
+    await settle(
+      () =>
+        within(row("t4") as HTMLElement).queryByRole("button", {
+          name: "Remover t4 · executora 2",
+        }) === null,
+    );
     expect((await teams())[0]?.members.map((m) => m.name)).not.toContain("t4 · executora 2");
   });
 

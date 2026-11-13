@@ -117,7 +117,7 @@ async function gitMetrics(
   const counts = changeCounts(commits);
   const lines = new Map<string, number>();
   for (const { path } of counts.slice(0, LINE_CANDIDATES)) {
-    const shown = await deps.git(["show", `${tag}:${path}`]);
+    const shown = await deps.git(["show", `${tag}:${path}`]); // NOSONAR: one git process at a time, in the order of the hotspots; a Promise.all would start them all at once
     if (shown.code === 0) lines.set(path, shown.stdout.split("\n").length - 1);
   }
   return {
@@ -154,7 +154,8 @@ async function ghList<T>(
   const what = `gh ${args.slice(0, 2).join(" ")}`;
   if (answer.code !== 0) {
     const detail = (answer.stderr ?? "").trim().split("\n")[0] ?? "";
-    return { reason: `${what} failed${detail ? `: ${detail.slice(0, 200)}` : ""}` };
+    const why = detail ? `: ${detail.slice(0, 200)}` : "";
+    return { reason: `${what} failed${why}` };
   }
   let rows: unknown;
   try {
