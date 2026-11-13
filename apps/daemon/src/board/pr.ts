@@ -1,9 +1,19 @@
 import type { ChecksState, PrProviderKind, PrState } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import type { z } from "zod";
+import { FlightdeckError, parseJsonWith, whichOnPath } from "../kernel/index.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
-import { parseChecks, parsePrUrl } from "./gh-json.ts";
+import {
+  GhCommentPages,
+  GhMergeable,
+  GhMergeState,
+  GhPrStatus,
+  GhReviews,
+  GhThreads,
+  parseChecks,
+  parsePrUrl,
+} from "./gh-json.ts";
 import { azureDetails, githubDetails, type PrDetails } from "./pr-details.ts";
 
 export interface PrStatus extends Partial<PrDetails> {
@@ -35,35 +45,6 @@ export interface PrComment {
   body: string;
   resolved: boolean;
   kind: "inline" | "review";
-}
-
-interface GhComment {
-  id: number;
-  path: string;
-  line?: number | null;
-  original_line?: number | null;
-  user: { login: string };
-  author_association?: string | null;
-  body: string;
-}
-
-interface GhReview {
-  id: string;
-  author: { login: string };
-  authorAssociation?: string | null;
-  body: string;
-}
-
-interface GhThreads {
-  data: {
-    repository: {
-      pullRequest: {
-        reviewThreads: {
-          nodes: Array<{ isResolved: boolean; comments: { nodes: Array<{ databaseId: number }> } }>;
-        };
-      };
-    };
-  };
 }
 
 /** Which review threads are resolved: GitHub's REST API does not say. */
@@ -223,13 +204,6 @@ const GH_STATES: Record<string, PrState> = { OPEN: "open", MERGED: "merged", CLO
 const GH_PASS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
 const GH_FAIL = new Set(["FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED"]);
 
-interface GhCheck {
-  conclusion?: string | null;
-  state?: string | null;
-  name?: string;
-  context?: string;
-}
-
 /** The parts of a GitHub PR URL, the names checked before they reach `gh`. */
 function ghParts(url: string): { owner: string; repo: string; number: string; prUrl: string } {
   const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url);
@@ -297,6 +271,17 @@ abstract class CliProvider {
   protected json<T>(name: string, args: string[], cwd: string, input?: string) {
     return cliJson<T>(name, args, cwd, input, this.run);
   }
+
+  /** The CLI's JSON output checked against `schema` (#1609): a reply that does not fit fails the call. */
+  protected async jsonWith<T>(
+    schema: z.ZodType<T>,
+    name: string,
+    args: string[],
+    cwd: string,
+    input?: string,
+  ): Promise<T> {
+    return parseJsonWith(schema, await this.ok(name, args, cwd, input));
+  }
 }
 
 /** GitHub through `gh`. */
@@ -330,11 +315,8 @@ export class GithubCli extends CliProvider implements PrProvider {
 
   /** Why GitHub holds the PR back, from its merge state, its review decision and its checks. */
   private async whyNotMergeable(cwd: string, url: string): Promise<string> {
-    const state = await this.json<{
-      mergeStateStatus?: string;
-      reviewDecision?: string | null;
-      statusCheckRollup?: GhCheck[];
-    }>(
+    const state = await this.jsonWith(
+      GhMergeState,
       "gh",
       ["pr", "view", url, "--json", "mergeStateStatus,reviewDecision,statusCheckRollup"],
       cwd,
@@ -370,12 +352,8 @@ export class GithubCli extends CliProvider implements PrProvider {
   }
 
   async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
-    const pr = await this.json<
-      {
-        state: string;
-        statusCheckRollup?: GhCheck[];
-      } & Parameters<typeof githubDetails>[0]
-    >(
+    const pr = await this.jsonWith(
+      GhPrStatus,
       "gh",
       [
         "pr",
@@ -412,7 +390,8 @@ export class GithubCli extends CliProvider implements PrProvider {
     const { owner, repo, number, prUrl } = ghParts(url);
     // Every page, 100 at a time (the REST default is 30): `--slurp` wraps the pages in an array.
     // A plain GET: no -f/-F field, which would make `gh api` a POST.
-    const pages = await this.json<GhComment[][]>(
+    const pages = await this.jsonWith(
+      GhCommentPages,
       "gh",
       [
         "api",
@@ -423,12 +402,14 @@ export class GithubCli extends CliProvider implements PrProvider {
       cwd,
     );
     const inline = pages.flat();
-    const { reviews } = await this.json<{ reviews: GhReview[] }>(
+    const { reviews } = await this.jsonWith(
+      GhReviews,
       "gh",
       ["pr", "view", prUrl, "--json", "reviews"],
       cwd,
     );
-    const threads = await this.json<GhThreads>(
+    const threads = await this.jsonWith(
+      GhThreads,
       "gh",
       [
         "api",
@@ -505,7 +486,8 @@ export class GithubCli extends CliProvider implements PrProvider {
       );
     }
     const rows = parseChecks(result.stdout);
-    const { mergeable } = await this.json<{ mergeable: string }>(
+    const { mergeable } = await this.jsonWith(
+      GhMergeable,
       "gh",
       ["pr", "view", prUrl, "--json", "mergeable"],
       cwd,

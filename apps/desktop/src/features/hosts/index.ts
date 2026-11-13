@@ -7,7 +7,11 @@
  */
 
 export { AllowedFolders } from "./allowed-folders.tsx";
-export { awaitedHost } from "./awaited-host.ts";
+export { awaitedHost } from "./domain/awaited-host.ts";
+export { hostDownReason } from "./domain/host-down-reason.ts";
+export type { HostNameError } from "./domain/host-name.ts";
+export type { RetryState } from "./domain/host-offline.ts";
+export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
 export { FirstRun } from "./first-run.tsx";
 export { FolderPicker } from "./folder-picker.tsx";
 export { type GithubHost, githubSignedIn } from "./github-session.ts";
@@ -27,12 +31,8 @@ export {
   statusLine,
 } from "./host-connection.ts";
 export { HostDot } from "./host-dot.tsx";
-export { hostDownReason } from "./host-down-reason.ts";
 export { draftFromLink, draftUrl, type HostDraft, HostForm } from "./host-form.tsx";
-export type { HostNameError } from "./host-name.ts";
-export type { RetryState } from "./host-offline.ts";
 export { HostOfflineBanner } from "./host-offline-banner.tsx";
-export { hostInitial, hostRailLabel } from "./host-rail.ts";
 export { hostDotView, hostStatusView } from "./host-status.ts";
 export { HostTabs } from "./host-tabs.ts";
 export { HostVersionTip, hostVersionText } from "./host-version.tsx";

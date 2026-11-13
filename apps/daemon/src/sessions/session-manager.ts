@@ -37,11 +37,11 @@ import { snapshotOf } from "../personas/snapshot.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
 import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
-import { ActivityClock, type ToolNote } from "./activity-clock.ts";
+import { ActivityClock, type ToolNote } from "./domain/activity-clock.ts";
+import type { QuietInfo } from "./domain/stall.ts";
 import { interruptedSessions, RESTART_REASON } from "./interrupted.ts";
 import type { SessionManagerOptions } from "./session-options.ts";
 import { type LiveSession, SessionRuns } from "./session-runs.ts";
-import type { QuietInfo } from "./stall.ts";
 
 export type { SessionManagerOptions, TurnEdge } from "./session-options.ts";
 

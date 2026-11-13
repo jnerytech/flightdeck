@@ -1,0 +1,656 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { mkdirSync, readFileSync, watch, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
+import { cardWhen, git } from "../../../daemon/test/support/board-helpers.ts";
+import { must, poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
+
+registerDom();
+// Loaded after the DOM exists: react-dom and Testing Library read it on import.
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { EditorView } = await import("@codemirror/view");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+
+// Real git and a real watcher under the in-process daemon: more than the default 5 s.
+setDefaultTimeout(30_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+const settle = waiter(6000);
+
+const click = async (name: string | RegExp) => {
+  // The session's views are tabs; everything else is a button.
+  const button = screen.queryByRole("button", { name }) ?? screen.queryByRole("tab", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+};
+
+const type = async (label: string, value: string) => {
+  const field = screen.queryByLabelText(label) as HTMLInputElement | null;
+  expect(field).not.toBeNull();
+  await act(async () => {
+    fireEvent.change(field as HTMLInputElement, { target: { value } });
+  });
+};
+
+const text = (name: string) => screen.queryByRole("list", { name })?.textContent ?? "";
+const files = () => text("Arquivos alterados");
+const dialog = () => screen.queryByRole("alertdialog");
+
+/** A host with a git repository inside its allowed root and a session working in it. */
+async function setup(features?: string[], baseDelayMs = 60_000) {
+  const watches = { count: 0 };
+  const d = makeDaemon(cleanups, {
+    review: true,
+    changesWatch: (root, onEvent) => {
+      const watcher = watch(root, { recursive: true }, (_event, name) =>
+        onEvent(name?.toString() ?? null),
+      );
+      watches.count++;
+      return watcher;
+    },
+  });
+  const repo = join(d.root, "repo");
+  mkdirSync(repo);
+  git(repo, "init", "-q", "-b", "main");
+  git(repo, "config", "commit.gpgsign", "false");
+  writeFileSync(join(repo, "README.md"), "# repo\nlinha dois\nlinha três\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-q", "-m", "inicial");
+  const server = d.listen(0, undefined, features);
+  const mem = memoryPlatform();
+  const clock = { offset: 0 };
+  const timers: Array<{ fn: () => void; ms: number }> = [];
+  const store = new AppStore(mem.platform, {
+    baseDelayMs,
+    now: () => Date.now() + clock.offset,
+    timers: {
+      setTimeout: (fn, ms) => {
+        timers.push({ fn, ms });
+        return timers.length;
+      },
+      clearTimeout: () => {},
+    },
+  });
+  cleanups.push(() => store.dispose());
+  render(<App store={store} />);
+  await act(async () => {
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
+  });
+  await settle(() => store.getState().hosts[0]?.status === "online");
+  const hostId = store.getState().hosts[0]?.id ?? "";
+  return { ...d, ...mem, repo, store, hostId, clock, timers, server, watches };
+}
+
+/** Opens the managed session working in `cwd` (its Claude id is known once the first turn ran). */
+async function openSession(ctx: Awaited<ReturnType<typeof setup>>, cwd = ctx.repo) {
+  const { sessionId } = await ctx.manager.create({ cwd, prompt: "oi", name: "Revisão" });
+  const claudeId = await poll(() => ctx.manager.get(sessionId).claudeSessionId);
+  await poll(() => ctx.manager.get(sessionId).status === "idle");
+  await act(async () => {
+    ctx.store.router.push({ name: "session", host: ctx.hostId, id: sessionId });
+  });
+  await settle(() => screen.queryByRole("heading", { name: "Revisão" }) !== null);
+  return { sessionId, claudeId: claudeId as string };
+}
+
+const openChanges = async () => {
+  // The tab comes with the session list, which now waits for the project keys of its folders.
+  await settle(() => screen.queryByRole("tab", { name: "Mudanças" }) !== null);
+  await click("Mudanças");
+  await settle(() => screen.queryByRole("region", { name: "Mudanças" }) !== null);
+};
+
+describe("mudancas-ui", () => {
+  test("a aba Mudanças da sessão lista os arquivos, mostra o diff e acompanha o disco", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "README.md"), "# repo\nlinha DOIS\nlinha três\n");
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
+    writeFileSync(join(ctx.repo, "imagem.bin"), Buffer.from([0, 1, 2, 0, 255]));
+    await openSession(ctx);
+    expect(screen.queryByRole("region", { name: "Mudanças" })).toBeNull();
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    expect(files()).toContain("README.md");
+    expect(files()).toContain("novo.txt");
+    expect(files()).toContain("+2 −0");
+    expect(files()).toContain("Binário");
+    expect(screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "").toContain(
+      "+linha DOIS",
+    );
+    expect(screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "").toContain(
+      "Arquivo binário: sem diff.",
+    );
+    await click("Lado a lado");
+    expect(screen.queryByRole("region", { name: "Diff lado a lado" })).not.toBeNull();
+    await click("Unificada");
+
+    // The watcher (500 ms debounce): a file written meanwhile shows up with no click.
+    writeFileSync(join(ctx.repo, "depois.txt"), "chegou\n");
+    await settle(() => files().includes("depois.txt"));
+    expect(files()).toContain("depois.txt");
+    // The button asks again.
+    writeFileSync(join(ctx.repo, "manual.txt"), "à mão\n");
+    await click("Atualizar");
+    await settle(() => files().includes("manual.txt"));
+    expect(files()).toContain("manual.txt");
+  });
+
+  test("a aba só aparece em um host que anuncia a revisão, e explica uma pasta fora do git", async () => {
+    const old = await setup(["rules"]);
+    await openSession(old);
+    expect(screen.queryByRole("tab", { name: "Mudanças" })).toBeNull();
+    cleanup();
+
+    const ctx = await setup();
+    const outside = join(ctx.root, "solta");
+    mkdirSync(outside);
+    await openSession(ctx, outside);
+    await openChanges();
+    await settle(() => screen.queryByText(/não é um repositório git/) !== null);
+    expect(screen.queryByText(/não é um repositório git/)).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Enviar revisão" })).toBeNull();
+  });
+
+  test("comenta uma linha e um intervalo, edita e remove rascunhos e envia a revisão ao agente", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\ntrês\nquatro\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    expect(screen.queryByRole("button", { name: /^Enviar revisão/ })).toBeNull();
+
+    // One line: the composer names the lines; Cancelar leaves nothing behind.
+    await click("Comentar a linha 2 de novo.txt");
+    expect(screen.queryByRole("form", { name: "Novo comentário" })?.textContent ?? "").toContain(
+      "novo.txt · linha 2",
+    );
+    await click("Cancelar");
+    expect(screen.queryByRole("form", { name: "Novo comentário" })).toBeNull();
+
+    await click("Comentar a linha 2 de novo.txt");
+    await type("Comentário", "troque por outro nome");
+    await click("Adicionar comentário");
+    await settle(() =>
+      (screen.queryByRole("list", { name: "Comentários da revisão" })?.textContent ?? "").includes(
+        "outro nome",
+      ),
+    );
+    expect(text("Comentários da revisão")).toContain("novo.txt");
+    expect(text("Comentários da revisão")).toContain("dois");
+    expect(text("Comentários da revisão")).toContain("Rascunho");
+
+    // A range: a click, then shift+click on another line.
+    await click("Comentar a linha 3 de novo.txt");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Comentar a linha 4 de novo.txt" }), {
+        shiftKey: true,
+      });
+    });
+    expect(screen.queryByRole("form", { name: "Novo comentário" })?.textContent ?? "").toContain(
+      "novo.txt · linhas 3–4",
+    );
+    await type("Comentário", "esses dois sobram");
+    await click("Adicionar comentário");
+    await settle(() => text("Comentários da revisão").includes("sobram"));
+
+    // Edit one draft, remove another.
+    await click("Editar o comentário em novo.txt, linha 2");
+    await type("Texto do comentário", "troque pelo nome certo");
+    await click("Salvar comentário");
+    await settle(() => text("Comentários da revisão").includes("nome certo"));
+    expect(text("Comentários da revisão")).not.toContain("troque por outro nome");
+    await click("Remover o comentário em novo.txt, linhas 3–4");
+    await settle(() => !text("Comentários da revisão").includes("sobram"));
+    expect(text("Comentários da revisão")).toContain("nome certo");
+    expect(ctx.eventStore.db.query("SELECT count(*) AS n FROM review_comments").get()).toEqual({
+      n: 1,
+    });
+
+    // Send: it reaches the session as a message and the draft becomes history.
+    await click(/^Enviar revisão \(1\)/);
+    await settle(() => text("Comentários da revisão").includes("Enviado"));
+    expect(text("Comentários da revisão")).toContain("Enviado");
+    expect(screen.queryByRole("button", { name: /^Enviar revisão/ })).toBeNull();
+    await click("Conversa");
+    await settle(() => document.body.textContent?.includes("Revisão das mudanças:") ?? false);
+    expect(document.body.textContent ?? "").toContain("Revisão das mudanças:");
+    expect(document.body.textContent ?? "").toContain("novo.txt");
+  });
+
+  test("um comentário cujo trecho sumiu fica desatualizado", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\ntrês\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    await click("Comentar a linha 2 de novo.txt");
+    await type("Comentário", "dois está errado");
+    await click("Adicionar comentário");
+    await settle(() => text("Comentários da revisão").includes("errado"));
+    expect(text("Comentários da revisão")).not.toContain("Desatualizado");
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\n2\ntrês\n");
+    await settle(() => text("Comentários da revisão").includes("Desatualizado"));
+    expect(text("Comentários da revisão")).toContain("Desatualizado");
+  });
+
+  test("a sessão do terminal que não aceita mensagens recebe a revisão para copiar", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
+    ctx.central.external.apply("SessionStart", { session_id: "externa-1", cwd: ctx.repo });
+    await act(async () => {
+      await ctx.store.sessionLists.refresh();
+      ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "externa-1" });
+    });
+    const copied: string[] = [];
+    ctx.platform.copyText = async (value) => {
+      copied.push(value);
+    };
+    await settle(() => screen.queryByRole("tab", { name: "Mudanças" }) !== null);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    await click("Comentar a linha 1 de novo.txt");
+    await type("Comentário", "revise isto");
+    await click("Adicionar comentário");
+    await settle(() => text("Comentários da revisão").includes("revise isto"));
+    await click(/^Enviar revisão/);
+    await settle(() => copied.length === 1);
+    expect(copied[0]).toContain("Revisão das mudanças:");
+    expect(copied[0]).toContain("revise isto");
+    await settle(() => text("Comentários da revisão").includes("Enviado"));
+    expect(text("Comentários da revisão")).toContain("Enviado");
+    expect(document.body.textContent ?? "").toContain("A sessão não recebe mensagens");
+  });
+
+  test("reverter pede confirmação, guarda a cópia e oferece desfazer por 30 s", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "README.md"), "# repo\nlinha DOIS\nlinha três\n");
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+
+    await click("Reverter novo.txt");
+    expect(dialog()?.textContent ?? "").toContain("Reverter novo.txt?");
+    expect(dialog()?.textContent ?? "").toContain("7 dias");
+    await click("Cancelar");
+    expect(dialog()).toBeNull();
+    expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("um\n");
+
+    await click("Reverter novo.txt");
+    await click("Reverter arquivo");
+    await settle(() => !files().includes("novo.txt"));
+    expect(files()).not.toContain("novo.txt");
+    expect(
+      screen
+        .queryAllByRole("status")
+        .map((el) => el.textContent ?? "")
+        .join(" "),
+    ).toContain("novo.txt revertido");
+    expect(() => readFileSync(join(ctx.repo, "novo.txt"))).toThrow();
+
+    await click("Desfazer");
+    await settle(() => files().includes("novo.txt"));
+    expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("um\n");
+    expect(screen.queryByRole("button", { name: "Desfazer" })).toBeNull();
+
+    // A tracked file goes back to HEAD; once the 30 s pass the undo is no longer offered.
+    await click("Reverter README.md");
+    await click("Reverter arquivo");
+    await settle(() => !files().includes("README.md"));
+    // git on Windows may write the committed file back with CRLF line ends.
+    expect(readFileSync(join(ctx.repo, "README.md"), "utf8").replaceAll("\r\n", "\n")).toBe(
+      "# repo\nlinha dois\nlinha três\n",
+    );
+    expect(screen.queryByRole("button", { name: "Desfazer" })).not.toBeNull();
+    ctx.clock.offset = 31_000;
+    const expiry = ctx.timers.filter((t) => t.ms > 20_000 && t.ms <= 31_000).at(-1);
+    expect(expiry).toBeDefined();
+    await act(async () => {
+      expiry?.fn();
+    });
+    expect(screen.queryByRole("button", { name: "Desfazer" })).toBeNull();
+  });
+
+  test("editar abre o arquivo, grava pelo hash e mostra o conflito quando o disco mudou", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
+    writeFileSync(join(ctx.repo, "imagem.bin"), Buffer.from([0, 1, 2, 0, 255]));
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    expect(screen.queryByRole("button", { name: "Editar arquivo imagem.bin" })).toBeNull();
+
+    const editor = () => {
+      const content = document.querySelector(".cm-content");
+      return content ? EditorView.findFromDOM(content as HTMLElement) : null;
+    };
+    const write = async (value: string) => {
+      const view = editor();
+      expect(view).not.toBeNull();
+      await act(async () => {
+        view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
+      });
+    };
+
+    await click("Editar arquivo novo.txt");
+    await settle(() => editor() !== null && editor()?.state.doc.toString() === "um\ndois\n");
+    expect(editor()?.state.doc.toString()).toBe("um\ndois\n");
+    await write("um\nDOIS\n");
+    await click("Salvar");
+    await settle(() => readFileSync(join(ctx.repo, "novo.txt"), "utf8") === "um\nDOIS\n");
+    expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("um\nDOIS\n");
+    // The editor is a modal dialog: the page behind it is aria-hidden, so the diff is looked up
+    // as hidden. The save must have refreshed it.
+    await settle(() =>
+      (
+        screen.queryByRole("region", { name: "Diff unificado", hidden: true })?.textContent ?? ""
+      ).includes("+DOIS"),
+    );
+
+    // Someone else wrote the file meanwhile: Salvar shows the conflict and writes nothing.
+    await write("um\nDOIS\ntrês meu\n");
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\nDOIS\nde outro\n");
+    await click("Salvar");
+    await settle(() => screen.queryByText("O arquivo mudou no disco depois de aberto.") !== null);
+    expect(screen.queryByText("O arquivo mudou no disco depois de aberto.")).not.toBeNull();
+    expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("um\nDOIS\nde outro\n");
+
+    // "Recarregar do disco" drops the edit and takes the disk's text...
+    await click("Recarregar do disco");
+    await settle(() => editor()?.state.doc.toString() === "um\nDOIS\nde outro\n");
+    expect(editor()?.state.doc.toString()).toBe("um\nDOIS\nde outro\n");
+    expect(screen.queryByText("O arquivo mudou no disco depois de aberto.")).toBeNull();
+
+    // ...and "Sobrescrever" writes my version over what changed.
+    await write("minha versão\n");
+    writeFileSync(join(ctx.repo, "novo.txt"), "mudou de novo\n");
+    await click("Salvar");
+    await settle(() => screen.queryByText("O arquivo mudou no disco depois de aberto.") !== null);
+    await click("Sobrescrever com a minha versão");
+    await settle(() => readFileSync(join(ctx.repo, "novo.txt"), "utf8") === "minha versão\n");
+    expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("minha versão\n");
+    await click("Fechar");
+    expect(screen.queryByRole("dialog", { name: "Editar novo.txt" })).toBeNull();
+
+    // Esc closes it too.
+    await click("Editar arquivo novo.txt");
+    await settle(() => screen.queryByRole("dialog", { name: "Editar novo.txt" }) !== null);
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog", { name: "Editar novo.txt" }), {
+        key: "Escape",
+      });
+    });
+    expect(screen.queryByRole("dialog", { name: "Editar novo.txt" })).toBeNull();
+  });
+
+  test("um arquivo grande demais para editar mostra o motivo no lugar do editor", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "grande.txt"), "x".repeat(1_100_000));
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("grande.txt"));
+    await click("Editar arquivo grande.txt");
+    await settle(() => screen.queryByText(/passa de 1 MB/) !== null);
+    expect(screen.queryByText(/passa de 1 MB/)).not.toBeNull();
+    expect(document.querySelector(".cm-content")).toBeNull();
+  });
+
+  test("um arquivo grande demais para mostrar vem com o tamanho e um jeito de abrir fora, sem o conteúdo", async () => {
+    const ctx = await setup();
+    const shown: string[] = [];
+    ctx.platform.openPath = async () => {};
+    ctx.platform.revealPath = async (path) => {
+      shown.push(path);
+    };
+    writeFileSync(join(ctx.repo, "dump.log"), `SEGREDO${"x".repeat(700_000)}`);
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("dump.log"));
+    expect(files()).toContain("Grande demais");
+    const diff = () => screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "";
+    expect(diff()).toContain("Grande demais para mostrar aqui (683.6 KB)");
+    expect(diff()).not.toContain("SEGREDO");
+    // The small file beside it is shown whole.
+    expect(diff()).toContain("+dois");
+    // Any file can be shown in its folder; opening one with the system's app is refused for most extensions.
+    await click("Mostrar dump.log na pasta");
+    expect(shown).toHaveLength(1);
+    expect(shown[0]?.endsWith("/dump.log")).toBe(true);
+    // The editor stays one click away: it says why it cannot take the file when it is over 1 MB.
+    expect(screen.queryByRole("button", { name: "Editar arquivo dump.log" })).not.toBeNull();
+  });
+
+  test("sem programa do sistema (o app no navegador) o motivo aparece e não há botão de abrir fora", async () => {
+    const ctx = await setup();
+    ctx.platform.openPath = undefined;
+    writeFileSync(join(ctx.repo, "dump.log"), "x".repeat(700_000));
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("dump.log"));
+    const diff = screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "";
+    expect(diff).toContain("Grande demais para mostrar aqui");
+    expect(screen.queryByRole("button", { name: "Mostrar dump.log na pasta" })).toBeNull();
+  });
+
+  test("Sessões que mexeram aqui lista as sessões que gravaram o arquivo", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\n");
+    ctx.eventStore.db
+      .query(
+        "INSERT INTO session_files (claude_session_id, path, edits, first_at, last_at) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        "antiga-1",
+        join(ctx.repo, "novo.txt"),
+        3,
+        "2026-10-01T10:00:00.000Z",
+        "2026-10-02T10:00:00.000Z",
+      );
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+
+    await click("Sessões que mexeram em novo.txt");
+    await settle(() => screen.queryByRole("list", { name: "Sessões que mexeram aqui" }) !== null);
+    expect(text("Sessões que mexeram aqui")).toContain("antiga-1");
+    expect(text("Sessões que mexeram aqui")).toContain("3 edições");
+    cleanup();
+
+    const empty = await setup();
+    writeFileSync(join(empty.repo, "outro.txt"), "um\n");
+    await openSession(empty);
+    await openChanges();
+    await settle(() => files().includes("outro.txt"));
+    await click("Sessões que mexeram em outro.txt");
+    await settle(
+      () => screen.queryByText("Nenhuma sessão registrou edição neste arquivo.") !== null,
+    );
+    expect(screen.queryByText("Nenhuma sessão registrou edição neste arquivo.")).not.toBeNull();
+  });
+
+  test("sair da aba para o watcher, e voltar mostra o que mudou nesse meio tempo", async () => {
+    const ctx = await setup();
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => screen.queryByText("Nada mudou.") !== null);
+    expect(screen.queryByText("Nada mudou.")).not.toBeNull();
+    // Leaving the tab stops the watcher: no frame is handled for a panel that is gone.
+    await click("Conversa");
+    expect(screen.queryByRole("region", { name: "Mudanças" })).toBeNull();
+    writeFileSync(join(ctx.repo, "tarde.txt"), "um\n");
+    await openChanges();
+    await settle(() => files().includes("tarde.txt"));
+    expect(files()).toContain("tarde.txt");
+  });
+  test("comenta uma linha apagada pelo lado antigo, mostra um renomeado sem linhas e cancela a edição de um rascunho", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "README.md"), "# repo\nlinha DOIS\nlinha três\n");
+    // A rename that keeps the content has no lines to show.
+    writeFileSync(join(ctx.repo, "extra.txt"), "igual\n");
+    git(ctx.repo, "add", "extra.txt");
+    git(ctx.repo, "commit", "-q", "-m", "extra");
+    git(ctx.repo, "mv", "extra.txt", "movido.txt");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("movido.txt"));
+    expect(screen.queryByText("Sem linhas para mostrar.")).not.toBeNull();
+
+    await click("Comentar a linha antiga 2 de README.md");
+    expect(screen.queryByRole("form", { name: "Novo comentário" })?.textContent ?? "").toContain(
+      "README.md · linha 2 (antes)",
+    );
+    await type("Comentário", "por que mudou?");
+    await click("Adicionar comentário");
+    await settle(() => text("Comentários da revisão").includes("por que mudou?"));
+    expect(text("Comentários da revisão")).toContain("linha dois");
+
+    await click("Editar o comentário em README.md, linha 2");
+    await type("Texto do comentário", "outro texto");
+    await click("Cancelar");
+    expect(text("Comentários da revisão")).toContain("por que mudou?");
+    expect(text("Comentários da revisão")).not.toContain("outro texto");
+  });
+
+  test("fora das pastas permitidas o host mostra as mudanças mas recusa gravar", async () => {
+    const ctx = await setup();
+    const outside = realTempDir("fd-fora-");
+    git(outside, "init", "-q", "-b", "main");
+    git(outside, "config", "commit.gpgsign", "false");
+    writeFileSync(join(outside, "a.txt"), "um\n");
+    git(outside, "add", ".");
+    git(outside, "commit", "-q", "-m", "inicial");
+    writeFileSync(join(outside, "a.txt"), "um\ndois\n");
+    ctx.central.external.apply("SessionStart", { session_id: "fora-1", cwd: outside });
+    await act(async () => {
+      await ctx.store.sessionLists.refresh();
+      ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "fora-1" });
+    });
+    await settle(() => screen.queryByRole("tab", { name: "Mudanças" }) !== null);
+    await openChanges();
+    await settle(() => files().includes("a.txt"));
+
+    await click("Editar arquivo a.txt");
+    await settle(() => document.querySelector(".cm-content") !== null);
+    await click("Salvar");
+    await settle(() => document.querySelector(".cm-content") === null);
+    expect(document.querySelector(".cm-content")).toBeNull();
+    const shown = screen.queryByRole("dialog")?.textContent ?? "";
+    expect(shown).toContain("está fora das pastas permitidas do host");
+    // The reason carries the whole sentence now; the host's English text is no longer appended.
+    expect(shown).not.toContain("outside allowedRoots");
+    expect(readFileSync(join(outside, "a.txt"), "utf8")).toBe("um\ndois\n");
+  });
+
+  test("depois que o host cai e volta, a aba volta a acompanhar o disco", async () => {
+    const ctx = await setup(undefined, 20);
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => screen.queryByText("Nada mudou.") !== null);
+    const watchesBefore = ctx.watches.count;
+    await act(async () => {
+      await ctx.server.stop();
+    });
+    await settle(() => ctx.store.getState().hosts[0]?.status !== "online");
+    ctx.listen(ctx.server.port);
+    await settle(() => ctx.store.getState().hosts[0]?.status === "online", 10_000);
+    // The app asks again for the watch on reconnect: write only once the daemon has it in place.
+    await settle(() => ctx.watches.count > watchesBefore, 10_000);
+    writeFileSync(join(ctx.repo, "depois.txt"), "voltou\n");
+    await settle(() => files().includes("depois.txt"), 10_000);
+    expect(files()).toContain("depois.txt");
+  });
+  test("no card a aba Mudanças é a mesma e reverter volta ao que a base tem", async () => {
+    const ctx = await setup();
+    const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
+    const card = ctx.board.createCard(project.id, { title: "Com mudanças", description: "oi" });
+    await ctx.board.startCard(card.id);
+    const started = await cardWhen(ctx.board, card.id, (c) => c.sessionStatus === "idle");
+    writeFileSync(join(must(started?.worktreePath, "worktreePath"), "solto.txt"), "não commitado");
+    await act(async () => {
+      ctx.store.router.push({
+        name: "card",
+        host: ctx.hostId,
+        projectId: project.id,
+        cardId: card.id,
+      });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
+    await click("Mudanças");
+    await settle(() => files().includes("solto.txt"));
+    await click("Reverter solto.txt");
+    expect(dialog()?.textContent ?? "").toContain("da base (main)");
+    await click("Reverter arquivo");
+    await settle(() => !files().includes("solto.txt"));
+    expect(files()).not.toContain("solto.txt");
+  });
+
+  test("a session lists the files it wrote and says that Bash changes do not count", async () => {
+    const ctx = await setup();
+    const { claudeId } = await openSession(ctx);
+    ctx.eventStore.db
+      .query(
+        "INSERT INTO session_files (claude_session_id, path, edits, first_at, last_at) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        claudeId,
+        join(ctx.repo, "src", "a.ts"),
+        2,
+        "2026-10-01T10:00:00.000Z",
+        "2026-10-02T10:00:00.000Z",
+      );
+    await openChanges();
+    await settle(
+      () => screen.queryByRole("list", { name: "Arquivos que a sessão escreveu" }) !== null,
+    );
+    expect(text("Arquivos que a sessão escreveu")).toContain("a.ts");
+    expect(text("Arquivos que a sessão escreveu")).toContain("2 edições");
+    expect(document.body.textContent ?? "").toContain("Mudanças feitas pelo Bash não entram.");
+  });
+
+  test("a session that wrote nothing says so, and a file's sessions come with the first and the last date", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "novo.txt"), "um\n");
+    ctx.eventStore.db
+      .query(
+        "INSERT INTO session_files (claude_session_id, path, edits, first_at, last_at) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        "antiga-1",
+        join(ctx.repo, "novo.txt"),
+        3,
+        "2026-10-01T10:00:00.000Z",
+        "2026-10-02T10:00:00.000Z",
+      );
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("novo.txt"));
+    // #1128: the empty line no longer says nothing was written; it says where other changes are.
+    expect(
+      screen.queryByText(
+        "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
+      ),
+    ).not.toBeNull();
+    await click("Sessões que mexeram em novo.txt");
+    await settle(() => screen.queryByRole("list", { name: "Sessões que mexeram aqui" }) !== null);
+    expect(text("Sessões que mexeram aqui")).toContain(
+      ctx.store.formatDateTime("2026-10-01T10:00:00.000Z"),
+    );
+    expect(text("Sessões que mexeram aqui")).toContain(
+      ctx.store.formatDateTime("2026-10-02T10:00:00.000Z"),
+    );
+    expect(document.body.textContent ?? "").toContain("Mudanças feitas pelo Bash não entram.");
+  });
+});

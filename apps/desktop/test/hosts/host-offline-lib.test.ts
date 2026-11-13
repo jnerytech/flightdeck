@@ -3,7 +3,7 @@ import {
   hostUptime,
   mayBeRefusedAddress,
   offlineHint,
-} from "../../src/features/hosts/host-offline.ts";
+} from "../../src/features/hosts/domain/host-offline.ts";
 
 describe("host-offline", () => {
   test("the uptime ages with the time since host.info arrived and never goes backwards", () => {
