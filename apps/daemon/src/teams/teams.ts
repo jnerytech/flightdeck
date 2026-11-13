@@ -735,6 +735,21 @@ export class Teams {
     tellCoordinator(`A executora "${target.name}" saiu do time.`);
   }
 
+  /** #2090: stub. */
+  async addMember(
+    id: string,
+    _asker: string,
+    _spec: { persona?: string; model?: string; brief: string },
+  ): Promise<{ member: TeamMember; team: TeamInfo }> {
+    const team = this.get(id);
+    return { member: team.members[0] as TeamMember, team };
+  }
+
+  /** #2090: stub. */
+  async removeMember(id: string, _asker: string, _member: string): Promise<TeamInfo> {
+    return this.get(id);
+  }
+
   async update(patch: TeamPatch): Promise<TeamInfo> {
     const row = this.open(patch.team);
     const info = this.get(row.id);

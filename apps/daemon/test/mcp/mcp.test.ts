@@ -79,7 +79,7 @@ async function connected(options: Parameters<typeof setup>[0] = {}) {
 }
 
 describe("mcp", () => {
-  test("expõe exatamente as vinte e uma ferramentas (#1220: team_report): nenhuma de permissão nem de gate, e dos snippets só ler", async () => {
+  test("expõe exatamente as vinte e três ferramentas (#1220: team_report; #2090: team_add_member, team_remove_member): nenhuma de permissão nem de gate, e dos snippets só ler", async () => {
     const { client, ok } = await connected();
     expect(ok).toBe(true);
     const names = await client.listTools().then(
@@ -105,6 +105,8 @@ describe("mcp", () => {
       "run_with_secret",
       "send_to_session",
       "start_card",
+      "team_add_member",
+      "team_remove_member",
       "team_report",
       "team_status",
       "update_card",
