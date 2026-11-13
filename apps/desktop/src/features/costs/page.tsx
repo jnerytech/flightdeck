@@ -14,7 +14,7 @@ import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
-import { useMinLoading } from "@/shared/hooks/index.ts";
+import { useKeyed, useMinLoading } from "@/shared/hooks/index.ts";
 import {
   EmptyState,
   LoadingState,
@@ -120,9 +120,9 @@ function useCostsLoad(
   const [all, setAll] = useState<CostsSummary | null>(null);
   const [sessionHost, setSessionHost] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState<string[]>([]);
-  const key = JSON.stringify([hostIds, filter, selection, placed]);
+  const keyed = useKeyed({ ids: hostIds, filter, selection, placed });
   useEffect(() => {
-    const [ids, asked] = JSON.parse(key) as [string[], CostsFilter];
+    const { ids, filter: asked } = keyed;
     if (ids.length === 0) {
       // No host to read (the scoped one is away): no numbers, not the last host's.
       setSummary(null);
@@ -141,10 +141,10 @@ function useCostsLoad(
     return () => {
       live = false;
     };
-  }, [store, key, selection]);
-  const daysKey = JSON.stringify([unfiltered ? [] : hostIds, days, selection, placed]);
+  }, [store, keyed, selection]);
+  const daysKeyed = useKeyed({ ids: unfiltered ? [] : hostIds, days, selection, placed });
   useEffect(() => {
-    const [ids, asked] = JSON.parse(daysKey) as [string[], CostsFilter];
+    const { ids, days: asked } = daysKeyed;
     if (ids.length === 0) return;
     let live = true;
     void askCosts(store, ids, asked, selection).then((loaded) => {
@@ -155,7 +155,7 @@ function useCostsLoad(
     return () => {
       live = false;
     };
-  }, [store, daysKey, selection]);
+  }, [store, daysKeyed, selection]);
   return { summary, all, sessionHost, failed };
 }
 

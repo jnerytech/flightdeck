@@ -50,13 +50,13 @@ module.exports = {
     {
       name: "shared-depends-on-no-domain",
       comment:
-        "shared/ is the most stable code: it imports no domain (SDP). Two domain-free leaves of the desktop stay where they are and shared/ may import them: components/ui (vendored shadcn, aliased by components.json) and lib/utils.ts (`cn`, which those ui files import); moving them is churn (#1597). More edges are allowed because the feedback and layout primitives need them: the translation context (i18n/context.tsx, domain-free); the in-flight hook now lives in shared/hooks/. The width and scroll helpers the layout primitives need now live in shared/lib/.",
+        "shared/ (and the daemon's kernel/, its shared kernel, #1611) is the most stable code: it imports no domain (SDP). Two domain-free leaves of the desktop stay where they are and shared/ may import them: components/ui (vendored shadcn, aliased by components.json) and lib/utils.ts (`cn`, which those ui files import); moving them is churn (#1597). More edges are allowed because the feedback and layout primitives need them: the translation context (i18n/context.tsx, domain-free); the in-flight hook now lives in shared/hooks/. The width and scroll helpers the layout primitives need now live in shared/lib/.",
       severity: "error",
-      from: { path: "^apps/[^/]+/src/shared/" },
+      from: { path: "^apps/([^/]+)/src/(shared|kernel)/" },
       to: {
         path: "^apps/[^/]+/src/",
         pathNot: [
-          "^apps/[^/]+/src/shared/",
+          "^apps/$1/src/(shared|kernel)/",
           "^apps/desktop/src/components/ui/",
           "^apps/desktop/src/lib/utils\\.ts$",
           "^apps/desktop/src/i18n/context\\.tsx$",
