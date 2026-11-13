@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { usd } from "../costs/index.ts";
 import { DiffView } from "../review/index.ts";
-import { StatusBadge } from "../sessions/index.ts";
+import { StatusBadge } from "../sessions/ui.ts";
 
 /** A variant that has not stopped working cannot be chosen yet. */
 const WORKING = new Set(["starting", "running", "awaiting_permission"]);
