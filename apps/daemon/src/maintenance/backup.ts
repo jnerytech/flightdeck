@@ -3,7 +3,7 @@ import { chmod, copyFile, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { withLock } from "../kernel/index.ts";
-import { MIGRATIONS } from "../store/migrations.ts";
+import { MIGRATIONS } from "../store/index.ts";
 
 export interface BackupInfo {
   path: string;

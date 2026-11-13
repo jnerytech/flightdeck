@@ -40,7 +40,7 @@ import { clampPermissionMode } from "../personas/model.ts";
 import type { PreparedPersonas } from "../personas/prepare.ts";
 import { snapshotOf } from "../personas/snapshot.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
-import { type EventStore, personaBadge } from "../store/event-store.ts";
+import { type EventStore, personaBadge } from "../store/index.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { ActivityClock, type ToolNote } from "./domain/activity-clock.ts";
 import type { QuietInfo } from "./domain/stall.ts";
