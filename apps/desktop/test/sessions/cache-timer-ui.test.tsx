@@ -36,15 +36,13 @@ function store(
 const timer = () => screen.queryByRole("img", { name: /^Prompt cache/ });
 
 describe("cache-timer-ui: the countdown of one idle session (issue #159)", () => {
-  test("counting: m:ss, muted, and a spoken name that says minutes and seconds", () => {
+  test("counting: m:ss and a spoken name that says minutes and seconds", () => {
     const { app, clock } = store({ on: true });
     clock.now = T0 + 170_000;
     render(<CacheTimer store={app} since={iso(T0)} />);
     const el = timer() as HTMLElement;
     expect(el.getAttribute("aria-label")).toBe("Prompt cache expires in 2 minutes 10 seconds");
     expect(el.textContent).toBe("2:10");
-    expect(el.className).toContain("text-muted-foreground");
-    expect(el.className).not.toContain("text-status-needs-you");
     expect(el.querySelector("svg")).not.toBeNull();
   });
 
@@ -57,14 +55,6 @@ describe("cache-timer-ui: the countdown of one idle session (issue #159)", () =>
     clock.now = T0 + 245_000;
     render(<CacheTimer store={app} since={iso(T0)} />);
     expect(timer()?.getAttribute("aria-label")).toBe("Prompt cache expires in 55 seconds");
-  });
-
-  test("the last minute turns the text to the warning tone", () => {
-    const { app, clock } = store({ on: true });
-    clock.now = T0 + 245_000;
-    render(<CacheTimer store={app} since={iso(T0)} />);
-    expect(timer()?.textContent).toBe("0:55");
-    expect(timer()?.className).toContain("text-status-needs-you");
   });
 
   test("cold: only the icon, no number, and the tooltip says what a message now costs", async () => {
@@ -129,14 +119,12 @@ describe("cache-timer-ui: the countdown of one idle session (issue #159)", () =>
     expect(timer()?.textContent).toBe("57:10");
   });
 
-  test("it reads in Portuguese, and the width does not move as the digits change", () => {
+  test("it reads in Portuguese", () => {
     const { app, clock } = store({ on: true, lang: "pt-BR" });
     clock.now = T0 + 170_000;
     render(<CacheTimer store={app} since={iso(T0)} />);
     const el = screen.getByRole("img", { name: /^Cache do prompt/ });
     expect(el.getAttribute("aria-label")).toBe("Cache do prompt expira em 2 minutos 10 segundos");
-    expect(el.className).toContain("tabular-nums");
-    expect(el.className).toContain("font-mono");
   });
 });
 

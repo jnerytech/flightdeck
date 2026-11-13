@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
+import { positionsBefore } from "../../src/features/board/board-model.ts";
 import {
   BoardWidth,
   COLUMN_WIDTH,
@@ -17,7 +18,6 @@ import {
   toggleSelection,
 } from "../../src/features/board/board-select.ts";
 import { translator } from "../../src/i18n/index.ts";
-import { positionsBefore } from "../../src/lib/board.ts";
 import type { Platform } from "../../src/platform/types.ts";
 
 describe("board-multi: the selection (issue #161)", () => {

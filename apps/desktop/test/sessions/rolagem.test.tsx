@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { join } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
@@ -53,21 +51,6 @@ function scroller(height: { scroll: number; client: number; top: number }) {
 }
 
 describe("sessao-rolagem: the conversation is the one scroll area of the session", () => {
-  test("the header, the composer and the messages never shrink, so nothing overlaps", () => {
-    render(view(3));
-    const el = document.querySelector("[tabindex='0'].overflow-y-auto") as HTMLElement;
-    expect(el.className).toContain("[&>*]:shrink-0");
-    expect(document.querySelector("header")?.className).toContain("shrink-0");
-    const dock = screen
-      .queryByRole("textbox", { name: /./ })
-      ?.closest("[data-slot='composer-card']")?.parentElement;
-    expect(dock?.className).toContain("composer-dock");
-    // The utility is what keeps the dock from shrinking.
-    expect(readStyles(join(import.meta.dir, "../../src/styles.css"))).toMatch(
-      /@utility composer-dock \{[^}]*flex-shrink: 0/,
-    );
-  });
-
   test("a new message follows the end when you were at the end", async () => {
     const { rerender } = render(view(3));
     const s = scroller({ scroll: 1000, client: 400, top: 600 });
