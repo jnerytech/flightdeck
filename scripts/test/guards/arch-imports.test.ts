@@ -88,6 +88,40 @@ describe("arch-imports: the domain borders (#1591)", () => {
     ]);
   });
 
+  test("a domain/ file imports no node I/O module; pure modules and its own rules pass (#1601)", async () => {
+    const found = await planted({
+      "apps/daemon/src/board/domain/rules.ts": [
+        'import { readFileSync } from "node:fs";',
+        'import { writeFile } from "node:fs/promises";',
+        'import { spawn } from "node:child_process";',
+        'import { Database } from "bun:sqlite";',
+        'import { connect } from "node:net";',
+        'import { hostname } from "node:os";',
+        'import { Worker } from "node:worker_threads";',
+        'import { setTimeout as wait } from "node:timers/promises";',
+        'import { lookup } from "node:dns";',
+        'import { performance } from "node:perf_hooks";',
+        'import { join } from "node:path";',
+        'import { col } from "./columns.ts";',
+        "export const r = [readFileSync, writeFile, spawn, Database, connect, hostname, Worker, wait, lookup, performance, join, col];",
+        "",
+      ].join("\n"),
+      "apps/daemon/src/board/domain/columns.ts": "export const col = 1;\n",
+    });
+    expect(found).toEqual([
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> bun:sqlite",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> child_process",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> dns",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> fs",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> fs/promises",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> net",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> os",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> perf_hooks",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> timers/promises",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> worker_threads",
+    ]);
+  });
+
   test("shared/ may import the domain-free leaves and itself, never a domain (#1597)", async () => {
     const found = await planted({
       "apps/desktop/src/shared/box.ts":
