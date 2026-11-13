@@ -1,6 +1,6 @@
 import { SquareKanban, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Keycap } from "@/features/shortcuts/index.ts";
+import { Keycap } from "@/features/shortcuts/ui.ts";
 import type { Key, T } from "@/i18n/index";
 import { type StateTone, StatusDot } from "@/shared/status/index.ts";
 import type { PaletteItem, PaletteSection } from "./palette.ts";

@@ -1,9 +1,9 @@
 /**
  * The keyboard shortcuts, public entry (#1589): the registry and its chords, the typing and grid keys, the
- * global shortcut check, the sheet and the keycap. Another domain imports from here, never a file inside.
+ * global shortcut check. Another domain imports from here, never a file inside. The sheet and the
+ * keycap are components, in ui.ts (#2451).
  */
 export { gridStep } from "./grid-keys.ts";
-export { Keycap, ShortcutKeys } from "./keycap.tsx";
 export { typing } from "./keys.ts";
 export { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 export {
@@ -16,4 +16,3 @@ export {
   type ShortcutAction,
   shortcutOf,
 } from "./shortcuts.ts";
-export { ShortcutsSheet } from "./shortcuts-sheet.tsx";

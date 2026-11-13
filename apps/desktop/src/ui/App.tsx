@@ -43,9 +43,9 @@ import {
   chordStep,
   isMac,
   NO_CHORD,
-  ShortcutsSheet,
   typing,
 } from "../features/shortcuts/index.ts";
+import { ShortcutsSheet } from "../features/shortcuts/ui.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
 import { tabIntent } from "../features/tabs/index.ts";
 import { TabSwitcherHost } from "../features/tabs/ui.ts";
