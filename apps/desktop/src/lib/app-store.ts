@@ -3,9 +3,7 @@ import type {
   CommandPayload,
   CommandResults,
   HistoryChanged,
-  MessageInfo,
   SessionRecap,
-  TeamsUpdatedFrame,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
