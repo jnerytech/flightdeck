@@ -14,13 +14,6 @@ import { initialAccountState } from "../features/account/index.ts";
 import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import {
-  type Attention,
-  BackupScheduler,
-  type BackupSlice,
-  googleConfig,
-  wireBackup,
-} from "../features/backup/index.ts";
-import {
   type ClientScopeSlice,
   Clients,
   knownProjects,
@@ -86,19 +79,7 @@ import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
-import {
-  type DeliveryRefusal,
-  Vault,
-  type VaultApprovalsSlice,
-  VaultRules,
-  type VaultRulesSlice,
-  VaultScanSlice,
-  type VaultSecretsSlice,
-  VaultUsageLog,
-  wireVaultApprovals,
-  wireVaultRules,
-  wireVaultSecrets,
-} from "../features/vault/index.ts";
+import type { DeliveryRefusal } from "../features/vault/index.ts";
 import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
 import { Webhooks } from "../features/webhook/webhooks.ts";
 import { refusalText } from "../i18n/errors.ts";
@@ -117,6 +98,7 @@ import type {
 import { initialAppState, needsYou } from "./app-state.ts";
 import { composeHosts, type HostSlices, newHostView } from "./compose/hosts.ts";
 import { composeShell, type ShellSlices } from "./compose/shell.ts";
+import { composeVault, type VaultSlices } from "./compose/vault.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
@@ -168,7 +150,7 @@ function describeError(error: unknown): string {
  * The slices each composition module builds are the store's fields: the constructor assigns them
  * (`Object.assign`), and the merged interface gives them their types (#2376).
  */
-export interface AppStore extends ShellSlices, HostSlices {}
+export interface AppStore extends ShellSlices, HostSlices, VaultSlices {}
 
 /**
  * All app state in one framework-free store: hosts and their connections, session timelines and
@@ -298,6 +280,17 @@ export class AppStore {
         peersSyncMs: options.peersSyncMs,
       }),
     );
+    Object.assign(
+      this,
+      composeVault(this.kernel, {
+        platform,
+        options,
+        notify: (...args) => this.inbox.notify(...args),
+        keepUsage: () => this.keepUsage(),
+        copyText: (text) => this.system.copyText(text),
+        projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
+      }),
+    );
     this.history = wireHistory(this.kernel, {
       searchTimeoutMs: options.searchTimeoutMs,
       select: (hostId, sessionId) => this.subscriptions.select(hostId, sessionId),
@@ -344,36 +337,6 @@ export class AppStore {
     this.hostTabs.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
       this.clearShownUnread();
-    });
-    this.vault = new Vault(platform);
-    this.vaultApprovals = wireVaultApprovals(this.kernel, {
-      vault: this.vault,
-      optionsPolicy: () => this.options.vaultPolicy,
-      notify: (title, body) => this.inbox.notify({ title, body, event: "needs-you" }),
-      recorded: (outcome) => {
-        this.usage.recordOutcome(outcome);
-        this.keepUsage();
-      },
-    });
-    this.secrets = wireVaultSecrets(this.kernel, {
-      vault: this.vault,
-      workFactor: () => this.options.vaultWorkFactor,
-      saveFile: (name, text) => this.platform.saveFile(name, text),
-      pickFile: () => this.platform.vault.pickFile(),
-      fail: (error) => this.fail(error),
-      copyText: (text) => this.system.copyText(text),
-      clearClipboardIn: (ms) => {
-        setTimeout(() => void this.platform.copyText("").catch(() => {}), ms);
-      },
-    });
-    this.scan = new VaultScanSlice({ vault: this.vault });
-    this.vaultRules = wireVaultRules(this.kernel, {
-      rules: new VaultRules(platform.storage),
-      secrets: () => this.vault.list(),
-      clients: () => this.state.clientList,
-      projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
-      fail: (error, text) => this.fail(error, text),
-      success: (text) => this.success(text),
     });
     this.clients = new Clients(platform, { onChange: () => this.clientScope.sync() });
     this.clientScope = wireClientScope(this.kernel, {
@@ -428,7 +391,6 @@ export class AppStore {
       },
       settings: () => this.roi,
     });
-    this.usage = new VaultUsageLog(platform);
     this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
@@ -463,16 +425,6 @@ export class AppStore {
       setBadge: (count) => this.platform.setBadge?.(count),
     });
     this.i18n = new I18n(platform);
-    this.backupScheduler = new BackupScheduler(platform, {
-      onAttention: (kind) => this.onBackupAttention(kind),
-      google: options.google ?? { config: googleConfig() },
-      ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
-    });
-    this.backup = wireBackup(this.kernel, {
-      platform,
-      scheduler: this.backupScheduler,
-      vaultWorkFactor: options.vaultWorkFactor,
-    });
     this.commands = wireSessionCommands(this.kernel, {
       opened: (hostId, sessionId) => {
         this.subscriptions.select(hostId, sessionId);
@@ -560,10 +512,6 @@ export class AppStore {
   readonly terminals: TerminalsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
-  /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
-  readonly backupScheduler: BackupScheduler;
-  /** The whole-app backup file: save, read, compare and restore (#1596). */
-  readonly backup: BackupSlice;
   private awayTimer: ReturnType<typeof setInterval> | null = null;
   /** The screen in use and its history (phase 10). */
   readonly router: Navigation;
@@ -702,18 +650,6 @@ export class AppStore {
     if (text === undefined) return null;
     this.update({ composerFill: rest });
     return text;
-  }
-
-  /** Issue #1327: a scheduled backup that cannot go reaches the bell, and a click opens its settings. */
-  private onBackupAttention(kind: Attention): void {
-    const t = this.i18n.t;
-    this.inbox.notify(
-      {
-        title: t(`backupSchedule.attention.${kind}.title`),
-        body: t(`backupSchedule.attention.${kind}.body`),
-      },
-      { name: "settings", section: "backup" },
-    );
   }
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
@@ -1150,17 +1086,6 @@ export class AppStore {
     return this.vaultApprovals.secretFor(hostId, secretId, purpose);
   }
 
-  /** Phase 16: the vault, whose values live in the system keyring. */
-  readonly vault: Vault;
-
-  /** Phase 19: each secret's usage rules, kept with the vault and handed to the hosts (#1596). */
-  readonly vaultRules: VaultRulesSlice;
-  /** The vault's secrets and their `.fdvault` file; `state.secrets` is the list the screens read. */
-  readonly secrets: VaultSecretsSlice;
-  /** The daemon's requests for a secret: the policy, the queue and the outcome listeners. */
-  readonly vaultApprovals: VaultApprovalsSlice;
-  /** What the app's log and the screens must never show: the hosts' tokens and the vault's values. */
-  readonly scan: VaultScanSlice;
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */
@@ -1172,8 +1097,6 @@ export class AppStore {
   private readonly webhookFeed: WebhookFeed;
   /** Which client the person works for: the selection of the work screens and each project's client (#1596). */
   readonly clientScope: ClientScopeSlice;
-  /** Phase 16: what was asked of the vault, kept in `storage`. */
-  readonly usage: VaultUsageLog;
 
   private keepUsage(): void {
     this.update({ vaultUsage: this.usage.list() });
