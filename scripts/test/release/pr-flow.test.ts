@@ -295,7 +295,7 @@ describe("pr-flow: the pure parts", () => {
         "docs: z (#3)",
       ]),
     ).toEqual([7, 8]);
-    expect(issuesOf(["feat(a): x (#7, #8)", "fix: y (#8)", "feat(a)!: z (#9)"])).toEqual([9, 7, 8]);
+    expect(issuesOf(["feat(a): x (#7, #8)", "fix: y (#8)", "feat(a)!: z (#9)"])).toEqual([9, 8, 7]);
     expect(issuesOf(["fix(a): y (#4)", "fix(a): x (#4)"])).toEqual([4]);
   });
 
@@ -569,7 +569,7 @@ describe("pr-flow: open", () => {
   test("the usage text names --refs (#839) and --title (#909)", async () => {
     const f = fake();
     expect(await prFlow(["open"], f.deps)).toBe(2);
-    expect(f.out()).toContain("[--issue <n> | --refs <n>]");
+    expect(f.out()).toContain("[--issue <n[,n...]> | --refs <n>]");
     expect(f.out()).toContain("[--title <text>]");
   });
 

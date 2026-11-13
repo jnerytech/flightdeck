@@ -46,7 +46,7 @@ export interface Pr {
 const REPO = "repos/{owner}/{repo}";
 const MAIN = "main";
 const USAGE =
-  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] [--title <text>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
+  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n[,n...]> | --refs <n>] [--title <text>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
 /** A required check passes as GitHub counts it: a success, or a run it skipped or left neutral. */
 const PASSED = new Set(["success", "skipped", "neutral"]);
 
@@ -72,7 +72,23 @@ export function issueOf(subjects: string[]): number | null {
  * branch's own issue (`issueOf`); none when no subject names an issue.
  */
 export function issuesOf(subjects: string[]): number[] {
-  return subjects.length < 0 ? [] : [];
+  const named = new Set<number>();
+  for (const subject of [...subjects].reverse()) {
+    if (!/^(?:feat|fix)(?:\([^)]*\))?!?:/.test(subject)) continue;
+    for (const group of subject.matchAll(/\(([^()]*)\)/g)) {
+      for (const m of (group[1] ?? "").matchAll(/#(\d+)/g)) named.add(Number(m[1]));
+    }
+  }
+  if (named.size > 0) return [...named];
+  const own = issueOf(subjects);
+  return own === null ? [] : [own];
+}
+
+/** The numbers of `--issue a,b,c`; null when any part is not an issue number. */
+function issueList(value: string): number[] | null {
+  const parts = value.split(",");
+  if (!parts.every((part) => /^[1-9]\d*$/.test(part))) return null;
+  return [...new Set(parts.map(Number))];
 }
 
 /** The order to merge: PRs onto main by number, each stacked PR right after the PR it sits on. */
@@ -312,22 +328,42 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     }
   }
   const subjects = await ownSubjects(branch, base, deps.git);
-  const issue = Number(option("--issue") ?? option("--refs")) || issueOf(subjects);
+  const refs = args.includes("--refs");
+  // #2442: --issue a,b,c closes several issues in one PR; without --issue, every issue the feat
+  // and fix commits name. --refs is one slice of one issue.
+  const given = option(refs ? "--refs" : "--issue");
+  if (refs && given?.includes(",")) {
+    deps.log("--refs takes one issue: a slice of one issue");
+    return 2;
+  }
+  const slice = Number(given) || issueOf(subjects);
+  const issues = refs ? (slice ? [slice] : []) : given ? issueList(given) : issuesOf(subjects);
+  if (issues === null) {
+    deps.log("--issue takes issue numbers separated by commas: --issue 12,13");
+    return 2;
+  }
+  const [issue] = issues;
   if (!issue) {
     deps.log(`no (#N) in the subjects of ${branch}'s commits: name the issue with --issue <n>`);
     return 2;
   }
-  const title = await deps.gh(["api", `${REPO}/issues/${issue}`, "--jq", ".title"]);
-  if (title.code !== 0) {
-    deps.log(`#${issue}: the issue cannot be read`);
-    return 1;
+  const titles: string[] = [];
+  for (const n of issues) {
+    const title = await deps.gh(["api", `${REPO}/issues/${n}`, "--jq", ".title"]);
+    if (title.code !== 0) {
+      deps.log(`#${n}: the issue cannot be read`);
+      return 1;
+    }
+    titles.push(title.stdout.trim());
   }
-  const refs = args.includes("--refs");
   const link = refs ? "Refs" : "Closes";
   // #909: a slice (--refs) is named after its own first commit, not the issue it is part of; a
-  // PR that closes its issue keeps the issue's title. --title names it by hand in every mode.
-  const name = option("--title") ?? (refs ? sliceTitle(subjects) : null) ?? title.stdout.trim();
-  const body = [`${link} #${issue}`, "", ...subjects.map((s) => `- ${s}`)].join("\n");
+  // PR that closes its issue keeps the issue's title (the first issue's, for several). --title
+  // names it by hand in every mode.
+  const name = option("--title") ?? (refs ? sliceTitle(subjects) : null) ?? titles[0];
+  const body = [...issues.map((n) => `${link} #${n}`), "", ...subjects.map((s) => `- ${s}`)].join(
+    "\n",
+  );
   const created = await deps.gh([
     "api",
     "-X",
