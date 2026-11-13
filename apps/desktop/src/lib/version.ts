@@ -38,7 +38,7 @@ export function hasFeature(
  * can serve it. A host that announced nothing (older than phase 7) does not count.
  */
 export function anyHostHas(
-  hosts: readonly { hostInfo: { features?: readonly string[] | undefined } | null }[],
+  hosts: readonly { hostInfo: { features?: readonly string[] | undefined } | null }[], // NOSONAR: exactOptionalPropertyTypes needs the explicit undefined
   feature: string,
 ): boolean {
   return hosts.some((host) => hasFeature(host.hostInfo?.features, feature, false));
@@ -51,7 +51,7 @@ export function anyHostHas(
 export function hostsWith<
   H extends {
     status: string;
-    hostInfo?: { features?: readonly string[] | undefined } | null | undefined;
+    hostInfo?: { features?: readonly string[] | undefined } | null | undefined; // NOSONAR: exactOptionalPropertyTypes needs the explicit undefined
   },
 >(hosts: readonly H[], feature: string): H[] {
   return hosts.filter(
