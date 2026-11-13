@@ -288,7 +288,11 @@ describe("times-ui: the teams of a host", () => {
       });
     });
     await click("Mandar a todos", row("t1"));
-    await settle(() => within(row("t1") as HTMLElement).queryByRole("status") !== null);
+    await settle(() =>
+      /\d+ entregues/.test(
+        within(row("t1") as HTMLElement).queryByRole("status")?.textContent ?? "",
+      ),
+    );
     expect(within(row("t1") as HTMLElement).queryByRole("status")?.textContent).toMatch(
       /\d+ entregues/,
     );
@@ -364,7 +368,7 @@ describe("times-ui: the teams of a host", () => {
         },
       );
     });
-    await click("Trocar a persona de t3 · executora 1", row("t3"));
+    await click("Trocar persona de t3 · executora 1", row("t3"));
     // The persona shows by its name, not its id (#101).
     await settle(() => (row("t3")?.textContent ?? "").includes("QA / testes"));
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
@@ -397,7 +401,13 @@ describe("times-ui: the teams of a host", () => {
     expect(row("t4")?.textContent).toContain("terminei a tarefa");
     await click("Remover t4 · executora 2", row("t4"));
     await click("Remover", screen.queryByRole("alertdialog"));
-    await settle(() => !(row("t4")?.textContent ?? "").includes("t4 · executora 2"));
+    // The confirmation line names the worker (#2650): the worker's own controls are what goes.
+    await settle(
+      () =>
+        within(row("t4") as HTMLElement).queryByRole("button", {
+          name: "Remover t4 · executora 2",
+        }) === null,
+    );
     expect((await teams())[0]?.members.map((m) => m.name)).not.toContain("t4 · executora 2");
   });
 
@@ -823,7 +833,7 @@ describe("times-ui: the teams of a host", () => {
       );
     }
     const change = within(item).queryByRole("button", {
-      name: "Trocar a persona de grade · executora 1",
+      name: "Trocar persona de grade · executora 1",
     });
     expect(change?.getAttribute("data-variant") ?? "").toBe("outline");
     const remove = within(item).queryByRole("button", { name: "Remover grade · executora 1" });
@@ -841,14 +851,14 @@ describe("times-ui: the teams of a host", () => {
       const item = row("links");
       return item ? within(item).queryByRole("button", { name }) : null;
     };
-    await settle(() => memberButton("Abrir a sessão de links · coordenadora") !== null);
-    await click("Abrir a sessão de links · coordenadora", row("links") as HTMLElement);
+    await settle(() => memberButton("Abrir sessão de links · coordenadora") !== null);
+    await click("Abrir sessão de links · coordenadora", row("links") as HTMLElement);
     expect(store.router.current).toMatchObject({ name: "session" });
     await act(async () => {
       store.router.push({ name: "teams" });
     });
-    await settle(() => memberButton("Abrir o card de links · executora 1") !== null);
-    await click("Abrir o card de links · executora 1", row("links") as HTMLElement);
+    await settle(() => memberButton("Card de links · executora 1") !== null);
+    await click("Card de links · executora 1", row("links") as HTMLElement);
     expect(store.router.current).toMatchObject({
       name: "card",
       projectId: project?.id,
@@ -986,5 +996,141 @@ describe("times-ui: the host follows the switcher", () => {
     const said = () => screen.queryByText("gama não tem times. Mostrando alfa.") !== null;
     await settleMaybe(said);
     expect(said()).toBe(true);
+  });
+});
+
+/** Focuses the button, then presses it, as a person at the keyboard does. */
+async function press(name: string | RegExp) {
+  const button = screen.queryByRole("button", { name }) as HTMLButtonElement | null;
+  expect(button).not.toBeNull();
+  button?.focus();
+  await click(name);
+}
+
+const focused = () => document.activeElement;
+
+/** What has the focus, as text: a failed check never prints a DOM node. */
+const where = () => {
+  const el = focused();
+  return el
+    ? `${el.tagName} ${el.getAttribute("aria-label") ?? el.textContent?.slice(0, 30) ?? ""}`
+    : "nothing";
+};
+
+describe("times-ui: where the focus goes around the new team form (#2645, #2646)", () => {
+  test("Novo time puts the focus in the Goal field", async () => {
+    await open();
+    await press("Novo time");
+    await settleMaybe(() => focused() === screen.queryByLabelText("Objetivo"), 1500);
+    expect(focused() === screen.queryByLabelText("Objetivo"), `focus is on ${where()}`).toBe(true);
+  });
+
+  test("Criar o primeiro time puts the focus in the Goal field", async () => {
+    await open();
+    await settle(() => screen.queryByText("Nenhum time ainda") !== null);
+    await press("Criar o primeiro time");
+    await settleMaybe(() => focused() === screen.queryByLabelText("Objetivo"), 1500);
+    expect(focused() === screen.queryByLabelText("Objetivo"), `focus is on ${where()}`).toBe(true);
+  });
+
+  test("Cancelar puts the focus back on Novo time", async () => {
+    await open();
+    await press("Novo time");
+    await press("Cancelar");
+    const button = screen.queryByRole("button", { name: "Novo time" });
+    expect(button).not.toBeNull();
+    await settleMaybe(() => focused() === button, 1500);
+    expect(focused() === button, `focus is on ${where()}`).toBe(true);
+  });
+
+  test("a created team puts the focus on Novo time, never on the page body", async () => {
+    await open();
+    await create("foco", "1");
+    const button = screen.queryByRole("button", { name: "Novo time" });
+    expect(button).not.toBeNull();
+    await settleMaybe(() => focused() === button, 1500);
+    expect(focused() === button, `focus is on ${where()}`).toBe(true);
+  });
+
+  test("removing a worker row puts the focus in the row that took its place", async () => {
+    await open();
+    await press("Novo time");
+    await workerRows(3);
+    await press("Remover a executora 2");
+    await settle(() => screen.queryAllByLabelText(/^Modelo da executora \d+$/).length === 2);
+    const next = screen.queryByLabelText("Persona da executora 2 (opcional)");
+    expect(next).not.toBeNull();
+    await settleMaybe(() => focused() === next, 1500);
+    expect(focused() === next, `focus is on ${where()}`).toBe(true);
+  });
+
+  test("removing the last worker row puts the focus in the row before it", async () => {
+    await open();
+    await press("Novo time");
+    await workerRows(3);
+    await press("Remover a executora 3");
+    await settle(() => screen.queryAllByLabelText(/^Modelo da executora \d+$/).length === 2);
+    const before = screen.queryByLabelText("Persona da executora 2 (opcional)");
+    await settleMaybe(() => focused() === before, 1500);
+    expect(focused() === before, `focus is on ${where()}`).toBe(true);
+  });
+
+  test("adding the eighth worker row moves the focus to it, off the button that turns off", async () => {
+    await open();
+    await click("Novo time");
+    await workerRows(7);
+    await press("Adicionar executora ao novo time");
+    await settle(() => screen.queryAllByLabelText(/^Modelo da executora \d+$/).length === 8);
+    const eighth = screen.queryByLabelText("Persona da executora 8 (opcional)");
+    expect(eighth).not.toBeNull();
+    await settleMaybe(() => focused() === eighth, 1500);
+    expect(focused() === eighth, `focus is on ${where()}`).toBe(true);
+  });
+
+  test("Remover on the only worker row is disabled and says why", async () => {
+    await open();
+    await click("Novo time");
+    await workerRows(1);
+    const button = screen.queryByRole("button", {
+      name: "Remover a executora 1",
+    }) as HTMLButtonElement | null;
+    expect(button?.disabled).toBe(true);
+    const reason = screen.queryByText("Um time precisa de pelo menos uma executora.");
+    expect(reason).not.toBeNull();
+    expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+
+  test("Adicionar executora is disabled at eight rows and says why", async () => {
+    await open();
+    await click("Novo time");
+    await workerRows(8);
+    const button = screen.queryByRole("button", {
+      name: "Adicionar executora ao novo time",
+    }) as HTMLButtonElement | null;
+    expect(button?.disabled).toBe(true);
+    const reason = screen.queryByText("Um time tem no máximo 8 executoras.");
+    expect(reason).not.toBeNull();
+    expect(button?.getAttribute("aria-describedby")).toBe(reason?.id ?? "?");
+  });
+});
+
+describe("times-ui: the buttons of a team are named from their visible text (#2649)", () => {
+  test("every button of a team row and of the form has a name that starts with its text", async () => {
+    await open();
+    await create("nomes", "1");
+    await click("Novo time");
+    const buttons = [
+      ...(row("nomes") as HTMLElement).querySelectorAll("button"),
+      ...(screen.queryByLabelText("Objetivo")?.closest("form")?.querySelectorAll("button") ?? []),
+    ];
+    // The team row has Pause, Add worker and Close, and its members' buttons.
+    expect(buttons.length).toBeGreaterThan(6);
+    const unmatched = buttons
+      .map((button) => ({
+        text: (button.textContent ?? "").trim().toLowerCase(),
+        name: (button.getAttribute("aria-label") ?? "").trim().toLowerCase(),
+      }))
+      .filter(({ text, name }) => text !== "" && name !== "" && !name.startsWith(text));
+    expect(unmatched).toEqual([]);
   });
 });

@@ -595,6 +595,11 @@ export const board = {
     showIdle: "Show idle sessions",
     approve: "Approve",
     deny: "Deny",
+    approveFor: "Approve {title}",
+    denyFor: "Deny {title}",
+    holdFor: "Hold to approve {title}",
+    approved: "Approved {title}",
+    denied: "Denied {title}",
     emptyAll: "Nothing here yet. Start a session and it shows on this board.",
   },
 };

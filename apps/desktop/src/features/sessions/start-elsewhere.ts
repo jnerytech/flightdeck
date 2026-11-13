@@ -101,34 +101,46 @@ export async function startElsewhere(run: {
   target: Elsewhere;
   ask: ElsewhereAsk;
 }): Promise<ElsewhereOutcome> {
-  const { t, target, ask } = run;
   const outcome: ElsewhereOutcome = { moved: [], refused: [], unmarked: [], orphaned: [] };
   for (const card of run.cards) {
-    // NOSONAR: one card at a time, so the target's queue sees them in the board's order
-    const draft = { projectId: target.projectId, title: card.title, description: card.description };
-    const made = await ask(target.hostId, "card.create", draft); // NOSONAR: one card at a time, each step needs the one before
-    if (!made.ok) {
-      outcome.refused.push({ card, ...answerOf(made) });
-      continue;
-    }
-    const as = (made.data as { id: string }).id;
-    const started = await ask(target.hostId, "card.start", { cardId: as }); // NOSONAR: one card at a time, each step needs the one before
-    if (!started.ok) {
-      const removed = await ask(target.hostId, "card.delete", { cardId: as, confirm: true }); // NOSONAR: one card at a time, each step needs the one before
-      if (!removed.ok) outcome.orphaned.push(card);
-      outcome.refused.push({ card, ...answerOf(started) });
-      continue;
-    }
-    outcome.moved.push({ card, as });
-    const note = t("board.startedElsewhere", { host: target.name, id: as });
-    const noted = { cardId: card.id, description: [card.description, note].join("\n\n") };
-    const marked = await ask(run.sourceHostId, "card.update", noted); // NOSONAR: one card at a time, each step needs the one before
-    const done =
-      marked.ok &&
-      (await ask(run.sourceHostId, "card.move", { cardId: card.id, column: "done" })).ok; // NOSONAR: one card at a time, each step needs the one before
-    if (!done) outcome.unmarked.push(card);
+    await handOff(run, card, outcome); // NOSONAR: one card at a time, so the target's queue sees them in the board's order
   }
   return outcome;
+}
+
+/** One card of the hand-off: made and started on the target, then marked and moved on the source. */
+async function handOff(
+  run: { t: T; sourceHostId: string; target: Elsewhere; ask: ElsewhereAsk },
+  card: Card,
+  outcome: ElsewhereOutcome,
+): Promise<void> {
+  const { t, target, ask } = run;
+  const made = await ask(target.hostId, "card.create", {
+    projectId: target.projectId,
+    title: card.title,
+    description: card.description,
+  });
+  if (!made.ok) {
+    outcome.refused.push({ card, ...answerOf(made) });
+    return;
+  }
+  const as = (made.data as { id: string }).id;
+  const started = await ask(target.hostId, "card.start", { cardId: as });
+  if (!started.ok) {
+    const removed = await ask(target.hostId, "card.delete", { cardId: as, confirm: true });
+    if (!removed.ok) outcome.orphaned.push(card);
+    outcome.refused.push({ card, ...answerOf(started) });
+    return;
+  }
+  outcome.moved.push({ card, as });
+  const note = t("board.startedElsewhere", { host: target.name, id: as });
+  const marked = await ask(run.sourceHostId, "card.update", {
+    cardId: card.id,
+    description: [card.description, note].join("\n\n"),
+  });
+  const done =
+    marked.ok && (await ask(run.sourceHostId, "card.move", { cardId: card.id, column: "done" })).ok;
+  if (!done) outcome.unmarked.push(card);
 }
 
 /** The line after a hand-off: how many started there, which did not, and which stay on the board. */

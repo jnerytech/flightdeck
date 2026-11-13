@@ -97,6 +97,20 @@ describe("backup-drive-restore-ui: restore from Google Drive (#1462)", () => {
     expect([control("Read backup") !== null, shown("Google Drive")]).toEqual([true, false]);
   });
 
+  // #2655: a Drive file name has no spaces, so its label must break instead of widening the panel.
+  test("a Drive file name wraps anywhere inside its row (#2655)", async () => {
+    await open();
+    await waitFor(() => control("Google Drive") !== null);
+    await click("Google Drive");
+    await click("Look in Google Drive");
+    await waitFor(() => control(NAME(9)) !== null);
+    const classes = (control(NAME(9)) as HTMLElement).parentElement?.className.split(" ") ?? [];
+    expect([classes.includes("min-w-0"), classes.includes("[overflow-wrap:anywhere]")]).toEqual([
+      true,
+      true,
+    ]);
+  });
+
   test("look in Drive, pick a backup, read it, then the same preview and restore", async () => {
     const { platform } = await open();
     await waitFor(() => control("Google Drive") !== null);
@@ -181,5 +195,6 @@ describe("backup-drive-restore-ui: restore from Google Drive (#1462)", () => {
     await waitFor(() => control("Procurar no Google Drive") !== null);
     await click("Procurar no Google Drive");
     await waitFor(() => control(NAME(9)) !== null);
+    expect(control(NAME(9)) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

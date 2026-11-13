@@ -29,6 +29,8 @@ interface Fixture {
   boot?: DepState;
   features?: string[];
   status?: string;
+  /** Its health answers are refused, as by a host that cannot be reached. */
+  refuse?: boolean;
 }
 
 /** The dependencies a fixture's host answers `deps.check` with; a null one is left out. */
@@ -47,14 +49,26 @@ function depItems(f: Fixture | undefined) {
 
 const BASE_FEATURES = ["doctor.run", "depsCheck"];
 
-function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en", hostId?: string) {
+function setup(
+  fixtures: Fixture[],
+  lang: "en" | "pt-BR" = "en",
+  hostId?: string,
+  slow: string[] = [],
+) {
+  // The hosts named in `slow` answer only once `release` is called.
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const asked: string[] = [];
   const byId = new Map(fixtures.map((f) => [f.id, f]));
   store.hostRequest = (async (hostId: string, type: string) => {
     asked.push(`${hostId}:${type}`);
+    if (slow.includes(hostId)) await gate;
     const f = byId.get(hostId);
+    if (f?.refuse) return { ok: false, message: "unreachable" };
     if (type === "doctor.run") return { ok: true, data: { ok: true, checks: [] } };
     if (type === "deps.check") return { ok: true, data: { items: depItems(f) } };
     return { ok: false, message: "unexpected" };
@@ -81,11 +95,16 @@ function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en", hostId?: string
       </TooltipProvider>
     </TContext.Provider>
   );
-  return { view, asked, push, hosts, store };
+  return { view, asked, push, hosts, store, release };
 }
 
-const mount = (fixtures: Fixture[], lang: "en" | "pt-BR" = "en", hostId?: string) => {
-  const mounted = setup(fixtures, lang, hostId);
+const mount = (
+  fixtures: Fixture[],
+  lang: "en" | "pt-BR" = "en",
+  hostId?: string,
+  slow: string[] = [],
+) => {
+  const mounted = setup(fixtures, lang, hostId, slow);
   render(mounted.view);
   return mounted;
 };
@@ -124,6 +143,20 @@ async function open(lang: "en" | "pt-BR" = "en") {
     if (button) fireEvent.click(button);
   });
 }
+
+/** The names of the Fix buttons on the table, in the order of its rows. */
+const fixNames = () =>
+  screen.queryAllByRole("button").flatMap((b) => {
+    const text = b.textContent ?? "";
+    return /^(Fix|Corrigir) .+ (on|em) /.test(text) ? [text] : [];
+  });
+
+/** What the polite status lines of the panel say now. */
+const statusText = () =>
+  screen
+    .queryAllByRole("status")
+    .map((s) => s.textContent ?? "")
+    .join(" ");
 
 /** The hosts' answers are in the store and the table has drawn them. */
 async function answered(store: { getState(): AppState }, hosts: number) {
@@ -272,9 +305,11 @@ describe("host-compare-ui: the table", () => {
     ]);
     await open();
     expect(await answered(store, 2)).toBe(true);
-    expect(screen.queryByRole("button", { name: "Fix on alfa" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Fix on beta" }) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
-    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
+    expect(screen.queryByRole("button", { name: "Fix Daemon version on alfa" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Fix Daemon version on beta" }) !== null).toBe(
+      true,
+    ); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryAllByRole("button", { name: /^Fix .+ on / }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
   });
 
   test("two hosts that match say nothing in any row", async () => {
@@ -391,10 +426,10 @@ describe("host-compare-ui: the table", () => {
     ]);
     await open();
     expect(await answered(store, 3)).toBe(true);
-    const link = screen.queryByRole("button", { name: "Fix on gama" });
+    const link = screen.queryByRole("button", { name: "Fix Hooks on gama" });
     expect(link !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     // Hooks is the only marked cell with a fix: the OS differs too, and has none.
-    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
+    expect(screen.queryAllByRole("button", { name: /^Fix .+ on / }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
     await act(async () => {
       if (link) fireEvent.click(link);
     });
@@ -455,6 +490,152 @@ describe("host-compare-ui: the table", () => {
   });
 });
 
+describe("host-compare-ui: the Fix buttons name their field (#2651)", () => {
+  test("two differing rows of one host give two Fix buttons with different names", async () => {
+    const { store } = mount([
+      { id: "alfa", hooks: "ok", signin: "ok" },
+      { id: "beta", hooks: "ok", signin: "ok" },
+      { id: "gama", hooks: "missing", signin: "missing" },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    expect(fixNames()).toEqual(["Fix Hooks on gama", "Fix Claude sign-in on gama"]);
+  });
+
+  test("the name starts with the visible text, so voice control can say what it sees", async () => {
+    const { store } = mount([
+      { id: "alfa", hooks: "ok", signin: "ok" },
+      { id: "beta", hooks: "ok", signin: "ok" },
+      { id: "gama", hooks: "missing", signin: "ok" },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    const button = screen.queryByRole("button", { name: "Fix Hooks on gama" });
+    expect(button?.textContent).toBe("Fix Hooks on gama");
+  });
+
+  test("in Portuguese the two names differ as well", async () => {
+    const { store } = mount(
+      [
+        { id: "alfa", hooks: "ok", signin: "ok" },
+        { id: "beta", hooks: "ok", signin: "ok" },
+        { id: "gama", hooks: "missing", signin: "missing" },
+      ],
+      "pt-BR",
+    );
+    await open("pt-BR");
+    expect(await answered(store, 3)).toBe(true);
+    expect(fixNames()).toEqual(["Corrigir Hooks em gama", "Corrigir Login do Claude em gama"]);
+  });
+});
+
+describe("host-compare-ui: the panel says it is reading (#2652)", () => {
+  const FACTS = { hooks: "ok", signin: "ok" } as const;
+
+  test("while a host has not answered, its cells say Reading and the status line names it", async () => {
+    const { store, release } = mount(
+      [
+        { id: "alfa", ...FACTS },
+        { id: "beta", ...FACTS },
+        { id: "gama", ...FACTS },
+      ],
+      "en",
+      undefined,
+      ["gama"],
+    );
+    await open();
+    expect(await settleMaybe(() => Object.keys(store.getState().healthAt).length === 2, 1500)).toBe(
+      true,
+    );
+    expect(statusText()).toContain("Reading gama");
+    expect(cells("Hooks")[2]).toBe("Reading…");
+    expect(cells("Hooks")[0]).toContain("Installed");
+    expect(table()?.getAttribute("aria-busy")).toBe("true");
+    release();
+    expect(await answered(store, 3)).toBe(true);
+    expect(cells("Hooks")[2]).toContain("Installed");
+    expect(table()?.getAttribute("aria-busy")).not.toBe("true");
+  });
+
+  test("when every host answered, the status line says it is done", async () => {
+    const { store } = mount([
+      { id: "alfa", ...FACTS },
+      { id: "beta", ...FACTS },
+    ]);
+    await open();
+    expect(await answered(store, 2)).toBe(true);
+    expect(statusText()).toBe("Comparison up to date.");
+  });
+
+  test("a host that did not answer is named when the read ends", async () => {
+    const { store } = mount([
+      { id: "alfa", ...FACTS },
+      { id: "beta", ...FACTS },
+      { id: "gama", refuse: true },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    expect(statusText()).toBe("Read finished. No answer from gama.");
+  });
+
+  test("a host that answered without a hooks fact says Not known, not Reading", async () => {
+    const { store } = mount([
+      { id: "alfa", ...FACTS },
+      { id: "beta", ...FACTS },
+      { id: "gama", signin: "ok" },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    expect(cells("Hooks")[2]).toContain("Not known");
+    expect(cells("Hooks")[2]).not.toContain("Reading");
+  });
+
+  test("with no host online nothing is read, so the status line says nothing", async () => {
+    const { asked } = mount([
+      { id: "alfa", status: "offline" },
+      { id: "beta", status: "offline" },
+    ]);
+    await open();
+    await act(async () => {});
+    expect([asked.length, statusText()]).toEqual([0, ""]);
+  });
+
+  test("Refresh reads again and says so again", async () => {
+    const { store } = mount([
+      { id: "alfa", ...FACTS },
+      { id: "beta", ...FACTS },
+    ]);
+    await open();
+    expect(await answered(store, 2)).toBe(true);
+    await act(async () => {
+      const refresh = screen.queryByRole("button", { name: names.en.refresh });
+      if (refresh) fireEvent.click(refresh);
+    });
+    expect(await settleMaybe(() => statusText() === "Comparison up to date.", 1500)).toBe(true);
+  });
+
+  test("in Portuguese the status lines and the cell word come from the dictionary", async () => {
+    const { store, release } = mount(
+      [
+        { id: "alfa", ...FACTS },
+        { id: "beta", ...FACTS },
+      ],
+      "pt-BR",
+      undefined,
+      ["beta"],
+    );
+    await open("pt-BR");
+    expect(await settleMaybe(() => Object.keys(store.getState().healthAt).length === 1, 1500)).toBe(
+      true,
+    );
+    expect(statusText()).toContain("Lendo beta");
+    expect(cells("Hooks", "pt-BR")[1]).toBe("Lendo…");
+    release();
+    expect(await answered(store, 2)).toBe(true);
+    expect(statusText()).toBe("Comparação atualizada.");
+  });
+});
+
 describe("host-compare-ui: in Portuguese", () => {
   test("the headings, the words and the reason come from the pt-BR dictionary", async () => {
     const { store } = mount(
@@ -483,7 +664,12 @@ describe("host-compare-ui: in Portuguese", () => {
     expect(cells("GitHub CLI (gh)", "pt-BR")[2]).toContain("Não instalado");
     expect(cells("Iniciar no boot", "pt-BR")[2] ?? "").toContain("Ligado");
     // The daemon, hooks, sign-in and gh of gama are marked and lacking; Start at boot is marked, but on.
-    expect(screen.queryAllByRole("button", { name: "Corrigir em gama" }).length).toBe(4); // NOSONAR: a failed length check on DOM elements prints each node
+    expect(fixNames()).toEqual([
+      "Corrigir Versão do daemon em gama",
+      "Corrigir Hooks em gama",
+      "Corrigir Login do Claude em gama",
+      "Corrigir GitHub CLI (gh) em gama",
+    ]);
     const first = table("pt-BR")?.querySelectorAll("tbody tr")[0]?.querySelectorAll("td");
     expect(first?.[3]?.textContent).toBe("Não comparado: offline.");
     expect(cells("Versão do daemon", "pt-BR")[2] ?? "").toContain(

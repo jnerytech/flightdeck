@@ -138,8 +138,8 @@ const isTitled = (pr: MergedPr): pr is TitledPr =>
       typeof (file as { path?: unknown }).path === "string",
   );
 
-const isFix = (title: string) => /^fix(\(|:|!)/.test(title);
-const isFeat = (title: string) => /^feat(\(|:|!)/.test(title);
+const isFix = (title: string) => /^fix[(:!]/.test(title);
+const isFeat = (title: string) => /^feat[(:!]/.test(title);
 
 /**
  * Whether the fix touched half or more of its source files in one of the feats that came 1 to 48

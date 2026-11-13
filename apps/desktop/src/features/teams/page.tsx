@@ -23,11 +23,15 @@ import {
   EmptyState,
   ErrorState,
   FieldRow,
+  Form,
+  FormActions,
   LoadingState,
   NativeSelect,
+  OpenedPanel,
   Page,
 } from "@/shared/layout/index.ts";
-import type { AppStore } from "../../lib/app-store.ts";
+import { refusalText } from "../../i18n/errors.ts";
+import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hostsWith } from "../../lib/version.ts";
 import { NewMember } from "./new-member.tsx";
@@ -67,8 +71,8 @@ export function TeamMemberRow(
     report: { text: string; at: string } | null;
     open: boolean;
     /** True once the host took it. */
-    onPersona(persona: string): Promise<boolean>;
-    onRemove(): void;
+    onPersona(persona: string, label: string): Promise<boolean>;
+    onRemove(label: string): void;
   }>,
 ) {
   const { store, member } = props;
@@ -96,7 +100,12 @@ export function TeamMemberRow(
   const openSession = () =>
     store.router.push({ name: "session", host: props.hostId, id: sessionId ?? "" });
   return (
-    <li data-slot="team-member" className="stack-tight rounded-md border p-2 text-xs">
+    <li
+      data-slot="team-member"
+      data-member={member.name}
+      tabIndex={-1}
+      className="stack-tight rounded-md border p-2 text-xs focus-visible:outline-2 focus-visible:outline-ring"
+    >
       <div data-slot="member-head" className="member-head">
         <div className="member-id">
           {sessionId ? (
@@ -202,7 +211,7 @@ export function TeamMemberRow(
             aria-label={t("teamsUi.setPersona", { name: label })}
             onClick={async () => {
               const sent = persona;
-              if (await props.onPersona(sent)) savedPersona(sent);
+              if (await props.onPersona(sent, label)) savedPersona(sent);
             }}
           >
             {t("teamsUi.setPersonaButton")}
@@ -211,7 +220,7 @@ export function TeamMemberRow(
             <Button
               variant="outline"
               aria-label={t("teamsUi.remove", { name: label })}
-              onClick={props.onRemove}
+              onClick={() => props.onRemove(label)}
             >
               {t("teamsUi.removeButton")}
             </Button>
@@ -220,6 +229,27 @@ export function TeamMemberRow(
       )}
     </li>
   );
+}
+
+/** Where the focus goes once an action's answer is on screen, as the control pressed may be gone (#2650). */
+type AfterFocus = "pause" | "resume" | "row" | "add" | { gone: string; next: string | null };
+
+/** The element the focus goes to, or null while the answer has not reached the row yet. */
+function focusTarget(
+  row: HTMLElement | null,
+  focus: AfterFocus,
+  team: TeamInfo,
+): HTMLElement | null {
+  if (!row) return null;
+  const control = (action: string) => row.querySelector<HTMLElement>(`[data-action="${action}"]`);
+  if (focus === "row") return row;
+  if (typeof focus === "string") return control(focus);
+  // A removed worker's row is gone once the host's answer is in the list.
+  if (team.members.some((m) => m.name === focus.gone)) return null;
+  const next = Array.from(row.querySelectorAll<HTMLElement>("[data-member]")).find(
+    (el) => el.dataset.member === focus.next,
+  );
+  return next ?? control("add");
 }
 
 /** One team with its members and its controls. */
@@ -232,12 +262,17 @@ function Team(
     /** The team an alert opened. */
     focused: boolean;
     onChanged(team: TeamInfo): void;
+    /** The team is gone from the list: the page says so, as this row goes with it. */
+    onDeleted(text: string): void;
   }>,
 ) {
   const { store, hostId, team } = props;
   const { t } = store.i18n;
   const [text, setText] = useState("");
-  const [sent, setSent] = useState<{ delivered: number; refused: number } | null>(null);
+  /** What the last action did, or why the host refused it: a polite line, not silence (#2650). */
+  const [notice, setNotice] = useState<{ text: string; refused: boolean } | null>(null);
+  const [focus, setFocus] = useState<AfterFocus | null>(null);
+  const rowRef = useRef<HTMLLIElement>(null);
   const [adding, setAdding] = useState(false);
   /** A worker set to Bypass waits here for the person's yes. */
   const [bypassing, setBypassing] = useState<{
@@ -258,30 +293,88 @@ function Team(
     setAdding(false);
     setBypassing(null);
     void act(
-      store.hostCommand(hostId, "teams.update", {
+      store.hostRequest(hostId, "teams.update", {
         team: team.id,
         addMember: memberPayload(member),
       }),
+      { text: t("teamsUi.done.added", { name: team.name }), focus: "add" },
     );
   };
-  const act = async (command: Promise<TeamInfo | null>) => {
-    const updated = await command;
-    if (updated) props.onChanged(updated);
-    return updated !== null;
-  };
-  const copy = confirm ? confirmCopy(confirm, team.name, t) : null;
-  const confirmed = (c: TeamConfirm) => {
-    if (c.kind === "close") {
-      return store.hostCommand(hostId, "teams.close", { team: team.id, confirm: true });
+  /** A text a worker took is sent; one every worker refused stays, to be sent again. */
+  const sending = useRef(false);
+  const sendAll = async () => {
+    if (!text.trim() || sending.current) return;
+    sending.current = true;
+    try {
+      const result = await store.hostCommand(hostId, "teams.message", { team: team.id, text });
+      if (!result) return;
+      setNotice({ text: t("teamsUi.sentAll", result), refused: result.delivered === 0 });
+      if (result.delivered >= 1) setText("");
+    } finally {
+      sending.current = false;
     }
-    if (c.kind === "delete") return store.hostCommand(hostId, "teams.delete", { team: team.id });
-    return store.hostCommand(hostId, "teams.update", { team: team.id, removeMember: c.member });
+  };
+  /** Runs a team command and says what came of it; `focus` is where the focus goes after it. */
+  const act = async (
+    command: Promise<HostResult<TeamInfo>>,
+    done: { text: string; focus?: AfterFocus; gone?: boolean },
+  ) => {
+    setNotice(null);
+    const result = await command;
+    if (!result.ok) {
+      const reason = refusalText(result.code, result.message, t, result);
+      setNotice({ text: t("teamsUi.refused", { reason }), refused: true });
+      return false;
+    }
+    props.onChanged(result.data);
+    if (done.gone) props.onDeleted(done.text);
+    else setNotice({ text: done.text, refused: false });
+    if (done.focus) setFocus(done.focus);
+    return true;
+  };
+  // The closing dialog hands the focus back in a timeout of its own: this one comes after it.
+  useEffect(() => {
+    if (!focus) return;
+    const target = focusTarget(rowRef.current, focus, team);
+    if (!target) return;
+    const timer = setTimeout(() => {
+      target.focus();
+      setFocus(null);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [focus, team]);
+  const copy = confirm ? confirmCopy(confirm, team.name, t) : null;
+  const runConfirmed = (c: TeamConfirm) => {
+    const name = { name: team.name };
+    if (c.kind === "close") {
+      return act(store.hostRequest(hostId, "teams.close", { team: team.id, confirm: true }), {
+        text: t("teamsUi.done.closed", name),
+        focus: "row",
+      });
+    }
+    if (c.kind === "delete") {
+      return act(store.hostRequest(hostId, "teams.delete", { team: team.id }), {
+        text: t("teamsUi.done.deleted", name),
+        gone: true,
+      });
+    }
+    const workers = team.members.filter((m) => m.role === "worker");
+    const next = workers[workers.findIndex((m) => m.name === c.member) + 1]?.name ?? null;
+    return act(
+      store.hostRequest(hostId, "teams.update", { team: team.id, removeMember: c.member }),
+      {
+        text: t("teamsUi.done.removed", { name: c.label ?? c.member }),
+        focus: { gone: c.member, next },
+      },
+    );
   };
   const reportOf = (name: string) =>
     props.status?.members.find((m) => m.name === name)?.lastReport ?? null;
-  const rowClass = `flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm${props.focused ? " ring-2 ring-ring" : ""}`;
+  const rowClass = `flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring${props.focused ? " ring-2 ring-ring" : ""}`;
   return (
     <li
+      ref={rowRef}
+      tabIndex={-1}
       aria-label={t("teamsUi.row", { name: team.name })}
       {...(props.focused ? { "aria-current": "true" as const } : {})}
       className={rowClass}
@@ -318,15 +411,16 @@ function Team(
             member={member}
             report={reportOf(member.name)}
             open={open}
-            onPersona={(persona) =>
+            onPersona={(persona, label) =>
               act(
-                store.hostCommand(hostId, "teams.update", {
+                store.hostRequest(hostId, "teams.update", {
                   team: team.id,
                   persona: { member: member.name, persona: persona.trim() || null },
                 }),
+                { text: t("teamsUi.done.persona", { name: label }) },
               )
             }
-            onRemove={() => setConfirm({ kind: "remove", member: member.name })}
+            onRemove={(label) => setConfirm({ kind: "remove", member: member.name, label })}
           />
         ))}
       </ul>
@@ -337,9 +431,13 @@ function Team(
               <Button
                 variant="outline"
                 size="sm"
+                data-action="pause"
                 aria-label={t("teamsUi.pause", { name: team.name })}
                 onClick={() =>
-                  void act(store.hostCommand(hostId, "teams.pause", { team: team.id }))
+                  void act(store.hostRequest(hostId, "teams.pause", { team: team.id }), {
+                    text: t("teamsUi.done.paused", { name: team.name }),
+                    focus: "resume",
+                  })
                 }
               >
                 {t("teamsUi.pauseButton")}
@@ -348,9 +446,13 @@ function Team(
               <Button
                 variant="outline"
                 size="sm"
+                data-action="resume"
                 aria-label={t("teamsUi.resume", { name: team.name })}
                 onClick={() =>
-                  void act(store.hostCommand(hostId, "teams.resume", { team: team.id }))
+                  void act(store.hostRequest(hostId, "teams.resume", { team: team.id }), {
+                    text: t("teamsUi.done.resumed", { name: team.name }),
+                    focus: "pause",
+                  })
                 }
               >
                 {t("teamsUi.resumeButton")}
@@ -359,6 +461,7 @@ function Team(
             <Button
               variant="outline"
               size="sm"
+              data-action="add"
               aria-label={t("teamsUi.addWorker", { name: team.name })}
               onClick={() => setAdding(true)}
             >
@@ -388,30 +491,19 @@ function Team(
               }}
             />
           )}
-          <div className="team-row">
+          <Form variant="inline" onSubmit={() => void sendAll()}>
             <Input
               aria-label={t("teamsUi.messageAll")}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="h-8 w-64"
+              className="h-8"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!text.trim()}
-              onClick={async () => {
-                const result = await store.hostCommand(hostId, "teams.message", {
-                  team: team.id,
-                  text,
-                });
-                if (result) setSent(result);
-              }}
-            >
-              {t("teamsUi.sendAll")}
-            </Button>
-            {sent && <output>{t("teamsUi.sentAll", sent)}</output>}
-          </div>
+            <FormActions submit={t("teamsUi.sendAll")} disabled={!text.trim()} />
+          </Form>
         </div>
+      )}
+      {notice && (
+        <InlineNotice tone={notice.refused ? "error" : "info"}>{notice.text}</InlineNotice>
       )}
       {bypassing && (
         <ConfirmDialog
@@ -429,7 +521,7 @@ function Team(
           destructive
           onConfirm={() => {
             setConfirm(null);
-            void act(confirmed(confirm));
+            void runConfirmed(confirm);
           }}
           onCancel={() => setConfirm(null)}
         />
@@ -478,6 +570,11 @@ export const TeamsPage = memo(function TeamsPage(props: {
   const loading = useMinLoading(teams === null && !loadFailed);
   const [statuses, setStatuses] = useState<Record<string, TeamStatus>>({});
   const [creating, setCreating] = useState(false);
+  /** What a deleted team's row can no longer say, and the button the focus moves to (#2650). */
+  const [deleted, setDeleted] = useState<string | null>(null);
+  const newTeamRef = useRef<HTMLButtonElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: another host starts with no word of the last one's deletion
+  useEffect(() => setDeleted(null), [current]);
 
   const load = useCallback(async () => {
     if (!current) return;
@@ -542,7 +639,11 @@ export const TeamsPage = memo(function TeamsPage(props: {
               ))}
             </NativeSelect>
           )}
-          {!creating && <Button onClick={() => setCreating(true)}>{t("teamsUi.new")}</Button>}
+          {!creating && (
+            <Button ref={newTeamRef} data-opener="new-team" onClick={() => setCreating(true)}>
+              {t("teamsUi.new")}
+            </Button>
+          )}
         </div>
       }
     >
@@ -554,17 +655,20 @@ export const TeamsPage = memo(function TeamsPage(props: {
           })}
         </InlineNotice>
       )}
+      {deleted && <InlineNotice tone="info">{deleted}</InlineNotice>}
       {creating && (
-        <NewTeam
-          store={store}
-          hostId={current}
-          onCreated={() => {
-            setCreating(false);
-            void load();
-          }}
-          onCancel={() => setCreating(false)}
-          onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
-        />
+        <OpenedPanel opener="new-team">
+          <NewTeam
+            store={store}
+            hostId={current}
+            onCreated={() => {
+              setCreating(false);
+              void load();
+            }}
+            onCancel={() => setCreating(false)}
+            onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
+          />
+        </OpenedPanel>
       )}
       {loading && !creating && <LoadingState label={t("teamsUi.loading")} />}
       {!loading && loadFailed && teams === null && !creating && (
@@ -593,6 +697,11 @@ export const TeamsPage = memo(function TeamsPage(props: {
               status={statuses[team.id] ?? null}
               focused={team.id === props.team}
               onChanged={() => void load()}
+              onDeleted={(text) => {
+                setDeleted(text);
+                // After the dialog and the menu have given their focus back.
+                setTimeout(() => newTeamRef.current?.focus(), 0);
+              }}
             />
           ))}
       </ul>

@@ -79,6 +79,17 @@ const HOOK_LABELS = {
   outdated: "hostPage.hooksOutdated",
 } as const satisfies Record<HooksStatusResult["status"], Key>;
 
+/** Whether the host says it has the panel a section ask opens: a panel shows only for a host that has its feature. */
+function hasSection(section: HostSection | undefined, info: HostView["hostInfo"]): boolean {
+  if (section === "pause") return info?.pause !== undefined;
+  if (section === "keep-awake") return info?.keepAwake !== undefined;
+  if (section !== "health") return false;
+  return (
+    hasFeature(info?.features, "depsCheck", false) ||
+    hasFeature(info?.features, "doctor.run", false)
+  );
+}
+
 /**
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
  * reconnect / remove.
@@ -139,12 +150,7 @@ export function HostPage(
   // A status-bar item opens its section (#1484): Settings, the panel in view, the focus on its heading.
   // The panel shows once the host says it has the feature, so the move waits for it.
   const section = props.section;
-  const sectionShown =
-    (section === "pause" && info?.pause !== undefined) ||
-    (section === "keep-awake" && info?.keepAwake !== undefined) ||
-    (section === "health" &&
-      (hasFeature(info?.features, "depsCheck", false) ||
-        hasFeature(info?.features, "doctor.run", false)));
+  const sectionShown = hasSection(section, info);
   // The focus moves once the Settings panel is active (a browser does not focus into a hidden
   // one), then the ask is used up, so it never pulls the person back later.
   // It looks only inside this page (another page may show the same section), and moves the focus
