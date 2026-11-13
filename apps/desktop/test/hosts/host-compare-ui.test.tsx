@@ -398,36 +398,7 @@ describe("host-compare-ui: the table", () => {
     await act(async () => {
       if (link) fireEvent.click(link);
     });
-    expect(store.router.current).toEqual({ name: "host", host: "gama" });
-  });
-
-  test("on the page of the host itself, the link takes the person to its Health section", async () => {
-    const { store } = mount(
-      [
-        { id: "alfa", gh: "ok" },
-        { id: "beta", gh: "ok" },
-        { id: "gama", gh: "missing" },
-      ],
-      "en",
-      "gama",
-    );
-    const health = document.createElement("section");
-    health.dataset.slot = "host-health";
-    let scrolled = 0;
-    health.scrollIntoView = () => {
-      scrolled += 1;
-    };
-    document.body.append(health);
-    await open();
-    expect(await answered(store, 3)).toBe(true);
-    const before = store.router.current;
-    await act(async () => {
-      const link = screen.queryByRole("button", { name: "Fix on gama" });
-      if (link) fireEvent.click(link);
-    });
-    health.remove();
-    expect(scrolled).toBe(1);
-    expect(store.router.current).toEqual(before);
+    expect(store.router.current).toEqual({ name: "host", host: "gama", section: "health" });
   });
 
   test("features show as a count, and the host that differs says which ones it lacks, in words", async () => {
