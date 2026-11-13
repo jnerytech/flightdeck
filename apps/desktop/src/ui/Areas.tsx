@@ -3,7 +3,7 @@ import { type KeyboardEvent, useEffect, useRef, useSyncExternalStore } from "rea
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import type { Orientation } from "@/features/shell/index.ts";
-import { useHeaderSlot } from "@/features/shell/index.ts";
+import { useHeaderSlot } from "@/features/shell/ui.ts";
 import { TabBar } from "@/features/tabs/index.ts";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/shared/hooks/index.ts";

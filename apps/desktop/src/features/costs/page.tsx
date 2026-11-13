@@ -7,7 +7,7 @@ import { ALL_CLIENTS, costByClient, loadCostsSummary } from "@/features/clients/
 import { RoiPeople } from "@/features/roi/roi-people.tsx";
 import { RoiSettingsPanel } from "@/features/roi/roi-settings-panel.tsx";
 import { RoiTable } from "@/features/roi/roi-table.tsx";
-import { ScopeMenu } from "@/features/shell/index.ts";
+import { ScopeMenu } from "@/features/shell/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { uniqueKeys } from "@/lib/unique-keys";

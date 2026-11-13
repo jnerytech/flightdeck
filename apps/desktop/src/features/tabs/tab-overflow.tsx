@@ -3,7 +3,7 @@ import { type KeyboardEvent, type ReactElement, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { HostDot } from "@/features/hosts/index.ts";
+import { HostDot } from "@/features/hosts/ui.ts";
 import type { T } from "@/i18n/index";
 import { cn } from "@/lib/utils";
 
