@@ -88,29 +88,31 @@ describe("arch-imports: the domain borders (#1591)", () => {
     ]);
   });
 
-  test("a domain/ file imports no I/O module; pure modules and its own rules pass (#1601)", async () => {
+  test("a domain/ file imports no node I/O module; pure modules and its own rules pass (#1601)", async () => {
     const found = await planted({
       "apps/daemon/src/board/domain/rules.ts": [
         'import { readFileSync } from "node:fs";',
         'import { writeFile } from "node:fs/promises";',
         'import { spawn } from "node:child_process";',
         'import { Database } from "bun:sqlite";',
-        'import { WebSocket } from "ws";',
-        'import { invoke } from "@tauri-apps/api/core";',
+        'import { connect } from "node:net";',
+        'import { hostname } from "node:os";',
+        'import { Worker } from "node:worker_threads";',
         'import { join } from "node:path";',
         'import { col } from "./columns.ts";',
-        "export const r = [readFileSync, writeFile, spawn, Database, WebSocket, invoke, join, col];",
+        "export const r = [readFileSync, writeFile, spawn, Database, connect, hostname, Worker, join, col];",
         "",
       ].join("\n"),
       "apps/daemon/src/board/domain/columns.ts": "export const col = 1;\n",
     });
     expect(found).toEqual([
-      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> @tauri-apps/api/core",
       "domain-is-pure apps/daemon/src/board/domain/rules.ts -> bun:sqlite",
       "domain-is-pure apps/daemon/src/board/domain/rules.ts -> child_process",
       "domain-is-pure apps/daemon/src/board/domain/rules.ts -> fs",
       "domain-is-pure apps/daemon/src/board/domain/rules.ts -> fs/promises",
-      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> ws",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> net",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> os",
+      "domain-is-pure apps/daemon/src/board/domain/rules.ts -> worker_threads",
     ]);
   });
 

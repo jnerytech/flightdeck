@@ -31,6 +31,12 @@ describe("domain-purity (#1601)", () => {
             "const t = Date.now();",
             "const d = new Date();",
             "const q = Bun.spawnSync(['git']);",
+            "await Bun.$`git status`;",
+            "const clock = Date.now;",
+            "const e = new Date;",
+            "const m = performance.now();",
+            "const r = await fetch(url);",
+            "setTimeout(tick, 10);",
           ].join("\n"),
         },
       ]),
@@ -41,6 +47,36 @@ describe("domain-purity (#1601)", () => {
       "apps/daemon/src/board/domain/rules.ts:4 Date.now(",
       "apps/daemon/src/board/domain/rules.ts:5 new Date()",
       "apps/daemon/src/board/domain/rules.ts:6 Bun.spawnSync(",
+      "apps/daemon/src/board/domain/rules.ts:7 Bun.$",
+      "apps/daemon/src/board/domain/rules.ts:8 Date.now",
+      "apps/daemon/src/board/domain/rules.ts:9 new Date",
+      "apps/daemon/src/board/domain/rules.ts:10 performance.now",
+      "apps/daemon/src/board/domain/rules.ts:11 fetch(",
+      "apps/daemon/src/board/domain/rules.ts:12 setTimeout(",
+    ]);
+  });
+
+  test("an import of a package that does I/O is named: dependency-cruiser drops node_modules edges, so the text is read", () => {
+    expect(
+      impureCalls([
+        {
+          path: "apps/desktop/src/features/hosts/domain/health.ts",
+          text: [
+            'import { WebSocket } from "ws";',
+            'import { invoke } from "@tauri-apps/api/core";',
+            'import { $ } from "bun";',
+            'import { dlopen } from "bun:ffi";',
+            'const lazy = await import("@tauri-apps/plugin-shell");',
+            'import { cmp } from "./compare.ts";',
+          ].join("\n"),
+        },
+      ]),
+    ).toEqual([
+      'apps/desktop/src/features/hosts/domain/health.ts:1 "ws"',
+      'apps/desktop/src/features/hosts/domain/health.ts:2 "@tauri-apps/api/core"',
+      'apps/desktop/src/features/hosts/domain/health.ts:3 "bun"',
+      'apps/desktop/src/features/hosts/domain/health.ts:4 "bun:ffi"',
+      'apps/desktop/src/features/hosts/domain/health.ts:5 "@tauri-apps/plugin-shell"',
     ]);
   });
 
@@ -53,6 +89,7 @@ describe("domain-purity (#1601)", () => {
             "// Date.now() comes in through the port",
             " * Bun.spawn( is the adapter's job",
             "const d = new Date(ms);",
+            "const s = card.Date.now() + run.fetch(x) + this.setTimeout(y);",
             "export const age = (now: () => number, at: number) => now() - at;",
           ].join("\n"),
         },
@@ -65,12 +102,12 @@ describe("domain-purity (#1601)", () => {
   });
 
   test("no tracked domain/ file calls an I/O or clock global", () => {
-    const paths = spawnSync("git", ["ls-files", "apps", "packages"], {
+    const listed = spawnSync("git", ["ls-files", "apps", "packages"], {
       cwd: ROOT,
       encoding: "utf8",
-    })
-      .stdout.split("\n")
-      .filter(isDomainFile);
+    });
+    expect(listed.status).toBe(0);
+    const paths = listed.stdout.split("\n").filter(isDomainFile);
     const files = paths.map((path) => ({ path, text: readFileSync(join(ROOT, path), "utf8") }));
     expect(impureCalls(files)).toEqual([]);
   });
