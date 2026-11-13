@@ -72,6 +72,8 @@ describe("the vault page reads a value only to describe a new row (#2612)", () =
     });
     await settle(() => screen.queryByText("ghp_…1111") !== null);
     expect(reads.filter((id) => id === other.id)).toHaveLength(1);
+    // A patch never changes the value, so a rename or a tag edit reads nothing again (#2636).
+    await stays(() => reads.filter((id) => id === token.id).length === 1);
     await act(async () => {
       await store.secrets.remove(token.id);
     });
