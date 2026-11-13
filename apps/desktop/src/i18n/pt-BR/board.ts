@@ -599,6 +599,11 @@ export const board = {
     showIdle: "Mostrar sessões ociosas",
     approve: "Aprovar",
     deny: "Negar",
+    approveFor: "Aprovar {title}",
+    denyFor: "Negar {title}",
+    holdFor: "Segurar para aprovar {title}",
+    approved: "Aprovado: {title}",
+    denied: "Negado: {title}",
     emptyAll: "Nada por aqui ainda. Inicie uma sessão e ela aparece neste quadro.",
   },
 } as const;

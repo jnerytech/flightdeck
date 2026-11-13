@@ -1270,22 +1270,18 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const needs = column(c.t("activityBoard.columns.needs_you"));
     // A request waits in Needs you with its own buttons. The first card that has an Approve is
     // followed by its key (what the view transition names it), whatever else the demo has waiting.
-    const approve = needs.getByRole("button", { name: c.t("activityBoard.approve"), exact: true });
+    // Each button's name is the visible text plus its session (#2675): "Approve {title}".
+    const approveName = new RegExp(`^${c.t("activityBoard.approve")} `);
+    const approve = needs.getByRole("button", { name: approveName });
     await approve.first().waitFor({ timeout: SESSION_WAIT });
-    const approveButton = c.page.getByRole("button", {
-      name: c.t("activityBoard.approve"),
-      exact: true,
-    });
+    const approveButton = c.page.getByRole("button", { name: approveName });
     const top = needs.locator("[data-slot='activity-card']").filter({ has: approveButton }).first();
     const key = await top.evaluate((el) => (el as HTMLElement).style.viewTransitionName);
     if (!key) throw new Error("o card do pedido não tem nome de transição");
     const mine = needs.locator(`[data-slot='activity-card'][style*="${key}"]`);
-    await mine.getByRole("button", { name: c.t("activityBoard.approve"), exact: true }).click();
+    await mine.getByRole("button", { name: approveName }).click();
     await waitFor(
-      async () =>
-        (await mine
-          .getByRole("button", { name: c.t("activityBoard.approve"), exact: true })
-          .count()) === 0,
+      async () => (await mine.getByRole("button", { name: approveName }).count()) === 0,
       "o pedido aprovado saiu de Precisa de você",
       SESSION_WAIT,
     );

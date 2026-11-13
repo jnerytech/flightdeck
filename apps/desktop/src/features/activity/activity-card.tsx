@@ -34,6 +34,8 @@ export function ActivityCardView(
     onRespond(request: PendingItem, decision: "allow" | "deny", held?: boolean): unknown;
     /** Test seam: the hold time of a high-risk approval. */
     holdMs?: number;
+    /** Hands the title button to the board, which returns the focus to it after an answer (#2675). */
+    titleRef?(button: HTMLButtonElement | null): void;
   }>,
 ) {
   const { card, t } = props;
@@ -50,6 +52,7 @@ export function ActivityCardView(
       <div className="activity-card-head">
         <StatusDot tone={TONE[card.column]} label={t(`hub.stateDots.${row.state}` as Key)} />
         <button
+          ref={props.titleRef}
           type="button"
           className="activity-card-title"
           onClick={(e) => props.onOpen(e.ctrlKey || e.metaKey)}
@@ -88,18 +91,24 @@ export function ActivityCardView(
             {pending.risk === "high" ? (
               <HoldButton
                 label={t("approval.hold")}
+                name={t("activityBoard.holdFor", { title: row.title })}
                 hint={t("approval.holdHint")}
                 holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
                 onHeld={() => void props.onRespond(pending, "allow", true)}
               />
             ) : (
-              <ActionButton size="sm" onClick={() => props.onRespond(pending, "allow")}>
+              <ActionButton
+                size="sm"
+                aria-label={t("activityBoard.approveFor", { title: row.title })}
+                onClick={() => props.onRespond(pending, "allow")}
+              >
                 {t("activityBoard.approve")}
               </ActionButton>
             )}
             <ActionButton
               size="sm"
               variant="outline"
+              aria-label={t("activityBoard.denyFor", { title: row.title })}
               onClick={() => props.onRespond(pending, "deny")}
             >
               {t("activityBoard.deny")}

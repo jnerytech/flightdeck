@@ -1,14 +1,15 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
-import type { AppStore } from "../../lib/app-store.ts";
+import type { AppStore, PendingItem } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import {
   ACTIVITY_COLUMNS,
   ACTIVITY_KEYS,
+  type ActivityCard,
   type ActivityFilter,
   activityBoard,
   activityOptions,
@@ -55,6 +56,37 @@ export function ActivityBoard(
   ).join("|");
   const shown = useBoardTransition(data, signature);
   const columns = ACTIVITY_COLUMNS.filter((column) => showIdle || column !== "idle");
+  // #2675: an answer removes the request block (and the card may change column), so the focus goes
+  // back to the card's title and the board says what was answered.
+  const titles = useRef(new Map<string, HTMLButtonElement>());
+  const focusAfter = useRef<string | null>(null);
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const key = focusAfter.current;
+    if (key === null) return;
+    const card = ACTIVITY_COLUMNS.flatMap((column) => shown.columns[column]).find(
+      (item) => item.row.key === key,
+    );
+    if (!card) {
+      focusAfter.current = null;
+      return;
+    }
+    // Only a focus that fell to the page is put back: one the person moved is left where it is.
+    if (document.activeElement === document.body) titles.current.get(key)?.focus();
+    if (!card.pending) focusAfter.current = null;
+  });
+  const answer = (
+    card: ActivityCard,
+    request: PendingItem,
+    decision: "allow" | "deny",
+    held: boolean | undefined,
+  ) => {
+    focusAfter.current = card.row.key;
+    titles.current.get(card.row.key)?.focus();
+    const sent = store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {});
+    const key = decision === "allow" ? "activityBoard.approved" : "activityBoard.denied";
+    return Promise.resolve(sent).then(() => setSaid(t(key, { title: card.row.title })));
+  };
   const set = (patch: Partial<ActivityFilter>) => setFilter({ ...filter, ...patch });
   return (
     <Page
@@ -133,6 +165,7 @@ export function ActivityBoard(
       {data.total === 0 && state.hosts.length > 0 ? (
         <EmptyState title={t("activityBoard.emptyAll")} />
       ) : null}
+      <output className="sr-only">{said}</output>
       <div className="activity-board">
         {columns.map((column) => (
           <ActivityColumnView
@@ -149,9 +182,11 @@ export function ActivityBoard(
                 nowMs={nowMs}
                 {...(props.holdMs !== undefined ? { holdMs: props.holdMs } : {})}
                 onOpen={(newTab) => props.onOpen(card.row, newTab)}
-                onRespond={(request, decision, held) =>
-                  store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {})
-                }
+                titleRef={(button) => {
+                  if (button) titles.current.set(card.row.key, button);
+                  else titles.current.delete(card.row.key);
+                }}
+                onRespond={(request, decision, held) => answer(card, request, decision, held)}
               />
             ))}
           </ActivityColumnView>
