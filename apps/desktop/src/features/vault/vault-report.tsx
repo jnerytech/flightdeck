@@ -44,7 +44,7 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
   const exportCsv = async () => {
     const report = await store.hostCommand(host.id, "vault.report", { days: DAYS, format: "csv" });
     if (report?.csv !== undefined) {
-      await store.saveFile(`flightdeck-cofre-${DAYS}-dias.csv`, report.csv);
+      await store.system.saveFile(`flightdeck-cofre-${DAYS}-dias.csv`, report.csv);
     }
   };
 

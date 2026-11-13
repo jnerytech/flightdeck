@@ -69,7 +69,7 @@ describe("estados-avisos", () => {
   test("erros viram toasts traduzidos pelo code, com Detalhes, e não se apagam uns aos outros", async () => {
     const { store, hostId } = await online();
     await act(async () => {
-      await store.createSession(hostId, { cwd: "/", prompt: "oi" });
+      await store.commands.create(hostId, { cwd: "/", prompt: "oi" });
       await store.hostCommand(hostId, "card.get", { cardId: "nao-existe" });
       await store.hostCommand(hostId, "file.read", {
         target: "session:x",
@@ -108,7 +108,7 @@ describe("estados-avisos", () => {
   test("sucesso em toast curto: copiar o comando e iniciar um card", async () => {
     const { store, copied } = await online();
     await act(async () => {
-      expect(await store.copyText("flightdeckd claude --resume x")).toBe(true);
+      expect(await store.system.copyText("flightdeckd claude --resume x")).toBe(true);
     });
     expect(copied).toEqual(["flightdeckd claude --resume x"]);
     await settle(() => (document.body.textContent ?? "").includes("Copiado"));

@@ -132,7 +132,7 @@ export function ExternalView(
               request={approvalRequestOf(request, session?.cwd ?? null)}
               t={store.i18n.t}
               nowMs={store.now()}
-              onCopyPath={(path) => void store.copyText(path)}
+              onCopyPath={(path) => void store.system.copyText(path)}
               alwaysAllow={alwaysAllow}
               onRespond={(decision, message, updates, updatedInput, held) =>
                 store.respondTo(hostId, request.requestId, decision, {

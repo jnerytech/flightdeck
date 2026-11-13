@@ -126,7 +126,7 @@ export function TracePanel(
     });
     if (!out) return;
     setHidden(out.redacted);
-    await store.saveFile(out.filename, out.json);
+    await store.system.saveFile(out.filename, out.json);
   };
 
   return (

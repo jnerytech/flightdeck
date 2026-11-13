@@ -169,7 +169,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
             <h4 id={`${id}-import`} className="font-medium">
               {t("backupAll.importTitle")}
             </h4>
-            {scheduler.driveAvailable && store.canReadBackup() && (
+            {scheduler.driveAvailable && store.system.canReadBackup() && (
               <fieldset>
                 <legend className="sr-only">{t("backupAll.sourceLegend")}</legend>
                 <Stack gap={1}>
@@ -237,7 +237,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
                 )}
               </Stack>
             )}
-            {store.canReadBackup() ? (
+            {store.system.canReadBackup() ? (
               (!onDrive || scheduler.driveSignedIn) && (
                 <Form variant="inline" onSubmit={() => reading.run(doRead)}>
                   <Field label={t("backupAll.filePassphrase")}>

@@ -457,7 +457,7 @@ export const Settings = memo(function Settings(props: {
       node: <WebhooksSection store={props.store} />,
     },
     // Only where the app has a log file: not in a browser.
-    ...(props.store.platformLogs()
+    ...(props.store.system.logs()
       ? [
           {
             id: "diagnostics",

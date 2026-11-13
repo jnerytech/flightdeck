@@ -62,7 +62,7 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
     store.i18n.start();
     const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
-    const id = (await store.createSession(hostId, {
+    const id = (await store.commands.create(hostId, {
       cwd: d.project,
       prompt: "oi",
       name: "primeira",
@@ -105,7 +105,7 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
     store.i18n.start();
     const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
-    const id = (await store.createSession(hostId, {
+    const id = (await store.commands.create(hostId, {
       cwd: d.project,
       prompt: "oi",
       name: "direta",
