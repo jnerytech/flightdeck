@@ -147,6 +147,44 @@ describe("terminal-ui: the terminal screen", () => {
     expect(x.finds.at(-1)).toBe("clear");
   });
 
+  // Issue #2591: SplitView closes the detail on an Esc nobody marked handled (#2579).
+  /** Whether an Esc pressed in `element` reaches the page unhandled, as SplitView reads it. */
+  async function escapeReachesPageUnhandled(element: HTMLElement) {
+    const seen: boolean[] = [];
+    const read = (e: KeyboardEvent) => void seen.push(!e.defaultPrevented);
+    document.body.addEventListener("keydown", read);
+    try {
+      await act(async () => {
+        fireEvent.keyDown(element, { key: "Escape" });
+      });
+    } finally {
+      document.body.removeEventListener("keydown", read);
+    }
+    return seen[0] ?? null;
+  }
+
+  test("Esc in the search box closes the search and marks the key handled", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" });
+    expect(box).not.toBeNull();
+    expect(await escapeReachesPageUnhandled(box as HTMLElement)).toBe(false);
+  });
+
+  test("Esc in the right-click menu closes the menu and marks the key handled", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    x.select("trecho");
+    const area = document.querySelector("[data-terminal-area]") as HTMLElement;
+    await act(async () => {
+      fireEvent.contextMenu(area, { clientX: 40, clientY: 50 });
+    });
+    const menu = screen.queryByRole("menu", { name: "Terminal" });
+    expect(menu).not.toBeNull();
+    expect(await escapeReachesPageUnhandled(menu as HTMLElement)).toBe(false);
+  });
+
   test("closing asks: Desanexar keeps the process, Encerrar processo ends it, Cancelar does nothing", async () => {
     const { x, ptys, closed } = await setup();
     await settle(() => state("Ao vivo"));
