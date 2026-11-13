@@ -16,6 +16,8 @@ export type ArchInputs = {
   newRules?: ReadonlySet<string>;
   /** The desktop's files in an import cycle today and in desktop-cycles-baseline.json (#1624); absent when not counted. */
   desktopCycles?: { today: number; baseline: number };
+  /** Calls to an I/O or clock global in a `domain/` file today (#1601); none is allowed, so the baseline is 0. */
+  domainImpureCalls?: number;
   /** Source files over the size limit today and in src-size-baseline.json. */
   srcOversized: Record<string, number>;
   srcBaseline: Record<string, number>;
@@ -78,6 +80,12 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
       ratchet: "desktop-cycles files in a cycle",
       baseline: inputs.desktopCycles.baseline,
       today: inputs.desktopCycles.today,
+    });
+  if (inputs.domainImpureCalls !== undefined)
+    rows.push({
+      ratchet: "domain-purity impure calls",
+      baseline: 0,
+      today: inputs.domainImpureCalls,
     });
   rows.push({
     ratchet: "src-size files over the limit",

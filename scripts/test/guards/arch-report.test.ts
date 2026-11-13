@@ -100,6 +100,15 @@ describe("arch-report (#1610)", () => {
     expect(ratchetRows(inputs()).some((r) => r.ratchet.startsWith("desktop-cycles"))).toBe(false);
   });
 
+  test("a call to an I/O or clock global in a domain/ file gets a row with baseline 0; one call puts it above (#1601)", () => {
+    const row = (today: number) =>
+      ratchetRows(inputs({ domainImpureCalls: today })).find((r) =>
+        r.ratchet.startsWith("domain-purity"),
+      );
+    expect(row(0)).toEqual({ ratchet: "domain-purity impure calls", baseline: 0, today: 0 });
+    expect(growing([row(1) as RatchetRow])).toHaveLength(1);
+  });
+
   test("a PR cannot raise the cycle baseline: the lower of main's file and its own counts (#1624)", () => {
     const file = (files: number) => JSON.stringify({ files });
     expect(cycleBaseline(file(172), file(160))).toBe(160);

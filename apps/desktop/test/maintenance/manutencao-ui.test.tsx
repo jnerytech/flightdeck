@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, waitFor as poll, TOKEN } from "./fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, waitFor as poll, TOKEN } from "../fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -26,9 +26,9 @@ async function confirmWith(name: string) {
     fireEvent.click(button as HTMLElement);
   });
 }
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { formatBytes } = await import("../src/features/maintenance/maintenance-section.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { formatBytes } = await import("../../src/features/maintenance/maintenance-section.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

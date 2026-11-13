@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ActivitySinceResult } from "@flightdeck/protocol";
-import type { AwayState } from "../src/features/activity/index.ts";
-import { awayView } from "../src/features/activity/index.ts";
+import type { AwayState } from "../../src/features/activity/index.ts";
+import { awayView } from "../../src/features/activity/index.ts";
 
 const SINCE = "2026-11-09T00:00:00.000Z";
 const list = <T>(items: T[], total = items.length) => ({ items, total });
