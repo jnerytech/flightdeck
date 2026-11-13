@@ -8,8 +8,8 @@ import { AssistField } from "@/features/assistant/ui.ts";
 import type { SessionState } from "@/features/sessions/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { T } from "../../i18n/index.ts";
+import { lastSummary, pendingQuestion, recentTools, taskState } from "./domain/simple-task.ts";
 import { QuestionCard } from "./question-card.tsx";
-import { lastSummary, pendingQuestion, recentTools, taskState } from "./simple-task.ts";
 
 export interface TaskViewHandlers {
   onBack(): void;

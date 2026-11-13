@@ -116,7 +116,7 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   `openPath`, `revealPath`, ...) with the `onLocalPath` guard to `features/shell/`
   (`SystemSlice` in `system.ts`; whether a host is local is a dep, so the shell imports no
   terminal entry); the UI mode methods (`uiMode`, `toggleUiMode`, `setUiChoice`, `setHostUi`,
-  `uiHostId`) to a `UiModeSlice` next to the mode's rules in `features/home/simple-mode.ts`
+  `uiHostId`) to a `UiModeSlice` next to the mode's rules in `features/home/domain/simple-mode.ts`
   (they change with simple mode, phase 33, not with the tabs); `openNewTab` to the host tabs
   (`HostTabs.openNew`, given the hosts: the model keeps no host status); the palette
   (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette (`PaletteSlice` in

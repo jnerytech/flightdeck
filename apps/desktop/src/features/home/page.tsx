@@ -22,10 +22,10 @@ import {
   projectPath,
   scopeHosts,
 } from "../costs/index.ts";
-import { type HomeSnapshot, homeHostData, homeKey } from "./home-cache.ts";
-import { type HomeKpis, homeKpis } from "./home-kpis.ts";
-import type { HomeLeaders } from "./home-leaders.ts";
-import { addUp, homeMessage, keepAnswers, rangeSubtitle } from "./home-view-model.ts";
+import { type HomeSnapshot, homeHostData, homeKey } from "./domain/home-cache.ts";
+import { type HomeKpis, homeKpis } from "./domain/home-kpis.ts";
+import type { HomeLeaders } from "./domain/home-leaders.ts";
+import { addUp, homeMessage, keepAnswers, rangeSubtitle } from "./domain/home-view-model.ts";
 import { KpiCard } from "./kpi-card.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 
