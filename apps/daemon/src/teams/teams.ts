@@ -139,6 +139,13 @@ interface WorkerSpec {
 }
 const NO_SPEC: WorkerSpec = { persona: null, model: null, effort: null, permission: null };
 
+/** One worker to start: its name, who it reports to, and what it is started with (null: the default). */
+interface WorkerStart extends WorkerSpec {
+  readonly name: string;
+  readonly coordinator: string | null;
+  readonly number: number | null;
+}
+
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
   private readonly unsubscribe: Array<() => void> = [];
@@ -344,14 +351,9 @@ export class Teams {
   /** Creates a worker's card with its instructions and starts it (the quota queue still applies). */
   private async startWorker(
     team: { name: string; goal: string; checks: string[]; projectId: string },
-    name: string,
-    persona: string | null,
-    coordinator: string | null,
-    model: string | null = null,
-    number: number | null = null,
-    permission: PermissionMode | null = null,
-    effort: EffortLevel | null = null,
+    worker: WorkerStart,
   ): Promise<StoredMember> {
+    const { name, persona, coordinator, model, number, permission, effort } = worker;
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
@@ -474,16 +476,15 @@ export class Teams {
     ];
     await inSequence(workerNames.entries(), async ([i, workerName]) => {
       members.push(
-        await this.startWorker(
-          team,
-          workerName,
-          workerPersonas[i] ?? null,
-          address,
-          input.workerModels?.[i] ?? null,
-          i + 1,
-          input.workerPermissions?.[i] ?? null,
-          input.workerEfforts?.[i] ?? null,
-        ),
+        await this.startWorker(team, {
+          name: workerName,
+          persona: workerPersonas[i] ?? null,
+          coordinator: address,
+          model: input.workerModels?.[i] ?? null,
+          number: i + 1,
+          permission: input.workerPermissions?.[i] ?? null,
+          effort: input.workerEfforts?.[i] ?? null,
+        }),
       );
     });
     this.opts.db
@@ -687,13 +688,12 @@ export class Teams {
       const added =
         await /* NOSONAR: workers start one at a time: each takes its own worktree and a free slot */ this.startWorker(
           team,
-          `${label(row.name)} · executora ${number}`,
-          spec.persona,
-          coordinator?.address ?? null,
-          spec.model,
-          number,
-          spec.permission,
-          spec.effort,
+          {
+            ...spec,
+            name: `${label(row.name)} · executora ${number}`,
+            coordinator: coordinator?.address ?? null,
+            number,
+          },
         );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });

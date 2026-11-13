@@ -151,11 +151,11 @@ type StartOptions = {
   /** What `daemon.shutdown` triggers; the command is refused without it. */
   onShutdown?: () => void;
   /** The PTY terminals run in; Bun's own when absent (tests inject a fake). */
-  pty?: TerminalsDeps["pty"];
+  pty?: NonNullable<TerminalsDeps["pty"]>;
   /** Where `resources.get` reads processes from; the real /proc on Linux when absent (tests inject a fake). */
   resourcesProc?: ProcReader;
   /** The host's memory for the hold on new cards (#1343); the OS's when absent (tests inject one). */
-  memoryReading?: MemoryGateDeps["reading"];
+  memoryReading?: NonNullable<MemoryGateDeps["reading"]>;
   /** How the project key asks git; the process itself when absent (tests hold it). */
   projectGit?: AsyncGitRunner;
   /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
