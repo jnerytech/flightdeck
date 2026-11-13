@@ -67,6 +67,7 @@ describe("spawn-count (#1612)", () => {
     );
     const baseline = JSON.parse(readFileSync(join(ROOT, "spawn-count-baseline.json"), "utf8"));
     expect(overBaseline(counts, baseline)).toEqual([]);
-    expect(Object.keys(baseline).length).toBeGreaterThan(10);
+    // weaker: the baseline shrinks toward {} as the adapter slices land (#1612); the closing slice drops this line
+    expect(Object.keys(baseline).length).toBeGreaterThan(0);
   });
 });
