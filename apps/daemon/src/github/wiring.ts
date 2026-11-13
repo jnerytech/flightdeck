@@ -1,7 +1,7 @@
 import type { Config } from "../config.ts";
 import type { DomainModule } from "../server/index.ts";
+import { runGhIn } from "./adapters/gh.ts";
 import { listAlerts } from "./alerts.ts";
-import { runGhIn } from "./gh.ts";
 import { GithubService, type GithubServiceOptions } from "./service.ts";
 
 /** What the daemon hands the `github.*` commands (issue #1593). */
