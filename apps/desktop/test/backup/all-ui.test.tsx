@@ -263,6 +263,67 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     expect([told, said("too big to be a key")]).toEqual([true, false]);
   });
 
+  // #2653: after "Read" the passphrase field is empty and the preview mounts below it; the person
+  // who cannot see it was left with no cue. The focus goes to the preview and a status says what it holds.
+  test("a read that works moves the focus to the preview and announces what it holds (#2653)", async () => {
+    const text = await backupText();
+    open({ picked: text });
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    const region = () => screen.queryByRole("region", { name: "Backup preview" });
+    await settleMaybe(() => region() !== null, 3000);
+    expect([
+      region() !== null && document.activeElement === region(),
+      said("Backup read: 4 new, 0 different. Nothing changes until you press Restore."),
+      field("File passphrase")?.value,
+    ]).toEqual([true, true, ""]);
+  });
+
+  test("a read that fails shows the error and leaves the focus where it was (#2653)", async () => {
+    const text = await backupText();
+    open({ picked: text });
+    await type("File passphrase", "another passphrase");
+    const input = field("File passphrase") as HTMLInputElement;
+    input.focus();
+    await click("Read backup");
+    await settleMaybe(() => said("could not be read"), 3000);
+    expect([
+      said("could not be read"),
+      screen.queryByRole("region", { name: "Backup preview" }) === null,
+      document.activeElement === input || document.activeElement === document.body,
+    ]).toEqual([true, true, true]);
+  });
+
+  async function readWithADifference() {
+    const text = await backupText();
+    const { platform } = open({ picked: text });
+    platform.storage.setItem("flightdeck.theme", "light");
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    await settleMaybe(() => screen.queryByLabelText("Replace with the backup") !== null, 3000);
+  }
+
+  test("the Keep and Replace radios are 24 px targets like the other radios (#2653)", async () => {
+    await readWithADifference();
+    const radios = ["Keep what is here", "Replace with the backup"].map(
+      (name) => screen.queryByRole("radio", { name }) as HTMLInputElement | null,
+    );
+    expect(radios.map((radio) => radio?.className.split(" ").includes("hit-control"))).toEqual([
+      true,
+      true,
+    ]);
+  });
+
+  // #2655: a name with no spaces (a long file name) must break, so nothing sits outside its box.
+  test("a conflict entry wraps anywhere, however long its name has no spaces (#2655)", async () => {
+    await readWithADifference();
+    const entry = screen
+      .queryByRole("list", { name: "Different here" })
+      ?.querySelector("li") as HTMLElement | null;
+    const classes = entry?.className.split(" ") ?? [];
+    expect(classes.includes("[overflow-wrap:anywhere]")).toBe(true);
+  });
+
   test("a platform with no file dialog (the web build) offers no Read backup and says why", async () => {
     const { platform } = memoryPlatform(false, "en");
     // The web platform as it is: no file dialog.
