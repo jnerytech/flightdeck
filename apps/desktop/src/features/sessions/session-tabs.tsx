@@ -10,7 +10,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { FileExplorer, SessionFiles } from "@/features/files/ui.ts";
-import { TracePanel } from "@/features/trace/index.ts";
+import { TracePanel } from "@/features/trace/ui.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
 import { SessionMessages } from "../messaging/session-messages.tsx";
