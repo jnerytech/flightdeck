@@ -1,4 +1,4 @@
-import { useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -32,6 +32,18 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   const using = useBusy();
   const signing = useBusy();
   const [refused, setRefused] = useState(false);
+  // #2654: the form is waiting for the passphrase, or the passphrase was just set and the form left.
+  const cadenceOn = scheduler.supported && scheduler.schedule().cadence !== "off";
+  const waitingNow = cadenceOn && !scheduler.hasPassphrase;
+  const wasWaiting = useRef(waitingNow);
+  const passphraseField = useRef<HTMLInputElement>(null);
+  const passphraseLine = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    // Only a change moves the focus: a schedule already waiting when the panel opens does not take it.
+    if (waitingNow && !wasWaiting.current) passphraseField.current?.focus();
+    else if (!waitingNow && wasWaiting.current && cadenceOn) passphraseLine.current?.focus();
+    wasWaiting.current = waitingNow;
+  }, [waitingNow, cadenceOn]);
   if (!scheduler.supported) return null;
 
   const schedule = scheduler.schedule();
@@ -115,7 +127,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
           </Stack>
         ) : (
           <Stack gap={1}>
-            <p>
+            <p className="[overflow-wrap:anywhere]">
               <span className="font-medium">{t("backupSchedule.folder")}: </span>
               {scheduler.folder ?? t("backupSchedule.noFolder")}
             </p>
@@ -176,6 +188,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
               {(control) => (
                 <Input
                   {...control}
+                  ref={passphraseField}
                   type="password"
                   autoComplete="off"
                   value={passphrase}
@@ -192,7 +205,14 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
           </Form>
         )}
         {schedule.cadence !== "off" && scheduler.hasPassphrase && (
-          <p className="text-muted-foreground text-sm">{t("backupSchedule.passphraseSet")}</p>
+          <p
+            ref={passphraseLine}
+            role="status"
+            tabIndex={-1}
+            className="rounded-sm text-muted-foreground text-sm focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {t("backupSchedule.passphraseSet")}
+          </p>
         )}
         {report.status === "done" && report.prune === "failed" && (
           <InlineNotice tone="warn">{t("backupSchedule.pruneFailed")}</InlineNotice>
