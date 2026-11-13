@@ -43,7 +43,8 @@ function callsIn(line: string): string[] {
       found.push({ at: match.index, what: match[0] });
   for (const pattern of [CLOCK, NEW_DATE, TIMER_OR_FETCH])
     for (const match of line.matchAll(pattern)) found.push({ at: match.index, what: match[0] });
-  return found.sort((a, b) => a.at - b.at).map((call) => call.what);
+  found.sort((a, b) => a.at - b.at);
+  return found.map((call) => call.what);
 }
 
 /** The I/O packages one line imports, in the order they appear. */
@@ -53,7 +54,8 @@ function importsIn(line: string): string[] {
     for (const match of line.matchAll(pattern))
       if (match[2] && IMPURE_PACKAGE.test(match[2]))
         found.push({ at: match.index, what: match[2] });
-  return found.sort((a, b) => a.at - b.at).map((name) => name.what);
+  found.sort((a, b) => a.at - b.at);
+  return found.map((name) => name.what);
 }
 
 /** Whether the check reads this tracked path: TypeScript under a `domain/` folder of a package's src. */

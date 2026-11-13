@@ -59,7 +59,7 @@ export function runArchRatchet(deps: {
 }): { code: number; output: string } {
   const base = ["origin/main", "main"]
     .map((main) => deps.git(["merge-base", "HEAD", main])?.trim())
-    .find((found) => found);
+    .find(Boolean);
   const head = ruleCounts(deps.readFile(KNOWN));
   const counts = Object.entries(head)
     .map(([rule, count]) => `${rule} ${count}`)
