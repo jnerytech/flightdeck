@@ -3,6 +3,7 @@ import { trayMenu } from "../../src/features/tray/tray.ts";
 import type { TrayAction } from "../../src/platform/types.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
+import { addedSecret } from "../vault/added-secret.ts";
 import { settlePlain as settle, stays } from "../wait.ts";
 
 const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
@@ -31,7 +32,7 @@ async function setup() {
   const daemon = legacyDaemon(cleanups);
   const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => daemon.asked.includes("vault.watch"));
-  const meta = await store.secrets.add({
+  const meta = await addedSecret(store, {
     name: "prod-key",
     type: "token",
     value: "regras-value-1",

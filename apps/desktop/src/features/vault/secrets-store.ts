@@ -33,10 +33,16 @@ export interface VaultSecretsCore {
 export class VaultSecretsSlice {
   constructor(private readonly core: VaultSecretsCore) {}
 
-  async add(input: NewSecret): Promise<SecretMeta> {
-    const meta = await this.core.vault.create(input);
-    this.core.secretsChanged();
-    return meta;
+  /** Stores a secret; null when the vault refuses it, after telling the person (never with the value). */
+  async add(input: NewSecret): Promise<SecretMeta | null> {
+    try {
+      const meta = await this.core.vault.create(input);
+      this.core.secretsChanged();
+      return meta;
+    } catch (error) {
+      this.core.fail(error);
+      return null;
+    }
   }
 
   /** `ssh-keygen` makes a pair; the private key goes to the vault, the public one comes back. */
@@ -78,9 +84,14 @@ export class VaultSecretsSlice {
     return true;
   }
 
+  /** Removes a secret; a refusal is told to the person and the secret stays listed. */
   async remove(id: string): Promise<void> {
-    await this.core.vault.remove(id);
-    this.core.secretsChanged();
+    try {
+      await this.core.vault.remove(id);
+      this.core.secretsChanged();
+    } catch (error) {
+      this.core.fail(error);
+    }
   }
 
   /** Saves the vault as an encrypted `cofre.fdvault`; the reason when it is refused or cancelled. */
