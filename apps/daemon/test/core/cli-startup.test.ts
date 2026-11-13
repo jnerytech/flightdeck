@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,7 +14,7 @@ const PROBE = `process.on("exit", () => {
 });`;
 
 async function loadedBy(args: string[]): Promise<{ code: number; loaded: string[] }> {
-  const dir = mkdtempSync(join(tmpdir(), "fd-startup-"));
+  const dir = mkdtempSync(join(realpathSync.native(tmpdir()), "fd-startup-"));
   const probe = join(dir, "probe.ts");
   writeFileSync(probe, PROBE);
   const child = Bun.spawn(
