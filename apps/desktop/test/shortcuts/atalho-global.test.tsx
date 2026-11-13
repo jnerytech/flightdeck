@@ -10,7 +10,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } = await import(
-  "../../src/features/shortcuts/shortcut.ts"
+  "../../src/features/shortcuts/domain/shortcut.ts"
 );
 const { App } = await import("../../src/app/App.tsx");
 
