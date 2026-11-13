@@ -38,7 +38,7 @@ describe("domain-purity (#1601)", () => {
             "const r = await fetch(url);",
             "setTimeout(tick, 10);",
             "const g = globalThis.fetch(url) + window.setTimeout(tick) + fetch (url);",
-            "Bun.serve({ fetch }); await Bun.sleep(5); const h = process.hrtime.bigint();",
+            "Bun.serve({ fetch }); await Bun.connect(opts); const h = process.hrtime.bigint();",
           ].join("\n"),
         },
       ]),
@@ -59,7 +59,7 @@ describe("domain-purity (#1601)", () => {
       "apps/daemon/src/board/domain/rules.ts:13 window.setTimeout(",
       "apps/daemon/src/board/domain/rules.ts:13 fetch (",
       "apps/daemon/src/board/domain/rules.ts:14 Bun.serve(",
-      "apps/daemon/src/board/domain/rules.ts:14 Bun.sleep(",
+      "apps/daemon/src/board/domain/rules.ts:14 Bun.connect(",
       "apps/daemon/src/board/domain/rules.ts:14 process.hrtime",
     ]);
   });
