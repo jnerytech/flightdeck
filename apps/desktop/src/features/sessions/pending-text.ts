@@ -8,6 +8,7 @@ import { inputSummary } from "./tool-input.ts";
  */
 export function pendingText(item: PendingItem, t: T): string {
   if (item.gate) return t("needsYou.gateRow", { step: item.gate.stepId });
+  if (item.waiting) return t(`hub.rowDetail.waiting.${item.waiting}`);
   const summary = inputSummary(item.input);
   return summary ? `${item.toolName}: ${summary}` : item.toolName;
 }

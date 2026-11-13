@@ -5,7 +5,7 @@ import { Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { HISTORY_HOURS, projectionText, SHOWN } from "../quota/index.ts";
-import { usd } from "./costs.ts";
+import { usd } from "./domain/costs.ts";
 
 const WIDTH = 240;
 const HEIGHT = 60;

@@ -1,5 +1,5 @@
 import type { CostsSummary } from "@flightdeck/protocol";
-import { hasFeature, hostsWith } from "../../lib/version.ts";
+import { hasFeature, hostsWith } from "../../../lib/version.ts";
 
 /** What the costs screen reads of a host. */
 export interface CostsHost {

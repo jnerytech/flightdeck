@@ -3,7 +3,7 @@
  * sending host prepares, reads and cancels a package; the receiving one takes the manifest, the
  * parts, then finishes the import or aborts.
  */
-import { importPackage } from "../../teleport/import.ts";
+import { importPackage } from "../../teleport/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const teleportHandlers = {

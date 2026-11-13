@@ -1,5 +1,5 @@
 import { type PlainInfo, plainInfo, type ToolEvent } from "@flightdeck/protocol";
-import type { SessionState } from "../sessions/index.ts";
+import type { SessionState } from "../../sessions/index.ts";
 
 export type TaskState = "working" | "waiting" | "done" | "stopped" | "failed";
 

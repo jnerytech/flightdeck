@@ -6,7 +6,7 @@ import {
   describeViolation,
 } from "../../../../scripts/lib/browser/axe.ts";
 import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
-import { hiddenTermsIn } from "../../src/features/home/simple-words.ts";
+import { hiddenTermsIn } from "../../src/features/home/domain/simple-words.ts";
 import {
   emptySession,
   type SessionState,

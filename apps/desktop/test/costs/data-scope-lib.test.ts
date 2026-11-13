@@ -9,7 +9,7 @@ import {
   scopeHosts,
   scopeOfValue,
   scopeValue,
-} from "../../src/features/costs/data-scope.ts";
+} from "../../src/features/costs/domain/data-scope.ts";
 
 /** A storage in memory; `refuse` makes every call throw, like a private window's. */
 function storage(initial: Record<string, string> = {}, refuse = false) {

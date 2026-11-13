@@ -5,7 +5,7 @@ import { useT } from "@/i18n/context";
 import { Panel, Stack } from "@/shared/layout/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { projectLabel } from "./costs.ts";
+import { projectLabel } from "./domain/costs.ts";
 
 /**
  * In Custos: per project, the time people kept Claude waiting for a permission and the slowest

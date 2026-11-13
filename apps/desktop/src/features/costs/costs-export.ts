@@ -1,6 +1,6 @@
 import type { CostsFilter } from "@flightdeck/protocol";
 import type { AppStore } from "../../lib/app-store.ts";
-import { mergeHostCsv } from "./costs-csv.ts";
+import { mergeHostCsv } from "./domain/costs-csv.ts";
 
 /**
  * The Costs export. One host: the file its daemon built. Several hosts: one file with the host as

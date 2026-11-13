@@ -210,6 +210,14 @@ describe("tray (#1596)", () => {
     ]);
   });
 
+  test("a terminal session's plan or question is opened, never answered from the tray (#1751)", () => {
+    const { slice, log, world } = tray();
+    world.items = [item("waiting:plan:c1", { waiting: "plan" })];
+    slice.act({ key: "h1/waiting:plan:c1", action: "approve" });
+    slice.act({ key: "h1/waiting:plan:c1", action: "deny" });
+    expect(log).toEqual([{ open: "waiting:plan:c1" }, { open: "waiting:plan:c1" }]);
+  });
+
   test("the more line shows the window, and a request that is gone is ignored", () => {
     const { slice, log } = tray();
     slice.act({ key: "more", action: "open" });

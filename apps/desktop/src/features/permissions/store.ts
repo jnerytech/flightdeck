@@ -94,7 +94,7 @@ export class PermissionsSlice {
     }
     // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
     // palette is not the tray, so a vault grant is never logged as the tray's.
-    if (item.gate || item.vault) this.open(item);
+    if (item.gate || item.vault || item.waiting) this.open(item);
     else this.core.act({ key: `${item.hostId}/${item.requestId}`, action: decision });
   }
 
