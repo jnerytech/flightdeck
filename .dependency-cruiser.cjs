@@ -64,6 +64,16 @@ module.exports = {
       },
     },
     {
+      name: "domain-is-pure",
+      comment:
+        "A domain's rules (domain/) do no I/O: no SQLite, filesystem, process, WebSocket or Tauri module; time and I/O come in through a port (#1601). Bun.spawn, Bun.file and Date.now are globals, not imports: the domain-purity guard test checks those.",
+      severity: "error",
+      from: { path: "/domain/" },
+      to: {
+        path: "^(bun:sqlite|(node:)?(fs|fs/promises|child_process))$|(^|/node_modules/)(ws|@tauri-apps/[^/]+)(/|$)",
+      },
+    },
+    {
       name: "domain-depends-on-no-adapter",
       comment: "A domain's rules (domain/) never import its I/O (adapters/): ports and adapters.",
       severity: "error",
