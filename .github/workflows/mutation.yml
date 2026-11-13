@@ -1,0 +1,6 @@
+name: Mutation
+
+on:
+  workflow_dispatch:
+
+jobs: {}
