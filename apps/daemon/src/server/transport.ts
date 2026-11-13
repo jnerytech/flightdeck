@@ -33,7 +33,7 @@ import type {
 } from "@flightdeck/protocol";
 import type { ServerWebSocket } from "bun";
 import { type FlightdeckError, parseJsonText } from "../kernel/index.ts";
-import type { TerminalSink } from "../terminal/terminal-manager.ts";
+import type { TerminalSink } from "../terminal/index.ts";
 import type { DeltaCoalescer } from "./delta-coalescer.ts";
 import { sendFrame } from "./ws-send.ts";
 
