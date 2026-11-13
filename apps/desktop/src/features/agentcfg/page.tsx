@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AgentMemory } from "@/features/memory/index.ts";
+import { AgentMemory } from "@/features/memory/ui.ts";
 import { SubagentsSwitch } from "@/features/personas/ui.ts";
 import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
