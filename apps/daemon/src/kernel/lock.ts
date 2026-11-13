@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { link, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { link, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export const LOCK_FILE = "flightdeckd.lock";
@@ -12,16 +12,18 @@ function isAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    // EPERM: the process exists under another account.
+    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 
 /**
  * Takes the per-`dataDir` lock: a file holding the owner's pid, created whole by a hard link so a
  * reader never sees it empty. A lock whose pid is no longer running (or is unreadable) is taken
- * over: the stale file is moved away by a rename, which only one caller can win, and the move is
- * checked to hold the text that was judged stale. Returns `null` when another live process holds it.
+ * over under a second file, the takeover guard, that one caller holds at a time: inside it the lock
+ * is read again and removed only if it still holds the text judged stale, so a lock another caller
+ * just made is never removed. Returns `null` when another live process holds the lock.
  */
 export async function acquireLock(dataDir: string): Promise<Lock | null> {
   await mkdir(dataDir, { recursive: true });
@@ -36,7 +38,7 @@ export async function acquireLock(dataDir: string): Promise<Lock | null> {
       if (text === null) continue;
       const owner = Number.parseInt(text, 10);
       if (Number.isInteger(owner) && owner > 0 && isAlive(owner)) return null;
-      if (!(await moveStaleAway(path, text))) return null;
+      await removeStale(path, text);
     }
   }
   if (!taken) return null;
@@ -53,8 +55,8 @@ export async function acquireLock(dataDir: string): Promise<Lock | null> {
   };
 }
 
-/** Looks for the lock this many times before giving up: each retry means another caller moved first. */
-const MAX_ATTEMPTS = 10;
+/** Looks for the lock this many times before giving up: each retry means another caller was taking over. */
+const MAX_ATTEMPTS = 20;
 
 function missingAsNull(error: NodeJS.ErrnoException): null {
   if (error.code !== "ENOENT") throw error;
@@ -64,8 +66,8 @@ function missingAsNull(error: NodeJS.ErrnoException): null {
 /** Creates `path` holding `text` in one step; false when it already exists. */
 async function createWhole(path: string, text: string): Promise<boolean> {
   const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
-  await writeFile(temp, text);
   try {
+    await writeFile(temp, text);
     await link(temp, path);
     return true;
   } catch (error) {
@@ -77,22 +79,26 @@ async function createWhole(path: string, text: string): Promise<boolean> {
 }
 
 /**
- * Moves the stale lock holding `stale` out of the way. False when what was moved turned out to be
- * another text (a caller took over first and this one moved its fresh lock): it goes back.
+ * Removes the lock at `path` when it still holds `stale`, under the takeover guard. A caller that
+ * finds the guard taken leaves it to the holder and looks at the lock again; a guard whose holder
+ * died is cleared, so a crash in here never blocks the next start.
  */
-async function moveStaleAway(path: string, stale: string): Promise<boolean> {
-  const moved = `${path}.stale.${process.pid}.${randomUUID()}`;
-  try {
-    await rename(path, moved);
-  } catch (error) {
-    // Another caller already moved it: look again.
-    missingAsNull(error as NodeJS.ErrnoException);
-    return true;
+async function removeStale(path: string, stale: string): Promise<void> {
+  const guard = `${path}.takeover`;
+  if (!(await createWhole(guard, String(process.pid)))) {
+    const owner = Number.parseInt((await readFile(guard, "utf8").catch(missingAsNull)) ?? "", 10);
+    if (!(Number.isInteger(owner) && owner > 0 && isAlive(owner))) {
+      await unlink(guard).catch(missingAsNull);
+    }
+    return;
   }
-  const text = await readFile(moved, "utf8").catch(missingAsNull);
-  if (text !== stale && text !== null) await link(moved, path).catch(() => {});
-  await unlink(moved).catch(missingAsNull);
-  return text === stale;
+  try {
+    if ((await readFile(path, "utf8").catch(missingAsNull)) === stale) {
+      await unlink(path).catch(missingAsNull);
+    }
+  } finally {
+    await unlink(guard).catch(missingAsNull);
+  }
 }
 
 /** The pid written in the lock of `dataDir`, or null without a readable one. */
