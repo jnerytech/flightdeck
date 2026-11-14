@@ -5,7 +5,7 @@ import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { ProjectMemory } from "../../src/memory/memory.ts";
 import { RiskClassifier } from "../../src/permissions/risk.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../../src/runtime/claude-sdk-runtime.ts";
-import { OpenCodeEvents } from "../../src/runtime/opencode-events.ts";
+import { OpenCodeEvents } from "../../src/runtime/domain/opencode-events.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /**

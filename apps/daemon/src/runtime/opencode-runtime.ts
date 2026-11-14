@@ -10,14 +10,14 @@ import { AsyncQueue, FlightdeckError, isInside, settled } from "../kernel/index.
 import { credential } from "../permissions/index.ts";
 import { ACP_CLOSED, AcpClient, AcpError, REAL_TIMERS, type SpawnedAcp } from "./acp/client.ts";
 import { spawnAcp } from "./adapters/acp-process.ts";
-import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
-import { FLIGHTDECK_AGENT, FLIGHTDECK_PLAN_AGENT, opencodeEnv } from "./opencode-config.ts";
+import type { FlightdeckMcpServer } from "./domain/flightdeck-mcp.ts";
 import {
   type AcpPromptResult,
   type AcpToolCall,
   type AcpUpdate,
   OpenCodeEvents,
-} from "./opencode-events.ts";
+} from "./domain/opencode-events.ts";
+import { FLIGHTDECK_AGENT, FLIGHTDECK_PLAN_AGENT, opencodeEnv } from "./opencode-config.ts";
 import { maskResource } from "./opencode-preflight.ts";
 import type { ScopeResult } from "./opencode-scope.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";

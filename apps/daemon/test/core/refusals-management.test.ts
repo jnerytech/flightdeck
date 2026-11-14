@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { Names } from "../../src/names/names.ts";
-import { checkUpdates } from "../../src/permissions/permission-updates.ts";
+import { checkUpdates } from "../../src/permissions/domain/permission-updates.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
 import { assetKey, DaemonUpdater } from "../../src/updates/apply.ts";
