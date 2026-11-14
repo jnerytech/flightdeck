@@ -13,7 +13,7 @@ import {
 } from "./kernel/index.ts";
 import { validRegex } from "./permissions/domain/risk.ts";
 import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";
-import { defaultHostName } from "./wsl/host.ts";
+import { defaultHostName } from "./wsl/probe.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */
 export const RUNNING_COMPILED = Bun.main.includes("$bunfs") || Bun.main.includes("~BUN");
