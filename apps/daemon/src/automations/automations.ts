@@ -20,7 +20,7 @@ import {
   validTimeZone,
 } from "./domain/cron.ts";
 import { type AutomationEvent, causeOf, contentOf, isExternal, keyOf } from "./domain/event.ts";
-import { actionOf, triggerOf } from "./row-json.ts";
+import { actionOf, triggerOf } from "./domain/row-json.ts";
 
 export interface AutomationInput {
   projectId: string;
