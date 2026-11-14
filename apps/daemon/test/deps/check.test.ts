@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { DepResult } from "@flightdeck/protocol";
-import { checkDeps, type DepsEnv } from "../../src/deps/deps.ts";
+import { checkDeps, type DepsEnv } from "../../src/deps/domain/deps.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { newManager } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
