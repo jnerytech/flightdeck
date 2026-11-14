@@ -3,7 +3,7 @@ import { type Config, claudeSettingsPath, updateConfigFile, userHome } from "../
 import type { DomainModule } from "../server/index.ts";
 import { stableBinPath } from "../service/index.ts";
 import { claudeSettingsEnv } from "./claude-settings-env.ts";
-import { terminalEnabled } from "./policy.ts";
+import { terminalEnabled } from "./domain/policy.ts";
 import { bunPty, type PtyFactory } from "./pty.ts";
 import { TerminalManager, type TerminalManagerOptions } from "./terminal-manager.ts";
 
