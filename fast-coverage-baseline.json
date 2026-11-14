@@ -176,7 +176,7 @@
   "apps/desktop/src/features/terminal/terminal-session.ts",
   "apps/desktop/src/features/terminal/terminal-view.ts",
   "apps/desktop/src/features/terminal/xterm-deps.ts",
-  "apps/desktop/src/features/tray/tray.ts",
+  "apps/desktop/src/features/tray/domain/tray.ts",
   "apps/desktop/src/features/vault/secret-picker.tsx",
   "apps/desktop/src/features/vault/vault-approval.ts",
   "apps/desktop/src/features/vault/vault-backup.ts",

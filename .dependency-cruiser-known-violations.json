@@ -353,17 +353,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/tray/tray.ts",
-    "to": "apps/desktop/src/features/sessions/pending-text.ts",
-    "unresolvedTo": "../sessions/pending-text.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/desktop/src/features/trust/untrusted-notice.tsx",
     "to": "apps/desktop/src/features/sessions/parts.tsx",
     "unresolvedTo": "@/features/sessions/parts.tsx",
