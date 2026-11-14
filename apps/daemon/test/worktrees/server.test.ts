@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { startServer } from "../../src/server.ts";
-import { FolderLocks } from "../../src/worktrees/locks.ts";
+import { FolderLocks } from "../../src/worktrees/domain/locks.ts";
 import { createWorktrees } from "../../src/worktrees/wiring.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";

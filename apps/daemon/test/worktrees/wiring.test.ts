@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FolderLocks } from "../../src/worktrees/locks.ts";
+import { FolderLocks } from "../../src/worktrees/domain/locks.ts";
 import { createWorktrees } from "../../src/worktrees/wiring.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 

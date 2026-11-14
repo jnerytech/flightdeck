@@ -1,7 +1,7 @@
 import { statfs } from "node:fs/promises";
 import { type CommandResult, isInside, runCommand, whichOnPath } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
-import type { FolderLocks } from "./locks.ts";
+import type { FolderLocks } from "./domain/locks.ts";
 import { duSize, type WorktreeCard, type WorktreeProject, Worktrees } from "./worktrees.ts";
 
 export interface WorktreesDeps {
