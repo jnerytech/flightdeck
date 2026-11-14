@@ -1,5 +1,4 @@
 import type { ReaderTarget } from "../features/history/index.ts";
-import type { HostDraft } from "../features/hosts/index.ts";
 import type { ActionSeed } from "../features/snippets/index.ts";
 import { actionOfRoute, startMeasure } from "./measures.ts";
 
@@ -106,6 +105,17 @@ export type Route =
       rule?: { secretId: string; match: Record<string, string> };
     }
   | { name: "add-host"; draft?: HostDraft; key?: number };
+
+/**
+ * What the add-host route carries into the host form: the fields filled in by hand (#1589). The
+ * router declares it, so it imports nothing from the hosts feature; the form uses this type.
+ */
+export interface HostDraft {
+  name: string;
+  address: string;
+  port: string;
+  token: string;
+}
 
 /** The route in use and a history to go back and forward through (Alt+←/→, mouse buttons). */
 /** A fresh home route each call: an object literal as a default parameter would be one shared object. */
