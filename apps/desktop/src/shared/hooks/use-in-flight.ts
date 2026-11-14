@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { REAL_TIMERS } from "./real-timers.ts";
-import type { MinLoadingTimers } from "./use-min-loading.ts";
+import { type MinLoadingTimers, REAL_TIMERS } from "./real-timers.ts";
 
 /**
  * The one rule for work a person is waiting on (a click's command, a form, a panel loading):
