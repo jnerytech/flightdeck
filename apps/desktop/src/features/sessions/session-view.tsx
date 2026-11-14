@@ -27,7 +27,7 @@ import type { T } from "../../i18n/index.ts";
 import type { Answer } from "../../lib/app-store.ts";
 import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
-import { commandItemsOf, slashFill } from "./command-menu.ts";
+import { commandItemsOf, slashFill } from "./domain/command-menu.ts";
 import { composerModeMenu, offersModelPicker } from "./domain/composer-pickers.ts";
 import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-queue.ts";
 import { nextMode } from "./domain/mode-menu.ts";

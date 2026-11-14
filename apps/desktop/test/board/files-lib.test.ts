@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { boardFiles, filesPanelOpen } from "../../src/features/board/board-files.ts";
+import { boardFiles, filesPanelOpen } from "../../src/features/board/domain/board-files.ts";
 
 const worktree = {
   hostId: "h1",

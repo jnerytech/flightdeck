@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { slashFill } from "../../src/features/sessions/command-menu.ts";
+import { slashFill } from "../../src/features/sessions/domain/command-menu.ts";
 import {
   composerModeMenu,
   offersModelPicker,
