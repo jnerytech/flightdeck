@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { SecretScanner } from "@flightdeck/protocol";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { buildSummary } from "../../src/summary/summary.ts";
+import { buildSummary } from "../../src/summary/domain/summary.ts";
 import {
   projectsRoot,
   summaryLine,
