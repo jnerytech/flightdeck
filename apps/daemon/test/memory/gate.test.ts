@@ -4,11 +4,12 @@ import { join } from "node:path";
 import type { ResourcesSnapshot } from "@flightdeck/protocol";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
+import { realTimers } from "../../src/quota/index.ts";
 import {
   MemoryGate,
   type MemoryReading,
   osMemoryReading,
-} from "../../src/resources/memory-gate.ts";
+} from "../../src/resources/domain/memory-gate.ts";
 import type { ProcReader } from "../../src/resources/resources.ts";
 import { cardWhen, gitRepo, newBoard } from "../support/board-helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -69,6 +70,7 @@ describe("memory-gate: new cards wait while the host's memory is at or above res
       read: () => {
         throw new Error("no /proc");
       },
+      timers: realTimers,
     });
     expect(throwing.blocked()).toBeNull();
   });
