@@ -333,9 +333,9 @@ const xmlUnescape = (text: string) =>
 
 /** Arguments of a systemd command line, unquoted: `\` escapes `"` and `\` inside quotes, `%%` and `$$` are one. */
 function splitSystemdArgs(line: string): string[] {
-  const unescape = (arg: string) => arg.replace(/%%|\$\$/g, (pair) => pair[0] as string);
+  const unescapeSpecials = (arg: string) => arg.replace(/%%|\$\$/g, (pair) => pair[0] as string);
   return [...line.matchAll(/"((?:[^"\\]|\\.)*)"|(\S+)/g)].map(([, quoted, plain]) =>
-    unescape(quoted === undefined ? (plain as string) : quoted.replace(/\\(["\\])/g, "$1")),
+    unescapeSpecials(quoted === undefined ? (plain as string) : quoted.replace(/\\(["\\])/g, "$1")),
   );
 }
 
