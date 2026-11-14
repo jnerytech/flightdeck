@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { ProjectCard } from "../../src/features/projects/project-cards.ts";
+import type { ProjectCard } from "../../src/features/projects/domain/project-cards.ts";
 import type { HubRow } from "../../src/features/sessions/hub.ts";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";

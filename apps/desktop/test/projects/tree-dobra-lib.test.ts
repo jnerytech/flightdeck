@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { TreeNode } from "../../src/features/projects/project-tree-model.ts";
+import type { TreeNode } from "../../src/features/projects/domain/project-tree-model.ts";
 import {
   loadTreeFolded,
   pickedIn,

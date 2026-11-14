@@ -13,7 +13,7 @@ import {
   ulid,
   whichOnPath,
 } from "../kernel/index.ts";
-import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
+import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/index.ts";
 import { launchClaude } from "./adapters/claude-launch.ts";
 
 /** What the daemon publishes about the receiver it runs: where it listens. */

@@ -101,6 +101,13 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   numa caixa que o teclado alcança. Abaixo dele, a linha de cada executora mostra o **Último relato**,
   a branch do card e quantos arquivos o card mudou. Quando a coordenadora relata o objetivo
   concluído, uma notificação avisa e abre o time.
+- **Mudar o time pela coordenadora:** a coordenadora pode acrescentar uma executora numa persona que
+  ela escolhe com a ferramenta `team_add_member` (uma persona, um modelo opcional e um brief de até
+  4000 caracteres, que vai no card da nova executora depois das instruções-padrão) e tirar uma com
+  `team_remove_member` quando ela não for mais necessária: o turno dela para, e o card e a branch
+  ficam. A nova executora sempre abre no modo de permissão padrão. O host recusa qualquer outra
+  sessão, uma persona que não existe, um time pausado, um time que já tem 8 executoras e uma cota do
+  plano acima do limite (não há fila). Você vê a mudança na linha do time na hora.
 - **Na linha do time dá para:**
   - pausar (STOP a todos os membros) e retomar;
   - mandar uma mensagem a todos;
