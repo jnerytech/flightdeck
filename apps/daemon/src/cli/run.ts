@@ -1,6 +1,6 @@
 import { parseArgs } from "./args.ts";
 import { type CliDeps, COMMANDS } from "./commands.ts";
-import { reportFailure } from "./exit.ts";
+import { reportFailure } from "./domain/exit.ts";
 
 /**
  * Runs the command `argv` names, if it is one that is not the daemon, and says whether it did

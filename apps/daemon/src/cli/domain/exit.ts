@@ -1,4 +1,4 @@
-import { AlreadyRunningError, EXIT_ALREADY_RUNNING, type Logger } from "../kernel/index.ts";
+import { AlreadyRunningError, EXIT_ALREADY_RUNNING, type Logger } from "../../kernel/index.ts";
 
 /** What the failure paths need of the command line deps. */
 interface FailureDeps {

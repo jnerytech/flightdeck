@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { exitWhenClosed } from "../../src/cli/exit.ts";
+import { exitWhenClosed } from "../../src/cli/domain/exit.ts";
 
 /** Fake deps that record what the command printed and the codes it exited with. */
 function fakeDeps(exit: (code: number) => void = () => {}) {

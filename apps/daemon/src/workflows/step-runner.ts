@@ -10,6 +10,7 @@ import { inSequence } from "@flightdeck/protocol";
 import type { Prepare } from "../personas/index.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
 import { addTurn, overBudget } from "./domain/budget.ts";
+import { CARDS_PER_RUN, parseFindings } from "./domain/findings.ts";
 import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./domain/interpolate.ts";
 import {
   type Action,
@@ -28,7 +29,6 @@ import {
   type StepRow,
   type WorkflowEngineOptions,
 } from "./engine-types.ts";
-import { CARDS_PER_RUN, parseFindings } from "./findings.ts";
 import { hashOf } from "./repo.ts";
 import * as col from "./row-json.ts";
 

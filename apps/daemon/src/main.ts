@@ -16,7 +16,7 @@ import { Snapshots } from "./checkpoints/index.ts";
 import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import type { CliDeps } from "./cli/commands.ts";
-import { reportFailure } from "./cli/exit.ts";
+import { reportFailure } from "./cli/domain/exit.ts";
 import { runCommandCli } from "./cli/run.ts";
 import {
   type Config,
