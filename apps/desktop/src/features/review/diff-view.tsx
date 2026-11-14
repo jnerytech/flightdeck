@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/shared/lib/index.ts";
-import { type DiffRow, diffRows, type Selection, selected } from "./review.ts";
+import { type DiffRow, diffRows, type Selection, selected } from "./domain/review.ts";
 
 type LineRow = Extract<DiffRow, { kind: "line" }>;
 
