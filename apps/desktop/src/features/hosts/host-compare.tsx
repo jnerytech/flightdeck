@@ -65,12 +65,12 @@ const WORDS: Partial<Record<CompareField, Record<string, Key>>> = {
   boot: BOOT_WORDS,
 };
 
-/** A value as the person reads it: the word for a status, the count of a feature set, a version as is. */
 /** The reading list without one host: the updater for when its health read ends. */
 function without(hostId: string) {
   return (ids: readonly string[]) => ids.filter((id) => id !== hostId);
 }
 
+/** A value as the person reads it: the word for a status, the count of a feature set, a version as is. */
 function shown(field: CompareField, value: string, t: T): string {
   if (field === "features") return String(value === "" ? 0 : value.split(",").length);
   if (field === "os") return t(OS_WORDS[value] ?? "hostCompare.unknown");
