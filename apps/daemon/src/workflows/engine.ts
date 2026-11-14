@@ -5,7 +5,7 @@ import type { Card, Project } from "../board/types.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
-import { noSpending } from "./budget.ts";
+import { noSpending } from "./domain/budget.ts";
 import {
   type EngineHost,
   now,

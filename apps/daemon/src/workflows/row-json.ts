@@ -1,7 +1,7 @@
 import { RunBudget, RunUsage } from "@flightdeck/protocol";
 import { z } from "zod";
 import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
-import type { RunSpending } from "./budget.ts";
+import type { RunSpending } from "./domain/budget.ts";
 
 /** The JSON columns of a workflow run and its steps, read through their schemas (#1609). */
 const Spending = RunUsage.extend({ sessions: z.record(z.string(), z.number()).default({}) });

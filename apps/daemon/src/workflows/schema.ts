@@ -1,6 +1,6 @@
 import { PermissionMode, type RuleIssue } from "@flightdeck/protocol";
 import { type core, z } from "zod";
-import { referencesIn } from "./references.ts";
+import { referencesIn } from "./domain/references.ts";
 
 export interface AgentAction {
   prompt: string;
