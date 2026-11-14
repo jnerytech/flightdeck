@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { DEFAULT_POLICY, validatePolicy } from "../../../daemon/src/messaging/policy.ts";
+import { DEFAULT_POLICY, validatePolicy } from "../../../daemon/src/messaging/domain/policy.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
