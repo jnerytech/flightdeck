@@ -67,8 +67,8 @@ import {
 import { createReview } from "./review/wiring.ts";
 import { createRoi } from "./roi/wiring.ts";
 import { createRunEnv } from "./runenv/wiring.ts";
+import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/domain/flightdeck-mcp.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
-import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type AgentRuntime, claudeVersionProbe } from "./runtime/index.ts";
 import { createOpenCodeServer } from "./runtime/opencode-server.ts";
 import { createOpenCode } from "./runtime/opencode-wiring.ts";
