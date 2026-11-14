@@ -114,7 +114,7 @@
   "apps/desktop/src/features/inbox/notification-bell.tsx",
   "apps/desktop/src/features/inbox/notification-center.tsx",
   "apps/desktop/src/features/maintenance/maintenance-section.tsx",
-  "apps/desktop/src/features/messaging/relay.ts",
+  "apps/desktop/src/features/messaging/domain/relay.ts",
   "apps/desktop/src/features/permissions/approval-actions.tsx",
   "apps/desktop/src/features/permissions/domain/ask-question.ts",
   "apps/desktop/src/features/permissions/domain/diff.ts",
