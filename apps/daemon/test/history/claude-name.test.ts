@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { appendFileSync } from "node:fs";
+import { lastTitle, parseLine, parseLines } from "../../src/history/domain/parser.ts";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
-import { lastTitle, parseLine, parseLines } from "../../src/history/parser.ts";
 import { Names } from "../../src/names/names.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { projectsRoot, userLine, writeTranscript } from "../support/history-helpers.ts";
