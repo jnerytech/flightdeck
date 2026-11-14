@@ -3,7 +3,7 @@ import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } fr
 import { delimiter, join } from "node:path";
 import { runLimited } from "../../src/kernel/command.ts";
 import { whichOnPath } from "../../src/kernel/which.ts";
-import { checkCommandRefusal } from "../../src/watch/check-command.ts";
+import { checkCommandRefusal } from "../../src/watch/domain/check-command.ts";
 import { boundedCheckRunner, checkEnvironment } from "../../src/workflows/check-runner.ts";
 import { poll, tempDir } from "../support/helpers.ts";
 

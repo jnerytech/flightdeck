@@ -5,7 +5,7 @@
  */
 import { SecretScanner } from "../snippets/index.ts";
 import type { BoundedCheckRunner } from "../workflows/index.ts";
-import { type CheckRefusal, checkCommandRefusal } from "./check-command.ts";
+import { type CheckRefusal, checkCommandRefusal } from "./domain/check-command.ts";
 
 const scanner = new SecretScanner();
 

@@ -5,7 +5,7 @@
  */
 import { posix, win32 } from "node:path";
 import { isWatchCheck } from "@flightdeck/protocol";
-import { ntfsName } from "../kernel/index.ts";
+import { ntfsName } from "../../kernel/index.ts";
 
 /** Why a stored check command is not run. */
 export type CheckRefusal = "not_plain" | "env_assignment" | "outside_worktree";
