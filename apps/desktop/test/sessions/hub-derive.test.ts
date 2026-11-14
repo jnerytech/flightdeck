@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_HUB_FILTER } from "../../src/features/sessions/hub.ts";
 import {
   costAsks,
   cursorMove,
@@ -12,7 +11,8 @@ import {
   rowSummary,
   showsStateWord,
   worktreesOf,
-} from "../../src/features/sessions/hub-derive.ts";
+} from "../../src/features/sessions/domain/hub-derive.ts";
+import { DEFAULT_HUB_FILTER } from "../../src/features/sessions/hub.ts";
 
 describe("worktreesOf", () => {
   const cards = {
