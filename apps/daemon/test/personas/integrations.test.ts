@@ -5,7 +5,7 @@ import { Board } from "../../src/board/board.ts";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { sendSessionStart } from "../../src/central/hook-command.ts";
 import { Costs } from "../../src/costs/costs.ts";
-import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
+import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";
 import { runCli } from "../../src/main.ts";
 import { packPersonas } from "../../src/personas/pack.ts";
 import { preparePersonas } from "../../src/personas/prepare.ts";

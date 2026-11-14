@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { Costs } from "../../src/costs/costs.ts";
-import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
+import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";
 import { UsageIndexer, type UsageIndexerOptions } from "../../src/costs/usage-indexer.ts";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";

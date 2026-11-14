@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join, posix, resolve, win32 } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
-import { PricingConfig } from "./costs/pricing.ts";
+import { PricingConfig } from "./costs/domain/pricing.ts";
 import {
   DEFAULT_ALLOWED_NETWORKS,
   parseCidr,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Costs } from "../../src/costs/costs.ts";
-import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
+import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { newManager } from "../support/helpers.ts";

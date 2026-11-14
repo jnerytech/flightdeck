@@ -9,7 +9,7 @@ import {
   PRICING_DATE,
   type Pricing,
   resolvePricing,
-} from "../../src/costs/pricing.ts";
+} from "../../src/costs/domain/pricing.ts";
 import { UsageIndexer, type UsageTokens } from "../../src/costs/usage-indexer.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";

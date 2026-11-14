@@ -4,7 +4,7 @@ import {
   INSTRUCTIONS_VERSION,
   type TeamBrief,
   workerInstructions,
-} from "../../src/teams/instructions.ts";
+} from "../../src/teams/domain/instructions.ts";
 
 const brief: TeamBrief = {
   name: "login",
