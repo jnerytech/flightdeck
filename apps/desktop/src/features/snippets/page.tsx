@@ -11,11 +11,11 @@ import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts"
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { actionSeedFromCommand } from "./domain/snippets.ts";
 import { FileImport } from "./file-import.tsx";
 import type { AppSnippet } from "./global-snippets.ts";
 import { HistoryImport } from "./history-import.tsx";
 import { SnippetEditor } from "./snippet-editor.tsx";
-import { actionSeedFromCommand } from "./snippets.ts";
 
 /** Where a snippet lives, as the row says it. */
 const originOf = (snippet: AppSnippet) => (snippet.source === "file" ? "file" : snippet.scope);

@@ -5,6 +5,8 @@
  * exporting it here would pull it into the main bundle.
  */
 
+export type { MenuGroup, MenuItem } from "./domain/prompt-menu-model.ts";
+export type { ActionSeed } from "./domain/snippets.ts";
 export {
   type AppSnippet,
   GlobalSnippets,
@@ -12,8 +14,6 @@ export {
   type SnippetFilter,
 } from "./global-snippets.ts";
 export type { PromptSnippets } from "./prompt-menu.tsx";
-export type { MenuGroup, MenuItem } from "./prompt-menu-model.ts";
-export type { ActionSeed } from "./snippets.ts";
 export {
   initialSnippetsState,
   type SnippetChoice,
