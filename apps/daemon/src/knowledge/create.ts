@@ -2,8 +2,8 @@ import { lstat, mkdir, readdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { KnowledgeEntry, KnowledgeKind } from "@flightdeck/protocol";
 import { FlightdeckError, samePath } from "../kernel/index.ts";
+import { parseKnowledge } from "./domain/parse.ts";
 import { shownHash } from "./list.ts";
-import { parseKnowledge } from "./parse.ts";
 
 /**
  * Issue #1039: a new library document from a template, written into the project's folder for its
