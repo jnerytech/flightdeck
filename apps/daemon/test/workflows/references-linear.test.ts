@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { parseRunConfig } from "../../src/runenv/config.ts";
-import { interpolate } from "../../src/workflows/interpolate.ts";
-import { referencesIn, replaceReferences } from "../../src/workflows/references.ts";
+import { interpolate } from "../../src/workflows/domain/interpolate.ts";
+import { referencesIn, replaceReferences } from "../../src/workflows/domain/references.ts";
 import { parseWorkflow } from "../../src/workflows/schema.ts";
 
 /**

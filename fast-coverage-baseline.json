@@ -56,7 +56,7 @@
   "apps/daemon/src/updates/signature.ts",
   "apps/daemon/src/vault/requests.ts",
   "apps/daemon/src/vault/rules.ts",
-  "apps/daemon/src/workflows/interpolate.ts",
+  "apps/daemon/src/workflows/domain/interpolate.ts",
   "apps/daemon/src/workflows/schema.ts",
   "apps/desktop/src/app/Areas.tsx",
   "apps/desktop/src/app/lazy-screen.ts",
