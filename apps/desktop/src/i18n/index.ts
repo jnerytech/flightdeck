@@ -2,35 +2,14 @@ import type { Platform } from "../platform/types.ts";
 import { en } from "./en.ts";
 import { ptBR } from "./pt-BR.ts";
 import { SIMPLE_RENAMES } from "./simple.ts";
+import type { Dictionary, Key, Lang, Plural } from "./types.ts";
 
-export type Lang = "pt-BR" | "en";
+export type { Dictionary, Key, Lang } from "./types.ts";
+
 export const LANGS: readonly Lang[] = ["pt-BR", "en"];
 
 /** Where the choice is kept; the system's language when absent. */
 export const LANG_KEY = "flightdeck.lang";
-
-export interface Plural {
-  one: string;
-  other: string;
-}
-
-type Leaves<T> = {
-  readonly [K in keyof T]: T[K] extends string
-    ? string
-    : T[K] extends Plural
-      ? Plural
-      : Leaves<T[K]>;
-};
-
-/** Every language's shape: pt-BR's keys with string (or plural) leaves. */
-export type Dictionary = Leaves<typeof ptBR>;
-
-type Paths<T, P extends string = ""> = {
-  [K in keyof T & string]: T[K] extends string | Plural ? `${P}${K}` : Paths<T[K], `${P}${K}.`>;
-}[keyof T & string];
-
-/** A dotted key of the dictionary, such as "tray.approve". */
-export type Key = Paths<Dictionary>;
 
 export type Vars = Record<string, string | number>;
 /** `lang` is the language the translator speaks, for the formats that are not in a dictionary. */

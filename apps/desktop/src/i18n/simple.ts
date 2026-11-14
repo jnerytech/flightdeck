@@ -1,4 +1,4 @@
-import type { Key, Lang } from "./index.ts";
+import type { Key, Lang } from "./types.ts";
 
 /**
  * The words simple mode puts over the shared screens' (phase 33); the key is the full-mode one.
