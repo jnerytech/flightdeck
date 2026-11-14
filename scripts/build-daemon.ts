@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { parsePublicKey } from "../apps/daemon/src/updates/signature.ts";
+import { parsePublicKey } from "../apps/daemon/src/updates/domain/signature.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const ENTRY = join(ROOT, "apps/daemon/src/bin.ts");

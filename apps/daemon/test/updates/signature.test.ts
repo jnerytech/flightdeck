@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { signForTest, TEST_PUBLIC_KEY } from "../../../../scripts/test/minisign.ts";
-import { verifyMinisign } from "../../src/updates/signature.ts";
+import { verifyMinisign } from "../../src/updates/domain/signature.ts";
 
 const FIXTURES = resolve(import.meta.dir, "../fixtures/release");
 const fixture = (name: string) => readFileSync(resolve(FIXTURES, name));

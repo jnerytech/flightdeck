@@ -10,7 +10,7 @@ import { RUNNING_COMPILED } from "../config.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { runChecked, type ServiceContext, serviceCommand } from "../service/index.ts";
 import { updatePublicKey } from "./domain/public-key.ts";
-import { verifyMinisign } from "./signature.ts";
+import { verifyMinisign } from "./domain/signature.ts";
 
 /** The one-shot task that runs the update on Windows; it deletes itself at the end. */
 const UPDATE_TASK = String.raw`Flightdeck\update`;

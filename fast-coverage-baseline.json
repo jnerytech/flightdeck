@@ -53,7 +53,7 @@
   "apps/daemon/src/terminal/domain/policy.ts",
   "apps/daemon/src/terminal/domain/shell.ts",
   "apps/daemon/src/trace/domain/model.ts",
-  "apps/daemon/src/updates/signature.ts",
+  "apps/daemon/src/updates/domain/signature.ts",
   "apps/daemon/src/vault/domain/requests.ts",
   "apps/daemon/src/vault/domain/rules.ts",
   "apps/daemon/src/workflows/domain/interpolate.ts",
