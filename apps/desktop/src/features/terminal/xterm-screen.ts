@@ -1,4 +1,4 @@
-import { findPaths } from "./terminal-paths.ts";
+import { findPaths } from "./domain/terminal-paths.ts";
 import {
   FIND_DECORATIONS,
   type FindDecorations,

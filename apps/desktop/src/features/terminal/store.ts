@@ -14,7 +14,7 @@ import {
   type TerminalLaunch,
   type TerminalTarget,
   terminalLaunch,
-} from "./terminal.ts";
+} from "./domain/terminal.ts";
 import type { TerminalHost } from "./terminal-session.ts";
 
 /** What a host's terminals say to the one following them. */

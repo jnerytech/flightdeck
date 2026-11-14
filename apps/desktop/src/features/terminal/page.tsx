@@ -18,8 +18,8 @@ import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { insideFolder, resolvePath } from "./domain/terminal-paths.ts";
 import { MENU_ITEM, moveInMenu } from "./menu-keys.ts";
-import { insideFolder, resolvePath } from "./terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "./terminal-session.ts";
 import {
   type FindFlags,
