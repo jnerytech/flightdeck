@@ -35,7 +35,7 @@
   "apps/daemon/src/personas/pack.ts",
   "apps/daemon/src/personas/publish.ts",
   "apps/daemon/src/personas/snapshot.ts",
-  "apps/daemon/src/runtime/commands.ts",
+  "apps/daemon/src/runtime/domain/commands.ts",
   "apps/daemon/src/runtime/flightdeck-mcp.ts",
   "apps/daemon/src/server/ws-send.ts",
   "apps/daemon/src/service/linger.ts",
