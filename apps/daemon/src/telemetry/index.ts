@@ -3,6 +3,8 @@
  * `main.ts` still builds the domain from `wiring.ts`. Another domain imports from here, never a file
  * inside.
  */
+
+export { type TelemetryTarget, wrapperTelemetryEnv } from "./domain/env.ts";
 export { TelemetryOptIn } from "./optin.ts";
-export { type TelemetryStatus, type TelemetryTarget, wrapperTelemetryEnv } from "./otlp-env.ts";
+export type { TelemetryStatus } from "./otlp-env.ts";
 export type { TelemetryStore } from "./store.ts";

@@ -2,8 +2,9 @@ import type { Database } from "bun:sqlite";
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { RunConfig, RunConfigs } from "./config.ts";
+import { interpolatePorts, type PortMap, portEnv } from "./domain/ports.ts";
 import type { ReadyResult } from "./domain/preview.ts";
-import { type CardPorts, interpolatePorts, type PortMap, portEnv } from "./ports.ts";
+import type { CardPorts } from "./ports.ts";
 import { waitForServer } from "./preview.ts";
 
 /** One process of the card's run, as the UI shows it: a tab (terminal) with a state. */

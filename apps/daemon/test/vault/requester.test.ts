@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { parseServerMessage, VaultRequestFrame } from "@flightdeck/protocol";
-import { decideRequest, type Requester, requesterOf } from "../../src/vault/requests.ts";
+import {
+  decideRequest,
+  type Requester,
+  requesterOf,
+  systemEnv,
+} from "../../src/vault/domain/requests.ts";
+
+const env = systemEnv(() => Date.UTC(2026, 9, 28, 15, 0, 0));
 
 describe("cofre-solicitante", () => {
   test("um pedido do daemon é claude, automation ou workflow; qualquer outra coisa, inclusive you, é desconhecido", () => {
@@ -14,14 +21,14 @@ describe("cofre-solicitante", () => {
 
   test("o solicitante do daemon passa pelas regras (o padrão do Claude pergunta ao app, o da automação e do workflow nega); you ou o desconhecido é negado", () => {
     for (const requester of ["claude", "automation", "workflow", "you", undefined, "root"]) {
-      const decision = decideRequest({ requester });
+      const decision = decideRequest({ requester }, [], env);
       const daemon = ["claude", "automation", "workflow"].includes(requester as string);
       expect(decision.granted).toBe(requester === "claude");
       expect(decision.reason).not.toBe("");
       expect(decision.requester).toBe(daemon ? (requester as Requester) : "unknown");
     }
-    expect(decideRequest({ requester: "claude" }).reason).toContain("app");
-    expect(decideRequest({ requester: "you" }).reason).toContain(
+    expect(decideRequest({ requester: "claude" }, [], env).reason).toContain("app");
+    expect(decideRequest({ requester: "you" }, [], env).reason).toContain(
       "only Claude, an automation or a workflow ask the app for secrets",
     );
   });

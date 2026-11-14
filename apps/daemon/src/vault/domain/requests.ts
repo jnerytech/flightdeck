@@ -4,7 +4,7 @@
  * (any local process that reads the config speaks the protocol). Anything else is treated as the
  * most restricted. Whether a known requester gets the secret is the app's decision.
  */
-import { evaluate, localTime, type Rule, type RulesEnv, type UseContext } from "./domain/rules.ts";
+import { evaluate, localTime, type Rule, type RulesEnv, type UseContext } from "./rules.ts";
 
 export type Requester = "claude" | "automation" | "workflow" | "unknown";
 
@@ -44,8 +44,8 @@ export type RequestInput = { requester?: unknown } & Partial<Omit<UseContext, "r
  */
 export function decideRequest(
   raw: RequestInput,
-  rules: readonly Rule[] = [],
-  env: RulesEnv = systemEnv(),
+  rules: readonly Rule[],
+  env: RulesEnv,
 ): RequestDecision {
   const requester = requesterOf(raw.requester);
   if (requester === "unknown") {
@@ -92,7 +92,7 @@ export function decideRequest(
   };
 }
 
-/** The clock and the time zone of this PC, with no history of uses. */
-export function systemEnv(uses: RulesEnv["uses"] = () => 0): RulesEnv {
-  return { now: () => Date.now(), local: (ms) => localTime(ms), uses };
+/** The given clock and the time zone of this PC, with no history of uses unless given one. */
+export function systemEnv(now: RulesEnv["now"], uses: RulesEnv["uses"] = () => 0): RulesEnv {
+  return { now, local: (ms) => localTime(ms), uses };
 }

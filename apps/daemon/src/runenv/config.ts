@@ -5,6 +5,7 @@ import { must } from "../board/worktree.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
 import { hashOf, referencesIn, replaceReferences } from "../workflows/index.ts";
+import { PORT_BLOCK, portVariable } from "./domain/ports.ts";
 
 /** Where a project's run environment is declared, read from the base branch only. */
 export const RUN_CONFIG_PATH = ".flightdeck/run.yaml";
@@ -19,9 +20,6 @@ const invalid = (errors: string[]) =>
   new FlightdeckError("invalid_state", "the run.yaml has validation errors", "run_config_invalid", {
     errors: errors.join("; "),
   });
-
-/** A block holds this many ports per card. */
-export const PORT_BLOCK = 10;
 
 export interface RunProcess {
   name: string;
@@ -86,10 +84,6 @@ function message(issue: core.$ZodRawIssue): string {
 
 const where = (path: readonly PropertyKey[]) =>
   path.length === 0 ? "(root)" : path.map(String).join(".");
-
-/** The variable that carries a port: `FLIGHTDECK_PORT_<NAME>`. */
-export const portVariable = (name: string) =>
-  `FLIGHTDECK_PORT_${name.toUpperCase().replaceAll("-", "_")}`;
 
 /** What the schema cannot see: repeated names, `{{port.…}}` references and the ready URL. */
 function validate(config: RunConfig): string[] {

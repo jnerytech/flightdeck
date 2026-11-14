@@ -350,7 +350,7 @@ describe("refusal-english: the daemon's entry file (#957)", () => {
 const MSGS5_FILES = [
   "maintenance/backup.ts",
   "actions/cli.ts",
-  "vault/requests.ts",
+  "vault/domain/requests.ts",
   "ssh/askpass.ts",
   "sessions/session-manager.ts",
   "sessions/session-runs.ts",
