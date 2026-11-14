@@ -6,6 +6,8 @@ import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, PendingItem } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
+import { ActivityCardView } from "./activity-card.tsx";
+import { ActivityColumnView } from "./activity-column.tsx";
 import {
   ACTIVITY_COLUMNS,
   ACTIVITY_KEYS,
@@ -14,9 +16,7 @@ import {
   activityBoard,
   activityOptions,
   NO_ACTIVITY_FILTER,
-} from "./activity.ts";
-import { ActivityCardView } from "./activity-card.tsx";
-import { ActivityColumnView } from "./activity-column.tsx";
+} from "./domain/activity.ts";
 import { useBoardTransition } from "./use-board-transition.ts";
 
 /** How often the board reads the clock again. */
