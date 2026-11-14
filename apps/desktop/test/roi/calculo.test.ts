@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiPeriod, RoiWeek } from "@flightdeck/protocol";
-import { EMPTY_PERIOD, figures, mergePeriods, type RoiMoney } from "../../src/features/roi/roi.ts";
+import {
+  EMPTY_PERIOD,
+  figures,
+  mergePeriods,
+  type RoiMoney,
+} from "../../src/features/roi/domain/roi.ts";
 
 const period = (over: Partial<RoiPeriod> = {}): RoiPeriod => ({ ...EMPTY_PERIOD, ...over });
 const NO_MONEY: RoiMoney = {

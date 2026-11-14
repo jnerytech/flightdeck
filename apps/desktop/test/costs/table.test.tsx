@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
 import { canScrollRight } from "@/shared/lib/index.ts";
-import { EMPTY_PERIOD } from "../../src/features/roi/roi.ts";
+import { EMPTY_PERIOD } from "../../src/features/roi/domain/roi.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { waiter } from "../wait.ts";

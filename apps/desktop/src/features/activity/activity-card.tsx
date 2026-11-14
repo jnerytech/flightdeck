@@ -80,6 +80,11 @@ export function ActivityCardView(
         )}
       </p>
       {line && <p className="activity-card-line">{line}</p>}
+      {row.waitingPlan && (
+        <p data-slot="activity-card-plan" className="activity-card-plan">
+          {row.waitingPlan}
+        </p>
+      )}
       {pending && (
         <div className="activity-card-request">
           <p className="activity-card-ask">{pendingText(pending, t)}</p>

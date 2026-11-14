@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import { parseJsonText, readStored } from "@/shared/lib/index.ts";
-import type { Platform } from "../../platform/types.ts";
+import type { Platform } from "../../../platform/types.ts";
 
 export const ROI_KEY = "flightdeck.roi";
 

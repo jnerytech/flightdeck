@@ -9,7 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { SHORTCUT_KEY } = await import("../../src/features/shortcuts/shortcut.ts");
+const { SHORTCUT_KEY } = await import("../../src/features/shortcuts/domain/shortcut.ts");
 const { App } = await import("../../src/app/App.tsx");
 
 afterEach(() => cleanup());

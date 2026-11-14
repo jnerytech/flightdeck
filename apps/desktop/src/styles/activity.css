@@ -149,6 +149,16 @@
   color: var(--muted-foreground);
   font-size: 0.75rem;
 }
+/* The plan of a terminal session at an approval (#1751): its first lines, line breaks kept. */
+@utility activity-card-plan {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
 @utility activity-card-request {
   display: flex;
   flex-direction: column;

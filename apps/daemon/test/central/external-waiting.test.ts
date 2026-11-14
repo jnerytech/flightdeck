@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { appendFileSync, closeSync, openSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ExternalSession } from "@flightdeck/protocol";
+import { ExternalSession, WAITING_PLAN_MAX } from "@flightdeck/protocol";
 import { ExternalSessions, type ExternalSession as Session } from "../../src/central/external.ts";
-import { type Tail, tailOfFile, waitingIn } from "../../src/central/waiting.ts";
+import { planTextIn, type Tail, tailOfFile, waitingIn } from "../../src/central/waiting.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { tempDir } from "../support/helpers.ts";
 
@@ -12,7 +12,12 @@ const T0 = Date.parse("2026-11-10T12:00:00.000Z");
 const entry = (type: "assistant" | "user", content: unknown[], extra: object = {}) =>
   `${JSON.stringify({ type, message: { role: type, content }, ...extra })}\n`;
 const text = (value: string) => ({ type: "text", text: value });
-const call = (name: string) => ({ type: "tool_use", id: `toolu_${name}`, name, input: {} });
+const call = (name: string, input: object = {}) => ({
+  type: "tool_use",
+  id: `toolu_${name}`,
+  name,
+  input,
+});
 const result = (name: string) => ({
   type: "tool_result",
   tool_use_id: `toolu_${name}`,
@@ -225,5 +230,93 @@ describe("external-waiting: the sessions started in a terminal say what they wai
     broken.apply("SessionStart", { session_id: "s2", transcript_path: transcript });
     await broken.sweep();
     expect(broken.get("s2")?.waiting ?? null).toBeNull();
+  });
+});
+
+describe("external-waiting: the plan a session waits for approval on (#1751)", () => {
+  const plan = (text: string) => entry("assistant", [call("ExitPlanMode", { plan: text })]);
+
+  test("the plan text is what the ExitPlanMode call carries, accents and emoji kept", () => {
+    expect(planTextIn(plan("1. Ler o código ✅\n2. Escrever o teste"))).toBe(
+      "1. Ler o código ✅\n2. Escrever o teste",
+    );
+  });
+
+  test("no plan text when the wait is a question, the plan is answered, or the call carries none", () => {
+    expect(planTextIn(entry("assistant", [call("AskUserQuestion", { plan: "x" })]))).toBeNull();
+    expect(planTextIn(plan("x") + entry("user", [result("ExitPlanMode")]))).toBeNull();
+    expect(planTextIn(entry("assistant", [call("ExitPlanMode")]))).toBeNull();
+    expect(planTextIn(entry("assistant", [call("ExitPlanMode", { plan: 7 })]))).toBeNull();
+    expect(planTextIn(entry("assistant", [call("ExitPlanMode", { plan: "" })]))).toBeNull();
+    expect(planTextIn("")).toBeNull();
+  });
+
+  test("a plan longer than the cap is cut at it and ends with an ellipsis", () => {
+    const cut = planTextIn(plan("a".repeat(WAITING_PLAN_MAX + 1)));
+    expect([cut?.length, cut?.endsWith("…")]).toEqual([WAITING_PLAN_MAX, true]);
+    expect(planTextIn(plan("a".repeat(WAITING_PLAN_MAX)))).toBe("a".repeat(WAITING_PLAN_MAX));
+  });
+
+  test("the cap never splits an emoji in two", () => {
+    const cut = planTextIn(plan("🚀".repeat(WAITING_PLAN_MAX)));
+    expect(cut).toMatch(/^🚀+…$/u);
+    expect(cut?.length).toBeLessThanOrEqual(WAITING_PLAN_MAX);
+  });
+
+  test("the protocol carries it on the external session, and refuses one past the cap", () => {
+    const base = {
+      claudeSessionId: "s1",
+      cwd: null,
+      transcriptPath: null,
+      source: null,
+      status: "idle",
+      statusReason: null,
+      launchId: null,
+      controllable: false,
+      projectKey: null,
+      startedAt: "2026-11-10T12:00:00Z",
+      lastEventAt: "2026-11-10T12:00:00Z",
+      endedAt: null,
+      waiting: "plan",
+    };
+    expect(ExternalSession.parse({ ...base, waitingPlan: "p" }).waitingPlan).toBe("p");
+    expect(ExternalSession.parse(base).waitingPlan).toBeUndefined();
+    expect(
+      ExternalSession.safeParse({ ...base, waitingPlan: "a".repeat(WAITING_PLAN_MAX + 1) }).success,
+    ).toBe(false);
+  });
+
+  test("a sweep puts the plan on the session; the next event clears it", async () => {
+    const { registry, transcript, updates, hook } = setup();
+    hook("SessionStart");
+    appendFileSync(transcript, plan("Ship it"));
+    await registry.sweep();
+    expect(registry.get("s1")?.waitingPlan).toBe("Ship it");
+    expect(updates.at(-1)?.waitingPlan).toBe("Ship it");
+    hook("UserPromptSubmit");
+    expect(registry.get("s1")?.waitingPlan).toBeUndefined();
+  });
+
+  test("a plan rewritten under the same wait is told to the app again", async () => {
+    const { registry, transcript, updates, hook } = setup();
+    hook("SessionStart");
+    appendFileSync(transcript, plan("first"));
+    await registry.sweep();
+    appendFileSync(transcript, entry("user", [result("ExitPlanMode")]) + plan("second"));
+    const later = new Date(T0 + 60_000);
+    utimesSync(transcript, later, later);
+    await registry.sweep();
+    expect(updates.at(-1)?.waitingPlan).toBe("second");
+  });
+
+  test("a question puts no plan on the session", async () => {
+    const { registry, transcript, hook } = setup();
+    hook("SessionStart");
+    appendFileSync(transcript, entry("assistant", [call("AskUserQuestion", { plan: "x" })]));
+    await registry.sweep();
+    expect([registry.get("s1")?.waiting, registry.get("s1")?.waitingPlan]).toEqual([
+      "question",
+      undefined,
+    ]);
   });
 });

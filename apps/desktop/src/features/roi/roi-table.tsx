@@ -7,7 +7,7 @@ import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { WideTable } from "@/shared/layout/index.ts";
 import { usd } from "../costs/index.ts";
-import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./roi-table.ts";
+import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./domain/roi-table.ts";
 
 const COLUMNS: RoiColumn[] = [
   "project",

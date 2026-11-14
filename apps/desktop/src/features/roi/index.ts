@@ -5,6 +5,6 @@
  * on purpose: only the lazy costs screen uses them (by file path), and exporting them here would
  * pull them into the main bundle.
  */
-export { RoiSettingsError } from "./roi-settings.ts";
+export { RoiSettingsError } from "./domain/roi-settings.ts";
 export { RoiSlice } from "./store.ts";
 export { wireRoi } from "./wire.ts";
