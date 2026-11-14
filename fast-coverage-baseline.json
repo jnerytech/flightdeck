@@ -1,5 +1,5 @@
 [
-  "apps/daemon/src/actions/mask.ts",
+  "apps/daemon/src/actions/domain/mask.ts",
   "apps/daemon/src/actions/run.ts",
   "apps/daemon/src/actions/schema.ts",
   "apps/daemon/src/actions/shell.ts",
