@@ -156,7 +156,7 @@
   "apps/desktop/src/features/shell/app-shell.tsx",
   "apps/desktop/src/features/shell/breadcrumb.tsx",
   "apps/desktop/src/features/shell/density.ts",
-  "apps/desktop/src/features/shell/nav-active.ts",
+  "apps/desktop/src/features/shell/domain/nav-active.ts",
   "apps/desktop/src/features/shell/nav-icons.ts",
   "apps/desktop/src/features/shell/notices.tsx",
   "apps/desktop/src/features/shell/sidebar-groups.ts",

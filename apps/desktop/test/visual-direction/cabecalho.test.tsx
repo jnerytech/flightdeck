@@ -12,7 +12,7 @@ const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
-const { breadcrumb } = await import("../../src/features/shell/crumbs.ts");
+const { breadcrumb } = await import("../../src/features/shell/domain/crumbs.ts");
 const { translator } = await import("../../src/i18n/index.ts");
 
 setDefaultTimeout(20_000);

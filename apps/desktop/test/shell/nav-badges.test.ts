@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { NAV_BADGES, navBadge } from "../../src/features/shell/nav-badges.ts";
+import { NAV_BADGES, navBadge } from "../../src/features/shell/domain/nav-badges.ts";
 
 describe("nav-badges: a badge belongs to a version range and expires on its own (issue #209)", () => {
   test("it shows before its version and is gone at it and after", () => {

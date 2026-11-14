@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { breadcrumb } from "../../src/features/shell/crumbs.ts";
+import { breadcrumb } from "../../src/features/shell/domain/crumbs.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { type AppState, sessionKey } from "../../src/lib/app-store.ts";
 

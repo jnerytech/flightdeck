@@ -9,7 +9,7 @@ import {
 import type { Route } from "@/lib/router";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
-import type { Crumb } from "./crumbs.ts";
+import type { Crumb } from "./domain/crumbs.ts";
 
 /** More steps than this and the ones in between fold into a menu: the first and the last stay. */
 const FOLD_AT = 3;
