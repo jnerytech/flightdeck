@@ -4,7 +4,7 @@ import { type HubRowState, hubRows } from "@/features/sessions/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { addDays } from "../costs/index.ts";
-import { buildProjectCards, type ProjectCard } from "./project-cards.ts";
+import { buildProjectCards, type ProjectCard } from "./domain/project-cards.ts";
 
 /** One card per project of every online host, with the week's cost each host reports (issue #9). */
 export function useProjectCards(

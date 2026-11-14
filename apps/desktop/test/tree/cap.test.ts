@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { projectTree, type TreeProject } from "../../src/features/projects/project-tree-model.ts";
+import {
+  projectTree,
+  type TreeProject,
+} from "../../src/features/projects/domain/project-tree-model.ts";
 import type { HubRow } from "../../src/features/sessions/hub.ts";
 import {
   FOLD_ABOVE,
