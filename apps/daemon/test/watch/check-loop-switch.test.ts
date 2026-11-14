@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { PermissionMode } from "@flightdeck/protocol";
-import { CheckLoopSwitch, checkLoopRefusal } from "../../src/board/check-loop.ts";
+import { CheckLoopSwitch } from "../../src/board/check-loop.ts";
+import { checkLoopRefusal } from "../../src/board/domain/check-loop-refusal.ts";
 import { startServer } from "../../src/server.ts";
 import { PrWatcher } from "../../src/watch/watch.ts";
 import { newBoard } from "../support/board-helpers.ts";
