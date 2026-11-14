@@ -5,6 +5,7 @@
  */
 
 export { binaryVersion } from "./adapters/flightdeckd-process.ts";
+export { addToUserPath, binDir, removeFromUserPath } from "./domain/user-path.ts";
 export {
   daemonCommand,
   installService,
@@ -30,4 +31,3 @@ export {
   stopServiceDaemon,
   waitHealthy,
 } from "./update.ts";
-export { addToUserPath, binDir, removeFromUserPath } from "./user-path.ts";

@@ -1,9 +1,11 @@
 import { posix, win32 } from "node:path";
-import { trimEndOf } from "../kernel/index.ts";
-import type { ServiceContext } from "./install.ts";
+import { trimEndOf } from "../../kernel/index.ts";
 
 /** What the PATH helpers need of the OS: the platform, the home and a way to run commands. */
-export type PathEnv = Pick<ServiceContext, "platform" | "home" | "exec"> & {
+export type PathEnv = {
+  platform: string;
+  home: string;
+  exec: (cmd: string[]) => Promise<{ code: number; stdout: string }>;
   /** The text of a file, or null when it is not there; with `writeFile`, lets Linux edit `~/.profile`. */
   readFile?(path: string): Promise<string | null>;
   writeFile?(path: string, content: string): void | Promise<void>;
