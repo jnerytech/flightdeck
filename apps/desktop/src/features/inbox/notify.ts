@@ -89,6 +89,31 @@ export function summaryNotifications(
   return notifications;
 }
 
+/** The notification of a terminal session that starts waiting at a plan or a question (#1751). */
+export function externalWaitNotification(
+  args: {
+    hostId: string;
+    hostName: string;
+    subject: string;
+    claudeSessionId: string;
+    waiting: "plan" | "question";
+  },
+  t: T,
+): AboutNotification {
+  const line = t(`hub.rowDetail.waiting.${args.waiting}`);
+  return {
+    event: "needs-you",
+    title: t("notify.externalTitle"),
+    body: `${args.hostName} · ${line}`,
+    about: {
+      subject: args.subject,
+      host: args.hostName,
+      ask: line,
+      group: `${args.hostId}/${args.claudeSessionId}`,
+    },
+  };
+}
+
 /** The notification of a terminal session's permission request, with what the panel needs to name it. */
 export function externalRequestNotification(
   args: {

@@ -8,7 +8,7 @@ import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
 import type { InboxSlice } from "../inbox/index.ts";
-import { externalRequestNotification } from "../inbox/notify.ts";
+import { externalRequestNotification, externalWaitNotification } from "../inbox/notify.ts";
 import { sessionKey } from "./domain/session-key.ts";
 
 type ExternalState = Pick<AppState, "hosts" | "externals" | "meta" | "externalRequests" | "hub">;
@@ -65,6 +65,7 @@ export class ExternalSessionsSlice {
         // The name and pin of a terminal session ride on its frames (phase 10).
         ...(frame.session.meta ? { meta: { ...state.meta, [key]: frame.session.meta } } : {}),
       });
+      this.tellWait(hostId, state.externals[key]?.waiting ?? null, frame.session);
       return;
     }
     const key = sessionKey(hostId, frame.requestId);
@@ -102,6 +103,41 @@ export class ExternalSessionsSlice {
         },
       );
     }
+  }
+
+  /**
+   * A terminal session that now waits at a plan or a question it did not wait at before reaches the
+   * person when the window is not in front (#1751). One whose hook holds the plan as a request is
+   * told by that request.
+   */
+  private tellWait(hostId: string, before: ExternalSession["waiting"], session: ExternalSession) {
+    const { claudeSessionId, waiting } = session;
+    if (!waiting || waiting === before || this.core.isFocused()) return;
+    const state = this.core.state();
+    if (Object.values(state.externalRequests).some((r) => r.claudeSessionId === claudeSessionId)) {
+      return;
+    }
+    const project = this.core.projectOf(hostId, session.cwd);
+    this.core.notify(
+      externalWaitNotification(
+        {
+          hostId,
+          hostName: state.hosts.find((h) => h.id === hostId)?.name ?? hostId,
+          subject: this.title(hostId, claudeSessionId),
+          claudeSessionId,
+          waiting,
+        },
+        this.core.t(),
+      ),
+      { name: "external", host: hostId, claudeSessionId },
+      undefined,
+      {
+        event: "needs-you",
+        hostId,
+        session: sessionKey(hostId, claudeSessionId),
+        ...(project ? { project } : {}),
+      },
+    );
   }
 
   /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
