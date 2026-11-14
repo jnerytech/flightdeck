@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(30_000);

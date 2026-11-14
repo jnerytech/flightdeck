@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { type Snippet, type SnippetFileInfo, SnippetInput, SnippetVar } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr, resolveAllowedCwd, ulid } from "../kernel/index.ts";
-import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./model.ts";
+import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./domain/model.ts";
 
 export interface SnippetsOptions {
   db: Database;

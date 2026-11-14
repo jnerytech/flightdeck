@@ -12,7 +12,7 @@ import {
   emptySession,
 } from "../../../desktop/src/features/sessions/domain/session-state.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { SummaryService } from "../../src/summary/service.ts";
 import { newManager, poll, reasonOf, tempDir } from "../support/helpers.ts";

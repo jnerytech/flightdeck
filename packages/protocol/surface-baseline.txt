@@ -3768,6 +3768,17 @@ Command[type=task.results].payload
 Command[type=task.results].payload.sessionId
 Command[type=task.results].type
 Command[type=task.results].type=="task.results"
+Command[type=teams.add_member].id
+Command[type=teams.add_member].payload
+Command[type=teams.add_member].payload.as
+Command[type=teams.add_member].payload.as.launch?
+Command[type=teams.add_member].payload.as.session?
+Command[type=teams.add_member].payload.brief
+Command[type=teams.add_member].payload.model?
+Command[type=teams.add_member].payload.persona?
+Command[type=teams.add_member].payload.team
+Command[type=teams.add_member].type
+Command[type=teams.add_member].type=="teams.add_member"
 Command[type=teams.close].id
 Command[type=teams.close].payload
 Command[type=teams.close].payload.confirm?
@@ -3834,6 +3845,15 @@ Command[type=teams.pause].payload
 Command[type=teams.pause].payload.team
 Command[type=teams.pause].type
 Command[type=teams.pause].type=="teams.pause"
+Command[type=teams.remove_member].id
+Command[type=teams.remove_member].payload
+Command[type=teams.remove_member].payload.as
+Command[type=teams.remove_member].payload.as.launch?
+Command[type=teams.remove_member].payload.as.session?
+Command[type=teams.remove_member].payload.member
+Command[type=teams.remove_member].payload.team
+Command[type=teams.remove_member].type
+Command[type=teams.remove_member].type=="teams.remove_member"
 Command[type=teams.report].id
 Command[type=teams.report].payload
 Command[type=teams.report].payload.as
@@ -4938,6 +4958,7 @@ ExternalSession.summary.tool
 ExternalSession.summary?
 ExternalSession.transcriptPath
 ExternalSession.waiting?
+ExternalSession.waitingPlan?
 ExternalSession.waiting|0="plan"
 ExternalSession.waiting|0="question"
 ExternalStatus="awaiting_permission"
@@ -4988,6 +5009,7 @@ ExternalUpdated.session.summary.tool
 ExternalUpdated.session.summary?
 ExternalUpdated.session.transcriptPath
 ExternalUpdated.session.waiting?
+ExternalUpdated.session.waitingPlan?
 ExternalUpdated.session.waiting|0="plan"
 ExternalUpdated.session.waiting|0="question"
 ExternalUpdated.type
@@ -7593,6 +7615,7 @@ ServerMessage[type=external.updated].session.summary.tool
 ServerMessage[type=external.updated].session.summary?
 ServerMessage[type=external.updated].session.transcriptPath
 ServerMessage[type=external.updated].session.waiting?
+ServerMessage[type=external.updated].session.waitingPlan?
 ServerMessage[type=external.updated].session.waiting|0="plan"
 ServerMessage[type=external.updated].session.waiting|0="question"
 ServerMessage[type=external.updated].type

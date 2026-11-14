@@ -13,7 +13,7 @@ import {
 } from "../../src/personas/model.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { startServer } from "../../src/server.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { BASELINE_FEATURES, newManager, workspace } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
