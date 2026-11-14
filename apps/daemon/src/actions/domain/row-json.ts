@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { parseJsonWith } from "../kernel/index.ts";
-import type { ActionDef } from "./domain/schema.ts";
-import type { Fingerprint } from "./trust.ts";
+import { parseJsonWith } from "../../kernel/index.ts";
+import type { Fingerprint } from "./fingerprint.ts";
+import type { ActionDef } from "./schema.ts";
 
 /** The JSON columns of an action row, read through their schemas (#1609: parse, don't validate). */
 /** Loose: a key the row holds but `ActionDef` does not name is kept, as the old cast kept it. */

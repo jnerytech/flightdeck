@@ -1,5 +1,10 @@
 import { pinnedDocProblem } from "@flightdeck/protocol";
-import { readSpec } from "./spec.ts";
+
+/** What the document check answers for one pinned path: whether the worktree holds it, and its first heading. */
+export type PinnedDocReader = (
+  root: string,
+  path: string,
+) => Promise<{ found: boolean; heading: string | null }>;
 
 /**
  * Issue #76: what a card's first prompt says of the documents pinned to it: one line per document
@@ -7,7 +12,11 @@ import { readSpec } from "./spec.ts";
  * contents: the session reads a document itself), and a pin the worktree does not hold (not there,
  * a link, a file with a second name) is left out. Empty when nothing is to be said.
  */
-export async function pinnedPrompt(root: string, pins: string[]): Promise<string> {
+export async function pinnedPrompt(
+  root: string,
+  pins: string[],
+  readSpec: PinnedDocReader,
+): Promise<string> {
   const lines: string[] = [];
   for (const path of pins) {
     // A row that did not come through `updateCard` is held to the same rule.

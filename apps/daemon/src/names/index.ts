@@ -3,5 +3,5 @@
  * built from. Another domain imports from here, never a file inside.
  */
 export { slug } from "./domain/format.ts";
+export { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./domain/track.ts";
 export type { Names } from "./names.ts";
-export { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./track.ts";
