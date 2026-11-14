@@ -13,8 +13,8 @@ import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
 import { bindInput } from "./domain/bind-input.ts";
 import { alwaysAsks, checkUpdates } from "./domain/permission-updates.ts";
 import type { Risk, RiskLevel } from "./domain/risk.ts";
+import type { DiskView } from "./domain/rule-risk.ts";
 import { requireHold } from "./hold.ts";
-import type { DiskView } from "./rule-risk.ts";
 
 export interface BrokerHooks {
   emit(sessionId: string, event: SessionEvent): void;

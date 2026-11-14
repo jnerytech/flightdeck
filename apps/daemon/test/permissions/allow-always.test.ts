@@ -3,7 +3,7 @@ import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { checkUpdates, parseSuggestions } from "../../src/permissions/domain/permission-updates.ts";
-import type { PathKind } from "../../src/permissions/rule-risk.ts";
+import type { PathKind } from "../../src/permissions/domain/rule-risk.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, poll, record, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
