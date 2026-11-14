@@ -1,5 +1,5 @@
 import type { SessionTrace, TraceNode } from "@flightdeck/protocol";
-import { parseJsonText } from "../kernel/index.ts";
+import { parseJsonText } from "../../kernel/index.ts";
 
 export interface TraceInput {
   claudeSessionId: string;
