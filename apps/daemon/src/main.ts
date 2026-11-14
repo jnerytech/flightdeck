@@ -1,9 +1,7 @@
 import { unwatchFile, watchFile } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
-import { Account } from "./account/account.ts";
-import { demoAccountReaders } from "./account/demo.ts";
-import { accountReaders } from "./account/readers.ts";
+import { Account, accountReaders, demoAccountReaders } from "./account/index.ts";
 import { createVault } from "./actions/wiring.ts";
 import { createActivity } from "./activity/wiring.ts";
 import { assistantService } from "./assistant/factory.ts";
