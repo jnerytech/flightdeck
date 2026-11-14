@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { pendingCount } from "../../src/features/needs-you/pending-count.ts";
+import { pendingCount } from "../../src/features/needs-you/domain/pending-count.ts";
 
 const NOW = Date.parse("2026-11-09T12:30:00.000Z");
 const HOUR = 60 * 60 * 1000;
