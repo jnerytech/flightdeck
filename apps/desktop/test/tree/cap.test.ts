@@ -11,7 +11,7 @@ import {
   PROJECT_CAP,
   projectKey,
   shownProjects,
-} from "../../src/features/shell/tree-fold.ts";
+} from "../../src/features/shell/domain/tree-fold.ts";
 import {
   loadTreeOpened,
   loadTreePinned,
