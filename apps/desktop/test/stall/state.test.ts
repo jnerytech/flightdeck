@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { type QuietState, quietAlerts, quietText } from "../../src/features/needs-you/quiet.ts";
+import {
+  type QuietState,
+  quietAlerts,
+  quietText,
+} from "../../src/features/needs-you/domain/quiet.ts";
 import { type HubRowState, hubRows } from "../../src/features/sessions/hub.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { AppStore } from "../../src/lib/app-store.ts";

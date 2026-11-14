@@ -30,8 +30,8 @@ import { type LoopAlert, loopPairKey } from "../messaging/index.ts";
 import { CONTINUATION } from "../sessions/index.ts";
 import { typing } from "../shortcuts/index.ts";
 import { type WatchAlert, watchAlerts } from "../watch/index.ts";
+import { type QuietAlert, quietAlerts, quietText } from "./domain/quiet.ts";
 import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "./entry-row.tsx";
-import { type QuietAlert, quietAlerts, quietText } from "./quiet.ts";
 import { WhileAway } from "./while-away.tsx";
 
 /** A key pressed on a control of the "While you were away" summary is that control's, not the list's. */
