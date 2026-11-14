@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diagnosticsText } from "../../src/features/settings/diagnostics-text.ts";
+import { diagnosticsText } from "../../src/features/settings/domain/diagnostics-text.ts";
 
 describe("log-app: the diagnostics a person pastes", () => {
   const input = {
