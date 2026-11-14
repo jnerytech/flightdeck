@@ -12,7 +12,7 @@ import {
   type SetupStep,
   setupProgress,
   setupSteps,
-} from "../../src/features/setup/setup-steps.ts";
+} from "../../src/features/setup/domain/setup-steps.ts";
 import type { Platform } from "../../src/platform/types.ts";
 
 const FEATURES = ["central", "workflows", "github", "costs"];
