@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Account } from "../../../daemon/src/account/account.ts";
-import type { AccountReaders, AuthStatus } from "../../../daemon/src/account/readers.ts";
+import type { AuthStatus } from "../../../daemon/src/account/domain/readings.ts";
+import type { AccountReaders } from "../../../daemon/src/account/readers.ts";
 import { Quota } from "../../../daemon/src/quota/quota.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
