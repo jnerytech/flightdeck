@@ -2,7 +2,7 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { Costs } from "../../src/costs/costs.ts";
-import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
+import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";
 import { readConfig } from "../../src/costs/statusline.ts";
 import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";

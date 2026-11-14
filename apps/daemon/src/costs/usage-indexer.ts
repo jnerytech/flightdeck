@@ -7,6 +7,7 @@ import { normalizeCwd } from "../history/index.ts";
 import { parseJsonOr, parseJsonText, ulid } from "../kernel/index.ts";
 // Not ../quota/index.ts: the entry pulls quota.ts, whose runtime types import this file (a cycle).
 import { localDay } from "../quota/usage.ts";
+import type { UsageTokens } from "./domain/usage-tokens.ts";
 
 /** Where the usage of a message came from. */
 export type UsageOrigin =
@@ -18,17 +19,7 @@ export type UsageOrigin =
   | "auto-approve"
   | "assistant";
 
-/** What a message used, as the price table reads it. */
-export interface UsageTokens {
-  model: string;
-  /** `standard` or `fast`. */
-  speed: string;
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite5m: number;
-  cacheWrite1h: number;
-}
+export type { UsageTokens };
 
 export interface UsageIndexerOptions {
   db: Database;

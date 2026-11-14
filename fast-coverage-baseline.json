@@ -8,7 +8,7 @@
   "apps/daemon/src/boardsync/map.ts",
   "apps/daemon/src/central/hooks-install.ts",
   "apps/daemon/src/central/session-meta.ts",
-  "apps/daemon/src/costs/pricing.ts",
+  "apps/daemon/src/costs/domain/pricing.ts",
   "apps/daemon/src/history/parser.ts",
   "apps/daemon/src/history/session-line.ts",
   "apps/daemon/src/history/transcript-text.ts",
