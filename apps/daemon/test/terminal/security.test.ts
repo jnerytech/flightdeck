@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
-import { loopbackBind, terminalEnabled } from "../../src/terminal/policy.ts";
+import { loopbackBind, terminalEnabled } from "../../src/terminal/domain/policy.ts";
 import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
 import { poll, tempDir, workspace } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";

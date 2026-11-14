@@ -816,8 +816,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/sessions/session-manager.ts",
-    "to": "apps/daemon/src/personas/prepare.ts",
-    "unresolvedTo": "../personas/prepare.ts",
+    "to": "apps/daemon/src/personas/domain/prepare.ts",
+    "unresolvedTo": "../personas/domain/prepare.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",

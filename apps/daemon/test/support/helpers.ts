@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EventEnvelope, SessionEvent } from "@flightdeck/protocol";
 import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
-import { type PersonaReader, preparePersonas } from "../../src/personas/prepare.ts";
+import { type PersonaReader, preparePersonas } from "../../src/personas/domain/prepare.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { SessionManager, type SessionManagerOptions } from "../../src/sessions/session-manager.ts";
 import { EventStore } from "../../src/store/event-store.ts";
