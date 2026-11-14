@@ -5,7 +5,7 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { periodRange, usd } from "../costs/index.ts";
-import { humanTokens, personRows } from "./roi-people.ts";
+import { humanTokens, personRows } from "./domain/roi-people.ts";
 
 const DASH = "—";
 const REFRESH_MS = 30_000;

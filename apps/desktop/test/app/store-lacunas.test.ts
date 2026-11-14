@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
-import { SHORTCUT_KEY } from "../../src/features/shortcuts/shortcut.ts";
+import { SHORTCUT_KEY } from "../../src/features/shortcuts/domain/shortcut.ts";
 import { AppStore, PALETTE_RECENTS_KEY } from "../../src/lib/app-store.ts";
 import { memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";

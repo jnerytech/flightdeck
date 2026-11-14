@@ -56,6 +56,8 @@ export interface HubRow {
   quietTool?: string | null;
   /** Issue #1736: a terminal session waits at a plan approval or a question (read by the daemon). */
   waiting?: "plan" | "question";
+  /** Issue #1751: the plan a `plan` wait asks approval of (the daemon cut it). */
+  waitingPlan?: string;
 }
 
 export interface HubFilter {
@@ -375,6 +377,9 @@ export function hubRows(state: HubRowState, t?: T): HubRow[] {
         // At a plan or a question the session needs the person, whatever its hooks last said (#1736).
         state: externalState(s),
         ...(s.waiting && s.status !== "ended" ? { waiting: s.waiting } : {}),
+        ...(s.waiting === "plan" && s.waitingPlan && s.status !== "ended"
+          ? { waitingPlan: s.waitingPlan }
+          : {}),
         controllable: s.controllable,
         lastActivity: s.lastEventAt,
         summary: s.summary ?? null,

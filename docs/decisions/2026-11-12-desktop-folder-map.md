@@ -134,12 +134,12 @@ prefix. Tests move with their file in the same PR.
 | `issues.ts` | `features/issues/` (**moved**) |
 | `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` (**moved**) |
 | `github-session.ts` | `features/hosts/` (the GitHub panel; **moved**, `githubSignedIn` and `GithubHost` behind the hosts index) |
-| `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/` (**moved**; `board-shortcut.ts` stays with the board) |
+| `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/domain/` (**moved**; `board-shortcut.ts` stays with the board) |
 | `palette.ts` | `features/palette/` (**moved**) |
 | `project-*.ts` | `features/projects/domain/` (**moved**: `project-cards`, `project-keys`, `project-suggestions` and `project-tree` as `project-tree-model.ts`, because `project-tree.tsx` already lives in the folder; the index adds the cards, the keys and the tree model's public names) |
 | `quota.ts`, `quota-glance.ts` | `features/quota/` (**moved**; the panel, the shell bars, the costs quota charts and the board bulk actions read them through the index) |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` (**moved**: `recap-preview.ts`, read only by the recap panel in the same folder; no `summary*.ts` file is left in `lib/`) |
-| `roi*.ts` | `features/roi/` (**moved**; `RoiSettingsError` is exported by the index for `features/clients`) |
+| `roi*.ts` | `features/roi/domain/` (**moved**, the pure `roi`, `roi-table`, `roi-people` and `roi-settings` rules; `RoiSettingsError` is exported by the index for `features/clients`) |
 | `snippets.ts` | `features/snippets/`: **moved** (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
 | `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` (**moved**; the pure rules `reveal-tab`, `tab-badge`, `tab-scope`, `tab-shortcut` and `tab-switcher` sit in `features/tabs/domain/` (#1601), `tabs.ts` (clock and timer), `tab-facts.ts` (icons) and the components stay outside it; the shell and hosts import by file to avoid an index cycle, settings reads the `TabOrder` type through the index. These deep imports break the "other domains import only the index" rule on purpose: `features/shell/nav-active.ts` (`domain/tab-badge.ts`), `features/shell/workspace.ts` and `features/hosts/host-tabs.ts` (`tabs.ts`). The tab strip imports the shell and hosts indexes, so an index import back would close shell, then `tabs/index`, then shell, and the shell loaded first would throw `NAV_ICONS` before initialization (#2266). Undo them only after `tab-facts` stops reading the shell and hosts indexes at load time) |
 | `teleport.ts` | `features/teleport/`: **moved** |

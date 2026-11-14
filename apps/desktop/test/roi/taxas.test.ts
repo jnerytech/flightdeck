@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ROI_KEY, RoiSettings } from "../../src/features/roi/roi-settings.ts";
+import { ROI_KEY, RoiSettings } from "../../src/features/roi/domain/roi-settings.ts";
 
 function setup() {
   const store = new Map<string, string>();

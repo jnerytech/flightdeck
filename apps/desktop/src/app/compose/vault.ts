@@ -16,8 +16,8 @@ import {
 import { type ClientBudgetsSlice, wireClientBudgets } from "../../features/costs/index.ts";
 import type { InboxSlice } from "../../features/inbox/index.ts";
 import type { ProjectsSlice } from "../../features/projects/index.ts";
+import { RoiSettings } from "../../features/roi/domain/roi-settings.ts";
 import { type RoiSlice, wireRoi } from "../../features/roi/index.ts";
-import { RoiSettings } from "../../features/roi/roi-settings.ts";
 import { hubRows } from "../../features/sessions/index.ts";
 import {
   Vault,

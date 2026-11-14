@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Project, RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
-import { EMPTY_PERIOD } from "../../src/features/roi/roi.ts";
+import { EMPTY_PERIOD } from "../../src/features/roi/domain/roi.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
@@ -13,7 +13,7 @@ const { AppStore } = await import("../../src/lib/app-store.ts");
 const { RoiTable } = await import("../../src/features/roi/roi-table.tsx");
 const { RoiCard } = await import("../../src/features/roi/roi-card.tsx");
 const { RoiSettingsPanel } = await import("../../src/features/roi/roi-settings-panel.tsx");
-const { RoiSettings } = await import("../../src/features/roi/roi-settings.ts");
+const { RoiSettings } = await import("../../src/features/roi/domain/roi-settings.ts");
 
 afterEach(cleanup);
 const settle = waiter(5000);

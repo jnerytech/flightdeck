@@ -1,4 +1,4 @@
-import type { Key } from "../../i18n/index.ts";
+import type { Key } from "../../../i18n/index.ts";
 
 /** What a shortcut does. */
 export type ShortcutAction =

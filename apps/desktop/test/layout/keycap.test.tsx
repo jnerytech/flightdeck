@@ -7,7 +7,7 @@ registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { Keycap, ShortcutKeys } = await import("../../src/features/shortcuts/keycap.tsx");
-const { keysText } = await import("../../src/features/shortcuts/shortcuts.ts");
+const { keysText } = await import("../../src/features/shortcuts/domain/shortcuts.ts");
 
 afterEach(cleanup);
 
