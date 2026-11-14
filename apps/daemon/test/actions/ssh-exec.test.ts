@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { envInput, remoteCommand } from "../../src/actions/ssh-command.ts";
+import { envInput, remoteCommand } from "../../src/actions/domain/ssh-command.ts";
 import { processExec } from "../../src/ssh/adapters/ssh-process.ts";
 import { type ExecSsh, SshConnector } from "../../src/ssh/connect.ts";
 import { HostKeys } from "../../src/ssh/hostkey.ts";

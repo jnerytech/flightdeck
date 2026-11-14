@@ -6,4 +6,4 @@
 
 export type { Actions } from "./actions.ts";
 export { runActionCli, runSnippetCli } from "./cli.ts";
-export { envInput, remoteCommand } from "./ssh-command.ts";
+export { envInput, remoteCommand } from "./domain/ssh-command.ts";
