@@ -2,7 +2,6 @@
  * Phase 30: a short summary of a session, built from its transcript with no model call: what was
  * asked, what was done, the files touched, the cost and the open question.
  */
-import type { Database } from "bun:sqlite";
 import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
 import { promptText } from "../history/index.ts";
 import { parseJsonText } from "../kernel/index.ts";
@@ -104,14 +103,4 @@ export function buildSummary(input: SummaryInput): SessionRecap {
     state: input.state,
     source: "transcript",
   };
-}
-
-/** The estimated cost of a session, from its usage entries; `null` without rows. */
-export function sessionCost(db: Database, claudeSessionId: string): number | null {
-  const row = db
-    .query<{ cost: number | null }, [string]>(
-      "SELECT SUM(cost_usd) AS cost FROM usage_entries WHERE claude_session_id = ?",
-    )
-    .get(claudeSessionId);
-  return row?.cost ?? null;
 }
