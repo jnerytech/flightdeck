@@ -263,11 +263,16 @@ export async function uninstallService(ctx: ServiceContext): Promise<ServiceResu
     const remove = linux ? [`rm ${unitPath(ctx)}`] : [];
     return { output: ["# commands:", ...commands.map(display), ...remove], instructions: [] };
   }
-  await runChecked(ctx, commands[0] as string[]);
+  // A failed disable (often a unit already disabled or not loaded) still removes the unit (#2895).
+  const disableError = await runChecked(ctx, commands[0] as string[]).then(
+    () => null,
+    (error: unknown) => error,
+  );
   if (linux) {
     await ctx.removeFile(unitPath(ctx));
     await runChecked(ctx, commands[1] as string[]);
   }
+  if (disableError) throw disableError;
   return { output: ["service removed"], instructions: [] };
 }
 
