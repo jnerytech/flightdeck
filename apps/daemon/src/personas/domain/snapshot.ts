@@ -1,5 +1,5 @@
 import type { PersonaFields } from "@flightdeck/protocol";
-import type { PersonaDef } from "./model.ts";
+import type { PersonaDef } from "../model.ts";
 
 /**
  * What a session keeps of its persona: the body that is appended to the system prompt, the model,

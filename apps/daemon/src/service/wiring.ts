@@ -1,7 +1,7 @@
 import { present } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
+import type { ServiceContext } from "./domain/install.ts";
 import { appServiceInstall } from "./from-app.ts";
-import type { ServiceContext } from "./install.ts";
 
 /** What the app's "install as a service" action is built from. */
 export interface ServiceInstallDeps {

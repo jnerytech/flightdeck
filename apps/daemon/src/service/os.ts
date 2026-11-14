@@ -3,7 +3,7 @@ import { tmpdir, userInfo } from "node:os";
 import { dirname } from "node:path";
 import { userHome } from "../config.ts";
 import { type Exec, spawnExec, whichOnPath } from "../kernel/index.ts";
-import { daemonCommand, type ServiceContext } from "./install.ts";
+import { daemonCommand, type ServiceContext } from "./domain/install.ts";
 
 /** The OS programs that install, start or stop services. */
 const CONTROLLERS = new Set(["systemctl", "schtasks", "loginctl", "systemd-run"]);

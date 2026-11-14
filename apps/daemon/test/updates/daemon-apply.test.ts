@@ -6,7 +6,11 @@ import { signForTest, TEST_PUBLIC_KEY } from "../../../../scripts/test/minisign.
 import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
-import { type ServiceContext, systemdUnit, windowsTaskXml } from "../../src/service/install.ts";
+import {
+  type ServiceContext,
+  systemdUnit,
+  windowsTaskXml,
+} from "../../src/service/domain/install.ts";
 import { assetKey, DaemonUpdater } from "../../src/updates/apply.ts";
 import { updatePublicKey } from "../../src/updates/public-key.ts";
 import { newManager, tempDir } from "../support/helpers.ts";

@@ -23,7 +23,7 @@ import {
   serviceCommand,
   systemdUnit,
   windowsTaskXml,
-} from "../../src/service/install.ts";
+} from "../../src/service/domain/install.ts";
 import { killProcess, processPath } from "../../src/service/os.ts";
 import {
   compareVersions,
