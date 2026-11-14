@@ -33,10 +33,12 @@ const LAUNCHES = [
   /\bBun\s*\.\s*spawn(Sync)?\b/g,
   /\bBun\s*\[/g,
   /\bBun\s*\.\s*\$/g,
-  // The name follows the brace, a comma or a space: a lookbehind, so the group before it does not backtrack over the same characters.
-  /\{[^}]+(?<=[{,\s])(spawn|spawnSync)[,\s}:][^}]*\}\s*=\s*Bun\b/g,
   /\bimport\s*\{[^}]*[{,\s](spawn|spawnSync|\$)[,\s}][^}]*\}\s*from\s*["']bun["']/g,
 ];
+/** A destructuring of `Bun`: the text between the braces is checked for `spawn` by `SPAWN_NAME` (two linear steps, no backtracking). */
+const DESTRUCTURED_BUN = /\{([^}]*)\}\s*=\s*Bun\b/g;
+/** `spawn` or `spawnSync` as a whole name, after a brace, a comma or a space, and before a comma, a space or a colon. */
+const SPAWN_NAME = /[{,\s]spawn(?:Sync)?[,\s:]/;
 const COMMENT_LINE = /^\s*(\/\/|\*|\/\*)/;
 /** Comment text on a code line: a `/* ... *\/` span, or a `//` tail that follows a space (a url's `//` does not). */
 const COMMENT_SPAN = /(?:\/\*.*?\*\/)|(?:(?:^|\s)\/\/.*$)/g;
@@ -51,6 +53,7 @@ export function spawnCounts(files: { path: string; text: string }[]): Record<str
       if (COMMENT_LINE.test(line) && !/\*\/\s*\S/.test(line)) continue;
       const code = line.replace(COMMENT_SPAN, " ");
       for (const re of LAUNCHES) n += [...code.matchAll(re)].length;
+      for (const [, body] of code.matchAll(DESTRUCTURED_BUN)) if (SPAWN_NAME.test(body)) n++;
     }
     if (n > 0) counts[path] = n;
   }
