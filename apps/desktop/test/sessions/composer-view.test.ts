@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { commandItemsOf } from "../../src/features/sessions/command-menu.ts";
+import { commandItemsOf } from "../../src/features/sessions/domain/command-menu.ts";
 import { queueStep, submitAction } from "../../src/features/sessions/domain/composer-queue.ts";
 import {
   missedAfter,
