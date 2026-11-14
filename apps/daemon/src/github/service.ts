@@ -7,7 +7,8 @@ import type { Board } from "../board/board.ts";
 import { type GitRunner, spawnGit } from "../projects/index.ts";
 import { runGh } from "./adapters/gh.ts";
 import { type DeviceCode, GithubLogin } from "./adapters/login.ts";
-import type { GhRunner } from "./gh-runner.ts";
+import type { GhRunner } from "./domain/gh-runner.ts";
+import { type GithubStatus, githubStatus } from "./domain/status.ts";
 import { Github, type GithubRepo } from "./github.ts";
 import {
   type GithubStartRequest,
@@ -15,7 +16,6 @@ import {
   type IssueCards,
   startFromGithub,
 } from "./start.ts";
-import { type GithubStatus, githubStatus } from "./status.ts";
 
 export interface GithubServiceOptions {
   gh?: GhRunner;

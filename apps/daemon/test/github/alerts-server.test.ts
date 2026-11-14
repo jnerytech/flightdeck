@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { AlertList } from "../../src/github/alerts.ts";
+import type { AlertList } from "../../src/github/domain/alerts.ts";
 import { startServer } from "../../src/server.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 import { workflowCard } from "../support/workflow-helpers.ts";

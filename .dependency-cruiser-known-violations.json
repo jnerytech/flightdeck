@@ -937,8 +937,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/boardsync/github.ts",
-    "to": "apps/daemon/src/github/gh-runner.ts",
-    "unresolvedTo": "../github/gh-runner.ts",
+    "to": "apps/daemon/src/github/domain/gh-runner.ts",
+    "unresolvedTo": "../github/domain/gh-runner.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
@@ -948,8 +948,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/boardsync/github.ts",
-    "to": "apps/daemon/src/github/status.ts",
-    "unresolvedTo": "../github/status.ts",
+    "to": "apps/daemon/src/github/domain/status.ts",
+    "unresolvedTo": "../github/domain/status.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",

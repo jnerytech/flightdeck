@@ -29,7 +29,7 @@ import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
 import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
-import type { GhRunner } from "../../daemon/src/github/gh-runner.ts";
+import type { GhRunner } from "../../daemon/src/github/domain/gh-runner.ts";
 import { GithubService } from "../../daemon/src/github/service.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Issues } from "../../daemon/src/issues/issues.ts";

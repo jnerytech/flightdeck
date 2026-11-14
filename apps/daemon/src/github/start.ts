@@ -11,7 +11,7 @@ import { git } from "../git/index.ts";
 import { FlightdeckError, samePath, UNTRUSTED_MARK } from "../kernel/index.ts";
 import { allowedRoot, cloneRepo, type GitRunner } from "../projects/index.ts";
 import { githubCoords } from "./adapters/remote.ts";
-import type { GhRunner } from "./gh-runner.ts";
+import type { GhRunner } from "./domain/gh-runner.ts";
 import { checkRepo, Github } from "./github.ts";
 
 export interface GithubStartRequest {
