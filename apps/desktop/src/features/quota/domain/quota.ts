@@ -1,6 +1,6 @@
 import type { AccountState, QuotaHistory, QuotaState, QuotaWindow } from "@flightdeck/protocol";
-import { formatAgo } from "../../i18n/format.ts";
-import type { Key, T } from "../../i18n/index.ts";
+import { formatAgo } from "../../../i18n/format.ts";
+import type { Key, T } from "../../../i18n/index.ts";
 
 /** How many hours of samples each window's chart shows. */
 export const HISTORY_HOURS: Record<string, number> = { five_hour: 24, seven_day: 168 };
