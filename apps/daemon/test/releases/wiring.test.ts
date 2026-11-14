@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ReleaseFeed } from "../../src/releases/releases.ts";
+import { ReleaseFeed } from "../../src/releases/domain/releases.ts";
 import { createReleases } from "../../src/releases/wiring.ts";
 
 /** The module hands the server the feed of published releases the "what's new" card reads. */

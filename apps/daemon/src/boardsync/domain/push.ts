@@ -1,10 +1,10 @@
 /** Phase 38: switching push on for a board. Pushing itself happens in the engine's sync. */
-import { FlightdeckError } from "../kernel/index.ts";
-import type { BoardProvider } from "./domain/provider.ts";
-import type { BoardLink, BoardSyncStore } from "./store.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
+import type { BoardLink, BoardLinks } from "./links.ts";
+import type { BoardProvider } from "./provider.ts";
 
 export async function setPush(
-  deps: { store: BoardSyncStore; provider: BoardProvider },
+  deps: { store: Pick<BoardLinks, "get" | "update">; provider: BoardProvider },
   projectId: string,
   push: boolean,
   confirm: boolean,

@@ -1,5 +1,15 @@
-import type { InterruptedSession } from "@flightdeck/protocol";
-import type { EventStore } from "../store/index.ts";
+import type {
+  EventEnvelope,
+  InterruptedSession,
+  SessionStatus,
+  SessionSummary,
+} from "@flightdeck/protocol";
+
+/** What the offer reads from the store: sessions by status and one session's events. */
+export interface InterruptedSource {
+  listSessionsByStatus(status: SessionStatus): SessionSummary[];
+  eventsSince(sessionId: string): EventEnvelope[];
+}
 
 /** The reason a restart gives the sessions it interrupts: a code (the app words it), not a sentence. */
 export const RESTART_REASON = "daemon_restarted";
@@ -16,10 +26,10 @@ const OFFER_WINDOW_MS = 24 * 3_600_000;
 
 /** The sessions a daemon restart interrupted in the last 24 hours and nobody resumed since. */
 export function interruptedSessions(
-  store: EventStore,
-  options: { now?: number; withinMs?: number } = {},
+  store: InterruptedSource,
+  options: { now: number; withinMs?: number },
 ): InterruptedSession[] {
-  const now = options.now ?? Date.now();
+  const { now } = options;
   const within = options.withinMs ?? OFFER_WINDOW_MS;
   const found: InterruptedSession[] = [];
   // In the order they were started (a team's coordinator comes before its workers); only what is

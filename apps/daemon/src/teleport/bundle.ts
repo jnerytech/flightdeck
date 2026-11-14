@@ -15,8 +15,9 @@ import { copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "
 import { dirname, join, normalize } from "node:path";
 import { gitLimitedFor } from "../git/index.ts";
 import { FlightdeckError, HEAD, refArg } from "../kernel/index.ts";
+import { secretLines, TELEPORT_MAX_BYTES } from "./domain/secrets.ts";
 import { git, must, SAFE, TIMEOUT_MS } from "./git.ts";
-import { secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";
+import { EVENT_LOOP_PACE } from "./pace.ts";
 
 export interface CodeBundleInput {
   /** The session's folder: anywhere inside the repository. */
@@ -342,6 +343,6 @@ async function bundle(input: CodeBundleInput): Promise<CodeBundle> {
     baseSha,
     ahead,
     changed: names.split("\0").filter(Boolean).length,
-    secrets: await secretLines(added, input.scan),
+    secrets: await secretLines(added, input.scan, EVENT_LOOP_PACE),
   };
 }

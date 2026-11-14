@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { setPush } from "../../src/boardsync/push.ts";
+import { setPush } from "../../src/boardsync/domain/push.ts";
 import { item } from "./contract.ts";
 import { syncSetup } from "./setup.ts";
 
