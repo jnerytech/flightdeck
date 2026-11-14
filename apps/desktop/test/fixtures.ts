@@ -17,8 +17,8 @@ import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
 import { Automations } from "../../daemon/src/automations/automations.ts";
 import type { BgService } from "../../daemon/src/bg/service.ts";
 import { Board } from "../../daemon/src/board/board.ts";
+import { BoardSyncLoop } from "../../daemon/src/boardsync/domain/loop.ts";
 import { BoardSync } from "../../daemon/src/boardsync/engine.ts";
-import { BoardSyncLoop } from "../../daemon/src/boardsync/loop.ts";
 import { BoardSyncService } from "../../daemon/src/boardsync/service.ts";
 import { BoardSyncStore } from "../../daemon/src/boardsync/store.ts";
 import { Central } from "../../daemon/src/central/central.ts";
@@ -479,6 +479,7 @@ export function daemon(
           engine,
           store: boardSyncStore,
           timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
+          clock: Date.now,
         });
         cleanups.push(() => loop.stop());
         return new BoardSyncService({

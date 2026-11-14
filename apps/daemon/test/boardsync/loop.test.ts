@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import type { SyncReport } from "../../src/boardsync/engine.ts";
 import {
   BoardSyncLoop,
   DEFAULT_INTERVAL_MS,
   MAX_BACKOFF_MS,
   MAX_INTERVAL_MS,
   MIN_INTERVAL_MS,
-} from "../../src/boardsync/loop.ts";
+} from "../../src/boardsync/domain/loop.ts";
+import type { SyncReport } from "../../src/boardsync/domain/report.ts";
 import { manualTime } from "../support/time-helpers.ts";
 import { syncSetup } from "./setup.ts";
 

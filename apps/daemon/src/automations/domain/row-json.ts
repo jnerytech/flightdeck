@@ -1,5 +1,5 @@
 import { AutomationAction, AutomationTrigger } from "@flightdeck/protocol";
-import { parseJsonWith } from "../kernel/index.ts";
+import { parseJsonWith } from "../../kernel/index.ts";
 
 /** The JSON columns of an automation row, read through the protocol's schemas (#1609). */
 
