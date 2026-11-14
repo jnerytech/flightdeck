@@ -15,7 +15,7 @@ import {
   inboxTarget,
   unreadCount,
   unreadRows,
-} from "./inbox.ts";
+} from "./domain/inbox.ts";
 import { NotificationCenter, type RowRequest, UnreadBadge } from "./notification-center.tsx";
 
 /** Requests that are answered in full where they are shown (a question, a plan), never from a row. */

@@ -7,8 +7,8 @@ import { requestLink } from "@/features/permissions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
+import { externalRequestNotification, externalWaitNotification } from "../inbox/domain/notify.ts";
 import type { InboxSlice } from "../inbox/index.ts";
-import { externalRequestNotification, externalWaitNotification } from "../inbox/notify.ts";
 import { sessionKey } from "./domain/session-key.ts";
 
 type ExternalState = Pick<AppState, "hosts" | "externals" | "meta" | "externalRequests" | "hub">;

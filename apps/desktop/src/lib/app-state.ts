@@ -65,8 +65,7 @@ import { initialSettingsState, type SettingsSliceState } from "../features/setti
 import type { SetupProbe } from "../features/setup/index.ts";
 import { initialSnippetsState, type SnippetsSliceState } from "../features/snippets/index.ts";
 import { initialSshState, type SshSliceState } from "../features/ssh/index.ts";
-import type { ClosingTerminal } from "../features/terminal/index.ts";
-import type { TerminalEnv } from "../features/terminal/terminal.ts";
+import type { ClosingTerminal, TerminalEnv } from "../features/terminal/index.ts";
 import {
   type SecretMeta,
   type UsageEntry,
