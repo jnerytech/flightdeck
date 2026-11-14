@@ -3,7 +3,7 @@
  * work screens and the client of each project. Another domain imports from here, never a file inside.
  */
 
-export { costByClient, loadCostsSummary, mergeSummaries } from "./client-costs.ts";
+export { costByClient, loadCostsSummary, mergeSummaries } from "./domain/client-costs.ts";
 export { knownProjects } from "./domain/client-rules-model.ts";
 export {
   ALL_CLIENTS,

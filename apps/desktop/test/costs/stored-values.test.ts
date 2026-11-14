@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { emptySummary } from "../../src/features/clients/client-costs.ts";
+import { emptySummary } from "../../src/features/clients/domain/client-costs.ts";
 import {
   type ClientBudgetsCore,
   ClientBudgetsSlice,

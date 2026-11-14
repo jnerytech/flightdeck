@@ -6,7 +6,7 @@ import {
   type HostSummary,
   loadCostsSummary,
   mergeSummaries,
-} from "../../src/features/clients/client-costs.ts";
+} from "../../src/features/clients/domain/client-costs.ts";
 import { ALL_CLIENTS, ClientScope } from "../../src/features/clients/domain/client-scope.ts";
 import { type Client, UNASSIGNED } from "../../src/features/clients/domain/clients.ts";
 

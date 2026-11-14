@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card, CostsSummary, Project } from "@flightdeck/protocol";
-import { emptySummary } from "../../src/features/clients/client-costs.ts";
+import { emptySummary } from "../../src/features/clients/domain/client-costs.ts";
 import {
   boardLandingOrder,
   buildProjectCards,
