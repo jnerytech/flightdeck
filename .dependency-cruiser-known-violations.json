@@ -1443,7 +1443,7 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/messaging/endpoints.ts",
-    "to": "apps/daemon/src/history/session-line.ts",
+    "to": "apps/daemon/src/history/domain/session-line.ts",
     "unresolvedTo": "../history/session-line.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
@@ -2004,7 +2004,7 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/server/context.ts",
-    "to": "apps/daemon/src/history/session-line.ts",
+    "to": "apps/daemon/src/history/domain/session-line.ts",
     "unresolvedTo": "../history/session-line.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
@@ -2279,7 +2279,7 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/server/handlers/session.ts",
-    "to": "apps/daemon/src/history/session-line.ts",
+    "to": "apps/daemon/src/history/domain/session-line.ts",
     "unresolvedTo": "../../history/session-line.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {

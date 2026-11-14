@@ -5,10 +5,10 @@ import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
+import { lastTool, requestLine } from "./domain/session-line.ts";
 import { CWD_CONDITION, normalizeCwd, trimSlashes } from "./folder.ts";
 import { type HistoryRecord, lastTitle, parseLines } from "./parser.ts";
 import { fts5Available, type SearchHit, type SearchQuery, searchMessages } from "./search.ts";
-import { lastTool, requestLine } from "./session-line.ts";
 import { fileLines, type ToolDetail, toolDetail } from "./tool-detail.ts";
 import { promptText } from "./transcript-text.ts";
 
