@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type FileChange, measureDrift, parseNumstat } from "../../src/watch/drift.ts";
+import { type FileChange, measureDrift, parseNumstat } from "../../src/watch/domain/drift.ts";
 import { heldSummary } from "../../src/watch/fix.ts";
 import { PrWatch } from "../../src/watch/service.ts";
 import { git } from "../support/board-helpers.ts";
