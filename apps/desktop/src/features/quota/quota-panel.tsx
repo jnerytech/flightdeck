@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Grid } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
-import { HISTORY_HOURS, projectionText, quotaBars, quotaGroups, SHOWN } from "./quota.ts";
+import { HISTORY_HOURS, projectionText, quotaBars, quotaGroups, SHOWN } from "./domain/quota.ts";
 import { QuotaGuard } from "./quota-guard.tsx";
 
 // The native meter, drawn with the state tokens (WebKit/Blink and Gecko pseudo-elements).
