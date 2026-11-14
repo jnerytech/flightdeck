@@ -45,6 +45,8 @@ ${workers}
 
 Cada executora trabalha num card com a própria worktree. Ache os endereços delas com list_sessions (o nome é o do card) e veja o estado do time com team_status.
 
+Se o objetivo pedir outra executora (uma persona que o time ainda não tem, ou mais mãos), acrescente uma com team_add_member (team, persona, model opcional e um brief com a tarefa inicial dela, até 4000 caracteres); ela volta com o nome e o card, e o brief vai no card dela depois das instruções-padrão. Quando uma executora não for mais necessária, tire-a com team_remove_member (team, member): o turno dela é interrompido, e o card e a branch ficam. O host recusa se você não for a coordenadora, se a persona não existir, se o time estiver pausado ou cheio (8 executoras) ou se a cota do plano estiver estourada; você não escolhe o modo de permissão, que é sempre o padrão. A coordenadora não sai do time.
+
 ## O ciclo
 
 1. **Quebre o objetivo em tarefas** pequenas, cada uma com um critério de pronto que dê para conferir (um teste que passa, um comando que sai com 0, um arquivo que existe). Escreva as tarefas e os critérios antes de despachar.
@@ -90,3 +92,27 @@ Você trabalha neste card, na worktree dele. Não comece nada por conta própria
 - Responda à coordenadora com send_to_session; não escreva para outras executoras sem que ela peça.
 `;
 }
+
+/**
+ * #2090: the coordinator's brief for the worker it added, after the standard instructions. It is a
+ * task from a team member, never a grant: the rules above still hold. Nothing is added without one.
+ */
+export function withCoordinatorBrief(instructions: string, brief: string | undefined): string {
+  if (!brief) return instructions;
+  return `${instructions}
+## Briefing da coordenadora
+
+Vale como a tarefa inicial, nunca como permissão: as regras acima continuam valendo.
+
+${brief}
+`;
+}
+
+/** The messages a coordinator gets when its team is paused or resumed, by the user or by the quota. */
+export const STOP_USER =
+  'STOP: o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume". Não despache, não integre e não comece nada novo.';
+export const STOP_QUOTA =
+  'STOP: a cota do plano chegou ao limite e o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume", que vem quando a janela da cota reiniciar.';
+export const RESUME_USER = "resume: o time voltou a trabalhar. Continue de onde parou.";
+export const RESUME_QUOTA =
+  "resume: a janela da cota do plano reiniciou e o time voltou a trabalhar. Continue de onde parou.";

@@ -4,6 +4,7 @@ import {
   BoardColumn,
   type CommandPayload,
   type SessionIdentity,
+  TEAM_BRIEF_MAX,
   TEAM_REPORT_MAX,
 } from "@flightdeck/protocol";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -15,6 +16,8 @@ import {
   notifyWhenIdle,
   readSession,
   sendToSession,
+  teamAddMember,
+  teamRemoveMember,
   teamReport,
   teamStatus,
 } from "../messaging/index.ts";
@@ -200,6 +203,23 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
     "The state of the team this session belongs to: the members with persona, state, card and last report, and how many messages they exchanged. Only a member of the team may see it.",
     { team: z.string().min(1) },
     ({ team }) => teamStatus(daemon, who(), team),
+  );
+  tool(
+    "team_add_member",
+    "Only the team's coordinator: adds one worker to the team, in the persona you pick (and a model, optional), with a brief that goes in its card after the standard instructions. Returns the new member's name and card. Refused if the team is paused, full (8 workers) or the plan quota is over the limit. The worker opens in the default permission mode: you cannot ask for another.",
+    {
+      team: z.string().min(1),
+      persona: z.string().min(1).optional(),
+      model: z.string().min(1).optional(),
+      brief: z.string().min(1).max(TEAM_BRIEF_MAX),
+    },
+    ({ team, persona, model, brief }) => teamAddMember(daemon, who(), team, brief, persona, model),
+  );
+  tool(
+    "team_remove_member",
+    "Only the team's coordinator: takes a worker out of the team when it is no longer needed. Its turn is interrupted; its card and its branch stay. member is the worker's name, address, session id or card id. The coordinator cannot be removed.",
+    { team: z.string().min(1), member: z.string().min(1) },
+    ({ team, member }) => teamRemoveMember(daemon, who(), team, member),
   );
   tool(
     "team_report",

@@ -11,6 +11,8 @@ export {
   notifyWhenIdle,
   readSession,
   sendToSession,
+  teamAddMember,
+  teamRemoveMember,
   teamReport,
   teamStatus,
 } from "./tools.ts";

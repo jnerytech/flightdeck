@@ -7,14 +7,14 @@ import { useSwitcherHosts } from "@/features/hosts/index.ts";
 import type { HubRowState } from "@/features/sessions/index.ts";
 import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { NewProject } from "./new-project.tsx";
-import { ProjectCardTile } from "./project-card-tile.tsx";
 import {
   filterProjectCards,
   type ProjectCard,
   type ProjectSort,
   sortProjectCards,
-} from "./project-cards.ts";
+} from "./domain/project-cards.ts";
+import { NewProject } from "./new-project.tsx";
+import { ProjectCardTile } from "./project-card-tile.tsx";
 import { useProjectCards } from "./use-project-cards.ts";
 
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
