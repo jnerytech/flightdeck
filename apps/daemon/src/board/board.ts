@@ -13,7 +13,7 @@ import type {
 } from "@flightdeck/protocol";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { PrComment } from "../pr/index.ts";
-import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
+import { type DoneVia, forgetDone, recordDone } from "../roi/index.ts";
 import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
