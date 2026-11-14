@@ -8,7 +8,7 @@ export function createReleases() {
     server: {
       releases: new ReleaseFeed({
         url: RELEASES_URL,
-        fetch: (url, init) => fetch(url, init),
+        fetch: globalThis.fetch.bind(globalThis),
         now: Date.now,
       }),
     },
