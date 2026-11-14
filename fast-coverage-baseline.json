@@ -47,7 +47,7 @@
   "apps/daemon/src/store/migrations/phases-11-20.ts",
   "apps/daemon/src/store/migrations/phases-21-40.ts",
   "apps/daemon/src/summary/summary.ts",
-  "apps/daemon/src/teams/instructions.ts",
+  "apps/daemon/src/teams/domain/instructions.ts",
   "apps/daemon/src/telemetry/otlp.ts",
   "apps/daemon/src/templates/domain/builtin.ts",
   "apps/daemon/src/terminal/policy.ts",
