@@ -6,7 +6,11 @@ import { loadConfig } from "../../src/config.ts";
 import { acquireLock } from "../../src/kernel/lock.ts";
 import { type CliDeps, parseArgs, runCli, startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
-import { type ServiceContext, systemdUnit, windowsTaskXml } from "../../src/service/install.ts";
+import {
+  type ServiceContext,
+  systemdUnit,
+  windowsTaskXml,
+} from "../../src/service/domain/install.ts";
 import { osServiceContext } from "../../src/service/os.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 
