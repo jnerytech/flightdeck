@@ -1,18 +1,18 @@
 import { ALL_CLIENTS, selectedClient, tagsFirst, UNASSIGNED } from "@/features/clients/index.ts";
 import { basename, isInside } from "@/shared/lib/index.ts";
-import type { T } from "../../i18n/index.ts";
-import { type AppState, sessionKey } from "../../lib/app-store.ts";
-import type { Route } from "../../lib/router.ts";
-import { anyHostHas, hasFeature } from "../../lib/version.ts";
-import { hostStatusView } from "../hosts/index.ts";
+import type { T } from "../../../i18n/index.ts";
+import { type AppState, sessionKey } from "../../../lib/app-store.ts";
+import type { Route } from "../../../lib/router.ts";
+import { anyHostHas, hasFeature } from "../../../lib/version.ts";
+import { hostStatusView } from "../../hosts/index.ts";
 import {
   type SessionViewName as SessionView,
   sessionLabel,
   VIEW_LABEL,
-} from "../sessions/index.ts";
-import { keysLabel, type ShortcutAction, shortcutOf } from "../shortcuts/index.ts";
-import type { AppSnippet } from "../snippets/index.ts";
-import type { TerminalTarget } from "../terminal/index.ts";
+} from "../../sessions/index.ts";
+import { keysLabel, type ShortcutAction, shortcutOf } from "../../shortcuts/index.ts";
+import type { AppSnippet } from "../../snippets/index.ts";
+import type { TerminalTarget } from "../../terminal/index.ts";
 
 /** Where an entry of the Ctrl+K palette leads. */
 export type PaletteTarget =

@@ -135,7 +135,7 @@ prefix. Tests move with their file in the same PR.
 | `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` (**moved**) |
 | `github-session.ts` | `features/hosts/` (the GitHub panel; **moved**, `githubSignedIn` and `GithubHost` behind the hosts index) |
 | `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/domain/` (**moved**; `board-shortcut.ts` stays with the board) |
-| `palette.ts` | `features/palette/` (**moved**) |
+| `palette.ts` | `features/palette/` (**moved**; the pure rules `palette` and `palette-route` sit in `features/palette/domain/` (#1601), the store, the section and the global search stay outside it) |
 | `project-*.ts` | `features/projects/domain/` (**moved**: `project-cards`, `project-keys`, `project-suggestions` and `project-tree` as `project-tree-model.ts`, because `project-tree.tsx` already lives in the folder; the index adds the cards, the keys and the tree model's public names) |
 | `quota.ts`, `quota-glance.ts` | `features/quota/domain/` (**moved**, the pure window, bar and glance rules; the panel, the shell bars, the costs quota charts and the board bulk actions read them through the index) |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` (**moved**: `recap-preview.ts`, read only by the recap panel in the same folder; no `summary*.ts` file is left in `lib/`) |

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionNameInfo } from "@flightdeck/protocol";
-import { paletteSections } from "../../src/features/palette/palette.ts";
+import { paletteSections } from "../../src/features/palette/domain/palette.ts";
 import { sessionLabel } from "../../src/features/sessions/domain/session-label.ts";
 import { hubRows } from "../../src/features/sessions/hub.ts";
 import { translator } from "../../src/i18n/index.ts";
