@@ -6,9 +6,10 @@
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DaemonManifest } from "@flightdeck/protocol";
+import { RUNNING_COMPILED } from "../config.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { runChecked, type ServiceContext, serviceCommand } from "../service/index.ts";
-import { updatePublicKey } from "./public-key.ts";
+import { updatePublicKey } from "./domain/public-key.ts";
 import { verifyMinisign } from "./signature.ts";
 
 /** The one-shot task that runs the update on Windows; it deletes itself at the end. */
@@ -113,7 +114,11 @@ export class DaemonUpdater {
       if (sha256(bytes) !== asset.sha256) {
         throw new Error("the sha256 of the downloaded file does not match the manifest");
       }
-      verifyMinisign(bytes, asset.signature, this.opts.publicKey ?? updatePublicKey());
+      verifyMinisign(
+        bytes,
+        asset.signature,
+        this.opts.publicKey ?? updatePublicKey(process.env, RUNNING_COMPILED),
+      );
       await writeFile(file, bytes);
       await chmod(file, 0o755);
     } catch (error) {
