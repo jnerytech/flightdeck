@@ -4,7 +4,7 @@
  * `MEMORY.md` is loaded. Read only: it never executes anything it reads.
  */
 import { readdir, readFile, realpath } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { claudeMds, frontmatter } from "../agentcfg/index.ts";
 import { displayPath } from "./display-path.ts";
@@ -86,7 +86,7 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
   ) =>
     sources.push({
       kind,
-      path: displayPath(path),
+      path: displayPath(path, sep),
       bytes,
       tokens: tokensOf(bytes),
       load,

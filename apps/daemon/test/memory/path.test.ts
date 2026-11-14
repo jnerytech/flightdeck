@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { posix, win32 } from "node:path";
+import { posix, sep, win32 } from "node:path";
 import { displayPath } from "../../src/memory/display-path.ts";
 import { managedClaudeMdPath } from "../../src/memory/memory.ts";
 
@@ -15,8 +15,8 @@ describe("memoria: caminho mostrado", () => {
     expect(displayPath(path, posix.sep)).toBe("/home/dev/repo/.claude/rules/a\\b.md");
   });
 
-  test("with no separator given it uses the platform's", () => {
-    expect(displayPath("/x/y.md")).toBe("/x/y.md");
+  test("with the platform separator a POSIX path stays as it is", () => {
+    expect(displayPath("/x/y.md", sep)).toBe("/x/y.md");
   });
 
   test("the organization's CLAUDE.md is where Claude Code looks on each platform", () => {

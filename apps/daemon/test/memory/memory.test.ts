@@ -10,7 +10,7 @@ import {
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { startDaemon } from "../../src/main.ts";
 import { displayPath } from "../../src/memory/display-path.ts";
 import { decisionLog, type MemoryDecision, ProjectMemory } from "../../src/memory/memory.ts";
@@ -283,9 +283,9 @@ describe("memoria: o orçamento de contexto", () => {
   }
   const rel = (path: string, ctx: { claudeDir: string; repo: string; managed: string }) =>
     path
-      .replace(displayPath(ctx.claudeDir), "~")
-      .replace(displayPath(ctx.repo), ".")
-      .replace(displayPath(ctx.managed), "managed/CLAUDE.md");
+      .replace(displayPath(ctx.claudeDir, sep), "~")
+      .replace(displayPath(ctx.repo, sep), ".")
+      .replace(displayPath(ctx.managed, sep), "managed/CLAUDE.md");
 
   test("cada fonte entra com o tamanho, uma estimativa de tokens e se vem na partida ou só quando Claude lê", async () => {
     const ctx = seeded();
@@ -368,13 +368,16 @@ describe("memoria: o orçamento de contexto", () => {
       .filter((s) => s.kind === "memory")
       .map((s) => [rel(s.path, ctx), s.load]);
     expect(memory.sort()).toEqual([
-      [`${displayPath(ctx.dir).replace(displayPath(ctx.claudeDir), "~")}/MEMORY.md`, "start"],
       [
-        `${displayPath(ctx.dir).replace(displayPath(ctx.claudeDir), "~")}/feedback_testes.md`,
+        `${displayPath(ctx.dir, sep).replace(displayPath(ctx.claudeDir, sep), "~")}/MEMORY.md`,
+        "start",
+      ],
+      [
+        `${displayPath(ctx.dir, sep).replace(displayPath(ctx.claudeDir, sep), "~")}/feedback_testes.md`,
         "on-demand",
       ],
       [
-        `${displayPath(ctx.dir).replace(displayPath(ctx.claudeDir), "~")}/user_role.md`,
+        `${displayPath(ctx.dir, sep).replace(displayPath(ctx.claudeDir, sep), "~")}/user_role.md`,
         "on-demand",
       ],
     ]);
@@ -736,7 +739,7 @@ describe("memoria: ramos do orçamento e dos nomes", () => {
     at(ctx.repo, ".claude/skills/solto.txt", "x");
     const paths = (await ctx.memory.budget(ctx.repo)).sources
       .filter((s) => s.kind === "rules" || s.kind === "skills")
-      .map((s) => s.path.replace(displayPath(ctx.repo), "."));
+      .map((s) => s.path.replace(displayPath(ctx.repo, sep), "."));
     expect(paths).toEqual(["./.claude/rules/a/b.md"]);
   });
 
