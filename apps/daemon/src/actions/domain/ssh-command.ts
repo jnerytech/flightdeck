@@ -4,7 +4,7 @@
  * environment goes over stdin, never on a command line, where it would show in the process list.
  */
 
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 
 /** Reads `NAME=value` lines up to the first empty one, exports each, then runs the arguments. */
 const PRELUDE = 'while IFS= read -r l && [ -n "$l" ]; do export "$l"; done; exec "$@"';

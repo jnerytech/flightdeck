@@ -2,7 +2,17 @@ import type { Database } from "bun:sqlite";
 import { readFile } from "node:fs/promises";
 import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import { buildSummary, sessionCost } from "./summary.ts";
+import { buildSummary } from "./domain/summary.ts";
+
+/** The estimated cost of a session, from its usage entries; `null` without rows. */
+export function sessionCost(db: Database, claudeSessionId: string): number | null {
+  const row = db
+    .query<{ cost: number | null }, [string]>(
+      "SELECT SUM(cost_usd) AS cost FROM usage_entries WHERE claude_session_id = ?",
+    )
+    .get(claudeSessionId);
+  return row?.cost ?? null;
+}
 
 export interface SummaryServiceOptions {
   db: Database;

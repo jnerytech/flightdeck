@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type MaskedSecret, maskOutput } from "../../src/actions/mask.ts";
+import { type MaskedSecret, maskOutput } from "../../src/actions/domain/mask.ts";
 
 const TOKEN: MaskedSecret = { name: "deploy-token", value: "ghp_AbC123xyz-SEGREDO" };
 const KEY: MaskedSecret = {

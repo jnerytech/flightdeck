@@ -4,7 +4,7 @@ import {
   SIDEBAR_FOLDED_KEY,
   saveFolded,
   toggleGroup,
-} from "../../src/features/shell/sidebar-groups.ts";
+} from "../../src/features/viewprefs/store.ts";
 
 const storageWith = (value: string | null) => ({
   getItem: (key: string) => (key === SIDEBAR_FOLDED_KEY ? value : null),
