@@ -5,7 +5,7 @@ import {
   parseActions,
   secretsOf,
   validateAction,
-} from "../../src/actions/schema.ts";
+} from "../../src/actions/domain/schema.ts";
 
 const SPEC_EXAMPLE = `
 - name: deploy-staging

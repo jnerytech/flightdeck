@@ -2,7 +2,7 @@
   "apps/daemon/src/actions/domain/mask.ts",
   "apps/daemon/src/actions/domain/ssh-command.ts",
   "apps/daemon/src/actions/run.ts",
-  "apps/daemon/src/actions/schema.ts",
+  "apps/daemon/src/actions/domain/schema.ts",
   "apps/daemon/src/actions/shell.ts",
   "apps/daemon/src/actions/trust.ts",
   "apps/daemon/src/boardsync/domain/map.ts",
