@@ -44,7 +44,7 @@ const OWN_PREFIX = "fd/";
  * What a build or an install recreates, and only as a folder at the root of the worktree: losing
  * these costs time, not work. The same name deeper is somebody's data (`data/out/results.db`).
  */
-export const REBUILDABLE = new Set([
+const REBUILDABLE = new Set([
   "node_modules",
   "dist",
   "build",
@@ -61,7 +61,35 @@ export const REBUILDABLE = new Set([
  * hints at.
  */
 const CREDENTIAL_HINT = /credential|secret|token|passw(?:or)?d|api[_-]?key/i;
-export const credentialName = (part: string) => credential(part) || CREDENTIAL_HINT.test(part);
+const credentialName = (part: string) => credential(part) || CREDENTIAL_HINT.test(part);
+
+/** Whether `git status --porcelain` lists a change; a status that failed counts as dirty. */
+export const statusDirty = (status: CommandResult): boolean =>
+  status.code !== 0 || status.stdout.split("\n").some((l) => l !== "" && !l.startsWith("!! "));
+
+/**
+ * The ignored files in `git status --ignored` that a removal would lose and that only a comparison
+ * with the project's copy can clear (what `.worktreeinclude` puts there), or `"keep"` when one
+ * can never be shrugged at. `own` is Flightdeck's own file, written into every worktree.
+ */
+export function ignoredToCompare(status: string, own: string): string[] | "keep" {
+  const compare: string[] = [];
+  for (const line of status.split("\n")) {
+    if (!line.startsWith("!! ")) continue;
+    const listed = line.slice(3);
+    const folder = listed.endsWith("/");
+    const rel = folder ? listed.slice(0, -1) : listed;
+    // Flightdeck's own file, written into every worktree (a credential for reads, no loss here).
+    if (rel === own) continue;
+    // A credential-looking name at any depth: never.
+    if (credential(rel) || rel.split("/").some(credentialName)) return "keep";
+    // A rebuildable folder, at the root.
+    if (folder && !rel.includes("/") && REBUILDABLE.has(rel)) continue;
+    if (folder) return "keep";
+    compare.push(rel);
+  }
+  return compare;
+}
 
 /** The size an ignored file may have to be compared with the project's copy of it. */
 export const COMPARE_LIMIT = 1024 * 1024;

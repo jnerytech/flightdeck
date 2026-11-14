@@ -3,23 +3,22 @@ import { join, resolve } from "node:path";
 import type { WorktreeItem, WorktreeRemoveResult, WorktreesResult } from "@flightdeck/protocol";
 import { LOCAL_SETTINGS } from "../board/project-rules.ts";
 import { type CommandResult, samePath } from "../kernel/index.ts";
-import { credential } from "../permissions/index.ts";
 import {
   blockersOf,
   COMPARE_LIMIT,
   cannotTell,
   cardFields,
-  credentialName,
   DAY_MS,
   type FolderUse,
   finishedCard,
   hidesChanges,
   IDLE_DAYS,
+  ignoredToCompare,
   isCount,
   lastActivityMs,
   okOut,
   parseList,
-  REBUILDABLE,
+  statusDirty,
   type WorktreeCard,
 } from "./domain/cleanup-rules.ts";
 import type { FolderLocks } from "./domain/locks.ts";
@@ -126,20 +125,11 @@ export class Worktrees {
     worktree: string,
     status: string,
   ): Promise<boolean> {
-    for (const line of status.split("\n")) {
-      if (!line.startsWith("!! ")) continue;
-      const listed = line.slice(3);
-      const folder = listed.endsWith("/");
-      const rel = folder ? listed.slice(0, -1) : listed;
-      // Flightdeck's own file, written into every worktree (a credential for reads, no loss here).
-      if (rel === LOCAL_SETTINGS) continue;
-      // A credential-looking name at any depth: never.
-      if (credential(rel) || rel.split("/").some(credentialName)) return true;
-      // A rebuildable folder, at the root.
-      if (folder && !rel.includes("/") && REBUILDABLE.has(rel)) continue;
-      // A copy of the project's own ignored file (what `.worktreeinclude` puts there), unedited.
-      if (!folder && (await this.sameAsProject(project, worktree, rel))) continue;
-      return true;
+    const compare = ignoredToCompare(status, LOCAL_SETTINGS);
+    if (compare === "keep") return true;
+    // A copy of the project's own ignored file (what `.worktreeinclude` puts there), unedited.
+    for (const rel of compare) {
+      if (!(await this.sameAsProject(project, worktree, rel))) return true;
     }
     return false;
   }
@@ -240,8 +230,7 @@ export class Worktrees {
       ctx.withSize ? this.opts.size(entry.path) : Promise.resolve(null),
     ]);
     // A status that fails is treated as dirty: when git cannot say, nothing is removed.
-    const dirty =
-      status.code !== 0 || status.stdout.split("\n").some((l) => l !== "" && !l.startsWith("!! "));
+    const dirty = statusDirty(status);
     const ignoredFiles =
       status.code === 0 && (await this.keepsIgnored(project, entry.path, status.stdout));
     const count = okOut(ahead);
