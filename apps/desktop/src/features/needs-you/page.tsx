@@ -303,6 +303,8 @@ function RequestDetail(
 ) {
   const { item, store, go } = props;
   const { t } = store.i18n;
+  const toolName = item.gate ? t("needsYou.gateTool", { step: item.gate.stepId }) : item.toolName;
+  const gateBody = item.gateText ? { body: <GateText {...item.gateText} /> } : {};
   return (
     <div ref={props.detailBox} className="h-full overflow-y-auto p-4">
       <Stack gap={2}>
@@ -317,9 +319,7 @@ function RequestDetail(
             key={item.requestId}
             request={{
               requestId: item.requestId,
-              toolName: item.gate
-                ? t("needsYou.gateTool", { step: item.gate.stepId })
-                : item.toolName,
+              toolName,
               input: item.input ?? {},
               cwd: item.cwd ?? null,
               createdAt: item.createdAt,
@@ -329,7 +329,7 @@ function RequestDetail(
             t={t}
             nowMs={store.now()}
             onCopyPath={(text) => void store.system.copyText(text)}
-            {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
+            {...gateBody}
             onRespond={(decision, message, _updates, updatedInput, held) => {
               if (item.gate) {
                 const verdict = decision === "allow" ? "approve" : "reject";

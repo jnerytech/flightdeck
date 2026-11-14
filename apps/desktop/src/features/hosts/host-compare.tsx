@@ -65,6 +65,11 @@ const WORDS: Partial<Record<CompareField, Record<string, Key>>> = {
   boot: BOOT_WORDS,
 };
 
+/** The reading list without one host: the updater for when its health read ends. */
+function without(hostId: string) {
+  return (ids: readonly string[]) => ids.filter((id) => id !== hostId);
+}
+
 /** A value as the person reads it: the word for a status, the count of a feature set, a version as is. */
 function shown(field: CompareField, value: string, t: T): string {
   if (field === "features") return String(value === "" ? 0 : value.split(",").length);
@@ -202,13 +207,9 @@ export const HostCompare = memo(function HostCompare(
     // Nobody to ask: there is nothing to say about a read.
     if (online.length === 0) return;
     setReading(online.map((host) => host.id));
-    await Promise.all(
-      online.map((host) =>
-        store.health
-          .check(host.id)
-          .finally(() => setReading((ids) => ids.filter((id) => id !== host.id))),
-      ),
-    );
+    const readHost = (hostId: string) =>
+      store.health.check(hostId).finally(() => setReading(without(hostId)));
+    await Promise.all(online.map((host) => readHost(host.id)));
     setFinished(true);
   };
   const rows = compareHosts(
