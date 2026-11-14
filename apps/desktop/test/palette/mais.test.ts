@@ -3,7 +3,7 @@ import {
   type PaletteScope,
   paletteScope,
   paletteSections,
-} from "../../src/features/palette/palette.ts";
+} from "../../src/features/palette/domain/palette.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
 
