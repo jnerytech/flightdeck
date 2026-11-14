@@ -12,7 +12,7 @@ import {
   windowsTaskXml,
 } from "../../src/service/domain/install.ts";
 import { assetKey, DaemonUpdater } from "../../src/updates/apply.ts";
-import { updatePublicKey } from "../../src/updates/public-key.ts";
+import { updatePublicKey } from "../../src/updates/domain/public-key.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 
