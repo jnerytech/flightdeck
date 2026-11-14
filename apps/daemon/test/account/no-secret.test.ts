@@ -10,7 +10,10 @@ const DIR = join(import.meta.dir, "../../src/account");
 function sources(): Array<{ file: string; text: string }> {
   return readdirSync(DIR, { recursive: true, encoding: "utf8" })
     .filter((file) => file.endsWith(".ts"))
-    .map((file) => ({ file, text: readFileSync(join(DIR, file), "utf8") }));
+    .map((file) => ({
+      file: file.replaceAll("\\", "/"),
+      text: readFileSync(join(DIR, file), "utf8"),
+    }));
 }
 
 /** What the account module must never touch: a credential file, a token variable, a claude.ai endpoint. */
@@ -23,7 +26,7 @@ const FORBIDDEN: Array<[string, RegExp]> = [
   ["the environment", /process\.env|Bun\.env/],
   ["a path under the home folder", /homedir|\.claude\b|userHome/],
   ["a read of a file", /readFile|readFileSync|Bun\.file|openSync/],
-  ["the store", /from "\.\.\/store\//],
+  ["the store", /from "(\.\.\/)+store\//],
   ["a log", /console\.|\blog\(/],
 ];
 
