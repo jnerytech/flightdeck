@@ -48,7 +48,7 @@ import type { FileLog } from "./logs/file-log.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle, Messaging } from "./messaging/index.ts";
-import type { Names } from "./names/names.ts";
+import type { Names } from "./names/index.ts";
 import type { AutoApprover } from "./permissions/index.ts";
 import type { OpenSessionPersonas, Personas } from "./personas/index.ts";
 import type { Plugins } from "./plugins/plugins.ts";
