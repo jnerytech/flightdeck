@@ -146,7 +146,7 @@ prefix. Tests move with their file in the same PR.
 | `teleport.ts` | `features/teleport/`: **moved** |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` (**moved**; public names through its index), then the pure `terminal.ts` (the launch rules) and `terminal-paths.ts` (the path finder) to `features/terminal/domain/` (**moved**, #1601); `terminal-view.ts` stays, its font and reader settings write the storage |
 | `trace.ts` | `features/trace/domain/`: **moved** |
-| `tray.ts` | `features/tray/`: **moved** |
+| `tray.ts` | `features/tray/domain/`: **moved** (#1601) |
 | `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file) |
 | `watch-*.ts` | `features/watch/` (**moved**; the pure rules `watch-alerts` and `watch-settings` sit in `features/watch/domain/` (#1601), the store, the wiring and the components stay outside it) |
 | `webhook*.ts` | `features/webhook/`: **moved** |

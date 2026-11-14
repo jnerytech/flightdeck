@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ExternalSession } from "@flightdeck/protocol";
 import { activityBoard, NO_ACTIVITY_FILTER } from "../../src/features/activity/domain/activity.ts";
 import { pendingText } from "../../src/features/sessions/pending-text.ts";
-import { trayMenu } from "../../src/features/tray/tray.ts";
+import { trayMenu } from "../../src/features/tray/domain/tray.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { type AppState, AppStore, needsYou } from "../../src/lib/app-store.ts";
 import { activityState, NOW } from "../activity/fixtures.ts";

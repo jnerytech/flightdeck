@@ -4,7 +4,7 @@ import {
   parseRequestLink,
   requestLink,
 } from "../../src/features/permissions/domain/request-link.ts";
-import { TRAY_MENU_DELAY_MS, trayMenu } from "../../src/features/tray/tray.ts";
+import { TRAY_MENU_DELAY_MS, trayMenu } from "../../src/features/tray/domain/tray.ts";
 import { needsYou, type PendingItem } from "../../src/lib/app-store.ts";
 import type { TrayAction, TrayActionKind, TrayMenu } from "../../src/platform/types.ts";
 import { liveScreen, registerDom } from "../dom.ts";
