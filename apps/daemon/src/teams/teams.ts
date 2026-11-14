@@ -17,8 +17,7 @@ import {
 } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
-import { MANAGED_STATE } from "../messaging/endpoints.ts";
-import type { Messaging } from "../messaging/messages.ts";
+import { MANAGED_STATE, type Messaging } from "../messaging/index.ts";
 import { type Prepare, withoutPersonas } from "../personas/index.ts";
 import type { Quota } from "../quota/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
