@@ -22,10 +22,14 @@ function requireAbsolute(command: string[]): void {
   }
 }
 
-/** systemd quoting: arguments with spaces or quotes go inside double quotes. */
+/**
+ * systemd quoting: `%` (a specifier) and `$` (a variable) are doubled so they reach the process as
+ * they are (#2895); arguments with spaces or quotes go inside double quotes.
+ */
 const systemdQuote = (arg: string) => {
-  if (!/[\s"\\]/.test(arg)) return arg;
-  const escaped = arg.replace(/(["\\])/g, String.raw`\$1`);
+  const literal = arg.replace(/[%$]/g, "$&$&");
+  if (!/[\s"\\]/.test(literal)) return literal;
+  const escaped = literal.replace(/(["\\])/g, String.raw`\$1`);
   return `"${escaped}"`;
 };
 
@@ -62,9 +66,18 @@ export const TASK_NAME = String.raw`Flightdeck\flightdeckd`;
 const xmlEscape = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
-/** Windows command line: the executable always quoted, other arguments only with spaces. */
+/**
+ * One argument as the Windows C runtime reads it back: inside quotes, the backslashes before a `"`
+ * and at the end are doubled and a `"` is escaped, so neither ends the argument early (#2895).
+ */
+const windowsQuote = (arg: string) =>
+  `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
+
+/** Windows command line: the executable always quoted, others when empty or with a space or quote. */
 const windowsCommandLine = (command: string[]) =>
-  command.map((arg, i) => (i === 0 || /\s/.test(arg) ? `"${arg}"` : arg)).join(" ");
+  command
+    .map((arg, i) => (i === 0 || arg === "" || /[\s"]/.test(arg) ? windowsQuote(arg) : arg))
+    .join(" ");
 
 /**
  * Task Scheduler XML: runs at the user's logon with the user's own token (no elevation),
@@ -252,11 +265,19 @@ export async function uninstallService(ctx: ServiceContext): Promise<ServiceResu
     const remove = linux ? [`rm ${unitPath(ctx)}`] : [];
     return { output: ["# commands:", ...commands.map(display), ...remove], instructions: [] };
   }
-  await runChecked(ctx, commands[0] as string[]);
+  // A failed disable (often a unit already disabled or not loaded) still removes the unit (#2895).
+  const disableError = await runChecked(ctx, commands[0] as string[]).then(
+    () => null,
+    (error: unknown) => error,
+  );
   if (linux) {
     await ctx.removeFile(unitPath(ctx));
-    await runChecked(ctx, commands[1] as string[]);
+    // The disable failure is the cause: a reload failing after it does not replace it.
+    await runChecked(ctx, commands[1] as string[]).catch((error: unknown) => {
+      if (!disableError) throw error;
+    });
   }
+  if (disableError) throw disableError;
   return { output: ["service removed"], instructions: [] };
 }
 
@@ -310,13 +331,57 @@ const xmlUnescape = (text: string) =>
     .replaceAll("&apos;", "'")
     .replaceAll("&amp;", "&");
 
-/** Arguments of a command line, unquoted; systemd escapes with `\`, Windows has no escapes. */
-function splitArgs(line: string, escapes: boolean): string[] {
-  const token = escapes ? /"((?:[^"\\]|\\.)*)"|(\S+)/g : /"([^"]*)"|(\S+)/g;
-  return [...line.matchAll(token)].map(([, quoted, plain]) => {
-    if (quoted === undefined) return plain as string;
-    return escapes ? quoted.replace(/\\(["\\])/g, "$1") : quoted;
-  });
+/** Arguments of a systemd command line, unquoted: `\` escapes `"` and `\` inside quotes, `%%` and `$$` are one. */
+function splitSystemdArgs(line: string): string[] {
+  const unescapeSpecials = (arg: string) => arg.replace(/%%|\$\$/g, (pair) => pair[0] as string);
+  return [...line.matchAll(/"((?:[^"\\]|\\.)*)"|(\S+)/g)].map(([, quoted, plain]) =>
+    unescapeSpecials(quoted === undefined ? (plain as string) : quoted.replace(/\\(["\\])/g, "$1")),
+  );
+}
+
+/**
+ * A run of backslashes at `start`, as the Windows C runtime reads it: before a `"`, 2n backslashes
+ * are n and the quote opens or closes, 2n+1 are n and a literal `"`; elsewhere they stay as they are.
+ */
+function backslashRun(line: string, start: number): { text: string; toggle: boolean; end: number } {
+  let end = start;
+  while (line[end] === "\\") end++;
+  const count = end - start;
+  if (line[end] !== '"') return { text: "\\".repeat(count), toggle: false, end };
+  const literal = count % 2 === 1;
+  return {
+    text: "\\".repeat(Math.floor(count / 2)) + (literal ? '"' : ""),
+    toggle: !literal,
+    end: end + 1,
+  };
+}
+
+/** Arguments of a Windows command line, read as the C runtime reads them (#2895). */
+function splitWindowsArgs(line: string): string[] {
+  const args: string[] = [];
+  let arg: string | null = null;
+  let quoted = false;
+  let i = 0;
+  while (i < line.length) {
+    const char = line[i] as string;
+    if (char === "\\") {
+      const run = backslashRun(line, i);
+      arg = (arg ?? "") + run.text;
+      quoted = run.toggle ? !quoted : quoted;
+      i = run.end;
+      continue;
+    }
+    if (char === '"') quoted = !quoted;
+    if (/\s/.test(char) && !quoted) {
+      if (arg !== null) args.push(arg);
+      arg = null;
+    } else {
+      arg = (arg ?? "") + (char === '"' ? "" : char);
+    }
+    i++;
+  }
+  if (arg !== null) args.push(arg);
+  return args;
 }
 
 /** What an installed service runs: the daemon command (before `start`) and its `--config`. */
@@ -342,14 +407,15 @@ function parseCommand(args: string[]): ServiceCommand {
 export async function serviceCommand(ctx: ServiceContext): Promise<ServiceCommand | null> {
   if (requireSupported(ctx) === "linux") {
     const { code, stdout } = await ctx.exec(["systemctl", "--user", "cat", "flightdeckd"]);
-    const line = /^ExecStart=(.*)$/m.exec(stdout)?.[1];
-    return code === 0 && line ? parseCommand(splitArgs(line, true)) : null;
+    // `cat` prints the unit then its drop-ins: the last ExecStart= wins, and an empty one resets it.
+    const line = [...stdout.matchAll(/^ExecStart=(.*)$/gm)].at(-1)?.[1]?.trim();
+    return code === 0 && line ? parseCommand(splitSystemdArgs(line)) : null;
   }
   const { code, stdout } = await ctx.exec([...windowsTaskQueryArgs(), "/XML"]);
   const args = /<Arguments>([\s\S]*?)<\/Arguments>/.exec(stdout)?.[1];
   if (code !== 0 || !args) return null;
   // Our task runs `conhost.exe --headless "<daemon>" ... start [--config <file>]`.
-  return parseCommand(splitArgs(xmlUnescape(args), false).slice(1));
+  return parseCommand(splitWindowsArgs(xmlUnescape(args)).slice(1));
 }
 
 /** Stops the service; one that is not running is not an error (the caller waits for the lock). */

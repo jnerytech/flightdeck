@@ -1,5 +1,29 @@
 import { describe, expect, test } from "bun:test";
-import { daemonCommand, SYSTEMD_UNIT_PATH, systemdUnit } from "../../src/service/domain/install.ts";
+import {
+  daemonCommand,
+  type ServiceContext,
+  SYSTEMD_UNIT_PATH,
+  serviceCommand,
+  systemdUnit,
+} from "../../src/service/domain/install.ts";
+
+/** What `serviceCommand` reads back from a unit whose `systemctl --user cat` answer is `text`. */
+function readBack(text: string) {
+  const ctx: ServiceContext = {
+    platform: "linux",
+    home: "/home/dev",
+    user: "dev",
+    command: [],
+    systemRoot: "",
+    tempDir: "/tmp",
+    dryRun: false,
+    exec: async () => ({ code: 0, stdout: text }),
+    writeFile: () => {},
+    removeFile: () => {},
+    which: () => null,
+  };
+  return serviceCommand(ctx);
+}
 
 describe("unit-systemd", () => {
   test("unit gerada bate com o texto esperado", () => {
@@ -57,5 +81,20 @@ describe("unit-systemd", () => {
 
   test("a unit fica em ~/.config/systemd/user/flightdeckd.service", () => {
     expect(SYSTEMD_UNIT_PATH).toBe(".config/systemd/user/flightdeckd.service");
+  });
+
+  test("a % or $ in a path is escaped in ExecStart and read back as the path (#2895)", async () => {
+    const unit = systemdUnit(["/opt/$x/flightdeckd"], "/home/a%h/c.json");
+    expect(unit).toContain("ExecStart=/opt/$$x/flightdeckd start --config /home/a%%h/c.json\n");
+    expect(await readBack(unit)).toEqual({
+      command: ["/opt/$x/flightdeckd"],
+      config: "/home/a%h/c.json",
+    });
+    const spaced = systemdUnit(["/home/a b/$x%/flightdeckd"]);
+    expect(spaced).toContain('ExecStart="/home/a b/$$x%%/flightdeckd" start\n');
+    expect(await readBack(spaced)).toEqual({
+      command: ["/home/a b/$x%/flightdeckd"],
+      config: null,
+    });
   });
 });
