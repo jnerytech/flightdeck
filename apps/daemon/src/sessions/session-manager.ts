@@ -43,8 +43,8 @@ import type { RewindFilesResult } from "../runtime/index.ts";
 import { type EventStore, personaBadge } from "../store/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
 import { ActivityClock, type ToolNote } from "./domain/activity-clock.ts";
+import { interruptedSessions, RESTART_REASON } from "./domain/interrupted.ts";
 import type { QuietInfo } from "./domain/stall.ts";
-import { interruptedSessions, RESTART_REASON } from "./interrupted.ts";
 import type { SessionManagerOptions } from "./session-options.ts";
 import { type LiveSession, SessionRuns } from "./session-runs.ts";
 
@@ -431,7 +431,7 @@ export class SessionManager {
 
   /** The sessions a daemon restart interrupted in the last 24 hours and nobody resumed since. */
   interrupted(options: { now?: number; withinMs?: number } = {}): InterruptedSession[] {
-    return interruptedSessions(this.store, options);
+    return interruptedSessions(this.store, { ...options, now: options.now ?? Date.now() });
   }
 
   /** Reopens an `ended` or `error` session with the stored Claude session id. */
