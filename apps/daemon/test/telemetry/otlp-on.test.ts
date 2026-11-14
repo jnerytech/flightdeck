@@ -3,16 +3,18 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { expandHome, loadConfig, updateConfigFile } from "../../src/config.ts";
 import { runCli } from "../../src/main.ts";
+import {
+  MANAGED_KEYS,
+  type TelemetryTarget,
+  telemetryEnv,
+  wrapperTelemetryEnv,
+} from "../../src/telemetry/domain/env.ts";
 import { type OtlpEvent, startOtlpReceiver } from "../../src/telemetry/otlp.ts";
 import {
   installTelemetry,
-  MANAGED_KEYS,
-  type TelemetryTarget,
   telemetryConflicts,
-  telemetryEnv,
   telemetryStatus,
   uninstallTelemetry,
-  wrapperTelemetryEnv,
 } from "../../src/telemetry/otlp-env.ts";
 import { startTelemetry } from "../../src/telemetry/service.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";

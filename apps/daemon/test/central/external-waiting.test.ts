@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { appendFileSync, closeSync, openSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ExternalSession, WAITING_PLAN_MAX } from "@flightdeck/protocol";
+import { planTextIn, type Tail, waitingIn } from "../../src/central/domain/waiting.ts";
 import { ExternalSessions, type ExternalSession as Session } from "../../src/central/external.ts";
-import { planTextIn, type Tail, tailOfFile, waitingIn } from "../../src/central/waiting.ts";
+import { tailOfFile } from "../../src/central/waiting.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { tempDir } from "../support/helpers.ts";
 
