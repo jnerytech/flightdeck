@@ -3,4 +3,4 @@
  * tree folds, hub view and filter, tile layout, the board last opened. Another domain imports from
  * here, never a file inside.
  */
-export { ViewPrefsSlice } from "./store.ts";
+export { type SidebarGroup, ViewPrefsSlice } from "./store.ts";

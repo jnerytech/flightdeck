@@ -8,16 +8,18 @@ import {
   FOLD_ABOVE,
   foldedByDefault,
   liveTone,
-  loadTreeOpened,
-  loadTreePinned,
   PROJECT_CAP,
   projectKey,
+  shownProjects,
+} from "../../src/features/shell/tree-fold.ts";
+import {
+  loadTreeOpened,
+  loadTreePinned,
   saveTreeOpened,
   saveTreePinned,
-  shownProjects,
   TREE_OPENED_KEY,
   TREE_PINNED_KEY,
-} from "../../src/features/shell/tree-fold.ts";
+} from "../../src/features/viewprefs/store.ts";
 
 const project = (name: string, lastActivityAt = 0, host = "h1"): TreeProject => ({
   hostId: host,
