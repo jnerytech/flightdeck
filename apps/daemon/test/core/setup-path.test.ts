@@ -4,7 +4,7 @@ import {
   binDir,
   type PathEnv,
   removeFromUserPath,
-} from "../../src/service/user-path.ts";
+} from "../../src/service/domain/user-path.ts";
 
 const HOME = "C:\\Users\\dev";
 const BIN = "C:\\Users\\dev\\.flightdeck\\bin";
