@@ -34,6 +34,19 @@ import { ALL_SCOPE, activeScope, awayKey, type DataScope, usd } from "../costs/i
 import { typing } from "../shortcuts/index.ts";
 import { AsleepMark } from "./asleep-mark";
 import { CacheTimer } from "./cache-timer";
+import {
+  costAsks,
+  cursorMove,
+  filterCount,
+  hasBackgroundHost,
+  hostlessHub,
+  personasOf,
+  refreshSignature,
+  rowOffers,
+  rowSummary,
+  showsStateWord,
+  worktreesOf,
+} from "./domain/hub-derive.ts";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
 import {
   activeCount,
@@ -51,19 +64,6 @@ import {
   sessionLineText,
   sharedMeta,
 } from "./hub.ts";
-import {
-  costAsks,
-  cursorMove,
-  filterCount,
-  hasBackgroundHost,
-  hostlessHub,
-  personasOf,
-  refreshSignature,
-  rowOffers,
-  rowSummary,
-  showsStateWord,
-  worktreesOf,
-} from "./hub-derive.ts";
 import {
   awayHost,
   hubProjectKeys,
