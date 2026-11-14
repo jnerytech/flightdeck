@@ -464,8 +464,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/board/check-loop-host.ts",
-    "to": "apps/daemon/src/watch/check-run.ts",
-    "unresolvedTo": "../watch/check-run.ts",
+    "to": "apps/daemon/src/watch/domain/check-run.ts",
+    "unresolvedTo": "../watch/domain/check-run.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -497,8 +497,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/board/domain/check-loop-engine.ts",
-    "to": "apps/daemon/src/watch/check-run.ts",
-    "unresolvedTo": "../../watch/check-run.ts",
+    "to": "apps/daemon/src/watch/domain/check-run.ts",
+    "unresolvedTo": "../../watch/domain/check-run.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",

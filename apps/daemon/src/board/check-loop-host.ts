@@ -5,7 +5,7 @@
  */
 import type { Database } from "bun:sqlite";
 import { CheckLoopReason } from "@flightdeck/protocol";
-import { runChecks } from "../watch/check-run.ts";
+import { runChecks } from "../watch/domain/check-run.ts";
 import type { WorkflowEngine } from "../workflows/engine.ts";
 import { cardMode } from "./check-loop.ts";
 import {
