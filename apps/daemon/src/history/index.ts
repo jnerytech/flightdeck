@@ -5,7 +5,7 @@
  */
 
 export { type LiveState, requestLine, sessionLine } from "./domain/session-line.ts";
+export { promptText } from "./domain/transcript-text.ts";
 export { normalizeCwd } from "./folder.ts";
 export { HistoryIndexer } from "./indexer.ts";
 export { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "./parser.ts";
-export { promptText } from "./transcript-text.ts";

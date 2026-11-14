@@ -16,7 +16,7 @@ import { AsyncQueue, buildChildEnv, FlightdeckError, whichOnPath } from "../kern
 import { quotaReadings } from "../quota/index.ts";
 import { describeCommands, type SdkSlashCommand } from "./domain/commands.ts";
 import type { FlightdeckMcpServer } from "./domain/flightdeck-mcp.ts";
-import { truncateToolResult } from "./tool-result.ts";
+import { truncateToolResult } from "./domain/tool-result.ts";
 import type {
   AgentRun,
   AgentRuntime,
