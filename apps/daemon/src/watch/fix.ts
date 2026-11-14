@@ -17,7 +17,7 @@ import {
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, tail } from "../pr/index.ts";
 import { type BoundedCheckRunner, MAX_VALUE } from "../workflows/index.ts";
 import { masked, runChecks } from "./check-run.ts";
-import { type Drift, type FileChange, measureDrift, parseNumstat } from "./drift.ts";
+import { type Drift, type FileChange, measureDrift, parseNumstat } from "./domain/drift.ts";
 import type { WatchSettings } from "./settings.ts";
 import type { PrWatcher, WatchTrigger } from "./watch.ts";
 
