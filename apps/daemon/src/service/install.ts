@@ -1,5 +1,6 @@
 import { posix, win32 } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import type { PathEnv } from "./domain/user-path.ts";
 
 /** Unit file location, relative to the user's home. */
 export const SYSTEMD_UNIT_PATH = ".config/systemd/user/flightdeckd.service";
@@ -130,9 +131,7 @@ export function windowsTaskQueryArgs(): string[] {
 }
 
 /** Everything `service install|uninstall|status` touches, injected so tests never touch the OS. */
-export interface ServiceContext {
-  platform: string;
-  home: string;
+export interface ServiceContext extends Pick<PathEnv, "platform" | "home" | "exec"> {
   user: string;
   /** The daemon command line, from `daemonCommand`. */
   command: string[];
@@ -140,7 +139,6 @@ export interface ServiceContext {
   tempDir: string;
   /** Print what would be done; never write files nor run commands. */
   dryRun: boolean;
-  exec: (cmd: string[]) => Promise<{ code: number; stdout: string }>;
   writeFile(path: string, content: string): void | Promise<void>;
   removeFile(path: string): void | Promise<void>;
   which(name: string): string | null;
