@@ -69,12 +69,17 @@ export const statusDirty = (status: CommandResult): boolean =>
 
 /**
  * The ignored files in `git status --ignored` that a removal would lose and that only a comparison
- * with the project's copy can clear (what `.worktreeinclude` puts there), or `"keep"` when one
- * can never be shrugged at. `own` is Flightdeck's own file, written into every worktree.
+ * with the project's copy can clear (what `.worktreeinclude` puts there), or `keep` when one can
+ * never be shrugged at. `own` is Flightdeck's own file, written into every worktree.
  */
-export function ignoredToCompare(status: string, own: string): string[] | "keep" {
+export function ignoredToCompare(
+  status: CommandResult,
+  own: string,
+): { keep: true } | { keep: false; compare: string[] } {
   const compare: string[] = [];
-  for (const line of status.split("\n")) {
+  // A status that failed lists nothing: statusDirty already blocks the removal.
+  if (status.code !== 0) return { keep: false, compare };
+  for (const line of status.stdout.split("\n")) {
     if (!line.startsWith("!! ")) continue;
     const listed = line.slice(3);
     const folder = listed.endsWith("/");
@@ -82,13 +87,13 @@ export function ignoredToCompare(status: string, own: string): string[] | "keep"
     // Flightdeck's own file, written into every worktree (a credential for reads, no loss here).
     if (rel === own) continue;
     // A credential-looking name at any depth: never.
-    if (credential(rel) || rel.split("/").some(credentialName)) return "keep";
+    if (credential(rel) || rel.split("/").some(credentialName)) return { keep: true };
     // A rebuildable folder, at the root.
     if (folder && !rel.includes("/") && REBUILDABLE.has(rel)) continue;
-    if (folder) return "keep";
+    if (folder) return { keep: true };
     compare.push(rel);
   }
-  return compare;
+  return { keep: false, compare };
 }
 
 /** The size an ignored file may have to be compared with the project's copy of it. */

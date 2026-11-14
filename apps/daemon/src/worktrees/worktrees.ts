@@ -123,12 +123,12 @@ export class Worktrees {
   private async keepsIgnored(
     project: WorktreeProject,
     worktree: string,
-    status: string,
+    status: CommandResult,
   ): Promise<boolean> {
-    const compare = ignoredToCompare(status, LOCAL_SETTINGS);
-    if (compare === "keep") return true;
+    const ignored = ignoredToCompare(status, LOCAL_SETTINGS);
+    if (ignored.keep) return true;
     // A copy of the project's own ignored file (what `.worktreeinclude` puts there), unedited.
-    for (const rel of compare) {
+    for (const rel of ignored.compare) {
       if (!(await this.sameAsProject(project, worktree, rel))) return true;
     }
     return false;
@@ -231,8 +231,7 @@ export class Worktrees {
     ]);
     // A status that fails is treated as dirty: when git cannot say, nothing is removed.
     const dirty = statusDirty(status);
-    const ignoredFiles =
-      status.code === 0 && (await this.keepsIgnored(project, entry.path, status.stdout));
+    const ignoredFiles = await this.keepsIgnored(project, entry.path, status);
     const count = okOut(ahead);
     const stamp = okOut(last);
     const { busy, fault } = this.busyOf(entry.path, card?.id ?? null);
