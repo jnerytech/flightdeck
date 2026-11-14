@@ -3,4 +3,5 @@
  * in the pairing link, its QR code, the Tailscale IP and the token rotation. Another domain
  * imports from here, never a file inside.
  */
-export { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
+export { loopbackOnly, pairingAddress } from "./domain/address.ts";
+export { renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
