@@ -12,7 +12,7 @@ import {
   serviceCommand,
   startService,
   stopService,
-} from "./install.ts";
+} from "./domain/install.ts";
 
 /** The reply frame the shutdown handshake reads; any other frame is ignored. */
 const ACK_FRAME = z.object({

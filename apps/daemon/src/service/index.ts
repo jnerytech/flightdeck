@@ -5,7 +5,6 @@
  */
 
 export { binaryVersion } from "./adapters/flightdeckd-process.ts";
-export { addToUserPath, binDir, removeFromUserPath } from "./domain/user-path.ts";
 export {
   daemonCommand,
   installService,
@@ -17,7 +16,8 @@ export {
   serviceStatus,
   startService,
   uninstallService,
-} from "./install.ts";
+} from "./domain/install.ts";
+export { addToUserPath, binDir, removeFromUserPath } from "./domain/user-path.ts";
 export { lingerState } from "./linger.ts";
 export { killProcess, osServiceContext, processPath } from "./os.ts";
 export { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
