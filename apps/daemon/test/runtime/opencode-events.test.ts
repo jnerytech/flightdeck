@@ -7,7 +7,7 @@ import {
   type AcpUpdate,
   isChild,
   OpenCodeEvents,
-} from "../../src/runtime/opencode-events.ts";
+} from "../../src/runtime/domain/opencode-events.ts";
 import type { RuntimeEvent } from "../../src/runtime/types.ts";
 
 const FIXTURES = join(import.meta.dir, "../fixtures/opencode-acp");

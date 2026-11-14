@@ -143,7 +143,7 @@ session's environment and the injected config, so sessions never share a process
   - The Flightdeck MCP server goes in `mcpServers` as `{ name: "flightdeck", command, args, env: [{ name, value }] }`
     with `FLIGHTDECK_SESSION`.
 
-**Events (`apps/daemon/src/runtime/opencode-events.ts`, a pure normalizer with state per session):**
+**Events (`apps/daemon/src/runtime/domain/opencode-events.ts`, a pure normalizer with state per session):**
 
 | ACP | Flightdeck event |
 | --- | --- |
