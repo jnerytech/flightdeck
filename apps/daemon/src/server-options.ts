@@ -23,7 +23,7 @@ import type {
   UiSettings,
 } from "@flightdeck/protocol";
 import type { Account } from "./account/account.ts";
-import type { Actions } from "./actions/actions.ts";
+import type { Actions } from "./actions/index.ts";
 import type { AgentConfig, McpConfig } from "./agentcfg/index.ts";
 import type { AssistantService } from "./assistant/index.ts";
 import type { Automations } from "./automations/automations.ts";
