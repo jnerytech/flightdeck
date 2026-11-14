@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
 import { HOSTS_KEY } from "../../src/features/hosts/hosts.ts";
-import { AWAY_KEY } from "../../src/features/needs-you/away.ts";
+import { AWAY_KEY } from "../../src/features/needs-you/domain/away.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
