@@ -5,7 +5,7 @@ import { loadConfig } from "../../../daemon/src/config.ts";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { poll } from "../../../daemon/test/support/helpers.ts";
 import { userLine, writeTranscript } from "../../../daemon/test/support/history-helpers.ts";
-import type { PaletteTarget } from "../../src/features/palette/palette.ts";
+import type { PaletteTarget } from "../../src/features/palette/domain/palette.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { waiter } from "../wait.ts";

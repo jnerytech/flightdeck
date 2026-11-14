@@ -10,7 +10,7 @@ import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Form, FormActions } from "@/shared/layout/index.ts";
-import { placeholders, SPECIAL_VARS } from "./snippets.ts";
+import { placeholders, SPECIAL_VARS } from "./domain/snippets.ts";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 

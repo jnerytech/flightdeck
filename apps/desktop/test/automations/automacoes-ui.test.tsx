@@ -3,7 +3,7 @@ import {
   actionsFor,
   carriesThirdParty,
   TRIGGER_TYPES,
-} from "../../src/features/automations/automations.ts";
+} from "../../src/features/automations/domain/automations.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { sidebarNav } from "../sidebar/helpers.ts";

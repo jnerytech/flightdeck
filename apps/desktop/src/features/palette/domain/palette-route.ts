@@ -1,4 +1,4 @@
-import type { Route } from "../../lib/router.ts";
+import type { Route } from "../../../lib/router.ts";
 import type { PaletteTarget } from "./palette.ts";
 
 /** The palette's targets that act in place instead of opening a screen. */

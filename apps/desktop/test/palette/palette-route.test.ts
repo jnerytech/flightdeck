@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { paletteRoute } from "../../src/features/palette/palette-route.ts";
+import { paletteRoute } from "../../src/features/palette/domain/palette-route.ts";
 
 /** #1605 (Humble Object): the screen each palette entry opens, tested by output and without the DOM. */
 describe("paletteRoute", () => {
