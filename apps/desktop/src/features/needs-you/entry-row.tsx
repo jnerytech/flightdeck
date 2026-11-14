@@ -9,7 +9,7 @@ import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore, PendingItem } from "@/lib/app-store";
 import { StatusDot } from "@/shared/status/index.ts";
-import { type QuietAlert, quietText } from "./quiet.ts";
+import { type QuietAlert, quietText } from "./domain/quiet.ts";
 
 /**
  * The rows of Needs you (#1191): one line per thing that waits for the person, its own module so

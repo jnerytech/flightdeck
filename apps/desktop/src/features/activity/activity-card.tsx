@@ -7,7 +7,7 @@ import { type StateTone, StatusDot } from "@/shared/status/index.ts";
 import { formatAgo, formatDuration } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
-import type { ActivityCard, ActivityColumn } from "./activity.ts";
+import type { ActivityCard, ActivityColumn } from "./domain/activity.ts";
 
 const TONE: Record<ActivityColumn, StateTone> = {
   needs_you: "needs-you",

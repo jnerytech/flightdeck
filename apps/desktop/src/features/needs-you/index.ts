@@ -3,5 +3,5 @@
  * rows are lazy screens, imported by the router, not from here.
  */
 
-export { pendingCount } from "./pending-count.ts";
-export { type QuietAlert, quietAlerts, quietText } from "./quiet.ts";
+export { pendingCount } from "./domain/pending-count.ts";
+export { type QuietAlert, quietAlerts, quietText } from "./domain/quiet.ts";

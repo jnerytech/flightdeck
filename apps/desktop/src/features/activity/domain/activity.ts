@@ -3,7 +3,7 @@ import {
   type NeedsYouState,
   needsYou,
   type PendingItem,
-} from "../../lib/app-store.ts";
+} from "../../../lib/app-store.ts";
 import {
   groupName,
   type HubRow,
@@ -11,7 +11,7 @@ import {
   hubRows,
   isOver,
   sessionKey,
-} from "../sessions/index.ts";
+} from "../../sessions/index.ts";
 
 /** The parts of the state the board is made of: its rows, the requests and what was not opened. */
 export const ACTIVITY_KEYS = [
