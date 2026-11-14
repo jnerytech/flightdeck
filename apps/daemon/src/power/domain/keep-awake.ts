@@ -1,9 +1,5 @@
 /** Keeps the computer awake while sessions run (issue #163). */
 
-import { whichOnPath } from "../kernel/index.ts";
-import { detectWsl, realWslProbe } from "../wsl/index.ts";
-import { spawnHolder } from "./adapters/holder.ts";
-
 export type WakeMethod = "powershell" | "systemd-inhibit" | "caffeinate";
 /** Why nothing is held although it was asked: the app words each code in both languages. */
 export type WakeReason = "no-inhibitor" | "unsupported-platform" | "wsl" | "start-failed" | "ended";
@@ -196,17 +192,4 @@ export class KeepAwake {
     this.method = null;
     holder?.kill();
   }
-}
-
-export function osPowerContext(): PowerContext {
-  // The test suite sets the service guard: a daemon a test starts holds nothing, as if no
-  // inhibitor could start; only the keep-awake tests pass their own context or call spawnHolder.
-  const guarded = Boolean(process.env.FLIGHTDECK_SERVICE_GUARD);
-  return {
-    platform: process.platform,
-    pid: process.pid,
-    wsl: detectWsl(realWslProbe) !== null,
-    which: whichOnPath,
-    hold: guarded ? () => null : spawnHolder,
-  };
 }

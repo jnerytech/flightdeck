@@ -4,10 +4,10 @@ import {
   type Holder,
   holderCommand,
   KeepAwake,
-  osPowerContext,
   type PowerContext,
   windowsScript,
-} from "../../src/power/keep-awake.ts";
+} from "../../src/power/domain/keep-awake.ts";
+import { osPowerContext } from "../../src/power/wiring.ts";
 import { poll } from "../support/helpers.ts";
 
 /** A power context that records what was started and killed, and starts nothing real. */
