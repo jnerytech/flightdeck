@@ -21,7 +21,7 @@ import {
   REBUILDABLE,
   type WorktreeCard,
 } from "./domain/cleanup-rules.ts";
-import type { FolderLocks } from "./locks.ts";
+import type { FolderLocks } from "./domain/locks.ts";
 
 export interface WorktreeProject {
   id: string;

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { FlightdeckError, isInside } from "../kernel/index.ts";
+import { FlightdeckError, isInside } from "../../kernel/index.ts";
 
 /**
  * The folders a removal is working on. Nothing may start in one (a session, a terminal, a card):

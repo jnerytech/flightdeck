@@ -6,7 +6,7 @@ import {
   type QueryFn,
   resolveClaudePath,
 } from "../../src/runtime/claude-sdk-runtime.ts";
-import { describeCommands } from "../../src/runtime/commands.ts";
+import { describeCommands } from "../../src/runtime/domain/commands.ts";
 import type { CanUseToolFn, RuntimeEvent } from "../../src/runtime/types.ts";
 
 // Synthetic SDK messages: only the fields the normalizer reads matter.

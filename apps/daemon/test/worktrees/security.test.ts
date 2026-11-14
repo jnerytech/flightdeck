@@ -13,7 +13,7 @@ import { git as run } from "../../src/git/adapters/git.ts";
 import type { runCommand } from "../../src/kernel/command.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import type { WorktreeCard } from "../../src/worktrees/domain/cleanup-rules.ts";
-import { FolderLocks } from "../../src/worktrees/locks.ts";
+import { FolderLocks } from "../../src/worktrees/domain/locks.ts";
 import { createWorktrees, gitWithin } from "../../src/worktrees/wiring.ts";
 import { Worktrees, type WorktreesOptions } from "../../src/worktrees/worktrees.ts";
 import { git, gitRepo, gitRepoWithOrigin, newBoard } from "../support/board-helpers.ts";

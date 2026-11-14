@@ -14,7 +14,7 @@ import type { AssistantBlock, EffortLevel, PermissionMode } from "@flightdeck/pr
 import type { UsageTokens } from "../costs/usage-indexer.ts";
 import { AsyncQueue, buildChildEnv, FlightdeckError, whichOnPath } from "../kernel/index.ts";
 import { quotaReadings } from "../quota/index.ts";
-import { describeCommands, type SdkSlashCommand } from "./commands.ts";
+import { describeCommands, type SdkSlashCommand } from "./domain/commands.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import { truncateToolResult } from "./tool-result.ts";
 import type {
