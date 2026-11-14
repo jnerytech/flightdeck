@@ -870,17 +870,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/ssh/connect.ts",
-    "to": "apps/daemon/src/actions/ssh-command.ts",
-    "unresolvedTo": "../actions/ssh-command.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/store/event-store.ts",
     "to": "apps/daemon/src/personas/snapshot.ts",
     "unresolvedTo": "../personas/snapshot.ts",
