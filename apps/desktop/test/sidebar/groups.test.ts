@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { toggleGroup } from "../../src/features/shell/sidebar-groups.ts";
-import { loadFolded, SIDEBAR_FOLDED_KEY, saveFolded } from "../../src/features/viewprefs/store.ts";
+import {
+  loadFolded,
+  SIDEBAR_FOLDED_KEY,
+  saveFolded,
+  toggleGroup,
+} from "../../src/features/viewprefs/store.ts";
 
 const storageWith = (value: string | null) => ({
   getItem: (key: string) => (key === SIDEBAR_FOLDED_KEY ? value : null),

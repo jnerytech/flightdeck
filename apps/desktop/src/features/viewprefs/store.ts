@@ -98,6 +98,11 @@ export function saveTreePinned(
   storage.setItem(TREE_PINNED_KEY, JSON.stringify(pinned));
 }
 
+/** The folded groups after the person clicks `group`'s header: a folded group opens, an open one folds. */
+export function toggleGroup(folded: readonly SidebarGroup[], group: SidebarGroup): SidebarGroup[] {
+  return folded.includes(group) ? folded.filter((g) => g !== group) : [...folded, group];
+}
+
 /** What the view preferences read and write through the app's store: this computer's storage. */
 export interface ViewPrefsCore {
   storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
