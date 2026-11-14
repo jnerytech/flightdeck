@@ -7,7 +7,10 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { runDoctor } from "../../src/deps/doctor.ts";
 import { Idle } from "../../src/messaging/idle.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
-import { type FlightdeckMcpServer, flightdeckMcpServer } from "../../src/runtime/flightdeck-mcp.ts";
+import {
+  type FlightdeckMcpServer,
+  flightdeckMcpServer,
+} from "../../src/runtime/domain/flightdeck-mcp.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 import { setup } from "../support/messaging-helpers.ts";
