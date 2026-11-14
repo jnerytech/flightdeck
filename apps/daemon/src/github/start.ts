@@ -12,7 +12,8 @@ import { FlightdeckError, samePath, UNTRUSTED_MARK } from "../kernel/index.ts";
 import { allowedRoot, cloneRepo, type GitRunner } from "../projects/index.ts";
 import { githubCoords } from "./adapters/remote.ts";
 import type { GhRunner } from "./domain/gh-runner.ts";
-import { checkRepo, Github } from "./github.ts";
+import { checkRepo } from "./domain/repo.ts";
+import { Github } from "./github.ts";
 
 export interface GithubStartRequest {
   /** `owner/name`. */
