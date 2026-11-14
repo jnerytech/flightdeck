@@ -4,7 +4,7 @@
  * on a line of its own, always the second.
  */
 import type { MessageKind } from "@flightdeck/protocol";
-import { UNTRUSTED_MARK } from "../kernel/index.ts";
+import { UNTRUSTED_MARK } from "../../kernel/index.ts";
 import { addressOf, type Party } from "./policy.ts";
 
 /** The third-party mark of phase 13: a message from such a session carries it too. */
