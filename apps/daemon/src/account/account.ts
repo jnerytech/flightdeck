@@ -1,7 +1,8 @@
 import type { AccountState, AccountStatus } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { Quota, Timers } from "../quota/index.ts";
-import type { AccountInfoReading, AccountReaders, AuthStatus, UsageReading } from "./readers.ts";
+import type { AccountInfoReading, AuthStatus, UsageReading } from "./domain/readings.ts";
+import type { AccountReaders } from "./readers.ts";
 
 export interface AccountOptions {
   quota: Quota;
