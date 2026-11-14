@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { runGh } from "../../src/github/adapters/gh.ts";
-import { githubStatus, parseAuthStatus } from "../../src/github/status.ts";
+import { githubStatus, parseAuthStatus } from "../../src/github/domain/status.ts";
 
 setDefaultTimeout(20_000);
 

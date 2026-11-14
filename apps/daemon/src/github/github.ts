@@ -6,8 +6,8 @@ import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
 import { GH_FIELDS, GhIssueRow, GithubIssues } from "./adapters/gh-issues.ts";
-import type { GhResult, GhRunner } from "./gh-runner.ts";
-import { GITHUB_HOST, type GithubStatus, githubStatus } from "./status.ts";
+import type { GhResult, GhRunner } from "./domain/gh-runner.ts";
+import { GITHUB_HOST, type GithubStatus, githubStatus } from "./domain/status.ts";
 
 const refuse = (reason: string, message: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", message, reason, params);
