@@ -36,7 +36,7 @@ describe("conta-sem-segredo: the account module touches no secret", () => {
       sources()
         .map((s) => s.file)
         .sort(),
-    ).toEqual(["account.ts", "demo.ts", "domain/readings.ts", "readers.ts"]);
+    ).toEqual(["account.ts", "demo.ts", "domain/readings.ts", "index.ts", "readers.ts"]);
   });
 
   for (const [what, pattern] of FORBIDDEN) {
