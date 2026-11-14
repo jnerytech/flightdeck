@@ -4,7 +4,7 @@
  */
 import { statuslineData } from "../../costs/index.ts";
 import { FlightdeckError } from "../../kernel/index.ts";
-import { tailForOrigin } from "../../logs/serve.ts";
+import { tailForOrigin } from "../../logs/index.ts";
 import { localDay } from "../../quota/index.ts";
 import { roiPeriod } from "../../roi/summary.ts";
 import type { Handlers } from "../dispatch.ts";
