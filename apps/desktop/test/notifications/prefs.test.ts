@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type InboxEntry, markUnread, unreadCount } from "../../src/features/inbox/inbox.ts";
+import { type InboxEntry, markUnread, unreadCount } from "../../src/features/inbox/domain/inbox.ts";
 import {
   browserSound,
   DEFAULT_NOTIFY_PREFS,

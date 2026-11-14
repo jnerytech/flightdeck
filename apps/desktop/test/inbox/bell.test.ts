@@ -4,7 +4,7 @@ import {
   type InboxEntry,
   inboxRows,
   unreadRows,
-} from "../../src/features/inbox/inbox.ts";
+} from "../../src/features/inbox/domain/inbox.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 const NOW = new Date(2026, 10, 4, 15, 0, 0);

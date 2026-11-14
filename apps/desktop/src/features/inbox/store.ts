@@ -18,8 +18,8 @@ import {
   markUnread,
   saveInbox,
   unreadRows,
-} from "./inbox.ts";
-import type { AboutNotification } from "./notify.ts";
+} from "./domain/inbox.ts";
+import type { AboutNotification } from "./domain/notify.ts";
 
 /** What the notification center reads and does through the app's store. */
 export interface InboxCore {

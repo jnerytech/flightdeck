@@ -3,7 +3,7 @@ import type { PendingPermission } from "@flightdeck/protocol";
 import {
   externalRequestNotification,
   summaryNotifications,
-} from "../../src/features/inbox/notify.ts";
+} from "../../src/features/inbox/domain/notify.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 const en = translator("en");
