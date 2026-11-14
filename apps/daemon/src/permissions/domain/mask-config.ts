@@ -5,7 +5,7 @@
  * `file.read`, the search and OpenCode's read rules keep treating it as a credential.
  */
 import { SecretScanner } from "@flightdeck/protocol";
-import { credential, pathParts } from "./domain/sensitive-paths.ts";
+import { credential, pathParts } from "./sensitive-paths.ts";
 
 /**
  * Whether a path names the config shown masked instead of left out: `.mcp.json`, unless a folder
