@@ -8,7 +8,7 @@ import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, NativeSelect, Stack } from "@/shared/layout/index.ts";
-import { addsNothing, needsReformat, previewDigests } from "./harness.ts";
+import { addsNothing, needsReformat, previewDigests } from "./domain/harness.ts";
 
 type T = AppStore["i18n"]["t"];
 

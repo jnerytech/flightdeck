@@ -7,7 +7,7 @@ import { detectProvider } from "../../board/pr-provider.ts";
 import type { TemplateMarkdown } from "../../harness/templates-store.ts";
 import { FlightdeckError, featureOff, resolveAllowedCwd, rootNames } from "../../kernel/index.ts";
 import { cloneRepo, scanRepos, spawnGit } from "../../projects/index.ts";
-import { trustsManyProjects } from "../../trust/trust-root.ts";
+import { trustsManyProjects } from "../../trust/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
 import type { ServerContext } from "../context.ts";
 import type { Handlers } from "../dispatch.ts";

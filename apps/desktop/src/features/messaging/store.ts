@@ -7,7 +7,7 @@ import type {
 } from "@flightdeck/protocol";
 import { byCodeUnit } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
-import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
+import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./domain/relay.ts";
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
 export interface LoopAlert {

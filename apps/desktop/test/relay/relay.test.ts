@@ -5,7 +5,7 @@ import {
   relayMessage,
   relayUpdate,
   syncPeers,
-} from "../../src/features/messaging/relay.ts";
+} from "../../src/features/messaging/domain/relay.ts";
 
 const MESSAGE: RelayMessage = {
   id: "m1",

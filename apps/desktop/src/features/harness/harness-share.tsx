@@ -4,7 +4,7 @@ import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Stack } from "@/shared/layout/index.ts";
-import { templateIdFrom } from "./harness.ts";
+import { templateIdFrom } from "./domain/harness.ts";
 
 export interface HarnessShareProps {
   store: AppStore;

@@ -11,8 +11,8 @@ import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
+import { type Selection, select } from "./domain/review.ts";
 import { FileSessions } from "./file-sessions.tsx";
-import { type Selection, select } from "./review.ts";
 import { ReviewList } from "./review-list.tsx";
 
 // CodeMirror is ~800 KB of source and only opens with a file: it loads when an editor is opened.
