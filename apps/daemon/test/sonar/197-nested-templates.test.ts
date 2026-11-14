@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type GhIn, listAlerts, PER_SOURCE } from "../../src/github/alerts.ts";
+import { type GhIn, listAlerts, PER_SOURCE } from "../../src/github/domain/alerts.ts";
 
 /** #197 (Sonar S4624): the package line of a Dependabot alert, with and without a manifest, as it read before the rewrite. */
 const DEPENDABOT = `repos/{owner}/{repo}/dependabot/alerts?state=open&per_page=${PER_SOURCE}`;
