@@ -125,7 +125,7 @@ export function RunTimeline(
             step.stepId,
             t("runUi.attempt", { n: step.attempt }),
             t(`runUi.step.${step.status}` as Key),
-            stepDuration(step),
+            stepDuration(step, Date.now()),
             ...(step.usage ? [stepUsage(step.usage, t)] : []),
           ].join(" · ");
           const opens = step.type === "check" || (step.type === "agent" && step.sessionId);
