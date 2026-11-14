@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { actionOf, triggerOf } from "../../src/automations/row-json.ts";
+import { actionOf, triggerOf } from "../../src/automations/domain/row-json.ts";
 
 /** Issue #1609: the trigger and action columns of an automation are read through the protocol's schemas. */
 describe("automation row JSON: the columns are parsed, not cast (#1609)", () => {
