@@ -4,6 +4,6 @@
  * file inside. The bell component is in ui.ts (#2451).
  */
 
-export type { InboxEntry } from "./inbox.ts";
+export type { InboxEntry } from "./domain/inbox.ts";
 export { type InboxCore, InboxSlice } from "./store.ts";
 export { wireInbox } from "./wire.ts";
