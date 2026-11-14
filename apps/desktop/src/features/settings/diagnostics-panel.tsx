@@ -3,7 +3,7 @@ import { ActionButton } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { APP_VERSION } from "../../lib/version.ts";
-import { diagnosticsText } from "./diagnostics-text.ts";
+import { diagnosticsText } from "./domain/diagnostics-text.ts";
 
 /** The last lines "Copy diagnostics" carries. */
 const LINES = 50;
