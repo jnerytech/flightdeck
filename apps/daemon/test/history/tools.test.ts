@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { lastTool } from "../../src/history/session-line.ts";
+import { lastTool } from "../../src/history/domain/session-line.ts";
 
 describe("historico-ferramentas: the last tool of a message", () => {
   test("it reads the tool of a `[tool Name] input` line, and of the older `[ferramenta Name]` one", () => {
