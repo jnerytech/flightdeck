@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { findPaths, resolvePath } from "../../src/features/terminal/terminal-paths.ts";
+import { findPaths, resolvePath } from "../../src/features/terminal/domain/terminal-paths.ts";
 
 /** What a line links, as printed and as the path alone. */
 const linked = (line: string) => findPaths(line).map((found) => [found.text, found.path]);
