@@ -43,20 +43,32 @@ const COMMENT_LINE = /^\s*(\/\/|\*|\/\*)/;
 /** Comment text on a code line: a `/* ... *\/` span, or a `//` tail that follows a space (a url's `//` does not). */
 const COMMENT_SPAN = /(?:\/\*.*?\*\/)|(?:(?:^|\s)\/\/.*$)/g;
 
+/** How many launches one line of code (its comments already cut) holds. */
+function launchesInCode(code: string): number {
+  let n = 0;
+  for (const re of LAUNCHES) n += [...code.matchAll(re)].length;
+  for (const [, pattern = ""] of code.matchAll(DESTRUCTURED_BUN)) {
+    if (SPAWN_NAME.test(pattern)) n++;
+  }
+  return n;
+}
+
+/** How many launches a file's text holds outside its comments. */
+function launchesIn(text: string): number {
+  let n = 0;
+  for (const line of text.split("\n")) {
+    if (COMMENT_LINE.test(line) && !/\*\/\s*\S/.test(line)) continue;
+    n += launchesInCode(line.replace(COMMENT_SPAN, " "));
+  }
+  return n;
+}
+
 /** The scanned files that launch a process outside a comment, with how many launches each holds. */
 export function spawnCounts(files: { path: string; text: string }[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const { path, text } of files) {
     if (!isScanned(path)) continue;
-    let n = 0;
-    for (const line of text.split("\n")) {
-      if (COMMENT_LINE.test(line) && !/\*\/\s*\S/.test(line)) continue;
-      const code = line.replace(COMMENT_SPAN, " ");
-      for (const re of LAUNCHES) n += [...code.matchAll(re)].length;
-      for (const [, pattern = ""] of code.matchAll(DESTRUCTURED_BUN)) {
-        if (SPAWN_NAME.test(pattern)) n++;
-      }
-    }
+    const n = launchesIn(text);
     if (n > 0) counts[path] = n;
   }
   return counts;
