@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import { Idle } from "../../src/messaging/domain/idle.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
-import { Idle } from "../../src/messaging/idle.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { newManager } from "../support/helpers.ts";

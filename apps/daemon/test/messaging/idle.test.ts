@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Idle, type IdleFrame } from "../../src/messaging/idle.ts";
+import { Idle, type IdleFrame } from "../../src/messaging/domain/idle.ts";
 import type { Messaging } from "../../src/messaging/messages.ts";
 import { failure, NOW, PROJECT, setup } from "../support/messaging-helpers.ts";
 

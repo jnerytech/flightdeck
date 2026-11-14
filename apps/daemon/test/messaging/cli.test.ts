@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs, runCli } from "../../src/main.ts";
-import { Idle } from "../../src/messaging/idle.ts";
+import { Idle } from "../../src/messaging/domain/idle.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 import { setup } from "../support/messaging-helpers.ts";
