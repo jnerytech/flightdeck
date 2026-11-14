@@ -77,9 +77,9 @@ export async function usageReport(
   query: IdleQuery,
   timeoutMs = READ_TIMEOUT_MS,
 ): Promise<UsageReading> {
-  const none: UsageReading = { plan: null, available: false, windows: [] };
   const call = query.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET;
-  if (!call) return none;
+  // No usage call: the empty reading.
+  if (!call) return usageOf(null);
   return usageOf(await bounded(call.call(query, { skipBehaviors: true }), timeoutMs));
 }
 
