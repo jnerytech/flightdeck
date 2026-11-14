@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { isCheckEnvName } from "@flightdeck/protocol";
 import { shellCommand } from "../board/setup.ts";
 import { killTree, runCommand, runLimited, whichOnPath } from "../kernel/index.ts";
-import { MAX_VALUE } from "./interpolate.ts";
+import { MAX_VALUE } from "./domain/interpolate.ts";
 
 /** How long a check may run before it is killed, unless the caller gives another limit. */
 export const DEFAULT_CHECK_TIMEOUT_MS = 10 * 60_000;

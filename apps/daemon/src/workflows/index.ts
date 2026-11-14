@@ -4,4 +4,5 @@
  * behind this entry with the remaining deep imports. Another domain imports from here.
  */
 
-export { referencesIn, replaceReferences } from "./references.ts";
+export { MAX_VALUE } from "./domain/interpolate.ts";
+export { referencesIn, replaceReferences } from "./domain/references.ts";
