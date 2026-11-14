@@ -9,8 +9,8 @@ import {
 } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
+import { Ring } from "./domain/ring.ts";
 import type { Pty, PtyFactory } from "./pty.ts";
-import { Ring } from "./ring.ts";
 import { defaultShell } from "./shell.ts";
 
 /** What the manager sends a connected client. */
