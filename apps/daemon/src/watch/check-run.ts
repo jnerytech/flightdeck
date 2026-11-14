@@ -4,7 +4,7 @@
  * secret across a later cut is still caught (docs/decisions/2026-11-09-check-loop.md).
  */
 import { SecretScanner } from "../snippets/index.ts";
-import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
+import type { BoundedCheckRunner } from "../workflows/index.ts";
 import { type CheckRefusal, checkCommandRefusal } from "./check-command.ts";
 
 const scanner = new SecretScanner();
