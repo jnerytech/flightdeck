@@ -7,7 +7,7 @@ import { readdir, readFile, realpath } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { claudeMds, frontmatter } from "../agentcfg/index.ts";
-import { displayPath } from "./display-path.ts";
+import { displayPath } from "./domain/display-path.ts";
 import { exists } from "./exists.ts";
 
 export type BudgetKind = "managed" | "user" | "project" | "local" | "rules" | "skills" | "memory";

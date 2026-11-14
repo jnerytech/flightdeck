@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import { join, sep } from "node:path";
 import { startDaemon } from "../../src/main.ts";
-import { displayPath } from "../../src/memory/display-path.ts";
+import { displayPath } from "../../src/memory/domain/display-path.ts";
 import { decisionLog, type MemoryDecision, ProjectMemory } from "../../src/memory/memory.ts";
 import { startServer } from "../../src/server.ts";
 import { git, gitRepo, newBoard } from "../support/board-helpers.ts";

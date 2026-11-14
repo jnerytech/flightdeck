@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { posix, sep, win32 } from "node:path";
-import { displayPath } from "../../src/memory/display-path.ts";
+import { displayPath } from "../../src/memory/domain/display-path.ts";
 import { managedClaudeMdPath } from "../../src/memory/memory.ts";
 
 describe("memoria: caminho mostrado", () => {
