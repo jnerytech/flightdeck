@@ -27,7 +27,7 @@
   "apps/daemon/src/messaging/domain/policy.ts",
   "apps/daemon/src/messaging/endpoints.ts",
   "apps/daemon/src/messaging/idle.ts",
-  "apps/daemon/src/names/format.ts",
+  "apps/daemon/src/names/domain/format.ts",
   "apps/daemon/src/names/names.ts",
   "apps/daemon/src/permissions/permission-broker.ts",
   "apps/daemon/src/permissions/permission-updates.ts",
