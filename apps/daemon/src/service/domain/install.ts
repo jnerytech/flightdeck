@@ -397,7 +397,8 @@ function parseCommand(args: string[]): ServiceCommand {
 export async function serviceCommand(ctx: ServiceContext): Promise<ServiceCommand | null> {
   if (requireSupported(ctx) === "linux") {
     const { code, stdout } = await ctx.exec(["systemctl", "--user", "cat", "flightdeckd"]);
-    const line = /^ExecStart=(.*)$/m.exec(stdout)?.[1];
+    // `cat` prints the unit then its drop-ins: the last ExecStart= wins, and an empty one resets it.
+    const line = [...stdout.matchAll(/^ExecStart=(.*)$/gm)].at(-1)?.[1]?.trim();
     return code === 0 && line ? parseCommand(splitSystemdArgs(line)) : null;
   }
   const { code, stdout } = await ctx.exec([...windowsTaskQueryArgs(), "/XML"]);
