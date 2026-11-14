@@ -4,7 +4,7 @@
  * by matching the prompt with the user messages the history index read, on demand.
  */
 import { MAX_TEXT_BYTES, truncateUtf8 } from "../history/index.ts";
-import type { SnapshotRow } from "./snapshots.ts";
+import type { SnapshotRow } from "./domain/snapshot-row.ts";
 
 export interface UserPrompt {
   uuid: string;
