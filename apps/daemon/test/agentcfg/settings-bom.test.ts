@@ -10,9 +10,9 @@ import {
   uninstallHooks,
 } from "../../src/central/hooks-install.ts";
 import { layoutLike, parseJsonText } from "../../src/kernel/json-text.ts";
+import type { TelemetryTarget } from "../../src/telemetry/domain/env.ts";
 import {
   installTelemetry,
-  type TelemetryTarget,
   telemetryStatus,
   uninstallTelemetry,
 } from "../../src/telemetry/otlp-env.ts";
