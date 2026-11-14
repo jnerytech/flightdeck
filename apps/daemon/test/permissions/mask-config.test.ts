@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { maskConfig } from "../../src/permissions/mask-config.ts";
+import { maskConfig } from "../../src/permissions/domain/mask-config.ts";
 
 /** Issue #806: what the masker shows of an MCP config line by line, and what it never does. */
 const text = (lines: string[], unknownStart = false) => maskConfig(lines, unknownStart).join("\n");

@@ -4,9 +4,9 @@
  */
 export { type AutoApproveRequest, type AutoApprover, historyExcludes } from "./auto-approve.ts";
 export { bindInput, summarizeInput } from "./bind-input.ts";
+export { maskConfig, maskedConfig } from "./domain/mask-config.ts";
 export { credential, credentialReadGlobs } from "./domain/sensitive-paths.ts";
 export { requireHold } from "./hold.ts";
-export { maskConfig, maskedConfig } from "./mask-config.ts";
 export { realPathOf, statKind } from "./path-kind.ts";
 export { PermissionBroker } from "./permission-broker.ts";
 export {
