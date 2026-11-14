@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import type { ActionDef } from "./schema.ts";
+import type { ActionDef } from "./domain/schema.ts";
 
 export interface Fingerprint {
   /** sha256 of what the action declares (not its name nor its description). */

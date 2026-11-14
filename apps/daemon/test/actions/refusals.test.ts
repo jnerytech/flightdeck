@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import type { ActionDef } from "../../src/actions/domain/schema.ts";
 import { envInput } from "../../src/actions/domain/ssh-command.ts";
 import { resolveParams, runAction } from "../../src/actions/run.ts";
-import type { ActionDef } from "../../src/actions/schema.ts";
 import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { tempDir } from "../support/helpers.ts";
 

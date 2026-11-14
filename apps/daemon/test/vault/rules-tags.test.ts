@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isProd, validateAction } from "../../src/actions/schema.ts";
+import { isProd, validateAction } from "../../src/actions/domain/schema.ts";
 
 const action = (over: Record<string, unknown> = {}) => ({
   name: "logs-prod",

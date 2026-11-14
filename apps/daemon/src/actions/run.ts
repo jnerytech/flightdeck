@@ -11,7 +11,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { buildChildEnv, FlightdeckError } from "../kernel/index.ts";
 import { type SpawnProgram, spawnProgram } from "./adapters/action-process.ts";
 import { type MaskedSecret, maskOutput } from "./domain/mask.ts";
-import { type ActionDef, paramRegex, REFERENCE, secretsOf } from "./schema.ts";
+import { type ActionDef, paramRegex, REFERENCE, secretsOf } from "./domain/schema.ts";
 
 export interface SshJob {
   target: string;

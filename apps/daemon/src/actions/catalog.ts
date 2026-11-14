@@ -9,8 +9,14 @@ import { must } from "../board/worktree.ts";
 import { userHome } from "../config.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
+import {
+  type ActionDef,
+  approvalOf,
+  parseActions,
+  secretsOf,
+  validateAction,
+} from "./domain/schema.ts";
 import { definitionOf, pinnedFilesOf } from "./row-json.ts";
-import { type ActionDef, approvalOf, parseActions, secretsOf, validateAction } from "./schema.ts";
 import { changes, type Fingerprint, fingerprint } from "./trust.ts";
 
 /** What the service needs to know of a project. */
