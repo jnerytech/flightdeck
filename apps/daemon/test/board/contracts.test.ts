@@ -223,7 +223,7 @@ describe("board-contracts: what moves cards on its own is never refused", () => 
   test("a session managing its card moves it (manage.ts)", async () => {
     const { board, project, card, repo } = await withCard();
     board.updateProject(project.id, { contractByColumn: strictest() });
-    const moved = await manageCard({ board, cwdOf: () => null }, {
+    const moved = await manageCard({ board, cwdOf: () => null, now: () => new Date() }, {
       action: "move",
       column: "review",
       cardId: card.id,
