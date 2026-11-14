@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { isPreviewUrl } from "@flightdeck/protocol";
+import { type ReadyResult, waitReady } from "../../src/runenv/domain/preview.ts";
 import { RunManager } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";
-import { httpReady, type ReadyResult, waitForServer, waitReady } from "../../src/runenv/preview.ts";
+import { httpReady, waitForServer } from "../../src/runenv/preview.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { poll } from "../support/helpers.ts";
 import { fakeRunHost, runConfig } from "./helpers.ts";

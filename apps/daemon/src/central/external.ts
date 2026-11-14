@@ -8,7 +8,8 @@ import {
   SessionPersona,
 } from "@flightdeck/protocol";
 import { parseJsonOr } from "../kernel/index.ts";
-import { planTextIn, type Tail, tailOfFile, type Waiting, waitingIn } from "./waiting.ts";
+import { planTextIn, type Tail, type Waiting, waitingIn } from "./domain/waiting.ts";
+import { tailOfFile } from "./waiting.ts";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };

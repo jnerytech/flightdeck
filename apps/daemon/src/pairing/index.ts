@@ -4,4 +4,5 @@
  * imports from here, never a file inside.
  */
 export { loopbackOnly, pairingAddress } from "./domain/address.ts";
-export { renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
+export { renderQr } from "./domain/qr.ts";
+export { rotateToken, tailscaleIp } from "./pairing.ts";
