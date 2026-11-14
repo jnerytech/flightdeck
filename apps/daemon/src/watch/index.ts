@@ -5,5 +5,5 @@
  * watch's trace reaches the board through the issues). Another domain imports from here.
  */
 
-export { REMOVED_LINE } from "./check-run.ts";
+export { REMOVED_LINE } from "./domain/check-run.ts";
 export { createWatch, type WatchDeps } from "./wiring.ts";
