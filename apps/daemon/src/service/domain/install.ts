@@ -22,10 +22,14 @@ function requireAbsolute(command: string[]): void {
   }
 }
 
-/** systemd quoting: arguments with spaces or quotes go inside double quotes. */
+/**
+ * systemd quoting: `%` (a specifier) and `$` (a variable) are doubled so they reach the process as
+ * they are (#2895); arguments with spaces or quotes go inside double quotes.
+ */
 const systemdQuote = (arg: string) => {
-  if (!/[\s"\\]/.test(arg)) return arg;
-  const escaped = arg.replace(/(["\\])/g, String.raw`\$1`);
+  const literal = arg.replace(/[%$]/g, "$&$&");
+  if (!/[\s"\\]/.test(literal)) return literal;
+  const escaped = literal.replace(/(["\\])/g, String.raw`\$1`);
   return `"${escaped}"`;
 };
 
@@ -317,10 +321,11 @@ const xmlUnescape = (text: string) =>
     .replaceAll("&apos;", "'")
     .replaceAll("&amp;", "&");
 
-/** Arguments of a systemd command line, unquoted: inside quotes `\` escapes `"` and `\`. */
+/** Arguments of a systemd command line, unquoted: `\` escapes `"` and `\` inside quotes, `%%` and `$$` are one. */
 function splitSystemdArgs(line: string): string[] {
+  const unescape = (arg: string) => arg.replace(/%%|\$\$/g, (pair) => pair[0] as string);
   return [...line.matchAll(/"((?:[^"\\]|\\.)*)"|(\S+)/g)].map(([, quoted, plain]) =>
-    quoted === undefined ? (plain as string) : quoted.replace(/\\(["\\])/g, "$1"),
+    unescape(quoted === undefined ? (plain as string) : quoted.replace(/\\(["\\])/g, "$1")),
   );
 }
 
