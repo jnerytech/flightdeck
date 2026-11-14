@@ -138,7 +138,7 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   `request-link.ts` moved from `features/hosts/` to `features/permissions/`; the window and the
   tray's answer come from the store as deps, and the store keeps one-line forwarders for the
   screens; the quiet snooze (`snoozeQuiet`) to a `QuietSnoozeSlice` in
-  `features/needs-you/quiet-snooze.ts`, next to the snoozes' storage (Needs you lists the quiet
+  `features/needs-you/domain/quiet-snooze.ts`, next to the snoozes' storage (Needs you lists the quiet
   sessions, not the session screens).
 - **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(platform, held)`
   (`held`: what the store holds when it is built, the clock's start, the vault's usage log and the
