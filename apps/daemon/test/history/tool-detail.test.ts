@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MAX_TOOL_BYTES, toolDetail } from "../../src/history/tool-detail.ts";
+import { MAX_TOOL_BYTES, toolDetail } from "../../src/history/domain/tool-detail.ts";
 
 /**
  * Issue #606: the transcript reader opens a tool row to its full input and its result. The daemon

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join, resolve } from "node:path";
-import { credential, RiskClassifier } from "../../src/permissions/risk.ts";
+import { credential, RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import { type ClassifyCall, type PathKind, ruleLevel } from "../../src/permissions/rule-risk.ts";
 
 const HOME = resolve("/casa/u");

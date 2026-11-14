@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { type ActionDef, validateAction } from "../../src/actions/domain/schema.ts";
 import { type RunOptions, resolveParams, runAction } from "../../src/actions/run.ts";
-import { type ActionDef, validateAction } from "../../src/actions/schema.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const BUN = process.execPath;

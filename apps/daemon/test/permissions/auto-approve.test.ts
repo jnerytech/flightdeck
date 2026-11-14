@@ -12,7 +12,7 @@ import {
   autoApproveDir,
   historyExcludes,
 } from "../../src/permissions/auto-approve.ts";
-import { RiskClassifier, type RiskLevel } from "../../src/permissions/risk.ts";
+import { RiskClassifier, type RiskLevel } from "../../src/permissions/domain/risk.ts";
 import { localDay } from "../../src/quota/usage.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";

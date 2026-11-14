@@ -42,8 +42,8 @@ import {
   type VaultRules,
 } from "../vault/index.ts";
 import { ActionCatalog, type ActionProject, type Found } from "./catalog.ts";
+import { type ActionDef, approvalOf, secretsOf } from "./domain/schema.ts";
 import { type RunResult, resolveParams, runAction, type SshExecutor } from "./run.ts";
-import { type ActionDef, approvalOf, secretsOf } from "./schema.ts";
 import { shellLine } from "./shell.ts";
 
 export interface ActionsOptions {

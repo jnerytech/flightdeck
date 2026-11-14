@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { join, resolve } from "node:path";
 import { ExternalPermissions } from "../../src/central/external-permissions.ts";
 import { Config } from "../../src/config.ts";
-import { RiskClassifier, type RiskLevel } from "../../src/permissions/risk.ts";
+import { RiskClassifier, type RiskLevel } from "../../src/permissions/domain/risk.ts";
 import { newManager, poll, record } from "../support/helpers.ts";
 
 const HOME = resolve("/casa/u");

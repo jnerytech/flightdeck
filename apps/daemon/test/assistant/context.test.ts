@@ -5,8 +5,8 @@ import { SecretScanner } from "@flightdeck/protocol";
 import { type ContextDeps, extractRules, repoContext } from "../../src/assistant/context.ts";
 import { workingDiff } from "../../src/board/diff.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
-import { credential, isCredentialPath } from "../../src/permissions/risk.ts";
-import { REMOVED_LINE } from "../../src/watch/check-run.ts";
+import { credential, isCredentialPath } from "../../src/permissions/domain/risk.ts";
+import { REMOVED_LINE } from "../../src/watch/domain/check-run.ts";
 import { git, gitRepo } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { PermissionUpdate, SessionEvent } from "@flightdeck/protocol";
+import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
-import { RiskClassifier } from "../../src/permissions/risk.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { tempDir } from "../support/helpers.ts";
 

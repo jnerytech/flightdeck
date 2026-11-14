@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import type { ActionDef } from "../../src/actions/domain/schema.ts";
 import { definitionOf, pinnedFilesOf } from "../../src/actions/row-json.ts";
-import type { ActionDef } from "../../src/actions/schema.ts";
 
 /** Issue #1609: the JSON columns of an action row are read through their schemas. */
 describe("action row JSON: the columns are parsed, not cast (#1609)", () => {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type ActionDef, validateAction } from "../../src/actions/schema.ts";
+import { type ActionDef, validateAction } from "../../src/actions/domain/schema.ts";
 import { changes, fingerprint } from "../../src/actions/trust.ts";
 import { tempDir } from "../support/helpers.ts";
 

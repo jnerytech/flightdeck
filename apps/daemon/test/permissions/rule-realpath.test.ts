@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, normalize } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
+import { checkUpdates, ruleReadings } from "../../src/permissions/domain/permission-updates.ts";
+import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import { realPathOf } from "../../src/permissions/path-kind.ts";
-import { checkUpdates, ruleReadings } from "../../src/permissions/permission-updates.ts";
-import { RiskClassifier } from "../../src/permissions/risk.ts";
 import {
   type ClassifyCall,
   type PathKind,

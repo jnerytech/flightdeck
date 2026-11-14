@@ -11,7 +11,7 @@ import {
   parseJsonText,
   parseJsonWith,
 } from "./kernel/index.ts";
-import { validRegex } from "./permissions/risk.ts";
+import { validRegex } from "./permissions/domain/risk.ts";
 import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";
 import { defaultHostName } from "./wsl/host.ts";
 

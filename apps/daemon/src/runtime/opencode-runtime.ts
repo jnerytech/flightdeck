@@ -17,7 +17,7 @@ import {
   type AcpToolCall,
   type AcpUpdate,
   OpenCodeEvents,
-} from "./opencode-events.ts";
+} from "./domain/opencode-events.ts";
 import { maskResource } from "./opencode-preflight.ts";
 import type { ScopeResult } from "./opencode-scope.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";

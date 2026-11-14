@@ -5,7 +5,7 @@
     "command": "env -u CLAUDECODE bun --config=bunfig.area.toml test apps/daemon/test/permissions/risk.test.ts"
   },
   "coverageAnalysis": "off",
-  "mutate": ["apps/daemon/src/permissions/risk.ts"],
+  "mutate": ["apps/daemon/src/permissions/domain/risk.ts"],
   "reporters": ["clear-text", "json"],
   "jsonReporter": { "fileName": "reports/mutation/mutation.json" },
   "tempDirName": ".stryker-tmp",

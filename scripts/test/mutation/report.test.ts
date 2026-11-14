@@ -22,7 +22,7 @@ const mutant = (
 });
 
 const report = (...mutants: ReturnType<typeof mutant>[]): MutationReport => ({
-  files: { "apps/daemon/src/permissions/risk.ts": { mutants } },
+  files: { "apps/daemon/src/permissions/domain/risk.ts": { mutants } },
 });
 
 describe("mutation score: what the weekly run reports per domain (#1607)", () => {
@@ -104,7 +104,7 @@ describe("one Stryker config per domain (#1607)", () => {
   const base = { testRunner: "command", coverageAnalysis: "off", concurrency: 1 };
   const domain = {
     name: "permissions-risk",
-    mutate: ["apps/daemon/src/permissions/risk.ts"],
+    mutate: ["apps/daemon/src/permissions/domain/risk.ts"],
     tests: ["apps/daemon/test/permissions/risk.test.ts"],
   };
 

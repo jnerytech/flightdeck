@@ -1,7 +1,5 @@
-import { createReadStream } from "node:fs";
-import { createInterface } from "node:readline";
 import { z } from "zod";
-import { parseJsonOr } from "../kernel/index.ts";
+import { parseJsonOr } from "../../kernel/index.ts";
 import { truncateUtf8 } from "./parser.ts";
 
 /** A tool call of a stored transcript with its whole input and its result (#606). */
@@ -135,16 +133,4 @@ function parsedIf(line: string, needle: string): { uuid: unknown; content: Block
 /** The result block that answers the call `id` among a message's content blocks, if it is there. */
 function resultFor(content: Block[], id: unknown): Block | undefined {
   return content.find((b) => b?.type === "tool_result" && b.tool_use_id === id);
-}
-
-/** The lines of a file, read as they are asked for: a caller that stops early closes the file. */
-export async function* fileLines(path: string): AsyncGenerator<string> {
-  const stream = createReadStream(path, { encoding: "utf8" });
-  const reader = createInterface({ input: stream, crlfDelay: Number.POSITIVE_INFINITY });
-  try {
-    for await (const line of reader) yield line;
-  } finally {
-    reader.close();
-    stream.destroy();
-  }
 }
