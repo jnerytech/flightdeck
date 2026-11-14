@@ -3,8 +3,8 @@
  * the uuid of the user message in the transcript, which "Bifurcar daqui" needs. The uuid is found
  * by matching the prompt with the user messages the history index read, on demand.
  */
-import { MAX_TEXT_BYTES, truncateUtf8 } from "../history/index.ts";
-import type { SnapshotRow } from "./snapshots.ts";
+import { MAX_TEXT_BYTES, truncateUtf8 } from "../../history/index.ts";
+import type { SnapshotRow } from "./snapshot-row.ts";
 
 export interface UserPrompt {
   uuid: string;

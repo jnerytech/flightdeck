@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { DepResult } from "@flightdeck/protocol";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { DepsEnv } from "../../src/deps/deps.ts";
-import { doctorExitCode, formatDeps } from "../../src/deps/format.ts";
+import { doctorExitCode, formatDeps } from "../../src/deps/domain/format.ts";
 import { type CliDeps, runCli } from "../../src/main.ts";
 import { tempDir } from "../support/helpers.ts";
 

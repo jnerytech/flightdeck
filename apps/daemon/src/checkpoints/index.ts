@@ -5,6 +5,6 @@
  * cycle; `main.ts`, outside any domain, takes `createCheckpoints` from it. `fork.ts` stays out
  * too: it reaches `central/` through `personas/` (#1601); `server-options.ts` takes `Forker` from it.
  */
+export { withTurnUuids } from "./domain/turn-uuid.ts";
 export type { Rewinder } from "./rewind.ts";
 export { type SnapshotInput, Snapshots, snapshotForHook } from "./snapshots.ts";
-export { withTurnUuids } from "./turn-uuid.ts";

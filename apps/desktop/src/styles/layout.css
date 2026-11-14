@@ -73,6 +73,15 @@
   padding-block: 0.75rem;
 }
 
+/*
+ * A field in a toolbar (#2821): it grows into the free room from a basis of 8rem, so the toolbar
+ * wraps before the field shrinks. Pair it with `min-w-32`: the Input's own `min-w-0` wins over
+ * a minimum set here, and tailwind-merge only replaces it with another `min-w-*` class.
+ */
+@utility toolbar-field {
+  flex: 1 1 8rem;
+}
+
 /* A form row and its help line: the reason a button is disabled sits under the first field. */
 @utility field-row-wrap {
   display: flex;
