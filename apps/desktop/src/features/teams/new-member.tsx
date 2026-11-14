@@ -9,7 +9,7 @@ import {
   PersonaPicker,
 } from "@/features/personas/ui.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { type EffortChoice, effortOffered, offeredChoice } from "./new-team.ts";
+import { type EffortChoice, effortOffered, offeredChoice } from "./domain/new-team.ts";
 import { useModes, usePersonaModels } from "./use-modes.ts";
 
 /** The persona and model of a worker about to join a running team. */

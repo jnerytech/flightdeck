@@ -9,7 +9,7 @@ import {
   memberPayload,
   type NewTeamForm,
   offeredChoice,
-} from "../../src/features/teams/new-team.ts";
+} from "../../src/features/teams/domain/new-team.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 const t = translator("en");
