@@ -6,14 +6,6 @@
  */
 export { CliProvider, cli, cliJsonWith, cliOk } from "./cli.ts";
 export {
-  BUILD_LOG_BYTES,
-  checkedId,
-  ISSUE_LIMIT,
-  summarize,
-  tail,
-  urlName,
-} from "./host-output.ts";
-export {
   type CreatePr,
   type PrCheck,
   type PrComment,
@@ -21,5 +13,13 @@ export {
   type PrProvider,
   type PrStatus,
   prMessage,
-} from "./port.ts";
-export { azureDetails, githubDetails } from "./pr-details.ts";
+} from "./domain/port.ts";
+export { azureDetails, githubDetails } from "./domain/pr-details.ts";
+export {
+  BUILD_LOG_BYTES,
+  checkedId,
+  ISSUE_LIMIT,
+  summarize,
+  tail,
+  urlName,
+} from "./host-output.ts";
