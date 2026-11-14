@@ -10,7 +10,8 @@ import { git } from "../git/index.ts";
 import { GithubIssues, githubCoords } from "../github/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
-import { AzureIssues, type IssueProvider, parseIssueRef } from "./providers.ts";
+import { parseIssueRef } from "./domain/issue-ref.ts";
+import { AzureIssues, type IssueProvider } from "./providers.ts";
 import { azureCoords } from "./remote.ts";
 
 export type { Issue };
