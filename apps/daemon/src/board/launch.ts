@@ -10,8 +10,9 @@ import { FlightdeckError, parseJsonWith, refArg, refusalOf } from "../kernel/ind
 import { withoutPersonas } from "../personas/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
 import type { BoardEvent } from "./domain/columns.ts";
-import { pinnedPrompt } from "./pins.ts";
+import { pinnedPrompt } from "./domain/pins.ts";
 import { runSetup } from "./setup.ts";
+import { readSpec } from "./spec.ts";
 import {
   hasTddSkill,
   renderSpec,
@@ -128,7 +129,7 @@ export class Launcher {
     const specLine = this.firstSession(id, runId)
       ? await this.startSpec(id, project.contractByColumn, worktree)
       : null;
-    const pins = await pinnedPrompt(worktree, card.pinnedDocs);
+    const pins = await pinnedPrompt(worktree, card.pinnedDocs, readSpec);
     const prompt = [card.description, specLine ?? "", pins, project.promptTemplate]
       .filter((part) => part.trim())
       .join("\n\n");

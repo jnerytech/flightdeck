@@ -1,5 +1,5 @@
 import type { LocalizedText, WorkflowTemplate } from "@flightdeck/protocol";
-import { WORKFLOWS_DIR } from "./repo.ts";
+import { WORKFLOWS_DIR } from "./workflows-dir.ts";
 
 /** A test command the daemon puts in a file: a plain form (`bun run test`, `go test ./...`). */
 const PLAIN_COMMAND = /^\w[\w .:/=@-]{0,79}$/;

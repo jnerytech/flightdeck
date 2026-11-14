@@ -4,20 +4,11 @@
  * with what it started.
  */
 import { FlightdeckError, killTree, runCommand, whichOnPath } from "../kernel/index.ts";
+import { safeArgs } from "./domain/git-args.ts";
 
 export const TIMEOUT_MS = 120_000;
-/** The `core.hooksPath` that holds no hook, on this platform. */
-export const hooksOff = (platform: NodeJS.Platform = process.platform): string =>
-  platform === "win32" ? "NUL" : "/dev/null";
-/** No hook, fsmonitor or signature check (gpg.program) of the repository runs. */
-export const SAFE = [
-  "-c",
-  `core.hooksPath=${hooksOff()}`,
-  "-c",
-  "core.fsmonitor=false",
-  "-c",
-  "log.showSignature=false",
-];
+/** The safe config of this platform: no hook, fsmonitor or signature check (gpg.program) of the repository runs. */
+export const SAFE = safeArgs(process.platform);
 
 /** One git call in `cwd`, with no hook, fsmonitor or gpg of the repository; null when it fails. */
 export async function git(

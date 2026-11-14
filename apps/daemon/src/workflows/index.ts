@@ -10,5 +10,5 @@ export type { BoundedCheckRunner } from "./check-runner.ts";
 export { CARDS_PER_RUN, type CardsRaised, type Finding } from "./domain/findings.ts";
 export { MAX_VALUE } from "./domain/interpolate.ts";
 export { referencesIn, replaceReferences } from "./domain/references.ts";
+export { workflowTemplates } from "./domain/templates.ts";
 export { hashOf } from "./repo.ts";
-export { workflowTemplates } from "./templates.ts";

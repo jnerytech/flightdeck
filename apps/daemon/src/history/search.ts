@@ -1,6 +1,6 @@
 /** Full-text search over the indexed messages (#1589): the query, the excerpt and FTS5 or `LIKE`. */
 import type { Database } from "bun:sqlite";
-import { CWD_CONDITION, trimSlashes } from "./folder.ts";
+import { CWD_CONDITION, trimSlashes } from "./domain/folder.ts";
 
 export interface SearchQuery {
   query: string;
