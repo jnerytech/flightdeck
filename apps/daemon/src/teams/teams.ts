@@ -17,7 +17,7 @@ import {
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { MANAGED_STATE } from "../messaging/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
-import type { NewTeam, TeamPatch } from "./input.ts";
+import type { NewTeam, TeamPatch } from "./domain/input.ts";
 import {
   coordinatorInstructions,
   INSTRUCTIONS_VERSION,
@@ -28,11 +28,17 @@ import {
   type TeamBrief,
   withCoordinatorBrief,
   workerInstructions,
-} from "./instructions.ts";
+} from "./domain/instructions.ts";
+import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./domain/stored.ts";
+import {
+  MAX_WORKERS,
+  NO_SPEC,
+  numberOf,
+  type WorkerSpec,
+  type WorkerStart,
+} from "./domain/worker.ts";
 import type { TeamsOptions } from "./options.ts";
 import { PerKeyQueue } from "./serial.ts";
-import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./stored.ts";
-import { MAX_WORKERS, NO_SPEC, numberOf, type WorkerSpec, type WorkerStart } from "./worker.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";

@@ -202,7 +202,7 @@ const MSGS3_PORTUGUESE = new RegExp(
  */
 const MSGS3_SHOWN: Record<string, string[]> = {
   // The pause and resume messages live with the instructions (#2090); only their presence is checked.
-  "teams/instructions.ts": ["resume: "],
+  "teams/domain/instructions.ts": ["resume: "],
   "teams/teams.ts": [
     " · executora ",
     " · coordenadora",

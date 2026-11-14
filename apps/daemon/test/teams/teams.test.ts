@@ -5,7 +5,7 @@ import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
 import { Names } from "../../src/names/names.ts";
-import { INSTRUCTIONS_VERSION } from "../../src/teams/instructions.ts";
+import { INSTRUCTIONS_VERSION } from "../../src/teams/domain/instructions.ts";
 import type { TeamsOptions } from "../../src/teams/options.ts";
 import { Teams } from "../../src/teams/teams.ts";
 import { cardWhen, newBoard, whenChanged } from "../support/board-helpers.ts";
