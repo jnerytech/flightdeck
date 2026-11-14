@@ -133,6 +133,95 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     }
   });
 
+  test("the active tab stays in view once the scroll arrows take their room from the strip (#2728)", async () => {
+    // The strip is 500 px wide and each arrow takes 24 px of it; the active tab is 60 px wide and ends
+    // at 500 before any scroll. The right arrow narrows the strip to 476 px, so the tab has to move 24 px in.
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    const arrow = (side: "direita" | "esquerda") =>
+      document.querySelector(`[aria-label="Rolar as abas para a ${side}"]`) ? 24 : 0;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const at = (left: number, right: number) => ({ left, right }) as DOMRect;
+      const scrolled = (document.querySelector(".tab-scroller") as HTMLElement).scrollLeft;
+      if (this.classList.contains("tab-scroller"))
+        return at(arrow("esquerda"), 500 - arrow("direita"));
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
+        return at(440 - scrolled, 500 - scrolled);
+      return at(0, 0);
+    };
+    try {
+      const { scroller } = await many();
+      scroller.scrollLeft = 0;
+      Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+      Object.defineProperty(scroller, "clientWidth", { value: 500, configurable: true });
+      await act(async () => {
+        fireEvent.scroll(scroller);
+      });
+      expect(screen.queryByRole("button", { name: "Rolar as abas para a direita" })).not.toBeNull();
+      expect(scroller.scrollLeft).toBe(24);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+
+  test("a scroll by hand to the end of the strip stays there: no snap back to the active tab (#2728)", async () => {
+    // The active tab is at the far left. Wheeling the strip to its end drops the right arrow, which
+    // widens the strip; that is not a reason to bring the active tab back.
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const at = (left: number, right: number) => ({ left, right }) as DOMRect;
+      const scrolled = (document.querySelector(".tab-scroller") as HTMLElement).scrollLeft;
+      if (this.classList.contains("tab-scroller")) return at(0, 500);
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
+        return at(0 - scrolled, 60 - scrolled);
+      return at(0, 0);
+    };
+    try {
+      const { scroller } = await many();
+      scroller.scrollLeft = 0;
+      Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+      Object.defineProperty(scroller, "clientWidth", { value: 500, configurable: true });
+      await act(async () => {
+        fireEvent.scroll(scroller);
+      });
+      await act(async () => {
+        fireEvent.wheel(scroller, { deltaY: 1500 });
+      });
+      expect(scroller.scrollLeft).toBe(1500);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+
+  test("a sideways swipe to the end of the strip stays there too: it moves the strip by itself, with no deltaY (#2728)", async () => {
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const at = (left: number, right: number) => ({ left, right }) as DOMRect;
+      const scrolled = (document.querySelector(".tab-scroller") as HTMLElement).scrollLeft;
+      if (this.classList.contains("tab-scroller")) return at(0, 500);
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
+        return at(0 - scrolled, 60 - scrolled);
+      return at(0, 0);
+    };
+    try {
+      const { scroller } = await many();
+      scroller.scrollLeft = 0;
+      Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+      Object.defineProperty(scroller, "clientWidth", { value: 500, configurable: true });
+      await act(async () => {
+        fireEvent.scroll(scroller);
+      });
+      // A trackpad swipe: the wheel carries deltaX only and the browser scrolls the strip itself.
+      await act(async () => {
+        fireEvent.wheel(scroller, { deltaX: 1500, deltaY: 0 });
+        scroller.scrollLeft = 1500;
+        fireEvent.scroll(scroller);
+      });
+      expect(scroller.scrollLeft).toBe(1500);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+
   test("the list of all tabs is a filterable list, not a menu: icon, title, host, the active one marked (#576)", async () => {
     const { store } = await openList();
     expect(screen.queryAllByRole("menuitem")).toHaveLength(0);

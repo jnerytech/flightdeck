@@ -103,4 +103,14 @@ describe("chat-composer: the status line", () => {
     );
     expect(document.querySelector("[data-slot='session-spinner']")).toBeNull();
   });
+
+  test("the card says it is busy while a turn runs, so a narrow dock gives the field its own line (#2727)", () => {
+    const { rerender } = view({ status: "running" });
+    const card = () => document.querySelector("[data-slot='composer-card']") as HTMLElement;
+    expect(card().getAttribute("data-busy")).toBe("true");
+    rerender(
+      <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={actions} />,
+    );
+    expect(card().getAttribute("data-busy")).toBeNull();
+  });
 });

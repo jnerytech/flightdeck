@@ -149,6 +149,8 @@ export function TabBar(
   const refocusTab = useRef(false);
   const tablist = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  /** The strip has not been scrolled by hand since the active tab or the tab count last changed (#2728). */
+  const settling = useRef(false);
   /** The strip has more tabs than fit on either side. */
   const [more, setMore] = useState({ left: false, right: false });
   const measure = useCallback(() => {
@@ -160,20 +162,32 @@ export function TabBar(
   }, []);
   const scrollBy = (delta: number) => {
     const box = scroller.current;
+    settling.current = false;
     if (box) box.scrollLeft += delta;
     measure();
   };
   const compact = row.length > COMPACT_AT;
-  // The active tab is always in view (scrolled by hand, #1430); the strip is measured again when the
-  // tabs change.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the active tab and the count are the triggers
-  useEffect(() => {
+  /** Scrolls the strip, by as little as it takes, until the active tab is in view. */
+  const revealActive = useCallback(() => {
     const active = tablist.current?.querySelector<HTMLElement>(
       '[role="tab"][aria-selected="true"]',
     );
     if (active && scroller.current) revealTab(scroller.current, active);
+  }, []);
+  // The active tab is always in view (scrolled by hand, #1430); the strip is measured again when the
+  // tabs change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the active tab and the count are the triggers
+  useEffect(() => {
+    settling.current = true;
+    revealActive();
     measure();
-  }, [tabs.activeId, row.length, sharedActive, shared?.activeId, measure]);
+  }, [tabs.activeId, row.length, sharedActive, shared?.activeId, revealActive, measure]);
+  // An arrow showing or going narrows or widens the strip: until the person scrolls it, the active
+  // tab is brought back into view. A scroll by hand that crosses an edge is left where it is (#2728).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the arrows are the triggers
+  useEffect(() => {
+    if (settling.current) revealActive();
+  }, [more.left, more.right, revealActive]);
   useEffect(() => {
     if (focusTab.current) {
       const id = focusTab.current;
@@ -340,7 +354,12 @@ export function TabBar(
         ref={scroller}
         className="tab-scroller"
         onScroll={measure}
+        onPointerDown={() => {
+          settling.current = false;
+        }}
         onWheel={(e) => {
+          // A sideways swipe scrolls the strip by itself: it is a scroll by hand too.
+          settling.current = false;
           if (e.deltaY !== 0) scrollBy(e.deltaY);
         }}
       >

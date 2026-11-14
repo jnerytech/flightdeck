@@ -943,7 +943,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
         )}
         {working && <ActivityLine activity={activity} t={t} />}
         {wand && <WandPanel wand={wand} t={t} />}
-        <Composer>
+        <Composer busy={working}>
           {props.images && (
             <>
               <IconActionButton label={t("session.attach")} onClick={() => files.current?.click()}>
