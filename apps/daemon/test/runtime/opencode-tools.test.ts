@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { RiskClassifier } from "../../src/permissions/risk.ts";
-import { mapOpenCodeTool } from "../../src/runtime/opencode-tools.ts";
+import { mapOpenCodeTool } from "../../src/runtime/domain/opencode-tools.ts";
 
 const FIXTURES = join(import.meta.dir, "../fixtures/opencode-acp");
 
