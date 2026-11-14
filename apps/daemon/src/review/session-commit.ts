@@ -38,7 +38,7 @@ import {
   runCommand,
   whichOnPath,
 } from "../kernel/index.ts";
-import type { ChangesReader } from "./target.ts";
+import type { ChangesReader } from "./domain/target.ts";
 
 export interface SessionCommitDeps {
   changes: Pick<ChangesReader, "resolve" | "get">;

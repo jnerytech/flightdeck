@@ -8,9 +8,9 @@ import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg, ulid } from "../kernel/index.ts";
 import { credential, maskConfig, maskedConfig } from "../permissions/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
+import { frameReviewerComment } from "./domain/second-opinion.ts";
+import type { ChangesReader, ResolvedTarget } from "./domain/target.ts";
 import { linesOf, located, refuseCredential } from "./paths.ts";
-import { frameReviewerComment } from "./second-opinion.ts";
-import type { ChangesReader, ResolvedTarget } from "./target.ts";
 
 export interface ReviewCommentsOptions {
   db: Database;
