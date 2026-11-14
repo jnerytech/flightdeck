@@ -4,7 +4,7 @@ import { ExternalSessions } from "../../src/central/external.ts";
 import { ExternalPermissions } from "../../src/central/external-permissions.ts";
 import { type Receptor, startReceptor } from "../../src/central/receptor.ts";
 import { SessionMetaStore } from "../../src/central/session-meta.ts";
-import { summarizeInput } from "../../src/permissions/bind-input.ts";
+import { summarizeInput } from "../../src/permissions/domain/bind-input.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, poll } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
