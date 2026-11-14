@@ -319,7 +319,7 @@
   "apps/daemon/test/vault/rules-defaults.test.ts": 0.002,
   "apps/daemon/test/vault/rules-model.test.ts": 0.005,
   "apps/daemon/test/vault/rules-protocol.test.ts": 0.548,
-  "apps/daemon/test/vault/rules-tags.test.ts": 0.001,
+  "apps/daemon/test/actions/tags.test.ts": 0.001,
   "apps/daemon/test/vault/waiting.test.ts": 0.055,
   "apps/daemon/test/watch/ado.test.ts": 2.872,
   "apps/daemon/test/watch/checks.test.ts": 4.52,
