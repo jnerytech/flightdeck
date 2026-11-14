@@ -3,6 +3,7 @@ import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import type { FlightdeckError } from "../kernel/index.ts";
+import { applies, splitDirective, unquote } from "./domain/ssh-config.ts";
 import type { SshTargets } from "./targets.ts";
 
 /** Why one alias was not imported: the English text, and a key with values for the app. */
@@ -16,13 +17,6 @@ function skipOf(error: unknown): Skip {
     ...(refusal.reason ? { why: refusal.reason } : {}),
     ...(refusal.params ? { params: refusal.params } : {}),
   };
-}
-
-/** `Key value` or `Key=value` as a lowercase key and an unquoted value; null for a line with no key. */
-function splitDirective(line: string): { key: string; value: string } | null {
-  const match = /^(\S+?)(?:\s*=\s*|\s+)(.*)$/.exec(line); // NOSONAR: one line of an ssh config, not text of any length
-  if (!match) return null;
-  return { key: (match[1] as string).toLowerCase(), value: unquote((match[2] as string).trim()) };
 }
 
 export interface SshImporterOptions {
@@ -48,29 +42,6 @@ interface Block {
 
 const MAX_INCLUDE_DEPTH = 8;
 const WILDCARD = /[*?]/;
-
-/** An OpenSSH pattern (`*` and `?`) as a regular expression. */
-function patternRegex(pattern: string): RegExp {
-  const body = pattern
-    .replace(/[.+^${}()|[\]\\]/g, String.raw`\$&`)
-    .replaceAll("*", ".*")
-    .replaceAll("?", ".");
-  return new RegExp(`^${body}$`);
-}
-
-/** A Host line applies to a name when one of its patterns matches and no `!pattern` does. */
-function applies(patterns: string[], alias: string): boolean {
-  const matches = (pattern: string) => patternRegex(pattern).test(alias);
-  const positive = patterns.filter((p) => !p.startsWith("!"));
-  const negative = patterns.filter((p) => p.startsWith("!")).map((p) => p.slice(1));
-  return positive.some(matches) && !negative.some(matches);
-}
-
-function unquote(value: string): string {
-  return value.length >= 2 && value.startsWith('"') && value.endsWith('"')
-    ? value.slice(1, -1)
-    : value;
-}
 
 /**
  * The read-only import of `~/.ssh/config` (phase 15): `Host`, `HostName`, `User`, `Port`,
