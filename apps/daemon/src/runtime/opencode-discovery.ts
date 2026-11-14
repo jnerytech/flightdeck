@@ -13,7 +13,7 @@ import {
   opencodeConfig,
   opencodeEnv,
   VERIFIED_OPENCODE_VERSION,
-} from "./opencode-config.ts";
+} from "./domain/opencode-config.ts";
 import { unexpectedSource } from "./opencode-preflight.ts";
 import { globalConfigDir, type ScopeFinding, type ScopeResult } from "./opencode-scope.ts";
 

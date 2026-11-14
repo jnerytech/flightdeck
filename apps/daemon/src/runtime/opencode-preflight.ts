@@ -14,7 +14,7 @@ import {
   opencodeConfig,
   opencodeEnv,
   type PermissionRule,
-} from "./opencode-config.ts";
+} from "./domain/opencode-config.ts";
 import { CONFIG_FILES, findingText, globalConfigDir, type ScopeResult } from "./opencode-scope.ts";
 import { type PrivateServer, ServeFailed } from "./opencode-serve.ts";
 

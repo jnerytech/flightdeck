@@ -4,7 +4,7 @@ import {
   opencodeConfig,
   opencodeEnv,
   opencodeRules,
-} from "../../src/runtime/opencode-config.ts";
+} from "../../src/runtime/domain/opencode-config.ts";
 
 const RULES = [
   { action: "*", resource: "*", effect: "ask" },
