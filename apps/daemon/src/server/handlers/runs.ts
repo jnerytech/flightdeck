@@ -3,7 +3,7 @@
  * automations, and webhooks.
  */
 import { FlightdeckError, featureOff } from "../../kernel/index.ts";
-import { startTemplate } from "../../templates/start.ts";
+import { startTemplate } from "../../templates/index.ts";
 import { isVaultTransport, requireVaultTransport } from "../../vault/index.ts";
 import { workflowTemplates } from "../../workflows/templates.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
