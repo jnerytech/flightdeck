@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { parseHighlights } from "../../src/releases/domain/highlights.ts";
-import { ReleaseFeed } from "../../src/releases/releases.ts";
+import { ReleaseFeed } from "../../src/releases/domain/releases.ts";
 
 const BODY = `## Highlights
 
@@ -152,6 +152,7 @@ describe("releases-lib: the app's release notes from GitHub (issue #125)", () =>
       fetch: async () => {
         throw new Error("offline");
       },
+      now: Date.now,
     });
     const error = await releases.list(5).catch((e: unknown) => e);
     expect((error as FlightdeckError).reason).toBe("releases_unavailable");

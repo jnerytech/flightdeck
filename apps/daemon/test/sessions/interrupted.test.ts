@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
-import { RESTART_REASON } from "../../src/sessions/interrupted.ts";
+import { RESTART_REASON } from "../../src/sessions/domain/interrupted.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { tempDir } from "../support/helpers.ts";
