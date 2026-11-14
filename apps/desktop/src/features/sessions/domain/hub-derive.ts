@@ -1,7 +1,7 @@
 import type { WorktreeFilter } from "@/features/projects/index.ts";
 import type { Density } from "@/features/shell/index.ts";
-import { hostsWith } from "../../lib/version.ts";
-import type { HubFilter, HubRow } from "./hub.ts";
+import { hostsWith } from "../../../lib/version.ts";
+import type { HubFilter, HubRow } from "../hub.ts";
 
 /** What the hub reads of a host. */
 export interface HubHost {

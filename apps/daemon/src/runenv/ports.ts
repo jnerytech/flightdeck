@@ -1,18 +1,9 @@
 import type { Database } from "bun:sqlite";
 import { createServer } from "node:net";
 import { FlightdeckError } from "../kernel/index.ts";
-import { portVariable } from "./config.ts";
-
-/** Where the blocks start when the config does not say (`run.portBase`). */
-export const DEFAULT_PORT_BASE = 41000;
-
-/** The ports of one card's block. */
-export const BLOCK_SIZE = 10;
+import { BLOCK_SIZE, DEFAULT_PORT_BASE, type PortMap, type PortProbe } from "./domain/ports.ts";
 
 const LAST_PORT = 65535;
-
-/** Whether nothing listens on this machine's port. */
-export type PortProbe = (port: number) => Promise<boolean>;
 
 /** The real probe: a port is free when a server can listen on it on the loopback address. */
 export function loopbackFree(port: number): Promise<boolean> {
@@ -20,26 +11,6 @@ export function loopbackFree(port: number): Promise<boolean> {
     const server = createServer();
     server.once("error", () => resolve(false));
     server.listen(port, "127.0.0.1", () => server.close(() => resolve(true)));
-  });
-}
-
-export type PortMap = Record<string, number>;
-
-/** `FLIGHTDECK_PORT_<NAME>` for each port of the card. */
-export function portEnv(ports: PortMap): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(ports).map(([name, port]) => [portVariable(name), String(port)]),
-  );
-}
-
-const PORT_REFERENCE = /\{\{\s*port\.([\w-]+)\s*\}\}/g;
-
-/** Replaces `{{port.<name>}}` with the card's port; a name without one is a bug and throws. */
-export function interpolatePorts(text: string, ports: PortMap): string {
-  return text.replace(PORT_REFERENCE, (_raw, name: string) => {
-    const port = ports[name];
-    if (port === undefined) throw new Error(`port without a block: ${name}`);
-    return String(port);
   });
 }
 

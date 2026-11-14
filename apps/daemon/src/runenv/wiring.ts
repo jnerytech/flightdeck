@@ -2,9 +2,10 @@ import type { Database } from "bun:sqlite";
 import { present } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
 import { RunConfigs } from "./config.ts";
+import type { PortProbe } from "./domain/ports.ts";
 import { terminalRunHost } from "./host.ts";
 import { RunManager, type RunManagerOptions } from "./manager.ts";
-import { CardPorts, type PortProbe } from "./ports.ts";
+import { CardPorts } from "./ports.ts";
 
 /** What a card's run environment is built from: the board's side of it is a port. */
 export interface RunEnvDeps {

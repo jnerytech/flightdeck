@@ -1,11 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  CardPorts,
-  DEFAULT_PORT_BASE,
-  interpolatePorts,
-  loopbackFree,
-  portEnv,
-} from "../../src/runenv/ports.ts";
+import { DEFAULT_PORT_BASE, interpolatePorts, portEnv } from "../../src/runenv/domain/ports.ts";
+import { CardPorts, loopbackFree } from "../../src/runenv/ports.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { newBoard } from "../support/board-helpers.ts";
 

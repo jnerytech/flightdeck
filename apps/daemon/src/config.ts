@@ -12,7 +12,7 @@ import {
   parseJsonWith,
 } from "./kernel/index.ts";
 import { validRegex } from "./permissions/domain/risk.ts";
-import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";
+import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/domain/ports.ts";
 import { defaultHostName } from "./wsl/probe.ts";
 
 /** A compiled flightdeckd (bun build --compile) runs from its embedded file system. */

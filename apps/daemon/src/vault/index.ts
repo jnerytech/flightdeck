@@ -5,6 +5,7 @@
  */
 export { Decisions } from "./decisions.ts";
 export { toCsv } from "./domain/report.ts";
+export { decideRequest, type RequestDecision, requesterOf } from "./domain/requests.ts";
 export {
   evaluate,
   localTime,
@@ -13,6 +14,5 @@ export {
   type RulesEnv,
   type UseContext,
 } from "./domain/rules.ts";
-export { decideRequest, type RequestDecision, requesterOf } from "./requests.ts";
 export { VaultRules } from "./rules-store.ts";
 export { isVaultTransport, requireVaultTransport, Vault, vaultActions } from "./vault.ts";
