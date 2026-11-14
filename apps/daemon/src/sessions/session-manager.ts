@@ -37,8 +37,8 @@ import {
   writeTarget,
 } from "../permissions/index.ts";
 import { clampPermissionMode } from "../personas/domain/model.ts";
+import type { PreparedPersonas } from "../personas/domain/prepare.ts";
 import { snapshotOf } from "../personas/domain/snapshot.ts";
-import type { PreparedPersonas } from "../personas/prepare.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
 import { type EventStore, personaBadge } from "../store/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
