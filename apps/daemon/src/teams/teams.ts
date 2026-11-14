@@ -15,7 +15,7 @@ import {
   type TeamsUpdatedFrame,
 } from "@flightdeck/protocol";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
-import { MANAGED_STATE } from "../messaging/endpoints.ts";
+import { MANAGED_STATE } from "../messaging/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import type { NewTeam, TeamPatch } from "./input.ts";
 import {
