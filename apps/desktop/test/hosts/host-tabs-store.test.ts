@@ -5,7 +5,7 @@ import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { WORKSPACE_KEY } = await import("../../src/features/shell/workspace.ts");
+const { WORKSPACE_KEY } = await import("../../src/features/shell/domain/workspace.ts");
 
 function twoHosts() {
   const mem = memoryPlatform(false, "en");
