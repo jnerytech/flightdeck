@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { LocalizedText, WorkflowTemplate } from "@flightdeck/protocol";
 import { PACK_IDS } from "../../src/personas/pack.ts";
+import { checkCommands, parseWorkflow, type Step } from "../../src/workflows/domain/schema.ts";
 import { parseFindings } from "../../src/workflows/findings.ts";
-import { checkCommands, parseWorkflow, type Step } from "../../src/workflows/schema.ts";
 import { workflowTemplates } from "../../src/workflows/templates.ts";
 
 const TEST_COMMAND = "bun run test";

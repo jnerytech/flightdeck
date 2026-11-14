@@ -12,6 +12,15 @@ import type { CheckResult, CheckRunner } from "./check-runner.ts";
 import { addTurn, overBudget } from "./domain/budget.ts";
 import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./domain/interpolate.ts";
 import {
+  type Action,
+  type AgentAction,
+  checkCommands,
+  type InnerAction,
+  parseWorkflow,
+  type Step,
+  type Workflow,
+} from "./domain/schema.ts";
+import {
   type EngineHost,
   now,
   type RunRow,
@@ -22,15 +31,6 @@ import {
 import { CARDS_PER_RUN, parseFindings } from "./findings.ts";
 import { hashOf } from "./repo.ts";
 import * as col from "./row-json.ts";
-import {
-  type Action,
-  type AgentAction,
-  checkCommands,
-  type InnerAction,
-  parseWorkflow,
-  type Step,
-  type Workflow,
-} from "./schema.ts";
 
 /** The run was ended by the board while it waited: nothing more to do. */
 class Abandoned extends Error {}

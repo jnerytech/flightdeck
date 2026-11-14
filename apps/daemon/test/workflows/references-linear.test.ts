@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { parseRunConfig } from "../../src/runenv/config.ts";
 import { interpolate } from "../../src/workflows/domain/interpolate.ts";
 import { referencesIn, replaceReferences } from "../../src/workflows/domain/references.ts";
-import { parseWorkflow } from "../../src/workflows/schema.ts";
+import { parseWorkflow } from "../../src/workflows/domain/schema.ts";
 
 /**
  * Issue #363 (Sonar S8786): the `{{ expression }}` scanner of a workflow prompt and of a run

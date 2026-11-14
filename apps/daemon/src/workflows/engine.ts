@@ -6,6 +6,7 @@ import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import { noSpending } from "./domain/budget.ts";
+import { checkCommands, parseWorkflow, type Workflow } from "./domain/schema.ts";
 import {
   type EngineHost,
   now,
@@ -17,7 +18,6 @@ import {
 } from "./engine-types.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
 import * as col from "./row-json.ts";
-import { checkCommands, parseWorkflow, type Workflow } from "./schema.ts";
 import { StepRunner } from "./step-runner.ts";
 
 /** #1266: the rows the engine names after a step: a parallel's items, a loop's check and do. */

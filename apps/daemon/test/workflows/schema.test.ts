@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { checkCommands, parseWorkflow } from "../../src/workflows/schema.ts";
+import { checkCommands, parseWorkflow } from "../../src/workflows/domain/schema.ts";
 
 const EXAMPLE = readFileSync(join(import.meta.dir, "../fixtures/workflows/feature.yaml"), "utf8");
 
