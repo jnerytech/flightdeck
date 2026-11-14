@@ -1,5 +1,5 @@
 import type { ChecksState, PrState } from "@flightdeck/protocol";
-import type { CommandResult } from "../kernel/index.ts";
+import type { CommandResult } from "../../kernel/index.ts";
 import type { PrDetails } from "./pr-details.ts";
 
 export interface PrStatus extends Partial<PrDetails> {

@@ -12,7 +12,13 @@ import type { Issues } from "../issues/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import { localDay } from "../quota/index.ts";
-import { type CronError, type CronSpec, cronMatches, parseCron, validTimeZone } from "./cron.ts";
+import {
+  type CronError,
+  type CronSpec,
+  cronMatches,
+  parseCron,
+  validTimeZone,
+} from "./domain/cron.ts";
 import { actionOf, triggerOf } from "./row-json.ts";
 
 export type AutomationEvent =
