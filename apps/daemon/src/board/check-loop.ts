@@ -8,37 +8,7 @@ import type { Card, PermissionMode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { WatchSettings } from "../watch/settings.ts";
 import { confirmationHash } from "./domain/check-loop-engine.ts";
-
-/** Why the switch stays off. */
-export type CheckLoopRefusal =
-  | "check_loop_no_checks"
-  | "check_loop_untrusted"
-  | "check_loop_mode"
-  | "check_loop_confirm";
-
-const WHY: Record<CheckLoopRefusal, string> = {
-  check_loop_no_checks: "the project has no checks to run",
-  check_loop_untrusted: "the project is not trusted",
-  check_loop_mode: "in plan mode the session cannot fix anything",
-  check_loop_confirm: "outside bypassPermissions the person confirms first",
-};
-
-/**
- * Null when the switch may turn on, else why not, in this order: checks to run, a trusted
- * project, a mode that can edit, and a confirmation outside `bypassPermissions`.
- */
-export function checkLoopRefusal(input: {
-  checks: readonly string[];
-  trusted: boolean;
-  mode: PermissionMode;
-  confirm: boolean;
-}): CheckLoopRefusal | null {
-  if (input.checks.length === 0) return "check_loop_no_checks";
-  if (!input.trusted) return "check_loop_untrusted";
-  if (input.mode === "plan") return "check_loop_mode";
-  if (input.mode !== "bypassPermissions" && !input.confirm) return "check_loop_confirm";
-  return null;
-}
+import { CHECK_LOOP_WHY, checkLoopRefusal } from "./domain/check-loop-refusal.ts";
 
 /** What the switch needs of the board: a port, so this file does not import the board. */
 interface CheckLoopBoard {
@@ -88,7 +58,7 @@ export class CheckLoopSwitch {
       mode,
       confirm: request.confirm === true,
     });
-    if (refusal) throw new FlightdeckError("invalid_state", WHY[refusal], refusal);
+    if (refusal) throw new FlightdeckError("invalid_state", CHECK_LOOP_WHY[refusal], refusal);
     const confirmed = mode !== "bypassPermissions";
     const at = (this.deps.now ?? (() => new Date()))().toISOString();
     return board.storeCheckLoop(cardId, {

@@ -4,7 +4,7 @@ import {
   approvalRequestOf,
   externalRequestsOf,
   externalTitle,
-} from "../../src/features/sessions/external-view.ts";
+} from "../../src/features/sessions/domain/external-view.ts";
 
 const frame = (over: Partial<ExternalPermissionFrame> = {}): ExternalPermissionFrame => ({
   type: "external.permission",

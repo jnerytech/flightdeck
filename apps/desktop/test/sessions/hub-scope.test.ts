@@ -6,7 +6,7 @@ import {
   type RowNarrowing,
   rowsInScope,
   scopeKeys,
-} from "../../src/features/sessions/hub-scope.ts";
+} from "../../src/features/sessions/domain/hub-scope.ts";
 
 const row = (hostId: string, projectKey: string, cwd = "/work/app") => ({
   hostId,
