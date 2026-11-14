@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { Idle } from "../../src/messaging/idle.ts";
+import { Idle } from "../../src/messaging/domain/idle.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, poll } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
