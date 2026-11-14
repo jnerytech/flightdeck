@@ -5,7 +5,8 @@ import type { HostPauseStatus } from "@flightdeck/protocol";
 import { HostPause } from "../../src/board/domain/host-pause.ts";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
-import { MemoryGate } from "../../src/resources/memory-gate.ts";
+import { realTimers } from "../../src/quota/index.ts";
+import { MemoryGate } from "../../src/resources/domain/memory-gate.ts";
 import { startServer } from "../../src/server.ts";
 import { cardWhen, gitRepo, newBoard } from "../support/board-helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -52,6 +53,7 @@ describe("host-pause: new card runs wait while the person has paused the host (#
     const memory = new MemoryGate({
       pauseAt: 0.5,
       read: () => ({ totalBytes: 100, freeBytes: 1 }),
+      timers: realTimers,
     });
     const ctx = newBoard({ pause: new HostPause(true), memory });
     cleanups.push(() => ctx.board.stop());
