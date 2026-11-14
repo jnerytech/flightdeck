@@ -4,8 +4,8 @@
  */
 import { z } from "zod";
 import { readStored, validValues } from "@/shared/lib/index.ts";
-import type { T } from "../../i18n/index.ts";
-import type { Platform } from "../../platform/types.ts";
+import type { T } from "../../../i18n/index.ts";
+import type { Platform } from "../../../platform/types.ts";
 
 export const QUIET_SNOOZE_KEY = "flightdeck.quietSnooze";
 

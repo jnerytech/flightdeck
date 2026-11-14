@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { basename, readStored, validItems } from "@/shared/lib/index.ts";
-import type { T } from "../../i18n/index.ts";
-import type { Route } from "../../lib/router.ts";
+import type { T } from "../../../i18n/index.ts";
+import type { Route } from "../../../lib/router.ts";
 
 export const INBOX_KEY = "flightdeck.inbox";
 /** Entries kept; the oldest go first. */

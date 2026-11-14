@@ -167,8 +167,8 @@
   {
     "type": "dependency",
     "from": "apps/desktop/src/features/sessions/external.ts",
-    "to": "apps/desktop/src/features/inbox/notify.ts",
-    "unresolvedTo": "../inbox/notify.ts",
+    "to": "apps/desktop/src/features/inbox/domain/notify.ts",
+    "unresolvedTo": "../inbox/domain/notify.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -222,8 +222,8 @@
   {
     "type": "dependency",
     "from": "apps/desktop/src/features/sessions/summaries.ts",
-    "to": "apps/desktop/src/features/inbox/notify.ts",
-    "unresolvedTo": "../inbox/notify.ts",
+    "to": "apps/desktop/src/features/inbox/domain/notify.ts",
+    "unresolvedTo": "../inbox/domain/notify.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ExternalSession } from "@flightdeck/protocol";
-import { activityBoard, NO_ACTIVITY_FILTER } from "../../src/features/activity/activity.ts";
+import { activityBoard, NO_ACTIVITY_FILTER } from "../../src/features/activity/domain/activity.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { activityState, NOW } from "./fixtures.ts";

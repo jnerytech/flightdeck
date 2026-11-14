@@ -13,8 +13,8 @@ import { type HistorySlice, wireHistory } from "../../features/history/index.ts"
 import { HomeCache, UiModeSlice } from "../../features/home/index.ts";
 import { RequestError } from "../../features/hosts/index.ts";
 import type { InboxSlice } from "../../features/inbox/index.ts";
-import { AwayClock } from "../../features/needs-you/away.ts";
-import { QuietSnoozeSlice } from "../../features/needs-you/quiet-snooze.ts";
+import { AwayClock } from "../../features/needs-you/domain/away.ts";
+import { QuietSnoozeSlice } from "../../features/needs-you/domain/quiet-snooze.ts";
 import { NotifyPreferences } from "../../features/notifications/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../../features/permissions/index.ts";
 import {
@@ -120,7 +120,7 @@ export interface ShellSlices extends SessionSlices {
   readonly uiModes: UiModeSlice;
   /** What the command palette loads and the entries it used lately (#1596). */
   readonly palette: PaletteSlice;
-  /** "Not stuck" on a quiet session (`features/needs-you/quiet-snooze.ts`). */
+  /** "Not stuck" on a quiet session (`features/needs-you/domain/quiet-snooze.ts`). */
   readonly quietSnooze: QuietSnoozeSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;

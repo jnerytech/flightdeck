@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { INBOX_KEY, loadInbox } from "../../src/features/inbox/inbox.ts";
+import { INBOX_KEY, loadInbox } from "../../src/features/inbox/domain/inbox.ts";
 
 const storageWith = (key: string, raw: string) => ({
   getItem: (asked: string) => (asked === key ? raw : null),

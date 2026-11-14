@@ -2,7 +2,7 @@
  * Issue #248: the review domain: review comments and changed files, snapshots and rewind, the
  * trace, and the history index.
  */
-import { withTurnUuids } from "../../checkpoints/turn-uuid.ts";
+import { withTurnUuids } from "../../checkpoints/index.ts";
 import { FlightdeckError } from "../../kernel/index.ts";
 import { preparePersonas } from "../../personas/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
