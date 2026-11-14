@@ -7,6 +7,7 @@ import { z } from "zod";
 import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
 import { GH_FIELDS, GhIssueRow, GithubIssues } from "./adapters/gh-issues.ts";
 import type { GhResult, GhRunner } from "./domain/gh-runner.ts";
+import { checkRepo } from "./domain/repo.ts";
 import { GITHUB_HOST, type GithubStatus, githubStatus } from "./domain/status.ts";
 
 const refuse = (reason: string, message: string, params?: Record<string, string | number>) =>
@@ -34,16 +35,7 @@ const RepoRows = z.array(
 
 const LIST_LIMIT = 50;
 const ISSUE_LIMIT = 50;
-/** `owner/name`: letters, digits, dots, underscores and dashes. */
-const REPO = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9._-]+$/;
 const SEARCH_LIMIT = 30;
-
-/** A repo is `owner/name`, checked before it reaches gh as an argument. */
-export function checkRepo(repo: string): void {
-  if (!REPO.test(repo) || /\/\.+$/.test(repo)) {
-    throw refuse("repo_invalid", `${repo} is not an owner/name repository`, { repo });
-  }
-}
 
 export interface GithubRepo {
   /** `owner/name`. */
