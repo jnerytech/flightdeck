@@ -5,7 +5,7 @@ import {
   blocking,
   describeViolation,
 } from "../../../../scripts/lib/browser/axe.ts";
-import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
+import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/domain/builtin.ts";
 import { hiddenTermsIn } from "../../src/features/home/domain/simple-words.ts";
 import {
   emptySession,

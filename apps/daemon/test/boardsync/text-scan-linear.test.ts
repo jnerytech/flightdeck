@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { firstBracketed } from "../../src/boardsync/github.ts";
 import { versionOf } from "../../src/deps/deps.ts";
-import { withoutLinks } from "../../src/releases/releases.ts";
+import { withoutLinks } from "../../src/releases/domain/highlights.ts";
 import { isGitDir } from "../../src/review/paths.ts";
 
 /**

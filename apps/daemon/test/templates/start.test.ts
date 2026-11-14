@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Template, TemplateStartResult } from "@flightdeck/protocol";
 import { startServer } from "../../src/server.ts";
-import { BUILTIN_TEMPLATES } from "../../src/templates/builtin.ts";
+import { BUILTIN_TEMPLATES } from "../../src/templates/domain/builtin.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 

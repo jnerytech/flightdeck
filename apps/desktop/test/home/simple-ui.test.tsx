@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
+import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/domain/builtin.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 
