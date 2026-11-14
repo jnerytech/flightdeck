@@ -306,9 +306,8 @@ describe("host-compare-ui: the table", () => {
     await open();
     expect(await answered(store, 2)).toBe(true);
     expect(screen.queryByRole("button", { name: "Fix Daemon version on alfa" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Fix Daemon version on beta" }) !== null).toBe(
-      true,
-    ); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    const fixBeta = screen.queryByRole("button", { name: "Fix Daemon version on beta" });
+    expect(fixBeta !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(screen.queryAllByRole("button", { name: /^Fix .+ on / }).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
   });
 

@@ -284,6 +284,7 @@ describe("status bar items open their host section (#1484)", () => {
       const host = withFeatures(["hostPause"]);
       render(hostPage(store, () => void done++, false, { section: "health", host }));
       await stays(() => done === 0);
+      expect(done).toBe(0);
     });
   });
 });
