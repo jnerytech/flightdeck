@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { normalizePlan } from "../../src/account/domain/readings.ts";
 import {
   accountInfo,
   accountReaders,
   authStatus,
   type IdleQuery,
-  normalizePlan,
   usageReport,
   withIdleQuery,
 } from "../../src/account/readers.ts";
