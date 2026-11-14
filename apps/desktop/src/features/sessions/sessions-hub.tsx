@@ -47,6 +47,14 @@ import {
   showsStateWord,
   worktreesOf,
 } from "./domain/hub-derive.ts";
+import {
+  awayHost,
+  hubProjectKeys,
+  projectChoices,
+  projectName,
+  rowsInScope,
+  scopeKeys,
+} from "./domain/hub-scope.ts";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
 import {
   activeCount,
@@ -64,14 +72,6 @@ import {
   sessionLineText,
   sharedMeta,
 } from "./hub.ts";
-import {
-  awayHost,
-  hubProjectKeys,
-  projectChoices,
-  projectName,
-  rowsInScope,
-  scopeKeys,
-} from "./hub-scope.ts";
 import { newSessionHost } from "./new-session-host.ts";
 import { focusRenameField, focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
