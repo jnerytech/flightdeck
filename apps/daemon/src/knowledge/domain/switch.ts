@@ -1,7 +1,5 @@
-import { resolve } from "node:path";
 import type { KnowledgeFeedState } from "@flightdeck/protocol";
-import { expandHome } from "../config.ts";
-import { isInside, rootNames, samePath } from "../kernel/index.ts";
+import { isInside, rootNames, samePath } from "../../kernel/index.ts";
 
 /**
  * Issue #76: the person's switch for the library's index, per project. It is a folder in the
@@ -10,6 +8,8 @@ import { isInside, rootNames, samePath } from "../kernel/index.ts";
 export interface KnowledgeSwitchDeps {
   /** The folders of `knowledge.feedOff`, made absolute. */
   off(): readonly string[];
+  /** An entry of `knowledge.feedOff` as an absolute path (`~` is the host's home, which the caller knows). */
+  absolute(entry: string): string;
   /** Looks at the folder's git boundary, then says whether its own files may load and from where. */
   trust(path: string): Promise<{ trusted: boolean; configRoot?: string }>;
   /** Rewrites the entries of `knowledge.feedOff` in the config file, and nothing else in it. */
@@ -60,7 +60,7 @@ export function knowledgeSwitchFor(deps: KnowledgeSwitchDeps): KnowledgeSwitch {
         const places = placed[at] ?? [];
         if (places.some((place) => names.some((name) => samePath(place, name)))) ours.add(entry);
       }
-      const named = (entry: string) => ours.has(resolve(expandHome(entry)));
+      const named = (entry: string) => ours.has(deps.absolute(entry));
       // Only the entries that name this project: a folder above it switches off other projects too.
       if (ours.size > 0) await deps.change((entries) => entries.filter((e) => !named(e)));
     }

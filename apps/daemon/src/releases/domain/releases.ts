@@ -1,16 +1,16 @@
 import type { ReleaseList, ReleaseNote } from "@flightdeck/protocol";
 import { z } from "zod";
-import { FlightdeckError } from "../kernel/index.ts";
-import { parseHighlights } from "./domain/highlights.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
+import { parseHighlights } from "./highlights.ts";
 
 export interface ReleaseFeedOptions {
   /** The GitHub API's list of the repository's releases. */
   url: string;
-  fetch?: (
+  fetch: (
     url: string,
     init: { headers: Record<string, string>; signal?: AbortSignal },
   ) => Promise<Response>;
-  now?: () => number;
+  now: () => number;
 }
 
 /** How long a read is kept: a screen opened often asks GitHub once an hour. */
@@ -48,7 +48,7 @@ export class ReleaseFeed {
   private readonly now: () => number;
 
   constructor(private readonly opts: ReleaseFeedOptions) {
-    this.now = opts.now ?? Date.now;
+    this.now = opts.now;
   }
 
   async list(limit: number): Promise<ReleaseList> {
@@ -69,7 +69,7 @@ export class ReleaseFeed {
   private async read(): Promise<ReleaseNote[]> {
     let response: Response;
     try {
-      response = await (this.opts.fetch ?? fetch)(`${this.opts.url}?per_page=${PER_PAGE}`, {
+      response = await this.opts.fetch(`${this.opts.url}?per_page=${PER_PAGE}`, {
         headers: { Accept: "application/vnd.github+json", "User-Agent": "flightdeckd" },
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });

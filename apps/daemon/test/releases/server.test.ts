@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type * as protocol from "@flightdeck/protocol";
-import { ReleaseFeed } from "../../src/releases/releases.ts";
+import { ReleaseFeed } from "../../src/releases/domain/releases.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -30,7 +30,11 @@ async function serve(releases?: ReleaseFeed) {
 }
 
 const feedOf = (answer: () => Response) =>
-  new ReleaseFeed({ url: "https://api.example/releases", fetch: async () => answer() });
+  new ReleaseFeed({
+    url: "https://api.example/releases",
+    fetch: async () => answer(),
+    now: Date.now,
+  });
 
 describe("releases-server: releases.list over the protocol (issue #125)", () => {
   test("a host with the feed lists the releases, announces the feature, and honours the limit", async () => {
