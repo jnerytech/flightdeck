@@ -10,7 +10,7 @@ import { useBusy } from "@/shared/hooks/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
-import { budgetLines, stepDuration, stepUsage } from "./runs.ts";
+import { budgetLines, stepDuration, stepUsage } from "./domain/runs.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 
