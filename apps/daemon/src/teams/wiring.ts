@@ -143,7 +143,7 @@ export async function createTeams({
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);
-  const idle = new Idle({ endpoints, messaging, host: config.hostName });
+  const idle = new Idle({ endpoints, messaging, host: config.hostName, clock: Date.now });
   let sweep: ReturnType<typeof setInterval> | undefined;
   const module: DomainModule<"messaging" | "personas"> = {
     server: {

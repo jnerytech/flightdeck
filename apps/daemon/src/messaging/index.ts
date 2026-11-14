@@ -3,6 +3,7 @@
  * domain imports from here, never a file inside.
  */
 export { runMessageCli } from "./cli.ts";
+export { Idle } from "./domain/idle.ts";
 export {
   listSessions,
   notifyWhenIdle,
@@ -14,5 +15,4 @@ export {
   teamStatus,
 } from "./domain/tools.ts";
 export { LocalEndpoints, type LocalEndpointsOptions, MANAGED_STATE } from "./endpoints.ts";
-export { Idle } from "./idle.ts";
 export { Messaging } from "./messages.ts";

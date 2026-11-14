@@ -3,11 +3,23 @@
  * Flightdeck when the target session goes idle (the end of a managed turn, the Stop of a terminal),
  * at once when it already is, and never a second time for the same subscription.
  */
-import type { SessionIdentity } from "@flightdeck/protocol";
-import { FlightdeckError } from "../kernel/index.ts";
-import { addressOf } from "./domain/policy.ts";
-import type { Endpoints } from "./endpoints.ts";
-import type { Messaging } from "./messages.ts";
+import type { MessagingSession, SessionIdentity } from "@flightdeck/protocol";
+import { FlightdeckError } from "../../kernel/index.ts";
+import { addressOf, type Party } from "./policy.ts";
+
+/** What the idle notice needs from the endpoints: to be told when a session goes idle. */
+interface IdleEndpoints {
+  onIdle(listener: (id: string) => void): () => void;
+}
+
+/** What the idle notice needs from messaging: who may watch whom, and a notice to the watcher. */
+interface IdleMessaging {
+  inspect(
+    as: SessionIdentity,
+    address: string,
+  ): { sender: Party; target: Party; info: { state: MessagingSession["state"] } | null };
+  notice(to: string, kind: "idle", text: string): unknown;
+}
 
 export interface IdleFrame {
   type: "idle.fired";
@@ -18,10 +30,10 @@ export interface IdleFrame {
 }
 
 export interface IdleOptions {
-  endpoints: Endpoints;
-  messaging: Messaging;
+  endpoints: IdleEndpoints;
+  messaging: IdleMessaging;
   host: string;
-  clock?: () => number;
+  clock: () => number;
 }
 
 interface Subscription {
@@ -102,7 +114,7 @@ export class Idle {
       type: "idle.fired",
       watcher: `${this.opts.host}/${subscription.watcher}`,
       session: address,
-      at: new Date((this.opts.clock ?? Date.now)()).toISOString(),
+      at: new Date(this.opts.clock()).toISOString(),
     };
     for (const listener of this.listeners) listener(frame);
   }
