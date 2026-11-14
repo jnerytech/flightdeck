@@ -4,7 +4,7 @@ import {
   parseDocument,
   serialize,
   setField,
-} from "../../src/features/agentcfg/frontmatter.ts";
+} from "../../src/features/agentcfg/domain/frontmatter.ts";
 
 const AGENT = `---
 name: revisor
