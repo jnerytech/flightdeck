@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { getField, parseDocument } from "../../src/features/agentcfg/frontmatter.ts";
+import { getField, parseDocument } from "../../src/features/agentcfg/domain/frontmatter.ts";
 
 const field = (value: string) =>
   getField(parseDocument(`---\ndescription: ${value}\n---\nbody\n`), "description");
