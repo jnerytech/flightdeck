@@ -17,8 +17,8 @@ export {
   startService,
   uninstallService,
 } from "./domain/install.ts";
+export { lingerState } from "./domain/linger.ts";
 export { addToUserPath, binDir, removeFromUserPath } from "./domain/user-path.ts";
-export { lingerState } from "./linger.ts";
 export { killProcess, osServiceContext, processPath } from "./os.ts";
 export { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 export {
