@@ -3,7 +3,7 @@ import { type Central, messageExternal } from "../central/index.ts";
 import { type Exec, FlightdeckError, resolveAllowedCwd } from "../kernel/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { TerminalManager } from "../terminal/index.ts";
-import { fieldsOf, renderSnippet, type SnippetContext, type SnippetDef } from "./model.ts";
+import { fieldsOf, renderSnippet, type SnippetContext, type SnippetDef } from "./domain/model.ts";
 import type { Snippets } from "./store.ts";
 
 export interface SnippetUseOptions {

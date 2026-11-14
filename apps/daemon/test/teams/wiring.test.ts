@@ -7,7 +7,7 @@ import { Names } from "../../src/names/names.ts";
 import { packPersonas } from "../../src/personas/pack.ts";
 import { type Prepare, withoutPersonas } from "../../src/personas/prepare.ts";
 import { Personas } from "../../src/personas/store.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { createTeams } from "../../src/teams/wiring.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";

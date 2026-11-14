@@ -9,7 +9,7 @@ import { runCli } from "../../src/main.ts";
 import { packPersonas } from "../../src/personas/pack.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { startServer } from "../../src/server.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";
 import { newManager, tempDir, workspace } from "../support/helpers.ts";

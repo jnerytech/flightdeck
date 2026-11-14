@@ -16,7 +16,7 @@ import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-run
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { cardWhen, git, gitRepo } from "../support/board-helpers.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";
