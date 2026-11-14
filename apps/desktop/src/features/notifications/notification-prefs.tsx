@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect, Panel } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { SOUND_FILE_MAX_BYTES, SWITCHABLE, type SwitchableEvent } from "./notify-policy.ts";
+import { SOUND_FILE_MAX_BYTES, SWITCHABLE, type SwitchableEvent } from "./domain/notify-policy.ts";
 
 const AUDIO_NAME = /\.(mp3|wav|ogg|m4a|aac|flac)$/i;
 const check = "flex items-center gap-2 text-sm";
