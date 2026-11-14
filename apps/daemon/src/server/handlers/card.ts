@@ -96,6 +96,7 @@ export const cardHandlers = {
     return await manageCard(
       {
         board: server.need("board"),
+        now: () => new Date(),
         cwdOf: (sessionId) => {
           try {
             return server.manager.get(sessionId).cwd;
