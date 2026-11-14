@@ -7,7 +7,7 @@ import { accountReaders } from "./account/readers.ts";
 import { createVault } from "./actions/wiring.ts";
 import { createActivity } from "./activity/wiring.ts";
 import { assistantService } from "./assistant/factory.ts";
-import { assistantDir } from "./assistant/paths.ts";
+import { assistantDir } from "./assistant/index.ts";
 import { createBoardWork } from "./automations/wiring.ts";
 import { createBg } from "./bg/wiring.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
