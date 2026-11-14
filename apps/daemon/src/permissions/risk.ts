@@ -5,7 +5,7 @@
  */
 import { join, resolve } from "node:path";
 import { isInside, trimEndOf, trimStartOf } from "../kernel/index.ts";
-import { credential } from "./sensitive-paths.ts";
+import { credential } from "./domain/sensitive-paths.ts";
 
 export { credential };
 

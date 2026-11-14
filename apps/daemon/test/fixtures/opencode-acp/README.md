@@ -17,10 +17,10 @@ entries. Nothing else was edited.
   `/home/u/.config/opencode`, the inline document's body was shortened, and `api-agent.json` keeps our two agents and
   `compaction` without their prompts.
   `api-agent.json` was recorded again on 2026-11-06 (issue #449), with the same environment and a scratch `HOME`, when
-  the read rules for secret paths began to come from the one list in `permissions/sensitive-paths.ts`: only the
+  the read rules for secret paths began to come from the one list in `permissions/domain/sensitive-paths.ts`: only the
   `permissions` of the agents changed.
   `api-agent.json` was recorded again on 2026-11-06 (issue #449), with the same environment and a scratch `HOME`, when
-  the read rules for secret paths began to come from the one list in `permissions/sensitive-paths.ts`: only the
+  the read rules for secret paths began to come from the one list in `permissions/domain/sensitive-paths.ts`: only the
   `permissions` of our two agents changed.
   `api-agent.json` got the read rules for `.mcp.json` and `.claude/settings.local.json` on 2026-11-07 (issue #806), inserted
   by hand where the one list puts them, in every agent's `permissions`: OpenCode only echoes the rules it is given, so this

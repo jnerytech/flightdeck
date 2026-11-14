@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { credential, isControl } from "../../src/permissions/sensitive-paths.ts";
+import { credential, isControl } from "../../src/permissions/domain/sensitive-paths.ts";
 
 /** The same folder or file under the other names NTFS gives it (issues #1034, #1064). */
 const CONTROL = [

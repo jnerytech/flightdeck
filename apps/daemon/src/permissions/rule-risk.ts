@@ -1,14 +1,6 @@
 import { isAbsolute, join, normalize, relative } from "node:path";
 import { isInside } from "../kernel/index.ts";
 import {
-  NETWORK_TOOLS,
-  RANK,
-  READ_TOOLS,
-  type RiskLevel,
-  SHELL_TOOLS,
-  WRITE_TOOLS,
-} from "./risk.ts";
-import {
   CONTROL_DIRS,
   CONTROL_NAMES,
   CONTROL_PAIRS,
@@ -17,7 +9,15 @@ import {
   SECRET_EXTENSIONS,
   SECRET_NAMES,
   SECRET_PAIRS,
-} from "./sensitive-paths.ts";
+} from "./domain/sensitive-paths.ts";
+import {
+  NETWORK_TOOLS,
+  RANK,
+  READ_TOOLS,
+  type RiskLevel,
+  SHELL_TOOLS,
+  WRITE_TOOLS,
+} from "./risk.ts";
 
 /** What a rule may cover: a level, or `any` for a rule this check cannot show to be narrow. */
 export type RuleLevel = RiskLevel | "any";
