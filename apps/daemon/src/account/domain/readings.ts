@@ -111,3 +111,9 @@ export function usageOf(answer: unknown): UsageReading {
   });
   return { plan: normalizePlan(raw.subscription_type), available: true, windows };
 }
+
+/** What the service asks; the daemon wires the real ones, tests wire fakes. */
+export interface AccountReaders {
+  status(): Promise<AuthStatus | null>;
+  sdk(): Promise<{ info: AccountInfoReading | null; usage: UsageReading }>;
+}

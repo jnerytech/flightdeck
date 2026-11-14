@@ -2,6 +2,7 @@ import { z } from "zod";
 import { type Exec, FlightdeckError, parseJsonOr } from "../kernel/index.ts";
 import {
   type AccountInfoReading,
+  type AccountReaders,
   type AuthStatus,
   accountInfoOf,
   authStatusOf,
@@ -108,11 +109,7 @@ export async function withIdleQuery<T>(
   }
 }
 
-/** What the service asks; the daemon wires the real ones, tests wire fakes. */
-export interface AccountReaders {
-  status(): Promise<AuthStatus | null>;
-  sdk(): Promise<{ info: AccountInfoReading | null; usage: UsageReading }>;
-}
+export type { AccountReaders };
 
 /** The readers a daemon with the real runtime hands to the `Account`. */
 export function accountReaders(deps: IdleQueryDeps & { exec: Exec }): AccountReaders {
