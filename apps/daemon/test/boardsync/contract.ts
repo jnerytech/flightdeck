@@ -1,6 +1,6 @@
 /** Phase 38: the one suite every `BoardProvider` has to pass (the fake here, GitHub's in board-graphql). */
 import { describe, expect, test } from "bun:test";
-import type { BoardProvider, ExternalItem } from "../../src/boardsync/provider.ts";
+import type { BoardProvider, ExternalItem } from "../../src/boardsync/domain/provider.ts";
 
 export interface ContractHarness {
   provider: BoardProvider;

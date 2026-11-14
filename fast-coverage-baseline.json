@@ -5,7 +5,7 @@
   "apps/daemon/src/actions/shell.ts",
   "apps/daemon/src/actions/ssh-command.ts",
   "apps/daemon/src/actions/trust.ts",
-  "apps/daemon/src/boardsync/map.ts",
+  "apps/daemon/src/boardsync/domain/map.ts",
   "apps/daemon/src/central/hooks-install.ts",
   "apps/daemon/src/central/session-meta.ts",
   "apps/daemon/src/costs/domain/pricing.ts",

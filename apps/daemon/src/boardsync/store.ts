@@ -3,7 +3,7 @@ import type { Database } from "bun:sqlite";
 import { BoardColumn } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr } from "../kernel/index.ts";
-import type { ColumnMap } from "./map.ts";
+import type { ColumnMap } from "./domain/map.ts";
 
 export interface BoardLink {
   projectId: string;
