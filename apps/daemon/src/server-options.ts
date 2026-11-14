@@ -55,7 +55,7 @@ import type { GitRunner, PlatformInfo } from "./projects/index.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
-import type { ReleaseFeed } from "./releases/releases.ts";
+import type { ReleaseFeed } from "./releases/domain/releases.ts";
 import type { Resources } from "./resources/resources.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
