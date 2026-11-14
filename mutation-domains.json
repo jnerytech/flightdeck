@@ -13,7 +13,7 @@
     "minScore": 84,
     "mutate": [
       "apps/daemon/src/permissions/rule-risk.ts",
-      "apps/daemon/src/permissions/sensitive-paths.ts"
+      "apps/daemon/src/permissions/domain/sensitive-paths.ts"
     ],
     "tests": [
       "apps/daemon/test/permissions/rule-risk-contract.test.ts",
