@@ -8,8 +8,11 @@ import {
 import {
   AssistantController,
   type AssistantControllerDeps,
-} from "../../src/features/assistant/assistant.ts";
-import { type AssistantPrefs, defaultPrefs } from "../../src/features/assistant/assistant-prefs.ts";
+} from "../../src/features/assistant/domain/assistant.ts";
+import {
+  type AssistantPrefs,
+  defaultPrefs,
+} from "../../src/features/assistant/domain/assistant-prefs.ts";
 import { fakeAssistant } from "../fixtures.ts";
 
 const RESULT: AssistantResult = {

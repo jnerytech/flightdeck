@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ModelOption } from "@flightdeck/protocol";
-import { failureOf } from "../../src/features/assistant/refusal-text.ts";
-import { type WandState, wandReduce } from "../../src/features/assistant/wand-state.ts";
+import { failureOf } from "../../src/features/assistant/domain/refusal-text.ts";
+import { type WandState, wandReduce } from "../../src/features/assistant/domain/wand-state.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { createWebPlatform } from "../../src/platform/web/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";

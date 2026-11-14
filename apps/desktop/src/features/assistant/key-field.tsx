@@ -6,7 +6,7 @@ import type { AppStore } from "@/lib/app-store";
 import type { AssistantKeyProvider } from "@/platform/types";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field } from "@/shared/layout/index.ts";
-import { failureOf, refusalText } from "./refusal-text.ts";
+import { failureOf, refusalText } from "./domain/refusal-text.ts";
 
 /**
  * The key of one API provider: a password field to paste it (cleared at once, never shown again),
