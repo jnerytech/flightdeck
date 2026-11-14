@@ -1,14 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { SHELL_PREFS_KEY, ShellPrefs } from "../../src/features/shell/shell-prefs.ts";
-import { loadFolded, SIDEBAR_FOLDED_KEY } from "../../src/features/shell/sidebar-groups.ts";
 import {
+  loadFolded,
   loadTreeFolded,
   loadTreeOpened,
   loadTreePinned,
+  SIDEBAR_FOLDED_KEY,
   TREE_FOLDED_KEY,
   TREE_OPENED_KEY,
   TREE_PINNED_KEY,
-} from "../../src/features/shell/tree-fold.ts";
+} from "../../src/features/viewprefs/store.ts";
 
 const planted = (key: string, value: string) => ({
   getItem: (asked: string) => (asked === key ? value : null),
