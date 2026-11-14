@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { EventEnvelope } from "@flightdeck/protocol";
-import { RiskClassifier } from "../../../daemon/src/permissions/risk.ts";
+import { RiskClassifier } from "../../../daemon/src/permissions/domain/risk.ts";
 import type { TrayAction, TrayMenu } from "../../src/platform/types.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";

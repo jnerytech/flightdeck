@@ -1,6 +1,5 @@
 import { PermissionUpdate } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../kernel/index.ts";
-import { RANK, type RiskLevel } from "../risk.ts";
 import {
   type ClassifyCall,
   type DiskView,
@@ -8,6 +7,7 @@ import {
   pathReadings,
   ruleLevel,
 } from "../rule-risk.ts";
+import { RANK, type RiskLevel } from "./risk.ts";
 
 /** Destinations an answer may write to: the session, or the project's settings.local.json. */
 const DESTINATIONS: ReadonlySet<string> = new Set(["session", "localSettings"]);

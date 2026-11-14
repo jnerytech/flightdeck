@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { RiskClassifier } from "../../src/permissions/risk.ts";
+import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import {
   type ClassifyCall,
   type PathKind,

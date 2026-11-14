@@ -2,7 +2,7 @@
   {
     "name": "permissions-risk",
     "minScore": 94,
-    "mutate": ["apps/daemon/src/permissions/risk.ts"],
+    "mutate": ["apps/daemon/src/permissions/domain/risk.ts"],
     "tests": [
       "apps/daemon/test/permissions/risk.test.ts",
       "apps/daemon/test/permissions/risk-rules.test.ts"
