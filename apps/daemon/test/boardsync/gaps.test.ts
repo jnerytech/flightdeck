@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { BoardSyncLoop } from "../../src/boardsync/domain/loop.ts";
 import { BoardSync } from "../../src/boardsync/engine.ts";
 import { GithubBoards } from "../../src/boardsync/github.ts";
-import { BoardSyncLoop } from "../../src/boardsync/loop.ts";
 import { BoardSyncService } from "../../src/boardsync/service.ts";
 import { BoardSyncStore } from "../../src/boardsync/store.ts";
 import { newBoard } from "../support/board-helpers.ts";

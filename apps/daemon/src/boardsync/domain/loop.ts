@@ -2,9 +2,9 @@
  * Phase 38: the polling loop. One timer per linked project, one run at a time per project, a back
  * off after errors, and a pause until the reset time when the provider's rate limit was reached.
  */
-import type { Timers } from "../quota/index.ts";
-import type { SyncReport } from "./engine.ts";
-import type { BoardSyncStore } from "./store.ts";
+import type { Timers } from "../../quota/index.ts";
+import type { BoardLinks } from "./links.ts";
+import type { SyncReport } from "./report.ts";
 
 export const DEFAULT_INTERVAL_MS = 60_000;
 export const MIN_INTERVAL_MS = 15_000;
@@ -13,9 +13,9 @@ export const MAX_BACKOFF_MS = 15 * 60_000;
 
 export interface BoardSyncLoopOptions {
   engine: { syncProject(projectId: string): Promise<SyncReport> };
-  store: BoardSyncStore;
+  store: Pick<BoardLinks, "get" | "list" | "update">;
   timers: Timers;
-  clock?: () => number;
+  clock: () => number;
   intervalMs?: number;
   /** Told after every run, finished well or not. */
   onUpdate?: (projectId: string) => void;
@@ -34,7 +34,7 @@ export class BoardSyncLoop {
   readonly intervalMs: number;
 
   constructor(private readonly opts: BoardSyncLoopOptions) {
-    this.clock = opts.clock ?? Date.now;
+    this.clock = opts.clock;
     this.intervalMs = Math.min(
       MAX_INTERVAL_MS,
       Math.max(MIN_INTERVAL_MS, opts.intervalMs ?? DEFAULT_INTERVAL_MS),
