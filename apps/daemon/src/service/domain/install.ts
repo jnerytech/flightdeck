@@ -73,9 +73,11 @@ const xmlEscape = (text: string) =>
 const windowsQuote = (arg: string) =>
   `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
 
-/** Windows command line: the executable always quoted, other arguments with a space or a quote. */
+/** Windows command line: the executable always quoted, others when empty or with a space or quote. */
 const windowsCommandLine = (command: string[]) =>
-  command.map((arg, i) => (i === 0 || /[\s"]/.test(arg) ? windowsQuote(arg) : arg)).join(" ");
+  command
+    .map((arg, i) => (i === 0 || arg === "" || /[\s"]/.test(arg) ? windowsQuote(arg) : arg))
+    .join(" ");
 
 /**
  * Task Scheduler XML: runs at the user's logon with the user's own token (no elevation),
@@ -270,7 +272,10 @@ export async function uninstallService(ctx: ServiceContext): Promise<ServiceResu
   );
   if (linux) {
     await ctx.removeFile(unitPath(ctx));
-    await runChecked(ctx, commands[1] as string[]);
+    // The disable failure is the cause: a reload failing after it does not replace it.
+    await runChecked(ctx, commands[1] as string[]).catch((error: unknown) => {
+      if (!disableError) throw error;
+    });
   }
   if (disableError) throw disableError;
   return { output: ["service removed"], instructions: [] };
