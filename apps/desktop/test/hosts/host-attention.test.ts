@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DepsResult } from "@flightdeck/protocol";
-import { hostNeedsAttention } from "../../src/features/hosts/host-attention.ts";
+import { hostNeedsAttention } from "../../src/features/hosts/domain/host-attention.ts";
 import type { HostView } from "../../src/lib/app-state.ts";
 
 type Subject = Pick<HostView, "status" | "hostInfo">;
