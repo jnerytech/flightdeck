@@ -6,7 +6,7 @@
  * `permissions/permission-broker.ts` takes `PermissionDecision` from `types.ts` (this entry loads
  * `domain/opencode-config.ts`, which imports permissions).
  */
-export { claudeVersionProbe } from "./claude-probe.ts";
+export { claudeVersionProbe } from "./domain/claude-probe.ts";
 export { VERIFIED_OPENCODE_VERSION } from "./domain/opencode-config.ts";
 export type { OpenCodeInfo } from "./opencode-discovery.ts";
 export { findingText, type ScopeFinding } from "./opencode-scope.ts";
