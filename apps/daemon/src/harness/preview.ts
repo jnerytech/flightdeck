@@ -15,8 +15,8 @@ import {
 } from "@flightdeck/protocol";
 import { type Walk, walkInside } from "../board/index.ts";
 import { layoutLike, parseJsonText } from "../kernel/index.ts";
+import { claudeMd, DENY_RULES, EDIT_MATCHER, reviewerAgent, tddSkill } from "./domain/templates.ts";
 import { detectStack } from "./stack.ts";
-import { claudeMd, DENY_RULES, EDIT_MATCHER, reviewerAgent, tddSkill } from "./templates.ts";
 import type { TemplateMarkdown } from "./templates-store.ts";
 
 export type PreviewPart = (typeof HARNESS_PREVIEW_PARTS)[number];
