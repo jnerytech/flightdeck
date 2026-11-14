@@ -3,22 +3,8 @@ import type { Database } from "bun:sqlite";
 import { BoardColumn } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr } from "../kernel/index.ts";
+import type { BoardLink, BoardLinks } from "./domain/links.ts";
 import type { ColumnMap } from "./domain/map.ts";
-
-export interface BoardLink {
-  projectId: string;
-  provider: string;
-  boardId: string;
-  boardTitle: string;
-  statusFieldId: string;
-  columnMap: ColumnMap;
-  push: boolean;
-  cursor: string | null;
-  lastSyncedAt: string | null;
-  lastError: string | null;
-  truncated: boolean;
-  pausedUntil: string | null;
-}
 
 export interface CardExternal {
   externalId: string | null;
@@ -92,7 +78,7 @@ function sqlValue(value: unknown): string | number | null {
   if (typeof value === "boolean") return value ? 1 : 0;
   return value as string | null;
 }
-export class BoardSyncStore {
+export class BoardSyncStore implements BoardLinks {
   constructor(private readonly db: Database) {}
 
   link(input: {
