@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { ProjectCard } from "../../src/features/projects/project-cards.ts";
+import type { ProjectCard } from "../../src/features/projects/domain/project-cards.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";

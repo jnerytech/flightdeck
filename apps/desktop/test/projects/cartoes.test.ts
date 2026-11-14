@@ -7,7 +7,7 @@ import {
   filterProjectCards,
   type ProjectCard,
   sortProjectCards,
-} from "../../src/features/projects/project-cards.ts";
+} from "../../src/features/projects/domain/project-cards.ts";
 import type { HubRow } from "../../src/features/sessions/hub.ts";
 
 const project = (id: string, name: string, baseBranch = "main"): Project =>

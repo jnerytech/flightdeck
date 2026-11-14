@@ -14,7 +14,7 @@ import {
   buildProjectCards,
   filterProjectCards,
   type ProjectCard,
-} from "./project-cards.ts";
+} from "./domain/project-cards.ts";
 import { useProjectCards } from "./use-project-cards.ts";
 
 /** Past this many projects the landing offers a filter box. */
