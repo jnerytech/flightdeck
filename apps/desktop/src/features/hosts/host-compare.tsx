@@ -266,9 +266,7 @@ export const HostCompare = memo(function HostCompare(
             </ActionButton>
           )}
         </FieldRow>
-        <p role="status" className="text-muted-foreground text-sm empty:hidden">
-          {status}
-        </p>
+        <output className="text-muted-foreground text-sm empty:hidden">{status}</output>
         <div id={tableId}>
           {open && (
             <WideTable name={t("hostCompare.table")}>

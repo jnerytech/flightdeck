@@ -73,7 +73,7 @@ describe("backup-schedule-focus-ui: the passphrase form moves the focus and anno
     ]);
   });
 
-  test("saving the passphrase puts the focus on the Passphrase set line, which is a status", async () => {
+  test("saving the passphrase puts the focus on the Passphrase set line, which is a status <output> (S6819)", async () => {
     const { store } = open();
     await press("Choose folder");
     await choose("Every day");
@@ -81,10 +81,13 @@ describe("backup-schedule-focus-ui: the passphrase form moves the focus and anno
     await press("Use it");
     await waitFor(() => store.backupScheduler.hasPassphrase || undefined, "the passphrase");
     const line = screen.queryByText("Passphrase set until you close Flightdeck.");
-    expect([line !== null && document.activeElement === line, line?.getAttribute("role")]).toEqual([
-      true,
-      "status",
-    ]);
+    // An <output> is a status by itself: it carries no role attribute.
+    expect([
+      line !== null && document.activeElement === line,
+      line?.tagName,
+      line?.getAttribute("role") ?? null,
+      screen.queryByRole("status") === line,
+    ]).toEqual([true, "OUTPUT", null, true]);
   });
 
   test("choosing Off while the form is open does not move the focus", async () => {

@@ -37,7 +37,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   const waitingNow = cadenceOn && !scheduler.hasPassphrase;
   const wasWaiting = useRef(waitingNow);
   const passphraseField = useRef<HTMLInputElement>(null);
-  const passphraseLine = useRef<HTMLParagraphElement>(null);
+  const passphraseLine = useRef<HTMLOutputElement>(null);
   useEffect(() => {
     // Only a change moves the focus: a schedule already waiting when the panel opens does not take it.
     if (waitingNow && !wasWaiting.current) passphraseField.current?.focus();
@@ -205,14 +205,13 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
           </Form>
         )}
         {schedule.cadence !== "off" && scheduler.hasPassphrase && (
-          <p
+          <output
             ref={passphraseLine}
-            role="status"
             tabIndex={-1}
             className="rounded-sm text-muted-foreground text-sm focus-visible:outline-2 focus-visible:outline-ring"
           >
             {t("backupSchedule.passphraseSet")}
-          </p>
+          </output>
         )}
         {report.status === "done" && report.prune === "failed" && (
           <InlineNotice tone="warn">{t("backupSchedule.pruneFailed")}</InlineNotice>

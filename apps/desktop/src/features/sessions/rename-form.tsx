@@ -35,7 +35,7 @@ export function RenameForm(
   useEffect(focusRenameField, []);
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape closes the form from any of its controls
-    <div
+    <div // NOSONAR: Escape closes the form from any of its controls
       data-slot="rename-form"
       onKeyDown={(event) => {
         // Escape inside an IME composition cancels the composition, not the form.
