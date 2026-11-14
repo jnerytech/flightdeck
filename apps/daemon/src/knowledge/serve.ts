@@ -1,8 +1,8 @@
 import type { KnowledgeIndexResult } from "@flightdeck/protocol";
 import { rootNames } from "../kernel/index.ts";
 import { feedIndex } from "./domain/feed.ts";
+import { offFolder } from "./domain/switch.ts";
 import { listKnowledge } from "./list.ts";
-import { offFolder } from "./switch.ts";
 
 /**
  * Issue #76: what a session in a project is given of its library. Nothing unless the project is

@@ -3,7 +3,7 @@ import { mkdirSync, symlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { testHome } from "../../../../scripts/test/temp-dir.ts";
 import { expandHome } from "../../src/config.ts";
-import { knowledgeSwitchFor } from "../../src/knowledge/switch.ts";
+import { knowledgeSwitchFor } from "../../src/knowledge/domain/switch.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /** Issue #76: the person's switch for the index, per project: a folder in `knowledge.feedOff`. */
@@ -12,6 +12,7 @@ function host(initial: string[], trusted = true) {
   let writes = 0;
   const sw = knowledgeSwitchFor({
     off: () => entries.map((e) => resolve(expandHome(e))),
+    absolute: (e) => resolve(expandHome(e)),
     trust: async () => ({ trusted }),
     change: async (update) => {
       writes += 1;
@@ -91,6 +92,7 @@ describe("knowledge-switch: who has the index switched off (#76)", () => {
     let fail = true;
     const sw = knowledgeSwitchFor({
       off: () => [],
+      absolute: (e) => resolve(expandHome(e)),
       trust: async () => ({ trusted: true }),
       change: async () => {
         if (fail) throw new Error("disk full");

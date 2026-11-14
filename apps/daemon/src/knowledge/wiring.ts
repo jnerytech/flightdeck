@@ -2,10 +2,10 @@ import { resolve } from "node:path";
 import { type Config, expandHome, updateConfigFile } from "../config.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
 import { createKnowledgeDoc } from "./create.ts";
+import { type KnowledgeSwitchDeps, knowledgeSwitchFor } from "./domain/switch.ts";
 import { listKnowledge } from "./list.ts";
 import { knowledgeFeedFor } from "./serve.ts";
 import { setKnowledgeStatus } from "./status.ts";
-import { type KnowledgeSwitchDeps, knowledgeSwitchFor } from "./switch.ts";
 
 /** What the host's knowledge library is served from. */
 export interface KnowledgeDeps {
@@ -22,6 +22,7 @@ export interface KnowledgeDeps {
  */
 export function createKnowledge({ config, configFile, trust }: KnowledgeDeps) {
   // The feed and its switch read the same list of folders that are off, under the same trust.
+  const absolute = (entry: string) => resolve(expandHome(entry));
   const gate = { off: () => config.knowledge.feedOff, trust };
   const knowledge = {
     list: listKnowledge,
@@ -30,6 +31,7 @@ export function createKnowledge({ config, configFile, trust }: KnowledgeDeps) {
     feed: knowledgeFeedFor(gate),
     feedSwitch: knowledgeSwitchFor({
       ...gate,
+      absolute,
       change: async (update) => {
         let next: string[] = [];
         await updateConfigFile(configFile, (raw) => {
@@ -39,7 +41,7 @@ export function createKnowledge({ config, configFile, trust }: KnowledgeDeps) {
           next = update(entries);
           return { ...raw, knowledge: { ...section, feedOff: next } };
         });
-        config.knowledge.feedOff = next.map((entry) => resolve(expandHome(entry)));
+        config.knowledge.feedOff = next.map(absolute);
       },
     }),
   };
