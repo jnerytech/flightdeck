@@ -1,6 +1,6 @@
 import type { CommandPayload, EffortLevel } from "@flightdeck/protocol";
-import type { T } from "../../i18n/index.ts";
-import { type PermissionChoice, takesEffort } from "../personas/index.ts";
+import type { T } from "../../../i18n/index.ts";
+import { type PermissionChoice, takesEffort } from "../../personas/index.ts";
 
 /** The effort a member was given; "" is the persona's own. */
 export type EffortChoice = EffortLevel | "";
