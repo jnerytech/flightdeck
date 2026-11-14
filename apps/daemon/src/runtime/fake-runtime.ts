@@ -4,7 +4,7 @@ import type { AssistantBlock, EffortLevel, McpLiveStatus } from "@flightdeck/pro
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../git/index.ts";
 import { AsyncQueue, ulid } from "../kernel/index.ts";
-import { describeCommands } from "./commands.ts";
+import { describeCommands } from "./domain/commands.ts";
 import type {
   AgentRun,
   AgentRuntime,

@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { git as run } from "../../src/git/adapters/git.ts";
 import type { runCommand } from "../../src/kernel/command.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
-import { FolderLocks } from "../../src/worktrees/locks.ts";
+import { FolderLocks } from "../../src/worktrees/domain/locks.ts";
 import { createWorktrees, gitWithin } from "../../src/worktrees/wiring.ts";
 import {
   type WorktreeCard,
