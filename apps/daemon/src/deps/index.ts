@@ -3,6 +3,6 @@
  * The doctor checks the daemon's own setup.
  * Another domain imports from here, never a file inside.
  */
-export type { DepsEnv } from "./deps.ts";
+export type { DepsEnv } from "./domain/deps.ts";
 export { doctorExitCode, formatDeps } from "./domain/format.ts";
 export { createHostChecks } from "./wiring.ts";
