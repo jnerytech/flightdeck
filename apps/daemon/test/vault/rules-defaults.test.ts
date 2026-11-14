@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { decideRequest, requesterOf, systemEnv } from "../../src/vault/domain/requests.ts";
 import {
   type Day,
   evaluate,
@@ -7,7 +8,6 @@ import {
   type UseContext,
   validateRules,
 } from "../../src/vault/domain/rules.ts";
-import { decideRequest, requesterOf, systemEnv } from "../../src/vault/requests.ts";
 
 /** Wednesday 2026-10-28, 12:00 in a UTC-3 PC. */
 const NOW = Date.UTC(2026, 9, 28, 15, 0, 0);
@@ -327,12 +327,12 @@ describe("regras-padroes: decideRequest", () => {
     });
   });
 
-  test("sem regras nem ambiente ele usa o padrão e o relógio do sistema", () => {
-    expect(decideRequest(input({ requester: "workflow" }))).toMatchObject({
+  test("sem regras ele usa o padrão", () => {
+    expect(decideRequest(input({ requester: "workflow" }), [], env())).toMatchObject({
       granted: false,
       decision: "deny",
     });
-    expect(decideRequest(input())).toMatchObject({ granted: true, decision: "ask" });
+    expect(decideRequest(input(), [], env())).toMatchObject({ granted: true, decision: "ask" });
   });
 
   test("o pedido do run_with_secret, do prod e do risco alto sobem como no evaluate", () => {
@@ -353,12 +353,15 @@ describe("regras-padroes: decideRequest", () => {
 });
 
 describe("regras-padroes: o ambiente do sistema", () => {
-  test("systemEnv usa o relógio e o fuso do PC, e o histórico de usos que lhe derem", () => {
-    const system = systemEnv();
-    expect(Math.abs(system.now() - Date.now())).toBeLessThan(1000);
+  test("systemEnv usa o relógio que lhe derem, o fuso do PC e o histórico de usos que lhe derem", () => {
+    const system = systemEnv(() => NOW);
+    expect(system.now()).toBe(NOW);
     expect(system.local(NOW).minutes).toBeGreaterThanOrEqual(0);
     expect(system.uses("r", 0)).toBe(0);
-    const counted = systemEnv((id, since) => (id === "r" && since === 5 ? 7 : 0));
+    const counted = systemEnv(
+      () => NOW,
+      (id, since) => (id === "r" && since === 5 ? 7 : 0),
+    );
     expect(counted.uses("r", 5)).toBe(7);
   });
 });
