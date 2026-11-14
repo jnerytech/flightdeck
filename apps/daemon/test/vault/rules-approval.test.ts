@@ -8,7 +8,7 @@ import {
 } from "../../src/actions/actions.ts";
 import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import type { Rule } from "../../src/vault/rules.ts";
+import type { Rule } from "../../src/vault/domain/rules.ts";
 import { VaultRules } from "../../src/vault/rules-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
 import { gitRepo } from "../support/board-helpers.ts";

@@ -111,7 +111,7 @@ describe("refusal-english: the raw text of a refusal is English (#940)", () => {
 const MSGS2_FILES = [
   "../src/mcp/server.ts",
   "../src/daemon-client/client.ts",
-  "../src/vault/rules.ts",
+  "../src/vault/domain/rules.ts",
 ];
 const MSGS2_FOLDERS = ["../src/messaging", "../src/issues", "../src/automations"];
 

@@ -4,8 +4,6 @@
  * imports from here, never a file inside.
  */
 export { Decisions } from "./decisions.ts";
-export { toCsv } from "./report.ts";
-export { decideRequest, type RequestDecision, requesterOf } from "./requests.ts";
 export {
   evaluate,
   localTime,
@@ -13,6 +11,8 @@ export {
   type Risk,
   type RulesEnv,
   type UseContext,
-} from "./rules.ts";
+} from "./domain/rules.ts";
+export { toCsv } from "./report.ts";
+export { decideRequest, type RequestDecision, requesterOf } from "./requests.ts";
 export { VaultRules } from "./rules-store.ts";
 export { isVaultTransport, requireVaultTransport, Vault, vaultActions } from "./vault.ts";
