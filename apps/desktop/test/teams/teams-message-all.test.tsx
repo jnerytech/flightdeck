@@ -79,7 +79,7 @@ const type = (field: HTMLInputElement, value: string) =>
 /** Enter in a text field submits its form: the test submits the form and says so when there is none. */
 async function submit(field: HTMLInputElement) {
   const form = field.closest("form");
-  expect(form !== null).toBe(true);
+  expect(form !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   if (!form) return;
   await act(async () => {
     fireEvent.submit(form);
@@ -90,7 +90,7 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
   test("the message field and its button are one form", async () => {
     const { field, words } = await openTeam(language, { delivered: 1, refused: 0 });
     const form = field.closest("form");
-    expect(form !== null).toBe(true);
+    expect(form !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(form?.contains(screen.getByRole("button", { name: words.send }))).toBe(true);
   });
 
@@ -107,7 +107,7 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
     await type(field, "   ");
     await submit(field);
     expect(messages).toEqual([]);
-    expect(screen.queryByText(words.sent(1, 0)) !== null).toBe(false);
+    expect(screen.queryByText(words.sent(1, 0)) !== null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the text is cleared once a worker took it, and the outcome line stays", async () => {
@@ -118,7 +118,7 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
     });
     await settleMaybe(() => messages.length === 1, 3000);
     await settleMaybe(() => screen.queryByText(words.sent(2, 1)) !== null, 3000);
-    expect(screen.queryByText(words.sent(2, 1)) !== null).toBe(true);
+    expect(screen.queryByText(words.sent(2, 1)) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(field.value).toBe("");
   });
 
@@ -130,7 +130,7 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
     });
     await settleMaybe(() => messages.length === 1, 3000);
     await settleMaybe(() => screen.queryByText(words.sent(0, 2)) !== null, 3000);
-    expect(screen.queryByText(words.sent(0, 2)) !== null).toBe(true);
+    expect(screen.queryByText(words.sent(0, 2)) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(field.value).toBe("stand up");
   });
 
@@ -145,7 +145,7 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
     await submit(field);
     answer();
     await settleMaybe(() => messages.length >= 1, 3000);
-    expect(messages.length).toBe(1);
+    expect(messages).toHaveLength(1);
   });
 
   test("a text every worker refused is announced as an alert, not as a calm status", async () => {
@@ -156,7 +156,7 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
     });
     await settleMaybe(() => screen.queryByText(words.sent(0, 2)) !== null, 3000);
     const line = screen.getByText(words.sent(0, 2));
-    expect(line.closest("[role=alert]") !== null).toBe(true);
+    expect(line.closest("[role=alert]") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the field has no fixed width, so it fills a narrow window", async () => {
