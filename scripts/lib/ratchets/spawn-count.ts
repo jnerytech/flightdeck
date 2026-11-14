@@ -53,7 +53,7 @@ export function spawnCounts(files: { path: string; text: string }[]): Record<str
       if (COMMENT_LINE.test(line) && !/\*\/\s*\S/.test(line)) continue;
       const code = line.replace(COMMENT_SPAN, " ");
       for (const re of LAUNCHES) n += [...code.matchAll(re)].length;
-      for (const [, body] of code.matchAll(DESTRUCTURED_BUN)) if (SPAWN_NAME.test(body)) n++;
+      for (const [, body = ""] of code.matchAll(DESTRUCTURED_BUN)) if (SPAWN_NAME.test(body)) n++;
     }
     if (n > 0) counts[path] = n;
   }
