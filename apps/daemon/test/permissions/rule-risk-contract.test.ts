@@ -7,10 +7,10 @@ import { RANK, RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import {
   type ClassifyCall,
   type PathKind,
-  pathKinds,
   ruleLevel,
   writeTarget,
-} from "../../src/permissions/rule-risk.ts";
+} from "../../src/permissions/domain/rule-risk.ts";
+import { pathKinds } from "../../src/permissions/rule-risk.ts";
 
 /**
  * The contract between `ruleLevel` and the matcher Claude Code runs for a Read or Edit rule

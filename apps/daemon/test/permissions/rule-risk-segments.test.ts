@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { credential } from "../../src/permissions/domain/risk.ts";
-import { type ClassifyCall, type PathKind, ruleLevel } from "../../src/permissions/rule-risk.ts";
+import {
+  type ClassifyCall,
+  type PathKind,
+  ruleLevel,
+} from "../../src/permissions/domain/rule-risk.ts";
 
 // The classifier is the daemon's own on the path a call names; here, its credential rule alone.
 const classify: ClassifyCall = (_tool, input) =>

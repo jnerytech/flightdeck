@@ -4,11 +4,10 @@ import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import {
   type ClassifyCall,
   type PathKind,
-  pathKinds,
-  realPaths,
   ruleLevel,
   writeTarget,
-} from "../../src/permissions/rule-risk.ts";
+} from "../../src/permissions/domain/rule-risk.ts";
+import { pathKinds, realPaths } from "../../src/permissions/rule-risk.ts";
 
 /**
  * What a saved permission rule may cover, by the kind of rule: a shell rule, a network rule, a rule

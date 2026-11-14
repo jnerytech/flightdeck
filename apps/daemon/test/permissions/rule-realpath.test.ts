@@ -4,14 +4,14 @@ import { join, normalize } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { checkUpdates, ruleReadings } from "../../src/permissions/domain/permission-updates.ts";
 import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
-import { realPathOf } from "../../src/permissions/path-kind.ts";
 import {
   type ClassifyCall,
   type PathKind,
   pathReadings,
-  realPaths,
   ruleLevel,
-} from "../../src/permissions/rule-risk.ts";
+} from "../../src/permissions/domain/rule-risk.ts";
+import { realPathOf } from "../../src/permissions/path-kind.ts";
+import { realPaths } from "../../src/permissions/rule-risk.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const PROJECT = "/proj";

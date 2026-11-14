@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { type ClassifyCall, type PathKind, ruleLevel } from "../../src/permissions/rule-risk.ts";
+import {
+  type ClassifyCall,
+  type PathKind,
+  ruleLevel,
+} from "../../src/permissions/domain/rule-risk.ts";
 
 /**
  * What a wildcard in a path rule may stand for (issue #1607, the mutants of the name lists in
