@@ -5,10 +5,10 @@
 import type { BoardColumn, BoardSyncStatus } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../kernel/index.ts";
+import { type ColumnMap, checkMap, defaultMapFor } from "./domain/map.ts";
+import type { BoardProvider, ExternalBoard } from "./domain/provider.ts";
 import type { BoardSync, SyncReport } from "./engine.ts";
 import type { BoardSyncLoop } from "./loop.ts";
-import { type ColumnMap, checkMap, defaultMapFor } from "./map.ts";
-import type { BoardProvider, ExternalBoard } from "./provider.ts";
 import { setPush } from "./push.ts";
 import type { BoardSyncStore, SyncLogEntry } from "./store.ts";
 

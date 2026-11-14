@@ -16,7 +16,7 @@ import type {
   ExternalItem,
   PullResult,
   StatusField,
-} from "./provider.ts";
+} from "./domain/provider.ts";
 
 export interface GithubBoardsOptions {
   gh: GhRunner;
