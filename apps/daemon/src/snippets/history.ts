@@ -3,7 +3,7 @@ import { open, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Snippet, SnippetHistoryCandidate } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { hasControl, type SecretScanner } from "./model.ts";
+import { hasControl, type SecretScanner } from "./domain/model.ts";
 import type { Snippets } from "./store.ts";
 
 export interface HistorySources {

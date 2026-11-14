@@ -6,7 +6,7 @@ import {
 } from "../../src/automations/wiring.ts";
 import type { CheckLoopSwitch } from "../../src/board/check-loop.ts";
 import { AutoApprover } from "../../src/permissions/auto-approve.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { boundedCheckRunner } from "../../src/workflows/check-runner.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";

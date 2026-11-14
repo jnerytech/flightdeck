@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { PACK_IDS, packPersonas } from "../../src/personas/pack.ts";
 import { Personas } from "../../src/personas/store.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 
 /** Issue #1609: one persona row whose JSON no longer fits must not hide the others. */

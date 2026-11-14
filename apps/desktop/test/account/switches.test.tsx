@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, screen } = await import("@testing-libra
 const { AccountFooter } = await import("../../src/features/shell/account-footer.tsx");
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
-const { WHATS_NEW_KEY } = await import("../../src/features/appupdate/whats-new.ts");
+const { WHATS_NEW_KEY } = await import("../../src/features/appupdate/domain/whats-new.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

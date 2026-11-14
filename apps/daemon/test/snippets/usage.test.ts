@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startServer } from "../../src/server.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { Snippets } from "../../src/snippets/store.ts";
 import { SnippetUse } from "../../src/snippets/use.ts";
 import { EventStore } from "../../src/store/event-store.ts";

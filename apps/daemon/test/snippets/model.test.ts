@@ -4,7 +4,7 @@ import {
   normalizeSnippet,
   renderSnippet,
   SecretScanner,
-} from "../../src/snippets/model.ts";
+} from "../../src/snippets/domain/model.ts";
 
 const scanner = new SecretScanner();
 

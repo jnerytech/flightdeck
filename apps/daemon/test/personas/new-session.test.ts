@@ -12,7 +12,7 @@ import { Personas } from "../../src/personas/store.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
 import { startServer } from "../../src/server.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";
 import { newManager, poll, record, tempDir, workspace } from "../support/helpers.ts";
