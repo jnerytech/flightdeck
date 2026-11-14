@@ -11,7 +11,7 @@ import type {
 import { LOCAL_SETTINGS } from "../board/project-rules.ts";
 import { type CommandResult, samePath } from "../kernel/index.ts";
 import { credential } from "../permissions/index.ts";
-import type { FolderLocks } from "./locks.ts";
+import type { FolderLocks } from "./domain/locks.ts";
 
 export interface WorktreeProject {
   id: string;

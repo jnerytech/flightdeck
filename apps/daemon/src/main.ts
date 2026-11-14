@@ -93,7 +93,7 @@ import { createUpdates } from "./updates/index.ts";
 import { readWatchSettings } from "./watch/settings.ts";
 import { createWebhook } from "./webhook/wiring.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
-import { FolderLocks } from "./worktrees/locks.ts";
+import { FolderLocks } from "./worktrees/domain/locks.ts";
 import { createWorktreesModule } from "./worktrees/wiring.ts";
 import { createWsl, type WslItem } from "./wsl/index.ts";
 
