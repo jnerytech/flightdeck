@@ -4,6 +4,6 @@
  * never a file inside.
  */
 
+export { closingLine } from "./domain/issue-ref.ts";
 export { Issues } from "./issues.ts";
-export { closingLine } from "./providers.ts";
 export { azureCoords } from "./remote.ts";
