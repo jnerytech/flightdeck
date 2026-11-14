@@ -62,9 +62,16 @@ export const TASK_NAME = String.raw`Flightdeck\flightdeckd`;
 const xmlEscape = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
-/** Windows command line: the executable always quoted, other arguments only with spaces. */
+/**
+ * One argument as the Windows C runtime reads it back: inside quotes, the backslashes before a `"`
+ * and at the end are doubled and a `"` is escaped, so neither ends the argument early (#2895).
+ */
+const windowsQuote = (arg: string) =>
+  `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
+
+/** Windows command line: the executable always quoted, other arguments with a space or a quote. */
 const windowsCommandLine = (command: string[]) =>
-  command.map((arg, i) => (i === 0 || /\s/.test(arg) ? `"${arg}"` : arg)).join(" ");
+  command.map((arg, i) => (i === 0 || /[\s"]/.test(arg) ? windowsQuote(arg) : arg)).join(" ");
 
 /**
  * Task Scheduler XML: runs at the user's logon with the user's own token (no elevation),
@@ -310,13 +317,56 @@ const xmlUnescape = (text: string) =>
     .replaceAll("&apos;", "'")
     .replaceAll("&amp;", "&");
 
-/** Arguments of a command line, unquoted; systemd escapes with `\`, Windows has no escapes. */
-function splitArgs(line: string, escapes: boolean): string[] {
-  const token = escapes ? /"((?:[^"\\]|\\.)*)"|(\S+)/g : /"([^"]*)"|(\S+)/g;
-  return [...line.matchAll(token)].map(([, quoted, plain]) => {
-    if (quoted === undefined) return plain as string;
-    return escapes ? quoted.replace(/\\(["\\])/g, "$1") : quoted;
-  });
+/** Arguments of a systemd command line, unquoted: inside quotes `\` escapes `"` and `\`. */
+function splitSystemdArgs(line: string): string[] {
+  return [...line.matchAll(/"((?:[^"\\]|\\.)*)"|(\S+)/g)].map(([, quoted, plain]) =>
+    quoted === undefined ? (plain as string) : quoted.replace(/\\(["\\])/g, "$1"),
+  );
+}
+
+/**
+ * A run of backslashes at `start`, as the Windows C runtime reads it: before a `"`, 2n backslashes
+ * are n and the quote opens or closes, 2n+1 are n and a literal `"`; elsewhere they stay as they are.
+ */
+function backslashRun(line: string, start: number): { text: string; toggle: boolean; end: number } {
+  let end = start;
+  while (line[end] === "\\") end++;
+  const count = end - start;
+  if (line[end] !== '"') return { text: "\\".repeat(count), toggle: false, end };
+  const literal = count % 2 === 1;
+  return {
+    text: "\\".repeat(Math.floor(count / 2)) + (literal ? '"' : ""),
+    toggle: !literal,
+    end: end + 1,
+  };
+}
+
+/** Arguments of a Windows command line, read as the C runtime reads them (#2895). */
+function splitWindowsArgs(line: string): string[] {
+  const args: string[] = [];
+  let arg: string | null = null;
+  let quoted = false;
+  let i = 0;
+  while (i < line.length) {
+    const char = line[i] as string;
+    if (char === "\\") {
+      const run = backslashRun(line, i);
+      arg = (arg ?? "") + run.text;
+      quoted = run.toggle ? !quoted : quoted;
+      i = run.end;
+      continue;
+    }
+    if (char === '"') quoted = !quoted;
+    if (/\s/.test(char) && !quoted) {
+      if (arg !== null) args.push(arg);
+      arg = null;
+    } else {
+      arg = (arg ?? "") + (char === '"' ? "" : char);
+    }
+    i++;
+  }
+  if (arg !== null) args.push(arg);
+  return args;
 }
 
 /** What an installed service runs: the daemon command (before `start`) and its `--config`. */
@@ -343,13 +393,13 @@ export async function serviceCommand(ctx: ServiceContext): Promise<ServiceComman
   if (requireSupported(ctx) === "linux") {
     const { code, stdout } = await ctx.exec(["systemctl", "--user", "cat", "flightdeckd"]);
     const line = /^ExecStart=(.*)$/m.exec(stdout)?.[1];
-    return code === 0 && line ? parseCommand(splitArgs(line, true)) : null;
+    return code === 0 && line ? parseCommand(splitSystemdArgs(line)) : null;
   }
   const { code, stdout } = await ctx.exec([...windowsTaskQueryArgs(), "/XML"]);
   const args = /<Arguments>([\s\S]*?)<\/Arguments>/.exec(stdout)?.[1];
   if (code !== 0 || !args) return null;
   // Our task runs `conhost.exe --headless "<daemon>" ... start [--config <file>]`.
-  return parseCommand(splitArgs(xmlUnescape(args), false).slice(1));
+  return parseCommand(splitWindowsArgs(xmlUnescape(args)).slice(1));
 }
 
 /** Stops the service; one that is not running is not an error (the caller waits for the lock). */
