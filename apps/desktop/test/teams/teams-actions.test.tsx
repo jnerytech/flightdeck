@@ -234,7 +234,7 @@ describe.each(["en", "pt-BR"] as const)("teams-actions (%s)", (language) => {
     await settleMaybe(() => said(words.notDone), 3000);
     expect(said(words.notDone)).toBe(true);
     expect(said("the team has a worker at work")).toBe(true);
-    expect(button(words.pause) !== null).toBe(true);
+    expect(button(words.pause) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(said(words.paused)).toBe(false);
   });
 });

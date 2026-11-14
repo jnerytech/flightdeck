@@ -152,7 +152,7 @@ describe("hub-rename: Rename is a form with focus handling (#2673)", () => {
       fireEvent.keyDown(input, { key: "Escape", isComposing: true });
     });
     await uiIdle();
-    expect(field("session 1") !== null).toBe(true);
+    expect(field("session 1") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the Cancel button closes the form without saving", async () => {
@@ -189,6 +189,6 @@ describe("hub-rename: Rename is a form with focus handling (#2673)", () => {
       fireEvent.keyDown(items[0] as HTMLElement, { key: "Escape" });
     });
     await uiIdle();
-    expect(document.activeElement === actionsOf("session 2")).toBe(true);
+    expect(document.activeElement === actionsOf("session 2")).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

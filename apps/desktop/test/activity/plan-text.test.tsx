@@ -66,7 +66,7 @@ describe("activity-plan-text: a terminal plan wait shows its plan on the card (#
     );
     const plan = document.querySelector("[data-slot='activity-card-plan']");
     expect(plan?.textContent).toBe(PLAN);
-    expect(screen.queryAllByText(/Ler o código/).length).toBe(1);
+    expect(screen.queryAllByText(/Ler o código/).length).toBe(1); // NOSONAR: a failed length check on DOM elements prints each node
   });
 
   test("a card with no plan text, or a question, shows no plan block", () => {
@@ -81,7 +81,7 @@ describe("activity-plan-text: a terminal plan wait shows its plan on the card (#
           <ActivityBoard store={store} go={() => {}} onOpen={() => {}} holdMs={30} tickMs={20} />
         </TContext.Provider>,
       );
-      expect(document.querySelectorAll("[data-slot='activity-card-plan']").length).toBe(0);
+      expect(document.querySelectorAll("[data-slot='activity-card-plan']").length).toBe(0); // NOSONAR: a failed length check on DOM elements prints each node
       view.unmount();
     }
   });
