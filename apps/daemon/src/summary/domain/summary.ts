@@ -3,8 +3,8 @@
  * asked, what was done, the files touched, the cost and the open question.
  */
 import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
-import { promptText } from "../history/index.ts";
-import { parseJsonText } from "../kernel/index.ts";
+import { promptText } from "../../history/index.ts";
+import { parseJsonText } from "../../kernel/index.ts";
 
 export interface PendingQuestion {
   kind: "permission" | "question";

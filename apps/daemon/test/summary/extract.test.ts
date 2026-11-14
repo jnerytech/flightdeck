@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { SecretScanner } from "@flightdeck/protocol";
-import { buildSummary, type SummaryInput } from "../../src/summary/summary.ts";
+import { buildSummary, type SummaryInput } from "../../src/summary/domain/summary.ts";
 
 const line = (value: unknown): string => JSON.stringify(value);
 const user = (content: unknown, extra: object = {}): string =>

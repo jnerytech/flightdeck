@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { SecretScanner } from "@flightdeck/protocol";
 import { EventStore } from "../../src/store/event-store.ts";
+import { buildSummary } from "../../src/summary/domain/summary.ts";
 import { sessionCost } from "../../src/summary/service.ts";
-import { buildSummary } from "../../src/summary/summary.ts";
 
 const turns = (prompt: string, answer: string, question: string | null = null) =>
   buildSummary({
