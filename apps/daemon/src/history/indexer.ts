@@ -6,11 +6,12 @@ import { createInterface } from "node:readline";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import { CWD_CONDITION, normalizeCwd, trimSlashes } from "./domain/folder.ts";
+import { CWD_CONDITION, trimSlashes } from "./domain/folder.ts";
 import { type HistoryRecord, lastTitle, parseLines } from "./domain/parser.ts";
 import { lastTool, requestLine } from "./domain/session-line.ts";
 import { type ToolDetail, toolDetail } from "./domain/tool-detail.ts";
 import { promptText } from "./domain/transcript-text.ts";
+import { normalizeCwd } from "./folder.ts";
 import { fts5Available, type SearchHit, type SearchQuery, searchMessages } from "./search.ts";
 
 /** The lines of a file, read as they are asked for: a caller that stops early closes the file. */

@@ -10,10 +10,8 @@ export function trimSlashes(path: string): string {
 /** The session's folder, or anything below it (never a look-alike prefix). */
 export const CWD_CONDITION = String.raw`(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\'))`;
 
-const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
-
 /** Comparable form of a folder: forward slashes, no trailing slash, case folded where the OS does. */
-export function normalizeCwd(path: string): string {
+export function normalizeCwdFor(path: string, platform: string): string {
   const slashes = trimSlashes(path.replaceAll("\\", "/"));
-  return caseInsensitive ? slashes.toLowerCase() : slashes;
+  return platform === "win32" || platform === "darwin" ? slashes.toLowerCase() : slashes;
 }
