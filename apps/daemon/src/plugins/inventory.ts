@@ -11,7 +11,7 @@ import { basename, join, resolve } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/index.ts";
 import { FlightdeckError, isInside, parseJsonWith } from "../kernel/index.ts";
-import { AnyJson } from "./json-reads.ts";
+import { AnyJson } from "./domain/json-reads.ts";
 
 /** Hook events that can decide for the user; a plugin listening to them gets the attention mark. */
 export const SENSITIVE_EVENTS = ["PreToolUse", "PermissionRequest"];
