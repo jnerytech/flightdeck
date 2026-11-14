@@ -137,6 +137,10 @@ describe("tarefa-windows", () => {
       command: [exe],
       config: quoted,
     });
+    expect(await readBack(windowsTaskXml([exe, ""], options))).toEqual({
+      command: [exe, ""],
+      config: null,
+    });
     const bare = 'C:\\x\\"y"';
     expect(await readBack(windowsTaskXml([exe, bare], options))).toEqual({
       command: [exe, bare],

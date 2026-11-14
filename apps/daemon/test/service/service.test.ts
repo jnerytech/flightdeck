@@ -579,4 +579,16 @@ describe("servico", () => {
       ["systemctl", "--user", "daemon-reload"],
     ]);
   });
+
+  test("when the reload fails too, the disable failure is the one reported (#2895)", async () => {
+    const linux = fakeOs("linux");
+    const ctx = linux.ctx(false);
+    ctx.exec = async (cmd) => ({ code: cmd.includes("disable") ? 1 : 2, stdout: "" });
+    const failure = await uninstallService(ctx).then(
+      () => "",
+      (error: Error) => error.message,
+    );
+    expect(failure).toBe("failed (1): systemctl --user disable --now flightdeckd");
+    expect(linux.removed).toEqual(["/home/dev/.config/systemd/user/flightdeckd.service"]);
+  });
 });
