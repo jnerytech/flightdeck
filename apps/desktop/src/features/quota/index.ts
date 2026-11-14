@@ -10,8 +10,8 @@ export {
   projectionText,
   quotaBars,
   SHOWN,
-} from "./quota.ts";
-export { type QuotaGlance, quotaGlance } from "./quota-glance.ts";
+} from "./domain/quota.ts";
+export { type QuotaGlance, quotaGlance } from "./domain/quota-glance.ts";
 export {
   initialQuotaState,
   type QuotaCore,
