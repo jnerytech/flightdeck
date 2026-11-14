@@ -4,7 +4,7 @@
  * (only the first `tool_call` carries one), the calls already shown, and the session's running cost.
  * Child sessions' traffic (`_meta["opencode/child-session"]`, a `<child>:` call id) is left out.
  */
-import { type MappedTool, mapOpenCodeTool } from "./opencode-tools.ts";
+import { type MappedTool, mapOpenCodeTool } from "./domain/opencode-tools.ts";
 import { truncateToolResult } from "./tool-result.ts";
 import type { RuntimeEvent } from "./types.ts";
 
