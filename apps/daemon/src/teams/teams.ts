@@ -29,6 +29,7 @@ import {
   withCoordinatorBrief,
   workerInstructions,
 } from "./domain/instructions.ts";
+import { PerKeyQueue } from "./domain/serial.ts";
 import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./domain/stored.ts";
 import {
   MAX_WORKERS,
@@ -38,7 +39,6 @@ import {
   type WorkerStart,
 } from "./domain/worker.ts";
 import type { TeamsOptions } from "./options.ts";
-import { PerKeyQueue } from "./serial.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
