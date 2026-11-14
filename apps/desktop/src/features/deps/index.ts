@@ -11,4 +11,4 @@ export {
   fixNoteFor,
   fixPageFor,
   requiredMissing,
-} from "./deps-summary.ts";
+} from "./domain/deps-summary.ts";
