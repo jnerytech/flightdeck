@@ -3,7 +3,6 @@
  * with the instructions of coordination, paused by the plan quota and resumed with it.
  */
 
-import type { Database } from "bun:sqlite";
 import {
   type EffortLevel,
   inSequence,
@@ -15,99 +14,28 @@ import {
   type TeamStatus,
   type TeamsUpdatedFrame,
 } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { MANAGED_STATE } from "../messaging/endpoints.ts";
-import type { Messaging } from "../messaging/messages.ts";
-import { type Prepare, withoutPersonas } from "../personas/index.ts";
-import type { Quota } from "../quota/index.ts";
-import type { SessionManager } from "../sessions/index.ts";
+import { withoutPersonas } from "../personas/index.ts";
 import type { NewTeam, TeamPatch } from "./input.ts";
 import {
   coordinatorInstructions,
   INSTRUCTIONS_VERSION,
+  RESUME_QUOTA,
+  RESUME_USER,
+  STOP_QUOTA,
+  STOP_USER,
   type TeamBrief,
+  withCoordinatorBrief,
   workerInstructions,
 } from "./instructions.ts";
-import { STORED_CHECKS, STORED_MEMBERS, type StoredMember } from "./stored.ts";
+import type { TeamsOptions } from "./options.ts";
+import { PerKeyQueue } from "./serial.ts";
+import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./stored.ts";
+import { MAX_WORKERS, NO_SPEC, numberOf, type WorkerSpec, type WorkerStart } from "./worker.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
-
-/** The personas of phase 20 plug in here. */
-export interface TeamPersonas {
-  resolve(
-    id: string,
-  ): { id: string; name: string } | null | Promise<{ id: string; name: string } | null>;
-}
-
-export interface TeamsOptions {
-  db: Database;
-  board: Board;
-  manager: SessionManager;
-  messaging: Messaging;
-  host: string;
-  quota?: Pick<Quota, "watch" | "blocked">;
-  personas?: TeamPersonas;
-  /** The standard names: a persona that arrives after the session started renames it. */
-  names?: {
-    get(sessionId: string): unknown;
-    setPersona(sessionId: string, persona: string | null): unknown;
-    /** Issue #101: the team, role and number a session's name carries. */
-    setTeam?(sessionId: string, team: SessionTeam): unknown;
-    /** Issue #934: a session whose team was deleted leaves it. */
-    clearTeam?(sessionId: string): unknown;
-  };
-  clock?: () => number;
-  /** Issue #93: whether the host lets a session run without permission prompts. */
-  bypassAllowed?: () => boolean;
-  /** Starts the coordinator session; phase 20 passes the persona on. */
-  startCoordinator?: (input: {
-    cwd: string;
-    prompt: string;
-    name: string;
-    persona: string | null;
-    model: string | null;
-    /** Issue #2310: the effort the coordinator opens with; null is the persona's own. */
-    effort: EffortLevel | null;
-    /** Issue #93: the mode the coordinator opens in; null is the host's default. */
-    permissionMode: PermissionMode | null;
-  }) => { sessionId: string } | Promise<{ sessionId: string }>;
-  /** Reads the personas for the coordinator when `startCoordinator` is not given. */
-  preparePersonas?: Prepare;
-  /** Starts a worker's card; phase 20 passes the persona on. */
-  startWorker?: (cardId: string, persona: string | null, model: string | null) => Promise<unknown>;
-  /** Looks the project of the folder up before the coordinator starts there; nothing back means known. */
-  warm?: (cwd: string) => Promise<unknown> | undefined;
-  /** Tells a running session its persona changed. */
-  applyPersona?: (sessionId: string, persona: string | null) => void;
-}
-
-/** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
-function numberOf(member: StoredMember): number | null {
-  if (member.role !== "worker") return null;
-  if (typeof member.number === "number") return member.number;
-  const parsed = /executora (\d+)$/.exec(member.name)?.[1];
-  return parsed ? Number(parsed) : null;
-}
-
-interface Row {
-  id: string;
-  name: string;
-  project_id: string;
-  goal: string;
-  coordinator: string | null;
-  members: string;
-  checks: string;
-  state: TeamInfo["state"];
-  paused_by: TeamInfo["pausedBy"];
-  instructions_version: string;
-  created_at: string;
-  /** #1220: the coordinator's last report; null before the first. */
-  report_text: string | null;
-  report_at: string | null;
-  report_done: number;
-}
 
 /**
  * The name the cards and sessions of a team carry. A card's branch comes from its title cut short,
@@ -122,30 +50,6 @@ const invalid = (message: string, reason?: string, params?: Record<string, strin
 const notFound = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("not_found", message, reason, params);
 
-const STOP_USER =
-  'STOP: o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume". Não despache, não integre e não comece nada novo.';
-const STOP_QUOTA =
-  'STOP: a cota do plano chegou ao limite e o time foi pausado. Termine o passo em andamento, feche num ponto seguro (um commit verde ou um stash) e pare até chegar a mensagem "resume", que vem quando a janela da cota reiniciar.';
-const RESUME_USER = "resume: o time voltou a trabalhar. Continue de onde parou.";
-const RESUME_QUOTA =
-  "resume: a janela da cota do plano reiniciou e o time voltou a trabalhar. Continue de onde parou.";
-
-/** What a worker is started with beyond the team's own setup; read only, so one copy serves every call. */
-interface WorkerSpec {
-  readonly persona: string | null;
-  readonly model: string | null;
-  readonly effort: EffortLevel | null;
-  readonly permission: PermissionMode | null;
-}
-const NO_SPEC: WorkerSpec = { persona: null, model: null, effort: null, permission: null };
-
-/** One worker to start: its name, who it reports to, and what it is started with (null: the default). */
-interface WorkerStart extends WorkerSpec {
-  readonly name: string;
-  readonly coordinator: string | null;
-  readonly number: number | null;
-}
-
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
   private readonly unsubscribe: Array<() => void> = [];
@@ -153,6 +57,8 @@ export class Teams {
   private readonly cardPersonas = new Map<string, string>();
   /** The team, role and number each worker card was started with (issue #101). */
   private readonly cardTeams = new Map<string, SessionTeam>();
+  /** A team's member changes run one at a time (#2090). */
+  private readonly changes = new PerKeyQueue();
   private blocked: boolean;
 
   constructor(private readonly opts: TeamsOptions) {
@@ -176,8 +82,8 @@ export class Teams {
 
   // --- reading ---
 
-  private row(id: string): Row {
-    const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as Row | null;
+  private row(id: string): TeamRow {
+    const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as TeamRow | null;
     if (!row) throw notFound(`team ${id} does not exist`, "team_not_found", { id });
     return row;
   }
@@ -195,7 +101,7 @@ export class Teams {
     );
   }
 
-  private stored(row: Row): StoredMember[] {
+  private stored(row: TeamRow): StoredMember[] {
     return parseJsonOr(STORED_MEMBERS, row.members, []);
   }
 
@@ -224,7 +130,7 @@ export class Teams {
     };
   }
 
-  private info(row: Row): TeamInfo {
+  private info(row: TeamRow): TeamInfo {
     return {
       id: row.id,
       name: row.name,
@@ -245,7 +151,7 @@ export class Teams {
       .query(
         "SELECT * FROM teams WHERE (?1 IS NULL OR project_id = ?1) ORDER BY created_at DESC, rowid DESC",
       )
-      .all(projectId ?? null) as Row[];
+      .all(projectId ?? null) as TeamRow[];
     return rows.map((row) => this.info(row));
   }
 
@@ -255,7 +161,9 @@ export class Teams {
 
   /** The team a session belongs to (as coordinator or worker), if it is still running. */
   teamOf(sessionId: string): string | null {
-    const rows = this.opts.db.query("SELECT * FROM teams WHERE state <> 'closed'").all() as Row[];
+    const rows = this.opts.db
+      .query("SELECT * FROM teams WHERE state <> 'closed'")
+      .all() as TeamRow[];
     for (const row of rows) {
       if (this.info(row).members.some((m) => m.sessionId === sessionId)) return row.id;
     }
@@ -283,6 +191,37 @@ export class Teams {
     const news = done && row.report_done !== 1;
     this.changed(id, null, news ? "report_done" : undefined);
     return this.status(id);
+  }
+
+  /** Only the team's coordinator may manage its members: the host checks, not the prompt (#2090). */
+  private coordinatorOnly(row: TeamRow, asker: string): void {
+    const coordinator = this.info(row).members.find((m) => m.role === "coordinator")?.sessionId;
+    if (!coordinator || asker !== coordinator) {
+      throw invalid(
+        `only the coordinator of team ${row.name} adds or removes its members`,
+        "team_manage_not_coordinator",
+        { team: row.name },
+      );
+    }
+  }
+
+  private refusePaused(row: TeamRow): void {
+    if (row.state === "paused") {
+      throw invalid(`team ${row.name} is paused: resume it before adding`, "team_paused", {
+        name: row.name,
+      });
+    }
+  }
+
+  /** Refuses, never queues, while the plan quota is over its limit. */
+  private refuseOverQuota(later: string): void {
+    const blocked = this.opts.quota?.blocked();
+    if (!blocked) return;
+    const until = blocked.until ? new Date(blocked.until).toISOString() : "the next reset";
+    const message = `the plan quota is over the limit until ${until}: ${later}`;
+    throw blocked.until
+      ? invalid(message, "team_quota_until", { until })
+      : invalid(message, "team_quota_over");
   }
 
   /** The state of a team; with `asker`, only a member of the team may read it. */
@@ -335,7 +274,7 @@ export class Teams {
   teamOfCard(cardId: string): SessionTeam | null {
     const known = this.cardTeams.get(cardId);
     if (known) return known;
-    const rows = this.opts.db.query("SELECT * FROM teams").all() as Row[];
+    const rows = this.opts.db.query("SELECT * FROM teams").all() as TeamRow[];
     for (const row of rows) {
       const member = this.stored(row).find((m) => m.cardId === cardId);
       if (member) return { name: label(row.name), role: member.role, number: numberOf(member) };
@@ -353,11 +292,11 @@ export class Teams {
     team: { name: string; goal: string; checks: string[]; projectId: string },
     worker: WorkerStart,
   ): Promise<StoredMember> {
-    const { name, persona, coordinator, model, number, permission, effort } = worker;
+    const { name, persona, coordinator, model, number, permission, effort, brief: told } = worker;
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
-      description: workerInstructions(brief, coordinator),
+      description: withCoordinatorBrief(workerInstructions(brief, coordinator), told),
       // The card's variant is where a card keeps the model, the effort and the mode its session opens in.
       ...(model || effort || permission
         ? { variant: { label: "team", model, effort, persona, permissionMode: permission } }
@@ -383,14 +322,7 @@ export class Teams {
 
   async create(input: NewTeam): Promise<TeamInfo> {
     const project = this.opts.board.getProject(input.projectId);
-    const blocked = this.opts.quota?.blocked();
-    if (blocked) {
-      const until = blocked.until ? new Date(blocked.until).toISOString() : "the next reset";
-      const message = `the plan quota is over the limit until ${until}: create the team later, or it starts paused`;
-      throw blocked.until
-        ? invalid(message, "team_quota_until", { until })
-        : invalid(message, "team_quota_over");
-    }
+    this.refuseOverQuota("create the team later, or it starts paused");
     // The spec's coordinator is the pack's `coordenador` (phase 20) when none is asked for.
     const coordinatorPersona = await this.checkPersona(
       input.coordinatorPersona ??
@@ -509,7 +441,7 @@ export class Teams {
 
   // --- changing ---
 
-  private open(id: string): Row {
+  private open(id: string): TeamRow {
     const row = this.row(id);
     if (row.state === "closed") {
       throw invalid(`team ${row.name} is closed`, "team_closed", { name: row.name });
@@ -643,7 +575,7 @@ export class Teams {
 
   /** Gives a member another persona: stored, applied to its open session and to its name. */
   private async changePersona(
-    row: Row,
+    row: TeamRow,
     info: TeamInfo,
     change: { member: string; persona: string | null },
   ) {
@@ -668,13 +600,14 @@ export class Teams {
 
   /** Starts `count` more workers, numbered after the ones the team has, one at a time. */
   private async addWorkers(
-    row: Row,
+    row: TeamRow,
     count: number,
     coordinator: TeamMember | undefined,
     tellCoordinator: (text: string) => void,
     spec: WorkerSpec = NO_SPEC,
-  ) {
+  ): Promise<StoredMember[]> {
     const members = this.stored(this.row(row.id));
+    const started: StoredMember[] = [];
     const taken = members.flatMap((m) => numberOf(m) ?? []);
     const team = {
       name: row.name,
@@ -696,6 +629,7 @@ export class Teams {
           },
         );
       members.push(added);
+      started.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
       const asked = [
         spec.persona && `persona ${spec.persona}`,
@@ -709,10 +643,11 @@ export class Teams {
         }.`,
       );
     }
+    return started;
   }
 
   /** Stops a worker, takes it out of the team and tells it so; the coordinator stays. */
-  private async dropMember(row: Row, who: string, tellCoordinator: (text: string) => void) {
+  private async dropMember(row: TeamRow, who: string, tellCoordinator: (text: string) => void) {
     const target = this.find(this.get(row.id), who);
     if (target.role === "coordinator") {
       throw invalid(
@@ -735,7 +670,64 @@ export class Teams {
     tellCoordinator(`A executora "${target.name}" saiu do time.`);
   }
 
-  async update(patch: TeamPatch): Promise<TeamInfo> {
+  /**
+   * #2090: the coordinator adds a worker in a persona it picks, with a brief for its card. The host
+   * checks who asks, the pause, the quota, the persona and the size before anything starts.
+   */
+  async addMember(
+    id: string,
+    asker: string,
+    spec: { persona?: string; model?: string; brief: string },
+  ): Promise<{ member: TeamMember; team: TeamInfo }> {
+    return this.changes.run(id, () => this.doAddMember(id, asker, spec));
+  }
+
+  private async doAddMember(
+    id: string,
+    asker: string,
+    spec: { persona?: string; model?: string; brief: string },
+  ): Promise<{ member: TeamMember; team: TeamInfo }> {
+    const row = this.open(id);
+    this.coordinatorOnly(row, asker);
+    // The quota first: it pauses every active team, so a paused team in that window is the quota's.
+    this.refuseOverQuota("add the member later");
+    this.refusePaused(row);
+    const persona = await this.checkPersona(spec.persona);
+    const workers = this.stored(row).filter((m) => m.role === "worker").length;
+    if (workers >= MAX_WORKERS) {
+      throw invalid(`team ${row.name} already has ${workers} workers`, "team_full", {
+        name: row.name,
+        workers,
+      });
+    }
+    const [added] = await this.addWorkers(
+      row,
+      1,
+      this.info(row).members[0],
+      (text) => this.notify(this.get(row.id), text, (m) => m.role === "coordinator"),
+      { persona, model: spec.model ?? null, effort: null, permission: null, brief: spec.brief },
+    );
+    const team = this.changed(row.id);
+    return { member: team.members.find((m) => m.name === added?.name) as TeamMember, team };
+  }
+
+  /** #2090: the coordinator takes a worker out; its card and branch stay, and its turn is interrupted. */
+  removeMember(id: string, asker: string, member: string): Promise<TeamInfo> {
+    return this.changes.run(id, async () => {
+      const row = this.open(id);
+      this.coordinatorOnly(row, asker);
+      await this.dropMember(row, member, (text) =>
+        this.notify(this.get(row.id), text, (m) => m.role === "coordinator"),
+      );
+      return this.changed(row.id);
+    });
+  }
+
+  update(patch: TeamPatch): Promise<TeamInfo> {
+    return this.changes.run(patch.team, () => this.doUpdate(patch));
+  }
+
+  private async doUpdate(patch: TeamPatch): Promise<TeamInfo> {
     const row = this.open(patch.team);
     const info = this.get(row.id);
     const coordinator = info.members[0];
@@ -758,11 +750,7 @@ export class Teams {
     }
     if (patch.persona) await this.changePersona(row, info, patch.persona);
     if (patch.addWorkers || patch.addMember) {
-      if (row.state === "paused") {
-        throw invalid(`team ${row.name} is paused: resume it before adding`, "team_paused", {
-          name: row.name,
-        });
-      }
+      this.refusePaused(row);
     }
     if (patch.addWorkers)
       await this.addWorkers(row, patch.addWorkers, coordinator, tellCoordinator);
@@ -787,7 +775,7 @@ export class Teams {
     if (blocked === this.blocked) return;
     this.blocked = blocked;
     const rows = this.opts.db.query("SELECT id, state, paused_by FROM teams").all() as Array<
-      Pick<Row, "id" | "state" | "paused_by">
+      Pick<TeamRow, "id" | "state" | "paused_by">
     >;
     for (const row of rows) {
       if (blocked && row.state === "active") this.pause(row.id, "quota");
