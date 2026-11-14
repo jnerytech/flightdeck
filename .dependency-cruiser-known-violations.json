@@ -452,17 +452,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/cards.ts",
-    "to": "apps/daemon/src/workflows/findings.ts",
-    "unresolvedTo": "../workflows/findings.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/check-loop-host.ts",
     "to": "apps/daemon/src/watch/domain/check-run.ts",
     "unresolvedTo": "../watch/domain/check-run.ts",
