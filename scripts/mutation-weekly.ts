@@ -33,7 +33,8 @@ writeFileSync("reports/mutation/summary.json", `${JSON.stringify(outcome, null, 
 let text = summaryMarkdown(outcome.results, SURVIVOR_LIMIT);
 if (outcome.failed.length > 0) text += `\nFailed runs: ${outcome.failed.join(", ")}\n`;
 for (const b of outcome.belowBaseline) {
-  text += `\nBelow baseline: ${b.domain} scored ${b.score === null ? "no mutant counted" : `${b.score}%`}, minimum ${b.minScore}%\n`;
+  const scored = b.score === null ? "no mutant counted" : `${b.score}%`;
+  text += `\nBelow baseline: ${b.domain} scored ${scored}, minimum ${b.minScore}%\n`;
 }
 console.log(text);
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);

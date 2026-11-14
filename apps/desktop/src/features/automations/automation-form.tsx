@@ -19,7 +19,7 @@ import {
   carriesThirdParty,
   TRIGGER_TYPES,
   type TriggerType,
-} from "./automations.ts";
+} from "./domain/automations.ts";
 
 const STEPS = ["trigger", "action", "limit"] as const;
 

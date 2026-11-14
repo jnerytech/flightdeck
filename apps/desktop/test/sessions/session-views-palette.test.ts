@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { runPaletteTarget } from "../../src/app/App.tsx";
-import { paletteSections } from "../../src/features/palette/palette.ts";
+import { paletteSections } from "../../src/features/palette/domain/palette.ts";
 import { SessionViews } from "../../src/features/sessions/domain/session-views.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";

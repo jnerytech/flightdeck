@@ -33,25 +33,42 @@ const LAUNCHES = [
   /\bBun\s*\.\s*spawn(Sync)?\b/g,
   /\bBun\s*\[/g,
   /\bBun\s*\.\s*\$/g,
-  // The name follows the brace, a comma or a space: a lookbehind, so the group before it does not backtrack over the same characters.
-  /\{[^}]+(?<=[{,\s])(spawn|spawnSync)[,\s}:][^}]*\}\s*=\s*Bun\b/g,
   /\bimport\s*\{[^}]*[{,\s](spawn|spawnSync|\$)[,\s}][^}]*\}\s*from\s*["']bun["']/g,
 ];
+/** A destructuring of `Bun`, braces included, with one level of nested pattern: `SPAWN_NAME` checks it for `spawn` (two linear steps, the two branches start on different characters). */
+const DESTRUCTURED_BUN = /(\{(?:[^{}]|\{[^{}]*\})*\})\s*=\s*Bun\b/g;
+/** `spawn` or `spawnSync` as a whole name, after a brace, a comma or a space, and before a comma, a space, a colon or a brace. */
+const SPAWN_NAME = /[{,\s]spawn(?:Sync)?[,\s:}]/;
 const COMMENT_LINE = /^\s*(\/\/|\*|\/\*)/;
 /** Comment text on a code line: a `/* ... *\/` span, or a `//` tail that follows a space (a url's `//` does not). */
 const COMMENT_SPAN = /(?:\/\*.*?\*\/)|(?:(?:^|\s)\/\/.*$)/g;
+
+/** How many launches one line of code (its comments already cut) holds. */
+function launchesInCode(code: string): number {
+  let n = 0;
+  for (const re of LAUNCHES) n += [...code.matchAll(re)].length;
+  for (const [, pattern = ""] of code.matchAll(DESTRUCTURED_BUN)) {
+    if (SPAWN_NAME.test(pattern)) n++;
+  }
+  return n;
+}
+
+/** How many launches a file's text holds outside its comments. */
+function launchesIn(text: string): number {
+  let n = 0;
+  for (const line of text.split("\n")) {
+    if (COMMENT_LINE.test(line) && !/\*\/\s*\S/.test(line)) continue;
+    n += launchesInCode(line.replace(COMMENT_SPAN, " "));
+  }
+  return n;
+}
 
 /** The scanned files that launch a process outside a comment, with how many launches each holds. */
 export function spawnCounts(files: { path: string; text: string }[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const { path, text } of files) {
     if (!isScanned(path)) continue;
-    let n = 0;
-    for (const line of text.split("\n")) {
-      if (COMMENT_LINE.test(line) && !/\*\/\s*\S/.test(line)) continue;
-      const code = line.replace(COMMENT_SPAN, " ");
-      for (const re of LAUNCHES) n += [...code.matchAll(re)].length;
-    }
+    const n = launchesIn(text);
     if (n > 0) counts[path] = n;
   }
   return counts;
