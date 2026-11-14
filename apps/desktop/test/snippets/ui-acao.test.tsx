@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { actionSeedFromCommand } from "../../src/features/snippets/snippets.ts";
+import { actionSeedFromCommand } from "../../src/features/snippets/domain/snippets.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle, uiIdle } from "../wait.ts";

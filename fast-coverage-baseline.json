@@ -166,7 +166,7 @@
   "apps/desktop/src/features/shortcuts/domain/shortcut.ts",
   "apps/desktop/src/features/shortcuts/domain/shortcuts.ts",
   "apps/desktop/src/features/shortcuts/shortcuts-sheet.tsx",
-  "apps/desktop/src/features/snippets/prompt-menu-model.ts",
+  "apps/desktop/src/features/snippets/domain/prompt-menu-model.ts",
   "apps/desktop/src/features/snippets/prompt-menu.tsx",
   "apps/desktop/src/features/summary/recap-preview.ts",
   "apps/desktop/src/features/tabs/domain/tab-badge.ts",
