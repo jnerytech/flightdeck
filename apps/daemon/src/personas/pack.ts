@@ -1,5 +1,5 @@
-import type { PersonaDef } from "./model.ts";
-import { parsePersona } from "./model.ts";
+import type { PersonaDef } from "./domain/model.ts";
+import { parsePersona } from "./domain/model.ts";
 import enArquiteto from "./pack/en/arquiteto.md" with { type: "text" };
 import enCoordenador from "./pack/en/coordenador.md" with { type: "text" };
 import enDba from "./pack/en/dba.md" with { type: "text" };

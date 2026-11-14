@@ -12,14 +12,14 @@ import type {
 import { byCodeUnit, inSequence, PersonaFields } from "@flightdeck/protocol";
 import { FlightdeckError, parseJsonWith, resolveAllowedCwd } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/index.ts";
-import type { PersonaContext, PersonaRef, ResolvedPersona } from "./domain/prepare.ts";
 import {
   normalizePersona,
   type PersonaDef,
   parsePersona,
   personaHash,
   serializePersona,
-} from "./model.ts";
+} from "./domain/model.ts";
+import type { PersonaContext, PersonaRef, ResolvedPersona } from "./domain/prepare.ts";
 import type { Language } from "./pack.ts";
 
 export interface PersonasOptions {
