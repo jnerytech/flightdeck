@@ -3,7 +3,7 @@ import type { Board } from "../board/board.ts";
 import { closingLine } from "../issues/index.ts";
 import { trimEndOf } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/index.ts";
-import { REMOVED_LINE } from "./check-run.ts";
+import { REMOVED_LINE } from "./domain/check-run.ts";
 import type { FixRound, PrFixer } from "./fix.ts";
 
 /** One session that worked on a card, for the trail of its PR (phase 22). */
