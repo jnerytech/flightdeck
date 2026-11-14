@@ -17,7 +17,7 @@ import type {
   TemplateStartResult,
 } from "@flightdeck/protocol";
 import { startServer } from "../apps/daemon/src/server.ts";
-import { BUILTIN_TEMPLATES } from "../apps/daemon/src/templates/builtin.ts";
+import { BUILTIN_TEMPLATES } from "../apps/daemon/src/templates/domain/builtin.ts";
 import { TaskTracker } from "../apps/daemon/src/templates/tasks.ts";
 import { newManager } from "../apps/daemon/test/support/helpers.ts";
 import { FrameClient } from "../apps/daemon/test/support/history-helpers.ts";

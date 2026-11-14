@@ -49,7 +49,7 @@
   "apps/daemon/src/summary/summary.ts",
   "apps/daemon/src/teams/instructions.ts",
   "apps/daemon/src/telemetry/otlp.ts",
-  "apps/daemon/src/templates/builtin.ts",
+  "apps/daemon/src/templates/domain/builtin.ts",
   "apps/daemon/src/terminal/policy.ts",
   "apps/daemon/src/terminal/shell.ts",
   "apps/daemon/src/trace/domain/model.ts",

@@ -15,8 +15,7 @@ import {
   ulid,
 } from "../kernel/index.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, tail } from "../pr/index.ts";
-import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
-import { MAX_VALUE } from "../workflows/index.ts";
+import { type BoundedCheckRunner, MAX_VALUE } from "../workflows/index.ts";
 import { masked, runChecks } from "./check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./drift.ts";
 import type { WatchSettings } from "./settings.ts";

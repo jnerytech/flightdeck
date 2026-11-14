@@ -5,7 +5,7 @@
  * from third parties (an issue, a PR comment) must never trigger. So the text that goes to `az`
  * is one clean line, cut to a size, and the other CLIs keep theirs whole.
  */
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 
 /** Ends a text that was cut: the full one stays on the card. */
 export const AZ_CUT_NOTE = "… (descrição completa no card do Flightdeck)";
