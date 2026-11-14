@@ -8,7 +8,7 @@ import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts"
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
-import type { AppPersona } from "./global-personas.ts";
+import type { AppPersona } from "./domain/global-personas.ts";
 import { PersonaEditor } from "./persona-editor.tsx";
 
 /** The "Projeto" choice that shows the app's own personas instead of the host's. */
