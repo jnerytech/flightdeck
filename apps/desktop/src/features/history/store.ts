@@ -193,3 +193,11 @@ export class HistorySlice {
     }
   }
 }
+
+/** Which transcript to read, and where to open it (a search hit). */
+export interface ReaderTarget {
+  hostId: string;
+  claudeSessionId: string;
+  cursor?: string;
+  focusUuid?: string;
+}
