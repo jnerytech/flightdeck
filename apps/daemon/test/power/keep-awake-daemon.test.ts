@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { KeepAwakeStatus } from "@flightdeck/protocol";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
-import type { Holder, PowerContext } from "../../src/power/keep-awake.ts";
+import type { Holder, PowerContext } from "../../src/power/domain/keep-awake.ts";
 import { poll, tempDir, workspace } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 

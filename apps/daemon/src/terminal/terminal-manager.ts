@@ -10,8 +10,8 @@ import {
 import type { Timers } from "../quota/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
 import { Ring } from "./domain/ring.ts";
+import { defaultShell } from "./domain/shell.ts";
 import type { Pty, PtyFactory } from "./pty.ts";
-import { defaultShell } from "./shell.ts";
 
 /** What the manager sends a connected client. */
 export type TerminalFrame = TerminalData | TerminalExited | TerminalResync;

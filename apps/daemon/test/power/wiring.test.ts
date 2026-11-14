@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { PowerContext } from "../../src/power/keep-awake.ts";
+import type { PowerContext } from "../../src/power/domain/keep-awake.ts";
 import { createKeepAwake } from "../../src/power/wiring.ts";
 import { tempDir } from "../support/helpers.ts";
 

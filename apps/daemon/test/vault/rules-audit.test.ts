@@ -3,7 +3,7 @@ import type { VaultAlertFrame, VaultRequestFrame } from "@flightdeck/protocol";
 import { Actions, type ActionsFrame, type ActionsOptions } from "../../src/actions/actions.ts";
 import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { csvCell, toCsv } from "../../src/vault/report.ts";
+import { csvCell, toCsv } from "../../src/vault/domain/report.ts";
 import { VaultRules } from "../../src/vault/rules-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
 import { gitRepo } from "../support/board-helpers.ts";
