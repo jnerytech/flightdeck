@@ -51,7 +51,7 @@ import { historyExcludes } from "./permissions/auto-approve.ts";
 import { createPermissions, type PermissionsDeps } from "./permissions/wiring.ts";
 import { createPersonas } from "./personas/wiring.ts";
 import { createAgentSetup } from "./plugins/index.ts";
-import type { PowerContext } from "./power/keep-awake.ts";
+import type { PowerContext } from "./power/domain/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./projects/index.ts";
 import { createQuota, createUsage } from "./quota/wiring.ts";

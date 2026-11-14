@@ -1,6 +1,22 @@
 import { type Config, updateConfigFile } from "../config.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
-import { KeepAwake, osPowerContext, type PowerContext } from "./keep-awake.ts";
+import { detectWsl, realWslProbe } from "../wsl/index.ts";
+import { spawnHolder } from "./adapters/holder.ts";
+import { KeepAwake, type PowerContext } from "./domain/keep-awake.ts";
+
+export function osPowerContext(): PowerContext {
+  // The test suite sets the service guard: a daemon a test starts holds nothing, as if no
+  // inhibitor could start; only the keep-awake tests pass their own context or call spawnHolder.
+  const guarded = Boolean(process.env.FLIGHTDECK_SERVICE_GUARD);
+  return {
+    platform: process.platform,
+    pid: process.pid,
+    wsl: detectWsl(realWslProbe) !== null,
+    which: whichOnPath,
+    hold: guarded ? () => null : spawnHolder,
+  };
+}
 
 /** What keeps the computer awake is built from. */
 export interface PowerDeps {
