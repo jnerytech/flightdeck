@@ -82,9 +82,12 @@ export function installFakeClaude(
     events: () => {
       const file = join(dir, "events.jsonl");
       if (!existsSync(file)) return [];
-      return readFileSync(file, "utf8")
-        .trim()
+      // The fake may still be writing the last line: only newline-terminated lines are events.
+      const text = readFileSync(file, "utf8");
+      const finished = text.slice(0, text.lastIndexOf("\n") + 1);
+      return finished
         .split(/\r?\n/)
+        .filter((line) => line.trim() !== "")
         .map((line) => JSON.parse(line) as FakeClaudeEvent);
     },
     restore: () => {
