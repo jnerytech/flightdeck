@@ -182,7 +182,7 @@
   "apps/desktop/src/features/vault/vault-backup.ts",
   "apps/desktop/src/features/vault/vault-requests.ts",
   "apps/desktop/src/features/vault/vault-rules-form.ts",
-  "apps/desktop/src/features/vault/vault-types.ts",
+  "apps/desktop/src/features/vault/domain/vault-types.ts",
   "apps/desktop/src/features/vault/vault-usage.ts",
   "apps/desktop/src/features/vault/vault.ts",
   "apps/desktop/src/features/webhook/webhook-feed.ts",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
-import { describeSecret, type SecretInfo, type SecretType } from "./vault-types.ts";
+import { describeSecret, type SecretInfo, type SecretType } from "./domain/vault-types.ts";
 
 export type { SecretType };
 
