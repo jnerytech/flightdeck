@@ -1,9 +1,10 @@
 import { statfs } from "node:fs/promises";
 import { cpus, freemem, loadavg, totalmem } from "node:os";
 import { type Config, updateConfigFile } from "../config.ts";
+import { realTimers } from "../quota/index.ts";
 import type { DomainModule } from "../server/index.ts";
 import { getconf } from "./adapters/getconf.ts";
-import { MemoryGate, type MemoryReading, osMemoryReading } from "./memory-gate.ts";
+import { MemoryGate, type MemoryReading, osMemoryReading } from "./domain/memory-gate.ts";
 import { procfsReader } from "./procfs.ts";
 import { type ProcReader, Resources } from "./resources.ts";
 
@@ -145,6 +146,7 @@ export function createMemoryGate({ config, configFile, reading }: MemoryGateDeps
   const memoryGate = new MemoryGate({
     pauseAt: config.resources.pauseAt,
     read: reading ?? (() => osMemoryReading({ platform: process.platform, totalmem, freemem })),
+    timers: realTimers,
   });
   const module: DomainModule<"memoryPause"> = {
     server: {

@@ -4,7 +4,7 @@
  * MemAvailable), so the hold agrees with what the panel shows. Every doubt lets runs go: no
  * threshold, no reading, a reading that throws or makes no sense.
  */
-import { realTimers, type Timers } from "../quota/index.ts";
+import type { Timers } from "../../quota/index.ts";
 
 /** The host's memory as the OS reports it. */
 export interface MemoryReading {
@@ -19,7 +19,7 @@ export interface MemoryGateOptions {
   read(): MemoryReading | null;
   /** How often a watched gate reads again, in ms (15 s by default). */
   everyMs?: number;
-  timers?: Timers;
+  timers: Timers;
 }
 
 /** The default share of used memory from which new runs wait. */
@@ -66,7 +66,7 @@ export class MemoryGate {
 
   constructor(private readonly opts: MemoryGateOptions) {
     this.threshold = opts.pauseAt;
-    this.timers = opts.timers ?? realTimers;
+    this.timers = opts.timers;
   }
 
   /**
