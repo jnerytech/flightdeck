@@ -147,7 +147,7 @@ prefix. Tests move with their file in the same PR.
 | `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
 | `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file) |
-| `watch-*.ts` | `features/watch/` (**moved**) |
+| `watch-*.ts` | `features/watch/` (**moved**; the pure rules `watch-alerts` and `watch-settings` sit in `features/watch/domain/` (#1601), the store, the wiring and the components stay outside it) |
 | `webhook*.ts` | `features/webhook/`: **moved** |
 | `app-log.ts`, `kernel.ts` | `app/`; `app-log.ts` **moved** to `app/app-log.ts`: its `diagnosticsText` and `DiagnosticsInput` went to `features/settings/diagnostics-text.ts`, the only feature that used them, and the `LogLevel` type, the one name `features/appupdate` read, went to `shared/lib/log-level.ts`, so only the two app roots and `app/compose` import it now. `kernel.ts` stays in `lib/` for now: the `AppKernel` type is read in the `wire.ts` of about 25 features, and no feature may import `app/` (one exception: `features/shell/notices.tsx` reads `app/notice-lifetime.ts`) |
 | `compose/` (`hosts.ts`, `lifecycle.ts`, `shell.ts`, `vault.ts`) | `app/compose/` | **moved** (#1597, 2026-11-13): the composition files that wire the features into the app store; only `lib/app-store.ts` imports them, and they import `lib/app-state.ts` and `lib/kernel.ts` |
