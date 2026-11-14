@@ -11,7 +11,7 @@ import {
   type Policy,
   sizeError,
   validatePolicy,
-} from "../../src/messaging/policy.ts";
+} from "../../src/messaging/domain/policy.ts";
 import { setup } from "../support/messaging-helpers.ts";
 
 const NOW = Date.UTC(2026, 9, 28, 15, 0, 0);

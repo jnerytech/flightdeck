@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { REAL_TIMERS } from "./real-timers.ts";
+import { type MinLoadingTimers, REAL_TIMERS } from "./real-timers.ts";
 import { IN_FLIGHT } from "./use-in-flight.ts";
-
-/** The clock and timers of the hook; the real ones by default (tests drive their own). */
-export interface MinLoadingTimers {
-  now(): number;
-  setTimeout(fn: () => void, ms: number): unknown;
-  clearTimeout(handle: unknown): void;
-}
 
 /** A loading state that, once its placeholders are drawn (after `IN_FLIGHT.deferMs`), stays on for at least `MIN_LOADING_MS`, so it never flashes. */
 export const MIN_LOADING_MS = 150;

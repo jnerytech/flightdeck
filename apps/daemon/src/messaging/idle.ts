@@ -5,9 +5,9 @@
  */
 import type { SessionIdentity } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
+import { addressOf } from "./domain/policy.ts";
 import type { Endpoints } from "./endpoints.ts";
 import type { Messaging } from "./messages.ts";
-import { addressOf } from "./policy.ts";
 
 export interface IdleFrame {
   type: "idle.fired";

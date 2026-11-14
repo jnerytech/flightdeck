@@ -177,7 +177,7 @@ const MSGS3_FILES = [
   "names/names.ts",
   "names/format.ts",
   "names/track.ts",
-  "messaging/policy.ts",
+  "messaging/domain/policy.ts",
   "board/board.ts",
   "board/projects.ts",
   "board/rule-writes.ts",

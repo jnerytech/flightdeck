@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { UNTRUSTED_MARK } from "../../src/messaging/header.ts";
+import { UNTRUSTED_MARK } from "../../src/messaging/domain/header.ts";
 import type { MessagingFrame, PeerSession } from "../../src/messaging/messages.ts";
 import { HOUR, MINUTE, NOW, PROJECT, setup, twoHosts } from "../support/messaging-helpers.ts";
 
