@@ -39,8 +39,7 @@ import type { Budgets, Costs } from "./costs/index.ts";
 import type { AlertList } from "./github/index.ts";
 // Direct: the service imports the board, which imports the github entry (a cycle through the entry).
 import type { GithubService } from "./github/service.ts";
-import type { PreviewPart } from "./harness/preview.ts";
-import type { HarnessTemplates, TemplateMarkdown } from "./harness/templates-store.ts";
+import type { HarnessTemplates, PreviewPart, TemplateMarkdown } from "./harness/index.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { KnowledgeSwitch } from "./knowledge/switch.ts";
