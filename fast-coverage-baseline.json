@@ -40,7 +40,7 @@
   "apps/daemon/src/server/ws-send.ts",
   "apps/daemon/src/service/linger.ts",
   "apps/daemon/src/service/user-path.ts",
-  "apps/daemon/src/snippets/model.ts",
+  "apps/daemon/src/snippets/domain/model.ts",
   "apps/daemon/src/store/migrations.ts",
   "apps/daemon/src/store/migrations/issues.ts",
   "apps/daemon/src/store/migrations/phases-01-08.ts",

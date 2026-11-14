@@ -904,8 +904,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/board/types.ts",
-    "to": "apps/daemon/src/snippets/model.ts",
-    "unresolvedTo": "../snippets/model.ts",
+    "to": "apps/daemon/src/snippets/domain/model.ts",
+    "unresolvedTo": "../snippets/domain/model.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
@@ -1586,8 +1586,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/personas/store.ts",
-    "to": "apps/daemon/src/snippets/model.ts",
-    "unresolvedTo": "../snippets/model.ts",
+    "to": "apps/daemon/src/snippets/domain/model.ts",
+    "unresolvedTo": "../snippets/domain/model.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
@@ -2807,8 +2807,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/watch/check-run.ts",
-    "to": "apps/daemon/src/snippets/model.ts",
-    "unresolvedTo": "../snippets/model.ts",
+    "to": "apps/daemon/src/snippets/domain/model.ts",
+    "unresolvedTo": "../snippets/domain/model.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -2928,8 +2928,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/watch/trace.ts",
-    "to": "apps/daemon/src/snippets/model.ts",
-    "unresolvedTo": "../snippets/model.ts",
+    "to": "apps/daemon/src/snippets/domain/model.ts",
+    "unresolvedTo": "../snippets/domain/model.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",

@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { Config } from "../config.ts";
+import type { SecretScanner } from "./domain/model.ts";
 import { defaultHistorySources, HistoryImporter } from "./history.ts";
-import type { SecretScanner } from "./model.ts";
 import { Snippets } from "./store.ts";
 import { SnippetUse, type SnippetUseOptions } from "./use.ts";
 

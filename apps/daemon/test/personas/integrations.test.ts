@@ -13,7 +13,7 @@ import { Personas } from "../../src/personas/store.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { parseWorkflow } from "../../src/workflows/schema.ts";
 import { cardWhen, gitRepo } from "../support/board-helpers.ts";
