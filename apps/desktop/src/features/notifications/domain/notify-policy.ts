@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { parseJsonText } from "@/shared/lib/index.ts";
-import type { Platform } from "../../platform/types.ts";
 
 /** What a notification is about; each of the first five has its own switch. */
 export type NotifyEvent =
@@ -107,17 +106,17 @@ export function decide(prefs: NotifyPrefs, source: NotifySource, now: number): N
 export const NOTIFY_PREFS_KEY = "flightdeck.notifyPrefs";
 export const NOTIFY_SOUND_KEY = "flightdeck.notifySoundFile";
 /** The largest sound file kept (as a data URL): it lives in the app's own storage. */
-const SOUND_FILE_MAX = 600_000;
+export const SOUND_FILE_MAX = 600_000;
 /** The largest file read before it is turned into that data URL (base64 adds a third). */
 export const SOUND_FILE_MAX_BYTES = 440_000;
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 const bool = (value: unknown, fallback: boolean) => (typeof value === "boolean" ? value : fallback);
-const clamp = (n: number) => Math.min(1, Math.max(0, n));
+export const clamp = (n: number) => Math.min(1, Math.max(0, n));
 
 /** The stored preferences, field by field: whatever is unreadable falls back to its default. */
-function readPrefs(raw: string | null): NotifyPrefs {
+export function readPrefs(raw: string | null): NotifyPrefs {
   const stored = parseJsonText(raw ?? "{}", z.record(z.string(), z.unknown()), {});
   const defaults = DEFAULT_NOTIFY_PREFS;
   const events = (stored.events ?? {}) as Record<string, unknown>;
@@ -145,88 +144,5 @@ function readPrefs(raw: string | null): NotifyPrefs {
   };
 }
 
-const toggle = (list: string[], item: string, on: boolean) =>
+export const toggle = (list: string[], item: string, on: boolean) =>
   on ? [...list.filter((other) => other !== item), item] : list.filter((other) => other !== item);
-
-/** The preferences, kept across starts on this computer. */
-export class NotifyPreferences {
-  value: NotifyPrefs;
-  private readonly listeners = new Set<() => void>();
-
-  constructor(private readonly storage: Platform["storage"]) {
-    this.value = readPrefs(storage.getItem(NOTIFY_PREFS_KEY));
-  }
-
-  subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
-
-  setEnabled(enabled: boolean): void {
-    this.change({ enabled });
-  }
-
-  setEvent(event: SwitchableEvent, on: boolean): void {
-    this.change({ events: { ...this.value.events, [event]: on } });
-  }
-
-  setTeamFold(on: boolean): void {
-    this.change({ teamFold: on });
-  }
-
-  setSound(sound: Partial<SoundPrefs>): void {
-    const next = { ...this.value.sound, ...sound };
-    this.change({ sound: { ...next, volume: clamp(next.volume) } });
-  }
-
-  muteHost(hostId: string, on: boolean): void {
-    this.change({ mutedHosts: toggle(this.value.mutedHosts, hostId, on) });
-  }
-
-  muteProject(project: string, on: boolean): void {
-    this.change({ mutedProjects: toggle(this.value.mutedProjects, project, on) });
-  }
-
-  muteSession(session: string, on: boolean): void {
-    this.change({ mutedSessions: toggle(this.value.mutedSessions, session, on) });
-  }
-
-  /** The chosen sound file as a data URL, or null. */
-  soundFile(): string | null {
-    const stored = this.storage.getItem(NOTIFY_SOUND_KEY);
-    // Only what this app wrote: a stored URL of any other kind is never loaded.
-    return stored?.startsWith("data:audio/") ? stored : null;
-  }
-
-  /** Keeps a chosen file (null clears it); false when it is too large to keep or the storage is full. */
-  setSoundFile(name: string | null, dataUrl: string | null): boolean {
-    if (dataUrl !== null && dataUrl.length > SOUND_FILE_MAX) return false;
-    try {
-      this.storage.setItem(NOTIFY_SOUND_KEY, dataUrl ?? "");
-    } catch {
-      // The storage is full: the old sound stays.
-      return false;
-    }
-    this.change({
-      sound: { ...this.value.sound, fileName: name, ...(name ? { mode: "file" as const } : {}) },
-    });
-    return true;
-  }
-
-  /** Silences a session until `until` (ms); a time already past lifts it. */
-  snooze(session: string, until: number, now: number): void {
-    const { [session]: _old, ...rest } = this.value.snoozed;
-    this.change({ snoozed: until > now ? { ...rest, [session]: until } : rest });
-  }
-
-  /** Whether the session is muted or snoozed at `now`. */
-  isQuiet(session: string, now: number): boolean {
-    return this.value.mutedSessions.includes(session) || (this.value.snoozed[session] ?? 0) > now;
-  }
-
-  private change(patch: Partial<NotifyPrefs>): void {
-    this.value = { ...this.value, ...patch };
-    this.storage.setItem(NOTIFY_PREFS_KEY, JSON.stringify(this.value));
-    for (const listener of this.listeners) listener();
-  }
-}
