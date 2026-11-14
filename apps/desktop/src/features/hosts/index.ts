@@ -7,13 +7,13 @@
  */
 
 export { awaitedHost } from "./domain/awaited-host.ts";
+export { type GithubHost, githubSignedIn } from "./domain/github-session.ts";
 export { hostDownReason } from "./domain/host-down-reason.ts";
 export type { HostNameError } from "./domain/host-name.ts";
 export type { RetryState } from "./domain/host-offline.ts";
 export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
 export { holdAwake } from "./domain/keep-awake.ts";
 export { pairingErrorText } from "./domain/pairing-text.ts";
-export { type GithubHost, githubSignedIn } from "./github-session.ts";
 export {
   type HealthAnswer,
   type HealthCore,
