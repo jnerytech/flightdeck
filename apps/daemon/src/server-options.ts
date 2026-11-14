@@ -42,7 +42,7 @@ import type { GithubService } from "./github/service.ts";
 import type { HarnessTemplates, PreviewPart, TemplateMarkdown } from "./harness/index.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import type { Issues } from "./issues/issues.ts";
-import type { KnowledgeSwitch } from "./knowledge/switch.ts";
+import type { KnowledgeSwitch } from "./knowledge/domain/switch.ts";
 import type { FileLog } from "./logs/file-log.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
