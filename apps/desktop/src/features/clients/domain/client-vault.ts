@@ -1,12 +1,25 @@
-import type { SecretMeta } from "../../vault/index.ts";
 import type { ClientScope } from "./client-scope.ts";
 import { type Client, UNASSIGNED } from "./clients.ts";
+
+/**
+ * What this domain reads of a vault secret: the vault's own record has these fields and more, so
+ * the vault passes its secrets in and gets the same ones back, and clients never imports the vault.
+ */
+interface ScopedSecret {
+  id: string;
+  name: string;
+  tags: string[];
+  allowedHosts: string[];
+}
 
 /** The id every rule generated for a client's secrets starts with: they are never stored. */
 export const SCOPE_RULE_PREFIX = "client-scope:";
 
 /** The client that keeps a secret in its projects: the first with `vaultScope` and the secret's tag. */
-export function scopingClient(secret: Pick<SecretMeta, "tags">, clients: Client[]): Client | null {
+export function scopingClient(
+  secret: Pick<ScopedSecret, "tags">,
+  clients: Client[],
+): Client | null {
   return (
     clients.find(
       (c) =>
@@ -55,7 +68,7 @@ export function generatedScopeRules(
 
 /** What the daemon is sent for a secret: its own rules, with the client's scope in front. */
 export function effectiveRules(
-  secret: Pick<SecretMeta, "tags">,
+  secret: Pick<ScopedSecret, "tags">,
   own: unknown[],
   clients: Client[],
   projectsOf: (clientId: string) => string[],
@@ -80,7 +93,7 @@ export interface VaultFinding {
  */
 export function vaultFindings(args: {
   client: Pick<Client, "id" | "defaults">;
-  secrets: SecretMeta[];
+  secrets: ScopedSecret[];
   rulesOf(secretId: string): unknown[];
   scope: ClientScope;
   /** The ids of the hosts that hold a project of the client. */
@@ -112,27 +125,27 @@ export function vaultFindings(args: {
   return found;
 }
 
-export interface SecretGroup {
+export interface SecretGroup<S extends ScopedSecret = ScopedSecret> {
   kind: "client" | "none" | "others";
-  secrets: SecretMeta[];
+  secrets: S[];
 }
 
 /**
  * The vault's list when a client with a vault tag is selected: its secrets first, then those no
  * client's tag is on, then the ones of other clients. Nothing is left out; empty groups are.
  */
-export function groupSecrets(
-  secrets: SecretMeta[],
+export function groupSecrets<S extends ScopedSecret>(
+  secrets: S[],
   clients: Client[],
   selected: Client | null,
-): SecretGroup[] {
+): SecretGroup<S>[] {
   const tag = selected?.defaults.vaultTag;
   if (tag === undefined) return [{ kind: "none", secrets }];
   const tags = new Set(clients.flatMap((c) => (c.defaults.vaultTag ? [c.defaults.vaultTag] : [])));
   const mine = secrets.filter((s) => s.tags.includes(tag));
   const others = secrets.filter((s) => !s.tags.includes(tag) && s.tags.some((t) => tags.has(t)));
   const none = secrets.filter((s) => !mine.includes(s) && !others.includes(s));
-  const groups: SecretGroup[] = [
+  const groups: SecretGroup<S>[] = [
     { kind: "client", secrets: mine },
     { kind: "none", secrets: none },
     { kind: "others", secrets: others },

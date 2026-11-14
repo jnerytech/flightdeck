@@ -1,27 +1,7 @@
-import { z } from "zod";
 import type { TreeNode, TreeProject, WorktreeFilter } from "@/features/projects/index.ts";
-import { readStored } from "@/shared/lib/index.ts";
-
-/** A stored list of project keys: the entries that are not text are dropped. */
-const Keys = z
-  .array(z.unknown())
-  .transform((stored) => stored.filter((key): key is string => typeof key === "string"));
 
 /** Checkouts a project lists before the rest wait behind "N more". */
 export const TREE_CAP = 8;
-
-export const TREE_FOLDED_KEY = "flightdeck.treeFolded";
-
-/** The projects folded last time (`hostId/projectId`); anything unreadable is none. */
-export const loadTreeFolded = (storage: { getItem(key: string): string | null }): string[] =>
-  loadKeys(storage, TREE_FOLDED_KEY);
-
-export function saveTreeFolded(
-  storage: { setItem(key: string, value: string): void },
-  folded: readonly string[],
-): void {
-  storage.setItem(TREE_FOLDED_KEY, JSON.stringify(folded));
-}
 
 /**
  * The checkouts a project draws: the first `TREE_CAP` unless the person opened the rest, and always
@@ -50,36 +30,6 @@ export const PROJECT_CAP = 5;
 
 /** With more projects than this, all but the active one start folded. */
 export const FOLD_ABOVE = 3;
-
-export const TREE_OPENED_KEY = "flightdeck.treeOpened";
-export const TREE_PINNED_KEY = "flightdeck.treePinned";
-
-/** A stored list of project keys; anything unreadable is none. */
-function loadKeys(storage: { getItem(key: string): string | null }, name: string): string[] {
-  return readStored(storage, name, Keys, []);
-}
-
-/** The projects the person unfolded last time, against the default fold. */
-export const loadTreeOpened = (storage: { getItem(key: string): string | null }) =>
-  loadKeys(storage, TREE_OPENED_KEY);
-
-export function saveTreeOpened(
-  storage: { setItem(key: string, value: string): void },
-  opened: readonly string[],
-): void {
-  storage.setItem(TREE_OPENED_KEY, JSON.stringify(opened));
-}
-
-/** The projects the person pinned (`hostId/projectId`) on this computer. */
-export const loadTreePinned = (storage: { getItem(key: string): string | null }) =>
-  loadKeys(storage, TREE_PINNED_KEY);
-
-export function saveTreePinned(
-  storage: { setItem(key: string, value: string): void },
-  pinned: readonly string[],
-): void {
-  storage.setItem(TREE_PINNED_KEY, JSON.stringify(pinned));
-}
 
 /** The key a project goes by in the stored lists. */
 export const projectKey = (project: Pick<TreeProject, "hostId" | "projectId">) =>

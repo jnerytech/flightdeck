@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   type HubFilter,
   type HubView,
@@ -11,24 +12,96 @@ import {
   saveTileLayout,
   type TileLayout,
 } from "@/features/sessions/index.ts";
-import {
-  loadFolded,
-  loadTreeFolded,
-  loadTreeOpened,
-  loadTreePinned,
-  type SidebarGroup,
-  saveFolded,
-  saveTreeFolded,
-  saveTreeOpened,
-  saveTreePinned,
-} from "@/features/shell/index.ts";
-import { LIST_WIDTH_KEY, loadListWidth } from "@/shared/lib/index.ts";
+import { LIST_WIDTH_KEY, loadListWidth, readStored } from "@/shared/lib/index.ts";
 import { loadLastBoards, saveLastBoard } from "../board/index.ts";
 
 /** Where the Activity board keeps whether it shows its Idle column. */
 const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";
 /** Where the return on cost card's open or folded state is kept. */
 const ROI_OPEN_KEY = "flightdeck.roiOpen";
+
+/** The collapsible groups of the sidebar, in the order they show. */
+export const SIDEBAR_GROUPS = [
+  "work",
+  "automation",
+  "observability",
+  "library",
+  "machines",
+] as const;
+export type SidebarGroup = (typeof SIDEBAR_GROUPS)[number];
+
+export const SIDEBAR_FOLDED_KEY = "flightdeck.sidebarFolded";
+
+/** A stored list of group names; the group that held the hosts was called "infra" before it became Machines. */
+const Names = z
+  .array(z.unknown())
+  .transform((stored) => stored.map((g) => (g === "infra" ? "machines" : g)));
+
+/** The groups folded last time; anything unreadable is none. */
+export function loadFolded(storage: { getItem(key: string): string | null }): SidebarGroup[] {
+  const names = readStored(storage, SIDEBAR_FOLDED_KEY, Names, []);
+  return SIDEBAR_GROUPS.filter((group) => names.includes(group));
+}
+
+export function saveFolded(
+  storage: { setItem(key: string, value: string): void },
+  folded: readonly SidebarGroup[],
+): void {
+  storage.setItem(SIDEBAR_FOLDED_KEY, JSON.stringify(folded));
+}
+
+/** A stored list of project keys: the entries that are not text are dropped. */
+const Keys = z
+  .array(z.unknown())
+  .transform((stored) => stored.filter((key): key is string => typeof key === "string"));
+
+export const TREE_FOLDED_KEY = "flightdeck.treeFolded";
+
+/** The projects folded last time (`hostId/projectId`); anything unreadable is none. */
+export const loadTreeFolded = (storage: { getItem(key: string): string | null }): string[] =>
+  loadKeys(storage, TREE_FOLDED_KEY);
+
+export function saveTreeFolded(
+  storage: { setItem(key: string, value: string): void },
+  folded: readonly string[],
+): void {
+  storage.setItem(TREE_FOLDED_KEY, JSON.stringify(folded));
+}
+
+export const TREE_OPENED_KEY = "flightdeck.treeOpened";
+export const TREE_PINNED_KEY = "flightdeck.treePinned";
+
+/** A stored list of project keys; anything unreadable is none. */
+function loadKeys(storage: { getItem(key: string): string | null }, name: string): string[] {
+  return readStored(storage, name, Keys, []);
+}
+
+/** The projects the person unfolded last time, against the default fold. */
+export const loadTreeOpened = (storage: { getItem(key: string): string | null }) =>
+  loadKeys(storage, TREE_OPENED_KEY);
+
+export function saveTreeOpened(
+  storage: { setItem(key: string, value: string): void },
+  opened: readonly string[],
+): void {
+  storage.setItem(TREE_OPENED_KEY, JSON.stringify(opened));
+}
+
+/** The projects the person pinned (`hostId/projectId`) on this computer. */
+export const loadTreePinned = (storage: { getItem(key: string): string | null }) =>
+  loadKeys(storage, TREE_PINNED_KEY);
+
+export function saveTreePinned(
+  storage: { setItem(key: string, value: string): void },
+  pinned: readonly string[],
+): void {
+  storage.setItem(TREE_PINNED_KEY, JSON.stringify(pinned));
+}
+
+/** The folded groups after the person clicks `group`'s header: a folded group opens, an open one folds. */
+export function toggleGroup(folded: readonly SidebarGroup[], group: SidebarGroup): SidebarGroup[] {
+  return folded.includes(group) ? folded.filter((g) => g !== group) : [...folded, group];
+}
 
 /** What the view preferences read and write through the app's store: this computer's storage. */
 export interface ViewPrefsCore {

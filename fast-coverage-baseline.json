@@ -1,5 +1,5 @@
 [
-  "apps/daemon/src/actions/mask.ts",
+  "apps/daemon/src/actions/domain/mask.ts",
   "apps/daemon/src/actions/run.ts",
   "apps/daemon/src/actions/schema.ts",
   "apps/daemon/src/actions/shell.ts",
@@ -46,7 +46,7 @@
   "apps/daemon/src/store/migrations/phases-01-08.ts",
   "apps/daemon/src/store/migrations/phases-11-20.ts",
   "apps/daemon/src/store/migrations/phases-21-40.ts",
-  "apps/daemon/src/summary/summary.ts",
+  "apps/daemon/src/summary/domain/summary.ts",
   "apps/daemon/src/teams/domain/instructions.ts",
   "apps/daemon/src/telemetry/otlp.ts",
   "apps/daemon/src/templates/domain/builtin.ts",

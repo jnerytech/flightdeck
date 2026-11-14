@@ -42,6 +42,7 @@ import { ProjectTree, RailFlyout } from "@/features/projects/ui.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { setupProgress, setupSteps } from "@/features/setup/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/ui.ts";
+import { type SidebarGroup, toggleGroup } from "@/features/viewprefs/index.ts";
 import type { Key, T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
 import type { Route } from "@/lib/router.ts";
@@ -54,7 +55,6 @@ import { footAccount } from "./domain/foot-account.ts";
 import { activeNav } from "./domain/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "./domain/nav-badges.ts";
 import { NAV_ICONS, type NavKey } from "./nav-icons.ts";
-import { type SidebarGroup, toggleGroup } from "./sidebar-groups.ts";
 
 const ITEM =
   "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-normal text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
