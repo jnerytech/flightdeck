@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { DEFAULT_POLICY } from "../../src/messaging/domain/policy.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
-import { DEFAULT_POLICY } from "../../src/messaging/policy.ts";
 import { PROJECT, setup } from "../support/messaging-helpers.ts";
 
 /** #1609: the stored policy and a queued message's sender are read through schemas. */

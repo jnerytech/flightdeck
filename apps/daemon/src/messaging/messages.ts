@@ -16,8 +16,7 @@ import type {
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { slug } from "../names/index.ts";
-import type { EndpointInfo, Endpoints } from "./endpoints.ts";
-import { formatSessionMessage, formatSystemMessage } from "./header.ts";
+import { formatSessionMessage, formatSystemMessage } from "./domain/header.ts";
 import {
   access,
   addressOf,
@@ -28,8 +27,9 @@ import {
   type Policy,
   sizeError,
   validatePolicy,
-} from "./policy.ts";
-import { relayOf } from "./relay.ts";
+} from "./domain/policy.ts";
+import { relayOf } from "./domain/relay.ts";
+import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import { type MessagePatch, type MessageRow, MessageStore, type NewMessage } from "./store.ts";
 
 export interface MessagingOptions {
