@@ -1343,7 +1343,7 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/knowledge/parse.ts",
+    "from": "apps/daemon/src/knowledge/domain/parse.ts",
     "to": "apps/daemon/src/agentcfg/files.ts",
     "unresolvedTo": "../agentcfg/files.ts",
     "dependencyTypes": ["local", "import"],
