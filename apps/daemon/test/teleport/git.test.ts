@@ -1,5 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { git, hooksOff, must, SAFE } from "../../src/teleport/git.ts";
+import { hooksOff } from "../../src/teleport/domain/git-args.ts";
+import { git, must, SAFE } from "../../src/teleport/git.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /**
@@ -19,7 +20,7 @@ describe("teleport-git: where the hooks point (#715)", () => {
   test("the safe config carries this platform's hooks path, fsmonitor off and no signature check", () => {
     expect(SAFE).toEqual([
       "-c",
-      `core.hooksPath=${hooksOff()}`,
+      `core.hooksPath=${hooksOff(process.platform)}`,
       "-c",
       "core.fsmonitor=false",
       "-c",
