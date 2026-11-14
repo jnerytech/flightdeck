@@ -521,7 +521,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
           suggestions: ctx.suggestions,
         });
         if (decision.behavior === "deny") return { behavior: "deny", message: decision.message };
-        // Validated against the request (permission-updates.ts): same shape as the SDK's.
+        // Validated against the request (permissions/domain/permission-updates.ts): same shape as
+        // the SDK's.
         const updatedPermissions = decision.updatedPermissions as SdkPermissionUpdate[] | undefined;
         return {
           behavior: "allow",
