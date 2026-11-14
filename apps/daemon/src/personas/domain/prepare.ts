@@ -1,6 +1,6 @@
 import type { PersonaAgent } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../kernel/index.ts";
-import type { Language } from "../pack.ts";
+import type { Language } from "./language.ts";
 import type { PersonaDef } from "./model.ts";
 
 /** What names a persona: its id in the host's or the project's list, or a definition from the app. */
