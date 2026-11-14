@@ -424,7 +424,7 @@ export function SessionsHub(
         placeholder={t("hub.filterPlaceholder")}
         value={filter.text}
         onChange={(e) => set({ text: e.target.value })}
-        className="toolbar-field h-8 text-xs"
+        className="toolbar-field h-8 min-w-32 text-xs"
       />
       <Popover>
         <PopoverTrigger asChild>

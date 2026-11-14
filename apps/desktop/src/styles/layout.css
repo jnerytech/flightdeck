@@ -73,10 +73,9 @@
   padding-block: 0.75rem;
 }
 
-/* A field in a toolbar: it grows into the free room, keeps 8rem, and the toolbar wraps before it shrinks (#2821). */
+/* A field in a toolbar: it grows into the free room from a basis of 8rem, so the toolbar wraps before it shrinks (#2821). Give it `min-w-32` too: the Input's own `min-w-0` wins over a minimum set here. */
 @utility toolbar-field {
   flex: 1 1 8rem;
-  min-width: 8rem;
 }
 
 /* A form row and its help line: the reason a button is disabled sits under the first field. */
