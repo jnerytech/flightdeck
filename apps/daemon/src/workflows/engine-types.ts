@@ -5,7 +5,7 @@ import type { Card } from "../board/types.ts";
 import type { Prepare } from "../personas/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { CheckRunner } from "./check-runner.ts";
-import type { CardsRaised, Finding } from "./findings.ts";
+import type { CardsRaised, Finding } from "./domain/findings.ts";
 import * as col from "./row-json.ts";
 
 /**

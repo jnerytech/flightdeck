@@ -5,7 +5,7 @@ import {
   type FindingsResult,
   parseFindings,
   TITLE_MAX,
-} from "../../src/workflows/findings.ts";
+} from "../../src/workflows/domain/findings.ts";
 
 const fence = (value: unknown) => `\`\`\`json\n${JSON.stringify(value)}\n\`\`\``;
 const reply = (value: unknown) => `I found some debt.\n\n${fence(value)}\n`;

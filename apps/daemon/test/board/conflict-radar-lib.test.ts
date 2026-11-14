@@ -4,8 +4,8 @@ import {
   MAX_PEERS,
   MAX_SHARED_FILES,
   type RadarCard,
-  radarGit,
-} from "../../src/board/conflict-radar.ts";
+} from "../../src/board/domain/conflict-radar.ts";
+import { radarGit } from "../../src/board/radar-feed.ts";
 import type { CommandResult } from "../../src/kernel/command.ts";
 import { refArg } from "../../src/kernel/index.ts";
 
