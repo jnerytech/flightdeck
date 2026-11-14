@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { HooksStatusResult } from "@flightdeck/protocol";
-import { type SnapshotInput, snapshotForHook } from "../checkpoints/snapshots.ts";
+import { type SnapshotInput, snapshotForHook } from "../checkpoints/index.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { FlightdeckError, writeFileAtomic } from "../kernel/index.ts";
 import type { AutoApprover, RiskClassifier } from "../permissions/index.ts";

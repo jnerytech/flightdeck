@@ -34,8 +34,7 @@ import type { BoardSyncService } from "./boardsync/service.ts";
 import type { Central } from "./central/central.ts";
 import type { AsyncGitRunner } from "./central/project-key.ts";
 import type { Forker } from "./checkpoints/fork.ts";
-import type { Rewinder } from "./checkpoints/rewind.ts";
-import type { Snapshots } from "./checkpoints/snapshots.ts";
+import type { Rewinder, Snapshots } from "./checkpoints/index.ts";
 import type { Budgets, Costs } from "./costs/index.ts";
 import type { AlertList } from "./github/index.ts";
 // Direct: the service imports the board, which imports the github entry (a cycle through the entry).
