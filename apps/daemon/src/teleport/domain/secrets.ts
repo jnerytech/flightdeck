@@ -13,12 +13,6 @@ export function addSecrets(
   return { lines: a.lines + b.lines, labels: [...new Set([...a.labels, ...b.labels])] };
 }
 
-/** How often the scan gives the event loop back, and how. */
-const DEFAULT_PACE = {
-  every: 256 * 1024,
-  pause: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
-};
-
 /** The line that starts at `start` and where the next one starts (past the end after the last). */
 function lineAt(text: string, start: number): { line: string; next: number } {
   const end = text.indexOf("\n", start);
@@ -33,7 +27,7 @@ function lineAt(text: string, start: number): { line: string; next: number } {
 export async function secretLines(
   text: string,
   scan: (text: string) => string[],
-  pace: { every: number; pause(): Promise<void> } = DEFAULT_PACE,
+  pace: { every: number; pause(): Promise<void> },
 ): Promise<TeleportManifest["secrets"]> {
   const labels: string[] = [];
   let lines = 0;
