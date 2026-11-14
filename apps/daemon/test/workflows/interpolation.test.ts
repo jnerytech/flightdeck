@@ -4,7 +4,7 @@ import {
   interpolate,
   MAX_VALUE,
   OUTPUTS_SEPARATOR,
-} from "../../src/workflows/interpolate.ts";
+} from "../../src/workflows/domain/interpolate.ts";
 
 const context: InterpolationContext = {
   inputs: { task: "somar dois números" },

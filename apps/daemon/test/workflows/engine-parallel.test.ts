@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { OUTPUTS_SEPARATOR } from "../../src/workflows/interpolate.ts";
+import { OUTPUTS_SEPARATOR } from "../../src/workflows/domain/interpolate.ts";
 import { poll } from "../support/helpers.ts";
 import { workflowCard } from "../support/workflow-helpers.ts";
 

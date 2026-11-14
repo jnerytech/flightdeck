@@ -6,7 +6,7 @@
  */
 import type { DiffFile } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr } from "../kernel/index.ts";
+import { parseJsonOr } from "../../kernel/index.ts";
 
 export type Severity = "blocker" | "high" | "medium" | "low";
 

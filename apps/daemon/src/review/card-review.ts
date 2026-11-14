@@ -19,7 +19,7 @@ import {
   parseReview,
   REVIEW_SCHEMA,
   reviewPrompt,
-} from "./second-opinion.ts";
+} from "./domain/second-opinion.ts";
 
 /** What the review needs of a card. */
 export interface ReviewedCard {

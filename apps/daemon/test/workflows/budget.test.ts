@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { addTurn, noSpending, overBudget } from "../../src/workflows/budget.ts";
+import { addTurn, noSpending, overBudget } from "../../src/workflows/domain/budget.ts";
 import { cardWhen } from "../support/board-helpers.ts";
 import { workflowCard } from "../support/workflow-helpers.ts";
 

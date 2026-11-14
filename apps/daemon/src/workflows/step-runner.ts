@@ -8,8 +8,9 @@ import type {
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Prepare } from "../personas/index.ts";
-import { addTurn, overBudget } from "./budget.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
+import { addTurn, overBudget } from "./domain/budget.ts";
+import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./domain/interpolate.ts";
 import {
   type EngineHost,
   now,
@@ -19,7 +20,6 @@ import {
   type WorkflowEngineOptions,
 } from "./engine-types.ts";
 import { CARDS_PER_RUN, parseFindings } from "./findings.ts";
-import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./interpolate.ts";
 import { hashOf } from "./repo.ts";
 import * as col from "./row-json.ts";
 import {
