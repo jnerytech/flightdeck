@@ -25,7 +25,7 @@ import type {
 import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig, McpConfig } from "./agentcfg/index.ts";
-import type { AssistantService } from "./assistant/service.ts";
+import type { AssistantService } from "./assistant/index.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";

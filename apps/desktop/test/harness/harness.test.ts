@@ -5,7 +5,7 @@ import {
   harnessParts,
   needsReformat,
   templateIdFrom,
-} from "../../src/features/harness/harness.ts";
+} from "../../src/features/harness/domain/harness.ts";
 
 /** Issue #75, slice S1: a project's harness as a checklist, from what the host already lists. */
 const EMPTY: ProjectLoad = {

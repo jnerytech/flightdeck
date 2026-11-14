@@ -25,7 +25,7 @@ import {
   type NewTeamRow,
   offeredChoice,
   rowPersona,
-} from "./new-team.ts";
+} from "./domain/new-team.ts";
 import { useModes, usePersonaModels } from "./use-modes.ts";
 
 /** A team has at most this many workers. */
