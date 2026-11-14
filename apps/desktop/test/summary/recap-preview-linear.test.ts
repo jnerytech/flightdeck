@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionRecap } from "@flightdeck/protocol";
-import { recapPreview } from "../../src/features/summary/recap-preview.ts";
+import { recapPreview } from "../../src/features/summary/domain/recap-preview.ts";
 
 /**
  * Issue #363 (Sonar S8786): the folded line of a recap strips its list marks with a pattern that
