@@ -8,9 +8,9 @@ import { aheadBehind } from "../board/merge.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, HEAD, refArg, resolveAllowedCwd } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
+import type { ChangesReader, ChangesResult, ResolvedTarget } from "./domain/target.ts";
 import { commitHooks, withDigests } from "./session-commit.ts";
 import { pushAddress } from "./session-pr.ts";
-import type { ChangesReader, ChangesResult, ResolvedTarget } from "./target.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
 export type WatchFn = (
