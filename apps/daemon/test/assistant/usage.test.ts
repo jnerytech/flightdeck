@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { assistantDir } from "../../src/assistant/paths.ts";
+import { assistantDir } from "../../src/assistant/domain/paths.ts";
 import { Budgets } from "../../src/costs/budgets.ts";
 import { Costs } from "../../src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";

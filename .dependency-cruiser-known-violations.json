@@ -618,8 +618,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/permissions/auto-approve.ts",
-    "to": "apps/daemon/src/assistant/paths.ts",
-    "unresolvedTo": "../assistant/paths.ts",
+    "to": "apps/daemon/src/assistant/domain/paths.ts",
+    "unresolvedTo": "../assistant/domain/paths.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
