@@ -672,6 +672,19 @@ describe("check-loop: the security review's cases", () => {
     expect([r.signals.length, early, stopped]).toEqual([2, false, true]);
   });
 
+  test("a stop on a card with no loop and no check running settles at once and touches nothing", async () => {
+    const r = rig();
+    let stopped = false;
+    const stopping = r.engine.onStop("c").then(() => {
+      stopped = true;
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    const early = stopped;
+    await stopping;
+    expect([early, r.signals.length, r.log, r.records.length]).toEqual([true, 0, [], 0]);
+  });
+
   test("a notify that throws when the checks start leaves the loop running, and it ends normally", async () => {
     const r = rig();
     const engine = r.engineWith({

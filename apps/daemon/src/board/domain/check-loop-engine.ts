@@ -316,7 +316,8 @@ export class CheckLoopEngine {
 
   /** Settles once every check the card still has running has exited. */
   async drain(cardId: string): Promise<void> {
-    await Promise.all(this.inflight.get(cardId) ?? []);
+    const running = this.inflight.get(cardId);
+    if (running) await Promise.all(running);
   }
 
   /**
