@@ -69,7 +69,7 @@ import { SummaryService } from "../../daemon/src/summary/service.ts";
 import { TelemetryOptIn } from "../../daemon/src/telemetry/optin.ts";
 import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TeleportInbox } from "../../daemon/src/teleport/receive.ts";
-import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
+import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/domain/builtin.ts";
 import { TaskTracker } from "../../daemon/src/templates/tasks.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { inspectProject } from "../../daemon/src/trust/inspect.ts";
