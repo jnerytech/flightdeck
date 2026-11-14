@@ -27,6 +27,7 @@ import { GateCard, RunPanel, RunTimeline } from "../runenv/ui.ts";
 import { projectCards } from "./board-model.ts";
 import { CardConflicts } from "./card-conflicts.tsx";
 import { CardDeps } from "./card-deps.tsx";
+import { conversationShown } from "./domain/card-conversation.ts";
 import { canMergeCardPr } from "./domain/card-merge-pr-model.ts";
 import { opensOnChanges } from "./domain/card-next-step.ts";
 import { useCardCosts } from "./use-card-costs.ts";
@@ -160,10 +161,7 @@ export const CardDetail = memo(function CardDetail(props: {
    * The conversation is on show: it takes what is left of the pane. The page always fills (#249):
    * a page that switched to fill mounted its body again, and lost what was typed in it.
    */
-  const chatShown =
-    tab === "conversation" &&
-    openedStep?.type !== "check" &&
-    Boolean((openedStep && stepSession) || (session && sessionId));
+  const chatShown = conversationShown({ tab, openedStep, stepSession, session, sessionId });
   return (
     <Page
       fill
