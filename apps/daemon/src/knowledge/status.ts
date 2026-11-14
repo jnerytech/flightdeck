@@ -3,8 +3,8 @@ import { basename, dirname, join } from "node:path";
 import type { KnowledgeEntry, KnowledgeStatus } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/index.ts";
 import { FlightdeckError, readRegularSized, ulid } from "../kernel/index.ts";
+import { parseKnowledge } from "./domain/parse.ts";
 import { listKnowledge, READ_BYTES, shownHash } from "./list.ts";
-import { parseKnowledge } from "./parse.ts";
 
 /**
  * Issue #76: the `status:` line of a library document, changed from the app. Only that line of

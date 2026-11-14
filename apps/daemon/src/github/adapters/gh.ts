@@ -5,7 +5,7 @@
 import { tmpdir } from "node:os";
 import { FlightdeckError, runCommand } from "../../kernel/index.ts";
 import { cli } from "../../pr/index.ts";
-import type { GhResult, GhRunner } from "../gh-runner.ts";
+import type { GhResult, GhRunner } from "../domain/gh-runner.ts";
 
 /** How long a `gh` run in a given folder may take before it is killed (issue #79). */
 export const GH_IN_TIMEOUT_MS = 20_000;

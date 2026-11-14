@@ -1,6 +1,6 @@
 import type { AlertsUnavailable, RepoAlert } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr } from "../kernel/index.ts";
+import { parseJsonOr } from "../../kernel/index.ts";
 import type { GhResult } from "./gh-runner.ts";
 
 /** Runs `gh` in the project's folder, so `{owner}` and `{repo}` come from its own remote; `null` when `gh` is missing. */

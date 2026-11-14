@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseKnowledge } from "../../src/knowledge/parse.ts";
+import { parseKnowledge } from "../../src/knowledge/domain/parse.ts";
 
 /** Issue #76: what one library document says about itself, from its front matter and its heading. */
 const doc = (front: string, body = "# Title (issue #12)\n\ntext\n") =>

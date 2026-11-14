@@ -10,7 +10,7 @@ import {
 } from "@flightdeck/protocol";
 import { samePath } from "../kernel/index.ts";
 import { credential } from "../permissions/index.ts";
-import { parseKnowledge } from "./parse.ts";
+import { parseKnowledge } from "./domain/parse.ts";
 
 /**
  * Issue #76: a project's library of documents (PRDs, RFCs, ADRs, specs), listed read only. The

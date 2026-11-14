@@ -10,7 +10,7 @@ const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { RunAgain } = await import("../../src/features/board/run-again.tsx");
 const { RunTimeline } = await import("../../src/features/runenv/run-timeline.tsx");
-const { runAgain } = await import("../../src/features/runenv/runs.ts");
+const { runAgain } = await import("../../src/features/runenv/domain/runs.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
