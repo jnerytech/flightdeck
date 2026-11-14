@@ -9,7 +9,7 @@ import type { PrCheck, PrComment, PrProvider } from "../../src/pr/index.ts";
 import { Quota } from "../../src/quota/quota.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { PrFixer } from "../../src/watch/fix.ts";
 import type { WatchSettings } from "../../src/watch/settings.ts";

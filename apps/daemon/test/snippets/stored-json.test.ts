@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { Snippets } from "../../src/snippets/store.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { workspace } from "../support/helpers.ts";

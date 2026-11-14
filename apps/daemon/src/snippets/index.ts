@@ -6,6 +6,7 @@
  * the sessions and the central, which reach back here). Another domain imports from here, never a
  * file inside.
  */
+
+export { SecretScanner } from "./domain/model.ts";
 export type { HistoryImporter } from "./history.ts";
-export { SecretScanner } from "./model.ts";
 export type { Snippets } from "./store.ts";

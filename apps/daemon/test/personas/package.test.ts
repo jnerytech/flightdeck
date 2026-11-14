@@ -5,7 +5,7 @@ import type { Persona } from "@flightdeck/protocol";
 import { PACK_IDS, packPersonas } from "../../src/personas/pack.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { startServer } from "../../src/server.ts";
-import { SecretScanner } from "../../src/snippets/model.ts";
+import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { newManager, workspace } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
