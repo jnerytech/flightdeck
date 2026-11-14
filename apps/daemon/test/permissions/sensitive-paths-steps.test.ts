@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { credential, isControl, pathParts } from "../../src/permissions/sensitive-paths.ts";
+import { credential, isControl, pathParts } from "../../src/permissions/domain/sensitive-paths.ts";
 
 /**
  * How a path is cut into steps, and what "a folder and a name in it" means (issue #1607: the

@@ -19,7 +19,7 @@ export const FLIGHTDECK_PLAN_AGENT = "flightdeck-plan";
 /** OpenCode's built-in agents that are not ours, disabled in every process. */
 export const BUILT_IN_AGENTS = ["build", "plan", "explore", "general"] as const;
 
-/** Read globs of the credential paths the classifier knows (one list, `sensitive-paths.ts`): such a read asks. */
+/** Read globs of the credential paths the classifier knows (one list, `permissions/domain/sensitive-paths.ts`): such a read asks. */
 export const CREDENTIAL_READS: readonly string[] = credentialReadGlobs();
 
 /** The rules of both agents, and the top-level ones. */
