@@ -9,6 +9,7 @@ import { startServer } from "../../src/server.ts";
 import {
   type ServiceContext,
   systemdUnit,
+  uninstallService,
   windowsTaskXml,
 } from "../../src/service/domain/install.ts";
 import { osServiceContext } from "../../src/service/os.ts";
@@ -557,5 +558,37 @@ describe("servico", () => {
       code: 4,
       stdout: "oi\n",
     });
+  });
+
+  test("a failed disable still removes the unit and reloads systemd, then fails (#2895)", async () => {
+    const linux = fakeOs("linux");
+    const ctx = linux.ctx(false);
+    const exec = ctx.exec;
+    ctx.exec = async (cmd) => {
+      const answer = await exec(cmd);
+      return cmd.includes("disable") ? { code: 1, stdout: "" } : answer;
+    };
+    const failure = await uninstallService(ctx).then(
+      () => "",
+      (error: Error) => error.message,
+    );
+    expect(failure).toBe("failed (1): systemctl --user disable --now flightdeckd");
+    expect(linux.removed).toEqual(["/home/dev/.config/systemd/user/flightdeckd.service"]);
+    expect(linux.calls).toEqual([
+      ["systemctl", "--user", "disable", "--now", "flightdeckd"],
+      ["systemctl", "--user", "daemon-reload"],
+    ]);
+  });
+
+  test("when the reload fails too, the disable failure is the one reported (#2895)", async () => {
+    const linux = fakeOs("linux");
+    const ctx = linux.ctx(false);
+    ctx.exec = async (cmd) => ({ code: cmd.includes("disable") ? 1 : 2, stdout: "" });
+    const failure = await uninstallService(ctx).then(
+      () => "",
+      (error: Error) => error.message,
+    );
+    expect(failure).toBe("failed (1): systemctl --user disable --now flightdeckd");
+    expect(linux.removed).toEqual(["/home/dev/.config/systemd/user/flightdeckd.service"]);
   });
 });

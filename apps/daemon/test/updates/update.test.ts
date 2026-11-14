@@ -195,6 +195,20 @@ describe("update", () => {
     expect(await serviceCommand(fakeService("win32", null).ctx)).toBeNull();
   });
 
+  test("a drop-in that resets ExecStart and sets a new one is the command read back (#2895)", async () => {
+    const { ctx } = fakeService("linux", null);
+    const unit = systemdUnit(["/a/flightdeckd"], "/a/config.json");
+    const dropIn =
+      "# /home/dev/.config/systemd/user/flightdeckd.service.d/override.conf\n[Service]\nExecStart=\nExecStart=/b/flightdeckd start --config /b/config.json\n";
+    ctx.exec = async () => ({ code: 0, stdout: `${unit}\n${dropIn}` });
+    expect(await serviceCommand(ctx)).toEqual({
+      command: ["/b/flightdeckd"],
+      config: "/b/config.json",
+    });
+    ctx.exec = async () => ({ code: 0, stdout: `${unit}\n[Service]\nExecStart=\n` });
+    expect(await serviceCommand(ctx)).toBeNull();
+  });
+
   test("recusa binário sem --version válido e downgrade sem a flag", async () => {
     const { deps, out, calls, stable } = setup("win32", DIST_WIN);
     expect(await update(deps, fakeBinary(null))).toBe(1);
