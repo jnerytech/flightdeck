@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
-import { parseHighlights, ReleaseFeed } from "../../src/releases/releases.ts";
+import { parseHighlights } from "../../src/releases/domain/highlights.ts";
+import { ReleaseFeed } from "../../src/releases/releases.ts";
 
 const BODY = `## Highlights
 
