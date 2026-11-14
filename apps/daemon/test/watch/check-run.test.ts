@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { REMOVED_LINE, runChecks } from "../../src/watch/check-run.ts";
+import { REMOVED_LINE, runChecks } from "../../src/watch/domain/check-run.ts";
 import type { BoundedCheckResult } from "../../src/workflows/check-runner.ts";
 import { checkEnvironment } from "../../src/workflows/check-runner.ts";
 

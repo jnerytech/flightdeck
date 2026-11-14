@@ -8,7 +8,7 @@ import {
   roundMessage,
   roundsCap,
 } from "../../src/board/domain/check-loop-engine.ts";
-import type { CheckOutcome } from "../../src/watch/check-run.ts";
+import type { CheckOutcome } from "../../src/watch/domain/check-run.ts";
 
 /**
  * Issue #1361 (slice 1c-2b): the check loop as a state machine. The board tells it each session
