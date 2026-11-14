@@ -192,6 +192,36 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     }
   });
 
+  test("a sideways swipe to the end of the strip stays there too: it moves the strip by itself, with no deltaY (#2728)", async () => {
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const at = (left: number, right: number) => ({ left, right }) as DOMRect;
+      const scrolled = (document.querySelector(".tab-scroller") as HTMLElement).scrollLeft;
+      if (this.classList.contains("tab-scroller")) return at(0, 500);
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
+        return at(0 - scrolled, 60 - scrolled);
+      return at(0, 0);
+    };
+    try {
+      const { scroller } = await many();
+      scroller.scrollLeft = 0;
+      Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+      Object.defineProperty(scroller, "clientWidth", { value: 500, configurable: true });
+      await act(async () => {
+        fireEvent.scroll(scroller);
+      });
+      // A trackpad swipe: the wheel carries deltaX only and the browser scrolls the strip itself.
+      await act(async () => {
+        fireEvent.wheel(scroller, { deltaX: 1500, deltaY: 0 });
+        scroller.scrollLeft = 1500;
+        fireEvent.scroll(scroller);
+      });
+      expect(scroller.scrollLeft).toBe(1500);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+
   test("the list of all tabs is a filterable list, not a menu: icon, title, host, the active one marked (#576)", async () => {
     const { store } = await openList();
     expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
