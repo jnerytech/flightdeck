@@ -8,7 +8,7 @@ import { ExternalSessions } from "../../src/central/external.ts";
 import { type Receptor, startReceptor } from "../../src/central/receptor.ts";
 import { INLINE_AGENTS_MAX, interactiveAgents, RECEPTOR_FILE } from "../../src/central/wrapper.ts";
 import { runCli } from "../../src/main.ts";
-import { personaHash } from "../../src/personas/model.ts";
+import { personaHash } from "../../src/personas/domain/model.ts";
 import { PACK_IDS, packPersonas } from "../../src/personas/pack.ts";
 import { preparePersonas } from "../../src/personas/prepare.ts";
 import { Personas } from "../../src/personas/store.ts";

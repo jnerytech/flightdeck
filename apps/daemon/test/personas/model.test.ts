@@ -10,7 +10,7 @@ import {
   restrictTools,
   serializePersona,
   toolAllowed,
-} from "../../src/personas/model.ts";
+} from "../../src/personas/domain/model.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { startServer } from "../../src/server.ts";
 import { SecretScanner } from "../../src/snippets/domain/model.ts";

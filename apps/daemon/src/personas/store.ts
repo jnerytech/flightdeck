@@ -18,7 +18,7 @@ import {
   parsePersona,
   personaHash,
   serializePersona,
-} from "./model.ts";
+} from "./domain/model.ts";
 import type { Language } from "./pack.ts";
 
 export interface PersonasOptions {
