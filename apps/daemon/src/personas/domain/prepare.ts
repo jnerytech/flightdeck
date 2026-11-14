@@ -1,6 +1,28 @@
 import type { PersonaAgent } from "@flightdeck/protocol";
-import { FlightdeckError } from "../kernel/index.ts";
-import type { PersonaContext, PersonaRef, ResolvedPersona } from "./store.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
+import type { PersonaDef } from "../model.ts";
+import type { Language } from "../pack.ts";
+
+/** What names a persona: its id in the host's or the project's list, or a definition from the app. */
+export interface PersonaRef {
+  id?: string;
+  definition?: unknown;
+  /** The language of the pack personas (the context's is used when absent). */
+  language?: Language;
+}
+
+export interface PersonaContext {
+  projectPath?: string;
+  /** The language of the pack personas; `pt-BR` when absent. */
+  language?: Language;
+}
+
+export interface ResolvedPersona {
+  persona: PersonaDef;
+  source: "project" | "host" | "pack" | "inline";
+  /** The hash of the versioned file, for the ones from a project. */
+  hash: string | null;
+}
 
 /** What a new session needs from the personas, read before it is created. */
 export interface PreparedPersonas {

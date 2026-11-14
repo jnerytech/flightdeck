@@ -12,6 +12,7 @@ import type {
 import { byCodeUnit, inSequence, PersonaFields } from "@flightdeck/protocol";
 import { FlightdeckError, parseJsonWith, resolveAllowedCwd } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/index.ts";
+import type { PersonaContext, PersonaRef, ResolvedPersona } from "./domain/prepare.ts";
 import {
   normalizePersona,
   type PersonaDef,
@@ -39,27 +40,6 @@ export interface AgentPublishRequest extends PersonaAgent {
   projectPath: string;
   /** `persona-<id>`: the name of the agent and of its file. */
   name: string;
-}
-
-/** What names a persona: its id in the host's or the project's list, or a definition from the app. */
-export interface PersonaRef {
-  id?: string;
-  definition?: unknown;
-  /** The language of the pack personas (the context's is used when absent). */
-  language?: Language;
-}
-
-export interface PersonaContext {
-  projectPath?: string;
-  /** The language of the pack personas; `pt-BR` when absent. */
-  language?: Language;
-}
-
-export interface ResolvedPersona {
-  persona: PersonaDef;
-  source: "project" | "host" | "pack" | "inline";
-  /** The hash of the versioned file, for the ones from a project. */
-  hash: string | null;
 }
 
 interface LoadedProject {

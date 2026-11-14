@@ -2,7 +2,7 @@ import type { PersonaSwitchResult, SessionPersona } from "@flightdeck/protocol";
 import { type Central, messageExternal } from "../central/index.ts";
 import { FlightdeckError, settled } from "../kernel/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
-import type { PersonaContext, PersonaRef, ResolvedPersona } from "./store.ts";
+import type { PersonaContext, PersonaRef, ResolvedPersona } from "./domain/prepare.ts";
 
 export interface OpenSessionPersonasOptions {
   /** Resolves a persona (the project's, the host's, the pack's or one from the app). */
