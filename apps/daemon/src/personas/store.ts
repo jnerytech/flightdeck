@@ -12,6 +12,7 @@ import type {
 import { byCodeUnit, inSequence, PersonaFields } from "@flightdeck/protocol";
 import { FlightdeckError, parseJsonWith, resolveAllowedCwd } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/index.ts";
+import type { Language } from "./domain/language.ts";
 import {
   normalizePersona,
   type PersonaDef,
@@ -20,7 +21,6 @@ import {
   serializePersona,
 } from "./domain/model.ts";
 import type { PersonaContext, PersonaRef, ResolvedPersona } from "./domain/prepare.ts";
-import type { Language } from "./pack.ts";
 
 export interface PersonasOptions {
   db: Database;

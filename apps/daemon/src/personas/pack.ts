@@ -1,3 +1,4 @@
+import type { Language } from "./domain/language.ts";
 import type { PersonaDef } from "./domain/model.ts";
 import { parsePersona } from "./domain/model.ts";
 import enArquiteto from "./pack/en/arquiteto.md" with { type: "text" };
@@ -28,8 +29,6 @@ import ptSpecifier from "./pack/pt-BR/specifier.md" with { type: "text" };
 import ptSre from "./pack/pt-BR/sre.md" with { type: "text" };
 import ptUi from "./pack/pt-BR/ui.md" with { type: "text" };
 import ptUx from "./pack/pt-BR/ux.md" with { type: "text" };
-
-export type Language = "pt-BR" | "en";
 
 /**
  * The files are imported as text, so they travel inside the compiled binary. They are read the way
