@@ -149,7 +149,7 @@ export function TabBar(
   const refocusTab = useRef(false);
   const tablist = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  /** The strip has not been scrolled by hand since the active tab last changed (#2728). */
+  /** The strip has not been scrolled by hand since the active tab or the tab count last changed (#2728). */
   const settling = useRef(false);
   /** The strip has more tabs than fit on either side. */
   const [more, setMore] = useState({ left: false, right: false });
@@ -358,6 +358,8 @@ export function TabBar(
           settling.current = false;
         }}
         onWheel={(e) => {
+          // A sideways swipe scrolls the strip by itself: it is a scroll by hand too.
+          settling.current = false;
           if (e.deltaY !== 0) scrollBy(e.deltaY);
         }}
       >
