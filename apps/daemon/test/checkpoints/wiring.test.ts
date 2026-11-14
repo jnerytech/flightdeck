@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { dirname } from "node:path";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
 import { createCheckpoints } from "../../src/checkpoints/wiring.ts";
-import { withoutPersonas } from "../../src/personas/prepare.ts";
+import { withoutPersonas } from "../../src/personas/domain/prepare.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { gitRepo } from "../support/board-helpers.ts";
