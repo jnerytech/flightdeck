@@ -11,7 +11,7 @@ import {
   readPrefs,
   resolveProvider,
   writePrefs,
-} from "../../src/features/assistant/assistant-prefs.ts";
+} from "../../src/features/assistant/domain/assistant-prefs.ts";
 
 function storage(initial?: string) {
   const items = new Map<string, string>(
