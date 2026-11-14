@@ -1,5 +1,4 @@
-import { gitLimitedFor } from "../git/index.ts";
-import type { CommandResult, Rev } from "../kernel/index.ts";
+import type { CommandResult, Rev } from "../../kernel/index.ts";
 
 /** Issue #1405: the most files one overlap lists. */
 export const MAX_SHARED_FILES = 20;
@@ -10,31 +9,6 @@ export type RadarGit = (cwd: string, ...args: string[]) => Promise<CommandResult
 /** Issue #1405: the most peers one card lists, and the most files the radar keeps of a card. */
 export const MAX_PEERS = 10;
 export const MAX_FILES_PER_CARD = 2000;
-
-type LimitedGit = (
-  cwd: string,
-  limit: number,
-  args: string[],
-  timeoutMs?: number,
-) => Promise<CommandResult & { truncated: boolean }>;
-
-/** Git without its fsmonitor hook (a repo's config could name a program), with plain path names. */
-const GIT_SAFE = ["-c", "core.fsmonitor=false", "-c", "core.quotePath=false"];
-const NUL = 0;
-
-/** The radar's git: output capped, a time limit; a read that was cut off or timed out is a failure. */
-export function radarGit(
-  limit = 1024 * 1024,
-  timeoutMs = 10_000,
-  run: LimitedGit = (cwd, max, args, ms) =>
-    gitLimitedFor(cwd, max, args, ms, undefined, { separator: NUL }),
-): RadarGit {
-  return async (cwd, ...args) => {
-    // git-arg: the radar's callers pass fixed options and a Rev checked by refArg
-    const result = await run(cwd, limit, [...GIT_SAFE, ...args], timeoutMs);
-    return result.truncated || result.timedOut ? { ...result, code: result.code || 1 } : result;
-  };
-}
 
 /** A card the radar watches: its worktree and what it was cut from. */
 export interface RadarCard {
