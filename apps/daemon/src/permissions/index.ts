@@ -4,6 +4,7 @@
  */
 export { type AutoApproveRequest, type AutoApprover, historyExcludes } from "./auto-approve.ts";
 export { bindInput, summarizeInput } from "./domain/bind-input.ts";
+export { maskConfig, maskedConfig } from "./domain/mask-config.ts";
 export {
   checkUpdates,
   isProjectRule,
@@ -13,7 +14,6 @@ export {
 } from "./domain/permission-updates.ts";
 export { credential, credentialReadGlobs } from "./domain/sensitive-paths.ts";
 export { requireHold } from "./hold.ts";
-export { maskConfig, maskedConfig } from "./mask-config.ts";
 export { realPathOf, statKind } from "./path-kind.ts";
 export { PermissionBroker } from "./permission-broker.ts";
 export { isCredentialPath, type Risk, RiskClassifier } from "./risk.ts";

@@ -9,7 +9,7 @@ import type {
   ModelOption,
 } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
-import type { Account } from "../../daemon/src/account/account.ts";
+import type { Account } from "../../daemon/src/account/index.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
 import { activitySince } from "../../daemon/src/activity/since.ts";
 import { AgentConfig } from "../../daemon/src/agentcfg/files.ts";

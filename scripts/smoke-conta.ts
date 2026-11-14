@@ -7,8 +7,7 @@
  * `auth status`, and no token, credentials file or claude.ai address is ever touched.
  */
 import { AccountState, AccountUpdated } from "@flightdeck/protocol";
-import { Account } from "../apps/daemon/src/account/account.ts";
-import { accountReaders } from "../apps/daemon/src/account/readers.ts";
+import { Account, accountReaders } from "../apps/daemon/src/account/index.ts";
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { whichOnPath } from "../apps/daemon/src/kernel/which.ts";
 import { Quota } from "../apps/daemon/src/quota/quota.ts";
