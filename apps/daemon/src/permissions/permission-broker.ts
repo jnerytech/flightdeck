@@ -11,9 +11,9 @@ import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/index.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
 import { bindInput } from "./domain/bind-input.ts";
+import type { Risk, RiskLevel } from "./domain/risk.ts";
 import { requireHold } from "./hold.ts";
 import { alwaysAsks, checkUpdates } from "./permission-updates.ts";
-import type { Risk, RiskLevel } from "./risk.ts";
 import type { DiskView } from "./rule-risk.ts";
 
 export interface BrokerHooks {

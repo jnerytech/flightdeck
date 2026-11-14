@@ -39,7 +39,7 @@ import { listKnowledge } from "../../daemon/src/knowledge/list.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
 import { ProjectMemory } from "../../daemon/src/memory/memory.ts";
 import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
-import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
+import type { RiskClassifier } from "../../daemon/src/permissions/domain/risk.ts";
 import { OpenSessionPersonas } from "../../daemon/src/personas/open-session.ts";
 import { packPersonas } from "../../daemon/src/personas/pack.ts";
 import { preparePersonas } from "../../daemon/src/personas/prepare.ts";

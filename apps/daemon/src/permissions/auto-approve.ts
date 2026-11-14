@@ -12,7 +12,7 @@ import type { UsageTokens } from "../costs/usage-indexer.ts";
 import { ulid } from "../kernel/index.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
 import { summarizeInput } from "./domain/bind-input.ts";
-import type { Risk } from "./risk.ts";
+import type { Risk } from "./domain/risk.ts";
 
 export interface AutoApproveSettings {
   enabled: boolean;

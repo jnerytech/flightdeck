@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join, resolve } from "node:path";
-import { RiskClassifier, validRegex } from "../../src/permissions/risk.ts";
+import { RiskClassifier, validRegex } from "../../src/permissions/domain/risk.ts";
 
 /**
  * What each rule of the classifier says, one table per rule (#2474): the level, the reason a person

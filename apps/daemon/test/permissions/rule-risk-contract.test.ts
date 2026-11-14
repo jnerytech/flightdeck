@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { join, normalize } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import ignore from "ignore";
+import { RANK, RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import { checkUpdates, rulePaths } from "../../src/permissions/permission-updates.ts";
-import { RANK, RiskClassifier } from "../../src/permissions/risk.ts";
 import {
   type ClassifyCall,
   type PathKind,

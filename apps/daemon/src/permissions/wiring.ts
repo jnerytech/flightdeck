@@ -5,7 +5,7 @@ import {
   type AutoApproverOptions,
   type AutoApproveSettings,
 } from "./auto-approve.ts";
-import { RiskClassifier } from "./risk.ts";
+import { RiskClassifier } from "./domain/risk.ts";
 
 /** The project (and card) whose folder holds a cwd, as the board finds it. */
 interface CwdProject {

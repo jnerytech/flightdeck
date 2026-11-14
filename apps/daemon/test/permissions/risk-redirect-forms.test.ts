@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { RiskClassifier } from "../../src/permissions/risk.ts";
+import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
 
 const CWD = resolve("/trabalho/proj");
 const risk = new RiskClassifier({ allowedRoots: [], home: resolve("/casa/u") });
