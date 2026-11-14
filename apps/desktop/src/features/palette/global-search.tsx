@@ -13,7 +13,7 @@ import {
   type PaletteTarget,
   paletteScope,
   paletteSections,
-} from "./palette.ts";
+} from "./domain/palette.ts";
 import { PaletteScopeChips, PaletteSectionView } from "./palette-section.tsx";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */

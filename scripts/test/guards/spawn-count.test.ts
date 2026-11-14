@@ -80,13 +80,44 @@ describe("spawn-count (#1612)", () => {
       spawnCounts([{ path: "apps/daemon/src/a.ts", text: line }])["apps/daemon/src/a.ts"] ?? 0;
     expect([
       count("const { spawn } = Bun;"),
-      count("const {spawnSync} = Bun;"), // no space after the brace: not read today
+      count("const {spawnSync} = Bun;"),
       count("const { a, spawn, b } = Bun;"),
       count("const { spawned } = Bun;"),
       count("const { respawn } = Bun;"),
       count("const { a } = Bun;"),
       count("const { spawn } = other;"),
-    ]).toEqual([1, 0, 1, 0, 0, 0, 0]);
+    ]).toEqual([1, 1, 1, 0, 0, 0, 0]);
+  });
+
+  test("a destructured Bun counts when spawn or spawnSync is a whole name in the braces, and not otherwise (S8786)", () => {
+    const counted = [
+      "const { spawn } = Bun;",
+      "const { x, spawnSync: run } = Bun;",
+      "const { spawn: a, spawnSync: b } = Bun;",
+      "const { x,spawn } = Bun;",
+      "const { spawn,x } = Bun;",
+      "const { x, spawn = 1 } = Bun;",
+      "const { spawn} = Bun;",
+      "const {spawn} = Bun;",
+      "const { x, spawn} = Bun;",
+      "const {a:{spawn}} = Bun;",
+      "const { a: { spawn } } = Bun;",
+    ];
+    const ignored = [
+      "const { spawned } = Bun;",
+      "const { respawn } = Bun;",
+      "const { x, spawnSyncs } = Bun;",
+      "const { spawn } = Other;",
+      "const { spawn } = Bunny;",
+      "const { spawn };",
+      "const { x } = Bun;",
+    ];
+    const count = (line: string) =>
+      spawnCounts([{ path: "apps/daemon/src/a.ts", text: line }])["apps/daemon/src/a.ts"] ?? 0;
+    expect([counted.map(count), ignored.map(count)]).toEqual([
+      counted.map(() => 1),
+      ignored.map(() => 0),
+    ]);
   });
 
   test("a launch after a block comment on the same line counts; a trailing comment or a url does not hide or fake one", () => {
