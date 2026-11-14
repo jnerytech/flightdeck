@@ -4,7 +4,7 @@
  * (any local process that reads the config speaks the protocol). Anything else is treated as the
  * most restricted. Whether a known requester gets the secret is the app's decision.
  */
-import { evaluate, localTime, type Rule, type RulesEnv, type UseContext } from "./rules.ts";
+import { evaluate, localTime, type Rule, type RulesEnv, type UseContext } from "./domain/rules.ts";
 
 export type Requester = "claude" | "automation" | "workflow" | "unknown";
 
