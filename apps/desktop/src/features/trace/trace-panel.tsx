@@ -1,7 +1,6 @@
 import type { SessionTrace, TraceNode } from "@flightdeck/protocol";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { formatMs } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import {
   Bar,
@@ -18,31 +17,10 @@ import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../costs/index.ts";
 import { longest, onlyTool, toolNames } from "./domain/trace.ts";
+import { nodeNumbers, nodeTitle } from "./node-text.ts";
 import { TraceReplay } from "./trace-replay.tsx";
 
 type T = ReturnType<typeof useT>;
-
-/** What a node says of itself, in one line. */
-export function nodeTitle(node: TraceNode, t: T): string {
-  if (node.kind === "turn") {
-    return t("trace.turn", { n: node.n ?? 0 }) + (node.label ? " · " + node.label : "");
-  }
-  if (node.kind === "thinking") return t("trace.thinking");
-  return node.label ? `${node.name} · ${node.label}` : node.name;
-}
-
-/** The numbers of a node: time, cost and tokens, those it has. */
-export function nodeNumbers(node: TraceNode, t: T): string {
-  const tokens = node.inputTokens + node.outputTokens;
-  return [
-    node.durationMs === null ? null : formatMs(node.durationMs, t),
-    node.costUsd === null ? null : usd(node.costUsd, t.lang),
-    tokens === 0 ? null : t("trace.tokens", { input: node.inputTokens, output: node.outputTokens }),
-    node.error ? t("trace.failed") : null,
-  ]
-    .filter((part) => part !== null)
-    .join(" · ");
-}
 
 function Node(props: Readonly<{ node: TraceNode; against: number; trace: SessionTrace; t: T }>) {
   const { node, against, trace, t } = props;
