@@ -1,16 +1,29 @@
 import type { Database } from "bun:sqlite";
-import { watch } from "node:fs";
+import { createReadStream, watch } from "node:fs";
 import { stat as fileStat, open, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { createInterface } from "node:readline";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import { type HistoryRecord, lastTitle, parseLines } from "./domain/parser.ts";
 import { lastTool, requestLine } from "./domain/session-line.ts";
+import { type ToolDetail, toolDetail } from "./domain/tool-detail.ts";
 import { promptText } from "./domain/transcript-text.ts";
 import { CWD_CONDITION, normalizeCwd, trimSlashes } from "./folder.ts";
 import { fts5Available, type SearchHit, type SearchQuery, searchMessages } from "./search.ts";
-import { fileLines, type ToolDetail, toolDetail } from "./tool-detail.ts";
+
+/** The lines of a file, read as they are asked for: a caller that stops early closes the file. */
+async function* fileLines(path: string): AsyncGenerator<string> {
+  const stream = createReadStream(path, { encoding: "utf8" });
+  const reader = createInterface({ input: stream, crlfDelay: Number.POSITIVE_INFINITY });
+  try {
+    for await (const line of reader) yield line;
+  } finally {
+    reader.close();
+    stream.destroy();
+  }
+}
 
 export interface HistoryIndexerOptions {
   db: Database;
