@@ -2,7 +2,7 @@
  * Issue #1288: the assistant domain: the wand's provider runs a request and can be cancelled,
  * reads the context a request needs, and records what the person kept.
  */
-import type { AssistantService } from "../../assistant/service.ts";
+import type { AssistantService } from "../../assistant/index.ts";
 import { featureOff } from "../../kernel/index.ts";
 import type { ServerContext } from "../context.ts";
 import type { Handlers } from "../dispatch.ts";

@@ -25,7 +25,7 @@ import type {
 import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig, McpConfig } from "./agentcfg/index.ts";
-import type { AssistantService } from "./assistant/service.ts";
+import type { AssistantService } from "./assistant/index.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
@@ -65,7 +65,7 @@ import type { ReviewFiles } from "./review/files.ts";
 import type { SessionCommits } from "./review/session-commit.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionPrs } from "./review/session-pr.ts";
-import type { RoiSummarizer } from "./roi/summary.ts";
+import type { RoiSummarizer } from "./roi/index.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/index.ts";
