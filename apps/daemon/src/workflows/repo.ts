@@ -4,9 +4,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { must } from "../board/worktree.ts";
 import { git } from "../git/index.ts";
 import { type Rev, refArg } from "../kernel/index.ts";
-
-/** Where workflows live in the repository, read from the base branch only. */
-export const WORKFLOWS_DIR = ".flightdeck/workflows";
+import { WORKFLOWS_DIR } from "./domain/workflows-dir.ts";
 
 export interface WorkflowSource {
   name: string;

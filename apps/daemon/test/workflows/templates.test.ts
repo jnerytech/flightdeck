@@ -3,7 +3,7 @@ import { LocalizedText, WorkflowTemplate } from "@flightdeck/protocol";
 import { PACK_IDS } from "../../src/personas/pack.ts";
 import { parseFindings } from "../../src/workflows/domain/findings.ts";
 import { checkCommands, parseWorkflow, type Step } from "../../src/workflows/domain/schema.ts";
-import { workflowTemplates } from "../../src/workflows/templates.ts";
+import { workflowTemplates } from "../../src/workflows/domain/templates.ts";
 
 const TEST_COMMAND = "bun run test";
 const all = workflowTemplates(TEST_COMMAND);

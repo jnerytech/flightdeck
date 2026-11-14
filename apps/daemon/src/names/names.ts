@@ -7,30 +7,7 @@ import type { Database } from "bun:sqlite";
 import type { SessionTeam } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import { aliasName, displayName, GENERAL, NO_PROJECT, slug } from "./domain/format.ts";
-
-export interface SessionName {
-  id: string;
-  display: string;
-  /** The first alias, which came with the session. */
-  alias: string;
-  /** Every alias that points at the session, the old ones of a rename included. */
-  aliases: string[];
-  project: string;
-  persona: string;
-  number: number;
-  cardNumber: number | null;
-  standard: boolean;
-  team: SessionTeam | null;
-}
-
-export interface NameInput {
-  project: string;
-  persona?: string | null;
-  /** The team the session works in (issue #101). */
-  team?: SessionTeam | null;
-  /** The card the session works for, if any. */
-  cardId?: string | null;
-}
+import type { NameInput, NamesPort, SessionName } from "./domain/names-port.ts";
 
 interface Row {
   session_id: string;
@@ -47,7 +24,7 @@ interface Row {
 /** Where the counter of the cards' numbers lives, next to the persona counters. */
 const CARDS = "#card";
 
-export class Names {
+export class Names implements NamesPort {
   constructor(
     private readonly db: Database,
     private readonly now: () => number = Date.now,
