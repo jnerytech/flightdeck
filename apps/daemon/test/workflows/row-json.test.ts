@@ -6,7 +6,7 @@ import {
   shownOf,
   spendingOf,
   stepUsageOf,
-} from "../../src/workflows/row-json.ts";
+} from "../../src/workflows/domain/row-json.ts";
 
 describe("row-json: the JSON columns of a workflow run", () => {
   test("a run's spending is read with what each session spent", () => {
