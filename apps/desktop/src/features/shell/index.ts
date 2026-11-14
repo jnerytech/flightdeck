@@ -2,9 +2,6 @@
 export type { Density } from "./density.ts";
 export { breadcrumb } from "./domain/crumbs.ts";
 export { firstTerminalTab, hostsRoute, terminalTabCount } from "./domain/status-bar-summary.ts";
-export type { Orientation } from "./domain/workspace.ts";
-export { NAV_ICONS, type NavKey } from "./nav-icons.ts";
-export type { ThemeMode } from "./theme.ts";
 export {
   foldedByDefault,
   liveTone,
@@ -14,4 +11,7 @@ export {
   shownProjects,
   TREE_CAP,
   visibleNodes,
-} from "./tree-fold.ts";
+} from "./domain/tree-fold.ts";
+export type { Orientation } from "./domain/workspace.ts";
+export { NAV_ICONS, type NavKey } from "./nav-icons.ts";
+export type { ThemeMode } from "./theme.ts";
