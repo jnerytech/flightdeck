@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import type { HostDraft } from "@/lib/router.ts";
 import { InlineNotice, useBusy } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
 import { type BoundToken, maskOnLeave, readLinkEdit } from "./domain/pairing-mask.ts";
 import { pairingErrorText } from "./domain/pairing-text.ts";
 
-export interface HostDraft {
-  name: string;
-  address: string;
-  port: string;
-  token: string;
-}
+export type { HostDraft };
 
 /** The fields filled in by hand, in the order the form shows them. */
 const FIELDS = ["name", "address", "port", "token"] as const;
