@@ -45,7 +45,7 @@ import {
   spawnExec,
 } from "./kernel/index.ts";
 import { createKnowledge } from "./knowledge/wiring.ts";
-import { createHostLog } from "./logs/wiring.ts";
+import { createHostLog } from "./logs/index.ts";
 import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { createNames } from "./names/wiring.ts";
