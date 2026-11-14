@@ -2,12 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { git as run } from "../../src/git/adapters/git.ts";
-import {
-  duSize,
-  type WorktreeCard,
-  Worktrees,
-  type WorktreesOptions,
-} from "../../src/worktrees/worktrees.ts";
+import type { WorktreeCard } from "../../src/worktrees/domain/cleanup-rules.ts";
+import { duSize, Worktrees, type WorktreesOptions } from "../../src/worktrees/worktrees.ts";
 import { git, gitRepo } from "../support/board-helpers.ts";
 
 const DAY = 86_400_000;
