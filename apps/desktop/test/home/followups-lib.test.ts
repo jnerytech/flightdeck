@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
-import { emptySummary } from "../../src/features/clients/client-costs.ts";
+import { emptySummary } from "../../src/features/clients/domain/client-costs.ts";
 import { homeKpis } from "../../src/features/home/domain/home-kpis.ts";
 
 const DAYS = ["2026-10-09", "2026-10-10"];
