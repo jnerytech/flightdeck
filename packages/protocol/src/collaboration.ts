@@ -165,6 +165,8 @@ export type TeamStatus = z.infer<typeof TeamStatus>;
 
 /** #1220: the longest report a coordinator may send. */
 export const TEAM_REPORT_MAX = 4000;
+/** #2090: the longest brief a coordinator gives the worker it adds. */
+export const TEAM_BRIEF_MAX = 4000;
 
 export const TeamsUpdatedFrame = z.object({
   type: z.literal("teams.updated"),
@@ -346,6 +348,27 @@ export const collaborationCommands = [
   cmd("teams.close", z.object({ team: z.string().min(1), confirm: z.boolean().optional() })),
   /** Issue #934: deletes a closed team whose members are not at work; its sessions stay. */
   cmd("teams.delete", z.object({ team: z.string().min(1) })),
+  /**
+   * #2090: the coordinator adds a worker in a persona it picks, with a brief for the card. Only the
+   * team's coordinator (`as`, resolved by the host) may ask; the worker opens in the default mode.
+   */
+  cmd(
+    "teams.add_member",
+    z
+      .object({
+        team: z.string().min(1),
+        persona: z.string().min(1).optional(),
+        model: z.string().min(1).optional(),
+        brief: z.string().min(1).max(TEAM_BRIEF_MAX),
+        as: SessionIdentity,
+      })
+      .strict(),
+  ),
+  /** #2090: the coordinator takes a worker out of the team; its card and branch stay. */
+  cmd(
+    "teams.remove_member",
+    z.object({ team: z.string().min(1), member: z.string().min(1), as: SessionIdentity }).strict(),
+  ),
   /** A message from Flightdeck to every member ("mandar a todos"). */
   cmd("teams.message", z.object({ team: z.string().min(1), text: z.string().min(1) })),
   /** With `as`, only a member of the team may ask (the MCP tool does). */
@@ -380,6 +403,8 @@ export interface CollaborationResults {
   "teams.message": { delivered: number; refused: number };
   "teams.status": TeamStatus;
   "teams.report": TeamStatus;
+  "teams.add_member": { member: TeamMember; team: TeamInfo };
+  "teams.remove_member": TeamInfo;
   "teams.watch": undefined;
   "messages.send": SendResult;
   "messages.list": { messages: MessageInfo[] };

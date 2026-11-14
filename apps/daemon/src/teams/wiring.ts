@@ -6,7 +6,8 @@ import { Idle, LocalEndpoints, type LocalEndpointsOptions, Messaging } from "../
 import { type Names, type TrackOptions, trackNames, warmKnown } from "../names/index.ts";
 import { OpenSessionPersonas, type Personas, type Prepare } from "../personas/index.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
-import { Teams, type TeamsOptions } from "./teams.ts";
+import type { TeamsOptions } from "./options.ts";
+import { Teams } from "./teams.ts";
 
 /** What the sessions that work together are built from. */
 export interface TeamsWiringDeps {

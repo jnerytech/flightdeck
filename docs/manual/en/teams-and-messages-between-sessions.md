@@ -99,6 +99,13 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   keyboard can reach. Below it, each worker's row shows its **Last report**, its card's branch and
   how many files the card changed. When the coordinator reports the goal done, a notification says
   so and opens the team.
+- **Changing the team from the coordinator:** the coordinator can add a worker in a persona it
+  picks with the `team_add_member` tool (a persona, an optional model and a brief of up to 4000
+  characters, which goes in the new worker's card after the standard instructions), and take one out
+  with `team_remove_member` when it is no longer needed: its turn stops, and its card and branch
+  stay. The new worker always opens in the default permission mode. The host refuses any other
+  session, an unknown persona, a paused team, a team that already has 8 workers and a plan quota
+  that is over its limit (it does not queue). You see the change in the team's row at once.
 - **From the team's row you can:**
   - pause it (STOP to every member) and resume it;
   - send a message to everyone;

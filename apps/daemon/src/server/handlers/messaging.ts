@@ -40,6 +40,22 @@ export const messagingHandlers = {
       .needIn("messaging", "teams")
       .report(payload.team, asker, payload.text, payload.done);
   },
+  // #2090: the asking session is the host's, resolved from `as`; the service checks its role.
+  "teams.add_member": async (payload, { server }) => {
+    const asker = server.needIn("messaging", "messages").whoIs(payload.as).id;
+    const { team, persona, model, brief } = payload;
+    return await server.needIn("messaging", "teams").addMember(team, asker, {
+      ...(persona ? { persona } : {}),
+      ...(model ? { model } : {}),
+      brief,
+    });
+  },
+  "teams.remove_member": async (payload, { server }) => {
+    const asker = server.needIn("messaging", "messages").whoIs(payload.as).id;
+    return await server
+      .needIn("messaging", "teams")
+      .removeMember(payload.team, asker, payload.member);
+  },
   "teams.watch": (_payload, { ws, send, server }) => {
     const service = server.needIn("messaging", "teams");
     ws.data.unwatchTeams?.();

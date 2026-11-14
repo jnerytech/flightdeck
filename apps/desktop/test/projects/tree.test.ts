@@ -7,7 +7,7 @@ import {
   rowInFilter,
   type WorktreeFilter,
   worktreeOfProject,
-} from "../../src/features/projects/project-tree-model.ts";
+} from "../../src/features/projects/domain/project-tree-model.ts";
 import type { HubRow } from "../../src/features/sessions/hub.ts";
 
 const project = (id: string, name: string, over: Partial<Project> = {}): Project =>

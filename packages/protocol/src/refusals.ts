@@ -94,6 +94,8 @@ export const DAEMON_REASONS = [
   "perm_not_suggested",
   "team_session_foreign",
   "team_report_not_coordinator",
+  "team_manage_not_coordinator",
+  "team_full",
   "team_close_confirm",
   "team_coordinator_stays",
   "team_closed",

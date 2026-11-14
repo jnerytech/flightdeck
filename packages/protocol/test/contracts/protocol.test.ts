@@ -294,6 +294,14 @@ const validCommands: Record<CommandType, unknown> = {
   "teams.message": { team: "t1", text: "parem" },
   "teams.status": { team: "t1" },
   "teams.report": { team: "t1", text: "Done.", done: true, as: { session: "s1" } },
+  "teams.add_member": {
+    team: "t1",
+    persona: "qa",
+    model: "haiku",
+    brief: "Check the login form.",
+    as: { session: "s1" },
+  },
+  "teams.remove_member": { team: "t1", member: "pc/s3", as: { session: "s1" } },
   "teams.watch": {},
   "watch.settings": { projectId: "p1", patch: { enabled: true } },
   "watch.set": { cardId: "c1", enabled: true },
@@ -802,6 +810,24 @@ describe("protocolo", () => {
     expect(refuses("teams.create", { ...create, workerEfforts: ["low", "turbo"] })).toBe(false);
     expect(refuses("teams.create", { ...create, workerEfforts: Array(9).fill("low") })).toBe(false);
     expect(refuses("teams.update", { team: "t1", addMember: { effort: "turbo" } })).toBe(false);
+  });
+
+  test("teams.add_member and teams.remove_member need `as`, a bounded brief and no permission (#2090)", () => {
+    const accepts = (type: string, payload: unknown) =>
+      Command.safeParse({ id: "1", type, payload }).success;
+    const add = { team: "t1", persona: "qa", brief: "Check the form.", as: { session: "s1" } };
+    expect(accepts("teams.add_member", add)).toBe(true);
+    expect(accepts("teams.add_member", { ...add, model: "haiku" })).toBe(true);
+    expect(accepts("teams.add_member", { ...add, as: undefined })).toBe(false);
+    expect(accepts("teams.add_member", { ...add, brief: "" })).toBe(false);
+    expect(accepts("teams.add_member", { ...add, brief: "x".repeat(4001) })).toBe(false);
+    expect(accepts("teams.add_member", { ...add, brief: "x".repeat(4000) })).toBe(true);
+    expect(accepts("teams.add_member", { ...add, persona: "" })).toBe(false);
+    expect(accepts("teams.add_member", { ...add, permission: "bypassPermissions" })).toBe(false);
+    const remove = { team: "t1", member: "pc/s3", as: { session: "s1" } };
+    expect(accepts("teams.remove_member", remove)).toBe(true);
+    expect(accepts("teams.remove_member", { ...remove, as: undefined })).toBe(false);
+    expect(accepts("teams.remove_member", { ...remove, member: "" })).toBe(false);
   });
 
   test("payload inválido é recusado pelo schema", () => {
