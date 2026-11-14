@@ -3,11 +3,11 @@
  * way it was born (the app, a terminal, a card, a team, a plain claude seen by the hooks).
  */
 import type { ExternalSession, SessionSummary, SessionTeam } from "@flightdeck/protocol";
-import { projectName } from "./domain/format.ts";
-import type { Names } from "./names.ts";
+import { projectName } from "./format.ts";
+import type { NamesPort } from "./names-port.ts";
 
 export interface TrackOptions {
-  names: Names;
+  names: NamesPort;
   manager: {
     list(): SessionSummary[];
     get(sessionId: string): SessionSummary;
@@ -39,7 +39,7 @@ export interface TrackOptions {
  * Flightdeck started is named by its own id; a terminal one, by the Claude id.
  */
 export function adoptTitles(
-  names: Names,
+  names: Pick<NamesPort, "adoptTitle">,
   manager: Pick<TrackOptions["manager"], "list">,
 ): (claudeSessionId: string, title: string, kind: "custom" | "agent") => void {
   return (claudeSessionId, title, kind) => {

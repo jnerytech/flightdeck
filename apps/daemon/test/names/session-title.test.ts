@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { adoptTitles } from "../../src/names/domain/track.ts";
 import { Names } from "../../src/names/names.ts";
-import { adoptTitles } from "../../src/names/track.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 
 const setup = () => {
