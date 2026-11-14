@@ -15,8 +15,8 @@ import {
 } from "@flightdeck/protocol";
 import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
 import type { PersonaSnapshot } from "../personas/snapshot.ts";
+import { AgentsJson, ModePayload, PersonaSnapshotJson } from "./domain/row-json.ts";
 import { MIGRATIONS } from "./migrations.ts";
-import { AgentsJson, ModePayload, PersonaSnapshotJson } from "./row-json.ts";
 
 export type PermissionStatus = "pending" | "allowed" | "denied" | "cancelled" | "expired";
 

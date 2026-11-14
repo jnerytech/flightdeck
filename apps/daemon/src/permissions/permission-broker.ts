@@ -11,10 +11,10 @@ import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/index.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
 import { bindInput } from "./domain/bind-input.ts";
+import { requireHold } from "./domain/hold.ts";
 import { alwaysAsks, checkUpdates } from "./domain/permission-updates.ts";
 import type { Risk, RiskLevel } from "./domain/risk.ts";
 import type { DiskView } from "./domain/rule-risk.ts";
-import { requireHold } from "./hold.ts";
 
 export interface BrokerHooks {
   emit(sessionId: string, event: SessionEvent): void;
