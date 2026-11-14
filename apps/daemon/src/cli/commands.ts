@@ -2,7 +2,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { loadConfig } from "../config.ts";
 import { type Logger, settled } from "../kernel/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
-import { exitWhenClosed } from "./exit.ts";
+import { exitWhenClosed } from "./domain/exit.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 
