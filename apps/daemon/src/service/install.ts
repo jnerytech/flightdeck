@@ -1,6 +1,6 @@
 import { posix, win32 } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import type { PathEnv } from "./user-path.ts";
+import type { PathEnv } from "./domain/user-path.ts";
 
 /** Unit file location, relative to the user's home. */
 export const SYSTEMD_UNIT_PATH = ".config/systemd/user/flightdeckd.service";
