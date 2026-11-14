@@ -19,8 +19,12 @@ import type { Route } from "@/lib/router";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { Meter } from "@/shared/status/index.ts";
+import {
+  hostsRoute,
+  type StatusBarSummary,
+  statusBarSummary,
+} from "./domain/status-bar-summary.ts";
 import { QuotaDetail } from "./quota-detail.tsx";
-import { hostsRoute, type StatusBarSummary, statusBarSummary } from "./status-bar-summary.ts";
 
 /** One button of the bar: its words are the name, the tooltip repeats them, never colour alone. */
 function Item(

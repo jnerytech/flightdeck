@@ -6,7 +6,7 @@ import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { breadcrumb } = await import("../../src/features/shell/crumbs.ts");
+const { breadcrumb } = await import("../../src/features/shell/domain/crumbs.ts");
 
 /**
  * Issue #1551: with no host the screen is "Connect your first host", so its tab and the header's
