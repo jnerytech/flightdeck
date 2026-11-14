@@ -7,7 +7,7 @@ import { ActionButton, IconActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { useLiveElsewhereGuard } from "../sessions/ui.ts";
-import type { TerminalTarget } from "./terminal.ts";
+import type { TerminalTarget } from "./domain/terminal.ts";
 
 /**
  * "Abrir no terminal" for a session, card or project: opens one on this machine, or copies the
