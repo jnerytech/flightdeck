@@ -4,7 +4,7 @@ import {
   hostsRoute,
   statusBarSummary,
   terminalTabCount,
-} from "../../src/features/shell/status-bar-summary.ts";
+} from "../../src/features/shell/domain/status-bar-summary.ts";
 
 type Host = {
   id: string;

@@ -1,4 +1,4 @@
-import { NOT_KEPT, Workspace, type WorkspaceSnapshot } from "@/features/shell/workspace.ts";
+import { NOT_KEPT, Workspace, type WorkspaceSnapshot } from "@/features/shell/domain/workspace.ts";
 import { homeRoute, ROUTE_NAMES, type Route } from "../../lib/router.ts";
 import { type Navigation, type Tab, Tabs } from "../tabs/tabs.ts";
 

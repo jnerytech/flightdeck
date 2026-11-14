@@ -1,7 +1,7 @@
 import type { DepResult, Project } from "@flightdeck/protocol";
 import { z } from "zod";
 import { readStored, validItems } from "@/shared/lib/index.ts";
-import type { Platform } from "../../platform/types.ts";
+import type { Platform } from "../../../platform/types.ts";
 
 export type SetupStepId =
   | "host"

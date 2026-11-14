@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { WORKSPACE_KEY, Workspace } from "../../src/features/shell/workspace.ts";
+import { WORKSPACE_KEY, Workspace } from "../../src/features/shell/domain/workspace.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
 const { AppStore } = await import("../../src/lib/app-store.ts");

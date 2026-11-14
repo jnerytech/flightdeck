@@ -13,8 +13,8 @@ import {
 } from "../../src/demo/boot.ts";
 import { entryPlugin } from "../../src/demo/entry-html.ts";
 import { loadHosts } from "../../src/features/hosts/hosts.ts";
+import { WORKSPACE_KEY, Workspace } from "../../src/features/shell/domain/workspace.ts";
 import { THEME_KEY } from "../../src/features/shell/theme.ts";
-import { WORKSPACE_KEY, Workspace } from "../../src/features/shell/workspace.ts";
 import { LANG_KEY } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
