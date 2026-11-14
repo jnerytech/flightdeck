@@ -9,7 +9,7 @@ import { settle } from "../wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { WHATS_NEW_KEY } = await import("../../src/features/appupdate/whats-new.ts");
+const { WHATS_NEW_KEY } = await import("../../src/features/appupdate/domain/whats-new.ts");
 const { App } = await import("../../src/app/App.tsx");
 const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 const { WhatsNewDialog } = await import("../../src/features/appupdate/whats-new-dialog.tsx");

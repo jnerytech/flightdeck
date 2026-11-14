@@ -1,5 +1,5 @@
-import { APP_VERSION, isNewer } from "../../lib/version.ts";
-import type { Platform } from "../../platform/types.ts";
+import { APP_VERSION, isNewer } from "../../../lib/version.ts";
+import type { Platform } from "../../../platform/types.ts";
 
 /** Where the last version whose notes were opened is kept. */
 export const WHATS_NEW_KEY = "flightdeck.whatsNewSeen";
