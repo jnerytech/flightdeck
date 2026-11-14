@@ -9,8 +9,8 @@ import { mkdir, open, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { TeleportManifest } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
+import { TELEPORT_MAX_BYTES } from "./domain/secrets.ts";
 import { TELEPORT_CHUNK_BYTES, TELEPORT_MAX_LIVE, TELEPORT_TTL_MS } from "./package.ts";
-import { TELEPORT_MAX_BYTES } from "./secrets.ts";
 
 export interface TeleportInboxDeps {
   /** Where received packages live (under the daemon's data dir). */

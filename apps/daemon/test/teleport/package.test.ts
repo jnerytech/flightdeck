@@ -3,12 +3,13 @@ import { mkdir, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import { secretLines } from "../../src/teleport/domain/secrets.ts";
+import { EVENT_LOOP_PACE } from "../../src/teleport/pace.ts";
 import {
   type TeleportDeps,
   TeleportPackages,
   type TeleportSession,
 } from "../../src/teleport/package.ts";
-import { secretLines } from "../../src/teleport/secrets.ts";
 import { poll, tempDir } from "../support/helpers.ts";
 
 /**
@@ -480,9 +481,9 @@ describe("teleport-package: a big transcript does not hold the daemon (#100)", (
     expect([paced, pauses > 5]).toEqual([{ lines: 5, labels: ["token"] }, true]);
   });
 
-  test("with its default pace, a text past one slice is scanned to the end", async () => {
+  test("with the production event-loop pace, a text past one slice is scanned to the end", async () => {
     const big = `${"x".repeat(300 * 1024)}\nkey ${TOKEN}`;
     const scan = (text: string) => (text.includes("ghp_") ? ["token"] : []);
-    expect(await secretLines(big, scan)).toEqual({ lines: 1, labels: ["token"] });
+    expect(await secretLines(big, scan, EVENT_LOOP_PACE)).toEqual({ lines: 1, labels: ["token"] });
   });
 });
