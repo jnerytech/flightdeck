@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { TreeNode } from "../../src/features/projects/domain/project-tree-model.ts";
-import { pickedIn, TREE_CAP, visibleNodes } from "../../src/features/shell/tree-fold.ts";
+import { pickedIn, TREE_CAP, visibleNodes } from "../../src/features/shell/domain/tree-fold.ts";
 import {
   loadTreeFolded,
   saveTreeFolded,
