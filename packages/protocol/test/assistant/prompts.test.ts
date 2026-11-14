@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_PRICING } from "../../../../apps/daemon/src/costs/pricing.ts";
+import { DEFAULT_PRICING } from "../../../../apps/daemon/src/costs/domain/pricing.ts";
 import {
   ASSISTANT_MAX_INPUT,
   type AssistantContextBundle,

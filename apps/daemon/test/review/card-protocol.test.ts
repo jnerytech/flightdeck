@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CardReviewResult, DAEMON_REASONS } from "@flightdeck/protocol";
 import { Costs } from "../../src/costs/costs.ts";
-import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
+import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";

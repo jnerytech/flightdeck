@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { costOf, DEFAULT_PRICING, resolvePricing } from "../../src/costs/pricing.ts";
+import { costOf, DEFAULT_PRICING, resolvePricing } from "../../src/costs/domain/pricing.ts";
 import type { UsageTokens } from "../../src/costs/usage-indexer.ts";
 
 const M = 1_000_000;
