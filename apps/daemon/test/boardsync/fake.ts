@@ -5,7 +5,7 @@ import type {
   ExternalItem,
   PullResult,
   StatusField,
-} from "../../src/boardsync/provider.ts";
+} from "../../src/boardsync/domain/provider.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import type { ContractHarness } from "./contract.ts";
 

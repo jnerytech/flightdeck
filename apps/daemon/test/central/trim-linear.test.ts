@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { stripRemote } from "../../src/central/project-key.ts";
 import { trimEndOf, trimStartOf } from "../../src/kernel/trim.ts";
-import { projectName } from "../../src/names/format.ts";
+import { projectName } from "../../src/names/domain/format.ts";
 import { azText, sanitizeAzArgs } from "../../src/pr/domain/az-text.ts";
 
 /**
