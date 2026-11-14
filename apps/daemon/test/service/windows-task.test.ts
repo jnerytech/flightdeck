@@ -1,11 +1,31 @@
 import { describe, expect, test } from "bun:test";
 import {
+  type ServiceContext,
+  serviceCommand,
   TASK_NAME,
   windowsTaskCreateArgs,
   windowsTaskDeleteArgs,
   windowsTaskQueryArgs,
   windowsTaskXml,
 } from "../../src/service/domain/install.ts";
+
+/** What `serviceCommand` reads back from a task whose `schtasks /Query /XML` answer is `xml`. */
+function readBack(xml: string) {
+  const ctx: ServiceContext = {
+    platform: "win32",
+    home: "C:\\Users\\dev",
+    user: "PC\\dev",
+    command: [],
+    systemRoot: "C:\\Windows",
+    tempDir: "C:\\Temp",
+    dryRun: false,
+    exec: async () => ({ code: 0, stdout: xml }),
+    writeFile: () => {},
+    removeFile: () => {},
+    which: () => null,
+  };
+  return serviceCommand(ctx);
+}
 
 const EXPECTED_XML = `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -102,5 +122,25 @@ describe("tarefa-windows", () => {
     expect(() =>
       windowsTaskXml(["flightdeckd.exe"], { user: "u", systemRoot: "C:\\Windows" }),
     ).toThrow("absolute path");
+  });
+
+  test("an argument with a quote or a trailing backslash survives the task and its read back (#2895)", async () => {
+    const exe = "C:\\Program Files\\fd\\flightdeckd.exe";
+    const options = { user: "PC\\dev", systemRoot: "C:\\Windows" };
+    const trailing = windowsTaskXml([exe], { ...options, config: "C:\\a b\\" });
+    expect(trailing).toContain(
+      '<Arguments>--headless "C:\\Program Files\\fd\\flightdeckd.exe" start --config "C:\\a b\\\\"</Arguments>',
+    );
+    expect(await readBack(trailing)).toEqual({ command: [exe], config: "C:\\a b\\" });
+    const quoted = 'C:\\a "b" c\\d.json';
+    expect(await readBack(windowsTaskXml([exe], { ...options, config: quoted }))).toEqual({
+      command: [exe],
+      config: quoted,
+    });
+    const bare = 'C:\\x\\"y"';
+    expect(await readBack(windowsTaskXml([exe, bare], options))).toEqual({
+      command: [exe, bare],
+      config: null,
+    });
   });
 });
