@@ -6,8 +6,8 @@ import {
   runCommand,
   whichOnPath,
 } from "../kernel/index.ts";
-import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
-import type { CommandRunner } from "./port.ts";
+import { mapSpawnError, sanitizeAzArgs } from "./domain/az-text.ts";
+import type { CommandRunner } from "./domain/port.ts";
 
 /** Runs a CLI looked up on the current PATH (so the tests' fakes win). */
 export async function cli(

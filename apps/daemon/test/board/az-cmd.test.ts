@@ -9,7 +9,7 @@ import {
   azText,
   mapSpawnError,
   sanitizeAzArgs,
-} from "../../src/pr/az-text.ts";
+} from "../../src/pr/domain/az-text.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
