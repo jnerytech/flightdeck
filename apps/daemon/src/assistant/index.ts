@@ -6,5 +6,5 @@
  * `permissions/auto-approve.ts` takes `assistantDir` from `paths.ts` (`service.ts` reaches
  * `permissions/` back through `costs/`).
  */
-export { assistantDir } from "./paths.ts";
+export { assistantDir } from "./domain/paths.ts";
 export type { AssistantService } from "./service.ts";
