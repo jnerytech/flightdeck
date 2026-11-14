@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { BUILD_LOG_BYTES, tail } from "../../src/pr/index.ts";
-import { buildPrompt } from "../../src/watch/fix.ts";
+import { buildPrompt } from "../../src/watch/domain/fix-prompt.ts";
 import type { WatchSettings } from "../../src/watch/settings.ts";
 import { comment, failing } from "../support/watch-helpers.ts";
 

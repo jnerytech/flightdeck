@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FileChange, measureDrift, parseNumstat } from "../../src/watch/domain/drift.ts";
-import { heldSummary } from "../../src/watch/fix.ts";
+import { heldSummary } from "../../src/watch/domain/fix-prompt.ts";
 import { PrWatch } from "../../src/watch/service.ts";
 import { git } from "../support/board-helpers.ts";
 import { cleanups, fixture, work } from "../support/watch-helpers.ts";
