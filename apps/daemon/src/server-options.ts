@@ -69,7 +69,7 @@ import type { SessionPrs } from "./review/session-pr.ts";
 import type { RoiSummarizer } from "./roi/summary.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
-import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import type { OpenCodeInfo } from "./runtime/index.ts";
 import type { SessionManager } from "./sessions/index.ts";
 import type { HistoryImporter, Snippets } from "./snippets/index.ts";
 import type { SnippetUse } from "./snippets/use.ts";
