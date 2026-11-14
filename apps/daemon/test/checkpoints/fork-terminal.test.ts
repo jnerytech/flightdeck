@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { withTurnUuids } from "../../src/checkpoints/domain/turn-uuid.ts";
 import { type SnapshotRow, Snapshots } from "../../src/checkpoints/snapshots.ts";
-import { withTurnUuids } from "../../src/checkpoints/turn-uuid.ts";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
