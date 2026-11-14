@@ -1,5 +1,5 @@
+import { type Prepare, preparePersonas } from "./domain/prepare.ts";
 import { packPersonas } from "./pack.ts";
-import { type Prepare, preparePersonas } from "./prepare.ts";
 import { agentPublisher } from "./publish.ts";
 import { Personas, type PersonasOptions } from "./store.ts";
 
