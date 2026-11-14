@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { claudeVersionProbe } from "../../src/runtime/claude-probe.ts";
+import { claudeVersionProbe } from "../../src/runtime/domain/claude-probe.ts";
 import { type RunningServer, type ServerOptions, startServer } from "../../src/server.ts";
 import { newManager, poll, tempDir } from "../support/helpers.ts";
 

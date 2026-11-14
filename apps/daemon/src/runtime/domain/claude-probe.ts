@@ -1,4 +1,4 @@
-import type { Exec } from "../kernel/index.ts";
+import type { Exec } from "../../kernel/index.ts";
 
 /**
  * Memoized `<claude> --version` probe for `host.info`. Never throws: any failure reports `null`.
