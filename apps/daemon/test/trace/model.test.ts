@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TraceNode } from "@flightdeck/protocol";
-import { buildTrace } from "../../src/trace/model.ts";
+import { buildTrace } from "../../src/trace/domain/model.ts";
 
 const DIR = join(import.meta.dir, "../fixtures/trace");
 const SESSION = "bbbbbbbb-0000-4000-8000-000000000025";
