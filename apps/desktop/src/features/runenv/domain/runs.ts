@@ -1,11 +1,11 @@
 import type { StepRun, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
-import { type T, translator } from "../../i18n/index.ts";
-import { usd } from "../costs/index.ts";
+import { type T, translator } from "../../../i18n/index.ts";
+import { usd } from "../../costs/index.ts";
 
 const PT = translator("pt-BR");
 
 /** How long a step took (or has taken so far), roughly. */
-export function stepDuration(step: StepRun, now = Date.now()): string {
+export function stepDuration(step: StepRun, now: number): string {
   const end = step.endedAt ? Date.parse(step.endedAt) : now;
   const seconds = Math.max(0, Math.round((end - Date.parse(step.startedAt)) / 1000));
   return seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
