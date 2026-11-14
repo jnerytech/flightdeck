@@ -9,8 +9,8 @@ import { assertNoSecretInPr, publishPr, withoutCredentials } from "../board/publ
 import { git } from "../git/index.ts";
 import { assertBranchName, FlightdeckError } from "../kernel/index.ts";
 import type { PrProvider } from "../pr/index.ts";
+import type { ChangesReader } from "./domain/target.ts";
 import type { SessionCommits } from "./session-commit.ts";
-import type { ChangesReader } from "./target.ts";
 
 export interface SessionPrDeps {
   changes: Pick<ChangesReader, "resolve">;

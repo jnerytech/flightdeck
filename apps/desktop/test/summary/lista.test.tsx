@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../../daemon/src/config.ts";
-import { lastTool, requestLine } from "../../../daemon/src/history/session-line.ts";
+import { lastTool, requestLine } from "../../../daemon/src/history/domain/session-line.ts";
 import { poll } from "../../../daemon/test/support/helpers.ts";
 import { userLine, writeTranscript } from "../../../daemon/test/support/history-helpers.ts";
 import { sessionLineText } from "../../src/features/sessions/hub.ts";

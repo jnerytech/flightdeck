@@ -8,7 +8,7 @@ import {
   parseReview,
   REVIEW_SCHEMA,
   reviewPrompt,
-} from "../../src/review/second-opinion.ts";
+} from "../../src/review/domain/second-opinion.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 
 /** Issue #1439: the second-opinion review's prompt, answer, anchoring and frame. */
