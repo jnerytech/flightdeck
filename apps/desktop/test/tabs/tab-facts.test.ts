@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hostColorVar } from "../../src/features/hosts/host-color.ts";
+import { hostColorVar } from "../../src/features/hosts/domain/host-color.ts";
 import { TAB_ICONS, tabFacts, tabTitle } from "../../src/features/tabs/tab-facts.ts";
 import type { Tab } from "../../src/features/tabs/tabs.ts";
 import { translator } from "../../src/i18n/index.ts";

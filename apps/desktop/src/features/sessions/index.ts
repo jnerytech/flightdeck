@@ -26,6 +26,7 @@ export {
   SessionViews,
   VIEW_LABEL,
 } from "./domain/session-views.ts";
+export { inputSummary } from "./domain/tool-input.ts";
 export { messageParts } from "./domain/tool-line.ts";
 export { type Turn, turnsOf } from "./domain/turns.ts";
 export { ExternalSessionsSlice } from "./external.ts";
@@ -84,7 +85,6 @@ export {
   tileColumns,
 } from "./tiles.ts";
 export { formatMs } from "./timing.ts";
-export { inputSummary } from "./tool-input.ts";
 export { useDraft } from "./use-draft.ts";
 export { useFollow } from "./use-follow.ts";
 export { useSessionCost } from "./use-session-cost.ts";
