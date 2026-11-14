@@ -6,7 +6,7 @@ import type { Prepare } from "../personas/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { CheckRunner } from "./check-runner.ts";
 import type { CardsRaised, Finding } from "./domain/findings.ts";
-import * as col from "./row-json.ts";
+import * as col from "./domain/row-json.ts";
 
 /**
  * The workflow engine's ports and its rows (#1595): what it needs from the board and the host,
