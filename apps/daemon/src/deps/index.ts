@@ -4,5 +4,5 @@
  * Another domain imports from here, never a file inside.
  */
 export type { DepsEnv } from "./deps.ts";
-export { doctorExitCode, formatDeps } from "./format.ts";
+export { doctorExitCode, formatDeps } from "./domain/format.ts";
 export { createHostChecks } from "./wiring.ts";
