@@ -1,7 +1,7 @@
 /**
  * The cleanup rules of the worktrees domain (#1601): how git's listing reads, which worktrees are
- * Flightdeck's, what a removal would lose and what blocks it. Pure: git's answers and the clock
- * come in as arguments.
+ * Flightdeck's, what a removal would lose and what blocks it. No I/O of its own: git's answers and
+ * the clock come in as arguments.
  */
 import { resolve } from "node:path";
 import type { BoardColumn, PrState, WorktreeBlocker } from "@flightdeck/protocol";
@@ -104,9 +104,12 @@ export function cannotTell(facts: {
   );
 }
 
+/** What runs in a worktree folder: a live session, a process of the card's run, or nothing. */
+export type FolderUse = "live_session" | "running" | null;
+
 /** What stops a removal, in the order the app shows it. */
 export function blockersOf(facts: {
-  busy: "live_session" | "running" | null;
+  busy: FolderUse;
   dirty: boolean;
   hidden: boolean;
   ignoredFiles: boolean;

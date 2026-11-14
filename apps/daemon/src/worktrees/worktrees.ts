@@ -11,6 +11,7 @@ import {
   cardFields,
   credentialName,
   DAY_MS,
+  type FolderUse,
   finishedCard,
   hidesChanges,
   IDLE_DAYS,
@@ -34,7 +35,7 @@ export interface WorktreesOptions {
   projects(): WorktreeProject[];
   cards(projectId: string): WorktreeCard[];
   /** Whether anything runs in that folder: a live session, or a process of the card's run. */
-  busy(path: string, cardId: string | null): "live_session" | "running" | null;
+  busy(path: string, cardId: string | null): FolderUse;
   /** The card (if any) no longer has this worktree, and no longer has its branch when `clearBranch`. */
   detach(cardId: string | null, path: string, clearBranch: boolean): void;
   git(repo: string, ...args: string[]): Promise<CommandResult>;
