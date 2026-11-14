@@ -11,6 +11,7 @@ import { dirname, isAbsolute, join } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { FlightdeckError, isInside } from "../kernel/index.ts";
+import { frontmatter } from "./domain/frontmatter.ts";
 
 export type AgentCfgKind = "claudemd" | "agent" | "skill";
 type Origin = "project" | "user";
@@ -68,20 +69,6 @@ const invalid = (message: string, reason: string, params?: Params) =>
   new FlightdeckError("invalid_state", message, reason, params);
 const bad = (message: string, reason: string, params?: Params) =>
   new FlightdeckError("bad_request", message, reason, params);
-
-/**
- * The YAML between the leading `---` lines; null when there is none or it does not parse. YAML
- * that is not a mapping (empty, a list, a bare text) has no `name`, so it is refused all the same.
- */
-export function frontmatter(text: string): Record<string, unknown> | null {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
-  if (!match) return null;
-  try {
-    return Bun.YAML.parse(match[1] as string) as Record<string, unknown> | null;
-  } catch {
-    return null;
-  }
-}
 
 const filled = (value: unknown) => typeof value === "string" && value.trim() !== "";
 
