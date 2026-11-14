@@ -49,7 +49,7 @@ import {
 } from "../features/hosts/index.ts";
 import type { InboxEntry } from "../features/inbox/index.ts";
 import { initialMessagingState, type MessagingSliceState } from "../features/messaging/index.ts";
-import { loadQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
+import { loadQuietSnooze } from "../features/needs-you/domain/quiet-snooze.ts";
 import { initialPersonasState, type PersonasSliceState } from "../features/personas/index.ts";
 import type { WorktreeFilter } from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSliceState } from "../features/quota/index.ts";

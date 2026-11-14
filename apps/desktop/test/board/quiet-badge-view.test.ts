@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { quietBadge } from "../../src/features/board/quiet-badge-view.ts";
-import type { QuietAlert } from "../../src/features/needs-you/quiet.ts";
+import type { QuietAlert } from "../../src/features/needs-you/domain/quiet.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 const t = translator("en");
