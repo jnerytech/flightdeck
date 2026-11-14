@@ -5,7 +5,13 @@
  */
 import type { SessionIdentity } from "@flightdeck/protocol";
 import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
-import { listSessions, notifyWhenIdle, readSession, sendToSession, teamStatus } from "./tools.ts";
+import {
+  listSessions,
+  notifyWhenIdle,
+  readSession,
+  sendToSession,
+  teamStatus,
+} from "./domain/tools.ts";
 
 export interface MessageCliArgs {
   action: "list" | "send" | "idle" | "read" | "team";

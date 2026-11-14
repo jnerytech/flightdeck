@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionIdentity } from "@flightdeck/protocol";
-import { type Caller, teamAddMember, teamRemoveMember } from "../../src/messaging/tools.ts";
+import { type Caller, teamAddMember, teamRemoveMember } from "../../src/messaging/domain/tools.ts";
 
 const as: SessionIdentity = { session: "s1" };
 

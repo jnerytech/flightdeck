@@ -1,5 +1,5 @@
-import { FlightdeckError } from "../kernel/index.ts";
-import type { RiskLevel } from "./domain/risk.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
+import type { RiskLevel } from "./risk.ts";
 
 /**
  * An allow of a high-risk request carries the proof that the Approve was held (`held: true`,
