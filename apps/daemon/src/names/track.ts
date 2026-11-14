@@ -3,7 +3,7 @@
  * way it was born (the app, a terminal, a card, a team, a plain claude seen by the hooks).
  */
 import type { ExternalSession, SessionSummary, SessionTeam } from "@flightdeck/protocol";
-import { projectName } from "./format.ts";
+import { projectName } from "./domain/format.ts";
 import type { Names } from "./names.ts";
 
 export interface TrackOptions {

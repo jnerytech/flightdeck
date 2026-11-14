@@ -175,7 +175,7 @@ const MSGS3_FILES = [
   "teams/teams.ts",
   "service/install.ts",
   "names/names.ts",
-  "names/format.ts",
+  "names/domain/format.ts",
   "names/track.ts",
   "messaging/domain/policy.ts",
   "board/board.ts",

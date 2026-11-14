@@ -6,7 +6,7 @@
 import type { Database } from "bun:sqlite";
 import type { SessionTeam } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import { aliasName, displayName, GENERAL, NO_PROJECT, slug } from "./format.ts";
+import { aliasName, displayName, GENERAL, NO_PROJECT, slug } from "./domain/format.ts";
 
 export interface SessionName {
   id: string;
