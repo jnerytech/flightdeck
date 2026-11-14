@@ -5,7 +5,7 @@
  * app sends them again, and until then the safe defaults decide.
  */
 import { FlightdeckError } from "../kernel/index.ts";
-import { type Rule, validateRules } from "./rules.ts";
+import { type Rule, validateRules } from "./domain/rules.ts";
 
 interface Held {
   tags: string[];

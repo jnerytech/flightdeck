@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { decideRequest, requesterOf, systemEnv } from "../../src/vault/requests.ts";
 import {
   type Day,
   evaluate,
@@ -7,7 +6,8 @@ import {
   type RulesEnv,
   type UseContext,
   validateRules,
-} from "../../src/vault/rules.ts";
+} from "../../src/vault/domain/rules.ts";
+import { decideRequest, requesterOf, systemEnv } from "../../src/vault/requests.ts";
 
 /** Wednesday 2026-10-28, 12:00 in a UTC-3 PC. */
 const NOW = Date.UTC(2026, 9, 28, 15, 0, 0);
