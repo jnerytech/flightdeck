@@ -35,8 +35,7 @@ import {
 import { SetupProbes, SetupSettings } from "../../features/setup/index.ts";
 import { type SshSlice, wireSsh } from "../../features/ssh/index.ts";
 import { TeamsSlice } from "../../features/teams/store.ts";
-import type { TerminalsSlice } from "../../features/terminal/index.ts";
-import { isLocalUrl } from "../../features/terminal/terminal.ts";
+import { isLocalUrl, type TerminalsSlice } from "../../features/terminal/index.ts";
 import type {
   VaultApprovalsSlice,
   VaultRulesSlice,
