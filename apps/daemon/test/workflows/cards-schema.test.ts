@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkCommands, parseWorkflow } from "../../src/workflows/schema.ts";
+import { checkCommands, parseWorkflow } from "../../src/workflows/domain/schema.ts";
 
 const FILE = (steps: string) => `inputs: []\nsteps:\n${steps}`;
 const SCAN = `  - id: scan

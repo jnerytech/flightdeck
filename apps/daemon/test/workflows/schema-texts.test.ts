@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { parseWorkflow } from "../../src/workflows/schema.ts";
+import { parseWorkflow } from "../../src/workflows/domain/schema.ts";
 
 const errorsOf = (source: string) => parseWorkflow(source).errors;
 

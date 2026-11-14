@@ -15,7 +15,7 @@ import { startServer } from "../../src/server.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { parseWorkflow } from "../../src/workflows/schema.ts";
+import { parseWorkflow } from "../../src/workflows/domain/schema.ts";
 import { cardWhen, gitRepo } from "../support/board-helpers.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";
 import { newManager, poll, tempDir, workspace } from "../support/helpers.ts";
