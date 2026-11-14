@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Automations } from "../../src/automations/automations.ts";
 import { Board } from "../../src/board/board.ts";
-import { BoardSyncLoop } from "../../src/boardsync/loop.ts";
+import { BoardSyncLoop } from "../../src/boardsync/domain/loop.ts";
 import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { startDaemon } from "../../src/main.ts";

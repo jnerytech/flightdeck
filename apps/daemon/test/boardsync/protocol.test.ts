@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import * as protocol from "@flightdeck/protocol";
+import { BoardSyncLoop } from "../../src/boardsync/domain/loop.ts";
 import { BoardSync } from "../../src/boardsync/engine.ts";
-import { BoardSyncLoop } from "../../src/boardsync/loop.ts";
 import { BoardSyncService } from "../../src/boardsync/service.ts";
 import { BoardSyncStore } from "../../src/boardsync/store.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";

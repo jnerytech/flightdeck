@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { SyncReport } from "../../src/boardsync/engine.ts";
+import type { SyncReport } from "../../src/boardsync/domain/report.ts";
 import { UNTRUSTED_MARK } from "../../src/kernel/index.ts";
 import { item } from "./contract.ts";
 import { syncSetup } from "./setup.ts";

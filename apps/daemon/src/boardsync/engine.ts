@@ -10,23 +10,8 @@ import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { BoardLink } from "./domain/links.ts";
 import { columnOf, optionFor } from "./domain/map.ts";
 import type { BoardProvider, ExternalItem } from "./domain/provider.ts";
+import type { SyncReport } from "./domain/report.ts";
 import type { BoardSyncStore, CardExternal } from "./store.ts";
-
-export interface SyncReport {
-  created: number;
-  moved: number;
-  updated: number;
-  conflicts: number;
-  /** Items with a status the map does not know. */
-  unmapped: number;
-  gone: number;
-  /** Moves not made because the card is running. */
-  skipped: number;
-  pushed: number;
-  redacted: number;
-  truncated: boolean;
-  notModified: boolean;
-}
 
 export interface BoardSyncOptions {
   board: Board;

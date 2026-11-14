@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
+import { BoardSyncLoop } from "./domain/loop.ts";
 import { BoardSync, type BoardSyncOptions } from "./engine.ts";
 import { GithubBoards, type GithubBoardsOptions } from "./github.ts";
-import { BoardSyncLoop } from "./loop.ts";
 import { BoardSyncService } from "./service.ts";
 import { BoardSyncStore } from "./store.ts";
 
@@ -25,6 +25,7 @@ export function createBoardSync({ db, board, autoApprove, gh }: BoardSyncDeps) {
     engine,
     store,
     timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
+    clock: Date.now,
   });
   return { service: new BoardSyncService({ board, store, provider, engine, loop }), loop };
 }
