@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Server } from "lucide-react";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
-import { hostColorVar } from "../../src/features/hosts/host-color.ts";
+import { hostColorVar } from "../../src/features/hosts/domain/host-color.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
