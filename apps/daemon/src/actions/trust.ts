@@ -8,14 +8,8 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import type { Fingerprint } from "./domain/fingerprint.ts";
 import type { ActionDef } from "./domain/schema.ts";
-
-export interface Fingerprint {
-  /** sha256 of what the action declares (not its name nor its description). */
-  declaration: string;
-  /** Path (relative to the project, with `/`) → sha256 of the file's content. */
-  files: Record<string, string>;
-}
 
 const sha = (data: string | Buffer) => createHash("sha256").update(data).digest("hex");
 
