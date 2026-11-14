@@ -1,7 +1,7 @@
 import type { CommandPayload } from "@flightdeck/protocol";
-import { FlightdeckError } from "../kernel/index.ts";
-import type { Board } from "./board.ts";
-import type { Card } from "./types.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
+import type { Board } from "../board.ts";
+import type { Card } from "../types.ts";
 
 export interface ManageDeps {
   board: Board;
