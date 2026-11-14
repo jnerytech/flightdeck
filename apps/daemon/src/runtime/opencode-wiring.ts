@@ -6,8 +6,8 @@ import { join } from "node:path";
 import type { Config, RuntimeKind } from "../config.ts";
 import { buildChildEnv } from "../kernel/index.ts";
 import type { FlightdeckMcpServer } from "./domain/flightdeck-mcp.ts";
+import { VERIFIED_OPENCODE_VERSION } from "./domain/opencode-config.ts";
 import { FakeRuntime } from "./fake-runtime.ts";
-import { VERIFIED_OPENCODE_VERSION } from "./opencode-config.ts";
 import {
   discoverOpenCode,
   fileExists,

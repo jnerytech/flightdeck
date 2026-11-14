@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
-import { opencodeConfig, opencodeRules } from "../../src/runtime/opencode-config.ts";
+import { opencodeConfig, opencodeRules } from "../../src/runtime/domain/opencode-config.ts";
 import {
   maskResource,
   OpenCodePreflight,

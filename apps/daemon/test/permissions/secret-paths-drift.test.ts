@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { credential } from "../../src/permissions/domain/risk.ts";
-import { CREDENTIAL_READS } from "../../src/runtime/opencode-config.ts";
+import { CREDENTIAL_READS } from "../../src/runtime/domain/opencode-config.ts";
 
 /** An OpenCode glob as a regular expression: `*` stands for any text, slashes included. */
 const matches = (glob: string, path: string) =>
