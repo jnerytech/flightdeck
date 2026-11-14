@@ -1,8 +1,34 @@
 import type { Database } from "bun:sqlite";
 import { inSequence } from "@flightdeck/protocol";
-import { type Rev, refArg } from "../kernel/index.ts";
-import { ConflictRadar, radarGit } from "./conflict-radar.ts";
+import { gitLimitedFor } from "../git/index.ts";
+import { type CommandResult, type Rev, refArg } from "../kernel/index.ts";
+import { ConflictRadar, type RadarGit } from "./domain/conflict-radar.ts";
 import type { Card, MayConflict, Project } from "./types.ts";
+
+type LimitedGit = (
+  cwd: string,
+  limit: number,
+  args: string[],
+  timeoutMs?: number,
+) => Promise<CommandResult & { truncated: boolean }>;
+
+/** Git without its fsmonitor hook (a repo's config could name a program), with plain path names. */
+const GIT_SAFE = ["-c", "core.fsmonitor=false", "-c", "core.quotePath=false"];
+const NUL = 0;
+
+/** The radar's git: output capped, a time limit; a read that was cut off or timed out is a failure. */
+export function radarGit(
+  limit = 1024 * 1024,
+  timeoutMs = 10_000,
+  run: LimitedGit = (cwd, max, args, ms) =>
+    gitLimitedFor(cwd, max, args, ms, undefined, { separator: NUL }),
+): RadarGit {
+  return async (cwd, ...args) => {
+    // git-arg: the radar's callers pass fixed options and a Rev checked by refArg
+    const result = await run(cwd, limit, [...GIT_SAFE, ...args], timeoutMs);
+    return result.truncated || result.timedOut ? { ...result, code: result.code || 1 } : result;
+  };
+}
 
 /** What the radar's feed needs of the board (issue #1523); late-bound, so it never imports `board.ts`. */
 export interface RadarFeedPort {
