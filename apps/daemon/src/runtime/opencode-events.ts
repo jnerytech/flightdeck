@@ -5,7 +5,7 @@
  * Child sessions' traffic (`_meta["opencode/child-session"]`, a `<child>:` call id) is left out.
  */
 import { type MappedTool, mapOpenCodeTool } from "./domain/opencode-tools.ts";
-import { truncateToolResult } from "./tool-result.ts";
+import { truncateToolResult } from "./domain/tool-result.ts";
 import type { RuntimeEvent } from "./types.ts";
 
 export interface AcpToolCall {
