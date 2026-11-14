@@ -6,7 +6,7 @@
  */
 
 export type { BoundedCheckRunner } from "./check-runner.ts";
-export { MAX_VALUE } from "./interpolate.ts";
-export { referencesIn, replaceReferences } from "./references.ts";
+export { MAX_VALUE } from "./domain/interpolate.ts";
+export { referencesIn, replaceReferences } from "./domain/references.ts";
 export { hashOf } from "./repo.ts";
 export { workflowTemplates } from "./templates.ts";

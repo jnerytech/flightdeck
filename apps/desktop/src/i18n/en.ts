@@ -26,7 +26,7 @@ import { telemetry } from "./en/telemetry.ts";
 import { terminal } from "./en/terminal.ts";
 import { vault } from "./en/vault.ts";
 import { watch } from "./en/watch.ts";
-import type { Dictionary } from "./index.ts";
+import type { Dictionary } from "./types.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {

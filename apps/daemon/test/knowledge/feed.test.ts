@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { KnowledgeEntry } from "@flightdeck/protocol";
-import { FEED_MAX_BYTES, feedIndex } from "../../src/knowledge/feed.ts";
+import { FEED_MAX_BYTES, feedIndex } from "../../src/knowledge/domain/feed.ts";
 
 const entry = (
   path: string,

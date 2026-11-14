@@ -4,8 +4,8 @@
  */
 import type { Database } from "bun:sqlite";
 import type { MessageInfo, MessageKind, RelayMessage } from "@flightdeck/protocol";
-import { addressParts, type History, type Party } from "./policy.ts";
-import { relayOf } from "./relay.ts";
+import { addressParts, type History, type Party } from "./domain/policy.ts";
+import { relayOf } from "./domain/relay.ts";
 
 /** A row of `session_messages`. */
 export interface MessageRow {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { KnowledgeEntry } from "@flightdeck/protocol";
-import { feedIndex } from "../../src/knowledge/feed.ts";
+import { feedIndex } from "../../src/knowledge/domain/feed.ts";
 import { withStatus } from "../../src/knowledge/status.ts";
 
 /** #197: Sonar S5843 and S5869 on two knowledge patterns. What each answers, pinned before it was rewritten. */

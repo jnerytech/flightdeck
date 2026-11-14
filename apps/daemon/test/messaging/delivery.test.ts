@@ -5,7 +5,7 @@ import {
   formatSessionMessage,
   formatSystemMessage,
   UNTRUSTED_MARK,
-} from "../../src/messaging/header.ts";
+} from "../../src/messaging/domain/header.ts";
 import type { MessagingFrame } from "../../src/messaging/messages.ts";
 import {
   failure,
