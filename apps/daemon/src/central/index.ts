@@ -5,11 +5,10 @@
 
 export { type Central, messageExternal } from "./central.ts";
 export { startChannel } from "./channel.ts";
+export type { HooksStatus, HookTarget } from "./domain/hook-entries.ts";
 export type { ExternalSessions } from "./external.ts";
 export { sendSessionStart } from "./hook-command.ts";
 export {
-  type HooksStatus,
-  type HookTarget,
   hooksStatus,
   hookTarget,
   installHooks,

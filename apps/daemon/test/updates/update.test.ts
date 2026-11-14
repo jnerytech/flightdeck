@@ -13,7 +13,8 @@ import {
   assertBinaryUntouched,
   installBinaryGuard,
 } from "../../../../scripts/test/binary-guard.ts";
-import { hookEntries, installHooks } from "../../src/central/hooks-install.ts";
+import { hookEntries } from "../../src/central/domain/hook-entries.ts";
+import { installHooks } from "../../src/central/hooks-install.ts";
 import { Config } from "../../src/config.ts";
 import { acquireLock, readLockPid } from "../../src/kernel/lock.ts";
 import { runCli } from "../../src/main.ts";
