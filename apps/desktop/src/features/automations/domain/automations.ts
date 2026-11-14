@@ -1,5 +1,5 @@
 import type { Automation, AutomationAction, AutomationTrigger } from "@flightdeck/protocol";
-import type { Key, T } from "../../i18n/index.ts";
+import type { Key, T } from "../../../i18n/index.ts";
 
 export type TriggerType = AutomationTrigger["type"];
 export type ActionType = AutomationAction["type"];
