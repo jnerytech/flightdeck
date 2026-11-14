@@ -1,7 +1,7 @@
 import type { ProjectLoad } from "@flightdeck/protocol";
 import type { AppStore } from "@/lib/app-store";
 import { Panel, Stack } from "@/shared/layout/index.ts";
-import { type HarnessItem, harnessParts } from "./harness.ts";
+import { type HarnessItem, harnessParts } from "./domain/harness.ts";
 import { HarnessSetup, type HarnessSetupProps } from "./harness-setup.tsx";
 import { HarnessShare, type HarnessShareProps } from "./harness-share.tsx";
 
