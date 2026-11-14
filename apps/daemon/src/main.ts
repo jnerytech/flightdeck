@@ -119,7 +119,8 @@ async function createRuntime(
   claudePath?: string,
   mcpServer?: FlightdeckMcpServer,
 ): Promise<CreatedRuntime> {
-  if (kind === "fake") return { runtime: new FakeRuntime(), accountReaders: demoAccountReaders() };
+  if (kind === "fake")
+    return { runtime: new FakeRuntime(), accountReaders: demoAccountReaders(Date.now) };
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
   const runtime = new ClaudeSdkRuntime({
     ...(claudePath ? { claudePath } : {}),

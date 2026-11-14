@@ -1,7 +1,7 @@
-import type { AccountReaders } from "./readers.ts";
+import type { AccountReaders } from "./readings.ts";
 
 /** The account the fake runtime (`--runtime fake`, the demo) answers: fixed, and nobody's. */
-export function demoAccountReaders(now: () => number = Date.now): AccountReaders {
+export function demoAccountReaders(now: () => number): AccountReaders {
   return {
     status: () =>
       Promise.resolve({
