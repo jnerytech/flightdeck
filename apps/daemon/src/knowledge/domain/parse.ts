@@ -3,7 +3,7 @@ import {
   KnowledgeStatus as Statuses,
   KnowledgeType as Types,
 } from "@flightdeck/protocol";
-import { frontmatter } from "../agentcfg/index.ts";
+import { frontmatter } from "../../agentcfg/index.ts";
 
 /** What one library document says about itself (issue #76). */
 export interface ParsedKnowledge {
