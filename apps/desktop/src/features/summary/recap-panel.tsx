@@ -11,7 +11,7 @@ import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { usd } from "../costs/index.ts";
-import { recapPreview } from "./recap-preview.ts";
+import { recapPreview } from "./domain/recap-preview.ts";
 
 const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
