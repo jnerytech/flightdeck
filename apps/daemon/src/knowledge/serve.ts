@@ -1,6 +1,6 @@
 import type { KnowledgeIndexResult } from "@flightdeck/protocol";
 import { rootNames } from "../kernel/index.ts";
-import { feedIndex } from "./feed.ts";
+import { feedIndex } from "./domain/feed.ts";
 import { listKnowledge } from "./list.ts";
 import { offFolder } from "./switch.ts";
 
