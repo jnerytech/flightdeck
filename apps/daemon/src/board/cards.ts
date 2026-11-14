@@ -10,7 +10,7 @@ import {
   type UnblockWhen,
 } from "@flightdeck/protocol";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
-import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
+import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/index.ts";
 import { parseCardTemplates } from "./domain/card-templates.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import type { TemplateIgnored, TemplateName } from "./spec-template.ts";
