@@ -771,17 +771,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/runenv/config.ts",
-    "to": "apps/daemon/src/workflows/repo.ts",
-    "unresolvedTo": "../workflows/repo.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
     "to": "apps/daemon/src/costs/usage-indexer.ts",
     "unresolvedTo": "../costs/usage-indexer.ts",
@@ -818,17 +807,6 @@
     "from": "apps/daemon/src/server/handlers/project.ts",
     "to": "apps/daemon/src/board/pr-provider.ts",
     "unresolvedTo": "../../board/pr-provider.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/server/handlers/runs.ts",
-    "to": "apps/daemon/src/workflows/templates.ts",
-    "unresolvedTo": "../../workflows/templates.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -925,17 +903,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/watch/check-run.ts",
-    "to": "apps/daemon/src/workflows/check-runner.ts",
-    "unresolvedTo": "../workflows/check-runner.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/watch/fix.ts",
     "to": "apps/daemon/src/board/board.ts",
     "unresolvedTo": "../board/board.ts",
@@ -962,28 +929,6 @@
     "to": "apps/daemon/src/board/types.ts",
     "unresolvedTo": "../board/types.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/watch/fix.ts",
-    "to": "apps/daemon/src/workflows/check-runner.ts",
-    "unresolvedTo": "../workflows/check-runner.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/watch/fix.ts",
-    "to": "apps/daemon/src/workflows/interpolate.ts",
-    "unresolvedTo": "../workflows/interpolate.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"

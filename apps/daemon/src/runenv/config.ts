@@ -4,8 +4,7 @@ import { type core, z } from "zod";
 import { must } from "../board/worktree.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
-import { referencesIn, replaceReferences } from "../workflows/index.ts";
-import { hashOf } from "../workflows/repo.ts";
+import { hashOf, referencesIn, replaceReferences } from "../workflows/index.ts";
 
 /** Where a project's run environment is declared, read from the base branch only. */
 export const RUN_CONFIG_PATH = ".flightdeck/run.yaml";
