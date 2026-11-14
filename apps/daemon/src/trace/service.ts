@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import type { SecretScanner, SessionTrace, TraceExport, TraceNode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { TelemetryStore } from "../telemetry/index.ts";
-import { buildTrace } from "./model.ts";
+import { buildTrace } from "./domain/model.ts";
 
 export interface TraceServiceOptions {
   db: Database;
