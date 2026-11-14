@@ -1,7 +1,11 @@
 import type { HostInfoResult } from "@flightdeck/protocol";
 import type { AppKernel, HostCommandType } from "../../lib/kernel.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { AssistantController, type AssistantControllerDeps, type HostAnswer } from "./assistant.ts";
+import {
+  AssistantController,
+  type AssistantControllerDeps,
+  type HostAnswer,
+} from "./domain/assistant.ts";
 
 /** The part of the app state the assistant reads: the hosts it may ask, the vault's names. */
 interface AssistantState {

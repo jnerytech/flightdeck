@@ -13,7 +13,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { hostsWith } from "@/lib/version";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { NativeSelect, Panel } from "@/shared/layout/index.ts";
-import { confirmHost, modelFor, needsHostConfirm, profileFor } from "./assistant-prefs.ts";
+import { confirmHost, modelFor, needsHostConfirm, profileFor } from "./domain/assistant-prefs.ts";
 import { KeyField } from "./key-field.tsx";
 import { ModelPicker } from "./model-picker.tsx";
 

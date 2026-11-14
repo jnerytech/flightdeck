@@ -1,10 +1,10 @@
 import { type AssistantKind, type CommitSource, KIND_SPECS } from "@flightdeck/protocol";
 import type * as React from "react";
 import { useCallback, useEffect, useReducer, useRef, useSyncExternalStore } from "react";
-import type { AssistantController } from "./assistant.ts";
-import type { ResolvedProvider } from "./assistant-prefs.ts";
-import { failureOf } from "./refusal-text.ts";
-import { type WandState, wandReduce } from "./wand-state.ts";
+import type { AssistantController } from "./domain/assistant.ts";
+import type { ResolvedProvider } from "./domain/assistant-prefs.ts";
+import { failureOf } from "./domain/refusal-text.ts";
+import { type WandState, wandReduce } from "./domain/wand-state.ts";
 
 /** What a field gives the wand: the assistant, the kind of text, whose host it is, and where "no provider" goes. */
 export interface WandBinding {
