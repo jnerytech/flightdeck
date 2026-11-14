@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SshTarget, SshTestResult, TerminalInfo } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { envInput, remoteCommand } from "../actions/ssh-command.ts";
+import { envInput, remoteCommand } from "../actions/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
 import type { TerminalManager } from "../terminal/index.ts";
