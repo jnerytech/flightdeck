@@ -2,8 +2,8 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
+import { trackNames } from "../../src/names/domain/track.ts";
 import { Names } from "../../src/names/names.ts";
-import { trackNames } from "../../src/names/track.ts";
 import { Teams } from "../../src/teams/teams.ts";
 import { newBoard, whenChanged } from "../support/board-helpers.ts";
 
