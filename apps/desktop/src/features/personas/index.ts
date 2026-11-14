@@ -5,8 +5,8 @@
  * chunk, and exporting it here would pull it into the main bundle.
  */
 
-export { takesEffort } from "./effort.ts";
-export { type AppPersona, GlobalPersonas, personaInput } from "./global-personas.ts";
+export { takesEffort } from "./domain/effort.ts";
+export { type AppPersona, GlobalPersonas, personaInput } from "./domain/global-personas.ts";
 export type { PermissionChoice } from "./permission-select.tsx";
 export {
   initialPersonasState,

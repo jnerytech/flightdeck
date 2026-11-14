@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { breadcrumb } from "../../src/features/shell/crumbs.ts";
-import { activeNav } from "../../src/features/shell/nav-active.ts";
+import { breadcrumb } from "../../src/features/shell/domain/crumbs.ts";
+import { activeNav } from "../../src/features/shell/domain/nav-active.ts";
 import { tabKind } from "../../src/features/tabs/domain/tab-badge.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";

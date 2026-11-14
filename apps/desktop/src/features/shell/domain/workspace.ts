@@ -1,5 +1,5 @@
 import { homeRoute, ROUTE_NAMES, type Route } from "@/lib/router.ts";
-import { type Navigation, type Tab, Tabs } from "../tabs/tabs.ts";
+import { type Navigation, type Tab, Tabs } from "../../tabs/tabs.ts";
 
 /** What is kept of the window between starts: the tabs' screens, not their histories. */
 export interface WorkspaceSnapshot {

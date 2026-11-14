@@ -9,7 +9,7 @@ const { AccountFooter } = await import("../../src/features/shell/account-footer.
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 const { App } = await import("../../src/app/App.tsx");
-const { footAccount } = await import("../../src/features/shell/foot-account.ts");
+const { footAccount } = await import("../../src/features/shell/domain/foot-account.ts");
 const { APP_VERSION } = await import("../../src/lib/version.ts");
 
 setDefaultTimeout(30_000);

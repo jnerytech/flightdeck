@@ -7,7 +7,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Form, FormActions } from "@/shared/layout/index.ts";
-import { type AppPersona, personaInput } from "./global-personas.ts";
+import { type AppPersona, personaInput } from "./domain/global-personas.ts";
 import { MODELS } from "./model-select.tsx";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";

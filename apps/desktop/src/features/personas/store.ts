@@ -1,6 +1,6 @@
 import type { CommandResults, PersonaRef } from "@flightdeck/protocol";
 import type { Platform } from "../../platform/types.ts";
-import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
+import { type AppPersona, GlobalPersonas } from "./domain/global-personas.ts";
 
 /** The personas' part of the app's state (#1596): the hosts' lists, read for the pickers. */
 export interface PersonasSliceState {

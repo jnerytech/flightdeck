@@ -112,8 +112,8 @@
   {
     "type": "dependency",
     "from": "apps/desktop/src/features/hosts/host-tabs.ts",
-    "to": "apps/desktop/src/features/shell/workspace.ts",
-    "unresolvedTo": "@/features/shell/workspace.ts",
+    "to": "apps/desktop/src/features/shell/domain/workspace.ts",
+    "unresolvedTo": "@/features/shell/domain/workspace.ts",
     "dependencyTypes": ["undetermined", "import"],
     "rule": {
       "severity": "error",
@@ -276,9 +276,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/shell/nav-active.ts",
+    "from": "apps/desktop/src/features/shell/domain/nav-active.ts",
     "to": "apps/desktop/src/features/tabs/domain/tab-badge.ts",
-    "unresolvedTo": "../tabs/domain/tab-badge.ts",
+    "unresolvedTo": "../../tabs/domain/tab-badge.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -298,9 +298,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/shell/workspace.ts",
+    "from": "apps/desktop/src/features/shell/domain/workspace.ts",
     "to": "apps/desktop/src/features/tabs/tabs.ts",
-    "unresolvedTo": "../tabs/tabs.ts",
+    "unresolvedTo": "../../tabs/tabs.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -346,17 +346,6 @@
     "to": "apps/desktop/src/features/files/file-viewer.tsx",
     "unresolvedTo": "../files/file-viewer.tsx",
     "dependencyTypes": ["local", "dynamic-import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/desktop/src/features/tray/tray.ts",
-    "to": "apps/desktop/src/features/sessions/pending-text.ts",
-    "unresolvedTo": "../sessions/pending-text.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "desktop-no-deep-cross-domain"

@@ -1,6 +1,6 @@
 import type { CommandPayload, CommandResults, Project } from "@flightdeck/protocol";
 import { hasFeature } from "../../lib/version.ts";
-import { probeAfter, type SetupProbe } from "./setup-steps.ts";
+import { probeAfter, type SetupProbe } from "./domain/setup-steps.ts";
 
 /** The requests a look at a host makes for the setup checklist. */
 type ProbeRequest = "hooks.status" | "github.status" | "project.list";

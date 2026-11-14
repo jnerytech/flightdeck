@@ -5,7 +5,7 @@ import {
   issueLabel,
   issueNumber,
   issueUrl,
-} from "../../src/features/issues/issues.ts";
+} from "../../src/features/issues/domain/issues.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { ghIssue, ghRules, issuesDaemon } from "../issues-fixtures.ts";

@@ -1,6 +1,6 @@
 import type { Route } from "@/lib/router.ts";
-import { tabKind } from "../tabs/domain/tab-badge.ts";
-import type { NavKey } from "./nav-icons.ts";
+import { tabKind } from "../../tabs/domain/tab-badge.ts";
+import type { NavKey } from "../nav-icons.ts";
 
 /** The sidebar item a route belongs to, so the bar can mark where the user is. */
 export function activeNav(route: Route): NavKey | null {

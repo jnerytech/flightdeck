@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { TRAY_MENU_DELAY_MS } from "../../src/features/tray/domain/tray.ts";
 import { TraySlice } from "../../src/features/tray/index.ts";
-import { TRAY_MENU_DELAY_MS } from "../../src/features/tray/tray.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { PendingItem } from "../../src/lib/app-store.ts";
 import type { TrayAction } from "../../src/platform/types.ts";

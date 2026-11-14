@@ -6,7 +6,7 @@ import {
   fixFor,
   fixPageFor,
   requiredMissing,
-} from "../../src/features/deps/deps-summary.ts";
+} from "../../src/features/deps/domain/deps-summary.ts";
 
 const dep = (
   id: DepResult["id"],

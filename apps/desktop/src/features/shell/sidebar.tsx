@@ -50,9 +50,9 @@ import { APP_VERSION, anyHostHas, hasFeature } from "@/lib/version.ts";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
 import { ProgressRing, StatusDot } from "@/shared/status/index.ts";
 import { AccountFooter } from "./account-footer.tsx";
-import { footAccount } from "./foot-account.ts";
-import { activeNav } from "./nav-active.ts";
-import { type NavBadgeKey, navBadge } from "./nav-badges.ts";
+import { footAccount } from "./domain/foot-account.ts";
+import { activeNav } from "./domain/nav-active.ts";
+import { type NavBadgeKey, navBadge } from "./domain/nav-badges.ts";
 import { NAV_ICONS, type NavKey } from "./nav-icons.ts";
 import { type SidebarGroup, toggleGroup } from "./sidebar-groups.ts";
 
