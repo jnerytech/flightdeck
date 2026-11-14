@@ -7,6 +7,7 @@
  */
 
 export { awaitedHost } from "./domain/awaited-host.ts";
+export { hostColorVar } from "./domain/host-color.ts";
 export { hostDownReason } from "./domain/host-down-reason.ts";
 export type { HostNameError } from "./domain/host-name.ts";
 export type { RetryState } from "./domain/host-offline.ts";
@@ -22,7 +23,6 @@ export {
   initialHealthState,
 } from "./health-store.ts";
 export { hostNeedsAttention } from "./host-attention.ts";
-export { hostColorVar } from "./host-color.ts";
 export {
   type ConnectionStatus,
   HostConnection,
