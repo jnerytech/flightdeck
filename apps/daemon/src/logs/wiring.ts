@@ -1,7 +1,7 @@
 import type { Logger } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
+import { createLogScanner } from "./domain/scanner.ts";
 import { FileLog } from "./file-log.ts";
-import { createLogScanner } from "./scanner.ts";
 
 /** What the daemon's log is built from. */
 export interface HostLogDeps {
