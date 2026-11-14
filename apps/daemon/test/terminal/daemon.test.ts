@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { Ring } from "../../src/terminal/domain/ring.ts";
+import { defaultShell } from "../../src/terminal/domain/shell.ts";
 import { bunPty, type SpawnFn } from "../../src/terminal/pty.ts";
-import { defaultShell } from "../../src/terminal/shell.ts";
 import {
   type TerminalInfo,
   TerminalManager,
