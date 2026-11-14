@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { MAX_TEXT_BYTES, parseLine, parseLines, truncateUtf8 } from "../../src/history/parser.ts";
+import {
+  MAX_TEXT_BYTES,
+  parseLine,
+  parseLines,
+  truncateUtf8,
+} from "../../src/history/domain/parser.ts";
 
 const fixture = (name: string) =>
   readFileSync(join(import.meta.dir, "../fixtures", "history", name), "utf8");
