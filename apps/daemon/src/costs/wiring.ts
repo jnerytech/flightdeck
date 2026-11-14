@@ -3,7 +3,7 @@ import type { Config } from "../config.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
 import { Budgets, type BudgetsOptions } from "./budgets.ts";
 import { Costs } from "./costs.ts";
-import { resolvePricing } from "./pricing.ts";
+import { resolvePricing } from "./domain/pricing.ts";
 import { UsageIndexer, type UsageIndexerOptions } from "./usage-indexer.ts";
 
 /** What the host's usage and costs are built from. */

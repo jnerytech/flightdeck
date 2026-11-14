@@ -15,8 +15,8 @@ import {
   writeFileAtomic,
 } from "../kernel/index.ts";
 import { runClaudePlugin } from "./adapters/claude-plugin.ts";
+import { AnyJson, JsonObject, PinsJson } from "./domain/json-reads.ts";
 import { inspectPlugin, type PluginInventory } from "./inventory.ts";
-import { AnyJson, JsonObject, PinsJson } from "./json-reads.ts";
 
 export interface CliResult {
   code: number;

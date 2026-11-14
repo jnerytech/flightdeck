@@ -7,8 +7,8 @@ import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import type { Card } from "../board/types.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
-import { columnOf, optionFor } from "./map.ts";
-import type { BoardProvider, ExternalItem } from "./provider.ts";
+import { columnOf, optionFor } from "./domain/map.ts";
+import type { BoardProvider, ExternalItem } from "./domain/provider.ts";
 import type { BoardLink, BoardSyncStore, CardExternal } from "./store.ts";
 
 export interface SyncReport {

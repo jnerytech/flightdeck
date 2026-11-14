@@ -6,7 +6,7 @@ import {
   DEFAULT_COLUMN_MAP,
   defaultMapFor,
   optionFor,
-} from "../../src/boardsync/map.ts";
+} from "../../src/boardsync/domain/map.ts";
 
 const reasonOf = (fn: () => void) => {
   try {

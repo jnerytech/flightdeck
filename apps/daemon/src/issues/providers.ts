@@ -6,6 +6,11 @@ import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
 import { GithubIssues } from "../github/index.ts";
 import { checkedId, cli, cliJsonWith, cliOk, ISSUE_LIMIT } from "../pr/index.ts";
+import { parseIssueRef } from "./domain/issue-ref.ts";
+
+// The board's card flow still imports these two from here; its move behind the entry is a step of
+// its own (the entry cannot serve it yet: issues.ts imports the board, a cycle).
+export { closingLine, parseIssueRef } from "./domain/issue-ref.ts";
 
 /** Active work items assigned to you, with the fields an issue needs. */
 export const AZURE_DEFAULT_WIQL =
@@ -157,20 +162,6 @@ export class AzureIssues implements IssueProvider {
   }
 }
 
-/** The parts of a `github:owner/repo#n` or `azure:org/project#id` reference. */
-export function parseIssueRef(
-  ref: string,
-): { provider: "github" | "azure"; scope: string; id: string } | null {
-  const match = /^(github|azure):(.+)#(\d+)$/.exec(ref);
-  return match
-    ? {
-        provider: match[1] as "github" | "azure",
-        scope: match[2] as string,
-        id: match[3] as string,
-      }
-    : null;
-}
-
 /** The provider an existing reference belongs to, from the reference itself. */
 export function providerOfRef(ref: string): IssueProvider | null {
   const parsed = parseIssueRef(ref);
@@ -178,11 +169,4 @@ export function providerOfRef(ref: string): IssueProvider | null {
   if (parsed.provider === "github") return new GithubIssues(parsed.scope);
   const [org, ...project] = parsed.scope.split("/");
   return org && project.length > 0 ? new AzureIssues({ org, project: project.join("/") }) : null;
-}
-
-/** What a PR says so the provider links it to the issue and closes it on merge. */
-export function closingLine(ref: string): string | null {
-  const parsed = parseIssueRef(ref);
-  if (!parsed) return null;
-  return parsed.provider === "github" ? `Fixes #${parsed.id}` : `AB#${parsed.id}`;
 }

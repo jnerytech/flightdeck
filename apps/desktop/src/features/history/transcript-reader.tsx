@@ -14,14 +14,7 @@ import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { messageParts } from "../sessions/index.ts";
 import { useLiveElsewhereGuard } from "../sessions/ui.ts";
-
-/** Which transcript to read, and where to open it (a search hit). */
-export interface ReaderTarget {
-  hostId: string;
-  claudeSessionId: string;
-  cursor?: string;
-  focusUuid?: string;
-}
+import type { ReaderTarget } from "./store.ts";
 
 /** Scrolling closer than this to the end loads the next page. */
 const NEAR_END_PX = 80;

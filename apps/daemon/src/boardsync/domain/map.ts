@@ -3,7 +3,7 @@
  * Pure: no provider and no store in here.
  */
 import { BoardColumn } from "@flightdeck/protocol";
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 
 /** Status option name to board column. */
 export type ColumnMap = Record<string, BoardColumn>;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { costOf, type Pricing } from "../../src/costs/pricing.ts";
+import { costOf, type Pricing } from "../../src/costs/domain/pricing.ts";
 import type { UsageTokens } from "../../src/costs/usage-indexer.ts";
 
 /** #197 (Sonar S7750): "the last one that matches" stays the last one that matches. */
