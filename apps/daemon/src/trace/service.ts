@@ -3,7 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { SecretScanner, SessionTrace, TraceExport, TraceNode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { TelemetryStore } from "../telemetry/store.ts";
+import type { TelemetryStore } from "../telemetry/index.ts";
 import { buildTrace } from "./model.ts";
 
 export interface TraceServiceOptions {
