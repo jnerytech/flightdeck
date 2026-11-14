@@ -4,7 +4,7 @@ import type {
   CommandResults,
   SshTarget,
 } from "@flightdeck/protocol";
-import { savePayload } from "./ssh.ts";
+import { savePayload } from "./domain/ssh.ts";
 
 /** The ssh's part of the app's state (#1596): the prompts waiting for an answer, and the destinos. */
 export interface SshSliceState {

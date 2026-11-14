@@ -34,8 +34,13 @@ import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hostsWith } from "../../lib/version.ts";
+import {
+  confirmCopy,
+  type EffortChoice,
+  memberPayload,
+  type TeamConfirm,
+} from "./domain/new-team.ts";
 import { NewMember } from "./new-member.tsx";
-import { confirmCopy, type EffortChoice, memberPayload, type TeamConfirm } from "./new-team.ts";
 import { NewTeam } from "./new-team-form.tsx";
 import { TeamOutcome } from "./team-outcome.tsx";
 import { useModes } from "./use-modes.ts";
