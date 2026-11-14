@@ -25,7 +25,7 @@ import {
   AzPrStatus,
   AzThreads,
   AzTimeline,
-} from "./az-json.ts";
+} from "./domain/az-json.ts";
 
 const AZ_RESOLVED = new Set(["fixed", "closed", "wontFix", "byDesign"]);
 

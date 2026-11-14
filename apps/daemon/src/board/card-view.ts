@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { BoardColumn as BoardColumnSchema, type BoardResult } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError, isInside, parseJsonOr } from "../kernel/index.ts";
-import { AutoStart, CardVariant, NoticeParams } from "./row-json.ts";
+import { AutoStart, CardVariant, NoticeParams } from "./domain/row-json.ts";
 import type { Card, CardRow, CardRun, Project, RunRow } from "./types.ts";
 
 /** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */

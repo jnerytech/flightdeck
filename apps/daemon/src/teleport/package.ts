@@ -20,8 +20,9 @@ import type {
 } from "@flightdeck/protocol";
 import { FlightdeckError, isInside, readRegularSized } from "../kernel/index.ts";
 import { bundleCode, type CodeBundle, type CodeBundleInput } from "./bundle.ts";
+import { addSecrets, secretLines, TELEPORT_MAX_BYTES } from "./domain/secrets.ts";
 import { onDisk } from "./on-disk.ts";
-import { addSecrets, secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";
+import { EVENT_LOOP_PACE } from "./pace.ts";
 
 export { secretLines, TELEPORT_MAX_BYTES };
 
@@ -167,7 +168,7 @@ export class TeleportPackages {
     const sessionId = session.id;
     await mkdir(folder, { recursive: true, mode: 0o700 });
     await writeFile(join(folder, PART), text, { mode: 0o600 });
-    const secrets = await secretLines(text.toString("utf8"), this.deps.scan);
+    const secrets = await secretLines(text.toString("utf8"), this.deps.scan, EVENT_LOOP_PACE);
     const code = this.deps.code
       ? await this.deps.code({
           cwd: session.cwd,
