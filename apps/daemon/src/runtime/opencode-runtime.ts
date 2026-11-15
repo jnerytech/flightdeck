@@ -22,13 +22,13 @@ import { maskResource } from "./opencode-preflight.ts";
 import type { ScopeResult } from "./opencode-scope.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
 
-export interface Timers {
+interface Timers {
   set(fn: () => void, ms: number): unknown;
   clear(handle: unknown): void;
 }
 
 /** Ends the agent's process and what it started; `force` is the second, harder try. */
-export type Killer = (child: SpawnedAcp, force: boolean) => void;
+type Killer = (child: SpawnedAcp, force: boolean) => void;
 
 export const IDLE_CLOSE_MS = 15 * 60_000;
 export const INTERRUPT_ESCALATION_MS = 10_000;

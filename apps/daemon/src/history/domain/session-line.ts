@@ -1,7 +1,7 @@
 import type { SessionLine } from "@flightdeck/protocol";
 
 /** First non-empty line of a prompt, cut to `REQUEST_MAX` characters. */
-export const REQUEST_MAX = 80;
+const REQUEST_MAX = 80;
 
 export function requestLine(text: string): string {
   const first = text

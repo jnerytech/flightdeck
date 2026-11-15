@@ -5,7 +5,7 @@ import { prProvider } from "./pr.ts";
 import type { BoardOptions, Card, Project } from "./types.ts";
 
 /** How often cards with an open PR ask the provider for its state and checks. */
-export const DEFAULT_PR_POLL_MS = 60_000;
+const DEFAULT_PR_POLL_MS = 60_000;
 
 /** What the PR polling needs of the board (issue #1523); late-bound, so it never imports `board.ts`. */
 export interface PrPollPort {

@@ -5,8 +5,8 @@
 import { createHash } from "node:crypto";
 import { parseJsonText } from "../../kernel/index.ts";
 
-export type HistoryKind = "message" | "tool_result" | "summary" | "system" | "raw";
-export type HistoryRole = "user" | "assistant" | "system" | "summary";
+type HistoryKind = "message" | "tool_result" | "summary" | "system" | "raw";
+type HistoryRole = "user" | "assistant" | "system" | "summary";
 
 export interface HistoryRecord {
   uuid: string;
