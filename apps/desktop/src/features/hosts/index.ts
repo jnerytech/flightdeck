@@ -19,6 +19,7 @@ export { hostVersionText } from "./domain/host-version.ts";
 export type { HostView } from "./domain/host-view.ts";
 export { holdAwake } from "./domain/keep-awake.ts";
 export { pairingErrorText } from "./domain/pairing-text.ts";
+export type { SidebarSession } from "./domain/sidebar-session.ts";
 export {
   type HealthAnswer,
   type HealthCore,
