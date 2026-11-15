@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { EventEnvelope, SessionSubscribeResult } from "@flightdeck/protocol";
+import { statusLine } from "../../src/features/hosts/domain/host-link-line.ts";
 import {
   type ConnectionStatus,
   HostConnection,
   type HostConnectionOptions,
   RequestError,
-  statusLine,
 } from "../../src/features/hosts/host-connection.ts";
 import { daemon as makeDaemon, TOKEN, waitFor } from "../fixtures.ts";
 

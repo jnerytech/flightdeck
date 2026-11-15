@@ -6,12 +6,11 @@
  */
 
 import type { Database } from "bun:sqlite";
-import { join } from "node:path";
 import { assistantDir } from "../assistant/domain/paths.ts";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
 import { ulid } from "../kernel/index.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
-import { summarizeInput } from "./domain/bind-input.ts";
+import { autoApproveDir, autoApprovePrompt, ruleDecision } from "./domain/auto-approve-rules.ts";
 import type { Risk } from "./domain/risk.ts";
 
 export interface AutoApproveSettings {
@@ -75,11 +74,6 @@ export interface AutoApproverOptions {
   };
 }
 
-/** The folder the AI's queries run in: excluded from the history, so they never show up. */
-export function autoApproveDir(dataDir: string): string {
-  return join(dataDir, "auto-approve");
-}
-
 /** The history's excluded folders, with the automatic approval's. */
 export function historyExcludes(config: {
   dataDir: string;
@@ -91,10 +85,6 @@ export function historyExcludes(config: {
     assistantDir(config.dataDir),
   ];
 }
-
-const POLICY =
-  "Aprove só se for claramente seguro e dentro do pedido; na dúvida, ask. " +
-  'Responda com decision ("allow" ou "ask") e reason.';
 
 interface Row {
   id: string;
@@ -199,24 +189,18 @@ export class AutoApprover {
     request: AutoApproveRequest,
     context: AutoApproveContext,
   ): Promise<AutoDecision> {
-    const rule = (decision: "allow" | "ask", reason: string): AutoDecision => ({
-      decision,
-      reason,
-      by: "rule",
-      model: null,
-    });
     // Suspended in this session, or in the card whose worktree it works in.
     const keys = new Set([
       request.sessionKey,
       ...(context.cardId ? [`card:${context.cardId}`] : []),
     ]);
     const suspended = this.suspended().find((s) => keys.has(s.sessionKey));
-    if (suspended) return rule("ask", `aprovação automática suspensa: ${suspended.reason}`);
-    if (request.risk.level === "high") return rule("ask", "risco alto nunca é automático");
-    if (request.risk.network) return rule("ask", "acesso à rede nunca é automático");
-    if (request.risk.level === "low" && context.settings.lowWithoutAi) {
-      return rule("allow", "risco baixo, sem IA");
-    }
+    const ruled = ruleDecision({
+      risk: request.risk,
+      suspended: suspended ?? null,
+      lowWithoutAi: context.settings.lowWithoutAi,
+    });
+    if (ruled) return ruled;
     const { model } = context.settings;
     const ai = (decision: "allow" | "ask", reason: string): AutoDecision => ({
       decision,
@@ -234,7 +218,7 @@ export class AutoApprover {
       const answer = await Promise.race([
         (this.opts.runtime.judgePermission as NonNullable<AgentRuntime["judgePermission"]>)({
           model,
-          prompt: this.prompt(request, context),
+          prompt: autoApprovePrompt(request, context.description),
           cwd: autoApproveDir(this.opts.dataDir),
           signal: controller.signal,
         }),
@@ -261,17 +245,5 @@ export class AutoApprover {
     } finally {
       clearTimeout(timer);
     }
-  }
-
-  private prompt(request: AutoApproveRequest, context: AutoApproveContext): string {
-    return [
-      "Um agente de código pede permissão para usar uma ferramenta.",
-      `ferramenta: ${request.toolName}`,
-      `entrada: ${JSON.stringify(summarizeInput(request.input))}`,
-      `cwd: ${request.cwd}`,
-      `risco: ${request.risk.level} (${request.risk.reason})`,
-      ...(context.description ? [`pedido do card: ${context.description.slice(0, 1000)}`] : []),
-      POLICY,
-    ].join("\n");
   }
 }
