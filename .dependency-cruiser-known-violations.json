@@ -42,38 +42,5 @@
       "severity": "error",
       "name": "no-deep-cross-domain"
     }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/server/handlers/project.ts",
-    "to": "apps/daemon/src/board/pr-provider.ts",
-    "unresolvedTo": "../../board/pr-provider.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/watch/fix.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/watch/watch.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
   }
 ]

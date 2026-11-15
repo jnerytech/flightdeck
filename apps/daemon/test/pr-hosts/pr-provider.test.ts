@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { providerOfRemote } from "../../src/board/domain/pr-provider-remote.ts";
-import { detectProvider } from "../../src/board/pr-provider.ts";
 import type { AsyncGitRunner } from "../../src/central/project-key.ts";
 import { DaemonClient } from "../../src/daemon-client/client.ts";
+import { providerOfRemote } from "../../src/pr-hosts/domain/pr-provider-remote.ts";
+import { detectProvider } from "../../src/pr-hosts/pr-provider.ts";
 import { startServer } from "../../src/server.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 
