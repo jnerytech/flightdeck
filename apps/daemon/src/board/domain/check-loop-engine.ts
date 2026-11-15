@@ -75,10 +75,10 @@ export interface CheckLoopEffects {
 }
 
 /** How long a held slot waits for the turn's result after the session went idle. */
-export const RESULT_WAIT_MS = 30_000;
+const RESULT_WAIT_MS = 30_000;
 
 /** How long a round sent waits for its session to go busy before the loop gives up on it. */
-export const ROUND_START_MS = 120_000;
+const ROUND_START_MS = 120_000;
 
 /** The output a round quotes, from its end. */
 const OUTPUT_MAX = 4000;

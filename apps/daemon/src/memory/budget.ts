@@ -10,9 +10,9 @@ import { claudeMds, frontmatter } from "../agentcfg/index.ts";
 import { displayPath } from "./domain/display-path.ts";
 import { exists } from "./exists.ts";
 
-export type BudgetKind = "managed" | "user" | "project" | "local" | "rules" | "skills" | "memory";
+type BudgetKind = "managed" | "user" | "project" | "local" | "rules" | "skills" | "memory";
 
-export interface BudgetSource {
+interface BudgetSource {
   kind: BudgetKind;
   /** Absolute path of the file, written with "/" on every platform. */
   path: string;
@@ -24,7 +24,7 @@ export interface BudgetSource {
   note?: string;
 }
 
-export interface MemoryIndexBudget {
+interface MemoryIndexBudget {
   limitLines: number;
   limitBytes: number;
   indexLines: number;
@@ -46,8 +46,8 @@ export interface ContextBudget {
   memory: MemoryIndexBudget;
 }
 
-export const MEMORY_LIMIT_LINES = 200;
-export const MEMORY_LIMIT_BYTES = 25 * 1024;
+const MEMORY_LIMIT_LINES = 200;
+const MEMORY_LIMIT_BYTES = 25 * 1024;
 
 const tokensOf = (bytes: number) => Math.ceil(bytes / 4);
 

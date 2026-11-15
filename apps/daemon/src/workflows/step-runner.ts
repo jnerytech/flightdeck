@@ -59,7 +59,7 @@ class Stop extends Error {
 const STOPPED: ReadonlySet<SessionStatus> = new Set(["error", "ended"]);
 
 /** Before the prompt of an agent step whose turn a restart cut short. */
-export const RESUMED_NOTE = "A execução foi interrompida; continue de onde parou.";
+const RESUMED_NOTE = "A execução foi interrompida; continue de onde parou.";
 
 /** What the steps need from the engine that owns the runs: its stores, its state, its watchers. */
 export interface StepContext {

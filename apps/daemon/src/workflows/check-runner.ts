@@ -6,7 +6,7 @@ import { checkEnvironment } from "./domain/check-env.ts";
 import { MAX_VALUE } from "./domain/interpolate.ts";
 
 /** How long a check may run before it is killed, unless the caller gives another limit. */
-export const DEFAULT_CHECK_TIMEOUT_MS = 10 * 60_000;
+const DEFAULT_CHECK_TIMEOUT_MS = 10 * 60_000;
 
 export interface CheckResult {
   exitCode: number;
@@ -67,7 +67,7 @@ export function shellCheckRunner(
 }
 
 /** Issue #1361: the most output a bounded check keeps (stdout and stderr together) before it is killed. */
-export const CHECK_OUTPUT_MAX = 4 * 1024 * 1024;
+const CHECK_OUTPUT_MAX = 4 * 1024 * 1024;
 
 /** What a bounded check gives back: the whole output, bounded. */
 export interface BoundedCheckResult extends CheckResult {

@@ -29,7 +29,6 @@ import {
 } from "./worktree.ts";
 
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
-export type { FixResult } from "./session-follow.ts";
 
 import type { WorkflowEngine } from "../workflows/engine.ts";
 import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
