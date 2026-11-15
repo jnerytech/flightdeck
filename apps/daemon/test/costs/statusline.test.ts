@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readConfig, statuslineText } from "../../src/costs/statusline.ts";
+import { statuslineText } from "../../src/costs/domain/statusline.ts";
+import { readConfig } from "../../src/costs/statusline.ts";
 import { runCli, startDaemon } from "../../src/main.ts";
 import { tempDir, workspace } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
