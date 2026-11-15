@@ -6,36 +6,9 @@ import { Bar, EmptyState, Inline, LoadingState, Panel, Stack } from "@/shared/la
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../costs/index.ts";
+import { label } from "./domain/tempo-label.ts";
 
 type T = ReturnType<typeof useT>;
-
-/** Who answered a permission, in words. */
-function by(source: string | null, t: T): string {
-  if (source === "config") return t("telemetry.byConfig");
-  if (source === "hook") return t("telemetry.byHook");
-  if (source?.startsWith("user_")) return t("telemetry.byYou");
-  return t("telemetry.byOther");
-}
-
-/** What a step says, without its time. */
-function label(item: TelemetryItem, t: T): string {
-  switch (item.kind) {
-    case "tool":
-      return item.toolName ?? "";
-    case "permission":
-      return t("telemetry.permission", {
-        tool: item.toolName ?? "",
-        decision: t(item.decision === "reject" ? "telemetry.denied" : "telemetry.allowed"),
-        by: by(item.source, t),
-      }).trim();
-    case "api":
-      return t("telemetry.api");
-    case "error":
-      return item.error
-        ? t("telemetry.apiError", { status: item.error })
-        : t("telemetry.apiErrorPlain");
-  }
-}
 
 function Step(props: Readonly<{ item: TelemetryItem; longest: number; t: T }>) {
   const { item, longest, t } = props;
