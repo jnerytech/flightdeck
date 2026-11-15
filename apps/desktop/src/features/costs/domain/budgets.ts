@@ -1,6 +1,6 @@
 import type { Budget } from "@flightdeck/protocol";
 import { type Key, type T, translator } from "../../../i18n/index.ts";
-import type { AppState } from "../../../lib/app-store.ts";
+import type { ClientBudgetState } from "./client-budgets.ts";
 import { usd } from "./costs.ts";
 
 const PT = translator("pt-BR");
@@ -73,8 +73,16 @@ export interface BudgetAlert {
   clientId?: string;
 }
 
+/** The part of the app's state the budget alerts read: the hosts' budgets, the clients' limits and the names to show. */
+export interface BudgetAlertState {
+  hosts: ReadonlyArray<{ id: string; name: string }>;
+  budgets: Record<string, Budget[]>;
+  clientBudgets?: ReadonlyArray<ClientBudgetState>;
+  clientList: ReadonlyArray<{ id: string; name: string }>;
+}
+
 /** Budgets that crossed a threshold in their current period, for "Precisa de você". */
-export function budgetAlerts(state: AppState, t: T = PT): BudgetAlert[] {
+export function budgetAlerts(state: BudgetAlertState, t: T = PT): BudgetAlert[] {
   const hosts = state.hosts.flatMap((host) =>
     (state.budgets[host.id] ?? [])
       .filter((b) => b.crossed.length > 0)
