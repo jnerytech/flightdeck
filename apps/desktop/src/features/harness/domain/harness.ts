@@ -5,9 +5,7 @@
  */
 import { type HarnessPreview, HOOK_KINDS, type ProjectLoad } from "@flightdeck/protocol";
 
-export type HarnessPart = "claudeMd" | "hooks" | "skills" | "agents" | "permissions" | "mcp";
-
-export type { HookKind } from "@flightdeck/protocol";
+type HarnessPart = "claudeMd" | "hooks" | "skills" | "agents" | "permissions" | "mcp";
 
 export interface HarnessItem {
   part: HarnessPart;
@@ -62,7 +60,7 @@ export function previewDigests(preview: HarnessPreview): Record<string, string> 
 }
 
 /** The settings gain hooks or deny rules (a conflict alone writes nothing). */
-export function writesSettings(preview: HarnessPreview): boolean {
+function writesSettings(preview: HarnessPreview): boolean {
   const settings = preview.settings;
   return settings !== null && settings.hooks.length + settings.denyRules.length > 0;
 }

@@ -2,7 +2,7 @@ import type { QuotaState, QuotaWindow } from "@flightdeck/protocol";
 import { isHot } from "./quota.ts";
 
 /** How close the window is to its limit: from 80% near; reached at 100%, at the host's `pauseAt` or refused. */
-export type QuotaLevel = "ok" | "near" | "reached";
+type QuotaLevel = "ok" | "near" | "reached";
 
 /** The plan window under most pressure across the online hosts (issue #118). */
 export interface QuotaGlance {

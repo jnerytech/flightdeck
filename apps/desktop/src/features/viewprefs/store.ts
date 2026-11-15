@@ -21,13 +21,7 @@ const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";
 const ROI_OPEN_KEY = "flightdeck.roiOpen";
 
 /** The collapsible groups of the sidebar, in the order they show. */
-export const SIDEBAR_GROUPS = [
-  "work",
-  "automation",
-  "observability",
-  "library",
-  "machines",
-] as const;
+const SIDEBAR_GROUPS = ["work", "automation", "observability", "library", "machines"] as const;
 export type SidebarGroup = (typeof SIDEBAR_GROUPS)[number];
 
 export const SIDEBAR_FOLDED_KEY = "flightdeck.sidebarFolded";

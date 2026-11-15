@@ -13,7 +13,7 @@ const LEVELS = [0.95, 1];
  * How far a reading is over the thresholds: 0 under `pauseAt` (or with it off); 1 at `pauseAt`; one
  * more for each of 95% and 100% it reaches; the last for a window the plan rejected.
  */
-export function quotaLevel(window: QuotaWindow, pauseAt: number | null): number {
+function quotaLevel(window: QuotaWindow, pauseAt: number | null): number {
   if (pauseAt === null) return 0;
   const thresholds = [...new Set([pauseAt, ...LEVELS.filter((t) => t >= pauseAt)])].sort(
     (a, b) => a - b,

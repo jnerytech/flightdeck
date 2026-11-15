@@ -9,7 +9,6 @@ import { entityItems } from "./palette-entities.ts";
 import type { PaletteItem, PaletteScope, PaletteSection } from "./palette-types.ts";
 
 export type {
-  PaletteAction,
   PaletteItem,
   PaletteScope,
   PaletteSection,

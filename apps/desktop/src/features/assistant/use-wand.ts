@@ -21,7 +21,7 @@ export interface WandBinding {
 }
 
 /** Another provider a failed run can be sent to; a host carries the name the person gave it. */
-export interface WandAlternative {
+interface WandAlternative {
   provider: ResolvedProvider;
   hostName?: string;
 }

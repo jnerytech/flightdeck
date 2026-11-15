@@ -17,9 +17,7 @@ import {
 } from "./domain/webhook-target.ts";
 
 export {
-  type TargetErrorCode,
   type TargetInput,
-  type TargetStatus,
   type WebhookTarget,
   WebhookTargetError,
 } from "./domain/webhook-target.ts";

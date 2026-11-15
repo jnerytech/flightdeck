@@ -2,7 +2,7 @@ import type { ActivitySinceResult } from "@flightdeck/protocol";
 import { hasFeature } from "../../lib/version.ts";
 
 /** What one host said happened since the app was last active (issue #1344). */
-export interface AwayHost {
+interface AwayHost {
   hostId: string;
   result: ActivitySinceResult;
 }

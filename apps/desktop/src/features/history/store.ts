@@ -26,7 +26,7 @@ export interface GlobalHit extends HistorySearchHit {
   hostName: string;
 }
 
-export interface SearchState {
+interface SearchState {
   query: string;
   /** Every host's hits so far, newest first. */
   hits: GlobalHit[];

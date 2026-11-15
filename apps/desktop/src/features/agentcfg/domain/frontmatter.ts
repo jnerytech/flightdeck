@@ -6,7 +6,7 @@ import { z } from "zod";
 import { parseJsonText } from "@/shared/lib/index.ts";
 
 /** One `key: value` of the block; `raw` is the value as the file spells it (quotes included). */
-export interface Entry {
+interface Entry {
   key: string;
   value: string;
   raw: string;
