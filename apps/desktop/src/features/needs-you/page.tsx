@@ -2,18 +2,14 @@ import { CheckCheck, MousePointerClick } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { sessionProjectKeys } from "@/features/clients/index.ts";
-import { hubRows, sinceLastLook } from "@/features/sessions/index.ts";
+import { hubRows } from "@/features/sessions/index.ts";
 import { EmptyState, SplitView } from "@/shared/layout/index.ts";
-import type { T } from "../../i18n/index.ts";
-import { type AppState, type AppStore, needsYou, type PendingItem } from "../../lib/app-store.ts";
+import type { AppState, AppStore, PendingItem } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { awayView } from "../activity/index.ts";
-import { budgetAlerts } from "../costs/index.ts";
-import { loopPairKey } from "../messaging/index.ts";
 import { typing } from "../shortcuts/index.ts";
-import { watchAlerts } from "../watch/index.ts";
 import { Detail } from "./details.tsx";
-import { quietAlerts } from "./domain/quiet.ts";
+import { entriesOf } from "./domain/entries.ts";
 import type { Entry } from "./domain/same-row.ts";
 import { EntryRow, hostNameOf, ROW_PAD } from "./entry-row.tsx";
 import { WhileAway } from "./while-away.tsx";
@@ -24,45 +20,6 @@ const inSummary = (target: EventTarget | null) =>
 
 const NOTE = `${ROW_PAD} text-muted-foreground text-sm`;
 const HEADING = `${ROW_PAD} font-medium text-muted-foreground text-xs`;
-
-/** Everything that waits for the person, in the list's order: budget alerts, loops, watches, requests. */
-function entriesOf(state: AppState, t: T, nowMs: number): Entry[] {
-  return [
-    ...budgetAlerts(state, t).map((a) => ({
-      kind: "alert" as const,
-      key: `alert/${a.hostId}/${a.label}`,
-      label: a.label,
-      ...(a.clientId ? { clientId: a.clientId } : {}),
-    })),
-    ...state.loopAlerts.map((alert) => ({
-      kind: "loop" as const,
-      key: `loop/${alert.hostId}/${loopPairKey(alert)}`,
-      alert,
-    })),
-    ...watchAlerts(state).map((alert) => ({
-      kind: "watch" as const,
-      key: `watch/${alert.hostId}/${alert.cardId}`,
-      alert,
-    })),
-    ...needsYou(state, t).map((item) => ({
-      kind: "request" as const,
-      key: `${item.hostId}/${item.requestId}`,
-      item,
-    })),
-    // Issue #1478: a running session that says nothing waits for the person too, after the requests.
-    ...quietAlerts(state, nowMs, t).map((alert) => ({
-      kind: "quiet" as const,
-      key: `quiet/${alert.key}`,
-      alert,
-    })),
-    // What finished since the person last looked comes after what waits for them.
-    ...sinceLastLook(state.finished, state.finishedLook).map((finish) => ({
-      kind: "finished" as const,
-      key: `finished/${finish.key}`,
-      finish,
-    })),
-  ];
-}
 
 /** The requests waiting for the user: the list on the left, the chosen request's card on the right. */
 export function NeedsYou(
