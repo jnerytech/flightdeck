@@ -38,9 +38,14 @@ describe("abrir-resultado-tauri: what the webview may ask of the opener plugin",
   });
 
   test("Given the Rust shell, Then open_result is a command, with the checks that keep a result a document", () => {
-    const source = readFileSync(join(import.meta.dir, "../../src-tauri/src/lib.rs"), "utf8");
-    expect(source).toContain("async fn open_result(");
-    expect(source).toMatch(/open_result,?\s*\n/);
+    const source = readFileSync(
+      join(import.meta.dir, "../../src-tauri/src/open_result.rs"),
+      "utf8",
+    );
+    const lib = readFileSync(join(import.meta.dir, "../../src-tauri/src/lib.rs"), "utf8");
+    expect(source).toContain("pub async fn open_result(");
+    expect(lib).toMatch(/^mod open_result;/m);
+    expect(lib).toMatch(/open_result::open_result,?\s*\n/);
     for (const check of ["symlink_metadata", "canonicalize", "OPENABLE", "spawn_blocking_result"]) {
       expect(source).toContain(check);
     }
