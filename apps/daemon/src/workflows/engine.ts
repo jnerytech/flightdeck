@@ -8,13 +8,12 @@ import { withoutPersonas } from "../personas/index.ts";
 import { noSpending } from "./domain/budget.ts";
 import * as col from "./domain/row-json.ts";
 import { checkCommands, parseWorkflow, type Workflow } from "./domain/schema.ts";
+import { type StepRow, toStep } from "./domain/step-row.ts";
 import {
   type EngineHost,
   now,
   type RunRow,
   reason,
-  type StepRow,
-  toStep,
   type WorkflowEngineOptions,
 } from "./engine-types.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
