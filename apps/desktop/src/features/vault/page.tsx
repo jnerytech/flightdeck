@@ -1,4 +1,3 @@
-import { inSequence } from "@flightdeck/protocol";
 import { KeyRound } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,13 +8,13 @@ import { useStoreSlice } from "@/lib/use-store";
 import { EmptyState, OpenedPanel, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { BackupPanel } from "./backup-panel.tsx";
-import type { SecretInfo } from "./domain/vault-types.ts";
 import { EditSecretForm } from "./edit-secret-form.tsx";
 import { NewSecretForm } from "./new-secret-form.tsx";
 import { RulesEditor } from "./rules-editor.tsx";
 import { SecretRow } from "./secret-row.tsx";
 import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
+import { useSecretInfos } from "./use-secret-infos.ts";
 import type { SecretMeta } from "./vault.ts";
 import { VaultReport } from "./vault-report.tsx";
 
@@ -47,7 +46,7 @@ export const VaultPage = memo(function VaultPage(props: {
   const t = useT();
   const { store } = props;
   const state = useStoreSlice(store, VAULTPAGE_KEYS);
-  const [infos, setInfos] = useState<Record<string, SecretInfo>>({});
+  const infos = useSecretInfos(store, state.secrets);
   const revealMs = props.revealMs ?? REVEAL_MS;
   const clearMs = props.clearMs ?? CLEAR_MS;
   const [asking, setAsking] = useState<SecretMeta | null>(null);
@@ -121,30 +120,6 @@ export const VaultPage = memo(function VaultPage(props: {
     const value = await store.vault.value(secret.id);
     if (value !== null) setShown({ id: secret.id, value });
   };
-
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      const next: Record<string, SecretInfo> = {};
-      // The vault reads a value only for a secret it has not described yet, and only for a type that has something to show.
-      await inSequence(state.secrets, async (secret) => {
-        // A page that is gone (or a newer list) reads nothing more, so the vault is not refilled after it forgot.
-        if (!alive) return;
-        try {
-          next[secret.id] = await store.vault.info(secret);
-        } catch {
-          // A secret the vault cannot read shows no details; the other rows keep theirs.
-        }
-      });
-      if (alive) setInfos(next);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [store, state.secrets]);
-
-  // Leaving the screen forgets the derived details; they come back with the next visit.
-  useEffect(() => () => store.vault.forgetInfos(), [store]);
 
   // With a client that has a vault tag selected, its secrets come first (phase 29).
   const selected = selectedClient(state.clientList, state.clientSelection);

@@ -1,7 +1,6 @@
 import type { Database } from "bun:sqlite";
-import type { RunStatus } from "@flightdeck/protocol";
+import type { Card, RunStatus } from "@flightdeck/protocol";
 import type { BoardEvent } from "../board/domain/columns.ts";
-import type { Card } from "../board/types.ts";
 import type { Prepare } from "../personas/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { CheckRunner } from "./check-runner.ts";

@@ -12,8 +12,8 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/ui.ts";
 import { RulesSection } from "../permissions/ui.ts";
-import { TerminalButton } from "../terminal/ui.ts";
 import { FindProjects } from "./find-projects.tsx";
+import { ProjectRow } from "./project-row.tsx";
 import { ProjectsPicker } from "./projects-picker.tsx";
 import { StartFromGithub } from "./start-from-github.tsx";
 
@@ -181,78 +181,24 @@ export function ProjectsPage(
         </div>
         <ul aria-label={t("projectsUi.list")} className="flex flex-col gap-2">
           {(list?.projects ?? []).map((project) => (
-            <li key={project.id} data-slot="project-row" className="project-row">
-              <div data-slot="project-head" className="project-head">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={t("projectsUi.openBoard", { name: project.name })}
-                  onClick={() => props.onOpenBoard(project.id)}
-                >
-                  {project.name}
-                </Button>
-                <span data-slot="project-path" className="project-path">
-                  {`${project.path} · ${project.baseBranch}`}
-                </span>
-              </div>
-              <div data-slot="project-actions" className="button-row">
-                <TerminalButton
-                  store={store}
-                  hostId={hostId}
-                  target={{ cwd: project.path, claudeSessionId: null }}
-                  name={project.name}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={t("projectsUi.workflows", { name: project.name })}
-                  onClick={() => props.onOpenWorkflows(project)}
-                >
-                  {t("projectsUi.short.workflows")}
-                </Button>
-                {props.agent && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={t("agent.open", { name: project.name })}
-                    onClick={() => props.onOpenAgent(project)}
-                  >
-                    {t("projectsUi.short.agent")}
-                  </Button>
-                )}
-                {props.actions && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={t("projectsUi.actions", { name: project.name })}
-                    onClick={() => props.onOpenActions(project)}
-                  >
-                    {t("projectsUi.short.actions")}
-                  </Button>
-                )}
-                {props.automations && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={t("projectsUi.automations", { name: project.name })}
-                    onClick={() => props.onOpenAutomations(project)}
-                  >
-                    {t("projectsUi.short.automations")}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={t("projectsUi.edit", { name: project.name })}
-                  onClick={() => {
-                    setEditing(project.id);
-                    setDraft(fromProject(project));
-                  }}
-                >
-                  {t("projectsUi.short.edit")}
-                </Button>
-              </div>
-            </li>
+            <ProjectRow
+              key={project.id}
+              store={store}
+              hostId={hostId}
+              project={project}
+              agent={props.agent}
+              actions={props.actions}
+              automations={props.automations}
+              onOpenBoard={props.onOpenBoard}
+              onOpenWorkflows={props.onOpenWorkflows}
+              onOpenAgent={props.onOpenAgent}
+              onOpenActions={props.onOpenActions}
+              onOpenAutomations={props.onOpenAutomations}
+              onEdit={(p) => {
+                setEditing(p.id);
+                setDraft(fromProject(p));
+              }}
+            />
           ))}
         </ul>
         <Panel title={editing ? t("projectsUi.editTitle") : t("projectsUi.newTitle")}>

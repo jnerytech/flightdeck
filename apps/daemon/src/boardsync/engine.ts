@@ -3,9 +3,9 @@
  * cards, settle conflicts (the newest change wins, the loser goes to the card's log), and push the
  * local moves when the board allows it.
  */
+import type { Card } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/index.ts";
-import type { Card } from "../board/types.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { BoardLink } from "./domain/links.ts";
 import { columnOf, optionFor } from "./domain/map.ts";
