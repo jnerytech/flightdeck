@@ -18,6 +18,17 @@ import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { slug } from "../names/index.ts";
 import { formatSessionMessage, formatSystemMessage } from "./domain/header.ts";
 import {
+  DAY_MS,
+  FLIGHTDECK,
+  type ListedSession,
+  type MessagingFrame,
+  type Missing,
+  OUTBOX_MS,
+  type Params,
+  type PeerSession,
+  pairKey,
+} from "./domain/peers.ts";
+import {
   access,
   addressOf,
   addressParts,
@@ -31,6 +42,9 @@ import {
 import { relayOf } from "./domain/relay.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import { type MessagePatch, type MessageRow, MessageStore, type NewMessage } from "./store.ts";
+
+// The tests build frames and peers from these; the entry does not export them.
+export type { ListedSession, MessagingFrame, PeerSession } from "./domain/peers.ts";
 
 export interface MessagingOptions {
   db: Database;
@@ -52,37 +66,6 @@ export interface NameBook {
   resolve(alias: string): string | null;
 }
 
-/** The frames the app watches. */
-export type MessagingFrame =
-  | { type: "messages.updated"; message: MessageInfo }
-  | { type: "messages.relay"; message: RelayMessage }
-  | {
-      type: "messaging.alert";
-      kind: "loop";
-      from: string;
-      to: string;
-      message: string;
-      at: string;
-    };
-
-/** Sessions of another host, as the app last told this daemon. */
-export interface PeerSession {
-  id: string;
-  name: string | null;
-  alias?: string | null;
-  aliases?: string[];
-  persona: string | null;
-  projectKey: string | null;
-  teamId: string | null;
-  state: MessagingSession["state"];
-  kind: MessagingSession["kind"];
-  receives: boolean;
-  reason: string | null;
-}
-
-/** A session of this host as the app hands it to the other daemons: the aliases always come. */
-export type ListedSession = PeerSession & { alias: string | null; aliases: string[] };
-
 /** Where a message is going. */
 interface Target {
   party: Party;
@@ -91,26 +74,10 @@ interface Target {
   local: EndpointInfo | null;
 }
 
-const DAY_MS = 24 * 3_600_000;
-const OUTBOX_MS = 24 * 3_600_000;
-const FLIGHTDECK = "flightdeck";
-
-type Params = Record<string, string | number>;
 const bad = (message: string, reason: string, params?: Params) =>
   new FlightdeckError("bad_request", message, reason, params);
 const notFound = (message: string, reason: string, params?: Params) =>
   new FlightdeckError("not_found", message, reason, params);
-
-/** An address that does not lead to a session: the words for the logs, and the reason for the app. */
-interface Missing {
-  error: string;
-  reason: string;
-  params: Params;
-}
-
-/** The key of a pair, the same from both sides. */
-const pairKey = (a: string, b: string): string =>
-  [a, b].sort((a, b) => (a < b ? -1 : Number(a > b))).join("|");
 
 export class Messaging {
   private readonly listeners = new Set<(frame: MessagingFrame) => void>();
