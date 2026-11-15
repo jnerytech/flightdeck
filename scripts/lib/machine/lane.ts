@@ -14,7 +14,7 @@ import {
 } from "../slot/index.ts";
 
 /** How often a waiting run tries again. */
-export const LANE_POLL_MS = 1000;
+const LANE_POLL_MS = 1000;
 
 export interface LaneDeps {
   /** One lock per place in the lane; their number is the lane's capacity. */
