@@ -133,7 +133,6 @@ export function Sidebar(
     () => projectTree({ hosts: treeHosts, projects: state.projects, cards: state.cards }, rows),
     [treeHosts, state.projects, state.cards, rows],
   );
-  // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   // The setup checklist: from the real state; it leaves when done or hidden.
   const setupHidden = useSyncExternalStore(
     props.store.setup.subscribe,

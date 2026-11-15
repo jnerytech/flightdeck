@@ -36,6 +36,7 @@ export function SidebarFoot(
   }>,
 ) {
   const { store, state, t, collapsed, go, shellPrefs } = props;
+  // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
   const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
   /** The Claude account the foot shows: the open host's, how many differ, none from an offline host. */
