@@ -5,40 +5,22 @@
  */
 import {
   estimatedSeconds,
-  isBunTest,
   SLOT_TEST_FILES,
   SLOT_TEST_FILES_CAP,
   SLOT_TEST_SECONDS,
   testFileCount,
 } from "./estimate.ts";
 import { heavyReasonGiven } from "./heavy.ts";
-import type { Attempt, ProcReader, SlotArgs, SlotChild, SlotEnv, SlotHolder } from "./types.ts";
+import { clip, describeHolder, oneLine, parseHolder, waiterPath } from "./holder.ts";
+import { cancel, lowerWhile, ORPHANED, reap, underAncestor, underHolder } from "./processes.ts";
+import type { Attempt, SlotArgs, SlotChild, SlotEnv, SlotHolder } from "./types.ts";
 
 export { estimatedSeconds, SLOT_TEST_FILES, testFileCount, timingsFrom } from "./estimate.ts";
+export { describeHolder, parseHolder } from "./holder.ts";
+export { cancel, lowerOthers, RENICE_MS } from "./processes.ts";
 export type { ProcessInfo, ProcReader, SlotChild, SlotEnv, SlotHolder } from "./types.ts";
 
-/** A slot process: bun or node running scripts/slot.ts, not a program that only names the file. */
-function isSlotProcess(argv: string[]): boolean {
-  const program = (argv[0] ?? "")
-    .split(/[\\/]/)
-    .pop()
-    ?.replace(/\.exe$/, "");
-  if (program !== "bun" && program !== "node") return false;
-  return argv.slice(1, 3).some((arg) => /(?:^|[\\/])scripts[\\/]slot\.ts$/.test(arg));
-}
-
-/** Text from a lock or waiter file, or from /proc, kept to one plain line: control characters become spaces. */
-function oneLine(text: string): string {
-  // C1 too (#833 review): U+009B is CSI on the terminals that honor it.
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
-  return text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ");
-}
-
 export const POLL_MS = 2000;
-/** How often a `--priority` run lowers the other test processes. */
-export const RENICE_MS = 5000;
-/** The niceness the other sessions' test processes are raised to. */
-const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 /** A hold past this is LONG: the holder, its waiters and `--status` say so, and the hook log keeps it (#833). */
@@ -120,36 +102,6 @@ export function parseArgs(argv: string[]): SlotArgs {
   };
 }
 
-export function parseHolder(text: string | null): SlotHolder | null {
-  if (!text) return null;
-  let value: Partial<Record<keyof SlotHolder, unknown>>;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  if (typeof value !== "object" || value === null) return null;
-  const { pid, label, command, startedAt } = value;
-  if (typeof pid !== "number" || typeof startedAt !== "number") return null;
-  if (typeof label !== "string" || typeof command !== "string") return null;
-  return { pid, label, command, startedAt };
-}
-
-/** A command of hundreds of test files, cut to one readable line (#236). */
-function clip(command: string): string {
-  return oneLine(command.length > 80 ? `${command.slice(0, 80)}…` : command);
-}
-
-export function describeHolder(holder: SlotHolder, now: number): string {
-  const seconds = Math.max(0, Math.floor((now - holder.startedAt) / 1000));
-  const minutes = Math.floor(seconds / 60);
-  let held = `${seconds}s`;
-  if (minutes >= 60) held = `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-  else if (minutes > 0) held = `${minutes}m ${seconds % 60}s`;
-  // A holder or waiter of hundreds of test files stays one line (#236).
-  return `${oneLine(holder.label)}: ${clip(holder.command)} (pid ${holder.pid}, ${held})`;
-}
-
 /**
  * One try at the lock. A lock whose process is dead, or that cannot be read, is stale and is
  * removed, but only if it is still the file that was judged stale (somebody else may have
@@ -171,10 +123,6 @@ export function tryAcquire(env: SlotEnv, command: string): Attempt {
   if (now !== text) return { acquired: false, holder: parseHolder(now) };
   env.fs.remove(env.path);
   return { acquired: env.fs.create(env.path, mine), holder: null };
-}
-
-function waiterPath(env: SlotEnv, pid: number): string {
-  return `${env.path}.wait.${pid}`;
 }
 
 /**
@@ -328,108 +276,6 @@ function holderStatus(env: SlotEnv, maxAgeMs: number): string {
   return age > LONG_HOLD_MS ? `${held}; LONG: over ${LONG_HOLD_MS / 60_000}m` : held;
 }
 
-/**
- * Stops the waiters and the run of this label (never this process, never another label). The
- * wrapper that gets SIGTERM kills its command and gives the slot back. Waiter files of dead
- * processes or unreadable ones are cleaned up.
- */
-export function cancel(env: SlotEnv): number {
-  const entries = [env.path, ...env.fs.list(`${env.path}.wait.`)];
-  let stopped = 0;
-  for (const path of entries) {
-    const holder = parseHolder(env.fs.read(path));
-    if (!holder || !env.alive(holder.pid)) {
-      if (path !== env.path) env.fs.remove(path);
-      continue;
-    }
-    if (holder.label !== env.label || holder.pid === env.pid) continue;
-    env.terminate(holder.pid);
-    env.log(`cancelled ${describeHolder(holder, env.now())}`);
-    stopped += 1;
-  }
-  if (stopped === 0) env.log(`nothing to cancel for ${env.label}`);
-  return 0;
-}
-
-/**
- * Stops the waiters whose shell is gone (their parent is pid 1), by process group, and forgets
- * them; waiter files of dead processes are cleaned up. The holder is never touched (#236).
- */
-function reap(env: SlotEnv): number {
-  let reaped = 0;
-  // Two orphan waiters of one group are stopped by one signal to it.
-  const stopped = new Set<number>();
-  for (const path of env.fs.list(`${env.path}.wait.`)) {
-    const waiter = parseHolder(env.fs.read(path));
-    if (!waiter || !env.alive(waiter.pid)) {
-      env.fs.remove(path);
-      continue;
-    }
-    const group = env.proc ? reapableGroup(env, env.proc, path, waiter.pid) : null;
-    if (group === null) continue;
-    if (!stopped.has(group)) {
-      stopped.add(group);
-      if (env.terminateGroup) env.terminateGroup(group);
-      else env.terminate(waiter.pid);
-    }
-    env.fs.remove(path);
-    env.log(`reaped ${describeHolder(waiter, env.now())}`);
-    reaped += 1;
-  }
-  if (reaped === 0) env.log("nothing to reap");
-  return 0;
-}
-
-/**
- * The process group to stop for a waiter file, or null when it names no slot waiter that may be
- * stopped: the file's name carries its pid, the pid is above 1, its group, read once right before
- * the kill, is above 1 and not the reaper's own, and every member of that group is an orphan slot
- * process (parent pid 1, bun or node running scripts/slot.ts) other than the holder. So a group
- * shared with the holder, a shell or a live run is never stopped (#388 review).
- */
-function reapableGroup(env: SlotEnv, proc: ProcReader, path: string, pid: number): number | null {
-  if (!Number.isInteger(pid) || pid <= 1 || path !== waiterPath(env, pid)) return null;
-  const group = proc.pgid(pid);
-  if (group === null || group <= 1 || group === proc.pgid(env.pid)) return null;
-  const holder = parseHolder(env.fs.read(env.path))?.pid;
-  const members = proc.group(group);
-  if (!members.includes(pid)) return null;
-  const orphanWaiter = (member: number) =>
-    member !== holder && proc.ppid(member) === 1 && isSlotProcess(proc.cmdline(member));
-  return members.every(orphanWaiter) ? group : null;
-}
-
-/**
- * Whether a live process that holds the slot is an ancestor of this one: a nested call from a
- * holder whose children lost FLIGHTDECK_SLOT_HOLDER, or an older slot.ts that never set it (#236).
- * At most 64 steps, so a parent table that loops ends.
- */
-function underAncestor(env: SlotEnv): boolean {
-  const holder = parseHolder(env.fs.read(env.path));
-  if (!holder || !env.alive(holder.pid) || !env.proc) return false;
-  let pid = env.pid;
-  for (let step = 0; step < 64; step++) {
-    const parent = env.proc.ppid(pid);
-    if (parent === null || parent <= 1) return false;
-    if (parent === holder.pid) return true;
-    pid = parent;
-  }
-  return false;
-}
-
-const ORPHANED =
-  "slot: the shell that started this run is gone; giving up so the queue moves (rerun it if you still need it)";
-
-/**
- * Whether this process was started by the process that holds the slot now: the variable names a
- * live pid, and the lock names the same one (a name left over from an old run is not enough).
- */
-function underHolder(env: SlotEnv): boolean {
-  const { holder } = env;
-  if (holder === undefined || !env.alive(holder)) return false;
-  return parseHolder(env.fs.read(env.path))?.pid === holder;
-}
-
 /** Runs the command under the slot and returns its exit code (a signal's code when one stopped it). */
 export async function run(env: SlotEnv, argv: string[]): Promise<number> {
   const args = parseArgs(argv);
@@ -502,34 +348,6 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
 }
 
 /**
- * Raises the niceness of the other `bun test` processes of the user to `NICE_OTHERS`, so a gate
- * run with `--priority` gets the CPU. Only raises (a process already at or above it is left), skips
- * the slot's own process tree, and restores nothing. Returns the pids it changed.
- */
-export async function lowerOthers(env: SlotEnv): Promise<number[]> {
-  if (!env.processes || !env.renice) return [];
-  const all = await env.processes();
-  // The slot's own tree: this process and everything it started.
-  const own = new Set([env.pid]);
-  for (let grew = true; grew; ) {
-    grew = false;
-    for (const p of all) {
-      if (!own.has(p.pid) && own.has(p.ppid)) {
-        own.add(p.pid);
-        grew = true;
-      }
-    }
-  }
-  const lowered: number[] = [];
-  for (const p of all) {
-    if (own.has(p.pid) || p.nice >= NICE_OTHERS || !isBunTest(p.command)) continue;
-    env.renice(p.pid, NICE_OTHERS);
-    lowered.push(p.pid);
-  }
-  return lowered;
-}
-
-/**
  * #833: a run of more than `SLOT_TEST_FILES` test files holds the slot 20 minutes or more while
  * others wait, so it needs FLIGHTDECK_SLOT_HEAVY with a reason. #1541: with the CI timings known,
  * the limit is `SLOT_TEST_SECONDS` of estimated CI time instead. The refusal (with the label, the
@@ -567,16 +385,4 @@ function recordLongHold(env: SlotEnv, heldAt: number, command: string): void {
     minutes: Math.floor(held / 60_000),
     detail: `${oneLine(env.label)}: ${clip(command)}`,
   });
-}
-
-/** Lowers the others every `RENICE_MS` until the command is done; a failure only skips a pass. */
-async function lowerWhile(env: SlotEnv, finished: { done: boolean }): Promise<void> {
-  while (!finished.done) {
-    try {
-      await lowerOthers(env); // NOSONAR: sequential by design: each pass needs the answer of the one before
-    } catch {
-      // Listing or renicing is best effort: the run itself is not affected.
-    }
-    await env.sleep(RENICE_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
-  }
 }
