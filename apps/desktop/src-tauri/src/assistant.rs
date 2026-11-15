@@ -14,7 +14,7 @@ use flightdeck_assistant::{anthropic, openrouter, Answer, Call, ModelOption, Tes
 use serde::Deserialize;
 use tauri::State;
 
-use crate::{spawn_blocking_result, vault_entry};
+use crate::{spawn_blocking_result, vault::vault_entry};
 
 /// How long a provider's model list is kept in memory.
 const MODELS_FOR: Duration = Duration::from_secs(10 * 60);
