@@ -1,15 +1,12 @@
 import { Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SnippetPicker } from "@/features/snippets/ui.ts";
-import { IconTip } from "@/shared/feedback/index.ts";
 import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { LazyFileViewer } from "../files/ui.ts";
 import {
   type FindFlags,
-  findPatternProblem,
   isWindowsHost,
   TERMINAL_FONT_FAMILY,
   terminalTheme,
@@ -17,6 +14,7 @@ import {
 import { MENU_ITEM, moveInMenu } from "./menu-keys.ts";
 import { askPaste, openPath, type Pasting, type Viewing } from "./terminal-actions.ts";
 import { TerminalCloseDialog, TerminalPasteDialog } from "./terminal-dialogs.tsx";
+import { TerminalFind } from "./terminal-find.tsx";
 import { TerminalSession, type TerminalState } from "./terminal-session.ts";
 import {
   createXtermScreen,
@@ -60,7 +58,6 @@ export function TerminalPage(
     setFlags(flagsNow.current);
     if (needle !== "") find(needle, "next", true);
   };
-  const problem = needle === "" ? null : findPatternProblem(needle, flags);
   const [closing, setClosing] = useState(false);
   /** A paste of several lines waiting for the OK: how many lines, and the answer to give xterm. */
   const [pasting, setPasting] = useState<Pasting | null>(null);
@@ -209,13 +206,6 @@ export function TerminalPage(
     screen.current?.clearFind();
     screen.current?.focus();
   };
-  const findStatus = (found: FindResults) =>
-    found.resultCount > 0
-      ? t("terminalUi.matches", {
-          index: String(Math.max(found.resultIndex, 0) + 1),
-          count: String(found.resultCount),
-        })
-      : t("terminalUi.noMatches");
   const status =
     state.state === "ended"
       ? t("terminalUi.state.ended", { code: String(state.exitCode) })
@@ -255,62 +245,22 @@ export function TerminalPage(
       }
       toolbar={
         searching && (
-          <div className="terminal-find">
-            <Input
-              type="search"
-              autoFocus
-              aria-label={t("terminalUi.searchLabel")}
-              title={t("terminalUi.searchHint")}
-              value={needle}
-              onChange={(e) => {
-                setNeedle(e.target.value);
-                if (e.target.value === "") {
-                  setResults(null);
-                  screen.current?.clearFind();
-                } else find(e.target.value, "next", true);
-              }}
-              onKeyDown={(e) => {
-                const flag = e.altKey && !e.ctrlKey ? FIND_KEYS[e.key.toLowerCase()] : undefined;
-                if (flag) {
-                  e.preventDefault();
-                  flip(flag);
-                } else if (e.key === "Escape") {
-                  // Handled here: left unmarked, the key closes the detail too (#2591).
-                  e.preventDefault();
-                  stopSearch();
-                } else if (e.key === "Enter") find(needle, e.shiftKey ? "previous" : "next");
-              }}
-            />
-            {FIND_TOGGLES.map(([flag, label, glyph, keys]) => (
-              <IconTip key={flag} label={`${t(label)} (${keys})`}>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="terminal-find-toggle"
-                  aria-label={t(label)}
-                  aria-keyshortcuts={keys}
-                  aria-pressed={flags[flag] === true}
-                  onClick={() => flip(flag)}
-                >
-                  <span aria-hidden="true">{glyph}</span>
-                </Button>
-              </IconTip>
-            ))}
-            <output className="text-xs text-muted-foreground">
-              {problem
-                ? t(PATTERN_PROBLEM[problem])
-                : needle !== "" && results && findStatus(results)}
-            </output>
-            <Button size="sm" variant="ghost" onClick={() => find(needle, "previous")}>
-              {t("terminalUi.findPrevious")}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => find(needle, "next")}>
-              {t("terminalUi.findNext")}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={stopSearch}>
-              {t("terminalUi.findClose")}
-            </Button>
-          </div>
+          <TerminalFind
+            t={t}
+            needle={needle}
+            flags={flags}
+            results={results}
+            onChange={(text) => {
+              setNeedle(text);
+              if (text === "") {
+                setResults(null);
+                screen.current?.clearFind();
+              } else find(text, "next", true);
+            }}
+            onFlip={flip}
+            onFind={(direction) => find(needle, direction)}
+            onClose={stopSearch}
+          />
         )
       }
     >
@@ -414,22 +364,3 @@ export function TerminalPage(
 }
 
 /** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
-/** Alt and a letter turn a find option on or off while the search box has the focus, as in VS Code. */
-const FIND_KEYS: Record<string, keyof FindFlags> = {
-  c: "caseSensitive",
-  w: "wholeWord",
-  r: "regex",
-};
-
-/** The find options' buttons: the option, its name, the glyph drawn for it and its key. */
-const FIND_TOGGLES = [
-  ["caseSensitive", "terminalUi.matchCase", "Aa", "Alt+C"],
-  ["wholeWord", "terminalUi.wholeWord", "ab", "Alt+W"],
-  ["regex", "terminalUi.useRegex", ".*", "Alt+R"],
-] as const;
-
-/** What the search box says about a pattern that cannot be searched. */
-const PATTERN_PROBLEM = {
-  invalid: "terminalUi.badPattern",
-  empty: "terminalUi.emptyPattern",
-} as const;
