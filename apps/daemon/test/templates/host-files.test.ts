@@ -6,7 +6,8 @@ import { runDoctor } from "../../src/deps/doctor.ts";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { BUILTIN_TEMPLATES } from "../../src/templates/domain/builtin.ts";
-import { loadTemplates, parseTemplateFile, serializeTemplate } from "../../src/templates/files.ts";
+import { parseTemplateFile, serializeTemplate } from "../../src/templates/domain/template-file.ts";
+import { loadTemplates } from "../../src/templates/files.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 
