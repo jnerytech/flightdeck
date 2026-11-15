@@ -1,11 +1,10 @@
 import type { Database } from "bun:sqlite";
 import { watch } from "node:fs";
-import { stat as fileStat, open, readdir } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { type HistoryRecord, lastTitle, parseLines } from "./domain/parser.ts";
-import { entrypointOf, sessionTitle, titleFrom } from "./domain/session-summary.ts";
-import { promptText } from "./domain/transcript-text.ts";
+import { IndexStore } from "./adapters/index-store.ts";
+import { listTranscripts, readSlice, transcriptStat } from "./adapters/transcript-files.ts";
+import { lastTitle, parseLines } from "./domain/parser.ts";
 import { isExcludedCwd, normalizeCwd } from "./folder.ts";
 import { HistoryQueries, type HistorySession } from "./queries.ts";
 import { fts5Available } from "./search.ts";
@@ -60,13 +59,7 @@ export interface IndexResult {
   reset: boolean;
 }
 
-/** `flightdeck` when the transcript belongs to a session this daemon manages. */
-const ORIGIN = `CASE WHEN EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id)
-  THEN 'flightdeck' ELSE 'external' END`;
-
 const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
-
-const entries = (dir: string) => readdir(dir, { withFileTypes: true }).catch(() => []);
 
 /** How much of a file a background pass reads before it gives the event loop back (about 25 ms). */
 const SLICE_BYTES = 1 << 20;
@@ -81,7 +74,7 @@ const WATCH_DEBOUNCE_MS = 250;
  * last newline read, and the next pass reads only what came after it.
  */
 export class HistoryIndexer {
-  private readonly db: Database;
+  private readonly store: IndexStore;
   private readonly queries: HistoryQueries;
   private readonly excludes: string[];
   private readonly listeners = new Set<(change: HistoryChange) => void>();
@@ -98,43 +91,16 @@ export class HistoryIndexer {
   readonly fts: boolean;
 
   constructor(readonly opts: HistoryIndexerOptions) {
-    this.db = opts.db;
     this.timers = opts.timers ?? globalThis;
     this.excludes = (opts.excludeCwds ?? []).map(normalizeCwd);
-    this.fts = opts.fts5 ?? fts5Available(this.db);
-    this.queries = new HistoryQueries(this.db, this.fts, opts.now);
+    this.fts = opts.fts5 ?? fts5Available(opts.db);
+    this.store = new IndexStore(opts.db, this.fts);
+    this.queries = new HistoryQueries(opts.db, this.fts, opts.now);
     opts.log?.(
       this.fts ? "histórico: busca com FTS5" : "histórico: FTS5 indisponível, busca com LIKE",
     );
-    // Only message rows go into the index: raw lines and tool results are never searchable.
-    if (this.fts) {
-      this.db.run(
-        "CREATE VIRTUAL TABLE IF NOT EXISTS history_fts USING fts5(text, content='history_messages')",
-      );
-    }
-    this.repairTitles();
-  }
-
-  /**
-   * A title an older daemon stored from a harness wrapper (`<system-reminder>…`) is taken again
-   * from the session's own messages: the first one with real text, else none.
-   */
-  private repairTitles(): void {
-    const stale = this.db
-      .query("SELECT claude_session_id AS id FROM history_sessions WHERE title LIKE '<%'")
-      .all() as Array<{ id: string }>;
-    for (const { id } of stale) {
-      const users = this.db
-        .query(
-          "SELECT text FROM history_messages WHERE claude_session_id = ? AND kind = 'message' AND role = 'user' ORDER BY rowid",
-        )
-        .all(id) as Array<{ text: string }>;
-      const first = users.map((u) => promptText(u.text)).find((text) => text !== null);
-      const title = titleFrom(first);
-      this.db
-        .query("UPDATE history_sessions SET title = ? WHERE claude_session_id = ?")
-        .run(title, id);
-    }
+    if (this.fts) this.store.createFts();
+    this.store.repairTitles();
   }
 
   /** The reads live in `HistoryQueries`; the indexer keeps them as its public face. */
@@ -228,18 +194,9 @@ export class HistoryIndexer {
 
   /** Drops everything indexed and reads every transcript again from the start. */
   async rebuild(): Promise<{ sessions: number; messages: number }> {
-    this.db.transaction(() => {
-      if (this.fts) this.db.run("INSERT INTO history_fts (history_fts) VALUES ('delete-all')");
-      this.db.run("DELETE FROM history_messages");
-      this.db.run("DELETE FROM history_sessions");
-      this.db.run("DELETE FROM history_files");
-    })();
+    this.store.clear();
     await this.scan();
-    const count = (sql: string) => (this.db.query(sql).get() as { n: number }).n;
-    return {
-      sessions: count("SELECT COUNT(*) AS n FROM history_sessions"),
-      messages: count("SELECT COUNT(*) AS n FROM history_messages WHERE kind = 'message'"),
-    };
+    return this.store.counts();
   }
 
   /**
@@ -248,11 +205,11 @@ export class HistoryIndexer {
    * `scan` does, and reports each file once, with its slices added up.
    */
   async scanAsync(): Promise<IndexResult[]> {
-    this.claimManaged();
+    this.store.claimManaged();
     const pause = this.opts.pause ?? zeroTimer;
     const sliceBytes = this.opts.sliceBytes ?? SLICE_BYTES;
     const results: IndexResult[] = [];
-    await inSequence(await this.files(), async (path) => {
+    await inSequence(await listTranscripts(this.opts.roots), async (path) => {
       let merged = null as IndexResult | null;
       for (;;) {
         const { result, more } = await this.indexSlice(path, sliceBytes); // NOSONAR: sequential by design: each pass needs the answer of the one before
@@ -298,9 +255,9 @@ export class HistoryIndexer {
 
   /** One pass over every root; returns the files that gained records. */
   async scan(): Promise<IndexResult[]> {
-    this.claimManaged();
+    this.store.claimManaged();
     const results: IndexResult[] = [];
-    await inSequence(await this.files(), async (path) => {
+    await inSequence(await listTranscripts(this.opts.roots), async (path) => {
       const result = await this.indexFile(path);
       if (result) results.push(result);
     });
@@ -308,32 +265,9 @@ export class HistoryIndexer {
     return results;
   }
 
-  /** A managed session may get its claudeSessionId after its transcript was indexed. */
-  private claimManaged(): void {
-    this.db.run(
-      `UPDATE history_sessions SET origin = 'flightdeck' WHERE origin = 'external'
-         AND claude_session_id IN (SELECT claude_session_id FROM sessions)`,
-    );
-  }
-
   private notify(claudeSessionId: string): void {
     const { cwd, lastTs, maybeActive } = this.session(claudeSessionId) as HistorySession;
     for (const listener of this.listeners) listener({ claudeSessionId, cwd, lastTs, maybeActive });
-  }
-
-  private async files(): Promise<string[]> {
-    const files: string[] = [];
-    await inSequence(this.opts.roots, async (root) => {
-      await inSequence(await entries(root), async (dir) => {
-        if (!dir.isDirectory()) return;
-        for (const file of await entries(join(root, dir.name))) {
-          if (file.isFile() && file.name.endsWith(".jsonl")) {
-            files.push(join(root, dir.name, file.name));
-          }
-        }
-      });
-    });
-    return files;
   }
 
   private async indexFile(path: string): Promise<IndexResult | null> {
@@ -348,35 +282,15 @@ export class HistoryIndexer {
     path: string,
     maxBytes: number,
   ): Promise<{ result: IndexResult | null; more: boolean }> {
-    const stat = await fileStat(path);
+    const stat = await transcriptStat(path);
     const claudeSessionId = basename(path, ".jsonl");
-    const row = this.db
-      .query("SELECT claude_session_id, offset, parse_errors FROM history_files WHERE path = ?")
-      .get(path) as {
-      claude_session_id: string | null;
-      offset: number;
-      parse_errors: number;
-    } | null;
+    const row = this.store.fileRow(path);
     // Smaller than what was already read: truncated or swapped, so start over.
     const reset = stat.size < (row?.offset ?? 0);
     const offset = reset ? 0 : (row?.offset ?? 0);
     if (!reset && stat.size === offset) return { result: null, more: false };
 
-    let chunk = Buffer.alloc(Math.min(stat.size - offset, maxBytes));
-    let end = 0;
-    for (;;) {
-      const handle = await open(path, "r"); // NOSONAR: sequential by design: each pass needs the answer of the one before
-      try {
-        await handle.read(chunk, 0, chunk.length, offset); // NOSONAR: sequential by design: each pass needs the answer of the one before
-      } finally {
-        await handle.close(); // NOSONAR: sequential by design: each pass needs the answer of the one before
-      }
-      // Only complete lines: a last line without its newline is left for the next pass.
-      end = chunk.lastIndexOf(0x0a) + 1;
-      if (end > 0 || chunk.length >= stat.size - offset) break;
-      // No end of line in the slice: the line is bigger than it, so read on until it ends.
-      chunk = Buffer.alloc(Math.min(stat.size - offset, chunk.length * 2));
-    }
+    const { chunk, end } = await readSlice(path, offset, stat.size, maxBytes);
     if (end === 0 && !reset) return { result: null, more: false };
     const { records, errors } = parseLines(chunk.subarray(0, end).toString("utf8"));
 
@@ -384,104 +298,26 @@ export class HistoryIndexer {
     const wasExcluded = !reset && row !== null && row.claude_session_id === null;
     const cwd = wasExcluded
       ? ""
-      : this.sessionCwd(claudeSessionId) || records.find((r) => r.cwd)?.cwd || "";
+      : this.store.sessionCwd(claudeSessionId) || records.find((r) => r.cwd)?.cwd || "";
     const excluded = wasExcluded || isExcludedCwd(cwd, this.excludes);
 
-    this.db.transaction(() => {
-      if (reset || excluded) this.forget(claudeSessionId);
-      const insert = this.db.query(
-        `INSERT OR IGNORE INTO history_messages (claude_session_id, uuid, ts, role, kind, text)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      );
-      const ftsInsert = this.fts
-        ? this.db.query("INSERT INTO history_fts (rowid, text) VALUES (?, ?)")
-        : null;
-      for (const r of excluded ? [] : records) {
-        const { changes, lastInsertRowid } = insert.run(
-          claudeSessionId,
-          r.uuid,
-          r.ts,
-          r.role,
-          r.kind,
-          r.text,
-        );
-        if (ftsInsert && changes > 0 && r.kind === "message")
-          ftsInsert.run(lastInsertRowid, r.text);
-      }
-      this.db
-        .query(
-          `INSERT INTO history_files (path, claude_session_id, size, mtime, offset, parse_errors)
-           VALUES ($path, $id, $size, $mtime, $offset, $errors)
-           ON CONFLICT(path) DO UPDATE SET size = $size, mtime = $mtime, offset = $offset,
-             parse_errors = $errors`,
-        )
-        .run({
-          path,
-          id: excluded ? null : claudeSessionId,
-          size: stat.size,
-          mtime: stat.mtime.toISOString(),
-          offset: offset + end,
-          errors: (reset ? 0 : (row?.parse_errors ?? 0)) + errors,
-        });
-      if (!excluded) this.updateSession(claudeSessionId, path, cwd, records);
-    })();
+    this.store.write({
+      claudeSessionId,
+      path,
+      cwd,
+      records,
+      excluded,
+      reset,
+      size: stat.size,
+      mtime: stat.mtime.toISOString(),
+      offset: offset + end,
+      parseErrors: (reset ? 0 : (row?.parse_errors ?? 0)) + errors,
+    });
     const title = excluded ? null : lastTitle(records);
     if (title) this.opts.onTitle?.(claudeSessionId, title.name, title.kind);
     return {
       result: excluded ? null : { claudeSessionId, path, added: records.length, reset },
       more: offset + end < stat.size && end > 0,
     };
-  }
-
-  /** Drops everything indexed for a session (its file row is rewritten by the caller). */
-  private forget(claudeSessionId: string): void {
-    // External-content FTS5 needs the old text to drop its entries.
-    if (this.fts) {
-      this.db.run(
-        `INSERT INTO history_fts (history_fts, rowid, text)
-         SELECT 'delete', rowid, text FROM history_messages
-         WHERE claude_session_id = ? AND kind = 'message'`,
-        [claudeSessionId],
-      );
-    }
-    this.db.query("DELETE FROM history_messages WHERE claude_session_id = ?").run(claudeSessionId);
-    this.db.query("DELETE FROM history_sessions WHERE claude_session_id = ?").run(claudeSessionId);
-  }
-
-  private sessionCwd(claudeSessionId: string): string {
-    const row = this.db
-      .query("SELECT cwd FROM history_sessions WHERE claude_session_id = ?")
-      .get(claudeSessionId) as { cwd: string } | null;
-    return row?.cwd ?? "";
-  }
-
-  /** Recomputes the session row from its stored messages and the records just read. */
-  private updateSession(
-    claudeSessionId: string,
-    path: string,
-    cwd: string,
-    records: HistoryRecord[],
-  ): void {
-    const existing = this.db
-      .query("SELECT title FROM history_sessions WHERE claude_session_id = ?")
-      .get(claudeSessionId) as { title: string | null } | null;
-    const title = sessionTitle(records, existing?.title ?? null);
-    const totals = this.db
-      .query(
-        `SELECT MIN(ts) AS first, MAX(ts) AS last, COALESCE(SUM(kind = 'message'), 0) AS count
-         FROM history_messages WHERE claude_session_id = ?`,
-      )
-      .get(claudeSessionId) as { first: string | null; last: string | null; count: number };
-    const entrypoint = entrypointOf(records);
-    this.db
-      .query(
-        `INSERT INTO history_sessions
-           (claude_session_id, cwd, title, first_ts, last_ts, message_count, origin, file_path, entrypoint)
-         VALUES ($id, $cwd, $title, $first, $last, $count, ${ORIGIN}, $path, $entrypoint)
-         ON CONFLICT(claude_session_id) DO UPDATE SET cwd = $cwd, title = $title,
-           first_ts = $first, last_ts = $last, message_count = $count, origin = ${ORIGIN},
-           file_path = $path, entrypoint = COALESCE(history_sessions.entrypoint, $entrypoint)`,
-      )
-      .run({ id: claudeSessionId, cwd, title, ...totals, path, entrypoint });
   }
 }
