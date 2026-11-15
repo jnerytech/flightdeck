@@ -78,6 +78,7 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
     const loaders = [
       "Screens.tsx",
       "route-screens.tsx",
+      "host-screens.tsx",
       "App.tsx",
       "../features/shell/sidebar.tsx",
     ].map((file) => resolve(APP, file));
@@ -90,8 +91,8 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
     expect(eager).toEqual([]);
   });
 
-  test("route-screens.tsx loads each of them with import() inside React.lazy", () => {
-    const source = read("route-screens.tsx");
+  test("route-screens.tsx and host-screens.tsx load each of them with import() inside React.lazy", () => {
+    const source = read("route-screens.tsx") + read("host-screens.tsx");
     for (const name of LAZY_SCREENS) {
       expect(source).toContain(`import("${specifierOf(name)}")`);
     }
