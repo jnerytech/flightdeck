@@ -113,7 +113,6 @@ import {
 } from "./board-select.ts";
 import { BulkRunDialog } from "./bulk-run-dialog.tsx";
 import { CardStartDialog } from "./card-start-dialog.tsx";
-import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
 import { BoardColumnEmpty } from "./column-empty.tsx";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
@@ -121,6 +120,7 @@ import { askAbout, dragNeeds, type Lacking, missingFor } from "./domain/board-co
 import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
 import type { BoardKeyAction } from "./domain/board-keys.ts";
 import { cardStartBlock } from "./domain/card-start-block.ts";
+import { startPersonaOf, startWorkflowOf } from "./domain/card-template.ts";
 import { radarBadge } from "./domain/conflict-radar.ts";
 import { NewCardDialog } from "./new-card-dialog.tsx";
 import { useBoardProject } from "./use-board-project.ts";

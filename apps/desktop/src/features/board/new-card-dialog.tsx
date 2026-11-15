@@ -8,7 +8,8 @@ import { AssistField } from "@/features/assistant/ui.ts";
 import { ActionButton, AppDialogContent } from "@/shared/feedback/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { applyTemplate, CardTemplateField } from "./card-template-field.tsx";
+import { CardTemplateField } from "./card-template-field.tsx";
+import { applyTemplate } from "./domain/card-template.ts";
 
 /**
  * The New card dialog of a project's board: a title and a description (each with the assistant's
