@@ -12,6 +12,5 @@ export {
   TREE_CAP,
   visibleNodes,
 } from "./domain/tree-fold.ts";
-export type { Orientation } from "./domain/workspace.ts";
 export { NAV_ICONS, type NavKey } from "./nav-icons.ts";
 export type { ThemeMode } from "./theme.ts";

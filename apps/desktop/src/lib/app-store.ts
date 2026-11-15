@@ -7,7 +7,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { WORKSPACE_KEY, Workspace } from "@/features/shell/domain/workspace.ts";
+import { WORKSPACE_KEY, Workspace } from "@/features/tabs/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import {
   composeHosts,
