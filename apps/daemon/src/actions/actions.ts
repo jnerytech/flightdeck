@@ -9,58 +9,35 @@
  * or answers no. The trust in an action covers what it executes, not only its declaration, and is
  * checked again right before the program starts.
  */
-import type { Database } from "bun:sqlite";
 import type {
   ActionInfo,
   ActionList,
   ActionResult,
   ActionRunInfo,
-  VaultAlertFrame,
-  VaultDaemonRequester,
   VaultDecisionInfo,
   VaultReportRow,
   VaultRequester,
-  VaultRequestFrame,
-  VaultUsed,
   VaultVerdict,
 } from "@flightdeck/protocol";
-import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError, ulid } from "../kernel/index.ts";
-import {
-  Decisions,
-  decideRequest,
-  evaluate,
-  localTime,
-  type RequestDecision,
-  type Risk,
-  type RulesEnv,
-  requesterOf,
-  toCsv,
-  type UseContext,
-  type Vault,
-  type VaultRules,
-} from "../vault/index.ts";
+import { ulid } from "../kernel/index.ts";
 import { ActionCatalog, type ActionProject, type Found } from "./catalog.ts";
-import { type Approval, approvalRefusal } from "./domain/approval-check.ts";
+import type { Approval } from "./domain/approval-check.ts";
 import { FREE, freeAction, freeRemote, freeSecretIds } from "./domain/free-command.ts";
 import { resolveParams } from "./domain/run-params.ts";
 import { type RunRow, runInfoOf } from "./domain/run-row.ts";
 import { approvalOf, secretsOf } from "./domain/schema.ts";
-import {
-  type Ask,
-  approverOf,
-  auditRowOf,
-  requestFrameOf,
-  type Waiting,
-  waitRefusal,
-  withSessionApproval,
-} from "./domain/secret-use.ts";
 import { type RunResult, runAction, type SshExecutor } from "./run.ts";
+import {
+  type ActionsFrame,
+  invalid,
+  SecretRequests,
+  type SecretRequestsOptions,
+} from "./secret-requests.ts";
 import { shellLine } from "./shell.ts";
 
-export interface ActionsOptions {
-  db: Database;
-  vault: Vault;
+export { type ActionsFrame, REQUEST_TTL_MS } from "./secret-requests.ts";
+
+export interface ActionsOptions extends SecretRequestsOptions {
   /** The project by id; throws `not_found` for one that does not exist. */
   projects: (id: string) => ActionProject;
   /** Where host actions (and free commands) run; the home folder when absent. */
@@ -73,94 +50,39 @@ export interface ActionsOptions {
   sshKey?: (target: string) => string | null;
   /** Phase 19: the tags of an ssh destino (phase 15), which count in a use's tags. */
   sshTags?: (target: string) => string[];
-  /** How long a request waits for the app, and then is denied (10 minutes when absent). */
-  requestTimeoutMs?: number;
-  /** Phase 19: the rules of each secret; without them the requests of phase 17 apply. */
-  rules?: VaultRules;
-  /** This host's name, as the rules' `host` matches it. */
-  hostName?: string;
-  /** What the classifier of phase 13 says of a command. */
-  risk?: (command: string, cwd: string) => Risk;
   /** The `projectKey` of a project, as the rules' `project` matches it. */
   projectKey?: (projectId: string) => string | undefined;
-  clock?: () => number;
-  /** The PC's time zone for the rules' windows (the system's when absent). */
-  timeZone?: string;
 }
 
-export type ActionsFrame = VaultRequestFrame | VaultUsed | VaultAlertFrame;
-
-/** A request nobody answers is denied after this long. */
-export const REQUEST_TTL_MS = 10 * 60_000;
-
-const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
-  new FlightdeckError("invalid_state", message, reason, params);
 const now = () => new Date().toISOString();
 
 export class Actions {
-  private readonly listeners = new Set<(frame: ActionsFrame) => void>();
-  private readonly pending = new Map<string, Waiting>();
-  /** Secret, rule and session the user approved "for this session". */
-  private readonly approvedSessions = new Set<string>();
-  private readonly audit: Decisions;
+  private readonly requests: SecretRequests;
   private readonly catalog: ActionCatalog;
 
   constructor(private readonly opts: ActionsOptions) {
-    this.audit = new Decisions(opts.db);
+    this.requests = new SecretRequests(opts);
     this.catalog = new ActionCatalog(opts);
-  }
-
-  private ms(): number {
-    return (this.opts.clock ?? Date.now)();
-  }
-
-  /** The clock, the PC's zone and the uses the rules' limits count. */
-  private env(at?: number): RulesEnv {
-    return {
-      now: () => at ?? this.ms(),
-      local: (ms) => localTime(ms, this.opts.timeZone),
-      uses: (ruleId, sinceMs) => this.audit.uses(ruleId, sinceMs),
-    };
   }
 
   /** The app's stream of `vault.request` and `vault.used` frames; answers how to stop it. */
   watch(listener: (frame: ActionsFrame) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.requests.watch(listener);
   }
 
   /** The user refused a request: the run that waits for it fails at once. */
   deny(requestId: string): void {
-    const waiting = this.pending.get(requestId);
-    if (!waiting) return;
-    waiting.denied = true;
-    waiting.controller.abort();
+    this.requests.deny(requestId);
   }
 
   /** The user approved a request that asked; the delivery of its secret is allowed after this. */
   approve(requestId: string, approval: Approval): void {
-    const waiting = this.pending.get(requestId);
-    if (!waiting) {
-      throw new FlightdeckError(
-        "not_found",
-        `request ${requestId} does not exist: it expired, was refused or finished`,
-        "action_request_gone",
-      );
-    }
-    const refusal = approvalRefusal(waiting, approval);
-    if (refusal) throw invalid(refusal.message, refusal.reason);
-    waiting.approved = { by: approval.via, scope: approval.scope ?? "once" };
+    this.requests.approve(requestId, approval);
   }
 
   /** Throws unless a delivery for `purpose` may go through: a request that asks has to be approved. */
   gate(purpose: string): void {
-    const waiting = this.pending.get(purpose.slice(purpose.lastIndexOf(":") + 1));
-    if (waiting?.purpose === purpose && waiting.decision === "ask" && !waiting.approved) {
-      throw invalid(
-        "the request needs your approval before the secret is delivered",
-        "action_needs_approval",
-      );
-    }
+    this.requests.gate(purpose);
   }
 
   /** The rules of a secret, replaced whole (the ones that break the ceiling are refused). */
@@ -175,51 +97,24 @@ export class Actions {
   }
 
   /** The verdict for a use, without recording anything. */
-  preview(use: {
-    secretId: string;
-    requester: VaultRequester;
-    purpose: "ssh" | "action" | "run_with_secret";
-    action?: string;
-    host?: string;
-    tags?: string[];
-    project?: string;
-    session?: string;
-    risk?: Risk;
-    actionApproval?: "always" | "never" | "first-per-session";
-    at?: number;
-  }): VaultVerdict {
-    const rules = this.opts.rules;
-    const ctx: UseContext = {
-      secretId: use.secretId,
-      requester: use.requester,
-      purpose: use.purpose,
-      host: use.host ?? this.opts.hostName ?? "",
-      tags: this.tagsOf(use.secretId, use.tags ?? []),
-      ...(use.action !== undefined ? { action: use.action } : {}),
-      ...(use.project !== undefined ? { project: use.project } : {}),
-      ...(use.session !== undefined ? { session: use.session } : {}),
-      ...(use.risk !== undefined ? { risk: use.risk } : {}),
-      ...(use.actionApproval !== undefined ? { actionApproval: use.actionApproval } : {}),
-    };
-    return evaluate(rules?.rulesFor(use.secretId) ?? [], ctx, this.env(use.at));
+  preview(use: Parameters<SecretRequests["preview"]>[0]): VaultVerdict {
+    return this.requests.preview(use);
   }
 
   decisions(input: { secretId?: string; days?: number; limit?: number }): VaultDecisionInfo[] {
-    return this.audit.list(input, this.ms());
+    return this.requests.decisions(input);
   }
 
   report(input: { days?: number; format?: "json" | "csv" }): {
     rows: VaultReportRow[];
     csv?: string;
   } {
-    const rows = this.audit.report(input.days ?? 30, this.ms());
-    return input.format === "csv" ? { rows, csv: toCsv(rows) } : { rows };
+    return this.requests.report(input);
   }
 
   /** Nothing that waits outlives the daemon. */
   stop(): void {
-    for (const waiting of this.pending.values()) waiting.controller.abort();
-    this.listeners.clear();
+    this.requests.stop();
   }
 
   /** The actions a project sees (its own, then the host's) or, with no project, the host's. */
@@ -259,7 +154,7 @@ export class Actions {
     const keyId = found.action.ssh ? (this.opts.sshKey?.(found.action.ssh) ?? null) : null;
     const ids = [...new Set([...values, ...files, ...(keyId ? [keyId] : [])])];
     const project = found.scope ? this.opts.projectKey?.(found.scope) : undefined;
-    const secrets = await this.collect(ids, {
+    const secrets = await this.requests.collect(ids, {
       requester: input.requestedBy,
       purposeBase: `action:${found.action.name}`,
       frame: { action: found.action.name, params, approval: approvalOf(found.action) },
@@ -295,7 +190,7 @@ export class Actions {
     requestedBy: VaultRequester;
     session?: string;
   }): Promise<ActionResult> {
-    const requester = this.permit(input.requestedBy);
+    const requester = this.requests.permit(input.requestedBy);
     const remote = freeRemote(input.host, Boolean(this.opts.ssh));
     const ids = freeSecretIds(input.secrets);
     const line = remote ? null : await shellLine(input.command, process.platform);
@@ -303,7 +198,7 @@ export class Actions {
     try {
       const action = freeAction({ command: input.command, ids, argv: line?.argv ?? null, remote });
       const asked = keyId && !ids.includes(keyId) ? [...ids, keyId] : ids;
-      const secrets = await this.collect(asked, {
+      const secrets = await this.requests.collect(asked, {
         requester,
         purposeBase: FREE,
         frame: {
@@ -336,212 +231,6 @@ export class Actions {
       )
       .all(input.projectId ?? null, input.name ?? null, input.limit ?? 50) as RunRow[];
     return rows.map(runInfoOf);
-  }
-
-  // --- secrets ---
-
-  /** The requester, if it is one that may ask the app for a secret. */
-  private permit(requester: VaultRequester): VaultDaemonRequester {
-    const known = requesterOf(requester);
-    if (known === "unknown") {
-      throw invalid(
-        "request refused: only Claude, an automation or a workflow ask the app for secrets this way",
-        "action_requester_refused",
-      );
-    }
-    return known;
-  }
-
-  /** The values, by id. The user's own run finds them delivered; anyone else's is asked of the app. */
-  private async collect(ids: string[], ask: Ask): Promise<Record<string, string>> {
-    const secrets: Record<string, string> = {};
-    await inSequence(ids, async (id) => {
-      secrets[id] =
-        ask.requester === "you"
-          ? this.opts.vault.take(id, `${ask.purposeBase}:you`)
-          : await this.request(id, { ...ask, requester: this.permit(ask.requester) });
-    });
-    return secrets;
-  }
-
-  /** The tags of the action and of the secret, without repeats. */
-  private tagsOf(secretId: string, actionTags: readonly string[]): string[] {
-    return [...new Set([...actionTags, ...(this.opts.rules?.tagsFor(secretId) ?? [])])];
-  }
-
-  /** The rules' verdict for one secret of this use, with the session approval applied. */
-  private decide(
-    secretId: string,
-    ask: Ask & { requester: VaultDaemonRequester },
-  ): {
-    verdict: ReturnType<typeof decideRequest>;
-    rememberedKey: string | null;
-    remembered: boolean;
-  } {
-    const rules = this.opts.rules as VaultRules;
-    const { use } = ask;
-    const verdict = decideRequest(
-      {
-        requester: ask.requester,
-        secretId,
-        purpose: use.purpose,
-        host: this.opts.hostName ?? "",
-        tags: this.tagsOf(secretId, use.tags),
-        ...(use.action ? { action: use.action } : {}),
-        ...(use.project ? { project: use.project } : {}),
-        ...(use.session ? { session: use.session } : {}),
-        ...(use.actionApproval ? { actionApproval: use.actionApproval } : {}),
-        ...(this.opts.risk ? { risk: this.opts.risk(use.command, use.cwd) } : {}),
-      },
-      rules.rulesFor(secretId),
-      this.env(),
-    );
-    return withSessionApproval(verdict, secretId, use.session, this.approvedSessions);
-  }
-
-  /** Writes the request to the audit log and raises the alerts; throws when the rules deny the use. */
-  private recordUse(
-    requestId: string,
-    secretId: string,
-    ask: Ask & { requester: VaultDaemonRequester },
-    verdict: RequestDecision,
-  ): void {
-    const isNew = this.audit.isNew(secretId, ask.requester);
-    const rule = this.opts.rules?.rulesFor(secretId).find((r) => r.id === verdict.ruleId);
-    this.audit.insert(
-      auditRowOf({
-        requestId,
-        atMs: this.ms(),
-        secretId,
-        ask,
-        host: this.opts.hostName ?? "",
-        window: rule?.window,
-        verdict,
-      }),
-    );
-    if (isNew) {
-      this.alert(
-        "new-requester",
-        secretId,
-        ask.requester,
-        `${ask.requester} used the secret ${secretId} for the first time`,
-      );
-    }
-    if (verdict.granted) return;
-    if (verdict.limited) this.alert("limit", secretId, ask.requester, `${verdict.reason}`);
-    throw invalid(`use denied: ${verdict.reason}`, "action_use_denied", { detail: verdict.reason });
-  }
-
-  /** Closes the audit row of a granted request once the secret arrived, and remembers a session approval. */
-  private recordDelivery(
-    requestId: string,
-    verdict: Extract<RequestDecision, { granted: true }>,
-    waiting: Waiting,
-    decided: { remembered: boolean; rememberedKey: string | null } | null,
-  ): void {
-    const approver = approverOf(
-      verdict.decision,
-      waiting.approved?.by,
-      decided?.remembered ?? false,
-    );
-    this.audit.finish(requestId, verdict.decision === "allow" ? "allowed" : "approved", approver);
-    if (waiting.approved?.scope === "session" && decided?.rememberedKey) {
-      this.approvedSessions.add(decided.rememberedKey);
-    }
-  }
-
-  /** The error a failed wait becomes: a refusal, an expiry, or the error itself. Closes the audit row. */
-  private failure(error: unknown, requestId: string, secretId: string, waiting: Waiting): unknown {
-    const refusal = waitRefusal(waiting, secretId);
-    if (refusal) {
-      this.audit.finish(requestId, refusal.outcome, null);
-      return refusal.error;
-    }
-    this.audit.finish(requestId, "failed", null);
-    return error;
-  }
-
-  /** Asks the app for one secret, for this request only, and waits for the delivery or the no. */
-  private async request(
-    secretId: string,
-    ask: Ask & { requester: VaultDaemonRequester },
-  ): Promise<string> {
-    const rules = this.opts.rules;
-    const requestId = ulid();
-    const decided = rules ? this.decide(secretId, ask) : null;
-    const verdict = decided?.verdict;
-    if (rules && decided && verdict) this.recordUse(requestId, secretId, ask, verdict);
-    if (this.listeners.size === 0) {
-      this.audit.finish(requestId, "failed", null);
-      throw invalid(
-        "the app is not connected: it has to be open to release the secret",
-        "action_app_offline",
-      );
-    }
-    const purpose = `${ask.purposeBase}:${requestId}`;
-    const timeoutMs = this.opts.requestTimeoutMs ?? REQUEST_TTL_MS;
-    const waiting: Waiting = {
-      controller: new AbortController(),
-      denied: false,
-      expired: false,
-      needsHold: verdict?.granted ? verdict.needsHold : false,
-      once: verdict?.granted ? verdict.once : false,
-      purpose,
-      ...(verdict?.granted ? { decision: verdict.decision } : {}),
-    };
-    this.pending.set(requestId, waiting);
-    const timer = setTimeout(() => {
-      waiting.expired = true;
-      waiting.controller.abort();
-    }, timeoutMs);
-    // The wait is set up before the frame goes out, so a delivery cannot slip past it.
-    const value = this.opts.vault.waitFor(
-      secretId,
-      purpose,
-      timeoutMs + 1000,
-      waiting.controller.signal,
-    );
-    this.emit(
-      requestFrameOf({
-        ask,
-        requestId,
-        secretId,
-        purpose,
-        verdict,
-        tags: this.tagsOf(secretId, ask.use.tags),
-        expiresAt: this.ms() + timeoutMs,
-      }),
-    );
-    try {
-      const secret = await value;
-      if (rules && verdict?.granted) this.recordDelivery(requestId, verdict, waiting, decided);
-      return secret;
-    } catch (error) {
-      throw this.failure(error, requestId, secretId, waiting);
-    } finally {
-      clearTimeout(timer);
-      this.pending.delete(requestId);
-    }
-  }
-
-  private alert(
-    kind: "new-requester" | "limit",
-    secretId: string,
-    requester: VaultRequester,
-    message: string,
-  ): void {
-    this.emit({
-      type: "vault.alert",
-      kind,
-      secretId,
-      requester,
-      message,
-      at: new Date(this.ms()).toISOString(),
-    });
-  }
-
-  private emit(frame: ActionsFrame): void {
-    for (const listener of this.listeners) listener(frame);
   }
 
   // --- running and recording ---
@@ -582,7 +271,7 @@ export class Actions {
       );
     // For the app's usage log: who, for what, when; never the value.
     for (const secretId of ids) {
-      this.emit({
+      this.requests.emit({
         type: "vault.used",
         secretId,
         purpose: found.action.name === FREE ? FREE : `action:${found.action.name}`,
