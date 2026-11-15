@@ -116,3 +116,47 @@ export const STOP_QUOTA =
 export const RESUME_USER = "resume: o time voltou a trabalhar. Continue de onde parou.";
 export const RESUME_QUOTA =
   "resume: a janela da cota do plano reiniciou e o time voltou a trabalhar. Continue de onde parou.";
+
+/** What a worker was asked to be, as the coordinator is told when it joins. */
+export interface JoinAsk {
+  persona?: string | null;
+  model?: string | null;
+  effort?: string | null;
+  permission?: string | null;
+}
+
+/** The notice the coordinator gets when a worker joins its team. */
+export function workerJoined(name: string, cardId: string | null, ask: JoinAsk): string {
+  const asked = [
+    ask.persona && `persona ${ask.persona}`,
+    ask.model && `modelo ${ask.model}`,
+    ask.effort && `effort ${ask.effort}`,
+    ask.permission && `modo de permissão ${ask.permission}`,
+  ].filter(Boolean);
+  return `Entrou uma executora no time: "${name}" (card ${cardId})${
+    asked.length > 0 ? `, com ${asked.join(" e ")}` : ""
+  }.`;
+}
+
+/** The notice the coordinator gets when a worker leaves the team. */
+export const workerLeft = (name: string): string => `A executora "${name}" saiu do time.`;
+
+/** The notice the worker that leaves gets. */
+export const youLeft = (team: string): string =>
+  `Você saiu do time "${team}": não receba mais tarefas dele.`;
+
+/** The notice every member gets when the team is closed. */
+export const teamClosed = (team: string): string =>
+  `O time "${team}" foi encerrado: não há mais tarefas para este time.`;
+
+export const goalChanged = (goal: string): string => `O objetivo do time mudou: ${goal}`;
+
+/** The coordinator's notice when the check commands change; none means the project's own. */
+export const checksChanged = (checks: readonly string[]): string =>
+  checks.length > 0
+    ? `Os comandos de verificação do time mudaram: ${checks.join(", ")}`
+    : "Os comandos de verificação do time voltaram a ser os checks do projeto.";
+
+/** Why a team changed, for the app's notice, when the quota paused or resumed it. */
+export const PAUSED_BY_QUOTA = "a cota do plano passou do limite: o time foi pausado";
+export const RESUMED_BY_QUOTA = "a cota do plano reiniciou: o time voltou a trabalhar";

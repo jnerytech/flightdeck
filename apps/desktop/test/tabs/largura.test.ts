@@ -12,7 +12,7 @@ const read = (file: string) => readFileSync(join(import.meta.dir, "../../src", f
  */
 describe("guard: abas-largura: tabs say their title (issue #103)", () => {
   test("a tab says its full title in a tooltip", () => {
-    const bar = read("features/tabs/tab-bar.tsx");
+    const bar = read("features/tabs/tab-item.tsx");
     expect(bar).toMatch(/<IconTip label=\{label\}>\s*<button[^>]*\s*type="button"\s*role="tab"/);
     expect(bar).not.toMatch(/role="tab"[\s\S]{0,400}title=\{label\}/);
   });
