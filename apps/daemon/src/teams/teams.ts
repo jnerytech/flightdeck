@@ -18,15 +18,23 @@ import { MANAGED_STATE } from "../messaging/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import type { NewTeam, TeamPatch } from "./domain/input.ts";
 import {
+  checksChanged,
   coordinatorInstructions,
+  goalChanged,
   INSTRUCTIONS_VERSION,
+  PAUSED_BY_QUOTA,
   RESUME_QUOTA,
   RESUME_USER,
+  RESUMED_BY_QUOTA,
   STOP_QUOTA,
   STOP_USER,
   type TeamBrief,
+  teamClosed,
   withCoordinatorBrief,
   workerInstructions,
+  workerJoined,
+  workerLeft,
+  youLeft,
 } from "./domain/instructions.ts";
 import {
   memberUnknown,
@@ -426,10 +434,7 @@ export class Teams {
     this.save(id, { state: "paused", paused_by: by });
     const info = this.get(id);
     this.notify(info, by === "quota" ? STOP_QUOTA : STOP_USER);
-    return this.changed(
-      id,
-      by === "quota" ? "a cota do plano passou do limite: o time foi pausado" : null,
-    );
+    return this.changed(id, by === "quota" ? PAUSED_BY_QUOTA : null);
   }
 
   resume(id: string, by: "user" | "quota" = "user"): TeamInfo {
@@ -437,10 +442,7 @@ export class Teams {
     if (row.state === "active") return this.get(id);
     this.save(id, { state: "active", paused_by: null });
     this.notify(this.get(id), by === "quota" ? RESUME_QUOTA : RESUME_USER);
-    return this.changed(
-      id,
-      by === "quota" ? "a cota do plano reiniciou: o time voltou a trabalhar" : null,
-    );
+    return this.changed(id, by === "quota" ? RESUMED_BY_QUOTA : null);
   }
 
   close(id: string, confirm: boolean): TeamInfo {
@@ -449,7 +451,7 @@ export class Teams {
     refuseUnconfirmedClose(row, confirm);
     const before = this.get(id);
     this.save(id, { state: "closed", paused_by: null });
-    this.notify(before, `O time "${row.name}" foi encerrado: não há mais tarefas para este time.`);
+    this.notify(before, teamClosed(row.name));
     return this.changed(id);
   }
 
@@ -546,17 +548,7 @@ export class Teams {
       members.push(added);
       started.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
-      const asked = [
-        spec.persona && `persona ${spec.persona}`,
-        spec.model && `modelo ${spec.model}`,
-        spec.effort && `effort ${spec.effort}`,
-        spec.permission && `modo de permissão ${spec.permission}`,
-      ].filter(Boolean);
-      tellCoordinator(
-        `Entrou uma executora no time: "${added.name}" (card ${added.cardId})${
-          asked.length > 0 ? `, com ${asked.join(" e ")}` : ""
-        }.`,
-      );
+      tellCoordinator(workerJoined(added.name, added.cardId, spec));
     }
     return started;
   }
@@ -570,14 +562,9 @@ export class Teams {
     const members = this.stored(this.row(row.id)).filter((m) => m.name !== target.name);
     this.save(row.id, { members: JSON.stringify(members) });
     if (target.sessionId) {
-      this.opts.messaging.notice(
-        target.sessionId,
-        "system",
-        `Você saiu do time "${row.name}": não receba mais tarefas dele.`,
-        row.id,
-      );
+      this.opts.messaging.notice(target.sessionId, "system", youLeft(row.name), row.id);
     }
-    tellCoordinator(`A executora "${target.name}" saiu do time.`);
+    tellCoordinator(workerLeft(target.name));
   }
 
   /**
@@ -643,15 +630,11 @@ export class Teams {
     if (patch.addMember) this.checkPermissions([patch.addMember.permission]);
     if (patch.goal !== undefined) {
       this.save(row.id, { goal: patch.goal });
-      tellCoordinator(`O objetivo do time mudou: ${patch.goal}`);
+      tellCoordinator(goalChanged(patch.goal));
     }
     if (patch.checks !== undefined) {
       this.save(row.id, { checks: JSON.stringify(patch.checks) });
-      tellCoordinator(
-        patch.checks.length > 0
-          ? `Os comandos de verificação do time mudaram: ${patch.checks.join(", ")}`
-          : "Os comandos de verificação do time voltaram a ser os checks do projeto.",
-      );
+      tellCoordinator(checksChanged(patch.checks));
     }
     if (patch.persona) await this.changePersona(row, info, patch.persona);
     if (patch.addWorkers || patch.addMember) {
