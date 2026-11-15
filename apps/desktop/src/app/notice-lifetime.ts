@@ -1,4 +1,13 @@
-import type { Notice } from "../lib/app-store";
+/** The fields of a toast (`Notice` in lib/app-state.ts) that its lifetime and its sameness read. */
+interface Notice {
+  kind: "error" | "success";
+  code: string;
+  text: string;
+  reason?: string;
+  params?: Record<string, string | number>;
+  hostId?: string;
+  link?: unknown;
+}
 
 /** How long a toast stays when nobody touches it. */
 export const SUCCESS_TOAST_MS = 5000;

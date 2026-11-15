@@ -1,11 +1,19 @@
+import type { SessionMeta, SessionNameInfo } from "@flightdeck/protocol";
 import { basename } from "@/shared/lib/index.ts";
 import { formatDuration } from "../../../i18n/format.ts";
 import type { T } from "../../../i18n/index.ts";
-import { type AppState, sessionKey } from "../../../lib/app-store.ts";
-import { sessionLabel } from "../../sessions/index.ts";
+import type { HostView } from "../../hosts/index.ts";
+import type { PersonasSliceState } from "../../personas/index.ts";
+import { sessionKey, sessionLabel } from "../../sessions/index.ts";
 
 /** The parts of the state the quiet sessions are made of. */
-export type QuietState = Pick<AppState, "hosts" | "meta" | "names" | "personas" | "quietSnooze">;
+export interface QuietState {
+  hosts: HostView[];
+  meta: Record<string, SessionMeta>;
+  names: Record<string, SessionNameInfo[]>;
+  personas: PersonasSliceState["personas"];
+  quietSnooze: Record<string, number>;
+}
 
 /** A running session the host marked quiet, as Needs you lists it. */
 export interface QuietAlert {

@@ -1,6 +1,8 @@
 import type { T } from "../../i18n/index.ts";
-import type { AppState, PendingItem } from "../../lib/app-store.ts";
 import type { Platform, TrayAction, TrayStatus } from "../../platform/types.ts";
+import type { HostView } from "../hosts/index.ts";
+import type { PendingItem } from "../needs-you/index.ts";
+import type { SessionState } from "../sessions/index.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./domain/tray.ts";
 
 /** The part of the platform the tray and the window title need. */
@@ -10,13 +12,16 @@ export type TrayPlatform = Pick<
 >;
 
 /** What the tray and the title read of the app's state: the hosts and the requests seen so far. */
-export type TrayState = Pick<AppState, "hosts" | "sessions">;
+export interface TrayState {
+  hosts: HostView[];
+  sessions: Record<string, SessionState>;
+}
 
 /** The state fields whose change can alter the tray, the title or the menu. */
 export type TrayPatch = Partial<
-  Pick<
-    AppState,
-    "hosts" | "uiChoices" | "selected" | "externalRequests" | "externals" | "runs" | "cards"
+  Record<
+    "hosts" | "uiChoices" | "selected" | "externalRequests" | "externals" | "runs" | "cards",
+    unknown
   >
 >;
 
