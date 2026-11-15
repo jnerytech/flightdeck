@@ -41,7 +41,7 @@ export const COLUMN_WIDTH = { default: 260, min: 180, max: 520, step: 20 } as co
 export const COLUMN_GAP = 12;
 
 /** The room the last column's resize handle takes past its edge, in px (`-right-2`, 8 px wide). */
-export const HANDLE_ROOM = 8;
+const HANDLE_ROOM = 8;
 
 /**
  * Issue #1030: the width that lets `count` columns, `gap` px apart, share a board `board` px wide,

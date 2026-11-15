@@ -3,3 +3,4 @@
  * feature's state never reaches a screen.
  */
 export { BudgetsSection } from "./budgets-section.tsx";
+export { UsagePanel } from "./usage-panel.tsx";

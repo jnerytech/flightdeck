@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSuggestedPersona } from "@/features/personas/ui.ts";
-import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
+import { PrDescriptionDialog } from "@/features/watch/ui.ts";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";

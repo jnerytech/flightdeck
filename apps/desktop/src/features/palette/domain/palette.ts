@@ -1,24 +1,12 @@
-import { ALL_CLIENTS, selectedClient, tagsFirst, UNASSIGNED } from "@/features/clients/index.ts";
-import { basename, isInside } from "@/shared/lib/index.ts";
 import type { T } from "../../../i18n/index.ts";
-import { type AppState, sessionKey } from "../../../lib/app-store.ts";
-import { anyHostHas, hasFeature } from "../../../lib/version.ts";
-import { hostStatusView } from "../../hosts/index.ts";
-import {
-  type SessionViewName as SessionView,
-  sessionLabel,
-  VIEW_LABEL,
-} from "../../sessions/index.ts";
-import { keysLabel, type ShortcutAction, shortcutOf } from "../../shortcuts/index.ts";
+import type { AppState } from "../../../lib/app-store.ts";
+import { anyHostHas } from "../../../lib/version.ts";
+import type { SessionViewName as SessionView } from "../../sessions/index.ts";
 import type { AppSnippet } from "../../snippets/index.ts";
-import type { TerminalTarget } from "../../terminal/index.ts";
-import type {
-  PaletteAction,
-  PaletteItem,
-  PaletteScope,
-  PaletteSection,
-  PaletteTarget,
-} from "./palette-types.ts";
+import { actionBuilder, commandItems } from "./palette-commands.ts";
+import { createItem, startItem } from "./palette-create.ts";
+import { entityItems } from "./palette-entities.ts";
+import type { PaletteItem, PaletteScope, PaletteSection } from "./palette-types.ts";
 
 export type {
   PaletteAction,
@@ -35,35 +23,8 @@ const PR_LINK = /^https?:\/\/\S+\/(?:pullrequest|pull)\/\d+(?:[/?#]\S*)?$/;
 /** How many recent entries the palette shows. */
 const RECENTS_SHOWN = 6;
 
-const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission", "idle"]);
-
-/** The state a session's status shows as, for its glyph: Idle covers whatever is not running or waiting. */
-const stateOf = (status: string): NonNullable<PaletteItem["stateKey"]> => {
-  if (status === "awaiting_permission") return "needs_you";
-  return status === "running" || status === "starting" ? "running" : "idle";
-};
-
 /** How soon a recent entry is wanted: what waits for you, then what runs, then the rest. */
 const RANK = { needs_you: 0, running: 1, idle: 2 } as const;
-
-const GITHUB_ISSUE = /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/issues\/(\d+)(?:[/?#]\S*)?$/;
-
-/** The most of a task a palette row shows; the prompt itself is never cut. */
-const SHOWN = 48;
-const shortened = (text: string) =>
-  text.length > SHOWN ? `${text.slice(0, SHOWN).trimEnd()}…` : text;
-
-/** Where "Create card" puts the card: the scope's project, else the only project there is. */
-function createPlace(state: AppState, scope: PaletteScope | undefined) {
-  const online = state.hosts.filter((h) => h.status === "online");
-  const hosts = scope?.hostId ? online.filter((h) => h.id === scope.hostId) : online;
-  const places = hosts.flatMap((host) =>
-    (state.projects[host.id] ?? [])
-      .filter((project) => !scope?.projectId || project.id === scope.projectId)
-      .map((project) => ({ host, project })),
-  );
-  return places.length === 1 ? (places[0] ?? null) : null;
-}
 
 /**
  * The palette's local sections, in order, filtered by `query` (on the label): live sessions,
@@ -95,346 +56,14 @@ export function paletteSections(
 ): PaletteSection[] {
   const { t } = options;
   const online = state.hosts.filter((h) => h.status === "online");
-  const terminal = (hostId: string, target: TerminalTarget): PaletteAction => ({
-    label: t("palette.openTerminal"),
-    target: { kind: "terminal", hostId, target },
-  });
-
-  const projectOf = (hostId: string, cwd: string | null | undefined) =>
-    cwd ? (state.projects[hostId] ?? []).find((p) => isInside(cwd, p.path))?.id : undefined;
-  const sessions = online.flatMap((host) => {
-    // Phase 21: the standard names of the host; an alias addresses its session here too.
-    const names = new Map((state.names?.[host.id] ?? []).map((n) => [n.sessionId, n]));
-    const keywords = (id: string) => names.get(id)?.aliases.join(" ");
-    return [
-      ...host.sessions
-        .filter((s) => LIVE.has(s.status))
-        .map((s): PaletteItem => {
-          const target: PaletteTarget = { kind: "session", hostId: host.id, sessionId: s.id };
-          const claudeSessionId =
-            state.sessions[sessionKey(host.id, s.id)]?.claudeSessionId ??
-            state.hub[host.id]?.managed.find((m) => m.id === s.id)?.claudeSessionId;
-          return {
-            id: `session:${host.id}/${s.id}`,
-            label:
-              sessionLabel(
-                {
-                  metaName: state.meta[`${host.id}/${s.id}`]?.name,
-                  createdName: s.name,
-                  names: names.get(s.id),
-                  personas: state.personas?.[host.id],
-                },
-                t,
-              ) ?? basename(s.cwd),
-            detail: `${host.name} · ${s.cwd}`,
-            target,
-            stateKey: stateOf(s.status),
-            hostId: host.id,
-            projectId: projectOf(host.id, s.cwd),
-            ...(names.has(s.id) ? { keywords: keywords(s.id) } : {}),
-            actions: [
-              { label: t("palette.open"), target },
-              ...(claudeSessionId ? [terminal(host.id, { cwd: s.cwd, claudeSessionId })] : []),
-            ],
-          };
-        }),
-      ...Object.entries(state.externals)
-        .filter(([key, s]) => key.startsWith(`${host.id}/`) && s.status !== "ended")
-        .map(([key, s]): PaletteItem => {
-          const id = s.claudeSessionId;
-          const target: PaletteTarget = { kind: "external", hostId: host.id, claudeSessionId: id };
-          return {
-            id: `external:${key}`,
-            label:
-              sessionLabel(
-                {
-                  metaName: state.meta[key]?.name,
-                  names: names.get(id),
-                  personas: state.personas?.[host.id],
-                },
-                t,
-              ) ?? basename(s.cwd ?? id),
-            detail: `${host.name} · ${t("palette.terminalDetail")}`,
-            target,
-            stateKey: stateOf(s.status),
-            hostId: host.id,
-            projectId: projectOf(host.id, s.cwd),
-            ...(names.has(id) ? { keywords: keywords(id) } : {}),
-            actions: [
-              { label: t("palette.open"), target },
-              ...(s.cwd ? [terminal(host.id, { cwd: s.cwd, claudeSessionId: id })] : []),
-            ],
-          };
-        }),
-    ];
-  });
-
-  const cards = online.flatMap((host) =>
-    Object.entries(state.cards)
-      .filter(([key]) => key.startsWith(`${host.id}/`))
-      .map(([key, card]): PaletteItem => {
-        const target: PaletteTarget = {
-          kind: "card",
-          hostId: host.id,
-          projectId: card.projectId,
-          cardId: card.id,
-        };
-        // Its terminal is on the card's screen, next to its worktree.
-        return {
-          id: `card:${key}`,
-          label: card.title,
-          detail: `${host.name} · ${t("palette.cardDetail")}`,
-          target,
-          hostId: host.id,
-          projectId: card.projectId,
-          actions: [
-            { label: t("palette.open"), target },
-            {
-              label: t("palette.startCard"),
-              target: { kind: "start-card", hostId: host.id, cardId: card.id },
-            },
-          ],
-        };
-      }),
+  const { sessions, cards, projects, hosts, connections, snippets } = entityItems(
+    state,
+    t,
+    options.globalSnippets,
   );
 
-  const projects = online.flatMap((host) =>
-    (state.projects[host.id] ?? []).map((project): PaletteItem => {
-      const board: PaletteTarget = { kind: "board", hostId: host.id, projectId: project.id };
-      return {
-        id: `project:${host.id}/${project.id}`,
-        label: project.name,
-        detail: `${host.name} · ${project.path}`,
-        target: board,
-        hostId: host.id,
-        projectId: project.id,
-        actions: [
-          { label: t("palette.openBoard"), target: board },
-          {
-            label: t("palette.workflows"),
-            target: {
-              kind: "workflows",
-              hostId: host.id,
-              projectId: project.id,
-              name: project.name,
-            },
-          },
-          terminal(host.id, { cwd: project.path, claudeSessionId: null }),
-        ],
-      };
-    }),
-  );
-
-  const hosts = state.hosts
-    .filter((h) => h.status !== "incompatible")
-    .map((host): PaletteItem => {
-      const page: PaletteTarget = { kind: "host", hostId: host.id };
-      return {
-        id: `host:${host.id}`,
-        label: host.name,
-        detail: hostStatusView(host.status, t).label,
-        target: page,
-        hostId: host.id,
-        actions: [
-          { label: t("palette.openHost"), target: page },
-          { label: t("palette.newSession"), target: { kind: "new-session", hostId: host.id } },
-          { label: t("palette.projects"), target: { kind: "projects", hostId: host.id } },
-        ],
-      };
-    });
-
-  const action = (
-    id: string,
-    label: string,
-    target: PaletteTarget,
-    detail = t("palette.actionDetail"),
-    shortcut?: string,
-  ): PaletteItem => {
-    // A registry action shows its keys; the approve and deny commands show their one key.
-    const keys = shortcut
-      ? (() => {
-          const def = shortcutOf(shortcut as ShortcutAction);
-          return def ? keysLabel(def, false) : shortcut;
-        })()
-      : undefined;
-    return { id, label, detail, target, actions: [], ...(keys ? { shortcut: keys } : {}) };
-  };
-  const oldest = options.oldest;
-  const decideActions = () => {
-    if (!oldest) return [];
-    if (oldest.opens) {
-      return [
-        action("decide:open", t("palette.openOldest", { what: oldest.text }), {
-          kind: "decide-oldest",
-          decision: "approve",
-          key: oldest.key,
-        }),
-      ];
-    }
-    return [
-      action(
-        "decide:approve",
-        t("palette.approveOldest", { what: oldest.text }),
-        { kind: "decide-oldest", decision: "approve", key: oldest.key },
-        undefined,
-        "A",
-      ),
-      action(
-        "decide:deny",
-        t("palette.denyOldest", { what: oldest.text }),
-        { kind: "decide-oldest", decision: "deny", key: oldest.key },
-        undefined,
-        "N",
-      ),
-    ];
-  };
-  const oldestActions = decideActions();
-  const actions = [
-    // First: the view of the page on screen is what the person is most likely to want from here.
-    ...(options.views ?? []).map((view, i) =>
-      action(
-        `view:${view}`,
-        t("palette.showView", { view: t(VIEW_LABEL[view]) }),
-        { kind: "session-view", view },
-        undefined,
-        `Alt+${i + 1}`,
-      ),
-    ),
-    ...online.map((host) =>
-      action(`new:${host.id}`, t("palette.newSessionIn", { host: host.name }), {
-        kind: "new-session",
-        hostId: host.id,
-      }),
-    ),
-    ...online.flatMap((host) =>
-      (state.personas?.[host.id] ?? []).map((persona) =>
-        action(
-          `new-as:${host.id}/${persona.id}`,
-          t("palette.newSessionAs", { persona: persona.name }),
-          { kind: "new-session", hostId: host.id, persona: `host:${persona.id}` },
-        ),
-      ),
-    ),
-    ...online
-      .filter((host) => hasFeature(host.hostInfo?.features, "terminal", false))
-      .map((host) =>
-        action(`terminal:${host.id}`, t("palette.newTerminalIn", { host: host.name }), {
-          kind: "new-terminal",
-          hostId: host.id,
-        }),
-      ),
-    action("go:hub", t("palette.goSessions"), { kind: "go", to: "hub" }, undefined, "go-sessions"),
-    action(
-      "go:needs-you",
-      t("palette.goNeedsYou"),
-      { kind: "go", to: "needs-you" },
-      undefined,
-      "go-needs-you",
-    ),
-    action(
-      "go:all-projects",
-      t("palette.goProjects"),
-      { kind: "go", to: "all-projects" },
-      undefined,
-      "go-projects",
-    ),
-    ...oldestActions,
-    action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
-    ...(options.modeSwitch
-      ? [
-          action(
-            "ui-mode",
-            t(options.modeSwitch === "simple" ? "palette.switchToSimple" : "palette.switchToFull"),
-            { kind: "toggle-ui-mode" },
-            undefined,
-            "toggle-mode",
-          ),
-        ]
-      : []),
-    action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
-    ...(options.costs
-      ? [action("costs", t("palette.goCosts"), { kind: "costs" }, undefined, "go-costs")]
-      : []),
-    action("settings", t("palette.goSettings"), { kind: "settings" }, undefined, "go-settings"),
-    action("add-host", t("palette.addHost"), { kind: "add-host" }),
-    action("shortcuts", t("palette.showShortcuts"), { kind: "shortcuts" }, undefined, "help"),
-    // Last: the actions section shows eight, and the commands above are the ones used most.
-    action(
-      "go:activity",
-      t("palette.goActivity"),
-      { kind: "go", to: "activity" },
-      undefined,
-      "go-activity",
-    ),
-    action("go:pull-requests", t("palette.goPullRequests"), { kind: "go", to: "pull-requests" }),
-  ];
-
-  // The clients have a section of their own, shown whole: one switches between all of them (#147).
-  const clients: PaletteItem[] = [
-    action("clients", t("clients.manageShort"), { kind: "clients" }),
-    ...((state.clientList ?? []).length === 0
-      ? []
-      : [
-          action("client:all", t("clients.switchTo", { name: t("clients.allClients") }), {
-            kind: "switch-client",
-            clientId: ALL_CLIENTS,
-          }),
-          ...(state.clientList ?? []).map((client) =>
-            action(`client:${client.id}`, t("clients.switchTo", { name: client.name }), {
-              kind: "switch-client",
-              clientId: client.id,
-            }),
-          ),
-          action("client:unassigned", t("clients.switchTo", { name: t("clients.unassigned") }), {
-            kind: "switch-client",
-            clientId: UNASSIGNED,
-          }),
-        ]),
-  ];
-
-  const connections = online.flatMap((host) =>
-    (state.ssh[host.id] ?? []).map((target): PaletteItem => {
-      const connect: PaletteTarget = { kind: "connect-ssh", hostId: host.id, targetId: target.id };
-      return {
-        id: `ssh:${host.id}/${target.id}`,
-        label: t("palette.connectTo", { name: target.name }),
-        detail: `${target.user}@${target.host} · ${host.name}`,
-        target: connect,
-        hostId: host.id,
-        actions: [{ label: t("palette.connect"), target: connect }],
-      };
-    }),
-  );
-
-  const snippetItem = (snippet: AppSnippet, hostId: string | null, where: string): PaletteItem => {
-    const target: PaletteTarget = { kind: "snippet", hostId, snippetId: snippet.id };
-    return {
-      id: `snippet:${hostId ?? "global"}/${snippet.id}`,
-      label: t("palette.snippet", { name: snippet.name }),
-      detail: t("palette.snippetDetail", { type: t(`snippets.kind.${snippet.type}`), where }),
-      target,
-      actions: [{ label: t("palette.useSnippet"), target }],
-      keywords: [...snippet.tags, snippet.run ?? snippet.text ?? ""].join("\n"),
-    };
-  };
-  // The selected client's snippets (those with its tag) come first (phase 29).
-  const clientTag = selectedClient(state.clientList ?? [], state.clientSelection)?.defaults
-    .snippetTag;
-  const snippets = tagsFirst(
-    [
-      ...online.flatMap((host) =>
-        (state.snippets?.[host.id] ?? []).map((s) => ({
-          tags: s.tags,
-          item: snippetItem(s, host.id, host.name),
-        })),
-      ),
-      ...(options.globalSnippets ?? []).map((s) => ({
-        tags: s.tags,
-        item: snippetItem(s, null, t("snippets.origin.global")),
-      })),
-    ],
-    clientTag,
-  ).map(({ item }) => item);
+  const action = actionBuilder(t);
+  const { actions, clients } = commandItems(state, t, options);
 
   const needle = query.trim().toLowerCase();
   const matches = (item: PaletteItem) =>
@@ -477,72 +106,21 @@ export function paletteSections(
         .map(({ item }) => item);
   const recent = ranked.slice(0, RECENTS_SHOWN);
   // Issue #1135: any text can also be the task of a session started in the project's folder.
-  const start = (): PaletteItem[] => {
-    const text = query.trim();
-    const place = createPlace(state, scope);
-    if (text === "" || !place) return [];
-    // A sentence is a task. One word that finds a row is a search, and a lone issue number or link
-    // is for Create card.
-    const sentence = /\s/.test(text);
-    const searching = filtered.some((section) => section.items.length > 0);
-    if (!sentence && (searching || text.startsWith("#") || text.includes("/"))) return [];
-    const { host, project } = place;
-    return [
-      {
-        id: "start:session",
-        label: t("palette.startIn", { project: project.name, text: shortened(text) }),
-        detail: t("palette.startDetail"),
-        target: { kind: "start-session", hostId: host.id, cwd: project.path, prompt: text },
-        actions: [],
-        hostId: host.id,
-        projectId: project.id,
-      },
-    ];
-  };
+  const start = startItem(
+    state,
+    t,
+    query,
+    scope,
+    filtered.some((section) => section.items.length > 0),
+  );
   // Text that matches no card can become one (or an issue's card); it is the last thing offered.
-  const create = (): PaletteItem[] => {
-    const text = query.trim();
-    const place = createPlace(state, scope);
-    if (text === "" || !place || filtered[1]?.items.length) return [];
-    const { host, project } = place;
-    const where = { hostId: host.id, projectId: project.id };
-    const issues =
-      project.issues !== null &&
-      project.issues !== undefined &&
-      hasFeature(host.hostInfo?.features, "issues", false);
-    const url = GITHUB_ISSUE.exec(text);
-    const number = /^#(\d+)$/.exec(text);
-    const fromIssue = (issue: string, target: Partial<PaletteTarget>): PaletteItem => ({
-      id: "create:issue",
-      label: t("palette.createCardIssue", { issue, project: project.name }),
-      detail: t("palette.createDetail"),
-      target: { kind: "create-card-issue", ...where, ...target } as PaletteTarget,
-      actions: [],
-      ...where,
-    });
-    if (issues && url) {
-      return [
-        fromIssue(`${url[1]}/${url[2]}#${url[3]}`, { ref: `github:${url[1]}/${url[2]}#${url[3]}` }),
-      ];
-    }
-    if (issues && number) return [fromIssue(text, { id: number[1] as string })];
-    return [
-      {
-        id: "create:card",
-        label: t("palette.createCard", { title: text, project: project.name }),
-        detail: t("palette.createDetail"),
-        target: { kind: "create-card", ...where, title: text },
-        actions: [],
-        ...where,
-      },
-    ];
-  };
+  const create = createItem(state, t, query, scope, (filtered[1]?.items.length ?? 0) > 0);
   // The link is the query itself, so it is not filtered by it.
   return [
     { title: t("palette.sectionLink"), items: prLink },
     { title: t("palette.sectionRecent"), items: recent, recent: true as const },
     ...filtered,
-    { title: t("palette.sectionStart"), items: start() },
-    { title: t("palette.sectionCreate"), items: create() },
+    { title: t("palette.sectionStart"), items: start },
+    { title: t("palette.sectionCreate"), items: create },
   ].filter((section) => section.items.length > 0);
 }

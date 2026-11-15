@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/ui.ts";
-import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
+import { PrDescriptionDialog } from "@/features/watch/ui.ts";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";

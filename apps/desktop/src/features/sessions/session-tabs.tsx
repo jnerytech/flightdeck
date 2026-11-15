@@ -13,7 +13,7 @@ import { FileExplorer, SessionFiles } from "@/features/files/ui.ts";
 import { TracePanel } from "@/features/trace/ui.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
-import { SessionMessages } from "../messaging/session-messages.tsx";
+import { SessionMessages } from "../messaging/ui.ts";
 import { ChangesPanel } from "../review/ui.ts";
 import { TempoPanel } from "../telemetry/ui.ts";
 import { useLaunchTerminal, type XtermDeps } from "../terminal/index.ts";

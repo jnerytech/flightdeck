@@ -20,7 +20,7 @@ const exists = (path: string): Promise<boolean> =>
 
 /** Line added to `.git/info/exclude`: worktrees live inside the repo but never show up in it.
  * Only the worktrees: phase 5 keeps versioned workflows in `.flightdeck/workflows`. */
-export const EXCLUDE_LINE = ".flightdeck/worktrees/";
+const EXCLUDE_LINE = ".flightdeck/worktrees/";
 
 /** Throws with git's own message when a command fails. */
 export function must(result: CommandResult, what: string): CommandResult {
@@ -35,7 +35,7 @@ export function must(result: CommandResult, what: string): CommandResult {
 }
 
 /** `Ação: corrigir o Login!` → `acao-corrigir-o-login`; `card` when nothing is left. */
-export function slugify(title: string): string {
+function slugify(title: string): string {
   const slug = title
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
@@ -46,8 +46,7 @@ export function slugify(title: string): string {
   return slug || "card";
 }
 
-export const worktreeDir = (repo: string, slug: string) =>
-  join(repo, ".flightdeck", "worktrees", slug);
+const worktreeDir = (repo: string, slug: string) => join(repo, ".flightdeck", "worktrees", slug);
 
 /** First of `base`, `base-2`, `base-3`… with neither a branch nor a folder yet. */
 async function freeSlug(repo: string, base: string): Promise<string> {

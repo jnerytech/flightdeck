@@ -20,7 +20,7 @@ import { globalConfigDir, type ScopeFinding, type ScopeResult } from "./opencode
 /** What `opencode debug config sources` lists; an answer of another shape tells nothing. */
 const SOURCES = z.array(z.object({ type: z.string().optional(), path: z.string().optional() }));
 
-export type OpenCodeUnavailable =
+type OpenCodeUnavailable =
   | "opencode_disabled"
   | "opencode_missing"
   | "opencode_version_failed"

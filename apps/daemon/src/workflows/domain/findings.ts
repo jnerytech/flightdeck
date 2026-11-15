@@ -12,7 +12,7 @@ export const CARDS_PER_RUN = 10;
 export const TITLE_MAX = 160;
 export const BODY_MAX = 4000;
 /** A stable id of a finding, like `debt:src/a.ts:todo`, that the dedupe keys on. */
-export const KEY_PATTERN = /^\w[\w:./#@+-]{0,159}$/;
+const KEY_PATTERN = /^\w[\w:./#@+-]{0,159}$/;
 
 export interface Finding {
   key: string;

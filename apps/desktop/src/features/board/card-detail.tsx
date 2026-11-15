@@ -12,7 +12,7 @@ import { CardHeaderActions, type CardTab, CardWork } from "@/features/board/card
 import { CheckLoopPanel } from "@/features/board/check-loop-panel";
 import { PostMortem } from "@/features/board/post-mortem";
 import { RunAgain } from "@/features/board/run-again";
-import { PrWatchPanel } from "@/features/watch/pr-watch-panel.tsx";
+import { PrWatchPanel } from "@/features/watch/ui.ts";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";

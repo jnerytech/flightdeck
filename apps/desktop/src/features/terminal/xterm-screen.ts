@@ -47,7 +47,7 @@ export interface XtermTerminal {
 }
 
 /** A row of xterm's buffer: its text, and its cells (a wide character takes two, the second empty). */
-export interface XtermBufferLine {
+interface XtermBufferLine {
   length: number;
   getCell(x: number): { getChars(): string; getWidth(): number } | undefined;
   translateToString(trimRight?: boolean): string;
@@ -80,7 +80,7 @@ export interface XtermLinkProvider {
   provideLinks(y: number, callback: (links: XtermLink[] | undefined) => void): void;
 }
 
-export interface XtermFindOptions extends FindFlags {
+interface XtermFindOptions extends FindFlags {
   /** Keep the current match while the text grows, as typing in a find bar does. */
   incremental?: boolean;
   /** Highlights every match and marks the current one. */
@@ -164,7 +164,7 @@ export interface XtermScreen {
 }
 
 /** How many lines the view keeps above the screen; Windows Terminal keeps 9,001. */
-export const SCROLLBACK_LINES = 10_000;
+const SCROLLBACK_LINES = 10_000;
 
 export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions): XtermScreen {
   const terminal = deps.terminal({
