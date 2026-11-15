@@ -9,14 +9,10 @@
  * Another domain imports from here, never a file inside.
  */
 
-export {
-  browserClockDeps,
-  CacheTimerSettings,
-  type CacheTtl,
-  SharedClock,
-} from "./cache-timer-model.ts";
+export { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer-model.ts";
 export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
+export type { CacheTtl } from "./domain/cache-timer.ts";
 export { byProject, CONTINUATION } from "./domain/resume-offer.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
