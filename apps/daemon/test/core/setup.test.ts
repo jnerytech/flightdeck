@@ -6,6 +6,7 @@ import { loadConfig } from "../../src/config.ts";
 import { acquireLock } from "../../src/kernel/lock.ts";
 import { DAEMON_VERSION } from "../../src/kernel/version.ts";
 import { type CliDeps, runCli } from "../../src/main.ts";
+import { stableBinPath } from "../../src/service/domain/version.ts";
 import {
   createPrompt,
   installStableBinary,
@@ -13,7 +14,6 @@ import {
   runSetup,
   type SetupDeps,
 } from "../../src/service/setup.ts";
-import { stableBinPath } from "../../src/service/update.ts";
 import {
   defaultHostName,
   detectWsl,
