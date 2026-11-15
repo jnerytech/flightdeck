@@ -1,3 +1,4 @@
+import type { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -12,11 +13,56 @@ import {
   insertStepRun,
   SESSION,
   usageEntries,
+  usageFixture,
   writeUsageTranscript,
 } from "../support/usage-helpers.ts";
 
 /** The host is at UTC−3: 01:30 UTC is still the day before there. */
 const minus3 = (ms: number) => new Date(ms - 3 * 3_600_000).toISOString().slice(0, 10);
+
+/**
+ * A main transcript as Claude Code writes it: a file write and the usage lines come first and
+ * carry no `cwd`; with `cwd`, only the last line names the folder. Returns the file's path.
+ */
+function writeCwdlessTranscript(root: string, dir: string, cwd: string | null): string {
+  const lines = usageFixture("usage-main.jsonl", "")
+    .split("\n")
+    .filter((line) => line !== "")
+    .map((line) => line.replace(/"cwd":"",/, ""));
+  const write = JSON.stringify({
+    type: "assistant",
+    uuid: "a-w",
+    sessionId: SESSION,
+    timestamp: "2026-10-01T12:00:08.000Z",
+    message: {
+      id: "msg_W",
+      role: "assistant",
+      model: "claude-opus-5-5",
+      content: [
+        { type: "tool_use", id: "toolu_w", name: "Write", input: { file_path: "/x/a.ts" } },
+      ],
+    },
+  });
+  const main = join(root, dir, `${SESSION}.jsonl`);
+  mkdirSync(join(root, dir), { recursive: true });
+  writeFileSync(main, `${[write, ...lines].join("\n")}\n`);
+  if (cwd !== null) appendFileSync(main, `${cwdLine(cwd)}\n`);
+  return main;
+}
+
+/** A user line that names the folder, as the last line of a transcript does. */
+const cwdLine = (cwd: string) =>
+  JSON.stringify({
+    type: "user",
+    uuid: "u-last",
+    sessionId: SESSION,
+    cwd,
+    timestamp: "2026-10-01T12:09:00.000Z",
+    message: { role: "user", content: "oi" },
+  });
+
+const editCount = (db: Database) =>
+  db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM session_file_edits").get()?.n;
 
 /** A store, a fake `~/.claude/projects` and an indexer over it with injected key, day and cost. */
 function setup(overrides: Partial<UsageIndexerOptions> = {}) {
@@ -176,6 +222,43 @@ describe("uso-mensagens", () => {
     writeUsageTranscript(root, "other", "/work/app", { id: "s-2", prefix: "x", subagent: false });
     await indexer.pass();
     expect([...new Set(usageEntries(db).map((e) => e.claude_session_id))]).toEqual(["s-2"]);
+  });
+
+  test("linhas antes do primeiro cwd de um transcript de pasta excluída não entram, nem o uso nem as edições", async () => {
+    const { db, root, indexer } = setup({ excludeCwds: ["/work/secreto"] });
+    writeCwdlessTranscript(root, "proj", "/work/secreto/sub");
+    await indexer.pass();
+    expect([usageEntries(db).length, editCount(db)]).toEqual([0, 0]);
+  });
+
+  test("a mesma forma de transcript numa pasta que não é excluída indexa o uso e a edição das primeiras linhas", async () => {
+    const { db, root, indexer } = setup({ excludeCwds: ["/work/secreto"] });
+    writeCwdlessTranscript(root, "proj", "/work/app");
+    await indexer.pass();
+    expect([usageEntries(db).length, editCount(db)]).toEqual([4, 1]);
+  });
+
+  test("um transcript sem nenhuma linha com cwd espera por ela: nada entra e o offset não anda; com o cwd, a pasta decide", async () => {
+    const { db, root, indexer } = setup({ excludeCwds: ["/work/secreto"] });
+    const main = writeCwdlessTranscript(root, "proj", null);
+    await indexer.pass();
+    expect([usageEntries(db).length, editCount(db)]).toEqual([0, 0]);
+    expect(db.query("SELECT offset FROM usage_files WHERE path = ?").get(main)).toBeNull();
+    appendFileSync(main, `${cwdLine("/work/app")}\n`);
+    await indexer.pass();
+    expect([usageEntries(db).length, editCount(db)]).toEqual([4, 1]);
+  });
+
+  test("uma pasta excluída não chega a warmKeys, a que não é excluída chega", async () => {
+    const seen: string[][] = [];
+    const { root, indexer } = setup({
+      excludeCwds: ["/work/secreto"],
+      warmKeys: async (cwds) => void seen.push(cwds),
+    });
+    writeUsageTranscript(root, "a", "/work/secreto/sub", { subagent: false });
+    writeUsageTranscript(root, "b", "/work/app", { id: "s-2", prefix: "x", subagent: false });
+    await indexer.pass();
+    expect(seen.flat().sort()).toEqual(["/work/app"]);
   });
 
   test("raiz inexistente e pasta de sessão sem subagents/ não interrompem a passada", async () => {

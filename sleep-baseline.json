@@ -59,7 +59,7 @@
   "apps/daemon/test/updates/daemon-apply.test.ts": 1,
   "apps/daemon/test/updates/daemon-check.test.ts": 5,
   "apps/daemon/test/updates/daemon-recheck.test.ts": 1,
-  "apps/daemon/test/vault/delivery.test.ts": 1,
+  "apps/daemon/test/vault/delivery-protocol.test.ts": 1,
   "apps/daemon/test/vault/waiting.test.ts": 1,
   "apps/daemon/test/watch/ado.test.ts": 4,
   "apps/daemon/test/watch/history.test.ts": 1,

@@ -9,7 +9,6 @@ import type {
   ExternalSession,
   HistorySessionSummary,
   Project,
-  ReleaseNote,
   RunState,
   SessionMeta,
   SessionNameInfo,
@@ -151,12 +150,6 @@ export interface AppState
   /** Phase 9: the app's own update. */
   appUpdate: AppUpdateState;
 }
-
-/** What reading the app's release notes came to: the releases, no host that can read them, or a refusal. */
-export type ReleaseNotesResult =
-  | { kind: "ready"; releases: ReleaseNote[] }
-  | { kind: "none" }
-  | { kind: "error"; message: string };
 
 export interface AppStoreOptions {
   /** The screen of a fresh window; a window saved before keeps its tabs. Sessions when absent. */

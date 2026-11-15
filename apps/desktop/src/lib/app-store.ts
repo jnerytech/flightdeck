@@ -7,6 +7,8 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { z } from "zod";
+import { type ReleaseNotesResult, releaseNotes } from "@/features/appupdate/index.ts";
+import { sessionRecap } from "@/features/summary/index.ts";
 import { WORKSPACE_KEY, type Workspace } from "@/features/tabs/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { Clock } from "../app/clock.ts";
@@ -28,26 +30,25 @@ import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import type { Answer } from "../features/needs-you/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
-import { SessionViews, sessionKey } from "../features/sessions/index.ts";
+import {
+  fillComposer,
+  SessionViews,
+  sessionKey,
+  takeComposerFill,
+} from "../features/sessions/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import type { DeliveryRefusal } from "../features/vault/index.ts";
-import { refusalText } from "../i18n/errors.ts";
 import { I18n } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
-import type {
-  AppState,
-  AppStoreOptions,
-  GateRef,
-  HostView,
-  ReleaseNotesResult,
-} from "./app-state.ts";
+import type { AppState, AppStoreOptions, GateRef, HostView } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
+export type { ReleaseNotesResult } from "@/features/appupdate/index.ts";
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
 export type {
   AppState,
@@ -56,7 +57,6 @@ export type {
   NeedsYouState,
   Notice,
   PendingItem,
-  ReleaseNotesResult,
   SidebarSession,
 } from "./app-state.ts";
 export { HISTORY_PAGE, needsYou } from "./app-state.ts";
@@ -402,32 +402,17 @@ export class AppStore {
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
   fillComposer(key: string, text: string): void {
-    const waiting = this.state.composerFill[key];
-    this.update({
-      composerFill: { ...this.state.composerFill, [key]: waiting ? `${waiting}\n\n${text}` : text },
-    });
+    fillComposer(this.kernel, key, text);
   }
 
   /** The text waiting for the session's box, which is now taken; `null` when there is none. */
   takeComposerFill(key: string): string | null {
-    const { [key]: text, ...rest } = this.state.composerFill;
-    if (text === undefined) return null;
-    this.update({ composerFill: rest });
-    return text;
+    return takeComposerFill(this.kernel, key);
   }
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
-  async releaseNotes(): Promise<ReleaseNotesResult> {
-    const host = this.state.hosts.find(
-      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "releases", false),
-    );
-    if (!host) return { kind: "none" };
-    const result = await this.hostRequest(host.id, "releases.list", { limit: 8 });
-    if (result.ok) return { kind: "ready", releases: result.data.releases };
-    return {
-      kind: "error",
-      message: refusalText(result.code, result.message, this.i18n.t, result),
-    };
+  releaseNotes(): Promise<ReleaseNotesResult> {
+    return releaseNotes(this.kernel);
   }
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
@@ -678,18 +663,12 @@ export class AppStore {
   }
 
   /** Phase 30: the summary of a session of a host; null when the host cannot give one. */
-  async sessionRecap(
+  sessionRecap(
     hostId: string,
     claudeSessionId: string,
     extra: { question?: string } = {},
   ): Promise<SessionRecap | null> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    if (!hasFeature(host?.hostInfo?.features, "summary", false)) return null;
-    try {
-      return await this.dispatch(hostId, "session.summary", { claudeSessionId, ...extra });
-    } catch {
-      return null;
-    }
+    return sessionRecap(this.kernel, hostId, claudeSessionId, extra);
   }
 
   private onRun(hostId: string, run: WorkflowRun): void {
