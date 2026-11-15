@@ -1,11 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type {
-  PermissionMode,
-  RunStatus,
-  SessionEvent,
-  SessionStatus,
-  StepStatus,
-} from "@flightdeck/protocol";
+import type { PermissionMode, RunStatus, SessionEvent, SessionStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Prepare } from "../personas/index.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
@@ -25,38 +19,17 @@ import {
 import type { StepRow } from "./domain/step-row.ts";
 import { stepShare, turnReader } from "./domain/turn-events.ts";
 import {
+  Abandoned,
   type EngineHost,
   now,
+  Refused,
   type RunRow,
   reason,
+  Stop,
   type WorkflowEngineOptions,
 } from "./engine-types.ts";
 import { hashOf } from "./repo.ts";
 import type { RunStore } from "./run-store.ts";
-
-/** The run was ended by the board while it waited: nothing more to do. */
-class Abandoned extends Error {}
-
-/** Fails the run with a reason the app translates (`status_reason_key` and its params). */
-class Refused extends Error {
-  constructor(
-    readonly reasonKey: string,
-    readonly params: Record<string, string>,
-    why: string,
-  ) {
-    super(why);
-  }
-}
-
-/** Ends the run with a status of its own (not `failed`), such as a rejected gate. */
-class Stop extends Error {
-  constructor(
-    readonly status: RunStatus,
-    why: string,
-  ) {
-    super(why);
-  }
-}
 
 const STOPPED: ReadonlySet<SessionStatus> = new Set(["error", "ended"]);
 
@@ -179,10 +152,10 @@ export class StepRunner {
     for (const key of extra) this.ctx.host.release(key);
     const failed = failures.find((failure) => failure !== undefined);
     if (failed) {
-      this.endStep(run.id, stepId, 1, "failed", null);
+      this.ctx.store.endStep(run.id, stepId, 1, "failed", null);
       throw failed.error;
     }
-    this.endStep(run.id, stepId, 1, "completed", outputs.join(OUTPUTS_SEPARATOR));
+    this.ctx.store.endStep(run.id, stepId, 1, "completed", outputs.join(OUTPUTS_SEPARATOR));
     return outputs;
   }
 
@@ -197,10 +170,10 @@ export class StepRunner {
     this.ctx.store.emit(run.id);
     try {
       const url = await this.ctx.host.createPr(run.card_id);
-      this.endStep(run.id, stepId, 1, "completed", url);
+      this.ctx.store.endStep(run.id, stepId, 1, "completed", url);
       return url;
     } catch (error) {
-      this.endStep(run.id, stepId, 1, "failed", null);
+      this.ctx.store.endStep(run.id, stepId, 1, "failed", null);
       throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
     }
   }
@@ -222,7 +195,7 @@ export class StepRunner {
     // The reply is untrusted text: any shape problem raises nothing and the run says why.
     const parsed = parseFindings(context.steps[from]?.output ?? "");
     if (!parsed.ok) {
-      this.endStep(run.id, stepId, 1, "failed", null);
+      this.ctx.store.endStep(run.id, stepId, 1, "failed", null);
       const params: Record<string, string> = { step: from };
       if (parsed.reason === "findings_invalid") params.where = parsed.where;
       throw new Refused(
@@ -239,7 +212,7 @@ export class StepRunner {
     });
     const count = raised.created.length;
     const summary = `Raised ${count} ${count === 1 ? "card" : "cards"}; ${raised.duplicates} already covered; ${raised.overCap} over the cap of ${CARDS_PER_RUN}.`;
-    this.endStep(run.id, stepId, 1, "completed", summary);
+    this.ctx.store.endStep(run.id, stepId, 1, "completed", summary);
     return summary;
   }
 
@@ -297,7 +270,7 @@ export class StepRunner {
             loop.until.check,
           );
         if (check.exitCode === 0) {
-          this.endStep(run.id, stepId, 1, "completed", check.output);
+          this.ctx.store.endStep(run.id, stepId, 1, "completed", check.output);
           return check.output;
         }
         if (attempt > loop.max) {
@@ -308,7 +281,7 @@ export class StepRunner {
         await this.innerStep(run, worktree, `${stepId}.do`, attempt, loop.do, inner); // NOSONAR: a worker of the pool takes the next item only when its previous one is done
       }
     } catch (error) {
-      this.endStep(run.id, stepId, 1, "failed", null);
+      this.ctx.store.endStep(run.id, stepId, 1, "failed", null);
       throw error;
     }
   }
@@ -380,10 +353,10 @@ export class StepRunner {
       }
       const result = await this.ctx.checks.run(command, worktree);
       const status = result.exitCode === 0 ? "completed" : "failed";
-      this.endStep(run.id, stepId, attempt, status, result.output, result.exitCode);
+      this.ctx.store.endStep(run.id, stepId, attempt, status, result.output, result.exitCode);
       return result;
     } catch (error) {
-      this.endStep(run.id, stepId, attempt, "failed", null);
+      this.ctx.store.endStep(run.id, stepId, attempt, "failed", null);
       throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
     }
   }
@@ -444,10 +417,10 @@ export class StepRunner {
     const text = cut ? `${RESUMED_NOTE}\n\n${prompt}` : prompt;
     try {
       const output = await this.turn(run, worktree, stepId, attempt, target, text, action);
-      this.endStep(run.id, stepId, attempt, "completed", output);
+      this.ctx.store.endStep(run.id, stepId, attempt, "completed", output);
       return output;
     } catch (error) {
-      this.endStep(run.id, stepId, attempt, "failed", null);
+      this.ctx.store.endStep(run.id, stepId, attempt, "failed", null);
       throw new Error(`etapa ${stepId} falhou: ${reason(error)}`);
     }
   }
@@ -556,23 +529,6 @@ export class StepRunner {
     this.ctx.db
       .query("UPDATE step_runs SET usage = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(JSON.stringify(usage), runId, step.stepId, step.attempt);
-    this.ctx.store.emit(runId);
-  }
-
-  private endStep(
-    runId: string,
-    stepId: string,
-    attempt: number,
-    status: StepStatus,
-    output: string | null,
-    exitCode: number | null = null,
-  ): void {
-    this.ctx.db
-      .query(
-        `UPDATE step_runs SET status = ?, output = ?, exit_code = ?, ended_at = ?
-         WHERE run_id = ? AND step_id = ? AND attempt = ?`,
-      )
-      .run(status, output, exitCode, now(), runId, stepId, attempt);
     this.ctx.store.emit(runId);
   }
 

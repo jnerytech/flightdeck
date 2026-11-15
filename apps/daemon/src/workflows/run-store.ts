@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { RunStatus, WorkflowRun } from "@flightdeck/protocol";
+import type { RunStatus, StepStatus, WorkflowRun } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import * as col from "./domain/row-json.ts";
 import { type StepRow, toStep } from "./domain/step-row.ts";
@@ -90,6 +90,23 @@ export class RunStore {
         "SELECT * FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?",
       )
       .get(runId, stepId, attempt);
+  }
+
+  endStep(
+    runId: string,
+    stepId: string,
+    attempt: number,
+    status: StepStatus,
+    output: string | null,
+    exitCode: number | null = null,
+  ): void {
+    this.db
+      .query(
+        `UPDATE step_runs SET status = ?, output = ?, exit_code = ?, ended_at = ?
+         WHERE run_id = ? AND step_id = ? AND attempt = ?`,
+      )
+      .run(status, output, exitCode, now(), runId, stepId, attempt);
+    this.emit(runId);
   }
 
   setStatus(runId: string, status: RunStatus, why: string | null): void {
