@@ -90,12 +90,21 @@ describe("ci-ubuntu-split (#293)", () => {
   test("test (ubuntu-latest) is an aggregate that fails unless changes, quick, the suite, SonarCloud, the fast-coverage ratchet and the checks succeeded", () => {
     const gate = job("test");
     expect(gate.name).toBe(`test (ubuntu-latest)${SUFFIX}`);
-    expect(gate.needs).toEqual(["quick", "test-suite", "sonar", "fast-coverage", "checks-linux"]);
+    expect(gate.needs).toEqual([
+      "quick",
+      "test-shard",
+      "test-suite",
+      "sonar",
+      "fast-coverage",
+      "checks-linux",
+    ]);
     expect(gate.if).toBe(`!cancelled() && (${DISPATCH})`);
     const check = runs("test");
     // The plan and the quick job first: a failure there must fail the check, never skip it.
     const quick = check.indexOf('test "${{ needs.quick.result }}" = success');
     expect(quick).toBeLessThan(check.indexOf("needs.test-suite.result"));
+    // A shard's own slow-test step (#3295) fails the shard, not the merge: the aggregate reads it.
+    expect(check).toContain('test "${{ needs.test-shard.result }}" = success');
     expect(check).toContain('test "${{ needs.test-suite.result }}" = success');
     expect(check).toContain('test "${{ needs.fast-coverage.result }}" = success');
     // SonarCloud skips on a main push and a branch's dispatch, never on a PR (#296); the checks skip
