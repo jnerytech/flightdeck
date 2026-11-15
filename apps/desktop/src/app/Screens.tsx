@@ -6,7 +6,8 @@ import { HistoryList } from "../features/history/history-list.tsx";
 import { sessionsSplit } from "../features/sessions/sessions-split.tsx";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import type { Route } from "../lib/router.ts";
-import { routeDetail, type ScreenProps } from "./route-screens.tsx";
+import { routeDetail } from "./route-screens.tsx";
+import type { ScreenProps } from "./screen-states.tsx";
 
 /**
  * The screen of a route. `go` opens another one (the history keeps this one). Sessões and

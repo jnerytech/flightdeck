@@ -1,12 +1,24 @@
 import type { ReactNode } from "react";
 import { awaitedHost } from "@/features/hosts/index.ts";
 import { HostOfflineBanner } from "@/features/hosts/ui.ts";
+import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { useT } from "@/i18n/context";
 import { LoadingState } from "@/shared/layout/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { AppState, AppStore, PendingItem } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 
 export type HostInfo = AppState["hosts"][number];
+
+export interface ScreenProps {
+  route: Route;
+  store: AppStore;
+  state: AppState;
+  theme: ThemeMode;
+  density: Density;
+  go(route: Route): void;
+  /** A request from the Precisa de você screen: its session, card or terminal view. */
+  onOpenRequest(item: PendingItem): void;
+}
 
 /** What a screen shows instead of itself while it cannot open: the wait, or why it cannot. */
 function ScreenState(props: Readonly<{ children: ReactNode }>) {
