@@ -13,8 +13,8 @@
   {
     "type": "dependency",
     "from": "apps/desktop/src/features/backup/backup-bundle.ts",
-    "to": "apps/desktop/src/features/vault/vault-backup.ts",
-    "unresolvedTo": "../vault/vault-backup.ts",
+    "to": "apps/desktop/src/features/vault/domain/vault-backup.ts",
+    "unresolvedTo": "../vault/domain/vault-backup.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",

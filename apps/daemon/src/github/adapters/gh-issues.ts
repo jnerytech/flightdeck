@@ -6,12 +6,11 @@
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
 import { checkedId, cli, cliJsonWith, cliOk, ISSUE_LIMIT } from "../../pr/index.ts";
+import { TRUSTED_ASSOCIATIONS } from "../domain/trust.ts";
 
 /** Search of the issues assigned to you and still open. */
 const GITHUB_DEFAULT_SEARCH = "assignee:@me is:open";
 
-/** GitHub authors whose content is yours: you, and people with write access to the repository. */
-export const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 export const GH_FIELDS = "number,title,body,url,author,labels,createdAt,authorAssociation";
 
 /** One issue as `gh issue list|view --json GH_FIELDS` prints it. */
