@@ -5,10 +5,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Circle,
-  CircleAlert,
-  LoaderCircle,
-  type LucideIcon,
   MoreHorizontal,
   Pin,
   PinOff,
@@ -39,7 +35,8 @@ import { IconTip } from "@/shared/feedback/index.ts";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { revealTab } from "./domain/reveal-tab.ts";
-import { badgePulses, type TabBadge, tabKind } from "./domain/tab-badge.ts";
+import { tabKind } from "./domain/tab-badge.ts";
+import { TabBadgeGlyph } from "./tab-badge-glyph.tsx";
 import { TAB_ICONS, tabFacts, tabTitle } from "./tab-facts.ts";
 import { TabOverflow } from "./tab-overflow.tsx";
 import type { Tab, Tabs } from "./tabs.ts";
@@ -513,36 +510,5 @@ export function TabBar(
         {announcement}
       </output>
     </div>
-  );
-}
-
-/** Each badge's shape: a sign besides its color (issue #172, WCAG 1.4.1). */
-const BADGE_GLYPHS: Record<NonNullable<TabBadge>, { icon: LucideIcon; className: string }> = {
-  "needs-you": { icon: CircleAlert, className: "text-status-needs-you" },
-  running: { icon: LoaderCircle, className: "text-muted-foreground" },
-  unread: { icon: Circle, className: "text-primary [&_svg]:fill-current" },
-};
-
-/**
- * A tab's badge: a glyph named in words (for screen readers and in its tooltip), never a text
- * pill, so the tab's title keeps the width.
- */
-export function TabBadgeGlyph(props: Readonly<{ badge: NonNullable<TabBadge>; label: string }>) {
-  const glyph = BADGE_GLYPHS[props.badge];
-  const Glyph = glyph.icon;
-  return (
-    <span
-      role="img"
-      data-badge={props.badge}
-      aria-label={props.label}
-      title={props.label}
-      className={cn(
-        "tab-badge",
-        glyph.className,
-        badgePulses(props.badge) && "motion-safe:animate-spin",
-      )}
-    >
-      <Glyph aria-hidden="true" className={props.badge === "unread" ? "size-2.5" : "size-3.5"} />
-    </span>
   );
 }
