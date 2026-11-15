@@ -11,5 +11,6 @@ export {
   externalWaitNotification,
   summaryNotifications,
 } from "./domain/notify.ts";
+export { parseRequestLink, requestLink } from "./domain/request-link.ts";
 export { InboxSlice } from "./store.ts";
 export { wireInbox } from "./wire.ts";

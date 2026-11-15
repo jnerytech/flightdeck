@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { approvalView, fields } from "../../src/features/permissions/domain/approval.ts";
+import { flattenFields } from "@/shared/lib/index.ts";
+import { approvalView } from "../../src/features/permissions/domain/approval.ts";
 import {
   answeredInput,
   buildAnswers,
@@ -90,7 +91,11 @@ describe("ask-question-model", () => {
   });
 
   test("no tool input renders as [object Object]: nested objects in lists become JSON", () => {
-    const shown = fields({ questions: INPUT.questions, list: [1, "a"], nested: { a: [{ b: 1 }] } });
+    const shown = flattenFields({
+      questions: INPUT.questions,
+      list: [1, "a"],
+      nested: { a: [{ b: 1 }] },
+    });
     for (const [, value] of shown) expect(value).not.toContain("[object Object]");
     expect(shown.find(([k]) => k === "list")?.[1]).toBe("1, a");
     expect(shown.find(([k]) => k === "nested.a")?.[1]).toBe('{"b":1}');

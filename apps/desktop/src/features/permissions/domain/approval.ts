@@ -1,4 +1,4 @@
-import { trimTrailingSeparators } from "@/shared/lib/index.ts";
+import { flattenFields, trimTrailingSeparators } from "@/shared/lib/index.ts";
 import { type DiffLine, toolDiff } from "./diff.ts";
 
 /** What an approval shows, by tool: a command, a file with its preview or diff, or plain fields. */
@@ -6,9 +6,6 @@ export type ApprovalView =
   | { kind: "bash"; command: string; description: string | null; cwd: string | null }
   | { kind: "file"; path: string; lines: DiffLine[] }
   | { kind: "fields"; entries: Array<[string, string]> };
-
-/** Values are cut here: the card shows what is asked, not whole documents. */
-const MAX_VALUE = 200;
 
 const text = (value: unknown) => (typeof value === "string" ? value : null);
 
@@ -18,23 +15,6 @@ function relative(path: string, cwd: string | null): string {
   const base = trimTrailingSeparators(cwd);
   const rest = path.slice(base.length);
   return path.startsWith(base) && /^[\\/]/.test(rest) ? rest.slice(1) : path;
-}
-
-/** A value as text; an object (inside a list) is JSON, never "[object Object]". */
-function show(value: unknown): string {
-  return value !== null && typeof value === "object" ? JSON.stringify(value) : String(value);
-}
-
-/** Nested values flattened to `key.sub`, lists joined, long strings cut. */
-export function fields(input: Record<string, unknown>, prefix = ""): Array<[string, string]> {
-  return Object.entries(input).flatMap(([key, value]): Array<[string, string]> => {
-    const name = `${prefix}${key}`;
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      return fields(value as Record<string, unknown>, `${name}.`);
-    }
-    const shown = Array.isArray(value) ? value.map(show).join(", ") : show(value);
-    return [[name, shown.length > MAX_VALUE ? `${shown.slice(0, MAX_VALUE)}…` : shown]];
-  });
 }
 
 /** A long path cut in the middle; the whole one goes in a tooltip. */
@@ -70,5 +50,5 @@ export function approvalView(
   const lines = toolDiff(toolName, input);
   const path = text(input.file_path);
   if (lines && path !== null) return { kind: "file", path: relative(path, cwd), lines };
-  return { kind: "fields", entries: fields(input) };
+  return { kind: "fields", entries: flattenFields(input) };
 }
