@@ -9,6 +9,7 @@ import type {
 import { z } from "zod";
 import { WORKSPACE_KEY, Workspace } from "@/features/tabs/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
+import { Clock } from "../app/clock.ts";
 import {
   composeHosts,
   composeLinkHandlers,
@@ -20,7 +21,7 @@ import { composeShell, type ShellSlices } from "../app/compose/shell.ts";
 import { composeVault, type VaultSlices } from "../app/compose/vault.ts";
 import { describeError, Notices } from "../app/notices.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import { type BudgetsSlice, localDay, wireBudgets } from "../features/costs/index.ts";
+import { type BudgetsSlice, wireBudgets } from "../features/costs/index.ts";
 import { HostLink, HostTabs, loadHosts, RequestError, saveHosts } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import type { Answer } from "../features/needs-you/index.ts";
@@ -33,7 +34,6 @@ import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import type { DeliveryRefusal } from "../features/vault/index.ts";
 import { refusalText } from "../i18n/errors.ts";
-import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import type {
@@ -74,11 +74,6 @@ export { PALETTE_RECENTS_KEY } from "@/features/palette/palette-store.ts";
 
 export { sessionKey };
 
-const REAL_TIMERS = {
-  setTimeout: (fn: () => void, ms: number): unknown => setTimeout(fn, ms),
-  clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-};
-
 /**
  * The slices each composition module builds are the store's fields: the constructor assigns them
  * (`Object.assign`), and the merged interface gives them their types (#2376).
@@ -113,6 +108,7 @@ export class AppStore {
   /** The start and the stop of the app, with the timers they own (#2376). */
   private readonly lifecycle: Lifecycle;
   /** The toasts and the error banner. */
+  private readonly time: Clock;
   private readonly notices = new Notices({
     state: () => this.state,
     update: (patch) => this.update(patch),
@@ -147,6 +143,7 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
+    this.time = new Clock(options, () => this.i18n.lang);
     Object.assign(
       this,
       composeShell(this.kernel, {
@@ -157,7 +154,7 @@ export class AppStore {
         secretValues: () => this.scan.values(),
         openSearch: () => this.history.openSearch(),
         searchTimeoutMs: options.searchTimeoutMs,
-        timers: options.timers ?? REAL_TIMERS,
+        timers: this.time.timers,
         showSession: (hostId, sessionId) =>
           this.router.push({ name: "session", host: hostId, id: sessionId }),
         settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
@@ -362,32 +359,27 @@ export class AppStore {
 
   /** Milliseconds now (injected in tests). */
   now(): number {
-    return (this.options.now ?? Date.now)();
+    return this.time.now();
   }
 
   /** Today as `YYYY-MM-DD`, in this machine's time zone unless injected. */
   today(): string {
-    return (this.options.day ?? localDay)(this.now());
+    return this.time.today();
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */
   formatTime(iso: string): string {
-    if (this.options.formatTime) return this.options.formatTime(iso);
-    return formatTime(iso, this.i18n.lang, this.options.timeZone);
+    return this.time.formatTime(iso);
   }
 
   /** Date and time of an instant in local time, in the app's language (phase 10). */
   formatDateTime(iso: string): string {
-    return Number.isNaN(Date.parse(iso))
-      ? ""
-      : formatDateTime(iso, this.i18n.lang, this.options.timeZone);
+    return this.time.formatDateTime(iso);
   }
 
   /** A list's short time: HH:MM today, the day and month before (phase 10). */
   formatWhen(iso: string): string {
-    return Number.isNaN(Date.parse(iso))
-      ? ""
-      : formatWhen(iso, this.now(), this.i18n.lang, this.options.timeZone);
+    return this.time.formatWhen(iso);
   }
 
   getLatency = (hostId: string): number | null => this.link.getLatency(hostId);
@@ -406,9 +398,7 @@ export class AppStore {
 
   /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
   githubTicker(tick: () => void): () => void {
-    if (this.options.githubTicker) return this.options.githubTicker(tick);
-    const timer = setInterval(tick, 1500);
-    return () => clearInterval(timer);
+    return this.time.githubTicker(tick);
   }
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
@@ -583,9 +573,7 @@ export class AppStore {
 
   /** Runs `fn` after `ms` (the store's timers, which tests drive); returns the function that cancels. */
   later(fn: () => void, ms: number): () => void {
-    const timers = this.options.timers ?? REAL_TIMERS;
-    const handle = timers.setTimeout(fn, ms);
-    return () => timers.clearTimeout(handle);
+    return this.time.later(fn, ms);
   }
 
   /** Transcripts growing on any host (live reader); returns the function that stops it. */
