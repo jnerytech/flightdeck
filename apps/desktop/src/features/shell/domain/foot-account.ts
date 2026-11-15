@@ -15,7 +15,10 @@ export interface FootAccount {
  * The account of the host the person is on; with no host open, the one account the online hosts
  * share, or how many they have. Offline hosts keep a cached account that is not shown.
  */
-export function footAccount(state: AppState, route: Route | undefined): FootAccount {
+export function footAccount(
+  state: Pick<AppState, "hosts" | "account">,
+  route: Route | undefined,
+): FootAccount {
   const online = state.hosts.filter((host) => host.status === "online");
   const open = route && "host" in route ? online.find((host) => host.id === route.host) : undefined;
   if (open) return { account: state.account[open.id] ?? null, many: 0, hostId: open.id };

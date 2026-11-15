@@ -1,11 +1,9 @@
-import { ChevronDown, EyeOff, Plane, Plus, Search, Sparkles } from "lucide-react";
+import { ChevronDown, EyeOff, Plane, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState, useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
 import {
-  type GithubHost,
-  githubSignedIn,
   type HostNameError,
   hostNeedsAttention,
   useSwitcherHostId,
@@ -17,7 +15,6 @@ import { activeWorktreeFilter, projectTree } from "@/features/projects/index.ts"
 import { ProjectTree, RailFlyout } from "@/features/projects/ui.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { setupProgress, setupSteps } from "@/features/setup/index.ts";
-import { ShortcutKeys } from "@/features/shortcuts/ui.ts";
 import { type SidebarGroup, toggleGroup } from "@/features/viewprefs/index.ts";
 import type { T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
@@ -26,10 +23,9 @@ import { cn } from "@/lib/utils";
 import { APP_VERSION, anyHostHas } from "@/lib/version.ts";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
 import { ProgressRing } from "@/shared/status/index.ts";
-import { AccountFooter } from "./account-footer.tsx";
-import { footAccount } from "./domain/foot-account.ts";
 import { activeNav } from "./domain/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "./domain/nav-badges.ts";
+import { SidebarFoot } from "./sidebar-foot.tsx";
 import { HostsList, ITEM } from "./sidebar-hosts.tsx";
 import { NavButton, NavGroup, NavIcon } from "./sidebar-nav.tsx";
 
@@ -137,9 +133,6 @@ export function Sidebar(
     () => projectTree({ hosts: treeHosts, projects: state.projects, cards: state.cards }, rows),
     [treeHosts, state.projects, state.cards, rows],
   );
-  // Who is signed in to GitHub is asked when the account menu opens, not on every render.
-  const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
-  const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
   // The setup checklist: from the real state; it leaves when done or hidden.
   const setupHidden = useSyncExternalStore(
     props.store.setup.subscribe,
@@ -193,16 +186,6 @@ export function Sidebar(
     if (navHost) go(build(navHost.id));
   };
 
-  /** The Claude account the foot shows: the open host's, how many differ, none from an offline host. */
-  const foot = footAccount(state, props.route);
-  // Release notes the person has not opened since the app was updated: a dot on the account row.
-  const whatsNewDot = useSyncExternalStore(props.store.whatsNew.subscribe, () =>
-    props.store.whatsNew.hasNew(),
-  );
-  const density = useSyncExternalStore(
-    props.store.density.subscribe,
-    () => props.store.density.value,
-  );
   /** The host whose page is open. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = (
@@ -558,89 +541,28 @@ export function Sidebar(
         </div>
       </div>
 
-      <div data-slot="sidebar-foot" className="flex flex-col gap-0.5 border-t pt-2">
-        <NavButton
-          collapsed={collapsed}
-          icon={<Search aria-hidden="true" className={icon} />}
-          label={t("sidebar.search")}
-          name={t("sidebar.searchLabel")}
-          hint="Ctrl K"
-          keys="Control+K"
-          onClick={props.onOpenSearch}
-          tail={<ShortcutKeys keys={["Mod", "K"]} className="text-muted-foreground" />}
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<NavIcon name="settings" aria-hidden="true" className={icon} />}
-          active={here === "settings"}
-          label={t("sidebar.settings")}
-          chevron
-          onClick={() => go({ name: "settings" })}
-        />
-        <AccountFooter
-          account={foot.account}
-          many={foot.many}
-          githubHosts={githubHosts}
-          onOpen={() => void githubSignedIn(props.store, state.hosts).then(setGithubHosts)}
-          onSignOutGithub={(hostId) =>
-            setSigningOut(githubHosts.find((host) => host.id === hostId) ?? null)
-          }
-          collapsed={collapsed}
-          t={t}
-          go={go}
-          onToggleTheme={props.onToggleTheme}
-          hostId={foot.hostId}
-          version={version}
-          density={density}
-          onDensity={(next) => props.store.density.set(next)}
-          onCopy={(text) => void props.store.system.copyText(text)}
-          hideBadges={shellPrefs.hideBadges}
-          onHideBadges={(hide) => props.store.shellPrefs.set({ hideBadges: hide })}
-          hideWhatsNew={shellPrefs.hideWhatsNew}
-          onHideWhatsNew={(hide) => props.store.shellPrefs.set({ hideWhatsNew: hide })}
-          hideSetup={setupHidden}
-          onHideSetup={(hide) => props.store.setup.setHidden(hide)}
-          onCheckUpdates={() => {
-            go({ name: "settings" });
-            void props.store.appUpdates.check();
-          }}
-          onShortcuts={() => props.onShortcuts?.()}
-          hasNew={whatsNewDot && !shellPrefs.hideWhatsNew}
-          onWhatsNew={() => props.onWhatsNew?.()}
-          onOpenManual={() => {
-            const page = t.lang === "pt-BR" ? "pt-BR" : "en";
-            const url = `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${page}.md`;
-            void props.store.openLink(url); // NOSONAR: the promise is deliberately not awaited; void says so
-          }}
-        />
-        {props.onSimpleMode && (
-          <NavButton
-            collapsed={collapsed}
-            icon={<Sparkles aria-hidden="true" className={icon} />}
-            label={t("sidebar.simpleMode")}
-            onClick={props.onSimpleMode}
-          />
-        )}
-      </div>
+      <SidebarFoot
+        store={props.store}
+        state={state}
+        collapsed={collapsed}
+        t={t}
+        go={go}
+        route={props.route}
+        version={version}
+        shellPrefs={shellPrefs}
+        setupHidden={setupHidden}
+        settingsActive={here === "settings"}
+        onOpenSearch={props.onOpenSearch}
+        onToggleTheme={props.onToggleTheme}
+        onShortcuts={props.onShortcuts}
+        onWhatsNew={props.onWhatsNew}
+        onSimpleMode={props.onSimpleMode}
+      />
       {renaming && (
         <RenameHostDialog
           name={renaming.name}
           onRename={(name) => props.onRenameHost(renaming.id, name)}
           onClose={() => setRenaming(null)}
-        />
-      )}
-      {signingOut && (
-        <ConfirmDialog
-          message={t("sidebarAccount.signOutGithubConfirm", { host: signingOut.name })}
-          confirmLabel={t("sidebarAccount.signOutGithub")}
-          destructive
-          onConfirm={() => {
-            const host = signingOut;
-            setSigningOut(null);
-            setGithubHosts((hosts) => hosts.filter((h) => h.id !== host.id));
-            void props.store.hostCommand(host.id, "github.logout", {});
-          }}
-          onCancel={() => setSigningOut(null)}
         />
       )}
       {removing && (

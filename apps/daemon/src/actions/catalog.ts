@@ -9,7 +9,7 @@ import { must } from "../board/worktree.ts";
 import { userHome } from "../config.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
-import type { Fingerprint } from "./domain/fingerprint.ts";
+import { changes, type Fingerprint } from "./domain/fingerprint.ts";
 import { definitionOf, pinnedFilesOf } from "./domain/row-json.ts";
 import {
   type ActionDef,
@@ -18,7 +18,7 @@ import {
   secretsOf,
   validateAction,
 } from "./domain/schema.ts";
-import { changes, fingerprint } from "./trust.ts";
+import { fingerprint } from "./trust.ts";
 
 /** What the service needs to know of a project. */
 export interface ActionProject {
