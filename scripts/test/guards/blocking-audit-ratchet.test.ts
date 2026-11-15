@@ -39,7 +39,9 @@ describe("blocking-audit: the app's hot paths do not block", () => {
   });
 
   test("a Tauri command is async unless it needs the main thread (tray, window)", () => {
-    const rust = readFileSync(join(root, "apps/desktop/src-tauri/src/lib.rs"), "utf8");
+    const rust = ["lib.rs", "log.rs"]
+      .map((file) => readFileSync(join(root, "apps/desktop/src-tauri/src", file), "utf8"))
+      .join("\n");
     expect(syncTauriCommands(rust).sort()).toEqual([...SYNC_COMMANDS_ALLOWED].sort());
   });
 
@@ -62,7 +64,9 @@ describe("blocking-audit: the app's hot paths do not block", () => {
   });
 
   test("an async Tauri command moves its blocking work to `spawn_blocking`", () => {
-    const rust = readFileSync(join(root, "apps/desktop/src-tauri/src/lib.rs"), "utf8");
+    const rust = ["lib.rs", "log.rs"]
+      .map((file) => readFileSync(join(root, "apps/desktop/src-tauri/src", file), "utf8"))
+      .join("\n");
     expect(asyncCommandsInline(rust).sort()).toEqual([...ASYNC_INLINE_ALLOWED].sort());
   });
 });
