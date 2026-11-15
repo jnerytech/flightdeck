@@ -3,45 +3,17 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Changes } from "../../src/review/changes.ts";
 import { ReviewComments, type ReviewCommentsOptions } from "../../src/review/comments.ts";
-import { startServer } from "../../src/server.ts";
-import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
-import { must, newManager, poll } from "../support/helpers.ts";
-import { FrameClient } from "../support/history-helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
+import { must, poll } from "../support/helpers.ts";
+import { session } from "../support/review-inline.ts";
 
 // Real git and FakeRuntime turns: more than the default 5 s.
 setDefaultTimeout(20_000);
 
-const TOKEN = "review-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-
-/** A repository in the manager's allowed root, `a.txt` changed after the first commit. */
-async function session(overrides: Partial<ReviewCommentsOptions> = {}) {
-  const ctx = newManager();
-  const repo = ctx.project;
-  git(repo, "init", "-q", "-b", "main");
-  git(repo, "config", "commit.gpgsign", "false");
-  git(repo, "config", "core.autocrlf", "false");
-  writeFileSync(join(repo, "a.txt"), "um\ndois\ntrês\nquatro\n");
-  writeFileSync(join(repo, "b.txt"), "bê\n");
-  git(repo, "add", ".");
-  git(repo, "commit", "-q", "-m", "inicial");
-  writeFileSync(join(repo, "a.txt"), "um\ndois\ntrês\nquatro\ncinco\n");
-  const { sessionId } = await ctx.manager.create({ cwd: repo, prompt: "oi" });
-  await poll(() => ctx.manager.get(sessionId).status === "idle");
-  const claudeId = ctx.manager.get(sessionId).claudeSessionId as string;
-  const changes = new Changes({ db: ctx.store.db });
-  const review = new ReviewComments({
-    db: ctx.store.db,
-    changes,
-    manager: ctx.manager,
-    now: () => Date.UTC(2026, 9, 1, 12),
-    ...overrides,
-  });
-  return { ...ctx, repo, sessionId, target: `session:${claudeId}`, changes, review };
-}
 
 /** Whether a session's conversation has a message containing `text`. */
 const received = (
@@ -312,52 +284,6 @@ describe("revisao-inline", () => {
       await code(review.add({ ...base, body: " ", path: "a.txt", lineStart: 1, lineEnd: 1 })),
     ).toBe("bad_request");
     expect(await code(review.update("nada", "x"))).toBe("not_found");
-  });
-
-  test("review.add, review.list, review.update, review.remove e review.send pelo protocolo", async () => {
-    const ctx = await session();
-    const server = startServer({
-      manager: ctx.manager,
-      review: { changes: ctx.changes, comments: ctx.review },
-      hostName: "h",
-      bind: "127.0.0.1",
-      port: 0,
-      token: TOKEN,
-      allowedRoots: [ctx.root],
-    });
-    cleanups.push(() => server.stop());
-    const client = new FrameClient(server.url);
-    cleanups.push(() => client.close());
-    await client.request("hello", { token: TOKEN, client: "t" });
-    const target = ctx.target;
-    const made = await client.data<{ id: string }>("review.add", {
-      target,
-      path: "a.txt",
-      side: "new",
-      lineStart: 1,
-      lineEnd: 1,
-      body: "um?",
-    });
-    expect(made?.id ?? "").not.toBe("");
-    await client.request("review.update", { id: made?.id, body: "um!" });
-    const other = await client.data<{ id: string }>("review.add", {
-      target,
-      path: "b.txt",
-      side: "old",
-      lineStart: 1,
-      lineEnd: 1,
-      body: "sai",
-    });
-    await client.request("review.remove", { id: other?.id });
-    const listed = await client.data<{ comments: Array<{ body: string }> }>("review.list", {
-      target,
-    });
-    expect(listed?.comments.map((c) => c.body)).toEqual(["um!"]);
-    expect(await client.data("review.send", { target, language: "pt-BR" })).toMatchObject({
-      via: "session",
-      comments: 1,
-      text: expect.stringContaining("Revisão das mudanças:"),
-    });
   });
 
   test("alvo que não resolve mais: os comentários continuam, como histórico desatualizado", async () => {
