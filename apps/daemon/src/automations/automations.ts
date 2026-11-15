@@ -12,13 +12,8 @@ import type { Issues } from "../issues/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import { localDay } from "../quota/index.ts";
-import {
-  type CronError,
-  type CronSpec,
-  cronMatches,
-  parseCron,
-  validTimeZone,
-} from "./domain/cron.ts";
+import { type CronError, type CronSpec, parseCron, validTimeZone } from "./domain/cron.ts";
+import { MINUTE, minuteOf, planSlots, scanFrom } from "./domain/cron-slots.ts";
 import { type AutomationEvent, causeOf, contentOf, isExternal, keyOf } from "./domain/event.ts";
 import { actionOf, triggerOf } from "./domain/row-json.ts";
 
@@ -70,14 +65,6 @@ interface RunRow {
   status: AutomationRun["status"];
   detail: string | null;
 }
-
-const MINUTE = 60_000;
-/** A slot this recent is still fired by a late tick; an older one was missed. */
-const GRACE = 2 * MINUTE;
-/** How far back a tick or a boot looks for missed slots. */
-const WINDOW = 7 * 24 * 60 * MINUTE;
-/** Missed slots recorded per automation: the latest ones. */
-const MAX_MISSED = 10;
 
 const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("bad_request", message, reason, params);
@@ -343,12 +330,12 @@ export class Automations {
       .query(
         "INSERT INTO automation_clock (id, last_tick) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET last_tick = excluded.last_tick",
       )
-      .run(Math.floor(now / MINUTE) * MINUTE);
+      .run(minuteOf(now));
   }
 
   /** The minutes since the last one seen, up to `now`: recent ones fire (when `fire`), old ones are missed. */
   private async advance(now: number, fire: boolean): Promise<void> {
-    const minute = Math.floor(now / MINUTE) * MINUTE;
+    const minute = minuteOf(now);
     const last = this.db
       .query<{ last_tick: number }, []>("SELECT last_tick FROM automation_clock WHERE id = 1")
       .get()?.last_tick;
@@ -357,28 +344,22 @@ export class Automations {
         "INSERT INTO automation_clock (id, last_tick) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET last_tick = excluded.last_tick",
       )
       .run(minute);
-    // The very first look has no past: only the current minute can fire.
-    const from = last === undefined ? minute : Math.max(last + MINUTE, minute - WINDOW);
+    const from = scanFrom(last, minute);
     const crons = this.enabled().filter((auto) => auto.trigger.type === "cron");
     for (const auto of crons) {
       const spec = this.spec(auto);
       const zone = (auto.trigger as { tz: string }).tz;
-      const missed: number[] = [];
-      for (let slot = from; slot <= minute; slot += MINUTE) {
-        if (!cronMatches(spec, zone, slot)) continue;
-        if (fire && minute - slot <= GRACE) {
-          const due = {
-            type: "cron",
-            projectId: auto.projectId,
-            automationId: auto.id,
-            minute: slot,
-          } as const;
-          await this.fire(due); // NOSONAR: a boot (fire=false) never gets here and must finish without yielding
-        } else if (last !== undefined) {
-          missed.push(slot);
-        }
+      const { due, missed } = planSlots(spec, zone, from, minute, fire, last !== undefined);
+      for (const slot of due) {
+        const event = {
+          type: "cron",
+          projectId: auto.projectId,
+          automationId: auto.id,
+          minute: slot,
+        } as const;
+        await this.fire(event); // NOSONAR: a boot (fire=false) never gets here and must finish without yielding
       }
-      for (const slot of missed.slice(-MAX_MISSED)) {
+      for (const slot of missed) {
         this.record(
           auto,
           slot,
