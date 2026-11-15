@@ -4,6 +4,7 @@ import { stat as fileStat, open, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { type HistoryRecord, lastTitle, parseLines } from "./domain/parser.ts";
+import { entrypointOf, sessionTitle, titleFrom } from "./domain/session-summary.ts";
 import { promptText } from "./domain/transcript-text.ts";
 import { normalizeCwd } from "./folder.ts";
 import { HistoryQueries, type HistorySession } from "./queries.ts";
@@ -58,9 +59,6 @@ export interface IndexResult {
   /** The file shrank and was indexed again from the start. */
   reset: boolean;
 }
-
-/** Fallback title: the first user message, cut to this many characters. */
-const TITLE_CHARS = 120;
 
 /** `flightdeck` when the transcript belongs to a session this daemon manages. */
 const ORIGIN = `CASE WHEN EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id)
@@ -132,7 +130,7 @@ export class HistoryIndexer {
         )
         .all(id) as Array<{ text: string }>;
       const first = users.map((u) => promptText(u.text)).find((text) => text !== null);
-      const title = first == null ? null : Array.from(first).slice(0, TITLE_CHARS).join("");
+      const title = titleFrom(first);
       this.db
         .query("UPDATE history_sessions SET title = ? WHERE claude_session_id = ?")
         .run(title, id);
@@ -474,25 +472,14 @@ export class HistoryIndexer {
     const existing = this.db
       .query("SELECT title FROM history_sessions WHERE claude_session_id = ?")
       .get(claudeSessionId) as { title: string | null } | null;
-    const summary = records
-      .slice()
-      .reverse()
-      .find((r) => r.kind === "summary")?.text;
-    const firstUser = records
-      .filter((r) => r.kind === "message" && r.role === "user")
-      .map((r) => promptText(r.text))
-      .find((text) => text !== null);
-    const title =
-      summary ??
-      existing?.title ??
-      (firstUser == null ? null : Array.from(firstUser).slice(0, TITLE_CHARS).join(""));
+    const title = sessionTitle(records, existing?.title ?? null);
     const totals = this.db
       .query(
         `SELECT MIN(ts) AS first, MAX(ts) AS last, COALESCE(SUM(kind = 'message'), 0) AS count
          FROM history_messages WHERE claude_session_id = ?`,
       )
       .get(claudeSessionId) as { first: string | null; last: string | null; count: number };
-    const entrypoint = records.find((r) => r.entrypoint)?.entrypoint ?? null;
+    const entrypoint = entrypointOf(records);
     this.db
       .query(
         `INSERT INTO history_sessions

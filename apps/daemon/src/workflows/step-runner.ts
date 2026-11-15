@@ -23,6 +23,7 @@ import {
   type Workflow,
 } from "./domain/schema.ts";
 import type { StepRow } from "./domain/step-row.ts";
+import { stepShare, turnReader } from "./domain/turn-events.ts";
 import {
   type EngineHost,
   now,
@@ -503,7 +504,7 @@ export class StepRunner {
     started: number,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const texts: string[] = [];
+      const read = turnReader();
       let settled = false;
       const settle = (done: () => void) => {
         settled = true;
@@ -512,23 +513,20 @@ export class StepRunner {
       };
       const onEvent = (event: SessionEvent) => {
         if (settled) return;
-        if (event.type === "session.status") {
-          this.ctx.host.place(run.card_id, { type: "session", status: event.status });
-        } else if (event.type === "message.assistant") {
-          for (const block of event.blocks) if (block.type === "text") texts.push(block.text);
-        } else if (event.type === "turn.result") {
+        const reaction = read(event);
+        if (reaction?.type === "status") {
+          this.ctx.host.place(run.card_id, { type: "session", status: reaction.status });
+        } else if (reaction?.type === "turn") {
           this.spend(run.id, step, {
             sessionId,
-            costUsd: event.costUsd,
+            costUsd: reaction.costUsd,
             minutes: (this.ctx.clock() - started) / 60_000,
           });
           settle(() =>
-            event.isError
-              ? reject(new Error(`turno terminou com erro (${event.subtype})`))
-              : resolve(texts.join("\n\n")),
+            reaction.failure ? reject(new Error(reaction.failure)) : resolve(reaction.text),
           );
-        } else if (event.type === "session.error") {
-          settle(() => reject(new Error(event.message)));
+        } else if (reaction?.type === "failed") {
+          settle(() => reject(new Error(reaction.message)));
         }
       };
       const sub = this.ctx.manager.subscribe(sessionId, since, (envelope) =>
@@ -550,12 +548,11 @@ export class StepRunner {
       .query("UPDATE workflow_runs SET usage = ? WHERE id = ?")
       .run(JSON.stringify(spending), runId);
     const row = this.ctx.store.stepRow(runId, step.stepId, step.attempt) as StepRow;
-    const share = col.stepUsageOf(row.usage) ?? { turns: 0, minutes: 0, costUsd: 0 };
-    const usage = {
-      turns: share.turns + 1,
-      minutes: share.minutes + turn.minutes,
-      costUsd: share.costUsd + (spending.costUsd - before.costUsd),
-    };
+    const usage = stepShare(
+      col.stepUsageOf(row.usage),
+      turn.minutes,
+      spending.costUsd - before.costUsd,
+    );
     this.ctx.db
       .query("UPDATE step_runs SET usage = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(JSON.stringify(usage), runId, step.stepId, step.attempt);

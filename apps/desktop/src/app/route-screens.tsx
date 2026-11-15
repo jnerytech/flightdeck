@@ -1,13 +1,11 @@
 import { type ReactNode, Suspense } from "react";
 import { TranscriptReader } from "@/features/history/ui.ts";
-import { awaitedHost } from "@/features/hosts/index.ts";
-import { AddHost, HostOfflineBanner } from "@/features/hosts/ui.ts";
+import { AddHost } from "@/features/hosts/ui.ts";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
 import { rowRoute } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
-import { useT } from "@/i18n/context";
-import { LoadingState } from "@/shared/layout/index.ts";
 import { lazyScreen } from "../app/lazy-screen.ts";
+import { type HostInfo, hostWaitScreen, LoadingScreen } from "../app/screen-states.tsx";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { costsOpener } from "../features/costs/ui.ts";
 import { NeedsYou } from "../features/needs-you/page.tsx";
@@ -60,57 +58,6 @@ export interface ScreenProps {
   go(route: Route): void;
   /** A request from the Precisa de você screen: its session, card or terminal view. */
   onOpenRequest(item: PendingItem): void;
-}
-
-/** What a screen shows instead of itself while it cannot open: the wait, or why it cannot. */
-function ScreenState(props: Readonly<{ children: ReactNode }>) {
-  return <div className="p-6">{props.children}</div>;
-}
-
-function ScreenLoading(props: Readonly<{ label: string }>) {
-  return (
-    <ScreenState>
-      <LoadingState label={props.label} />
-    </ScreenState>
-  );
-}
-
-/** The wait for a screen that loads on demand; it translates itself, only while it is shown. */
-function LoadingScreen() {
-  const t = useT();
-  return <ScreenLoading label={t("states.loading")} />;
-}
-
-type HostInfo = AppState["hosts"][number];
-
-/**
- * Screens that ask their host for data on opening wait for it to be online: a route can come
- * before the connection (a deep link at start-up). `undefined` when there is nothing to wait for.
- */
-function hostWaitScreen(props: ScreenProps): ReactNode {
-  const { route, store, state } = props;
-  const waiting = awaitedHost(route);
-  if (!waiting) return undefined;
-  const waitHost = state.hosts.find((h) => h.id === waiting);
-  // Issue #227: once a try has failed, the host is down, not on its way: a spinner there was a dead
-  // end. The host's banner says why and offers to reconnect.
-  if (
-    waitHost &&
-    ((waitHost.status === "offline" && waitHost.retry) || waitHost.status === "unauthorized")
-  ) {
-    return (
-      <ScreenState>
-        <HostOfflineBanner
-          host={waitHost}
-          onReconnect={() => void store.roster.reconnect(waitHost.id)}
-        />
-      </ScreenState>
-    );
-  }
-  if (waitHost?.status === "online") return undefined;
-  const { t } = store.i18n;
-  const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
-  return <ScreenLoading label={label} />;
 }
 
 /** A session of another tool on the host: its tabs and its view, with the host's features as switches. */
@@ -317,7 +264,11 @@ function filteredScreen(props: ScreenProps): ReactNode | undefined {
 function routeScreen(props: ScreenProps): ReactNode {
   const { route, store, state, go } = props;
   const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
-  const waitScreen = hostWaitScreen(props);
+  const waitScreen = hostWaitScreen({
+    route: props.route,
+    store: props.store,
+    hosts: props.state.hosts,
+  });
   if (waitScreen !== undefined) return waitScreen;
 
   if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
