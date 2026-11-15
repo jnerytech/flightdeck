@@ -2,7 +2,7 @@ import type { DepsResult, DoctorResult } from "@flightdeck/protocol";
 import { hasFeature } from "../../lib/version.ts";
 
 /** How long a host's health read stays fresh: the sidebar and the host page ask again after it. */
-export const HEALTH_MAX_AGE_MS = 5 * 60_000;
+const HEALTH_MAX_AGE_MS = 5 * 60_000;
 
 /** The hosts' health part of the app's state (#1596): what each host's checks found, and when. */
 export interface HealthSliceState {
