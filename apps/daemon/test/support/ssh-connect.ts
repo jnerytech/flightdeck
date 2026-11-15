@@ -18,6 +18,10 @@ export async function drainCleanups(): Promise<void> {
 export const KEY =
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHyii7r5lIz9AQ/c2vlfTxoKQtFoDLtWtwxRY/fF9Fl";
 
+export const NEW_KEY = `ssh-ed25519 ${Buffer.from("another-server-key-0123456789").toString("base64")}`;
+export const PRIVATE =
+  "-----BEGIN OPENSSH PRIVATE KEY-----\nTEST-ONLY-NOT-A-REAL-KEY-7f3a\n-----END OPENSSH PRIVATE KEY-----";
+
 export const scan = (host: string, key: string) => ({ code: 0, stdout: `${host} ${key}\n` });
 
 export interface SetupOptions {
@@ -130,5 +134,23 @@ export function setup(options: SetupOptions = {}) {
       connector.connect({ targetId: id, cols: 100, rows: 30, ...extra }),
     probe: (id: string, extra: { privateKey?: string } = {}) =>
       connector.test({ targetId: id, ...extra }),
+  };
+}
+
+/** The ssh argv that was started, with the generated files' paths named. */
+export function started(s: ReturnType<typeof setup>, index = 0) {
+  const pty = s.ptys.spawned[index];
+  if (!pty) throw new Error("nenhum terminal aberto");
+  const value = (flag: string, prefix = "") => {
+    const at = pty.argv.findIndex(
+      (word, i) => i > 0 && pty.argv[i - 1] === flag && word.startsWith(prefix),
+    );
+    return pty.argv[at]?.slice(prefix.length).replace(/^"|"$/g, "") ?? "";
+  };
+  return {
+    pty,
+    argv: pty.argv,
+    config: value("-F"),
+    knownHosts: value("-o", "UserKnownHostsFile="),
   };
 }
