@@ -1,6 +1,4 @@
-import { readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
-import { isInside } from "../kernel/index.ts";
+import { isInside } from "../../kernel/index.ts";
 
 /** What the rule looks at on disk; tests pass their own. */
 export interface TrustRootFs {
@@ -9,18 +7,6 @@ export interface TrustRootFs {
   /** The folders directly inside `dir`, `.git` aside. */
   childDirs(dir: string): Promise<string[]>;
 }
-
-export const diskTrustRootFs: TrustRootFs = {
-  hasGit: (dir) =>
-    stat(join(dir, ".git")).then(
-      () => true,
-      () => false,
-    ),
-  childDirs: async (dir) =>
-    (await readdir(dir, { withFileTypes: true }))
-      .filter((e) => e.isDirectory() && e.name !== ".git")
-      .map((e) => join(dir, e.name)),
-};
 
 /**
  * Whether trusting `path` would trust more than one project (issue #592). A folder above an allowed
