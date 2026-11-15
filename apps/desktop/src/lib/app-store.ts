@@ -489,8 +489,8 @@ export class AppStore {
   }
 
   /** How many requests to the host were sent and not answered yet (0 for an unknown host). */
-  hostInFlight(_hostId: string): number {
-    return 0;
+  hostInFlight(hostId: string): number {
+    return this.link.connection(hostId)?.inFlight ?? 0;
   }
 
   /**

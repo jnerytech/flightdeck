@@ -105,8 +105,18 @@ export interface QuietHost {
  * question. The socket is ordered, so its answer comes after every frame the host wrote before it.
  * It replaces `uiIdle` where a late reply that changes state but not markup would break the test.
  */
-export async function hostQuiet(
-  _host: QuietHost,
-  _hostId: string,
-  _timeoutMs = 5000,
-): Promise<void> {}
+export async function hostQuiet(host: QuietHost, hostId: string, timeoutMs = 5000): Promise<void> {
+  const sleep = await inAct();
+  const deadline = Date.now() + timeoutMs;
+  do {
+    while (host.hostInFlight(hostId) > 0) {
+      if (Date.now() >= deadline) {
+        throw new WaitTimeout(
+          `timeout (${timeoutMs} ms) waiting for: ${host.hostInFlight(hostId)} requests in flight to finish`,
+        );
+      }
+      await sleep(0);
+    }
+    await host.hostRequest(hostId, "host.info", {});
+  } while (host.hostInFlight(hostId) > 0);
+}

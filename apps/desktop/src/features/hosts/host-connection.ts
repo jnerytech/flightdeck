@@ -499,7 +499,7 @@ export class HostConnection {
 
   /** How many requests were sent and not answered yet. */
   get inFlight(): number {
-    return 0;
+    return this.pending.size;
   }
 
   private sendSubscribe(sessionId: string): void {
