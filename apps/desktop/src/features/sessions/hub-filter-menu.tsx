@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { NativeSelect } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
-import type { HubFilter, HubRow } from "./hub.ts";
+import type { HubFilter, HubRow } from "./domain/hub.ts";
 
 /** The hub's filter menu: origin, state, persona, pinned and archived, behind one button that counts them. */
 export function HubFilterMenu(

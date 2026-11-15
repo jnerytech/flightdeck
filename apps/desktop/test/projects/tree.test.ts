@@ -8,7 +8,7 @@ import {
   type WorktreeFilter,
   worktreeOfProject,
 } from "../../src/features/projects/domain/project-tree-model.ts";
-import type { HubRow } from "../../src/features/sessions/hub.ts";
+import type { HubRow } from "../../src/features/sessions/domain/hub.ts";
 
 const project = (id: string, name: string, over: Partial<Project> = {}): Project =>
   ({ id, name, path: `/work/${name}`, baseBranch: "main", ...over }) as Project;

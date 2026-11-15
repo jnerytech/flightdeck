@@ -7,7 +7,7 @@ import { basename } from "@/shared/lib/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
-import { newSessionHost } from "./new-session-host.ts";
+import { newSessionHost } from "./domain/new-session-host.ts";
 
 const RECENT = 5;
 const SHORTCUTS = [

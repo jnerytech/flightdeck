@@ -4,13 +4,13 @@ import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../needs-you/index.ts";
 import { actionPolicy, type VaultAnswer } from "./domain/vault-approval.ts";
 import { checkDelivery, type DeliveryRefusal } from "./domain/vault-delivery.ts";
-import type { SecretMeta, Vault } from "./vault.ts";
 import {
   answerVaultRequest,
   type VaultOutcome,
   type VaultPolicy,
   type VaultRequestContext,
-} from "./vault-requests.ts";
+} from "./domain/vault-requests.ts";
+import type { SecretMeta, Vault } from "./vault.ts";
 
 /** The host a request came from, as far as the approvals go. */
 export interface ApprovalHost {

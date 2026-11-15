@@ -8,7 +8,7 @@ import {
   type ProjectCard,
   sortProjectCards,
 } from "../../src/features/projects/domain/project-cards.ts";
-import type { HubRow } from "../../src/features/sessions/hub.ts";
+import type { HubRow } from "../../src/features/sessions/domain/hub.ts";
 
 const project = (id: string, name: string, baseBranch = "main"): Project =>
   ({ id, name, path: `/work/${name}`, baseBranch }) as Project;
