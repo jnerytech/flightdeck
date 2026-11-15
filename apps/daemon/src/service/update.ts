@@ -13,6 +13,7 @@ import {
   startService,
   stopService,
 } from "./domain/install.ts";
+import { compareVersions } from "./domain/version.ts";
 
 /** The reply frame the shutdown handshake reads; any other frame is ignored. */
 const ACK_FRAME = z.object({
@@ -52,22 +53,6 @@ export interface UpdateDeps extends StopDeps {
   healthy(port: number, config: Config): Promise<boolean>;
   /** How long the new binary may take to answer `--version` (10 s by default). */
   versionTimeoutMs?: number;
-}
-
-/** Where `update` installs the daemon: `~/.flightdeck/bin/flightdeckd(.exe)`. */
-export function stableBinPath(home: string, platform: string): string {
-  return join(home, ".flightdeck", "bin", platform === "win32" ? "flightdeckd.exe" : "flightdeckd");
-}
-
-/** Compares `x.y.z` numerically. */
-export function compareVersions(a: string, b: string): number {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
 }
 
 /** The address the daemon says it refused (403 `forbidden: <ip>` from the origin filter), or null. */

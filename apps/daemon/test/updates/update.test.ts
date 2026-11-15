@@ -24,12 +24,11 @@ import {
   systemdUnit,
   windowsTaskXml,
 } from "../../src/service/domain/install.ts";
+import { compareVersions, stableBinPath } from "../../src/service/domain/version.ts";
 import { killProcess, processPath } from "../../src/service/os.ts";
 import {
-  compareVersions,
   requestShutdown,
   runUpdate,
-  stableBinPath,
   swapBinary,
   type UpdateDeps,
   waitHealthy,
