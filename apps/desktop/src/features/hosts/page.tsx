@@ -1,44 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HarnessTemplatesSection } from "@/features/harness/ui.ts";
 import type { ProjectCard } from "@/features/projects/index.ts";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { Page, Panel, Stack } from "@/shared/layout/index.ts";
+import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import type { HostSection } from "../../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../../lib/version.ts";
 import type { UsageHistoryTarget } from "../costs/index.ts";
 import { UsagePanel } from "../costs/usage-panel.tsx";
-import { MaintenanceSection } from "../maintenance/ui.ts";
-import { TelemetrySection } from "../telemetry/ui.ts";
-import { AllowedFolders } from "./allowed-folders.tsx";
-import { BypassSwitch } from "./bypass-switch.tsx";
-import { DaemonUpdate } from "./daemon-update.tsx";
 import type { HostNameError } from "./domain/host-name.ts";
-import { GithubPanel } from "./github-panel.tsx";
 import { HostAccount } from "./host-account.tsx";
-import { HostAutoUpdate } from "./host-auto-update.tsx";
 import { HostCompare } from "./host-compare.tsx";
 import { HostHealth } from "./host-health.tsx";
 import { useHostHooks } from "./host-hooks.tsx";
 import { HostIncompatibleNotice, HostInfoPanel } from "./host-info-panel.tsx";
-import { HostLogs } from "./host-logs.tsx";
 import { HostOfflineBanner } from "./host-offline-banner.tsx";
 import { HostOverview } from "./host-overview.tsx";
-import { HostPausePanel } from "./host-pause-panel.tsx";
 import { HostResources } from "./host-resources.tsx";
-import { HostTerminal } from "./host-terminal.tsx";
+import { HostSettingsPanel } from "./host-settings-panel.tsx";
 import { HostVersionLine } from "./host-version.tsx";
-import { HostWorktrees } from "./host-worktrees.tsx";
-import { KeepAwakePanel } from "./keep-awake-panel.tsx";
 import { RenameHostDialog } from "./rename-host-dialog.tsx";
-import { ResumePanel } from "./resume-panel.tsx";
-import { SimpleModePanel } from "./simple-mode-panel.tsx";
-import { SleepSetting } from "./sleep-setting.tsx";
 
 /** What the overview reads from the app: the sessions, the projects and the cards of the hosts. */
 const OVERVIEW_KEYS = [
@@ -114,7 +99,6 @@ export function HostPage(
   const info = host.hostInfo;
   const { store } = props;
   const hostHooks = useHostHooks(store, host);
-  const [removing, setRemoving] = useState(false);
   const [tab, setTab] = useState(props.section ? tabOf(props.section) : "overview");
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
@@ -267,65 +251,14 @@ export function HostPage(
             </Stack>
           </TabsContent>
           <TabsContent value="settings" forceMount className={NARROW_PANEL}>
-            <Stack gap={4}>
-              <AllowedFolders store={store} host={host} />
-              <BypassSwitch store={store} host={host} />
-              <SleepSetting store={store} host={host} />
-              <SimpleModePanel store={store} host={host} />
-              <KeepAwakePanel store={store} host={host} />
-              <HostPausePanel store={store} host={host} />
-              <ResumePanel store={store} host={host} />
-              {host.status === "online" && hasFeature(info?.features, "github", false) && (
-                <GithubPanel store={store} host={host} />
-              )}
-              <HostWorktrees store={store} host={host} />
-              <HostAutoUpdate store={store} host={host} />
-              <DaemonUpdate store={store} host={host} />
-              {hostHooks.section}
-              {host.status === "online" && hasFeature(info?.features, "telemetry", false) && (
-                <TelemetrySection store={store} hostId={host.id} />
-              )}
-              {host.status === "online" && hasFeature(info?.features, "autoapprove", false) && (
-                <Button
-                  variant="outline"
-                  className="self-start"
-                  onClick={props.onOpenAutoApprovals}
-                >
-                  {t("autoApprovalsUi.open")}
-                </Button>
-              )}
-              <HostTerminal store={store} host={host} />
-              {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
-                <MaintenanceSection store={store} hostId={host.id} />
-              )}
-              {host.status === "online" &&
-                hasFeature(info?.features, "harnessTemplates", false) && (
-                  <HarnessTemplatesSection store={store} hostId={host.id} />
-                )}
-              <HostLogs store={store} host={host} />
-              <Panel title={t("hostPage.host")}>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={props.onReconnect}>
-                    {t("hostPage.reconnect")}
-                  </Button>
-                  <Button variant="destructive" onClick={() => setRemoving(true)}>
-                    {t("hostPage.remove")}
-                  </Button>
-                </div>
-                {removing && (
-                  <ConfirmDialog
-                    message={t("sidebar.removeConfirm", { host: host.name })}
-                    confirmLabel={t("hostPage.remove")}
-                    destructive
-                    onConfirm={() => {
-                      setRemoving(false);
-                      props.onRemove();
-                    }}
-                    onCancel={() => setRemoving(false)}
-                  />
-                )}
-              </Panel>
-            </Stack>
+            <HostSettingsPanel
+              store={store}
+              host={host}
+              hooksSection={hostHooks.section}
+              onReconnect={props.onReconnect}
+              onRemove={props.onRemove}
+              onOpenAutoApprovals={props.onOpenAutoApprovals}
+            />
           </TabsContent>
         </Tabs>
         {hostHooks.dialog}
