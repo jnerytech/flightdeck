@@ -9,33 +9,14 @@ import { formatBytes } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-
-type Filter = "all" | "suggested" | "protected" | "noCard";
-type Sort = "age" | "size";
-
-const FILTERS: Filter[] = ["all", "suggested", "protected", "noCard"];
-
-/** A disk with less than this share free is warned about. */
-const LOW_DISK = 0.1;
-
-const keep: Record<Filter, (item: WorktreeItem) => boolean> = {
-  all: () => true,
-  suggested: (item) => item.suggested,
-  protected: (item) => item.blockers.length > 0,
-  noCard: (item) => item.cardId === null,
-};
-
-/** Why a worktree is kept, in words: the blockers, with the unpushed count. */
-export function reasonText(item: Pick<WorktreeItem, "blockers" | "unpushed">, t: T): string {
-  return item.blockers
-    .map((blocker) => {
-      if (blocker !== "unpushed") return t(`worktrees.reasons.${blocker}` as Key);
-      const key =
-        item.unpushed === 1 ? "worktrees.reasons.unpushedOne" : "worktrees.reasons.unpushed";
-      return t(key, { n: item.unpushed });
-    })
-    .join("; ");
-}
+import {
+  FILTERS,
+  type Filter,
+  keep,
+  LOW_DISK,
+  reasonText,
+  type Sort,
+} from "./domain/worktree-filter.ts";
 
 function Row(
   props: Readonly<{
