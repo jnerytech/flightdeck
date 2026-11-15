@@ -1,4 +1,4 @@
-import { fields } from "../../permissions/index.ts";
+import { flattenFields } from "@/shared/lib/index.ts";
 
 const SUMMARY_KEYS = ["file_path", "command", "pattern", "path", "url", "description"];
 
@@ -9,7 +9,7 @@ export function inputSummary(input: unknown): string {
   const key = SUMMARY_KEYS.find((k) => typeof record[k] === "string");
   const text = key
     ? String(record[key])
-    : fields(record)
+    : flattenFields(record)
         .map(([name, value]) => `${name}: ${value}`)
         .join(" · ");
   return text.length > 80 ? `${text.slice(0, 80)}…` : text;
