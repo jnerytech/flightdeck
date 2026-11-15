@@ -8,7 +8,7 @@ import { cli } from "../../pr/index.ts";
 import type { GhResult, GhRunner } from "../domain/gh-runner.ts";
 
 /** How long a `gh` run in a given folder may take before it is killed (issue #79). */
-export const GH_IN_TIMEOUT_MS = 20_000;
+const GH_IN_TIMEOUT_MS = 20_000;
 
 /**
  * Issue #79: the real `gh` run in a given folder, so `{owner}` and `{repo}` come from its remote.
