@@ -31,6 +31,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { BoardNotice } from "@/features/board/board-notice";
+import { BoardStatus } from "@/features/board/board-status";
+import { BoardSyncControl } from "@/features/board/board-sync";
+import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
+import { ColumnHandle } from "@/features/board/column-handle";
+import { ColumnSwitcher } from "@/features/board/column-switcher";
+import { ContractDialog } from "@/features/board/contract-dialog";
 import {
   boardFeatures,
   boardOrder,
@@ -48,14 +55,7 @@ import {
   startableWorkflows,
   stayingPicks,
   tabStops,
-} from "@/features/board/board-derive";
-import { BoardNotice } from "@/features/board/board-notice";
-import { BoardStatus } from "@/features/board/board-status";
-import { BoardSyncControl } from "@/features/board/board-sync";
-import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
-import { ColumnHandle } from "@/features/board/column-handle";
-import { ColumnSwitcher } from "@/features/board/column-switcher";
-import { ContractDialog } from "@/features/board/contract-dialog";
+} from "@/features/board/domain/board-derive";
 import { NeedsBadge, needsText } from "@/features/board/needs-badge";
 import { QuietBadge } from "@/features/board/quiet-badge";
 import { quietBadge } from "@/features/board/quiet-badge-view";
