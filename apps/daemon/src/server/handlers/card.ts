@@ -3,7 +3,7 @@
  * its pull request, and its merge, completion and removal. The board itself (`board.*`) and the
  * pull request comments are separate.
  */
-import { manageCard } from "../../board/manage.ts";
+import { manageCard } from "../../board/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
@@ -96,6 +96,7 @@ export const cardHandlers = {
     return await manageCard(
       {
         board: server.need("board"),
+        now: () => new Date(),
         cwdOf: (sessionId) => {
           try {
             return server.manager.get(sessionId).cwd;

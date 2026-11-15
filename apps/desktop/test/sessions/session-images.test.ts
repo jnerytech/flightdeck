@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readImage, refuseImage } from "../../src/features/sessions/session-images.ts";
+import { readImage, refuseImage } from "../../src/features/sessions/domain/session-images.ts";
 
 const MB = 1024 * 1024;
 

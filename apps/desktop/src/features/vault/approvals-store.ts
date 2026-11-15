@@ -2,8 +2,8 @@ import type { CommandPayload, CommandResults, VaultRequestFrame } from "@flightd
 import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
+import { actionPolicy, type VaultAnswer } from "./domain/vault-approval.ts";
 import type { SecretMeta, Vault } from "./vault.ts";
-import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import {
   answerVaultRequest,
   checkDelivery,
