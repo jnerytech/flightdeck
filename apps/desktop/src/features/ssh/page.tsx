@@ -1,6 +1,6 @@
-import type { SshHostKeyCheck, SshImportEntry, SshTarget } from "@flightdeck/protocol";
+import type { SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { refusalText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { EmptyState, Field, NativeSelect, Page } from "@/shared/layout/index.ts";
@@ -22,8 +21,8 @@ import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { ImportPanel } from "./import-panel";
-import { savePayload } from "./index.ts";
 import { TargetForm } from "./target-form";
+import { useSshActions } from "./use-ssh-actions.ts";
 
 /** The "via" filter's value for a destino that this host opens itself. */
 const LOCAL = "-";
@@ -48,133 +47,35 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
   const host = state.hosts.find(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "ssh", false),
   );
-  const [targets, setTargets] = useState<SshTarget[]>([]);
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState("");
   const [via, setVia] = useState("");
-  /** A connection waiting for the server key to be confirmed, or blocked by a changed one. */
   const [editing, setEditing] = useState<SshTarget | "new" | null>(null);
-  const [importing, setImporting] = useState<SshImportEntry[] | null>(null);
-  const [importMessage, setImportMessage] = useState<string[]>([]);
-  const [removing, setRemoving] = useState<SshTarget | null>(null);
-  /** The host that runs the ssh, the destino as it is kept there and what its key check found. */
-  const [keyCheck, setKeyCheck] = useState<{
-    runner: string;
-    target: SshTarget;
-    check: SshHostKeyCheck;
-  } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  const {
+    targets,
+    error,
+    importing,
+    setImporting,
+    importMessage,
+    removing,
+    setRemoving,
+    keyCheck,
+    setKeyCheck,
+    reload,
+    connect,
+    confirmKey,
+    duplicate,
+    remove,
+    startImport,
+    applyImport,
+  } = useSshActions({
+    store,
+    hosts: state.hosts,
+    hostId: host?.id,
+    go: props.go,
+    wanted: props.connect,
+  });
   const hostId = host?.id;
-  const reload = useCallback(async () => {
-    if (!hostId) return;
-    const result = await store.hostCommand(hostId, "ssh.list", {});
-    if (result) setTargets(result.targets);
-  }, [store, hostId]);
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const open = async (runner: string, target: SshTarget) => {
-    // A vault key goes to the host that runs ssh now, in the connect command and nowhere else.
-    let privateKey: string | undefined;
-    if (target.auth === "vault-key" && target.secretRef) {
-      const got = await store.vaultSecretFor(runner, target.secretRef, "ssh");
-      if (!got.ok) return setError(t(`vault.refused.${got.code}`));
-      privateKey = got.value;
-    }
-    const terminalId = await store.ssh.connect(runner, target, privateKey);
-    if (terminalId) props.go({ name: "terminal", host: runner, terminalId });
-  };
-
-  /** The host that runs the ssh: the destino's via host, or the one that keeps the destinos. */
-  const connect = async (target: SshTarget) => {
-    if (!hostId) return;
-    setError(null);
-    const runner = target.viaHost ?? hostId;
-    let kept = target;
-    if (runner !== hostId) {
-      const via = state.hosts.find((h) => h.id === runner);
-      if (via?.status !== "online") {
-        return setError(t("connections.viaOffline", { host: via?.name ?? runner }));
-      }
-      if (!hasFeature(via.hostInfo?.features, "ssh", false)) {
-        return setError(t("connections.viaNoSsh", { host: via.name }));
-      }
-      // The via host builds the ssh command from its own destinos: it gets a copy.
-      const copy = await store.ssh.copyTo(runner, target, targets);
-      if (!copy) return;
-      kept = copy;
-    }
-    const check = await store.hostCommand(runner, "ssh.hostkey.check", { targetId: kept.id });
-    if (!check) return;
-    if (check.status === "pinned") await open(runner, kept);
-    else setKeyCheck({ runner, target: kept, check });
-  };
-
-  const confirmKey = async () => {
-    if (!keyCheck) return;
-    const { runner, target, check } = keyCheck;
-    setKeyCheck(null);
-    const confirmed = await store.hostCommand(runner, "ssh.hostkey.confirm", {
-      targetId: target.id,
-      fingerprint: check.fingerprint,
-    });
-    if (!confirmed) return;
-    if (runner === hostId) await reload();
-    await open(runner, target);
-  };
-
-  const duplicate = async (target: SshTarget) => {
-    if (!hostId) return;
-    const copy = await store.hostCommand(
-      hostId,
-      "ssh.save",
-      savePayload(target, t("connections.copySuffix", { name: target.name })),
-    );
-    if (copy) await reload();
-  };
-
-  const remove = async (target: SshTarget) => {
-    setRemoving(null);
-    if (!hostId) return;
-    const removed = await store.hostCommand(hostId, "ssh.remove", { id: target.id, confirm: true });
-    if (removed !== null) await reload();
-  };
-
-  const startImport = async () => {
-    if (!hostId) return;
-    setImportMessage([]);
-    const preview = await store.hostCommand(hostId, "ssh.import.preview", {});
-    if (preview) setImporting(preview.entries);
-  };
-
-  const applyImport = async (aliases: string[]) => {
-    if (!hostId) return;
-    setImporting(null);
-    const result = await store.hostCommand(hostId, "ssh.import.apply", { aliases });
-    if (!result) return;
-    setImportMessage([
-      t("connections.import.created", { n: result.created.length }),
-      ...result.skipped.map((skip) =>
-        t("connections.import.skipped", {
-          alias: skip.alias,
-          reason: refusalText("", skip.reason, t, { reason: skip.why, params: skip.params }),
-        }),
-      ),
-    ]);
-    await reload();
-  };
-
-  const asked = useRef<string | null>(null);
-  // `connect` is rebuilt on each render; the destino is what starts it, once.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
-  useEffect(() => {
-    const wanted = targets.find((target) => target.id === props.connect);
-    if (!wanted || asked.current === wanted.id) return;
-    asked.current = wanted.id;
-    void connect(wanted);
-  }, [targets, props.connect]);
 
   const tags = [...new Set(targets.flatMap((target) => target.tags))].sort((a, b) =>
     a.localeCompare(b, "en"),
