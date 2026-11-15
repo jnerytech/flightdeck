@@ -69,6 +69,31 @@ describe("snapshots-arquivos", () => {
     expect(await snapshots.files("s1", n)).toEqual({ files: [], insertions: 0, deletions: 0 });
   });
 
+  test("turn files: a name git would quote or trim (quote, tab, newline, backslash, trailing space) reads back whole", async () => {
+    const snapshots = new Snapshots({ db: new EventStore(":memory:").db });
+    const { repo } = gitRepo();
+    const take = async (kind: "before" | "after") => {
+      const result = await snapshots.take({ cwd: repo, claudeSessionId: "odd", kind });
+      return "row" in result ? result.row.n : -1;
+    };
+    const names = [
+      'say "hi".txt',
+      "tab\there.txt",
+      "two\nlines.txt",
+      "back\\slash.txt",
+      "açaí 🚀.md",
+      "ends with space ",
+    ];
+    const turn = await take("before");
+    for (const name of names) writeFileSync(join(repo, name), "x\n");
+    await take("after");
+    const { files, insertions } = await snapshots.files("odd", turn);
+    expect({ paths: files.map((f) => f.path).sort(), insertions }).toEqual({
+      paths: [...names].sort(),
+      insertions: names.length,
+    });
+  });
+
   test("um turno que não existe é not_found, e o índice e os arquivos do usuário ficam como estão", async () => {
     const { snapshots, repo, first } = await twoTurns();
     const before = {
