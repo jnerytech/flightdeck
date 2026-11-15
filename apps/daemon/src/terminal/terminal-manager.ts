@@ -117,8 +117,8 @@ const realTimers: Timers = {
   clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-interface Client {
-  sink: TerminalSink;
+/** What flow control keeps for one client: its queue, the resync mark and the unacknowledged count. */
+interface ClientFlow {
   /** Output not yet sent to this client. */
   queue: Uint8Array[];
   queued: number;
@@ -130,7 +130,70 @@ interface Client {
   unacked: number;
   /** `unacked` reached the high watermark and has not come down to the low one. */
   paused: boolean;
+}
+
+interface Client extends ClientFlow {
+  sink: TerminalSink;
   exitSent: boolean;
+}
+
+/** Holds `chunk` for a client; true when it overflowed what is kept for it and has to resync. */
+function enqueue(client: ClientFlow, chunk: Uint8Array, backlog: () => number): boolean {
+  client.queue.push(chunk);
+  client.queued += chunk.length;
+  // Held back because the connection is full or the client is not drawing, and over what is
+  // kept for it: it resyncs.
+  const stalled = client.paused || backlog() > BACKLOG_LIMIT_BYTES;
+  if (client.queued > QUEUE_LIMIT_BYTES && stalled) {
+    client.queue = [];
+    client.queued = 0;
+    client.resync = true;
+    return true;
+  }
+  return false;
+}
+
+/** The client drew `bytes` more; true when that brought a paused client back under the low mark. */
+function acknowledge(client: ClientFlow, bytes: number): boolean {
+  client.unacked = Math.max(0, client.unacked - bytes);
+  if (client.paused && client.unacked <= FLOW_LOW_BYTES) {
+    client.paused = false;
+    return true;
+  }
+  return false;
+}
+
+/** Whether a batch may go to the client now: it is in sync, not paused, has output and a free connection. */
+function canSend(client: ClientFlow, backlog: () => number): boolean {
+  return !client.resync && !client.paused && client.queued > 0 && backlog() <= BACKLOG_LIMIT_BYTES;
+}
+
+/** Counts a batch of `bytes` as sent; a flow-controlled client pauses at the high mark. */
+function recordSent(client: ClientFlow, bytes: number): void {
+  if (!client.flow) return;
+  client.unacked += bytes;
+  client.paused = client.unacked >= FLOW_HIGH_BYTES;
+}
+
+/** Output is kept for a client that is in sync. */
+function holdsOutput(client: ClientFlow): boolean {
+  return !client.resync && client.queued > 0;
+}
+
+/** The next batch of at most 16 KB from a client's queue. */
+function takeBatch(client: ClientFlow): Uint8Array {
+  const out = new Uint8Array(Math.min(BATCH_BYTES, client.queued));
+  let filled = 0;
+  while (filled < out.length) {
+    const head = client.queue[0] as Uint8Array;
+    const n = Math.min(head.length, out.length - filled);
+    out.set(head.subarray(0, n), filled);
+    filled += n;
+    if (n === head.length) client.queue.shift();
+    else client.queue[0] = head.subarray(n);
+  }
+  client.queued -= out.length;
+  return out;
 }
 
 interface Entry {
@@ -443,11 +506,7 @@ export class TerminalManager {
   ack(terminalId: string, sink: TerminalSink, bytes: number): void {
     const client = this.entries.get(terminalId)?.clients.get(sink);
     if (!client?.flow) return;
-    client.unacked = Math.max(0, client.unacked - bytes);
-    if (client.paused && client.unacked <= FLOW_LOW_BYTES) {
-      client.paused = false;
-      this.scheduleFlush();
-    }
+    if (acknowledge(client, bytes)) this.scheduleFlush();
   }
 
   detach(terminalId: string, sink: TerminalSink): void {
@@ -527,15 +586,7 @@ export class TerminalManager {
     const copy = chunk.slice();
     for (const client of entry.clients.values()) {
       if (client.resync) continue;
-      client.queue.push(copy);
-      client.queued += copy.length;
-      // Held back because the connection is full or the client is not drawing, and over what is
-      // kept for it: it resyncs.
-      const stalled = client.paused || client.sink.backlog() > BACKLOG_LIMIT_BYTES;
-      if (client.queued > QUEUE_LIMIT_BYTES && stalled) {
-        client.queue = [];
-        client.queued = 0;
-        client.resync = true;
+      if (enqueue(client, copy, () => client.sink.backlog())) {
         client.sink.send({ type: "terminal.resync", terminalId: id });
       }
     }
@@ -557,24 +608,16 @@ export class TerminalManager {
   private flush(entry: Entry): boolean {
     let held = false;
     for (const client of entry.clients.values()) {
-      while (
-        !client.resync &&
-        !client.paused &&
-        client.queued > 0 &&
-        client.sink.backlog() <= BACKLOG_LIMIT_BYTES
-      ) {
-        const batch = this.take(client);
+      while (canSend(client, () => client.sink.backlog())) {
+        const batch = takeBatch(client);
         client.sink.send({
           type: "terminal.data",
           terminalId: entry.id,
           data: Buffer.from(batch).toString("base64"),
         });
-        if (client.flow) {
-          client.unacked += batch.length;
-          client.paused = client.unacked >= FLOW_HIGH_BYTES;
-        }
+        recordSent(client, batch.length);
       }
-      if (!client.resync && client.queued > 0) {
+      if (holdsOutput(client)) {
         // A paused client is not looked at again until its ack arrives.
         if (!client.paused) held = true;
       } else if (entry.exitCode !== null && !client.exitSent) {
@@ -587,22 +630,6 @@ export class TerminalManager {
       }
     }
     return held;
-  }
-
-  /** The next batch of at most 16 KB from a client's queue. */
-  private take(client: Client): Uint8Array {
-    const out = new Uint8Array(Math.min(BATCH_BYTES, client.queued));
-    let filled = 0;
-    while (filled < out.length) {
-      const head = client.queue[0] as Uint8Array;
-      const n = Math.min(head.length, out.length - filled);
-      out.set(head.subarray(0, n), filled);
-      filled += n;
-      if (n === head.length) client.queue.shift();
-      else client.queue[0] = head.subarray(n);
-    }
-    client.queued -= out.length;
-    return out;
   }
 
   // -- life -------------------------------------------------------------------
