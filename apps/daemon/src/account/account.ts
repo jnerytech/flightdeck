@@ -14,9 +14,9 @@ export interface AccountOptions {
 }
 
 /** While somebody watches, the account is read this often (the stream only covers turns). */
-export const POLL_MS = 5 * 60_000;
+const POLL_MS = 5 * 60_000;
 /** A person's refresh is refused when the last read started less than this ago. */
-export const REFRESH_FLOOR_MS = 30_000;
+const REFRESH_FLOOR_MS = 30_000;
 
 const realTimers: Timers = {
   set: (fn, ms) => setTimeout(fn, ms),
