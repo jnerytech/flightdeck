@@ -249,6 +249,32 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("every file of the hooks folder is a guard, so a rule moved out of claude-hooks stays under review (#1589)", () => {
+    const added = new Map(
+      [
+        "scripts/lib/hooks/commit-rules.ts",
+        "scripts/lib/hooks/heavy-run-rules.ts",
+        "scripts/lib/hooks/hook-log.ts",
+        "scripts/lib/hooks/push-wait.ts",
+        "scripts/lib/hooks/redact.ts",
+        "scripts/lib/hooks/shell-parse.ts",
+        "scripts/lib/hooks/deeper/nested.ts",
+        "scripts/lib/hooks/rules.json",
+        "scripts/lib/slot/heavy.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["scripts/lib/hooks/commit-rules.ts", "guard"],
+      ["scripts/lib/hooks/deeper/nested.ts", "guard"],
+      ["scripts/lib/hooks/heavy-run-rules.ts", "guard"],
+      ["scripts/lib/hooks/hook-log.ts", "guard"],
+      ["scripts/lib/hooks/push-wait.ts", "guard"],
+      ["scripts/lib/hooks/redact.ts", "guard"],
+      ["scripts/lib/hooks/rules.json", "guard"],
+      ["scripts/lib/hooks/shell-parse.ts", "guard"],
+    ]);
+  });
+
   test("the permission words count in any case (#273)", () => {
     const added = new Map([
       ["scripts/a.sh", ["CHMOD 777 x"]],
