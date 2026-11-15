@@ -17,7 +17,7 @@ const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
 const { defaultRule, projectRule } = await import(
-  "../../src/features/permissions/always-allow.tsx"
+  "../../src/features/permissions/domain/always-allow-rule.ts"
 );
 
 // Real git under the in-process daemon: more than the default 5 s.
