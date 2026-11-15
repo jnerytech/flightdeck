@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseRequestLink } from "../../../apps/desktop/src/features/permissions/domain/request-link.ts";
+import { parseRequestLink } from "../../../apps/desktop/src/features/inbox/domain/request-link.ts";
 import { sinceLastLook } from "../../../apps/desktop/src/features/sessions/domain/finished-list.ts";
 import { loadFinished } from "../../../apps/desktop/src/features/sessions/finished.ts";
 import { demoFinished, demoInbox } from "../../lib/demo/seeds.ts";

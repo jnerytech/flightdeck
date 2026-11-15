@@ -1,45 +1,6 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import type { DepResult } from "@flightdeck/protocol";
+import { describe, expect, test } from "bun:test";
 import { checkDeps, type DepsEnv } from "../../src/deps/domain/deps.ts";
-import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager } from "../support/helpers.ts";
-import { FrameClient } from "../support/history-helpers.ts";
-
-const TOOLS: Record<string, { path: string; version: string }> = {
-  claude: { path: "/usr/bin/claude", version: "2.1.0" },
-  git: { path: "/usr/bin/git", version: "2.43.0" },
-  gh: { path: "/usr/bin/gh", version: "2.60.0" },
-  az: { path: "/usr/bin/az", version: "2.65.0" },
-  ssh: { path: "/usr/bin/ssh", version: "9.6" },
-  tailscale: { path: "/usr/bin/tailscale", version: "1.76.0" },
-  systemctl: { path: "/usr/bin/systemctl", version: "255" },
-  schtasks: { path: "C:/Windows/System32/schtasks.exe", version: "10.0" },
-  pwsh: { path: "C:/Program Files/PowerShell/7/pwsh.exe", version: "7.4.0" },
-};
-
-/** A machine with everything in place, with `change` applied on top. */
-function machine(
-  change: Partial<DepsEnv> & { without?: string[]; versions?: Record<string, string> } = {},
-) {
-  const { without = [], versions = {}, ...rest } = change;
-  const env: DepsEnv = {
-    platform: "linux",
-    which: (name) => (without.includes(name) ? null : (TOOLS[name]?.path ?? null)),
-    version: async (path) => {
-      const name = Object.keys(TOOLS).find((n) => TOOLS[n]?.path === path) ?? "";
-      return versions[name] ?? TOOLS[name]?.version ?? null;
-    },
-    allowedRoots: ["/home/dev/code"],
-    serviceInstalled: async () => true,
-    linger: async () => "on",
-    hooks: async () => "installed",
-    account: async () => "signed_in",
-    ...rest,
-  };
-  return env;
-}
-
-const find = (items: DepResult[], id: string) => items.find((item) => item.id === id) as DepResult;
+import { find, machine, TOOLS } from "./check-fixtures.ts";
 
 describe("deps-check: the dependencies of a host", () => {
   test("a host with everything in place has five required and six optional, each ok or not applicable", async () => {
@@ -194,48 +155,7 @@ describe("deps-check: the dependencies of a host", () => {
   });
 });
 
-const TOKEN = "deps-check-token-0123456789abcdef";
-const servers: RunningServer[] = [];
-afterEach(async () => {
-  for (const s of servers.splice(0)) await s.stop();
-});
-
-describe("deps-check: over the protocol", () => {
-  const serve = (withDeps: boolean) => {
-    const { manager } = newManager();
-    const server = startServer({
-      manager,
-      hostName: "h",
-      bind: "127.0.0.1",
-      port: 0,
-      token: TOKEN,
-      allowedRoots: [],
-      ...(withDeps ? { hostChecks: { deps: () => checkDeps(machine({ without: ["gh"] })) } } : {}),
-    });
-    servers.push(server);
-    return server;
-  };
-
-  test("deps.check answers the items, and the host announces the feature", async () => {
-    const client = new FrameClient(serve(true).url);
-    await client.request("hello", { token: TOKEN, client: "t" });
-    const info = await client.data<{ features: string[] }>("host.info", {});
-    expect(info?.features).toContain("depsCheck");
-    const got = await client.data<{ items: DepResult[] }>("deps.check", {});
-    expect(find(got?.items ?? [], "gh").state).toBe("missing");
-    client.close();
-  });
-
-  test("a host without the check refuses the command and does not announce it", async () => {
-    const client = new FrameClient(serve(false).url);
-    await client.request("hello", { token: TOKEN, client: "t" });
-    const info = await client.data<{ features: string[] }>("host.info", {});
-    expect(info?.features).not.toContain("depsCheck");
-    const ack = await client.request("deps.check", {});
-    expect(ack.ok).toBe(false);
-    client.close();
-  });
-
+describe("deps-check: probes that fail or overlap", () => {
   test("a probe that throws gives its own row without a version and the other rows still come back (HD-M1)", async () => {
     const base = machine();
     const { items } = await checkDeps({
