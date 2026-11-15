@@ -94,6 +94,22 @@ describe("snapshots-arquivos", () => {
     });
   });
 
+  test("turn files: a snapshot tree git cannot read is an error, never an empty turn", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const snapshots = new Snapshots({ db: store.db });
+    const { repo } = gitRepo();
+    const take = async (kind: "before" | "after") => {
+      const result = await snapshots.take({ cwd: repo, claudeSessionId: "gone", kind });
+      return "row" in result ? result.row.n : -1;
+    };
+    const turn = await take("before");
+    writeFileSync(join(repo, "README.md"), "# repo\nmudou\n");
+    await take("after");
+    store.db.run("UPDATE snapshots SET tree = ? WHERE kind = 'after'", ["0".repeat(40)]);
+    await expect(snapshots.files("gone", turn)).rejects.toThrow();
+  });
+
   test("um turno que não existe é not_found, e o índice e os arquivos do usuário ficam como estão", async () => {
     const { snapshots, repo, first } = await twoTurns();
     const before = {
