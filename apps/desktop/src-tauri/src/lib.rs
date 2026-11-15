@@ -260,6 +260,162 @@ async fn vault_pick_file(
 }
 
 #[cfg(test)]
+mod vault_tests {
+    use super::*;
+    use std::ffi::OsString;
+    use std::io::Cursor;
+    use std::path::{Path, PathBuf};
+    use std::sync::{Mutex, Once};
+
+    /// Every vault test runs against the keyring's in-memory mock, never the machine's store.
+    fn mock_keyring() {
+        static ONCE: Once = Once::new();
+        ONCE.call_once(|| {
+            keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+        });
+    }
+
+    #[test]
+    fn the_credential_limit_counts_utf16_bytes_and_a_value_at_it_still_fits() {
+        assert!(!over_credential_limit(""));
+        assert!(!over_credential_limit(&"a".repeat(1280)));
+        assert!(over_credential_limit(&"a".repeat(1281)));
+        // An emoji is two UTF-16 units, so 640 of them are exactly the limit.
+        assert!(!over_credential_limit(&"😀".repeat(640)));
+        assert!(over_credential_limit(&"😀".repeat(641)));
+    }
+
+    #[test]
+    fn a_value_over_the_windows_limit_is_refused_only_on_windows() {
+        mock_keyring();
+        let result = tauri::async_runtime::block_on(vault_set("limit".into(), "a".repeat(1281)));
+        assert_eq!(result.is_err(), cfg!(windows));
+        if let Err(message) = result {
+            assert!(message.contains("2560"));
+        }
+        let at_the_limit =
+            tauri::async_runtime::block_on(vault_set("limit".into(), "a".repeat(1280)));
+        assert_eq!(at_the_limit, Ok(()));
+    }
+
+    #[test]
+    fn a_key_comment_with_control_characters_is_refused_before_anything_runs() {
+        for comment in ["a\nb", "a\u{7}b", "a\0b", "a\tb"] {
+            let result = tauri::async_runtime::block_on(vault_generate_key(comment.to_string()));
+            assert_eq!(
+                result.err().as_deref(),
+                Some("the key comment has control characters")
+            );
+        }
+    }
+
+    #[test]
+    fn an_unknown_secret_reads_as_none_and_deletes_as_ok() {
+        mock_keyring();
+        let read = tauri::async_runtime::block_on(vault_get("never-stored".into()));
+        assert_eq!(read, Ok(None));
+        let deleted = tauri::async_runtime::block_on(vault_delete("never-stored".into()));
+        assert_eq!(deleted, Ok(()));
+    }
+
+    #[test]
+    fn the_keygen_arguments_are_one_ed25519_pair_without_a_passphrase() {
+        let args = keygen_args("deploy key", Path::new("/t/key"));
+        let expected: Vec<OsString> = [
+            "-q",
+            "-t",
+            "ed25519",
+            "-N",
+            "",
+            "-C",
+            "deploy key",
+            "-f",
+            "/t/key",
+        ]
+        .into_iter()
+        .map(OsString::from)
+        .collect();
+        assert_eq!(args, expected);
+        // A comment that looks like an option is still one argument, after `-C`.
+        let odd = keygen_args("-oProxyCommand=x", Path::new("/t/key"));
+        assert_eq!(odd[5], OsString::from("-C"));
+        assert_eq!(odd[6], OsString::from("-oProxyCommand=x"));
+        assert_eq!(odd.len(), 9);
+    }
+
+    #[test]
+    fn the_keygen_folder_is_private_and_never_reused() {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!(
+            "flightdeck-vault-test-{}-{nanos}",
+            std::process::id()
+        ));
+        assert_eq!(make_private_dir(&dir), Ok(()));
+        assert!(dir.is_dir());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&dir).unwrap().permissions().mode();
+            assert_eq!(mode & 0o077, 0, "group and others get nothing: {mode:o}");
+        }
+        // A folder that is already there is an error, never reused with someone else's content.
+        assert!(make_private_dir(&dir).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_picked_file_is_read_up_to_the_cap_and_no_further() {
+        let cap = PICKED_FILE_MAX_BYTES as usize;
+        let at_the_cap = read_picked(Cursor::new("a".repeat(cap))).unwrap();
+        assert_eq!(at_the_cap.len(), cap);
+        let over = read_picked(Cursor::new("a".repeat(cap + 1)));
+        assert_eq!(over, Err("the file is too big to be a key".to_string()));
+        // A source that never ends (a device) stops at the cap instead of filling the memory.
+        let endless = read_picked(std::io::repeat(b'a'));
+        assert_eq!(endless, Err("the file is too big to be a key".to_string()));
+        // A file that is not text is an error, not a lossy copy.
+        assert!(read_picked(Cursor::new(vec![0xff, 0xfe])).is_err());
+    }
+
+    #[test]
+    fn only_the_file_picked_last_can_be_taken() {
+        let picked = Mutex::new(Some(PathBuf::from("/a/key")));
+        let refused = take_picked(&picked, "/a/other");
+        assert_eq!(
+            refused,
+            Err("only the file picked last can be deleted".to_string())
+        );
+        // The same name in another folder is another file.
+        assert!(take_picked(&picked, "/b/key").is_err());
+        // A refusal leaves the pick in place.
+        assert_eq!(picked.lock().unwrap().as_deref(), Some(Path::new("/a/key")));
+        assert_eq!(
+            take_picked(&picked, "/a/key"),
+            Ok(Some(PathBuf::from("/a/key")))
+        );
+        // It can be taken once.
+        assert!(take_picked(&picked, "/a/key").is_err());
+    }
+
+    #[test]
+    fn the_deleted_path_is_the_one_the_dialog_gave() {
+        let picked = Mutex::new(Some(PathBuf::from("/a/./key")));
+        let taken = take_picked(&picked, "/a/key").unwrap().unwrap();
+        assert_eq!(taken.as_os_str(), "/a/./key");
+    }
+
+    #[test]
+    fn a_new_pick_state_starts_empty() {
+        let state = PickedFile::default();
+        assert!(state.0.lock().unwrap().is_none());
+        assert!(take_picked(&state.0, "/a/key").is_err());
+    }
+}
+
+#[cfg(test)]
 mod badge_tests {
     use super::*;
 
