@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ProjectCard } from "@/features/projects/index.ts";
@@ -24,6 +24,7 @@ import { HostResources } from "./host-resources.tsx";
 import { HostSettingsPanel } from "./host-settings-panel.tsx";
 import { HostVersionLine } from "./host-version.tsx";
 import { RenameHostDialog } from "./rename-host-dialog.tsx";
+import { useHostTab } from "./use-host-tab.ts";
 
 /** What the overview reads from the app: the sessions, the projects and the cards of the hosts. */
 const OVERVIEW_KEYS = [
@@ -48,25 +49,6 @@ const OVERVIEW_KEYS = [
 const PANEL = "data-[state=inactive]:hidden";
 /** A tab of forms and tables keeps a reading width; the Overview takes the whole area (#785). */
 const NARROW_PANEL = `${PANEL} max-w-3xl`;
-
-/** The tab a section ask opens (#1484, #2588): Health is on the Overview, the others on Settings. */
-const tabOf = (section: HostSection) => (section === "health" ? "overview" : "settings");
-/** The panel whose heading takes the focus. */
-const slotOf = (section: HostSection) => {
-  const slot = section === "health" ? "host-health" : `host-section-${section}`;
-  return `[data-slot="${slot}"]`;
-};
-
-/** Whether the host says it has the panel a section ask opens: a panel shows only for a host that has its feature. */
-function hasSection(section: HostSection | undefined, info: HostView["hostInfo"]): boolean {
-  if (section === "pause") return info?.pause !== undefined;
-  if (section === "keep-awake") return info?.keepAwake !== undefined;
-  if (section !== "health") return false;
-  return (
-    hasFeature(info?.features, "depsCheck", false) ||
-    hasFeature(info?.features, "doctor.run", false)
-  );
-}
 
 /**
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
@@ -99,54 +81,13 @@ export function HostPage(
   const info = host.hostInfo;
   const { store } = props;
   const hostHooks = useHostHooks(store, host);
-  const [tab, setTab] = useState(props.section ? tabOf(props.section) : "overview");
+  const { tab, tabsRef, pickTab, askFolder } = useHostTab(info, props.section, props.onSectionDone);
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
   useEffect(() => {
     if (host.status === "online") void store.health.ensure(host.id);
   }, [store, host.id, host.status]);
   const offline = host.status !== "online" && host.status !== "incompatible";
-  // "Add folder" in the Health section opens Settings: once that panel shows, the field takes focus.
-  const [folderAsk, setFolderAsk] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new ask moves the focus
-  useEffect(() => {
-    if (folderAsk === 0 || tab !== "settings") return;
-    const field = document.querySelector<HTMLElement>("[data-folder-field]");
-    field?.focus();
-    field?.scrollIntoView?.({ block: "center" });
-  }, [folderAsk]);
-  // A status-bar item opens its section (#1484): Settings, the panel in view, the focus on its heading.
-  // The panel shows once the host says it has the feature, so the move waits for it.
-  const section = props.section;
-  const sectionShown = hasSection(section, info);
-  // The focus moves once the Settings panel is active (a browser does not focus into a hidden
-  // one), then the ask is used up, so it never pulls the person back later.
-  // It looks only inside this page (another page may show the same section), and moves the focus
-  // once per ask, even when the route keeps the ask.
-  const onSectionDone = props.onSectionDone;
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const handled = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (section) setTab(tabOf(section));
-    else handled.current = undefined;
-  }, [section]);
-  useEffect(() => {
-    if (!section || handled.current === section || tab !== tabOf(section) || !sectionShown) return;
-    const heading = tabsRef.current?.querySelector<HTMLElement>(`${slotOf(section)} h3`);
-    if (!heading) return;
-    handled.current = section;
-    heading.tabIndex = -1;
-    heading.scrollIntoView?.({ block: "center" });
-    heading.focus();
-    onSectionDone?.();
-  }, [section, tab, sectionShown, onSectionDone]);
-  // Another tab picked before the section showed drops the ask too.
-  const pickTab = (value: string) => {
-    setTab(value);
-    if (!section) return;
-    handled.current = section;
-    onSectionDone?.();
-  };
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
   const checkable = host.status === "online" && info?.update !== undefined;
@@ -206,10 +147,7 @@ export function HostPage(
                       checkedAt={overviewState.healthAt[host.id] ?? null}
                       error={overviewState.healthError[host.id] ?? null}
                       onCheck={() => store.health.check(host.id)}
-                      onAddFolder={() => {
-                        setTab("settings");
-                        setFolderAsk((n) => n + 1);
-                      }}
+                      onAddFolder={askFolder}
                       onHooksChanged={hostHooks.refresh}
                     />
                   )}
