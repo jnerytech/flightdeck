@@ -2,13 +2,24 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
-      "entry": ["scripts/*.ts"],
+      "entry": [
+        "scripts/*.ts",
+        "scripts/test/*-main.ts",
+        "scripts/test/{coverage-funcs-preload,git-env-probe,temp-run-fixture}.ts",
+        "scripts/test/fixtures/**/*.ts",
+        "scripts/e2e/bdd/*.ts"
+      ],
       "project": ["scripts/**/*.ts"],
       "ignoreBinaries": ["gpg"],
       "ignoreDependencies": ["@stryker-mutator/command-runner"]
     },
-    "apps/daemon": {},
-    "apps/desktop": { "ignore": ["src/components/ui/**"] },
+    "apps/daemon": {
+      "entry": ["test/**/*-main.ts", "test/fixtures/mcp/*.ts"]
+    },
+    "apps/desktop": {
+      "ignore": ["src/components/ui/**"],
+      "entry": ["src/main.web.tsx", "test/i18n-types.ts"]
+    },
     "packages/protocol": {}
   }
 }
