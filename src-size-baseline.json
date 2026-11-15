@@ -1,11 +1,5 @@
 {
-  "apps/daemon/src/actions/actions.ts": 986,
-  "apps/daemon/src/board/board.ts": 835,
-  "apps/daemon/src/history/indexer.ts": 841,
-  "apps/daemon/src/messaging/messages.ts": 963,
-  "apps/desktop/src/features/board/board-view.tsx": 1471,
-  "apps/desktop/src/features/sessions/session-view.tsx": 1103,
-  "apps/desktop/src/features/sessions/sessions-hub.tsx": 865,
-  "apps/desktop/src/features/shell/sidebar.tsx": 961,
-  "apps/desktop/src/features/teams/page.tsx": 855
+  "apps/desktop/src/features/board/board-view.tsx": 1195,
+  "apps/desktop/src/features/sessions/session-view.tsx": 892,
+  "apps/desktop/src/features/shell/sidebar.tsx": 820
 }
