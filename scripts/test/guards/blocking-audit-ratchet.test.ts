@@ -10,6 +10,18 @@ import {
 
 const root = resolve(import.meta.dir, "../../..");
 const daemonSrc = join(root, "apps/daemon/src");
+const tauriSrc = join(root, "apps/desktop/src-tauri/src");
+
+/**
+ * The Rust sources whose commands the audit covers: lib.rs and the modules moved out of it (#1589).
+ * assistant.rs, backup_folder.rs and oauth_loopback.rs are not audited yet: their commands need an
+ * allowlist decision of their own.
+ */
+const AUDITED_SOURCES = ["lib.rs", "log.rs"];
+
+function tauriSources(): string {
+  return AUDITED_SOURCES.map((file) => readFileSync(join(tauriSrc, file), "utf8")).join("\n");
+}
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
@@ -39,9 +51,7 @@ describe("blocking-audit: the app's hot paths do not block", () => {
   });
 
   test("a Tauri command is async unless it needs the main thread (tray, window)", () => {
-    const rust = ["lib.rs", "log.rs"]
-      .map((file) => readFileSync(join(root, "apps/desktop/src-tauri/src", file), "utf8"))
-      .join("\n");
+    const rust = tauriSources();
     expect(syncTauriCommands(rust).sort()).toEqual([...SYNC_COMMANDS_ALLOWED].sort());
   });
 
@@ -63,10 +73,22 @@ describe("blocking-audit: the app's hot paths do not block", () => {
     expect(asyncCommandsInline(rust)).toEqual(["inline"]);
   });
 
+  test("a `pub` command is audited like any other", () => {
+    const rust = [
+      "#[tauri::command]",
+      "pub fn plain() {}",
+      "#[tauri::command]",
+      "pub(crate) async fn inline(a: String) -> Result<(), String> {",
+      "    entry(&a).get_password()",
+      "}",
+      "",
+    ].join("\n");
+    expect(syncTauriCommands(rust)).toEqual(["plain"]);
+    expect(asyncCommandsInline(rust)).toEqual(["inline"]);
+  });
+
   test("an async Tauri command moves its blocking work to `spawn_blocking`", () => {
-    const rust = ["lib.rs", "log.rs"]
-      .map((file) => readFileSync(join(root, "apps/desktop/src-tauri/src", file), "utf8"))
-      .join("\n");
+    const rust = tauriSources();
     expect(asyncCommandsInline(rust).sort()).toEqual([...ASYNC_INLINE_ALLOWED].sort());
   });
 });

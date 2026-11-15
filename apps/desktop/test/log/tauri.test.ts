@@ -26,9 +26,10 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
 
   test("the commands exist, are registered, and take no path from the webview", () => {
     for (const name of ["append_log", "read_log_tail", "open_logs_dir"]) {
-      expect(rust).toContain(`fn ${name}(`);
+      expect(rust).toMatch(new RegExp(`pub (async )?fn ${name}\\(`));
       expect(lib).toMatch(new RegExp(`\\blog::${name},?\\s*\\n`));
     }
+    expect(lib).toMatch(/^mod log;/m);
     // The folder is the app's own log dir: no command carries a path.
     const signature = (name: string) => new RegExp(`fn ${name}\\(([^)]*)\\)`).exec(rust)?.[1] ?? "";
     for (const name of ["append_log", "read_log_tail", "open_logs_dir"]) {

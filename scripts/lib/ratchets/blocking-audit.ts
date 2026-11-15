@@ -14,7 +14,9 @@ export const SYNC_COMMANDS_ALLOWED = [
 
 /** The names of the `#[tauri::command]` functions that are not `async`. */
 export function syncTauriCommands(rust: string): string[] {
-  return [...rust.matchAll(/#\[tauri::command[^\]]*\]\s*(async\s+)?fn\s+(\w+)/g)]
+  return [
+    ...rust.matchAll(/#\[tauri::command[^\]]*\]\s*(?:pub(?:\([^)]*\))?\s+)?(async\s+)?fn\s+(\w+)/g),
+  ]
     .filter((match) => match[1] === undefined)
     .map((match) => match[2] as string);
 }
@@ -24,7 +26,11 @@ export const ASYNC_INLINE_ALLOWED: string[] = [];
 
 /** The async commands whose body never calls `spawn_blocking`: they still block a runtime worker. */
 export function asyncCommandsInline(rust: string): string[] {
-  return [...rust.matchAll(/#\[tauri::command[^\]]*\]\s*async\s+fn\s+(\w+)[\s\S]*?\n\}\n/g)] // NOSONAR: the Rust sources of the repo, read by a ratchet
+  return [
+    ...rust.matchAll(
+      /#\[tauri::command[^\]]*\]\s*(?:pub(?:\([^)]*\))?\s+)?async\s+fn\s+(\w+)[\s\S]*?\n\}\n/g,
+    ),
+  ] // NOSONAR: the Rust sources of the repo, read by a ratchet
     .filter((match) => !match[0].includes("spawn_blocking"))
     .map((match) => match[1] as string);
 }
