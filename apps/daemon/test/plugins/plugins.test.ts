@@ -24,6 +24,7 @@ import { startServer } from "../../src/server.ts";
 import { gitRepo, newBoard } from "../support/board-helpers.ts";
 import { BASELINE_FEATURES, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
+import { MANIFEST, plugin, skill } from "../support/plugin-fixtures.ts";
 
 const codeOf = async (fn: () => unknown): Promise<string> => {
   try {
@@ -33,24 +34,6 @@ const codeOf = async (fn: () => unknown): Promise<string> => {
     return (error as { code?: string }).code ?? "sem código";
   }
 };
-
-/** A plugin folder with the given files (path to text). */
-function plugin(files: Record<string, string>): string {
-  const dir = join(tempDir("fd-plugin-"), "p");
-  for (const [path, text] of Object.entries(files)) {
-    mkdirSync(dirname(join(dir, path)), { recursive: true });
-    writeFileSync(join(dir, path), text);
-  }
-  return dir;
-}
-
-const MANIFEST = JSON.stringify({
-  name: "deploy-tools",
-  version: "1.2.0",
-  description: "Deploys",
-  author: { name: "Equipe" },
-});
-const skill = (name: string) => `---\nname: ${name}\ndescription: faz ${name}\n---\ncorpo\n`;
 
 describe("plugins: o inventário", () => {
   test("lê o manifesto e cada componente nos lugares de sempre, sem executar nada", async () => {
