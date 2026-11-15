@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /** The kinds of secret the vault holds. */
 export type SecretType = "ssh-key" | "password" | "token" | "env";
 
@@ -10,6 +12,31 @@ export interface SecretInfo {
   /** The names of an env set, in order. */
   names?: string[];
 }
+
+/** What the vault knows about a secret besides its value; never the value itself. */
+export interface SecretMeta {
+  id: string;
+  name: string;
+  type: SecretType;
+  description: string;
+  tags: string[];
+  createdAt: number;
+  lastUsedAt: number | null;
+  /** The hosts the secret may be delivered to; the local host only by default. */
+  allowedHosts: string[];
+}
+
+/** What a stored or imported secret must look like: identity, tags and hosts are required (they decide who may use it), the rest has a default. */
+export const SecretMetaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["ssh-key", "password", "token", "env"]),
+  description: z.string().catch(""),
+  tags: z.array(z.string()),
+  createdAt: z.number().catch(0),
+  lastUsedAt: z.number().nullable().catch(null),
+  allowedHosts: z.array(z.string()),
+});
 
 const MAGIC = "openssh-key-v1\0";
 const MIN_TOKEN_LENGTH = 16;
