@@ -1,18 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { runDoctor } from "../../src/deps/domain/doctor.ts";
 import { Idle } from "../../src/messaging/domain/idle.ts";
-import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
-import {
-  type FlightdeckMcpServer,
-  flightdeckMcpServer,
-} from "../../src/runtime/domain/flightdeck-mcp.ts";
+import { flightdeckMcpServer } from "../../src/runtime/domain/flightdeck-mcp.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
+import { startedWith } from "../support/mcp-sessions.ts";
 import { setup } from "../support/messaging-helpers.ts";
 
 setDefaultTimeout(30_000);
@@ -23,38 +19,6 @@ const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-
-/** Starts a run and returns the options the SDK would have received. */
-function startedWith(
-  mcpServer: FlightdeckMcpServer | undefined,
-  permissionMode: "default" | "acceptEdits" | "plan",
-  sessionId: string | null = "s1",
-): Options {
-  let captured: Options | undefined;
-  const query: QueryFn = (params) => {
-    captured = params.options as Options;
-    return {
-      async *[Symbol.asyncIterator]() {
-        yield {
-          type: "system",
-          subtype: "init",
-          session_id: "c1",
-          model: "m",
-          tools: [],
-        } as never as SDKMessage;
-      },
-      interrupt: async () => {},
-      close: () => {},
-    };
-  };
-  new ClaudeSdkRuntime({ query, ...(mcpServer ? { mcpServer } : {}) }).start({
-    cwd: "/proj",
-    permissionMode,
-    env: { PATH: "/bin", ...(sessionId === null ? {} : { FLIGHTDECK_SESSION: sessionId }) },
-    canUseTool: async () => ({ behavior: "allow" }),
-  });
-  return captured as Options;
-}
 
 describe("mcp-sessoes", () => {
   test("the command is this daemon's binary running mcp with its config file", () => {
