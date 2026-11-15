@@ -19,7 +19,7 @@ import {
 import { SAFE, TIMEOUT_MS } from "../teleport/index.ts";
 
 /** What can go wrong, each refused by the caller under its own reason. */
-export type BranchCommitFailure = "no_head" | "identity" | "branch_taken" | "git";
+type BranchCommitFailure = "no_head" | "identity" | "branch_taken" | "git";
 
 export type Refuse = (
   failure: BranchCommitFailure,

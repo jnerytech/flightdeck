@@ -8,7 +8,7 @@ export type RadarGit = (cwd: string, ...args: string[]) => Promise<CommandResult
 
 /** Issue #1405: the most peers one card lists, and the most files the radar keeps of a card. */
 export const MAX_PEERS = 10;
-export const MAX_FILES_PER_CARD = 2000;
+const MAX_FILES_PER_CARD = 2000;
 
 /** A card the radar watches: its worktree and what it was cut from. */
 export interface RadarCard {
