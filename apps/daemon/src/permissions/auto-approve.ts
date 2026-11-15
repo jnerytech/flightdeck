@@ -7,7 +7,7 @@
 
 import type { Database } from "bun:sqlite";
 import { assistantDir } from "../assistant/domain/paths.ts";
-import type { UsageTokens } from "../costs/usage-indexer.ts";
+import type { UsageTokens } from "../kernel/index.ts";
 import { ulid } from "../kernel/index.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
 import { autoApproveDir, autoApprovePrompt, ruleDecision } from "./domain/auto-approve-rules.ts";
