@@ -15,8 +15,8 @@ export interface Received {
   error?: unknown;
 }
 
-export const MODEL_OPTIONS = ["anthropic/claude-sonnet-5-5", "opencode/crouton-alpha-free"];
-export const EFFORT_OPTIONS = ["minimal", "low", "medium", "high", "xhigh", "max", "default"];
+const MODEL_OPTIONS = ["anthropic/claude-sonnet-5-5", "opencode/crouton-alpha-free"];
+const EFFORT_OPTIONS = ["minimal", "low", "medium", "high", "xhigh", "max", "default"];
 
 export function configOptions(
   current: { model?: string; effort?: string; mode?: string; modes?: string[] } = {},
