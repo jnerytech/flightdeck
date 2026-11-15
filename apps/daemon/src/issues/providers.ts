@@ -6,18 +6,19 @@ import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
 import { GithubIssues } from "../github/index.ts";
 import { checkedId, cli, cliJsonWith, cliOk, ISSUE_LIMIT } from "../pr/index.ts";
+import {
+  AZURE_DEFAULT_WIQL,
+  type AzIdentity,
+  type AzWorkItem,
+  AzWorkItemRow,
+  htmlToText,
+  textOf,
+} from "./domain/az-work-item.ts";
 import { parseIssueRef } from "./domain/issue-ref.ts";
 
 // The board's card flow still imports these two from here; its move behind the entry is a step of
 // its own (the entry cannot serve it yet: issues.ts imports the board, a cycle).
 export { closingLine, parseIssueRef } from "./domain/issue-ref.ts";
-
-/** Active work items assigned to you, with the fields an issue needs. */
-export const AZURE_DEFAULT_WIQL =
-  "SELECT [System.Id], [System.Title], [System.Description], [System.CreatedBy], " +
-  "[System.CreatedDate], [System.Tags] FROM WorkItems WHERE [System.AssignedTo] = @Me " +
-  "AND [System.State] NOT IN ('Closed','Done','Removed') AND [System.TeamProject] = @project " +
-  "ORDER BY [System.ChangedDate] DESC";
 
 export interface IssueProvider {
   /** `github:owner/repo#id` or `azure:org/project#id`. */
@@ -25,46 +26,6 @@ export interface IssueProvider {
   list(cwd: string, query?: string): Promise<Issue[]>;
   get(cwd: string, id: string): Promise<Issue>;
   comment(cwd: string, id: string, text: string): Promise<void>;
-}
-
-interface AzIdentity {
-  displayName?: string;
-  uniqueName?: string;
-}
-
-/** One work item as `az boards query|work-item show` prints it; the fields are read one by one. */
-const AzWorkItemRow = z.object({
-  id: z.number(),
-  fields: z.record(z.string(), z.unknown()),
-});
-type AzWorkItem = z.infer<typeof AzWorkItemRow>;
-
-/** The text of a field: a string as it is; anything else, which Azure DevOps does not send, is empty. */
-const textOf = (value: unknown): string => (typeof value === "string" ? value : "");
-
-/** `html` without its tags: each `<` up to the next `>`; a `<` with no `>` after it stays. A scan, not a pattern, so a long description cannot make it slow. */
-function withoutTags(html: string): string {
-  let out = "";
-  let at = 0;
-  for (;;) {
-    const open = html.indexOf("<", at);
-    const close = open === -1 ? -1 : html.indexOf(">", open);
-    if (close === -1) return out + html.slice(at);
-    out += html.slice(at, open);
-    at = close + 1;
-  }
-}
-
-/** The text of the HTML Azure DevOps keeps in descriptions. */
-function htmlToText(html: string): string {
-  return withoutTags(html.replace(/<br\s*\/?>|<\/(p|div|li|h\d)>/gi, "\n"))
-    .replaceAll("&nbsp;", " ")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&#39;", "'")
-    .replaceAll("&amp;", "&")
-    .trim();
 }
 
 export class AzureIssues implements IssueProvider {
