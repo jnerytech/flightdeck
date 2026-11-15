@@ -1,141 +1,7 @@
 import type { Platform } from "../../platform/types.ts";
-
-export type TerminalKeyAction =
-  | "copy"
-  | "paste"
-  | "search"
-  | "snippets"
-  | "newline"
-  | TerminalZoom
-  | "pass";
-
-/** A step of the terminal's zoom: one point bigger, one smaller, or back to the default size. */
-export type TerminalZoom = "zoomIn" | "zoomOut" | "zoomReset";
-
-export interface TerminalKey {
-  key: string;
-  ctrlKey: boolean;
-  shiftKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-}
-
-const KEY_ACTIONS: Record<string, TerminalKeyAction> = {
-  c: "copy",
-  v: "paste",
-  f: "search",
-  // Phase 18: the command snippets of this terminal's host and of the app.
-  " ": "snippets",
-};
-
-const ZOOM_KEYS: Record<string, TerminalZoom> = {
-  "=": "zoomIn",
-  "+": "zoomIn",
-  "-": "zoomOut",
-  _: "zoomOut",
-  "0": "zoomReset",
-};
-
-/** What Claude Code reads as "a new line, do not submit": ESC then CR, the same as Alt+Enter (what its /terminal-setup binds Shift+Enter to). */
-export const NEWLINE_SEQUENCE = "\u001b\r";
-
-/**
- * Ctrl+Shift+C/V/F/Space are the app's. Ctrl+C goes to the process (it is the interrupt), except on
- * Windows while something is selected: there it copies, as in Windows Terminal.
- */
-export function terminalKeyAction(
-  event: TerminalKey,
-  context: { windows?: boolean; selected?: boolean } = {},
-): TerminalKeyAction {
-  // Shift+Enter alone is a new line in the prompt: xterm would send the same CR as Enter, which submits.
-  if (
-    event.shiftKey &&
-    !event.ctrlKey &&
-    !event.altKey &&
-    !event.metaKey &&
-    event.key === "Enter"
-  ) {
-    return "newline";
-  }
-  if (event.altKey || event.metaKey || !event.ctrlKey) return "pass";
-  // Zoom, as in Windows Terminal and VS Code: Ctrl with =/+, -/_ or 0, Shift or not (#476).
-  const zoom = ZOOM_KEYS[event.key];
-  if (zoom) return zoom;
-  if (!event.shiftKey) {
-    return context.windows && context.selected && event.key.toLowerCase() === "c" ? "copy" : "pass";
-  }
-  return KEY_ACTIONS[event.key.toLowerCase()] ?? "pass";
-}
-
-/** Ctrl+wheel zooms the terminal (#476): up is bigger, down smaller; the wheel alone scrolls. */
-export function terminalWheelAction(event: {
-  ctrlKey: boolean;
-  deltaY: number;
-}): TerminalZoom | null {
-  if (!event.ctrlKey || event.deltaY === 0) return null;
-  return event.deltaY < 0 ? "zoomIn" : "zoomOut";
-}
-
-/** Whether the app runs on Windows, from the browser's user agent (WebView2 says so; macOS and Linux do not). */
-export function isWindowsHost(userAgent: string): boolean {
-  return /\bWindows\b/i.test(userAgent);
-}
-
-export interface TerminalColors {
-  background: string;
-  foreground: string;
-  cursor: string;
-  selectionBackground: string;
-}
-
-/** The two palettes the terminal paints; the shell's resolved theme is one of them. */
-type Theme = "light" | "dark";
-
-const COLORS: Record<Theme, TerminalColors> = {
-  light: {
-    background: "#fafafa",
-    foreground: "#1f2430",
-    cursor: "#5e6ad2",
-    selectionBackground: "#c7cbf2",
-  },
-  dark: {
-    background: "#121316",
-    foreground: "#e6e8ee",
-    cursor: "#8a93f0",
-    selectionBackground: "#343a73",
-  },
-};
-
-/** The terminal's colors for a theme (xterm reads sRGB, the tokens are oklch). */
-export function terminalTheme(theme: Theme): TerminalColors {
-  return COLORS[theme];
-}
-
-/** The colors xterm paints find matches with (it reads #RRGGBB only). */
-export interface FindDecorations {
-  matchBackground?: string;
-  matchBorder?: string;
-  matchOverviewRuler: string;
-  activeMatchBackground?: string;
-  activeMatchBorder?: string;
-  activeMatchColorOverviewRuler: string;
-}
-
-export const FIND_DECORATIONS: FindDecorations = {
-  matchBackground: "#8a6d1c",
-  matchOverviewRuler: "#8a6d1c",
-  activeMatchBackground: "#c2571a",
-  activeMatchColorOverviewRuler: "#c2571a",
-};
+import { clampFont, TERMINAL_FONT_DEFAULT, type TerminalZoom } from "./domain/terminal-view.ts";
 
 export const TERMINAL_FONT_KEY = "flightdeck.terminal-font";
-export const TERMINAL_FONT_MIN = 10;
-export const TERMINAL_FONT_MAX = 24;
-export const TERMINAL_FONT_DEFAULT = 13;
-export const TERMINAL_FONT_FAMILY = '"Cascadia Mono", Consolas, monospace';
-
-const clampFont = (size: number) =>
-  Math.min(TERMINAL_FONT_MAX, Math.max(TERMINAL_FONT_MIN, Math.round(size)));
 
 /** The terminal's font size in px, kept across starts. */
 export class TerminalFontController {
@@ -165,20 +31,6 @@ export class TerminalFontController {
   }
 }
 
-/** How many lines a paste holds; one line break at the very end does not make another. */
-export function pasteLines(text: string): number {
-  return text.replace(/(\r\n|\r|\n)$/, "").split(/\r\n|\r|\n/).length;
-}
-
-/**
- * Whether a paste needs the person's OK first (#476): several lines while the program has not
- * turned on bracketed paste, so each line would run as a command as soon as it lands. Windows
- * Terminal and VS Code warn the same way.
- */
-export function pasteNeedsConfirm(text: string, bracketed: boolean): boolean {
-  return !bracketed && pasteLines(text) > 1;
-}
-
 export const TERMINAL_READER_KEY = "flightdeck.terminal-reader";
 
 /**
@@ -203,26 +55,4 @@ export class TerminalReaderSetting {
     this.storage.setItem(TERMINAL_READER_KEY, on ? "on" : "off");
     for (const listener of this.listeners) listener();
   }
-}
-
-/** How the terminal's find matches (#476). */
-export interface FindFlags {
-  caseSensitive?: boolean;
-  wholeWord?: boolean;
-  regex?: boolean;
-}
-
-/**
- * Why a find cannot run, with regular expressions on (#476): a pattern that does not read, or one
- * that matches empty text (it would highlight nothing). Plain text always searches.
- */
-export function findPatternProblem(text: string, flags: FindFlags): "invalid" | "empty" | null {
-  if (!flags.regex) return null;
-  let pattern: RegExp;
-  try {
-    pattern = new RegExp(text);
-  } catch {
-    return "invalid";
-  }
-  return pattern.test("") ? "empty" : null;
 }
