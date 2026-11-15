@@ -31,6 +31,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { BoardNotice } from "@/features/board/board-notice";
+import { BoardStatus } from "@/features/board/board-status";
+import { BoardSyncControl } from "@/features/board/board-sync";
+import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
+import { ColumnHandle } from "@/features/board/column-handle";
+import { ColumnSwitcher } from "@/features/board/column-switcher";
+import { ContractDialog } from "@/features/board/contract-dialog";
 import {
   boardFeatures,
   boardOrder,
@@ -48,14 +55,7 @@ import {
   startableWorkflows,
   stayingPicks,
   tabStops,
-} from "@/features/board/board-derive";
-import { BoardNotice } from "@/features/board/board-notice";
-import { BoardStatus } from "@/features/board/board-status";
-import { BoardSyncControl } from "@/features/board/board-sync";
-import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
-import { ColumnHandle } from "@/features/board/column-handle";
-import { ColumnSwitcher } from "@/features/board/column-switcher";
-import { ContractDialog } from "@/features/board/contract-dialog";
+} from "@/features/board/domain/board-derive";
 import { NeedsBadge, needsText } from "@/features/board/needs-badge";
 import { QuietBadge } from "@/features/board/quiet-badge";
 import { quietBadge } from "@/features/board/quiet-badge-view";
@@ -81,6 +81,13 @@ import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { issueNumber } from "../issues/index.ts";
 import { ExternalSeal, IssuesPanel } from "../issues/ui.ts";
 import { quietAlerts } from "../needs-you/index.ts";
+import { cardKey } from "./board-card-keys.ts";
+import { BoardLoadError } from "./board-load-error.tsx";
+import { BulkRunDialog } from "./bulk-run-dialog.tsx";
+import { CardStartDialog } from "./card-start-dialog.tsx";
+import { BoardColumnEmpty } from "./column-empty.tsx";
+import { DeleteCardDialog } from "./delete-card-dialog.tsx";
+import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
 import {
   bulkRunOutcome,
   bulkSkipReason,
@@ -94,14 +101,7 @@ import {
   startQuotaLines,
   updateMany,
   updateSummary,
-} from "./board-bulk.ts";
-import { cardKey } from "./board-card-keys.ts";
-import { BoardLoadError } from "./board-load-error.tsx";
-import { BulkRunDialog } from "./bulk-run-dialog.tsx";
-import { CardStartDialog } from "./card-start-dialog.tsx";
-import { BoardColumnEmpty } from "./column-empty.tsx";
-import { DeleteCardDialog } from "./delete-card-dialog.tsx";
-import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
+} from "./domain/board-bulk.ts";
 import { askAbout, dragNeeds, type Lacking, missingFor } from "./domain/board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
 import type { BoardKeyAction } from "./domain/board-keys.ts";
