@@ -230,7 +230,7 @@ export function removedLines(diff: string): Map<string, string[]> {
 }
 
 /** The renames of a diff, old path to new: the code that stays is read from the new one. */
-export function renamesOf(diff: string): Map<string, string> {
+function renamesOf(diff: string): Map<string, string> {
   const renames = new Map<string, string>();
   let from = "";
   for (const line of diff.split("\n")) {
@@ -247,7 +247,7 @@ function headerFile(line: string): string | null {
 }
 
 /** The files a diff deletes ("+++ /dev/null"): they have no code at HEAD to read. */
-export function deletedFiles(diff: string): Set<string> {
+function deletedFiles(diff: string): Set<string> {
   const deleted = new Set<string>();
   let file = "";
   for (const line of diff.split("\n")) {
@@ -292,7 +292,7 @@ export function riskyEdits(
 const OPENS_BLOCK = /^\s*\/\*(?!.*\*\/)/;
 
 /** Files a rename brings from a test folder into the code: their contents were never read as code. */
-export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
+function movedFromTests(renames: Map<string, string>): RiskyFile[] {
   return [...renames]
     .filter(([from, to]) => any(NOT_SOURCE, from) && !any(NOT_SOURCE, to) && SOURCE.test(to))
     .map(([, to]) => ({ path: to, why: ["moved from tests"] }));
