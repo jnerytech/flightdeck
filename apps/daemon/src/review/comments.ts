@@ -8,6 +8,7 @@ import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg, ulid } from "../kernel/index.ts";
 import { credential, maskConfig, maskedConfig } from "../permissions/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
+import { anchor, type ReviewComment, type Row, toComment } from "./domain/comment-anchor.ts";
 import { frameReviewerComment } from "./domain/second-opinion.ts";
 import type { ChangesReader, ResolvedTarget } from "./domain/target.ts";
 import { linesOf, located, refuseCredential } from "./paths.ts";
@@ -22,25 +23,7 @@ export interface ReviewCommentsOptions {
   now?: () => number;
 }
 
-export interface ReviewComment {
-  id: string;
-  target: string;
-  path: string;
-  /** `new`: the file as it is now; `old`: the version it is compared with (HEAD or the base). */
-  side: "new" | "old";
-  lineStart: number;
-  lineEnd: number;
-  quote: string;
-  body: string;
-  state: "draft" | "sent";
-  createdAt: string;
-  sentAt: string | null;
-  /** The quoted lines are no longer in the file. */
-  outdated: boolean;
-  /** Issue #1439: a second opinion's finding, until the person edits it. */
-  author?: "reviewer";
-  severity?: "blocker" | "high" | "medium" | "low";
-}
+export type { ReviewComment } from "./domain/comment-anchor.ts";
 
 export interface NewReviewComment {
   target: string;
@@ -58,50 +41,6 @@ export interface ReviewSent {
   via: "session" | "card" | "terminal" | "copy";
   text: string;
   comments: number;
-}
-
-interface Row {
-  id: string;
-  target: string;
-  path: string;
-  side: "new" | "old";
-  line_start: number;
-  line_end: number;
-  quote: string;
-  body: string;
-  state: "draft" | "sent";
-  created_at: string;
-  sent_at: string | null;
-  author?: string | null;
-  severity?: string | null;
-}
-
-const toComment = (row: Row, outdated: boolean): ReviewComment => ({
-  id: row.id,
-  target: row.target,
-  path: row.path,
-  side: row.side,
-  lineStart: row.line_start,
-  lineEnd: row.line_end,
-  quote: row.quote,
-  body: row.body,
-  state: row.state,
-  createdAt: row.created_at,
-  sentAt: row.sent_at,
-  outdated,
-  ...(row.author === "reviewer" ? { author: "reviewer" as const } : {}),
-  ...(row.severity ? { severity: row.severity as NonNullable<ReviewComment["severity"]> } : {}),
-});
-
-/** Where the quote's lines start, at the occurrence nearest to `near`; `null` without one. */
-function anchor(lines: string[], quote: string[], near: number): number | null {
-  let best: number | null = null;
-  for (let i = 0; i + quote.length <= lines.length; i++) {
-    if (!quote.every((line, k) => lines[i + k] === line)) continue;
-    const start = i + 1;
-    if (best === null || Math.abs(start - near) < Math.abs(best - near)) best = start;
-  }
-  return best;
 }
 
 /** Inline comments on the diff of a session or card, drafts until sent to the agent. */
