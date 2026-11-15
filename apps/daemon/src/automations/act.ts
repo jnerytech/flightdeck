@@ -19,7 +19,7 @@ export interface ActDeps {
   prWatch?: { claims(cardId: string): string | null };
 }
 
-export type Outcome = { status: "ok" | "skipped"; detail: string };
+type Outcome = { status: "ok" | "skipped"; detail: string };
 
 export async function act(
   deps: ActDeps,
