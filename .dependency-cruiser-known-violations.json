@@ -331,7 +331,7 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/tabs/tab-bar.tsx",
+    "from": "apps/desktop/src/features/tabs/tab-item.tsx",
     "to": "apps/desktop/src/features/sessions/cache-timer.tsx",
     "unresolvedTo": "@/features/sessions/cache-timer",
     "dependencyTypes": ["undetermined", "import"],
