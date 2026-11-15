@@ -20,6 +20,17 @@ export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
 export type { SessionState } from "./domain/session-state.ts";
 export {
+  hiddenTiles,
+  lastLines,
+  loadTileLayout,
+  pendingOf,
+  pickTiles,
+  saveTileLayout,
+  TILE_LAYOUTS,
+  type TileLayout,
+  tileColumns,
+} from "./domain/session-tiles.ts";
+export {
   type SessionView as SessionViewName,
   SessionViews,
   VIEW_LABEL,
@@ -40,7 +51,6 @@ export {
   type HubFilter,
   type HubRow,
   type HubRowState,
-  type HubState,
   type HubView,
   hubRows,
   isOver,
@@ -66,17 +76,6 @@ export {
 export { SessionStreamSlice } from "./stream.ts";
 export type { SessionSubscriptions } from "./subscriptions.ts";
 export { SummariesSlice } from "./summaries.ts";
-export {
-  hiddenTiles,
-  lastLines,
-  loadTileLayout,
-  pendingOf,
-  pickTiles,
-  saveTileLayout,
-  TILE_LAYOUTS,
-  type TileLayout,
-  tileColumns,
-} from "./tiles.ts";
 export { formatMs } from "./timing.ts";
 export { useDraft } from "./use-draft.ts";
 export { useFollow } from "./use-follow.ts";
