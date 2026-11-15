@@ -1,12 +1,16 @@
 import type { Database } from "bun:sqlite";
-import { createHash } from "node:crypto";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { type Snippet, type SnippetFileInfo, SnippetInput, SnippetVar } from "@flightdeck/protocol";
+import {
+  type Snippet,
+  type SnippetFileInfo,
+  type SnippetInput,
+  SnippetVar,
+} from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr, resolveAllowedCwd, ulid } from "../kernel/index.ts";
+import { type Row, SnippetRows } from "./adapters/snippet-rows.ts";
+import { readSnippetFile, writeSnippetFile } from "./adapters/snippet-yaml-file.ts";
 import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./domain/model.ts";
-import { fileId, parseFileId, toYaml } from "./domain/snippet-file.ts";
+import { fileId, parseFileId, parseSnippetList, toYaml } from "./domain/snippet-file.ts";
 
 export interface SnippetsOptions {
   db: Database;
@@ -32,24 +36,6 @@ export interface SnippetFilter {
   type?: "command" | "prompt";
 }
 
-interface Row {
-  id: string;
-  scope: "host" | "project";
-  project_path: string | null;
-  name: string;
-  type: "command" | "prompt";
-  body: string;
-  vars: string;
-  tags: string;
-}
-
-interface Mark {
-  id: string;
-  favorite: number;
-  uses: number;
-  last_used_at: string | null;
-}
-
 interface LoadedFile {
   info: SnippetFileInfo;
   defs: SnippetDef[];
@@ -66,9 +52,11 @@ const notFound = () => new FlightdeckError("not_found", "snippet not found", "no
  */
 export class Snippets {
   private readonly now: () => number;
+  private readonly store: SnippetRows;
 
   constructor(private readonly opts: SnippetsOptions) {
     this.now = opts.now ?? Date.now;
+    this.store = new SnippetRows(opts.db);
   }
 
   async list(
@@ -79,10 +67,11 @@ export class Snippets {
     if (scope === "project" && !project)
       throw badRequest("the project scope needs projectPath", "scope_project_path");
     const views: Snippet[] = [];
-    if (scope !== "project") views.push(...this.rows("host", null).map((row) => this.fromRow(row)));
+    if (scope !== "project")
+      views.push(...this.store.rows("host", null).map((row) => this.fromRow(row)));
     let file: SnippetFileInfo | null = null;
     if (scope !== "host" && project) {
-      views.push(...this.rows("project", project).map((row) => this.fromRow(row)));
+      views.push(...this.store.rows("project", project).map((row) => this.fromRow(row)));
       const loaded = await this.loadFile(project);
       file = loaded?.info ?? null;
       views.push(
@@ -151,15 +140,15 @@ export class Snippets {
   async remove(id: string): Promise<void> {
     const found = await this.get(id);
     if (found.source === "daemon") {
-      this.opts.db.query("DELETE FROM snippets WHERE id = ?").run(id);
+      this.store.remove(id);
     } else {
       const project = found.projectPath as string;
       const defs = ((await this.loadFile(project))?.defs ?? []).filter(
         (def) => def.name !== found.name,
       );
-      await this.writeFile(project, toYaml(defs));
+      await writeSnippetFile(project, toYaml(defs));
     }
-    this.opts.db.query("DELETE FROM snippet_marks WHERE id = ?").run(id);
+    this.store.removeMark(id);
   }
 
   /** Trusts the content of the project's versioned file, by the hash the app was shown. */
@@ -179,34 +168,20 @@ export class Snippets {
         "snippet_file_changed",
       );
     }
-    this.opts.db
-      .query(
-        "INSERT OR IGNORE INTO snippet_trust (project_path, hash, trusted_at) VALUES (?, ?, ?)",
-      )
-      .run(project, hash, new Date(this.now()).toISOString());
+    this.store.trust(project, hash, new Date(this.now()).toISOString());
     return { ...loaded.info, trusted: true };
   }
 
   async favorite(id: string, favorite: boolean): Promise<Snippet> {
     await this.get(id);
-    this.opts.db
-      .query(
-        `INSERT INTO snippet_marks (id, favorite, uses, last_used_at) VALUES (?, ?, 0, NULL)
-         ON CONFLICT (id) DO UPDATE SET favorite = excluded.favorite`,
-      )
-      .run(id, favorite ? 1 : 0);
+    this.store.setFavorite(id, favorite);
     return await this.get(id);
   }
 
   /** A use of the snippet: counts toward "recent". */
   async markUsed(id: string): Promise<void> {
     await this.get(id);
-    this.opts.db
-      .query(
-        `INSERT INTO snippet_marks (id, favorite, uses, last_used_at) VALUES (?, 0, 1, ?)
-         ON CONFLICT (id) DO UPDATE SET uses = uses + 1, last_used_at = excluded.last_used_at`,
-      )
-      .run(id, new Date(this.now()).toISOString());
+    this.store.countUse(id, new Date(this.now()).toISOString());
   }
 
   // -- storage -------------------------------------------------------------------------------
@@ -220,16 +195,6 @@ export class Snippets {
     return await this.project(path);
   }
 
-  private rows(scope: "host" | "project", project: string | null): Row[] {
-    return this.opts.db
-      .query("SELECT * FROM snippets WHERE scope = ? AND project_path IS ?")
-      .all(scope, project) as Row[];
-  }
-
-  private mark(id: string): Mark | null {
-    return this.opts.db.query("SELECT * FROM snippet_marks WHERE id = ?").get(id) as Mark | null;
-  }
-
   private view(
     base: {
       id: string;
@@ -240,7 +205,7 @@ export class Snippets {
     },
     def: SnippetDef,
   ): Snippet {
-    const mark = this.mark(base.id);
+    const mark = this.store.mark(base.id);
     return {
       ...base,
       name: def.name,
@@ -298,7 +263,7 @@ export class Snippets {
       const def = loaded?.defs.find((d) => d.name === parsed.name);
       return def ? this.fromFile(project, def, loaded as LoadedFile) : null;
     }
-    const row = this.opts.db.query("SELECT * FROM snippets WHERE id = ?").get(id) as Row | null;
+    const row = this.store.row(id);
     return row ? this.fromRow(row) : null;
   }
 
@@ -308,7 +273,9 @@ export class Snippets {
     name: string,
     own: string | null,
   ): Promise<boolean> {
-    const inRows = this.rows(scope, project).some((row) => row.name === name && row.id !== own);
+    const inRows = this.store
+      .rows(scope, project)
+      .some((row) => row.name === name && row.id !== own);
     const inFile = project
       ? ((await this.loadFile(project))?.defs ?? []).some(
           (def) => def.name === name && fileId(project, def.name) !== own,
@@ -325,24 +292,17 @@ export class Snippets {
   ): Promise<Snippet> {
     const at = new Date(this.now()).toISOString();
     const id = previous?.id ?? ulid(this.now());
-    this.opts.db
-      .query(
-        `INSERT INTO snippets (id, scope, project_path, name, type, body, vars, tags, created_at, updated_at)
-         VALUES ($id, $scope, $project, $name, $type, $body, $vars, $tags, $at, $at)
-         ON CONFLICT (id) DO UPDATE SET name = $name, type = $type, body = $body, vars = $vars,
-           tags = $tags, updated_at = $at`,
-      )
-      .run({
-        $id: id,
-        $scope: scope,
-        $project: project,
-        $name: def.name,
-        $type: def.type,
-        $body: (def.run ?? def.text) as string,
-        $vars: JSON.stringify(def.vars),
-        $tags: JSON.stringify(def.tags),
-        $at: at,
-      });
+    this.store.save({
+      id,
+      scope,
+      project,
+      name: def.name,
+      type: def.type,
+      body: (def.run ?? def.text) as string,
+      vars: JSON.stringify(def.vars),
+      tags: JSON.stringify(def.tags),
+      at,
+    });
     return await this.get(id);
   }
 
@@ -366,60 +326,17 @@ export class Snippets {
     defs.splice(at, 0, def);
     const text = toYaml(defs);
     // Every entry, the new one included, went through the secret scan: the repository may be public.
-    await this.writeFile(project, text);
+    await writeSnippetFile(project, text);
     const id = fileId(project, def.name);
     if (previous && previous.id !== id) {
-      this.opts.db.query("UPDATE snippet_marks SET id = ? WHERE id = ?").run(id, previous.id);
+      this.store.moveMark(previous.id, id);
     }
     return await this.get(id);
   }
 
-  private async writeFile(project: string, text: string): Promise<void> {
-    await mkdir(join(project, ".flightdeck"), { recursive: true });
-    await writeFile(join(project, ".flightdeck", "snippets.yaml"), text);
-  }
-
-  /**
-   * A YAML (or JSON, which YAML reads too) list of snippets: the valid ones, normalized and with
-   * unique names, and why each of the others was left out. Shared by the versioned file and an
-   * import from a file.
-   */
-  private parseList(text: string): { defs: SnippetDef[]; errors: string[] } {
-    const errors: string[] = [];
-    const defs: SnippetDef[] = [];
-    let data: unknown;
-    try {
-      data = Bun.YAML.parse(text) ?? [];
-    } catch (error) {
-      errors.push(`YAML inválido: ${(error as Error).message}`);
-      data = [];
-    }
-    if (!Array.isArray(data)) {
-      errors.push("o arquivo precisa ser uma lista de snippets");
-      data = [];
-    }
-    for (const [index, item] of (data as unknown[]).entries()) {
-      const parsed = SnippetInput.safeParse(item);
-      const label = parsed.success ? parsed.data.name : `entrada ${index + 1}`;
-      if (!parsed.success) {
-        errors.push(`${label}: ${(parsed.error.issues[0] as { message: string }).message}`);
-        continue;
-      }
-      try {
-        const def = normalizeSnippet(parsed.data, this.opts.scanner);
-        if (defs.some((d) => d.name === def.name))
-          throw badRequest("repeated name", "name_taken", { name: def.name });
-        defs.push(def);
-      } catch (error) {
-        errors.push(`${label}: ${(error as Error).message}`);
-      }
-    }
-    return { defs, errors };
-  }
-
   /** An import from a file: the snippets it holds, as the form would send them, and the reasons for the rest. */
   parse(text: string): { snippets: SnippetInput[]; errors: string[] } {
-    const { defs, errors } = this.parseList(text);
+    const { defs, errors } = parseSnippetList(text, this.opts.scanner);
     const snippets = defs.map(
       (def): SnippetInput => ({
         name: def.name,
@@ -434,21 +351,10 @@ export class Snippets {
 
   /** The versioned file: what it holds that is valid, what is not and why, and whether it is trusted. */
   private async loadFile(project: string): Promise<LoadedFile | null> {
-    const path = join(project, ".flightdeck", "snippets.yaml");
-    if (
-      !(await stat(path).then(
-        () => true,
-        () => false,
-      ))
-    )
-      return null;
-    const bytes = await readFile(path);
-    const hash = createHash("sha256").update(bytes).digest("hex");
-    const trusted =
-      this.opts.db
-        .query("SELECT 1 FROM snippet_trust WHERE project_path = ? AND hash = ?")
-        .get(project, hash) !== null;
-    const { defs, errors } = this.parseList(bytes.toString("utf8"));
-    return { info: { path, hash, trusted, errors }, defs };
+    const file = await readSnippetFile(project);
+    if (!file) return null;
+    const trusted = this.store.isTrusted(project, file.hash);
+    const { defs, errors } = parseSnippetList(file.text, this.opts.scanner);
+    return { info: { path: file.path, hash: file.hash, trusted, errors }, defs };
   }
 }
