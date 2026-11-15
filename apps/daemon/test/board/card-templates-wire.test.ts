@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { templateRootOf } from "../../src/board/spec-template.ts";
+import { templateRootOf } from "../../src/board/domain/spec-template.ts";
 import { startServer } from "../../src/server.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { BASELINE_FEATURES } from "../support/helpers.ts";

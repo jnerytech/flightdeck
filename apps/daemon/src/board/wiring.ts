@@ -6,7 +6,7 @@ import type { DomainModule } from "../server/index.ts";
 import { Board } from "./board.ts";
 import { type CheckLoopDeps, CheckLoopSwitch, cardMode } from "./check-loop.ts";
 import { HostPause } from "./domain/host-pause.ts";
-import { templateRootOf } from "./spec-template.ts";
+import { templateRootOf } from "./domain/spec-template.ts";
 import type { BoardOptions } from "./types.ts";
 
 /** What the host's pause of new card runs is built from. */
