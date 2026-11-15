@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { hubRows } from "../../src/features/sessions/hub.ts";
+import { hubRows } from "../../src/features/sessions/domain/hub.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { unfoldAll } from "../unfold.ts";

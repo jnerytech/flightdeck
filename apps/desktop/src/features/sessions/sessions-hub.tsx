@@ -21,6 +21,7 @@ import { ALL_SCOPE, awayKey, usd } from "../costs/index.ts";
 import { typing } from "../shortcuts/index.ts";
 import { AsleepMark } from "./asleep-mark";
 import { CacheTimer } from "./cache-timer";
+import type { HubFilter, HubRow, HubView } from "./domain/hub.ts";
 import {
   costAsks,
   cursorMove,
@@ -35,11 +36,10 @@ import {
 import { projectName } from "./domain/hub-scope.ts";
 import { rowStatus, sessionLineText, sharedMeta } from "./domain/hub-status.ts";
 import { activeCount, HUB_ROW_CAP } from "./domain/hub-view.ts";
+import { newSessionHost } from "./domain/new-session-host.ts";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
-import type { HubFilter, HubRow, HubView } from "./hub.ts";
 import { HubFilterMenu } from "./hub-filter-menu.tsx";
 import { type RowActionsContext, rowActions, setRowMeta } from "./hub-row-actions.tsx";
-import { newSessionHost } from "./new-session-host.ts";
 import { focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";

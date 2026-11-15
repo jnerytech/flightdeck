@@ -1,4 +1,4 @@
-import type { Route } from "../../lib/router.ts";
+import type { Route } from "../../../lib/router.ts";
 import { type HubRow, isOver } from "./hub.ts";
 
 /** From the Sessões screen: the conversation, the live terminal view or the reader. */
