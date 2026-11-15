@@ -6,9 +6,8 @@
  */
 
 import type { Database } from "bun:sqlite";
-import { assistantDir } from "../assistant/domain/paths.ts";
 import type { UsageTokens } from "../kernel/index.ts";
-import { ulid } from "../kernel/index.ts";
+import { assistantDir, ulid } from "../kernel/index.ts";
 import { autoApproveDir, autoApprovePrompt, ruleDecision } from "./domain/auto-approve-rules.ts";
 import type { Risk } from "./domain/risk.ts";
 import type { PermissionJudge } from "./ports.ts";
