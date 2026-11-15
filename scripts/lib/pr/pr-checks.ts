@@ -76,7 +76,7 @@ export async function requiredChecks(deps: PrFlowDeps): Promise<string[] | null>
 
 /** What the PR's checks still need ("failing: …; running: …"), or null when they are green. */
 /** The verdict of a commit's required checks, from its check runs and commit statuses. */
-export async function verdictOf(deps: PrFlowDeps, sha: string, required: string[]) {
+async function verdictOf(deps: PrFlowDeps, sha: string, required: string[]) {
   const runs = await deps.gh([
     "api",
     "--paginate",
@@ -152,4 +152,15 @@ export async function behindBy(deps: PrFlowDeps, base: string, head: string): Pr
     ".behind_by",
   ]);
   return Number(stdout.trim()) || 0;
+}
+
+/** The CI of a commit, by the main ruleset's required checks: "0", "failed", "pending", "none" or "unknown" (#266). */
+export async function headCi(sha: string, deps: PrFlowDeps): Promise<string> {
+  const required = await requiredChecks(deps);
+  if (!required) return "unknown";
+  const v = await verdictOf(deps, sha, required);
+  if (v.green) return "0";
+  if (v.failing.length > 0) return "failed";
+  // Nothing reported yet for any required check: the commit was never run (not pushed, or no PR).
+  return v.missing.length === required.length ? "none" : "pending";
 }
