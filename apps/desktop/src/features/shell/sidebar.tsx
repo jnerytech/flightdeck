@@ -2,7 +2,7 @@ import { ChevronDown, EyeOff, Plane, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState, useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
+import { ClientSwitcher } from "@/features/clients/ui.ts";
 import {
   type HostNameError,
   hostNeedsAttention,

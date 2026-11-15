@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { CSSProperties } from "react";
-import { CacheTimer } from "@/features/sessions/cache-timer";
+import { CacheTimer } from "@/features/sessions/ui.ts";
 import { cn } from "@/lib/utils";
 import { IconTip } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
