@@ -165,7 +165,7 @@ export function redOf(push: MainRun | null, full: MainRun | null): MainRun | nul
 }
 
 /** How a red run is named: a full run says so, with its age. */
-export const redName = (run: MainRun, now: number) =>
+const redName = (run: MainRun, now: number) =>
   run.full
     ? `${run.url} (full run, ${age(run.createdAt, now)} old; fixed since? ${RERUN})`
     : run.url;
