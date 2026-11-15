@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ExternalSession } from "@flightdeck/protocol";
-import { externalState, type HubRow, hubRows, rowStatus } from "../../src/features/sessions/hub.ts";
+import { rowStatus } from "../../src/features/sessions/domain/hub-status.ts";
+import { externalState, type HubRow, hubRows } from "../../src/features/sessions/hub.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 /**
