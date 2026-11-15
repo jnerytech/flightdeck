@@ -3,12 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatDuration } from "@/i18n/format";
 import type { T } from "../../i18n/index.ts";
 import type { Activity } from "./domain/session-activity.ts";
-
-/** The words for what the session is doing, from the dictionary. */
-export function activityText(activity: Activity, t: T): string {
-  if (activity.kind === "tool") return t(`activity.${activity.group}`, { tool: activity.tool });
-  return t(`activity.${activity.kind}`);
-}
+import { activityText } from "./domain/session-text.ts";
 
 /** Above the message box while a turn runs: a small spinner, what is happening and for how long. */
 export function ActivityLine(props: Readonly<{ activity: Activity; t: T }>) {

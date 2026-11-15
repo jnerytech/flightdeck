@@ -2,10 +2,10 @@ import { memo } from "react";
 import { ApprovalCard } from "@/features/permissions/ui.ts";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/shared/markdown/index.ts";
-import { translateError } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
 import type { ChatItem, SessionState } from "./domain/session-state.ts";
+import { errorText } from "./domain/session-text.ts";
 import { MessageActions } from "./message-actions";
 import { Message } from "./parts";
 import type { SessionActions } from "./session-actions.ts";
@@ -194,9 +194,3 @@ export const TimelineItem = memo(function TimelineItem(props: {
       );
   }
 });
-
-/** Phase 39: a session error, as the app's own sentence when it carries a reason the app knows. */
-export function errorText(item: Extract<ChatItem, { kind: "error" }>, t: T): string {
-  const { title, detail } = translateError(item.code, item.message, t, item);
-  return item.reason && !detail ? title : `${item.code}: ${item.message}`;
-}
