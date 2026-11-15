@@ -179,6 +179,7 @@ describe("refusal-english: mcp, the vault rules, messaging, issues and automatio
  */
 const MSGS3_FILES = [
   "teams/teams.ts",
+  "teams/launch.ts",
   "teams/domain/refusals.ts",
   "service/domain/install.ts",
   "names/names.ts",
@@ -223,7 +224,9 @@ const MSGS3_SHOWN: Record<string, string[]> = {
     "O objetivo do time mudou",
     "Os comandos de verificação do time",
   ],
-  "teams/teams.ts": [" · executora ", " · coordenadora"],
+  "teams/teams.ts": [" · executora "],
+  // Moved from teams.ts with the start-up of a team (#1589).
+  "teams/launch.ts": [" · executora ", " · coordenadora"],
   "board/card-lifecycle.ts": ["card parado antes de começar"],
   // Issue #1523: the board split moved these with their code.
   "board/projects.ts": ["Trabalhe somente nesta worktree", "com mensagens descritivas"],
