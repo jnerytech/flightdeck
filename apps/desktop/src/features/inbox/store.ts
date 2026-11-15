@@ -1,4 +1,3 @@
-import { parseRequestLink } from "@/features/permissions/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Route } from "../../lib/router.ts";
 import type { Notification } from "../../platform/types.ts";
@@ -20,6 +19,7 @@ import {
   unreadRows,
 } from "./domain/inbox.ts";
 import type { AboutNotification } from "./domain/notify.ts";
+import { parseRequestLink } from "./domain/request-link.ts";
 
 /** What the notification center reads and does through the app's store. */
 export interface InboxCore {
