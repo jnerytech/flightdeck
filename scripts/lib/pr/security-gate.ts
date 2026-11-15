@@ -181,6 +181,8 @@ const AREAS: [string, RegExp[]][] = [
 /** Paths that are risky whatever they add (any pattern). */
 const SENSITIVE_PATHS: [string, RegExp[]][] = [
   ["vault or pairing", [/(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i]],
+  // Where the daemon asks the app for a secret: the order of approval, audit and delivery (#1589).
+  ["secret requests", [/^apps\/daemon\/src\/actions\/secret-requests\.ts$/]],
   // The Tauri shell's capabilities and config (CSP, scopes).
   ["tauri config", [/\/src-tauri\/capabilities\//, /(?:^|\/)tauri(?:\.[\w-]+)?\.conf\.json$/]],
   // The domain files that hold the rule for a secret's use or for who may do what: a change to

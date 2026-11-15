@@ -370,6 +370,7 @@ const MSGS5_FILES = [
   "plugins/plugins.ts",
   "plugins/domain/plugin-json.ts",
   "actions/actions.ts",
+  "actions/secret-requests.ts",
   "actions/domain/approval-check.ts",
   "actions/catalog.ts",
 ];
