@@ -14,7 +14,8 @@ import { claudeSettingsPath, generateToken, loadConfig, updateConfigFile } from 
 import type { Logger } from "../kernel/index.ts";
 import { daemonCommand } from "../service/index.ts";
 import { TelemetryOptIn, type TelemetryStatus } from "../telemetry/index.ts";
-import { type CliArgs, configPath } from "./args.ts";
+import { configPath } from "./config-path.ts";
+import type { CliArgs } from "./domain/args.ts";
 
 /** What the settings commands need of the command line's deps (main.ts's `CliDeps`). */
 export interface ClaudeSettingsCommandDeps {
