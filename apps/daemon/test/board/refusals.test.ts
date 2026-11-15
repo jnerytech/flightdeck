@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { AzureDevOpsCli } from "../../src/board/pr.ts";
 import { removeRule } from "../../src/board/project-rules.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import { AzureDevOpsCli } from "../../src/pr-hosts/pr.ts";
 import { newBoard } from "../support/board-helpers.ts";
 
 /** The reason and params of the refusal a call ends in; the detail is for logs, in English. */

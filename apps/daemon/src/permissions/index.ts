@@ -4,6 +4,7 @@
  */
 export { type AutoApproveRequest, type AutoApprover, historyExcludes } from "./auto-approve.ts";
 export { bindInput, summarizeInput } from "./domain/bind-input.ts";
+export type { PermissionDecision } from "./domain/decision.ts";
 export { requireHold } from "./domain/hold.ts";
 export { maskConfig, maskedConfig } from "./domain/mask-config.ts";
 export {
@@ -18,4 +19,5 @@ export { type DiskView, writeTarget } from "./domain/rule-risk.ts";
 export { credential, credentialReadGlobs } from "./domain/sensitive-paths.ts";
 export { realPathOf, statKind } from "./path-kind.ts";
 export { PermissionBroker } from "./permission-broker.ts";
+export type { PermissionJudgeRequest, PermissionJudgeVerdict } from "./ports.ts";
 export { pathKinds, realPaths } from "./rule-risk.ts";
