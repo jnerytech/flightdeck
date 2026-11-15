@@ -361,16 +361,5 @@
       "severity": "error",
       "name": "no-deep-cross-domain"
     }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/worktrees/worktrees.ts",
-    "to": "apps/daemon/src/board/project-rules.ts",
-    "unresolvedTo": "../board/project-rules.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
   }
 ]
