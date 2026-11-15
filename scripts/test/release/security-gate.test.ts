@@ -275,6 +275,26 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("every file of the pr folder is a guard, so the merge and check logic stays under review wherever it lives (#3344)", () => {
+    const added = new Map(
+      [
+        "scripts/lib/pr/pr-flow.ts",
+        "scripts/lib/pr/pr-checks.ts",
+        "scripts/lib/pr/pr-types.ts",
+        "scripts/lib/pr/pr-merge.ts",
+        "scripts/lib/pr/deeper/nested.ts",
+        "scripts/lib/slot/heavy.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["scripts/lib/pr/deeper/nested.ts", "guard"],
+      ["scripts/lib/pr/pr-checks.ts", "guard"],
+      ["scripts/lib/pr/pr-flow.ts", "guard"],
+      ["scripts/lib/pr/pr-merge.ts", "guard"],
+      ["scripts/lib/pr/pr-types.ts", "guard"],
+    ]);
+  });
+
   test("the permission words count in any case (#273)", () => {
     const added = new Map([
       ["scripts/a.sh", ["CHMOD 777 x"]],
