@@ -7,7 +7,14 @@ import { envInput, remoteCommand } from "../actions/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
 import type { TerminalManager } from "../terminal/index.ts";
-import { knownHostsLines } from "./domain/known-hosts.ts";
+import {
+  type AskpassHook,
+  askpassEnv,
+  knownHostsText,
+  type Mode,
+  sshArgv,
+  sshConfigText,
+} from "./domain/ssh-argv.ts";
 import { translate } from "./domain/test-result.ts";
 import { type HostKeys, ScanFailed } from "./hostkey.ts";
 import type { DeliveredKey, KeyDelivery } from "./key-delivery.ts";
@@ -44,16 +51,6 @@ export async function resolveSshPath(opts: {
   return opts.which("ssh") ?? "ssh";
 }
 
-/** What the daemon hands to the askpass helper of ssh (the `askpass` area fills it in). */
-export interface AskpassHook {
-  /** The program `SSH_ASKPASS` points to. */
-  script: string;
-  /** The daemon's config, so the helper finds the daemon. */
-  configFile: string;
-  /** A one-use ticket naming what ssh is going to ask for. Never the password itself. */
-  ticket(target: SshTarget, kind: "password" | "passphrase"): string;
-}
-
 export interface SshConnectorOptions {
   targets: SshTargets;
   hostKeys: Pick<HostKeys, "check">;
@@ -77,9 +74,6 @@ const realTimers: Timers = {
   set: (fn, ms) => setTimeout(fn, ms),
   clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
-
-/** A terminal for the person, a reachability test, or an `ssh:` action (phase 17). */
-type Mode = "connect" | "test" | "exec";
 
 interface Plan {
   argv: string[];
@@ -288,8 +282,17 @@ export class SshConnector {
     };
     try {
       const { config, knownHosts } = await this.files(members, hops, mode);
-      plan.argv = this.argv(target, hops, delivered, { config, knownHosts }, mode, remote);
-      plan.env = { ...delivered?.env, ...this.askpassEnv(target, mode) };
+      plan.argv = sshArgv({
+        sshPath: this.opts.sshPath,
+        win: this.win,
+        target,
+        hops,
+        delivered,
+        files: { config, knownHosts },
+        mode,
+        remoteCommand: mode === "exec" ? remoteCommand(remote) : "",
+      });
+      plan.env = { ...delivered?.env, ...askpassEnv(this.opts.askpass, target, mode) };
     } catch (error) {
       await plan.release();
       throw error;
@@ -331,41 +334,14 @@ export class SshConnector {
     }
   }
 
-  /** The value of a path in an ssh option or config: slashes on Windows, quotes around spaces. */
-  private value(path: string): string {
-    const text = this.win ? path.replaceAll("\\", "/") : path;
-    return /\s/.test(text) ? `"${text}"` : text;
-  }
-
-  private get nul(): string {
-    return this.win ? "NUL" : "/dev/null";
-  }
-
   /** Writes (once) the known_hosts and the ssh config, each named by the hash of its content. */
   private async files(members: SshTarget[], hops: SshTarget[], mode: Mode) {
-    const known = `${members
-      .flatMap((m) => knownHostsLines(m.host, m.port, this.opts.targets.pinned(m.id)?.keys ?? []))
-      .join("\n")}\n`;
+    const known = knownHostsText(members, (id) => this.opts.targets.pinned(id)?.keys);
     const knownHosts = await this.named("kh-", known);
-    const lines = [
-      "Host *",
-      `  BatchMode ${mode === "connect" ? "no" : "yes"}`,
-      "  StrictHostKeyChecking yes",
-      `  UserKnownHostsFile ${this.value(knownHosts)}`,
-      `  GlobalKnownHostsFile ${this.nul}`,
-      "  IdentitiesOnly no",
-      "  ForwardAgent no",
-    ];
-    // ssh -J starts each jump with only -F: what a hop needs has to be in this file.
-    for (const hop of hops) {
-      if (hop.auth !== "key-file") continue;
-      lines.push(
-        `Host ${hop.host}`,
-        `  IdentityFile ${this.value(hop.secretRef as string)}`,
-        "  IdentitiesOnly yes",
-      );
-    }
-    const config = await this.named("config-", `${lines.join("\n")}\n`);
+    const config = await this.named(
+      "config-",
+      sshConfigText({ win: this.win, mode, knownHosts, hops }),
+    );
     return { config, knownHosts };
   }
 
@@ -378,96 +354,5 @@ export class SshConnector {
       if (error.code !== "EEXIST") throw error;
     });
     return file;
-  }
-
-  /** The `-o` and `-L` flags the target's own options ask for. */
-  private optionArgs(options: SshTarget["options"]): string[] {
-    const argv: string[] = [];
-    if (options.serverAliveInterval) {
-      argv.push("-o", `ServerAliveInterval=${options.serverAliveInterval}`);
-    }
-    if (options.compression) argv.push("-o", "Compression=yes");
-    for (const forward of options.localForward ?? []) argv.push("-L", forward);
-    return argv;
-  }
-
-  /** The identity file flags and, for a password, the authentication methods. */
-  private identityArgs(target: SshTarget, delivered: DeliveredKey | null): string[] {
-    const argv: string[] = [];
-    if (target.auth === "key-file") argv.push("-i", target.secretRef as string);
-    if (delivered?.identityFile) {
-      argv.push(
-        "-i",
-        this.win ? delivered.identityFile.replaceAll("\\", "/") : delivered.identityFile,
-      );
-    }
-    if (target.auth === "password") {
-      argv.push(
-        "-o",
-        "PreferredAuthentications=password,keyboard-interactive",
-        "-o",
-        "PubkeyAuthentication=no",
-      );
-    }
-    return argv;
-  }
-
-  private argv(
-    target: SshTarget,
-    hops: SshTarget[],
-    delivered: DeliveredKey | null,
-    files: { config: string; knownHosts: string },
-    mode: Mode,
-    remote: string[],
-  ): string[] {
-    const usesFile = target.auth === "key-file" || delivered?.identityFile;
-    const identitiesOnly = usesFile || target.auth === "password" ? "yes" : "no";
-    const { options } = target;
-    const argv = [
-      this.opts.sshPath,
-      "-F",
-      this.win ? files.config.replaceAll("\\", "/") : files.config,
-      "-o",
-      `BatchMode=${mode === "connect" ? "no" : "yes"}`,
-      "-o",
-      `IdentitiesOnly=${identitiesOnly}`,
-      "-o",
-      "StrictHostKeyChecking=yes",
-      "-o",
-      `UserKnownHostsFile=${this.value(files.knownHosts)}`,
-      "-o",
-      `GlobalKnownHostsFile=${this.nul}`,
-      "-o",
-      `ForwardAgent=${options.forwardAgent ? "yes" : "no"}`,
-    ];
-    argv.push(...this.optionArgs(options), ...this.identityArgs(target, delivered));
-    if (hops.length > 0) {
-      const hop = (h: SshTarget) => {
-        const host = h.host.includes(":") ? "[" + h.host + "]" : h.host;
-        return `${h.user}@${host}:${h.port}`;
-      };
-      argv.push("-J", hops.map(hop).join(","));
-    }
-    if (mode !== "connect") argv.push("-o", "ConnectTimeout=10");
-    // An action has no terminal: its output is read, and its stdin carries the environment.
-    if (mode === "exec") argv.push("-T");
-    argv.push("-p", String(target.port), "--", `${target.user}@${target.host}`);
-    if (mode === "test") argv.push("exit", "0");
-    if (mode === "exec") argv.push(remoteCommand(remote));
-    return argv;
-  }
-
-  /** Passwords and key passphrases come from the vault through SSH_ASKPASS, with a ticket. */
-  private askpassEnv(target: SshTarget, mode: Mode): Record<string, string> {
-    const askpass = this.opts.askpass;
-    // BatchMode=yes never asks, so a test or an action has nothing to answer.
-    if (!askpass || target.auth === "agent" || mode !== "connect") return {};
-    const password = target.auth === "password";
-    return {
-      SSH_ASKPASS: askpass.script,
-      SSH_ASKPASS_REQUIRE: password ? "force" : "prefer",
-      FLIGHTDECK_ASKPASS_TICKET: askpass.ticket(target, password ? "password" : "passphrase"),
-      FLIGHTDECK_CONFIG: askpass.configFile,
-    };
   }
 }
