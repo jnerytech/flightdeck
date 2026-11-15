@@ -1,5 +1,3 @@
-import type { Route } from "./router.ts";
-
 /** The five actions whose click-to-paint time is measured when the debug flag is on. */
 export type MeasuredAction = "open-session" | "open-board" | "open-card" | "send" | "approve";
 
@@ -25,8 +23,10 @@ function measuresOn(): boolean {
   }
 }
 
-/** The action a route opens, if it is one of the measured. */
-export function actionOfRoute(route: Route): MeasuredAction | null {
+/** The action a route opens, if it is one of the measured. It reads only the route's name, so this file does not import the router. */
+export function actionOfRoute<R extends { readonly name: string }>(
+  route: R,
+): MeasuredAction | null {
   if (route.name === "session") return "open-session";
   if (route.name === "board") return "open-board";
   if (route.name === "card") return "open-card";
