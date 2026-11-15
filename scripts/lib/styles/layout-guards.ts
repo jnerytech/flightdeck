@@ -912,7 +912,7 @@ export interface Ratchet {
 }
 
 /** How many px worse than its baseline a key may get before it fails: rendering differs a little. */
-export const WORSE_TOLERANCE = 2;
+const WORSE_TOLERANCE = 2;
 
 /** Whether a baseline entry is a count, or a count with its worst excess (#637). */
 function isCountEntry(value: unknown): value is CountEntry {

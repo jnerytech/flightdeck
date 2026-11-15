@@ -44,8 +44,7 @@ export function uncommentedOffLinux(source: string): number[] {
 }
 
 /** The log format `parseCommits` reads: hash, subject and the `TDD-Waiver` trailer's value. */
-export const LOG_FORMAT =
-  "--format=%H%x1f%s%x1f%(trailers:key=TDD-Waiver,valueonly,separator=%x20)";
+const LOG_FORMAT = "--format=%H%x1f%s%x1f%(trailers:key=TDD-Waiver,valueonly,separator=%x20)";
 
 /** Parses `git log` output in `LOG_FORMAT` (or just `%H%x1f%s`) into conventional-commit parts. */
 export function parseCommits(log: string): Commit[] {
