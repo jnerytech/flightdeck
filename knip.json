@@ -4,17 +4,20 @@
     ".": {
       "entry": [
         "scripts/*.ts",
-        "scripts/test/*-main.ts",
+        "scripts/test/{fake-cli,sleeping-git}-main.ts",
         "scripts/test/{coverage-funcs-preload,git-env-probe,temp-run-fixture}.ts",
-        "scripts/test/fixtures/**/*.ts",
-        "scripts/e2e/bdd/*.ts"
+        "scripts/test/fixtures/istanbul-serialize/serialized.fixture.ts",
+        "scripts/e2e/bdd/{fixtures,steps}.ts"
       ],
       "project": ["scripts/**/*.ts"],
       "ignoreBinaries": ["gpg"],
       "ignoreDependencies": ["@stryker-mutator/command-runner"]
     },
     "apps/daemon": {
-      "entry": ["test/**/*-main.ts", "test/fixtures/mcp/*.ts"]
+      "entry": [
+        "test/{runtime/fake-opencode,support/fake-claude}-main.ts",
+        "test/fixtures/mcp/{eco,mudo}-server.ts"
+      ]
     },
     "apps/desktop": {
       "ignore": ["src/components/ui/**"],
