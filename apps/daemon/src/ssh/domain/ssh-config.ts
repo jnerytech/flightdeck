@@ -1,5 +1,18 @@
 /** The lines and Host patterns of an ssh config, as OpenSSH reads them (phase 15). */
 
+/** One line of an ssh config as the importer reads it. */
+export type Directive =
+  | { kind: "host"; patterns: string[] }
+  | { kind: "match" }
+  | { kind: "param"; key: string; value: string };
+
+/** The parameters under one `Host` (or `Match`) line. */
+export interface Block {
+  /** `null`: a Match block, which is never applied. */
+  patterns: string[] | null;
+  params: Map<string, string>;
+}
+
 /** `Key value` or `Key=value` as a lowercase key and an unquoted value; null for a line with no key. */
 export function splitDirective(line: string): { key: string; value: string } | null {
   const match = /^(\S+?)(?:\s*=\s*|\s+)(.*)$/.exec(line); // NOSONAR: one line of an ssh config, not text of any length
