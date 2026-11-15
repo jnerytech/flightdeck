@@ -4,7 +4,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { tabBadge, tabKind } from "./domain/tab-badge.ts";
 import { openSwitcher, pickedId, type SwitcherState, stepSwitcher } from "./domain/tab-switcher.ts";
-import { TabBadgeGlyph } from "./tab-bar.tsx";
+import { TabBadgeGlyph } from "./tab-badge-glyph.tsx";
 import { TAB_ICONS, tabTitle } from "./tab-facts.ts";
 
 /**
