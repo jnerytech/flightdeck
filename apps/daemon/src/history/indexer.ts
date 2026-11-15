@@ -144,7 +144,7 @@ const SLICE_BYTES = 1 << 20;
 const zeroTimer = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 /** Default wait between a file event and the pass that publishes `history.changed`. */
-export const WATCH_DEBOUNCE_MS = 250;
+const WATCH_DEBOUNCE_MS = 250;
 
 /**
  * Indexes Claude Code transcripts incrementally: each file remembers the byte offset after the
