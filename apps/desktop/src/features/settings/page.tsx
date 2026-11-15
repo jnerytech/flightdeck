@@ -8,18 +8,19 @@ import { NotificationPrefs } from "@/features/notifications/ui.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { WatchSettingsSection } from "@/features/watch/ui.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { Field, Form, FormActions, Page, Panel } from "@/shared/layout/index.ts";
+import { Page, Panel } from "@/shared/layout/index.ts";
 import type { Lang, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hostsWith } from "../../lib/version.ts";
 import type { AppUpdateState } from "../appupdate/index.ts";
 import { MessagingRulesSection } from "../messaging/ui.ts";
 import { WebhooksSection } from "../webhook/ui.ts";
-import { AppearanceSection, check } from "./appearance-section.tsx";
+import { AppearanceSection } from "./appearance-section.tsx";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
 import { useSettingsRail } from "./settings-rail.ts";
+import { ShortcutSection } from "./shortcut-section.tsx";
+import { UpdatesSection } from "./updates-section.tsx";
 import { WindowSection } from "./window-section.tsx";
 
 /** One block of the screen: its name on the rail, the words it answers to in the search, and its content. */
@@ -64,7 +65,6 @@ export const Settings = memo(function Settings(props: {
   const { t } = props;
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
-  const shortcutOff = !settings.globalShortcutSupported;
   const [query, setQuery] = useState("");
   // Budgets came with the costs (phase 8).
   const budgetHosts = hostsWith(state.hosts, "costs");
@@ -137,43 +137,14 @@ export const Settings = memo(function Settings(props: {
             label: t("prefs.updates"),
             words: t("settingsRail.words.updates"),
             node: (
-              <Panel title={t("prefs.updates")}>
-                <label className={check}>
-                  <input
-                    type="checkbox"
-                    aria-label={t("prefs.notifyUpdates")}
-                    checked={settings.notifyUpdates}
-                    onChange={(e) => props.onNotifyUpdates(e.target.checked)}
-                  />
-                  {t("prefs.notifyUpdates")}
-                </label>
-                <label className={check}>
-                  <input
-                    type="checkbox"
-                    aria-label={t("prefs.autoUpdate")}
-                    checked={settings.autoUpdate}
-                    onChange={(e) => props.onAutoUpdate(e.target.checked)}
-                  />
-                  {t("prefs.autoUpdate")}
-                </label>
-                <ActionButton
-                  variant="outline"
-                  className="self-start"
-                  onClick={props.onCheckUpdate}
-                >
-                  {t("prefs.checkNow")}
-                </ActionButton>
-                {props.appUpdate.upToDate && (
-                  <output className="block text-muted-foreground text-sm">
-                    {t("prefs.upToDate")}
-                  </output>
-                )}
-                {props.appUpdate.error && (
-                  <p role="alert" className="text-status-needs-you">
-                    {props.appUpdate.error}
-                  </p>
-                )}
-              </Panel>
+              <UpdatesSection
+                settings={settings}
+                appUpdate={props.appUpdate}
+                t={t}
+                onCheckUpdate={props.onCheckUpdate}
+                onNotifyUpdates={props.onNotifyUpdates}
+                onAutoUpdate={props.onAutoUpdate}
+              />
             ),
           },
         ]
@@ -183,33 +154,13 @@ export const Settings = memo(function Settings(props: {
       label: t("prefs.shortcut"),
       words: t("settingsRail.words.shortcut"),
       node: (
-        <Panel title={t("prefs.shortcut")}>
-          {settings.shortcutProblem && <InlineNotice>{settings.shortcutProblem}</InlineNotice>}
-          <Form variant="inline" onSubmit={() => props.onGlobalShortcut(shortcut)}>
-            <Field
-              label={t("prefs.shortcut")}
-              help={t("prefs.shortcutNote")}
-              error={settings.shortcutError}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  className="w-56"
-                  value={shortcut}
-                  disabled={shortcutOff}
-                  onChange={(e) => setShortcut(e.target.value)}
-                />
-              )}
-            </Field>
-            <FormActions
-              submit={t("prefs.saveShortcut")}
-              disabled={shortcutOff || shortcut === settings.globalShortcut}
-              disabledReason={
-                shortcutOff ? t("prefs.shortcutUnavailable") : t("prefs.shortcutUnchanged")
-              }
-            />
-          </Form>
-        </Panel>
+        <ShortcutSection
+          settings={settings}
+          t={t}
+          draft={shortcut}
+          onDraft={setShortcut}
+          onGlobalShortcut={props.onGlobalShortcut}
+        />
       ),
     },
     ...(budgetHosts.length > 0

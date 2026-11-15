@@ -15,7 +15,11 @@ afterEach(cleanup);
 const CHECK = "Procurar atualização agora";
 const UP_TO_DATE = "Você está na versão mais recente";
 
-function setup(appUpdate: object, onCheckUpdate: () => Promise<void> | void) {
+function setup(
+  appUpdate: object,
+  onCheckUpdate: () => Promise<void> | void,
+  report: { notify?(enabled: boolean): void; auto?(enabled: boolean): void } = {},
+) {
   const mem = memoryPlatform(false, "pt-BR");
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -29,8 +33,8 @@ function setup(appUpdate: object, onCheckUpdate: () => Promise<void> | void) {
       onGlobalShortcut={() => {}}
       appUpdate={appUpdate as never}
       onCheckUpdate={onCheckUpdate as never}
-      onNotifyUpdates={() => {}}
-      onAutoUpdate={() => {}}
+      onNotifyUpdates={(enabled) => report.notify?.(enabled)}
+      onAutoUpdate={(enabled) => report.auto?.(enabled)}
       theme="system"
       onTheme={() => {}}
       density="comfortable"
@@ -87,6 +91,21 @@ describe("check for updates: the answer is at the button (#2597)", () => {
     expect(alert?.textContent).toContain("sem rede");
     // Beside the button: the same panel as the check button.
     expect(alert?.parentElement?.contains(button())).toBe(true);
+  });
+
+  test("each update checkbox reports its new state to the page", async () => {
+    const reported: string[] = [];
+    setup({ upToDate: false, error: null }, () => {}, {
+      notify: (on) => reported.push(`notify:${on}`),
+      auto: (on) => reported.push(`auto:${on}`),
+    });
+    const notify = screen.getByRole("checkbox", { name: "Avisar sobre atualizações" });
+    const auto = screen.getByRole("checkbox", { name: "Atualizar automaticamente" });
+    const flipped = (box: HTMLElement) => !(box as HTMLInputElement).checked;
+    const [notifyTo, autoTo] = [flipped(notify), flipped(auto)];
+    await click(notify);
+    await click(auto);
+    expect(reported).toEqual([`notify:${notifyTo}`, `auto:${autoTo}`]);
   });
 
   test("no error, no alert", () => {

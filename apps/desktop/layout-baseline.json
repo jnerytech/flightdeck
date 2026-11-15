@@ -163,7 +163,7 @@
   "src/features/sessions/view-toggle.tsx": 4,
   "src/features/settings/appearance-section.tsx": 2,
   "src/features/settings/diagnostics-panel.tsx": 2,
-  "src/features/settings/page.tsx": 1,
+  "src/features/settings/shortcut-section.tsx": 1,
   "src/features/shell/account-footer.tsx": 10,
   "src/features/shell/app-shell.tsx": 15,
   "src/features/shell/breadcrumb.tsx": 11,
