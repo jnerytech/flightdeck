@@ -77,7 +77,11 @@ describe("md-links", () => {
     // fails by itself when the doc moves. The other code must name docs that exist.
     // The demo seed writes documents into the demo's own temporary repository, and its journeys
     // name them: like a test fixture, they stand for another repository's files.
-    const DEMO_FIXTURES = new Set(["scripts/demo-seed.ts", "scripts/e2e/journeys.ts"]);
+    const DEMO_FIXTURES = new Set([
+      "scripts/demo-seed.ts",
+      "scripts/lib/demo/seed-files.ts",
+      "scripts/e2e/journeys.ts",
+    ]);
     const code = tracked("*.ts", "*.tsx", "*.rs", "*.yml", "*.json").filter(
       (path) =>
         !/(^|\/)test\//.test(path) && !/\.test\.tsx?$/.test(path) && !DEMO_FIXTURES.has(path),
