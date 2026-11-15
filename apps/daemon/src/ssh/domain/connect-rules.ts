@@ -1,7 +1,7 @@
 import type { SshHostKeyCheck, SshTarget } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../kernel/index.ts";
 
-/** Whether `target` may start a connection with this key and this askpass; throws the refusal if not. */
+/** Throws the refusal when `target` cannot start a connection with this key and this askpass. */
 export function refuseAuth(
   target: SshTarget,
   privateKey: string | undefined,
@@ -56,9 +56,9 @@ export function jumpChain(
   return { members, hops };
 }
 
-/** The destino an `ssh:` action names: `found` is the one with that name, `named` how many have it. */
-export function execTarget(name: string, found: SshTarget | null, named: number): SshTarget {
-  if (!found && named === 0) {
+/** The destination an `ssh:` action names: `found` is the one with that name, `named()` counts those with it. */
+export function execTarget(name: string, found: SshTarget | null, named: () => number): SshTarget {
+  if (!found && named() === 0) {
     throw new FlightdeckError("not_found", `destination ${name} not found`, "ssh_target_unknown", {
       name,
     });

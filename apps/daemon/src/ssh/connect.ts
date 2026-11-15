@@ -156,9 +156,7 @@ export class SshConnector {
     timeoutS: number;
     privateKey?: string;
   }): Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean }> {
-    const target = execTarget(
-      req.target,
-      this.opts.targets.byName(req.target),
+    const target = execTarget(req.target, this.opts.targets.byName(req.target), () =>
       this.opts.targets.countNamed(req.target),
     );
     const run = this.opts.exec;
