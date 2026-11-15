@@ -1,29 +1,18 @@
 import { memo, type ReactNode } from "react";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import type { ClientColor } from "@/features/clients/index.ts";
-import type { LoopAlert } from "@/features/messaging";
-import type { Finish } from "@/features/sessions/index.ts";
 import { pendingText, pendingWhere } from "@/features/sessions/index.ts";
-import type { WatchAlert } from "@/features/watch/index.ts";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
-import type { AppStore, PendingItem } from "@/lib/app-store";
+import type { AppStore } from "@/lib/app-store";
 import { StatusDot } from "@/shared/status/index.ts";
-import { type QuietAlert, quietText } from "./domain/quiet.ts";
+import { quietText } from "./domain/quiet.ts";
+import { type Entry, sameRow } from "./domain/same-row.ts";
 
 /**
  * The rows of Needs you (#1191): one line per thing that waits for the person, its own module so
  * the list re-renders only the rows whose entry changed.
  */
-
-/** A line of the list: a budget alert (opens Settings), a paused loop or a request (shows its card). */
-export type Entry =
-  | { kind: "alert"; key: string; label: string; clientId?: string }
-  | { kind: "loop"; key: string; alert: LoopAlert }
-  | { kind: "watch"; key: string; alert: WatchAlert }
-  | { kind: "quiet"; key: string; alert: QuietAlert }
-  | { kind: "request"; key: string; item: PendingItem }
-  | { kind: "finished"; key: string; finish: Finish };
 
 // items-stretch: a button's own style is align-items: flex-start, which leaves a line no width
 // to cut at (issue #175).
@@ -191,46 +180,6 @@ const FINISH_TONE = { done: "idle", failed: "error", ended: "ended" } as const;
 /** The name of a host, as the list shows it; its id when it is gone. */
 export function hostNameOf(store: AppStore, hostId: string): string {
   return store.getState().hosts.find((h) => h.id === hostId)?.name ?? hostId;
-}
-
-/** What an entry shows: its own record (the request, the alert, the finish), field by field. */
-function inner(entry: Entry): object {
-  if (entry.kind === "request") return entry.item;
-  if (entry.kind === "finished") return entry.finish;
-  if (entry.kind === "alert") return entry;
-  return entry.alert;
-}
-
-function shallowSame(a: object, b: object): boolean {
-  const left = Object.entries(a);
-  const right = b as Record<string, unknown>;
-  return (
-    left.length === Object.keys(b).length && left.every(([key, value]) => right[key] === value)
-  );
-}
-
-type Props = Readonly<EntryRowProps>;
-
-/**
- * Same row, same look (#1191): the list builds its entries anew on every change of the state, so a
- * row compares what it shows, not the objects; at 200 sessions a summary redraws its own row only.
- */
-function sameRow(a: Props, b: Props): boolean {
-  return (
-    a.index === b.index &&
-    a.active === b.active &&
-    a.selected === b.selected &&
-    a.store === b.store &&
-    a.minute === b.minute &&
-    a.lang === b.lang &&
-    a.hostName === b.hostName &&
-    a.onActivate === b.onActivate &&
-    a.chip?.name === b.chip?.name &&
-    a.chip?.color === b.chip?.color &&
-    a.entry.key === b.entry.key &&
-    a.entry.kind === b.entry.kind &&
-    shallowSame(inner(a.entry), inner(b.entry))
-  );
 }
 
 /** A line of the list, by the kind of entry it is; redrawn only when what it shows changed. */
