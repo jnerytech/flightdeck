@@ -2,48 +2,23 @@ import { z } from "zod";
 import { readStored } from "@/shared/lib/index.ts";
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
 import { type BackupFolder, folderTarget } from "./backup-target.ts";
+import {
+  type BackupSchedule,
+  backupFileName,
+  type Cadence,
+  DEFAULT_KEEP,
+  isDue,
+  type RunReport,
+  type ScheduleTarget,
+  type SkipReason,
+} from "./domain/backup-schedule.ts";
 import { type BackupTarget, keepNewest } from "./domain/backup-target.ts";
 import { DriveError } from "./drive-target.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
 export const SCHEDULE_KEY = "flightdeck.backupSchedule";
-export const DEFAULT_KEEP = 5;
-
-const DAY = 24 * 3_600_000;
-const PERIOD: Record<Cadence, number> = {
-  off: Number.POSITIVE_INFINITY,
-  daily: DAY,
-  weekly: 7 * DAY,
-};
-
-export type Cadence = "off" | "daily" | "weekly";
-
-/** Where the backups go: the picked folder or the app's folder on Google Drive (#1444). */
-export type ScheduleTarget = "folder" | "drive";
-
-export interface BackupSchedule {
-  cadence: Cadence;
-  target: ScheduleTarget;
-  folder: string;
-  keep: number;
-  lastRunAt: number | null;
-}
 
 export type { BackupFolder };
-
-export type SkipReason = "no-folder" | "no-passphrase" | "failed" | "drive-auth";
-
-export type RunReport =
-  | {
-      status: "done";
-      name: string;
-      kept: number;
-      removed: number;
-      prune: "ok" | "failed";
-      at: number;
-    }
-  | { status: "skipped"; reason: SkipReason; at: number }
-  | { status: "idle" };
 
 const OFF: BackupSchedule = {
   cadence: "off",
@@ -71,28 +46,6 @@ export function saveSchedule(storage: BackupPlatform["storage"], schedule: Backu
   // Only the four fields: whatever else the object carries is not written.
   const { cadence, target, folder, keep, lastRunAt } = schedule;
   storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, target, folder, keep, lastRunAt }));
-}
-
-/**
- * Whether a run is owed: a cadence is set, a folder is chosen (the Drive target needs none), and a
- * period passed since the last.
- */
-export function isDue(schedule: BackupSchedule, now: number): boolean {
-  if (schedule.cadence === "off") return false;
-  if (schedule.target === "folder" && schedule.folder === "") return false;
-  // A last run ahead of now (the clock moved back) cannot stand for a period that passed.
-  return (
-    schedule.lastRunAt === null ||
-    schedule.lastRunAt > now ||
-    now - schedule.lastRunAt >= PERIOD[schedule.cadence]
-  );
-}
-
-export function backupFileName(now: number): string {
-  const iso = new Date(now).toISOString(); // 2026-11-08T12:00:00.000Z
-  const day = iso.slice(0, 10).replaceAll("-", "");
-  const time = iso.slice(11, 19).replaceAll(":", "");
-  return `flightdeck-backup-${day}-${time}.fdbackup`;
 }
 
 /** Where a due run writes: the Drive target or the stored folder, or the reason there is none. */
