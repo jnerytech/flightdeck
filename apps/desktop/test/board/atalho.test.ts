@@ -3,7 +3,7 @@ import {
   boardShortcut,
   loadLastBoards,
   saveLastBoard,
-} from "../../src/features/board/board-shortcut.ts";
+} from "../../src/features/board/domain/board-shortcut.ts";
 
 const memory = (seed: Record<string, string> = {}) => {
   const items = new Map(Object.entries(seed));

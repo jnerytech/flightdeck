@@ -15,17 +15,15 @@ import type {
 } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
-import { slug } from "../names/index.ts";
 import { Delivery } from "./delivery.ts";
+import { Directory, type NameBook, type Target } from "./directory.ts";
 import { formatSessionMessage, formatSystemMessage } from "./domain/header.ts";
-import { type ListingExtra, listedSession } from "./domain/listing.ts";
 import { blankParty, relayAnswer, sharedTeam } from "./domain/parties.ts";
 import {
   DAY_MS,
   FLIGHTDECK,
   type ListedSession,
   type MessagingFrame,
-  type Missing,
   OUTBOX_MS,
   type Params,
   type PeerSession,
@@ -63,29 +61,13 @@ export interface MessagingOptions {
   names?: NameBook;
 }
 
-/** What the messaging layer needs of the standard names. */
-interface NameBook {
-  get(sessionId: string): { display: string; alias: string; aliases: string[] } | null;
-  resolve(alias: string): string | null;
-}
-
-/** Where a message is going. */
-interface Target {
-  party: Party;
-  receives: boolean;
-  reason: string | null;
-  local: EndpointInfo | null;
-}
-
 const bad = (message: string, reason: string, params?: Params) =>
   new FlightdeckError("bad_request", message, reason, params);
-const notFound = (message: string, reason: string, params?: Params) =>
-  new FlightdeckError("not_found", message, reason, params);
 
 export class Messaging {
   private readonly listeners = new Set<(frame: MessagingFrame) => void>();
-  private readonly peers = new Map<string, PeerSession[]>();
   private policy: Policy;
+  private readonly dir: Directory;
   private readonly delivery: Delivery;
   private readonly store: MessageStore;
 
@@ -105,6 +87,14 @@ export class Messaging {
         at: this.ms(),
       });
     }
+    this.dir = new Directory({
+      host: opts.host,
+      endpoints: opts.endpoints,
+      policy: () => this.policy,
+      teamOf: opts.teamOf,
+      personaOf: opts.personaOf,
+      names: opts.names,
+    });
     this.delivery = new Delivery({
       endpoints: opts.endpoints,
       settle: (id, patch) => this.update(id, { ...patch, at: this.ms() }),
@@ -130,154 +120,25 @@ export class Messaging {
     for (const listener of this.listeners) listener(frame);
   }
 
+  // --- who is who (the directory) ---
+
   /** Every session of this host, unfiltered, for the app to hand to the other daemons. */
   directory(): ListedSession[] {
-    return this.opts.endpoints.list().map((info) => {
-      const party = this.partyOf(info);
-      return {
-        id: info.id,
-        name: party.name,
-        ...this.aliasesOf(info.id),
-        persona: party.persona,
-        projectKey: party.projectKey,
-        teamId: party.teamId,
-        state: info.state,
-        kind: info.kind,
-        receives: info.controllable,
-        reason: info.reason,
-      };
-    });
+    return this.dir.listing();
   }
 
   setPeers(host: string, sessions: PeerSession[]): void {
-    this.peers.set(host, sessions);
-  }
-
-  // --- who is who ---
-
-  private partyOf(info: EndpointInfo): Party {
-    return {
-      id: info.id,
-      host: this.opts.host,
-      name: this.opts.names?.get(info.id)?.display ?? info.name,
-      persona: this.opts.personaOf?.(info.id) ?? info.persona,
-      projectKey: info.projectKey,
-      teamId: this.opts.teamOf?.(info.id) ?? null,
-    };
-  }
-
-  /** The standard alias of a session of this host and every alias that points at it. */
-  private aliasesOf(id: string): { alias: string | null; aliases: string[] } {
-    const named = this.opts.names?.get(id);
-    return { alias: named?.alias ?? null, aliases: named?.aliases ?? [] };
-  }
-
-  private peerParty(host: string, peer: PeerSession): Party {
-    return {
-      id: peer.id,
-      host,
-      name: peer.name,
-      persona: peer.persona,
-      projectKey: peer.projectKey,
-      teamId: peer.teamId,
-    };
+    this.dir.setPeers(host, sessions);
   }
 
   /** Who a session identity is (throws when the daemon does not know it). */
   whoIs(as: SessionIdentity): Party {
-    return this.resolve(as);
-  }
-
-  /** The session that is asking: a managed one by id, a terminal one by the launch it came from. */
-  private resolve(who: SessionIdentity): Party {
-    const id = who.session ?? this.opts.endpoints.byLaunch(who.launch as string);
-    const info = id ? this.opts.endpoints.list().find((e) => e.id === id) : undefined;
-    if (!info) {
-      throw notFound(
-        "the asking session does not exist on this host: I do not know who is sending",
-        "messaging_asker_unknown",
-      );
-    }
-    return this.partyOf(info);
-  }
-
-  private target(address: string): Target | Missing {
-    const { host, id } = addressParts(address);
-    if (host === null || host === this.opts.host) {
-      const sessionId = this.opts.names?.resolve(id) ?? id;
-      const list = this.opts.endpoints.list();
-      const info = list.find((e) => e.id === id) ?? list.find((e) => e.id === sessionId);
-      if (!info) {
-        return {
-          error: `session ${address} not found on this host`,
-          reason: "messaging_target_not_found",
-          params: { address },
-        };
-      }
-      return {
-        party: this.partyOf(info),
-        receives: info.controllable,
-        reason: info.reason,
-        local: info,
-      };
-    }
-    const sessions = this.peers.get(host);
-    if (!sessions) {
-      return {
-        error: `the host ${host} is not known: the app describes the hosts`,
-        reason: "messaging_host_unknown",
-        params: { host },
-      };
-    }
-    const alias = slug(id);
-    const peer =
-      sessions.find((s) => s.id === id) ?? sessions.find((s) => s.aliases?.includes(alias));
-    if (!peer) {
-      return {
-        error: `session ${address} not found on host ${host}`,
-        reason: "messaging_peer_not_found",
-        params: { address, host },
-      };
-    }
-    return {
-      party: this.peerParty(host, peer),
-      receives: peer.receives,
-      reason: peer.reason,
-      local: null,
-    };
+    return this.dir.resolve(as);
   }
 
   /** The sessions the asker may see, by the rules. */
   sessions(as: SessionIdentity): MessagingSession[] {
-    const sender = this.resolve(as);
-    const seen: MessagingSession[] = [];
-    const consider = (party: Party, extra: ListingExtra) => {
-      if (addressOf(party) === addressOf(sender)) return;
-      if (!access(sender, party, this.policy).ok) return;
-      seen.push(listedSession(party, extra));
-    };
-    for (const info of this.opts.endpoints.list()) {
-      consider(this.partyOf(info), {
-        ...this.aliasesOf(info.id),
-        state: info.state,
-        kind: info.kind,
-        receives: info.controllable,
-        reason: info.reason,
-      });
-    }
-    for (const [host, sessions] of this.peers) {
-      for (const peer of sessions) {
-        consider(this.peerParty(host, peer), {
-          alias: peer.alias ?? null,
-          aliases: peer.aliases ?? [],
-          state: peer.state,
-          kind: peer.kind,
-          receives: peer.receives,
-          reason: peer.reason,
-        });
-      }
-    }
-    return seen;
+    return this.dir.sessions(as);
   }
 
   /**
@@ -289,37 +150,20 @@ export class Messaging {
     as: SessionIdentity,
     address: string,
   ): { sender: Party; target: Party; info: EndpointInfo | null } {
-    const sender = this.resolve(as);
-    const target = this.target(address);
-    if ("error" in target) throw notFound(target.error, target.reason, target.params);
-    const allowed = access(sender, target.party, this.policy);
-    if (!allowed.ok) throw new FlightdeckError("invalid_state", allowed.reason, allowed.code);
-    return { sender, target: target.party, info: target.local };
+    return this.dir.inspect(as, address);
   }
 
   /** `read_session`: the summary and the last messages of a session this one may see. */
-  async read(as: SessionIdentity, address: string, last = 10): Promise<ReadSessionResult> {
-    const { info } = this.inspect(as, address);
-    if (!info) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the session is on another host: read_session only reads sessions of this host",
-        "messaging_read_other_host",
-      );
-    }
-    const read = await this.opts.endpoints.read(info.id, last);
-    if (!read) {
-      throw notFound(`session ${address} not found`, "messaging_target_not_found", { address });
-    }
-    return read;
+  read(as: SessionIdentity, address: string, last = 10): Promise<ReadSessionResult> {
+    return this.dir.read(as, address, last);
   }
 
   // --- sending ---
 
   send(input: { as: SessionIdentity; to: string; text: string }): SendResult {
-    const sender = this.resolve(input.as);
+    const sender = this.dir.resolve(input.as);
     const untrusted = this.opts.endpoints.untrusted(sender.id);
-    const target = this.target(input.to);
+    const target = this.dir.target(input.to);
     if ("error" in target) {
       return this.refused(sender, input.to, input.text, target.error, untrusted);
     }
@@ -445,7 +289,7 @@ export class Messaging {
     }
     const info = this.opts.endpoints.list().find((e) => e.id === message.toSession);
     if (!info) return refuse(`session ${message.toHost}/${message.toSession} not found`);
-    const to = this.partyOf(info);
+    const to = this.dir.partyOf(info);
     const target: Target = {
       party: to,
       receives: info.controllable,
@@ -505,7 +349,7 @@ export class Messaging {
     const { id: sessionId } = addressParts(to);
     const info = this.opts.endpoints.list().find((e) => e.id === sessionId);
     const id = ulid(this.ms());
-    const target: Party = info ? this.partyOf(info) : blankParty(sessionId, this.opts.host);
+    const target: Party = info ? this.dir.partyOf(info) : blankParty(sessionId, this.opts.host);
     const from = blankParty(FLIGHTDECK, this.opts.host);
     const record = (
       status: MessageInfo["status"],
