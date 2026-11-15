@@ -283,6 +283,7 @@ describe("security-gate", () => {
         "scripts/lib/pr/pr-types.ts",
         "scripts/lib/pr/pr-merge.ts",
         "scripts/lib/pr/deeper/nested.ts",
+        "scripts/lib/pr-extra/other.ts",
         "scripts/lib/slot/heavy.ts",
       ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
     );
