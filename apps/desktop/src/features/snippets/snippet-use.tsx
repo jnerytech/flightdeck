@@ -21,7 +21,7 @@ export interface SnippetChoice {
 }
 
 /** The snippet a choice names, from the host's list the palette read or from the app's globals. */
-export function chosenSnippet(
+function chosenSnippet(
   store: AppStore,
   state: Pick<AppState, "snippets" | "externals" | "hosts">,
   choice: SnippetChoice,

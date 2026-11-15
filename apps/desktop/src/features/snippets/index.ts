@@ -10,13 +10,10 @@ export type { ActionSeed } from "./domain/snippets.ts";
 export {
   type AppSnippet,
   GlobalSnippets,
-  type GlobalSnippetsOptions,
-  type SnippetFilter,
 } from "./global-snippets.ts";
 export type { PromptSnippets } from "./prompt-menu.tsx";
 export {
   initialSnippetsState,
-  type SnippetChoice,
   type SnippetsCore,
   SnippetsSlice,
   type SnippetsSliceState,
