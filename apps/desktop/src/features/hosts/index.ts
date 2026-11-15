@@ -10,7 +10,7 @@ export { awaitedHost } from "./domain/awaited-host.ts";
 export { type GithubHost, githubSignedIn } from "./domain/github-session.ts";
 export { hostNeedsAttention } from "./domain/host-attention.ts";
 export { hostColorVar } from "./domain/host-color.ts";
-export { draftFromLink, draftUrl } from "./domain/host-draft.ts";
+export { draftFromLink } from "./domain/host-draft.ts";
 export { statusLine } from "./domain/host-link-line.ts";
 export type { HostNameError } from "./domain/host-name.ts";
 export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
@@ -28,7 +28,6 @@ export {
   initialHealthState,
 } from "./health-store.ts";
 export { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
-export type { HostDraft } from "./host-form.tsx";
 export { HostTabs } from "./host-tabs.ts";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 export { HostLink, type HostRoutes, type OnlineStep } from "./link.ts";

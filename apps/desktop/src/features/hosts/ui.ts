@@ -5,10 +5,9 @@
  * `index.ts`: `app/Screens.tsx` loads it as a lazy chunk.
  */
 
-export { FirstRun } from "./first-run.tsx";
+export { AddHost } from "./add-host.tsx";
 export { FolderPicker } from "./folder-picker.tsx";
 export { HostDot } from "./host-dot.tsx";
-export { HostForm } from "./host-form.tsx";
 export { HostOfflineBanner } from "./host-offline-banner.tsx";
 export { HostVersionTip } from "./host-version.tsx";
 export { HostsBanner } from "./hosts-banner.tsx";
