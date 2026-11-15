@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { git } from "../git/index.ts";
 import { FlightdeckError, HEAD, type Rev, refArg, ulid } from "../kernel/index.ts";
-import { must } from "./worktree.ts";
+import { must } from "../worktrees/index.ts";
 
 /**
  * Commits of `ref` (in `worktree`) not in `base`, and of `base` not in `ref`. A card is read by its

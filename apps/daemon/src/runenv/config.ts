@@ -1,9 +1,9 @@
 import type { Database } from "bun:sqlite";
 import type { Project } from "@flightdeck/protocol";
-import { must } from "../board/index.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
 import { hashOf } from "../workflows/index.ts";
+import { must } from "../worktrees/index.ts";
 import { parseRunConfig, type RunConfig } from "./domain/run-config.ts";
 
 /** Where a project's run environment is declared, read from the base branch only. */

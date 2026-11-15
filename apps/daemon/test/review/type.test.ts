@@ -6,9 +6,9 @@ import {
   mergeIntoBase,
   rebaseOnto,
 } from "../../src/board/merge.ts";
-import { freshBase } from "../../src/board/worktree.ts";
 import { assertBranchName, type Rev, refArg } from "../../src/kernel/index.ts";
 import { workflowSources } from "../../src/workflows/repo.ts";
+import { freshBase } from "../../src/worktrees/index.ts";
 
 /**
  * Not called: this is a type test. `bun run typecheck` fails on a `@ts-expect-error` that finds no

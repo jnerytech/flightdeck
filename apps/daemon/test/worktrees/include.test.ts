@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BoardOptions } from "../../src/board/board.ts";
-import { addWorktree, copyIncluded, WORKTREE_INCLUDE_LIMIT } from "../../src/board/worktree.ts";
+import { addWorktree, copyIncluded, WORKTREE_INCLUDE_LIMIT } from "../../src/worktrees/worktree.ts";
 import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.

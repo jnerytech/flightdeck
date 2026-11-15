@@ -7,4 +7,12 @@
  */
 export { LOCAL_SETTINGS } from "./domain/local-settings.ts";
 export { folderRemoving } from "./domain/locks.ts";
+export {
+  addWorktree,
+  excludeLocalSettingsAsync,
+  freshBase,
+  must,
+  WORKTREE_INCLUDE,
+  WORKTREE_INCLUDE_LIMIT,
+} from "./worktree.ts";
 export type { Worktrees } from "./worktrees.ts";
