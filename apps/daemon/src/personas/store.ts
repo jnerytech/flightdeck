@@ -1,17 +1,22 @@
 import type { Database } from "bun:sqlite";
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type {
   Persona,
   PersonaAgent,
   PersonaInput,
   PersonaProjectInfo,
   PersonaSubagents,
-  PersonaSubagentsMode,
 } from "@flightdeck/protocol";
 import { byCodeUnit, inSequence, PersonaFields } from "@flightdeck/protocol";
 import { FlightdeckError, parseJsonWith, resolveAllowedCwd } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/index.ts";
+import {
+  listPersonaNames,
+  personaDir,
+  readPersonaSource,
+  removePersonaFile,
+  writePersonaFile,
+} from "./adapters/persona-files.ts";
+import { PersonaRows } from "./adapters/persona-rows.ts";
 import type { Language } from "./domain/language.ts";
 import {
   normalizePersona,
@@ -57,9 +62,6 @@ function agentOf(persona: PersonaDef): PersonaAgent {
   };
 }
 
-const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const MAX_FILE_BYTES = 64 * 1024;
-
 const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
   new FlightdeckError("bad_request", message, reason, params);
 const notFound = () => new FlightdeckError("not_found", "persona not found", "persona_not_found");
@@ -72,9 +74,11 @@ const notFound = () => new FlightdeckError("not_found", "persona not found", "pe
  */
 export class Personas {
   private readonly now: () => number;
+  private readonly store: PersonaRows;
 
   constructor(private readonly opts: PersonasOptions) {
     this.now = opts.now ?? Date.now;
+    this.store = new PersonaRows(opts.db);
   }
 
   async list(filter: {
@@ -115,18 +119,12 @@ export class Personas {
     const persona = normalizePersona(request.persona, this.opts.scanner);
     if (request.scope === "host") {
       const at = new Date(this.now()).toISOString();
-      this.opts.db
-        .query(
-          `INSERT INTO personas (id, data, created_at, updated_at) VALUES ($id, $data, $at, $at)
-           ON CONFLICT (id) DO UPDATE SET data = $data, updated_at = $at`,
-        )
-        .run({ $id: persona.id, $data: JSON.stringify(persona), $at: at });
+      this.store.saveHost(persona.id, JSON.stringify(persona), at);
       return this.hostViews().find((view) => view.id === persona.id) as Persona;
     }
     const project = await this.requireProject(request.projectPath);
     const source = serializePersona(persona);
-    await mkdir(this.dir(project), { recursive: true });
-    await writeFile(this.file(project, persona.id), source);
+    await writePersonaFile(project, persona.id, source);
     // It came from the app, from the person: no need to ask them to trust what they just wrote.
     this.trustHash(project, persona.id, personaHash(source));
     return await this.get(persona.id, { projectPath: project });
@@ -139,7 +137,7 @@ export class Personas {
    */
   async subagents(ctx: PersonaContext): Promise<PersonaSubagents> {
     const project = await this.optionalProject(ctx.projectPath);
-    const mode = project ? this.subagentsMode(project) : "all";
+    const mode = project ? this.store.subagentsMode(project) : "all";
     if (mode === "none") return { agents: {}, untrusted: [] };
     const loaded = project ? await this.loadProject(project) : null;
     const views = [
@@ -192,25 +190,18 @@ export class Personas {
     if (!this.pack(ctx.language).some((persona) => persona.id === id)) {
       throw badRequest("only the pack's personas go back to the original", "persona_pack_only");
     }
-    this.opts.db.query("DELETE FROM personas WHERE id = ?").run(id);
+    this.store.removeHost(id);
     return this.hostViews(ctx.language).find((view) => view.id === id) as Persona;
   }
 
   async remove(scope: "host" | "project", id: string, projectPath?: string): Promise<void> {
     if (scope === "host") {
-      const done = this.opts.db.query("DELETE FROM personas WHERE id = ?").run(id);
-      if (done.changes === 0) throw notFound();
+      if (this.store.removeHost(id) === 0) throw notFound();
       return;
     }
     const project = await this.requireProject(projectPath);
-    const file = this.file(project, id);
-    await rm(file).catch((error: NodeJS.ErrnoException) => {
-      if (error.code === "ENOENT") throw notFound();
-      throw error;
-    });
-    this.opts.db
-      .query("DELETE FROM persona_trust WHERE project_path = ? AND id = ?")
-      .run(this.trustFolder(project), id);
+    if (!(await removePersonaFile(project, id))) throw notFound();
+    this.store.forgetTrust(project, id);
   }
 
   /** Trusts the versioned persona as it is now, by the hash the app was shown. */
@@ -266,19 +257,6 @@ export class Personas {
     return resolveAllowedCwd(path, this.opts.allowedRoots);
   }
 
-  /** What the project of a folder (or of a card's worktree) offers as subagents; all by default. */
-  private subagentsMode(folder: string): PersonaSubagentsMode {
-    const row = this.opts.db
-      .query(
-        `SELECT persona_subagents AS mode FROM projects WHERE path = $folder
-         UNION ALL
-         SELECT p.persona_subagents FROM cards c JOIN projects p ON p.id = c.project_id
-          WHERE c.worktree_path = $folder LIMIT 1`,
-      )
-      .get({ $folder: folder }) as { mode: PersonaSubagentsMode | null } | null;
-    return row?.mode ?? "all";
-  }
-
   /** A folder the daemon does not allow has no personas of its own. */
   private async optionalProject(path: string | undefined): Promise<string | null> {
     if (!path) return null;
@@ -293,15 +271,6 @@ export class Personas {
   private async requireProject(path: string | undefined): Promise<string> {
     if (!path) throw badRequest("a project persona needs projectPath", "persona_project_path");
     return await this.project(path);
-  }
-
-  private dir(project: string): string {
-    return join(project, ".flightdeck", "personas");
-  }
-
-  private file(project: string, id: string): string {
-    if (!ID.test(id)) throw badRequest("invalid id", "persona_id_invalid");
-    return join(this.dir(project), `${id}.md`);
   }
 
   private async find(id: string, ctx: PersonaContext): Promise<Persona | null> {
@@ -319,10 +288,7 @@ export class Personas {
 
   /** The pack in its order with the host's edits standing in for it, then the host's own. */
   private hostViews(language?: Language): Persona[] {
-    const rows = this.opts.db.query("SELECT id, data FROM personas ORDER BY id").all() as Array<{
-      id: string;
-      data: string;
-    }>;
+    const rows = this.store.hostRows();
     // A row that no longer fits (written by a newer daemon, or edited by hand) leaves the others be.
     // Its id is held back from the pack too: a stricter edit must not give way to the wider original.
     const unreadable = new Set<string>();
@@ -357,56 +323,28 @@ export class Personas {
     return views;
   }
 
-  /** The folder trust is kept under: a card's worktree answers for the project it was made from. */
-  private trustFolder(folder: string): string {
-    const row = this.opts.db
-      .query(
-        `SELECT p.path FROM cards c JOIN projects p ON p.id = c.project_id
-         WHERE c.worktree_path = ?`,
-      )
-      .get(folder) as { path: string } | null;
-    return row?.path ?? folder;
-  }
-
   private trustHash(project: string, id: string, hash: string): void {
-    this.opts.db
-      .query(
-        "INSERT OR IGNORE INTO persona_trust (project_path, id, hash, trusted_at) VALUES (?, ?, ?, ?)",
-      )
-      .run(this.trustFolder(project), id, hash, new Date(this.now()).toISOString());
+    this.store.trust(project, id, hash, new Date(this.now()).toISOString());
   }
 
   /** The project's personas: what is valid, what is not and why, and which are trusted. */
   private async loadProject(project: string): Promise<LoadedProject | null> {
-    const dir = this.dir(project);
-    const names = await readdir(dir).then(
-      (entries) => entries,
-      () => null,
-    );
+    const names = await listPersonaNames(project);
     if (names === null) return null;
     const views: Persona[] = [];
     const errors: string[] = [];
-    await inSequence(
-      names.filter((entry) => entry.endsWith(".md")).sort(byCodeUnit),
-      async (name) => {
-        const id = name.slice(0, -3);
-        const path = join(dir, name);
-        try {
-          if ((await stat(path)).size > MAX_FILE_BYTES)
-            throw badRequest("file too big", "persona_file_big");
-          const source = await readFile(path, "utf8");
-          const persona = normalizePersona(parsePersona(source, id), this.opts.scanner);
-          const hash = personaHash(source);
-          const trusted =
-            this.opts.db
-              .query("SELECT 1 FROM persona_trust WHERE project_path = ? AND id = ? AND hash = ?")
-              .get(this.trustFolder(project), id, hash) !== null;
-          views.push({ ...persona, scope: "project", hash, trusted, modified: false });
-        } catch (error) {
-          errors.push(`${name}: ${(error as Error).message}`);
-        }
-      },
-    );
-    return { info: { path: dir, errors }, views };
+    await inSequence(names, async (name) => {
+      const id = name.slice(0, -3);
+      try {
+        const source = await readPersonaSource(project, name);
+        const persona = normalizePersona(parsePersona(source, id), this.opts.scanner);
+        const hash = personaHash(source);
+        const trusted = this.store.isTrusted(project, id, hash);
+        views.push({ ...persona, scope: "project", hash, trusted, modified: false });
+      } catch (error) {
+        errors.push(`${name}: ${(error as Error).message}`);
+      }
+    });
+    return { info: { path: personaDir(project), errors }, views };
   }
 }
