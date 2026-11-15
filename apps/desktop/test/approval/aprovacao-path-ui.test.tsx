@@ -25,7 +25,7 @@ import {
 setDefaultTimeout(30_000);
 afterEach(teardown);
 
-describe("aprovacao-ui", () => {
+describe("aprovacao-path-ui", () => {
   test("o resumo de uma ferramenta sem campo conhecido é chave e valor, nunca JSON", () => {
     expect(inputSummary({ command: "npm test" })).toBe("npm test");
     expect(
