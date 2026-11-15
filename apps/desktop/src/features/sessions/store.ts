@@ -3,15 +3,8 @@ import type { HostConnection } from "@/features/hosts/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Platform } from "../../platform/types.ts";
-import {
-  CONTINUATION,
-  loadAutoResume,
-  loadHandled,
-  markHandled,
-  offerKey,
-  saveAutoResume,
-  unanswered,
-} from "./resume-offer.ts";
+import { CONTINUATION, offerKey, unanswered } from "./domain/resume-offer.ts";
+import { loadAutoResume, loadHandled, markHandled, saveAutoResume } from "./resume-offer.ts";
 
 /** The offer to resume a host's interrupted sessions: shown (open) or put off for the host page. */
 export interface ResumeOffer {
