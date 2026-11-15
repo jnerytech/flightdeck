@@ -22,12 +22,12 @@ import {
   type Step,
   type Workflow,
 } from "./domain/schema.ts";
+import type { StepRow } from "./domain/step-row.ts";
 import {
   type EngineHost,
   now,
   type RunRow,
   reason,
-  type StepRow,
   type WorkflowEngineOptions,
 } from "./engine-types.ts";
 import { hashOf } from "./repo.ts";
