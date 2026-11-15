@@ -9,7 +9,7 @@ import type { CardPorts } from "./ports.ts";
 import { waitForServer } from "./preview.ts";
 
 /** One process of the card's run, as the UI shows it: a tab (terminal) with a state. */
-export interface RunProcessState {
+interface RunProcessState {
   name: string;
   terminalId: string;
   status: "running" | "exited";

@@ -2,7 +2,7 @@ import { type core, z } from "zod";
 import { referencesIn, replaceReferences } from "../../workflows/index.ts";
 import { PORT_BLOCK, portVariable } from "./ports.ts";
 
-export interface RunProcess {
+interface RunProcess {
   name: string;
   cmd: string[];
   env: Record<string, string>;
