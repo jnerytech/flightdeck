@@ -25,6 +25,7 @@ export {
   SessionViews,
   VIEW_LABEL,
 } from "./domain/session-views.ts";
+export { sessionTabOffers } from "./domain/tab-offers.ts";
 export { inputSummary } from "./domain/tool-input.ts";
 export { messageParts } from "./domain/tool-line.ts";
 export { type Turn, turnsOf } from "./domain/turns.ts";
@@ -72,7 +73,6 @@ export {
 export { SessionStreamSlice } from "./stream.ts";
 export type { SessionSubscriptions } from "./subscriptions.ts";
 export { SummariesSlice } from "./summaries.ts";
-export { sessionTabOffers } from "./tab-offers.ts";
 export {
   hiddenTiles,
   lastLines,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sessionTabOffers } from "../../src/features/sessions/tab-offers.ts";
+import { sessionTabOffers } from "../../src/features/sessions/domain/tab-offers.ts";
 import type { HostView } from "../../src/lib/app-store.ts";
 
 const host = (features?: string[]) =>
