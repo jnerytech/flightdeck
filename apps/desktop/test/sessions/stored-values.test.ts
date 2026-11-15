@@ -12,7 +12,7 @@ import {
   loadAutoResume,
   loadHandled,
   markHandled,
-} from "../../src/features/sessions/resume-offer.ts";
+} from "../../src/features/sessions/domain/resume-store.ts";
 
 /** A storage that holds text as it is, so a test can plant a value the app never wrote. */
 const planted = (items: Record<string, string>) => {
