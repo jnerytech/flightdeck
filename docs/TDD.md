@@ -79,8 +79,8 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     CI enforces the first two: each bun shard job of the PR's run writes bun's JUnit report, and
     `scripts/slow-tests.ts` fails that shard on a test or file over its limit that
     `slow-tests-allowlist.json` does not name with the issue that cuts it. It sees only the tests
-    the PR's run holds. An entry under its limit now, or gone from a file that ran, is warned about
-    as stale. The check is a step of the shard, so `gh run rerun <id> --failed` measures again (#3295).
+    the PR's run holds (a full run has no base: not checked yet). A stale entry (under its limit now, or gone
+    from a file that ran) is warned about. The check is a shard step: `gh run rerun <id> --failed` measures again (#3295).
     **What to test** (#1002, the person's decision, 2026-11-08): business logic and the important
     flows. The coverage gate is 80% of each file's lines and functions; a test written only to
     reach a line is not needed.

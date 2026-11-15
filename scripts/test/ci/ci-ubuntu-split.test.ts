@@ -87,7 +87,7 @@ describe("ci-ubuntu-split (#293)", () => {
     expect(runs("checks-linux")).toContain("cargo check");
   });
 
-  test("test (ubuntu-latest) is an aggregate that fails unless changes, quick, the suite, SonarCloud, the fast-coverage ratchet and the checks succeeded", () => {
+  test("test (ubuntu-latest) is an aggregate that fails unless changes, quick, the shards, the suite, SonarCloud, the fast-coverage ratchet and the checks succeeded", () => {
     const gate = job("test");
     expect(gate.name).toBe(`test (ubuntu-latest)${SUFFIX}`);
     expect(gate.needs).toEqual([
