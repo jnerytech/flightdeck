@@ -199,6 +199,38 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
       /^apps\/daemon\/src\/terminal\/domain\/policy\.ts$/,
     ],
   ],
+  // The domain files that build what a program is started with, hide a secret, vouch for an
+  // address, a host or a signature, or say which folders may be touched (#1589).
+  [
+    "spawn arguments",
+    [
+      /^apps\/daemon\/src\/actions\/domain\/(?:free-command|ssh-command)\.ts$/,
+      /^apps\/daemon\/src\/central\/domain\/(?:claude-launch-args|hook-entries)\.ts$/,
+      /^apps\/daemon\/src\/ssh\/domain\/ssh-argv\.ts$/,
+      /^apps\/daemon\/src\/teleport\/domain\/git-args\.ts$/,
+      /^apps\/daemon\/src\/terminal\/domain\/(?:launch-spec|shell)\.ts$/,
+      /^apps\/daemon\/src\/watch\/domain\/check-command\.ts$/,
+    ],
+  ],
+  ["secret masking", [/^apps\/daemon\/src\/actions\/domain\/mask\.ts$/]],
+  [
+    "address or signature check",
+    [
+      /^apps\/daemon\/src\/actions\/domain\/fingerprint\.ts$/,
+      /^apps\/daemon\/src\/projects\/domain\/clone-url\.ts$/,
+      /^apps\/daemon\/src\/webhook\/domain\/(?:address|webhook-guard)\.ts$/,
+      /^apps\/daemon\/src\/updates\/domain\/(?:signature|public-key)\.ts$/,
+      /^apps\/daemon\/src\/ssh\/domain\/(?:known-hosts|ssh-config)\.ts$/,
+    ],
+  ],
+  [
+    "path guard",
+    [
+      /^apps\/daemon\/src\/history\/domain\/folder\.ts$/,
+      /^apps\/daemon\/src\/projects\/domain\/system-folders\.ts$/,
+      /^apps\/daemon\/src\/worktrees\/domain\/cleanup-rules\.ts$/,
+    ],
+  ],
   ["workflow", [/^\.github\/workflows\//]],
   // The gate and the checks it stands with: a change that weakens one needs a review too.
   [

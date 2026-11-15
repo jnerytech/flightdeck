@@ -313,7 +313,7 @@ describe("security-gate", () => {
       [
         "apps/daemon/src/actions/domain/approval-check.ts",
         "apps/daemon/src/actions/domain/secret-use.ts",
-        "apps/daemon/src/actions/domain/mask.ts",
+        "apps/daemon/src/actions/domain/run-params.ts",
         "apps/daemon/src/git/domain/diff-secrets.ts",
         "apps/daemon/src/github/domain/trust.ts",
         "apps/daemon/src/messaging/domain/policy.ts",
@@ -342,6 +342,61 @@ describe("security-gate", () => {
       ["apps/daemon/src/teleport/domain/secrets.ts", "secret rules"],
       ["apps/daemon/src/terminal/domain/policy.ts", "permission decision"],
       ["apps/daemon/src/trust/domain/trust-resolve.ts", "permission decision"],
+    ]);
+  });
+
+  test("the domain files that build a spawn, mask a secret, check an address or a signature, or guard a path are risky by path (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/actions/domain/fingerprint.ts",
+        "apps/daemon/src/actions/domain/free-command.ts",
+        "apps/daemon/src/actions/domain/mask.ts",
+        "apps/daemon/src/actions/domain/run-params.ts",
+        "apps/daemon/src/actions/domain/ssh-command.ts",
+        "apps/daemon/src/central/domain/claude-launch-args.ts",
+        "apps/daemon/src/central/domain/hook-entries.ts",
+        "apps/daemon/src/history/domain/folder.ts",
+        "apps/daemon/src/projects/domain/clone-url.ts",
+        "apps/daemon/src/projects/domain/system-folders.ts",
+        "apps/daemon/src/ssh/domain/known-hosts.ts",
+        "apps/daemon/src/ssh/domain/skip-reason.ts",
+        "apps/daemon/src/ssh/domain/ssh-argv.ts",
+        "apps/daemon/src/ssh/domain/ssh-config.ts",
+        "apps/daemon/src/teleport/domain/git-args.ts",
+        "apps/daemon/src/terminal/domain/launch-spec.ts",
+        "apps/daemon/src/terminal/domain/shell.ts",
+        "apps/daemon/src/updates/domain/public-key.ts",
+        "apps/daemon/src/updates/domain/signature.ts",
+        "apps/daemon/src/watch/domain/check-command.ts",
+        "apps/daemon/src/webhook/domain/address-extra.ts",
+        "apps/daemon/src/webhook/domain/address.ts",
+        "apps/daemon/src/webhook/domain/webhook-guard.ts",
+        "apps/daemon/src/worktrees/domain/cleanup-rules.ts",
+        "apps/daemon/src/worktrees/domain/locks.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/actions/domain/fingerprint.ts", "address or signature check"],
+      ["apps/daemon/src/actions/domain/free-command.ts", "spawn arguments"],
+      ["apps/daemon/src/actions/domain/mask.ts", "secret masking"],
+      ["apps/daemon/src/actions/domain/ssh-command.ts", "spawn arguments"],
+      ["apps/daemon/src/central/domain/claude-launch-args.ts", "spawn arguments"],
+      ["apps/daemon/src/central/domain/hook-entries.ts", "spawn arguments"],
+      ["apps/daemon/src/history/domain/folder.ts", "path guard"],
+      ["apps/daemon/src/projects/domain/clone-url.ts", "address or signature check"],
+      ["apps/daemon/src/projects/domain/system-folders.ts", "path guard"],
+      ["apps/daemon/src/ssh/domain/known-hosts.ts", "address or signature check"],
+      ["apps/daemon/src/ssh/domain/ssh-argv.ts", "spawn arguments"],
+      ["apps/daemon/src/ssh/domain/ssh-config.ts", "address or signature check"],
+      ["apps/daemon/src/teleport/domain/git-args.ts", "spawn arguments"],
+      ["apps/daemon/src/terminal/domain/launch-spec.ts", "spawn arguments"],
+      ["apps/daemon/src/terminal/domain/shell.ts", "spawn arguments"],
+      ["apps/daemon/src/updates/domain/public-key.ts", "address or signature check"],
+      ["apps/daemon/src/updates/domain/signature.ts", "address or signature check"],
+      ["apps/daemon/src/watch/domain/check-command.ts", "spawn arguments"],
+      ["apps/daemon/src/webhook/domain/address.ts", "address or signature check"],
+      ["apps/daemon/src/webhook/domain/webhook-guard.ts", "address or signature check"],
+      ["apps/daemon/src/worktrees/domain/cleanup-rules.ts", "path guard"],
     ]);
   });
 
