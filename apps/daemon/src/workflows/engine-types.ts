@@ -1,6 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Card, RunStatus } from "@flightdeck/protocol";
-import type { BoardEvent } from "../board/domain/columns.ts";
+import type { Card, RunStatus, SessionStatus } from "@flightdeck/protocol";
 import type { Prepare } from "../personas/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { CheckRunner } from "./check-runner.ts";
@@ -11,9 +10,14 @@ import type { CardsRaised, Finding } from "./domain/findings.ts";
  * and the run and step rows the engine and its step runner both read.
  */
 
+/** What the engine tells the board about a card: its run's progress, or its session's status. */
+type EngineEvent =
+  | { type: "workflow"; state: "running" | "waiting" | "done" }
+  | { type: "session"; status: SessionStatus };
+
 /** What the engine needs from the board that owns the cards. */
 export interface EngineHost {
-  place(cardId: string, event: BoardEvent): void;
+  place(cardId: string, event: EngineEvent): void;
   /** The run stopped holding the card's slot in the host queue. */
   release(cardId: string): void;
   /** Back from a restart: the card's run holds its slot again, without waiting. */

@@ -3,12 +3,11 @@ import {
   FINISHED_CAP,
   type Finish,
   finishOutcome,
-  loadFinished,
   recordFinish,
-  saveFinished,
   sinceLastLook,
   withFiles,
-} from "../../src/features/sessions/finished.ts";
+} from "../../src/features/sessions/domain/finished-list.ts";
+import { loadFinished, saveFinished } from "../../src/features/sessions/finished.ts";
 
 const finish = (sessionId: string, at: string, over: Partial<Finish> = {}): Finish => ({
   key: `h1/${sessionId}`,

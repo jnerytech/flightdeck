@@ -56,32 +56,10 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/costs/usage-indexer.ts",
-    "to": "apps/daemon/src/quota/usage.ts",
-    "unresolvedTo": "../quota/usage.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/assistant/domain/paths.ts",
     "unresolvedTo": "../assistant/domain/paths.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/permissions/auto-approve.ts",
-    "to": "apps/daemon/src/costs/usage-indexer.ts",
-    "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -122,28 +100,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
-    "to": "apps/daemon/src/costs/usage-indexer.ts",
-    "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/runtime/types.ts",
-    "to": "apps/daemon/src/costs/usage-indexer.ts",
-    "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/server/handlers/project.ts",
     "to": "apps/daemon/src/board/pr-provider.ts",
     "unresolvedTo": "../../board/pr-provider.ts",
@@ -170,28 +126,6 @@
     "to": "apps/daemon/src/board/pr.ts",
     "unresolvedTo": "../board/pr.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/check-runner.ts",
-    "to": "apps/daemon/src/board/setup.ts",
-    "unresolvedTo": "../board/setup.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/engine-types.ts",
-    "to": "apps/daemon/src/board/domain/columns.ts",
-    "unresolvedTo": "../board/domain/columns.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
