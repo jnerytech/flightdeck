@@ -190,7 +190,7 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
     [
       /^scripts\/lib\/(?:pr\/(?:security-gate|handoff)|guards\/tdd-audit|machine\/bounded-run)\.ts$/,
       // The whole folder of the hook rules, so a rule moved out of claude-hooks.ts stays under review (#1589).
-      /^scripts\/lib\/hooks\/[^/]+\.ts$/,
+      /^scripts\/lib\/hooks\//,
       /^scripts\/(?:handoff-check|pr-flow)\.ts$/,
       /^\.github\/actions\//,
       /^\.claude\/agents\/security-reviewer\.md$/,
