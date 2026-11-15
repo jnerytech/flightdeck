@@ -216,6 +216,12 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
   // The files that choose a claude process's env, settings, tools and executable, for a session
   // and for the one-shot calls that judge a permission or answer the assistant (#1589).
   ["claude process options", [/^apps\/daemon\/src\/runtime\/claude-(?:sdk-runtime|one-shot)\.ts$/]],
+  // The snippet store and its adapters: they keep which content of a project's versioned file is
+  // trusted to run (`snippet_trust`) and write that file under the project's folder (#1589).
+  [
+    "snippet trust",
+    [/^apps\/daemon\/src\/snippets\/(?:store\.ts|adapters\/snippet-(?:rows|yaml-file)\.ts)$/],
+  ],
   [
     "address or signature check",
     [
