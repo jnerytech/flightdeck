@@ -8,6 +8,7 @@ import {
   type WorkflowRun,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
+import { refuseArenaStart, variantInput, variantViewOf } from "./domain/arena-rules.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import type { BoardOptions, Card, CardDiff } from "./types.ts";
 
@@ -81,40 +82,12 @@ export class Arenas {
   ): Promise<Arena> {
     const card = this.port.card(cardId);
     this.port.refuseIfBlocked(card);
-    if (input.variants.length < 2 || input.variants.length > 4) {
-      throw new FlightdeckError("bad_request", "an arena has 2 to 4 variants", "arena_variants");
-    }
-    if (card.arenaOf || card.arenaVariants > 0) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card is already in an arena",
-        "arena_in_arena",
-      );
-    }
-    if (card.queued || card.worktreePath || this.port.queued(cardId)) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card was already started: an arena starts from a new card",
-        "card_started",
-      );
-    }
+    const refusal = refuseArenaStart(card, input.variants.length, this.port.queued(cardId));
+    if (refusal) throw refusal;
     const made: string[] = [];
     try {
       await inSequence(input.variants.entries(), async ([i, wanted]) => {
-        const label = "abcd"[i] as string;
-        const variant = this.port.createVariant(card.projectId, {
-          title: `${card.title} (${label})`,
-          description: card.description,
-          // Third-party or agent text stays marked, and approval stays off, on every variant.
-          issueExternal: card.issueExternal,
-          arenaOf: cardId,
-          variant: {
-            label,
-            model: wanted.model ?? null,
-            effort: wanted.effort ?? null,
-            persona: wanted.persona?.id ?? wanted.persona?.definition?.id ?? null,
-          },
-        });
+        const variant = this.port.createVariant(card.projectId, variantInput(card, i, wanted));
         made.push(variant.id);
         if (card.issueExternal) {
           this.port.opts.suspendApproval?.(
@@ -158,9 +131,7 @@ export class Arenas {
 
   private async variantView(id: string): Promise<ArenaVariant> {
     const card = this.port.card(id);
-    const startedAt = card.runs[0]?.startedAt ?? null;
     const finished = card.sessionStatus !== null && this.port.freesSlot(card.sessionStatus);
-    const endedAt = card.runs.at(-1)?.endedAt ?? (finished ? card.updatedAt : null);
     const files = card.worktreePath
       ? (await this.port.diff(id)).files.map(({ path, additions, deletions }) => ({
           path,
@@ -169,29 +140,13 @@ export class Arenas {
         }))
       : [];
     const steps = card.workflowRunId ? this.port.workflows.getRun(card.workflowRunId).steps : [];
-    return {
-      id,
-      label: card.variant?.label ?? "?",
-      model: card.variant?.model ?? null,
-      effort: card.variant?.effort ?? null,
-      persona: card.variant?.persona ?? null,
-      branch: card.branch,
-      worktreePath: card.worktreePath,
-      queued: card.queued,
-      sessionStatus: card.sessionStatus,
-      column: card.column,
-      startedAt,
-      endedAt,
-      durationMs: startedAt
-        ? Math.max(0, Date.parse(endedAt ?? new Date().toISOString()) - Date.parse(startedAt))
-        : null,
-      costUsd: this.port.opts.cardCost?.(id) ?? null,
+    return variantViewOf(card, {
+      finished,
       files,
-      checks: steps
-        .filter((step) => step.type === "check")
-        .map((step) => ({ stepId: step.stepId, status: step.status })),
-      notice: card.notice,
-    };
+      steps,
+      costUsd: this.port.opts.cardCost?.(id) ?? null,
+      now: now(),
+    });
   }
 
   /**
