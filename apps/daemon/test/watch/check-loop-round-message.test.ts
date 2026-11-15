@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { roundMessage } from "../../src/board/domain/check-loop-engine.ts";
+import { roundMessage } from "../../src/board/domain/round-message.ts";
 import { FAIL } from "../support/check-loop-engine.ts";
 
 describe("check-loop: the round's message", () => {
