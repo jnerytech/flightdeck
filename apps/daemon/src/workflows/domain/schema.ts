@@ -25,7 +25,7 @@ export type Action =
 
 export type Step = { id: string } & Action;
 
-export interface Budget {
+interface Budget {
   maxTurns?: number;
   maxMinutes?: number;
   maxCostUsd?: number;
