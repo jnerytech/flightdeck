@@ -21,7 +21,6 @@ import type {
 } from "./palette-types.ts";
 
 export type {
-  PaletteAction,
   PaletteItem,
   PaletteScope,
   PaletteSection,
