@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { Vault } from "../../src/features/vault/vault.ts";
 import {
   applyImport,
   BackupError,
@@ -7,7 +6,8 @@ import {
   fromFdvault,
   previewImport,
   toFdvault,
-} from "../../src/features/vault/vault-backup.ts";
+} from "../../src/features/vault/domain/vault-backup.ts";
+import { Vault } from "../../src/features/vault/vault.ts";
 
 /** The OS keyring and the app's storage, both in memory: the real keyring is never touched. */
 function newVault(prefix: string) {

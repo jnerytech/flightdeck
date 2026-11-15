@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Encrypter } from "age-encryption";
+import { previewImport } from "../../src/features/vault/domain/vault-backup.ts";
 import { Vault } from "../../src/features/vault/vault.ts";
-import { previewImport } from "../../src/features/vault/vault-backup.ts";
 import { VaultRules } from "../../src/features/vault/vault-rules.ts";
 import { VaultUsageLog } from "../../src/features/vault/vault-usage.ts";
 

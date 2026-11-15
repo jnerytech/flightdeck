@@ -2,14 +2,14 @@ import { inSequence } from "@flightdeck/protocol";
 import { armor, Decrypter, Encrypter } from "age-encryption";
 import { z } from "zod";
 import { parseJsonText } from "@/shared/lib/index.ts";
-import { BackupError } from "../backup/index.ts";
-import { type SecretMeta, SecretMetaSchema } from "./domain/vault-types.ts";
-import type { Vault } from "./vault.ts";
+import { BackupError } from "../../backup/index.ts";
+import type { Vault } from "../vault.ts";
+import { type SecretMeta, SecretMetaSchema } from "./vault-types.ts";
 
 export const MIN_PASSPHRASE = 12;
 
 // The error lives apart so the store can tell it without loading `age` (see backup-error.ts).
-export { BackupError, type BackupErrorCode } from "../backup/index.ts";
+export { BackupError, type BackupErrorCode } from "../../backup/index.ts";
 
 export interface BackupOptions {
   /** scrypt work factor (log2 N); tests lower it to stay fast. */
