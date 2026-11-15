@@ -16,6 +16,18 @@ import {
   toFdvault,
 } from "../vault/vault-backup.ts";
 import { BackupError } from "./backup-error.ts";
+import {
+  hostLabel,
+  Item,
+  type Judged,
+  judgeItems,
+  type KindSummary,
+  personaName,
+  type Status,
+  snippetName,
+  statusOf,
+  summary,
+} from "./domain/restore-judgement.ts";
 
 /** What a backup reads and writes: the app's settings, the host tokens and the vault. */
 export type BackupPlatform = Pick<Platform, "storage" | "secrets" | "vault">;
@@ -24,13 +36,6 @@ export interface BackupOptions {
   /** scrypt work factor (log2 N); tests lower it to stay fast. */
   workFactor?: number;
   clock?: () => number;
-}
-
-/** What a restore would do with one kind of data, by name; never a value. */
-export interface KindSummary {
-  added: string[];
-  same: string[];
-  conflicting: string[];
 }
 
 export interface RestorePreview {
@@ -96,10 +101,6 @@ const Entry = z.object({
   value: z.string(),
 });
 
-/** Personas and snippets are lists of the app's own items, each with an id. */
-const Item = z.object({ id: z.string() }).passthrough();
-type Item = z.infer<typeof Item>;
-
 const Bundle = z.object({
   kind: z.literal("flightdeck-backup"),
   version: z.literal(VERSION),
@@ -119,9 +120,6 @@ const held = new WeakMap<RestorePreview, Bundle>();
 const readList = (platform: BackupPlatform, key: string): Item[] =>
   readStored(platform.storage, key, validItems(Item), []);
 
-const personaName = (item: Item) => String(item.name ?? item.id);
-const snippetName = (item: Item) =>
-  String((item.def as { name?: unknown } | undefined)?.name ?? item.id);
 const settingName = (key: string) => key.slice(PREFIX.length);
 
 /** Issue #1241: the whole backup as the armored text of one encrypted file. */
@@ -177,50 +175,12 @@ async function readBundle(text: string, passphrase: string): Promise<Bundle> {
   throw new BackupError("unreadable");
 }
 
-type Status = "added" | "same" | "conflicting";
-
-/** Whether an item is new here, the same as what is here, or differs from it. */
-function statusOf(exists: boolean, same: boolean): Status {
-  if (!exists) return "added";
-  return same ? "same" : "conflicting";
-}
-
-/** One thing of the bundle, what it is called, and how it stands against this profile right now. */
-interface Judged<T> {
-  id: string;
-  name: string;
-  status: Status;
-  item: T;
-}
-
 interface Judgement {
   settings: Array<Judged<string>>;
   personas: Array<Judged<Item>>;
   snippets: Array<Judged<Item>>;
   hosts: Array<Judged<BackupHost>>;
   vault: Array<Judged<Bundle["vault"][number]>>;
-}
-
-const judgeItems = (locals: Item[], incoming: Item[], name: (item: Item) => string) =>
-  incoming.map((item): Judged<Item> => {
-    const mine = locals.find((other) => other.id === item.id);
-    let status: Status = "conflicting";
-    if (!mine) status = "added";
-    else if (JSON.stringify(mine) === JSON.stringify(item)) status = "same";
-    return { id: item.id, name: name(item), status, item };
-  });
-
-/**
- * A host as the preview names it: its name and where it points (protocol, host and port), so the
- * person sees which machine comes back. A login or a query in the address is not shown.
- */
-function hostLabel(host: { name: string; url: string }): string {
-  try {
-    const where = new URL(host.url);
-    return `${host.name} (${where.protocol}//${where.host})`;
-  } catch {
-    return host.name;
-  }
 }
 
 /**
@@ -267,16 +227,6 @@ async function judge(platform: BackupPlatform, bundle: Bundle): Promise<Judgemen
     vault: judgedVault,
   };
 }
-
-const summary = (judged: Array<Judged<unknown>>): KindSummary => {
-  const names = (status: Status) =>
-    Object.freeze(judged.filter((one) => one.status === status).map((one) => one.name));
-  return Object.freeze({
-    added: names("added"),
-    same: names("same"),
-    conflicting: names("conflicting"),
-  }) as KindSummary;
-};
 
 /** Reads a backup and compares it with this profile; changes nothing. */
 export async function previewRestore(

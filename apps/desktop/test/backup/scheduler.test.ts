@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { backupFileName, loadSchedule } from "../../src/features/backup/backup-schedule.ts";
+import { loadSchedule } from "../../src/features/backup/backup-schedule.ts";
 import { BackupScheduler } from "../../src/features/backup/backup-scheduler.ts";
+import { backupFileName } from "../../src/features/backup/domain/backup-schedule.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";
 import { stays } from "../wait.ts";
 
