@@ -40,9 +40,12 @@ export interface FormatOptions {
   signingSecret?: string;
   /** The target's URL (ntfy: its topic URL). */
   url?: string;
-  /** Milliseconds now, for the signature timestamp. */
+  /** Milliseconds now, for the signature timestamp (the generic target requires it). */
   now?: () => number;
 }
+
+/** The options of a post that may be a generic one: the caller's clock is not optional. */
+export type ClockedOptions = FormatOptions & { now: () => number };
 
 export const KIND_LABEL: Record<WebhookKind, string> = {
   needs_you: "needs you",
@@ -118,7 +121,7 @@ async function hmacHex(secret: string, text: string): Promise<string> {
   return [...new Uint8Array(mac)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function generic(event: NotifyEvent, options: FormatOptions): Promise<FormattedWebhook> {
+async function generic(event: NotifyEvent, options: ClockedOptions): Promise<FormattedWebhook> {
   const body = JSON.stringify({
     id: event.id,
     kind: event.kind,
@@ -129,7 +132,7 @@ async function generic(event: NotifyEvent, options: FormatOptions): Promise<Form
     detail: event.detail,
     summary: event.summary,
   });
-  const timestamp = String(Math.floor((options.now ?? Date.now)() / 1000));
+  const timestamp = String(Math.floor(options.now() / 1000));
   const headers: Record<string, string> = {
     ...JSON_HEADERS,
     "X-Flightdeck-Event": event.kind,
@@ -183,6 +186,16 @@ function ntfy(event: NotifyEvent, options: FormatOptions): FormattedWebhook {
   return { ...(target ? { url: target.server } : {}), headers, body: JSON.stringify(body) };
 }
 
+export function formatWebhook(
+  type: Exclude<WebhookType, "generic">,
+  event: NotifyEvent,
+  options?: FormatOptions,
+): Promise<FormattedWebhook>;
+export function formatWebhook(
+  type: WebhookType,
+  event: NotifyEvent,
+  options: ClockedOptions,
+): Promise<FormattedWebhook>;
 export async function formatWebhook(
   type: WebhookType,
   event: NotifyEvent,
@@ -191,5 +204,5 @@ export async function formatWebhook(
   if (type === "slack") return slack(event);
   if (type === "discord") return discord(event);
   if (type === "ntfy") return ntfy(event, options);
-  return generic(event, options);
+  return generic(event, options as ClockedOptions);
 }
