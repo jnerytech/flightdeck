@@ -42,8 +42,9 @@ import {
   type VaultRules,
 } from "../vault/index.ts";
 import { ActionCatalog, type ActionProject, type Found } from "./catalog.ts";
+import { FREE, freeAction, freeRemote, freeSecretIds } from "./domain/free-command.ts";
 import { resolveParams } from "./domain/run-params.ts";
-import { type ActionDef, approvalOf, secretsOf } from "./domain/schema.ts";
+import { approvalOf, secretsOf } from "./domain/schema.ts";
 import { type RunResult, runAction, type SshExecutor } from "./run.ts";
 import { shellLine } from "./shell.ts";
 
@@ -82,12 +83,6 @@ export type ActionsFrame = VaultRequestFrame | VaultUsed | VaultAlertFrame;
 /** A request nobody answers is denied after this long. */
 export const REQUEST_TTL_MS = 10 * 60_000;
 
-/** The name a free command is recorded under. */
-const FREE = "run_with_secret";
-const SECRET_ID = /^[A-Za-z0-9._-]+$/;
-
-const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
-  new FlightdeckError("bad_request", message, reason, params);
 const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", message, reason, params);
 const now = () => new Date().toISOString();
@@ -123,15 +118,6 @@ interface Ask {
     project?: string;
     session?: string;
   };
-}
-
-/** The secret names of a free command without repeats; one that is not a valid name is refused. */
-function freeSecretIds(secrets: string[]): string[] {
-  const ids = [...new Set(secrets)];
-  for (const id of ids)
-    if (!SECRET_ID.test(id))
-      throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
-  return ids;
 }
 
 /** A request waiting for the app. */
@@ -366,19 +352,6 @@ export class Actions {
     return this.execute(found, params, secrets, input.requestedBy, ids, keyId);
   }
 
-  /** Another host is a phase 15 destino of that name: the command runs there with sh -c. */
-  private freeRemote(host: string | undefined): string | null {
-    const remote = host !== undefined && host !== "local" ? host : null;
-    if (remote && !this.opts.ssh) {
-      throw invalid(
-        `host ${remote} is an ssh destination, and this daemon runs no commands on destinations`,
-        "action_ssh_host_unsupported",
-        { host: remote },
-      );
-    }
-    return remote;
-  }
-
   /**
    * A command Claude wrote, with the secrets in its environment (`deploy-token` is
    * `DEPLOY_TOKEN`). It is never automatic: the request carries `always`, with the exact command,
@@ -392,21 +365,12 @@ export class Actions {
     session?: string;
   }): Promise<ActionResult> {
     const requester = this.permit(input.requestedBy);
-    const remote = this.freeRemote(input.host);
+    const remote = freeRemote(input.host, Boolean(this.opts.ssh));
     const ids = freeSecretIds(input.secrets);
     const line = remote ? null : await shellLine(input.command, process.platform);
     const keyId = remote ? (this.opts.sshKey?.(remote) ?? null) : null;
     try {
-      const action: ActionDef = {
-        name: FREE,
-        description: "free command with secrets in the environment",
-        run: line ? line.argv : ["sh", "-c", input.command],
-        env: Object.fromEntries(ids.map((id) => [envName(id), `{{secret.${id}}}`])),
-        params: {},
-        timeoutS: 120,
-        approval: "always",
-        ...(remote ? { ssh: remote } : {}),
-      };
+      const action = freeAction({ command: input.command, ids, argv: line?.argv ?? null, remote });
       const asked = keyId && !ids.includes(keyId) ? [...ids, keyId] : ids;
       const secrets = await this.collect(asked, {
         requester,
@@ -747,10 +711,4 @@ export class Actions {
     }
     return { runId, ...result };
   }
-}
-
-/** `deploy-token` → `DEPLOY_TOKEN`. */
-function envName(secretId: string): string {
-  const name = secretId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-  return /^\d/.test(name) ? `_${name}` : name;
 }
