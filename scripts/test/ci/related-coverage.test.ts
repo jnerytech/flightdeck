@@ -293,9 +293,14 @@ describe("loadedTargets (#762)", () => {
     expect([...bunfig.test.coveragePathIgnorePatterns].sort()).toEqual([
       "**/components/ui/**",
       "**/scripts/demo-seed.ts",
+      "**/scripts/lib/demo/seed-*.ts",
       "**/test/**",
     ]);
     expect(WHOLE_SUITE_IGNORED.test("apps/daemon/test/x.ts")).toBe(true);
     expect(WHOLE_SUITE_IGNORED.test("scripts/latest/x.ts")).toBe(false);
+    // The seed's two halves are as ignored as the entry file they were cut from.
+    expect(WHOLE_SUITE_IGNORED.test("scripts/lib/demo/seed-files.ts")).toBe(true);
+    expect(WHOLE_SUITE_IGNORED.test("scripts/lib/demo/seed-host.ts")).toBe(true);
+    expect(WHOLE_SUITE_IGNORED.test("scripts/lib/demo/seeds.ts")).toBe(false);
   });
 });
