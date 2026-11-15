@@ -3,8 +3,8 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { PrProviderKind } from "../../src/board/types.ts";
-import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
-import { must } from "../support/helpers.ts";
+import { reviewedCard as reviewed } from "../support/board-cleanup.ts";
+import { cardWhen, git } from "../support/board-helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -14,22 +14,7 @@ afterEach(() => {
   for (const fn of cleanups.splice(0).reverse()) fn();
 });
 
-async function reviewedCard(prProvider: PrProviderKind = "none") {
-  const ctx = newBoard({ prPollIntervalMs: 30 });
-  cleanups.push(() => ctx.board.stop());
-  const project = await ctx.board.addProject({ path: ctx.repo, prProvider, promptTemplate: "" });
-  const card = ctx.board.createCard(project.id, { title: "Limpar", description: "faça" });
-  await ctx.board.startCard(card.id);
-  const reviewed = await cardWhen(ctx.board, card.id, (c) => c.column === "review");
-  expect(reviewed).not.toBeNull();
-  return {
-    ...ctx,
-    card,
-    worktree: must(reviewed?.worktreePath, "worktreePath"),
-    branch: reviewed?.branch ?? "",
-    sessionId: reviewed?.sessionId ?? "",
-  };
-}
+const reviewedCard = (prProvider?: PrProviderKind) => reviewed(cleanups, prProvider);
 
 const worktrees = (repo: string) => git(repo, "worktree", "list", "--porcelain");
 
