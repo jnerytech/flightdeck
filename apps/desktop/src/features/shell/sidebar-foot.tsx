@@ -16,7 +16,7 @@ const ICON = "size-4 shrink-0";
 export function SidebarFoot(
   props: Readonly<{
     store: AppStore;
-    state: AppState;
+    state: Pick<AppState, "hosts" | "account">;
     collapsed: boolean;
     t: T;
     go(route: Route): void;
