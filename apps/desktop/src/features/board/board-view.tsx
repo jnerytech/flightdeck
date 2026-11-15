@@ -1,14 +1,6 @@
 import type { BoardColumn, Card, ContractOverrides } from "@flightdeck/protocol";
 import { Columns3 } from "lucide-react";
-import {
-  type KeyboardEvent,
-  memo,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { memo, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { BoardNotice } from "@/features/board/board-notice";
 import { BoardStatus } from "@/features/board/board-status";
@@ -38,7 +30,6 @@ import { useWidth } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { quietAlerts } from "../needs-you/index.ts";
-import { cardKey } from "./board-card-keys.ts";
 import { ColumnLane } from "./board-column.tsx";
 import { BoardDialogs } from "./board-dialogs.tsx";
 import { BoardFilters } from "./board-filters.tsx";
@@ -58,6 +49,7 @@ import {
   fitColumnWidth,
 } from "./domain/board-select.ts";
 import { cardStartBlock } from "./domain/card-start-block.ts";
+import { useBoardFocus } from "./use-board-focus.ts";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
 import { useCardDrag } from "./use-card-drag.ts";
@@ -130,9 +122,6 @@ export const BoardView = memo(function BoardView(props: {
   /** #1198: the card the board's Tab stop is on, and the column a narrow board shows. */
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
   const [shownColumn, setShownColumn] = useState<BoardColumn | null>(null);
-  /** A card to focus once its column shows; the last key, to leave `g s` to the go-to chord. */
-  const pendingFocus = useRef<string | null>(null);
-  const lastKey = useRef({ key: "", at: 0 });
   const hintId = useId();
   const [notice, setNotice] = useState<string | null>(null);
   /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
@@ -308,42 +297,14 @@ export const BoardView = memo(function BoardView(props: {
    * something the keyboard reaches (scrollable-region-focusable).
    */
   const stops = tabStops(shownIds, focusedCard);
-  const titleOf = (cardId: string) =>
-    boardRef.current?.querySelector<HTMLElement>(`li[data-card="${cardId}"] [data-card-open]`);
-  /** Focuses a card, showing its column first on a narrow board. */
-  const focusCard = (cardId: string) => {
-    const column = all.find((card) => card.id === cardId)?.column;
-    if (switcher && column && column !== showing) {
-      pendingFocus.current = cardId;
-      setShownColumn(column);
-      return;
-    }
-    titleOf(cardId)?.focus();
-  };
-  useEffect(() => {
-    const cardId = pendingFocus.current;
-    if (cardId === null) return;
-    pendingFocus.current = null;
-    titleOf(cardId)?.focus();
+  const { titleOf, keyOn } = useBoardFocus({
+    board: boardRef,
+    cards: all,
+    narrow: switcher,
+    showing,
+    onShow: setShownColumn,
+    keys: { rangeBase, anchor, shownIds, boardOrder: boardIds, selection, select, setPicked },
   });
-  /** A key on a card's title (see `cardKey`): the action comes back for what is the board's own. */
-  const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) =>
-    cardKey(
-      {
-        lastKey,
-        rangeBase,
-        anchor,
-        shownIds,
-        boardOrder: boardIds,
-        selection,
-        cards: all,
-        focusCard,
-        select,
-        setPicked,
-      },
-      cardId,
-      e,
-    );
   useMoveFocus(refocus, {
     cards: all,
     columnOf,
