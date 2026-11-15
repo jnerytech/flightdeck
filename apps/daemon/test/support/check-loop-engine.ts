@@ -6,12 +6,7 @@ import {
 } from "../../src/board/domain/check-loop-engine.ts";
 import type { CheckOutcome } from "../../src/watch/domain/check-run.ts";
 
-/**
- * Issue #1361 (slice 1c-2b): the check loop as a state machine. The board tells it each session
- * event and does what it says in the same step (hold the slot, or let the card move on); the
- * checks run between, and every exit releases the slot exactly once
- * (docs/decisions/2026-11-09-check-loop.md).
- */
+/** A failing run of the checks and a passing one, as the engine's `runChecks` answers. */
 export const FAIL: Extract<CheckOutcome, { kind: "failed" }> = {
   kind: "failed",
   command: "bun test",

@@ -2,6 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { confirmationHash } from "../../src/board/domain/check-loop-engine.ts";
 import { FAIL, ok, PASS, rig } from "../support/check-loop-engine.ts";
 
+/**
+ * Issue #1361 (slice 1c-2b): the check loop as a state machine. The board tells it each session
+ * event and does what it says in the same step (hold the slot, or let the card move on); the
+ * checks run between, and every exit releases the slot exactly once
+ * (docs/decisions/2026-11-09-check-loop.md).
+ */
+
 describe("check-loop: a turn that passes its checks", () => {
   test("idle then the result: the slot is held, the checks pass, the card moves on and the slot goes back once", async () => {
     const r = rig();
