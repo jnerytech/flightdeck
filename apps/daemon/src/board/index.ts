@@ -11,4 +11,5 @@ export { runCardCli } from "./card-cli.ts";
 export { createInside, readInside, type Walk, walkInside } from "./create-inside.ts";
 export { parseUnifiedDiff } from "./domain/diff-parse.ts";
 export { manageCard } from "./domain/manage.ts";
+export { assertNoSecretInPr, withoutCredentials } from "./domain/pr-secrets.ts";
 export { readSpecText } from "./spec.ts";
