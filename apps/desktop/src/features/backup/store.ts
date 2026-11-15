@@ -1,7 +1,6 @@
-import type { ConflictChoice } from "@/features/vault/index.ts";
+import { BackupError, type BackupErrorCode, type ConflictChoice } from "@/features/vault/index.ts";
 import { PICKED_FILE_MAX_BYTES } from "../../platform/pick-file.ts";
 import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
-import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { BACKUP_NAME } from "./domain/backup-target.ts";
 import { DriveError } from "./drive-target.ts";
 
