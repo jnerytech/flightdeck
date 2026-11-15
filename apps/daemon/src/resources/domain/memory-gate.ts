@@ -22,8 +22,6 @@ export interface MemoryGateOptions {
   timers: Timers;
 }
 
-/** The default share of used memory from which new runs wait. */
-export const MEMORY_PAUSE_AT = 0.9;
 /** Once holding, runs go again only this far under the threshold, so the hold does not flap. */
 const MEMORY_RELEASE_MARGIN = 0.02;
 

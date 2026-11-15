@@ -11,21 +11,18 @@ import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, NativeSelect, Page, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/ui.ts";
 import {
   choicesToKeep,
   createPayload,
-  joinPath,
   opensMoreOptions,
   promptMissing,
   sessionModes,
   startChoices,
-  startFolder,
-  underRoot,
 } from "./domain/new-session.ts";
 import { CLAUDE_MODELS } from "./domain/new-session-choices.ts";
 import { ModelOptions } from "./model-options.tsx";
+import { useFolderChoice } from "./use-folder-choice.ts";
 
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 type Runtime = "claude" | "opencode";
@@ -59,46 +56,29 @@ export function NewSessionForm(
   }>,
 ) {
   const t = useT();
-  const roots = props.host.info?.allowedRoots ?? [];
-  // The folder picked, else the host's first: its folders may arrive after the form opened.
-  const [picked, setPicked] = useState<string | null>(null);
   // The folder the last session here started in (issue #1135), while the host still allows it.
   const prefs = props.store?.newSessionPrefs;
-  // The subfolder typed; before that, the remembered one (only with the remembered folder).
-  const [typedSub, setTypedSub] = useState<string | null>(null);
-  const { root, sub } = startFolder({
-    roots,
-    picked,
-    typedSub,
+  const {
+    root,
+    sub,
+    cwd,
+    folders,
+    canBrowse,
+    browsing,
+    setBrowsing,
+    setPicked,
+    setTypedSub,
+    pick,
+  } = useFolderChoice({
+    host: props.host,
     kept: prefs?.folderOf(props.host.id),
+    canAsk: props.store !== undefined,
+    onFolder: props.onFolder,
   });
   // The person's own click on More options; until then it follows `wanted` (below).
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null);
   const [latched, setLatched] = useState(false);
   const optionsId = useId();
-  const [browsing, setBrowsing] = useState(false);
-  /** The host answers `fs.dirs`: an older daemon does not, and there the folder is typed. */
-  const canBrowse =
-    props.store !== undefined && hasFeature(props.host.hostInfo?.features, "fs.dirs", false);
-  /** A folder the host resolved to a path none of its configured roots start: kept as a root. */
-  const [extra, setExtra] = useState<string | null>(null);
-  const folders = extra && !roots.includes(extra) ? [...roots, extra] : roots;
-  const pick = (path: string) => {
-    setBrowsing(false);
-    // The configured root that holds it; its rest is the subfolder.
-    const held = underRoot(path, roots);
-    if (held) {
-      setPicked(held.root);
-      setTypedSub(held.sub);
-    } else {
-      setExtra(path);
-      setPicked(path);
-      setTypedSub("");
-    }
-  };
-  const { onFolder } = props;
-  const cwd = joinPath(root, sub);
-  useEffect(() => onFolder?.(cwd), [onFolder, cwd]);
   const [name, setName] = useState("");
   const start = startChoices(prefs?.value);
   const [mode, setMode] = useState<PermissionMode>(start.mode);
