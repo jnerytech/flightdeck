@@ -25,7 +25,7 @@ interface Destination {
 export function ProjectPage(
   props: Readonly<{
     store: AppStore;
-    state: Pick<AppState, "projects"> & HubRowState;
+    state: Pick<AppState, "projects" | "hosts"> & Omit<HubRowState, "hosts">;
     hostId: string;
     projectId: string;
     go(route: Route): void;
