@@ -18,9 +18,9 @@ import {
   resolveAllowedCwd,
   ulid,
 } from "../kernel/index.ts";
+import { WORKTREE_INCLUDE } from "../worktrees/index.ts";
 import { mergeContracts, mergePersonas, subagentsMode } from "./domain/project-patch.ts";
 import type { BoardOptions, NewProject, Project, ProjectPatch, ProjectRow } from "./types.ts";
-import { WORKTREE_INCLUDE } from "./worktree.ts";
 
 export const DEFAULT_PROMPT_TEMPLATE =
   "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +

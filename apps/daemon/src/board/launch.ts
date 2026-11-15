@@ -8,7 +8,14 @@ import {
 import { git } from "../git/index.ts";
 import { FlightdeckError, parseJsonWith, refArg, refusalOf } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
-import { folderRemoving } from "../worktrees/index.ts";
+import {
+  addWorktree,
+  excludeLocalSettingsAsync,
+  folderRemoving,
+  freshBase,
+  must,
+  WORKTREE_INCLUDE_LIMIT,
+} from "../worktrees/index.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import { pinnedPrompt } from "./domain/pins.ts";
 import { renderSpec, specFirstLine, wantsSpec } from "./domain/spec-template.ts";
@@ -20,13 +27,6 @@ import {
   type TemplateName,
   writeSpec,
 } from "./spec-template.ts";
-import {
-  addWorktree,
-  excludeLocalSettingsAsync,
-  freshBase,
-  must,
-  WORKTREE_INCLUDE_LIMIT,
-} from "./worktree.ts";
 
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 

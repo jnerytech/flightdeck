@@ -18,4 +18,3 @@ export { aheadBehind } from "./merge.ts";
 export { prProvider } from "./pr.ts";
 export { publishPr } from "./publish-pr.ts";
 export { readSpecText } from "./spec.ts";
-export { must } from "./worktree.ts";
