@@ -96,7 +96,7 @@ export async function uiIdle(quietMs = 50, timeoutMs = 5000): Promise<void> {
 /** What `hostQuiet` needs of the store: the host's open requests, and one request to ask. */
 export interface QuietHost {
   hostInFlight(hostId: string): number;
-  hostRequest(hostId: string, type: "host.info", payload: Record<string, never>): Promise<unknown>;
+  hostRequest(hostId: string, type: "logs.tail", payload: { lines: number }): Promise<unknown>;
 }
 
 /**
@@ -117,6 +117,6 @@ export async function hostQuiet(host: QuietHost, hostId: string, timeoutMs = 500
       }
       await sleep(0);
     }
-    await host.hostRequest(hostId, "host.info", {});
+    await host.hostRequest(hostId, "logs.tail", { lines: 1 });
   } while (host.hostInFlight(hostId) > 0);
 }

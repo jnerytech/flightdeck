@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { hostQuiet, WaitTimeout } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { hostQuiet, WaitTimeout } from "../wait.ts";
 
 registerDom();
 
 /**
  * A host whose in-flight count follows `counts` one poll at a time (the last one stays), and whose
- * `host.info` answers after a real delay, so an early return shows as an answer not yet given.
+ * `logs.tail` answers one macrotask later, so an early return shows as an answer not yet given.
  */
 function fakeHost(counts: number[]) {
   const polls: number[] = [];
@@ -17,9 +17,9 @@ function fakeHost(counts: number[]) {
       polls.push(next);
       return next;
     },
-    hostRequest: async (_hostId: string, _type: "host.info", _payload: Record<string, never>) => {
+    hostRequest: async (_hostId: string, _type: "logs.tail", _payload: { lines: number }) => {
       state.asked.push(polls.length);
-      await Bun.sleep(30);
+      await new Promise<void>((done) => setImmediate(done));
       state.answered++;
       return {};
     },
