@@ -1,5 +1,6 @@
 import type { ServerWebSocket } from "bun";
-import type { ExternalSessions, HookPayload } from "./external.ts";
+import type { HookPayload } from "./domain/external-session.ts";
+import type { ExternalSessions } from "./external.ts";
 import type { ExternalPermissions } from "./external-permissions.ts";
 
 export interface ReceptorOptions {

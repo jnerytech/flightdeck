@@ -12,7 +12,7 @@ import {
   summarizeInput,
   writeTarget,
 } from "../permissions/index.ts";
-import type { HookPayload } from "./external.ts";
+import type { HookPayload } from "./domain/external-session.ts";
 
 export type { ExternalPermissionFrame };
 
