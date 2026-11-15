@@ -7,20 +7,12 @@ import type {
   Card,
   ExternalPermissionFrame,
   ExternalSession,
-  HelloResult,
   HistorySessionSummary,
-  HostInfoResult,
-  PendingPermission,
-  PermissionUpdate,
-  PlainInfo,
   Project,
   ReleaseNote,
-  RiskLevel,
   RunState,
   SessionMeta,
   SessionNameInfo,
-  SessionRuntime,
-  SessionStatus,
   SessionSummary,
   WatchInfo,
   WorkflowRun,
@@ -41,21 +33,21 @@ import {
 import { type HistorySliceState, initialHistoryState } from "../features/history/index.ts";
 import { loadChoices, type UiMode } from "../features/home/index.ts";
 import {
-  type ConnectionStatus,
   type HealthSliceState,
-  type HostConfig,
+  type HostView,
   initialHealthState,
-  type RetryState,
 } from "../features/hosts/index.ts";
 import type { InboxEntry } from "../features/inbox/index.ts";
 import { initialMessagingState, type MessagingSliceState } from "../features/messaging/index.ts";
 import { loadQuietSnooze } from "../features/needs-you/domain/quiet-snooze.ts";
+import type { PendingItem } from "../features/needs-you/index.ts";
 import { initialPersonasState, type PersonasSliceState } from "../features/personas/index.ts";
 import type { WorktreeFilter } from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSliceState } from "../features/quota/index.ts";
 import {
   type Finish,
   initialSessionsState,
+  type Selection,
   type SessionState,
   type SessionsSliceState,
   sessionKey,
@@ -75,47 +67,6 @@ import {
 import type { T } from "../i18n/index.ts";
 import type { Platform } from "../platform/types.ts";
 import type { Route } from "./router.ts";
-
-/** What the sidebar knows about a session, straight from `session.summary`. */
-export interface SidebarSession {
-  id: string;
-  name: string | null;
-  cwd: string;
-  status: SessionStatus;
-  pendingPermissions: PendingPermission[];
-  updatedAt: string;
-  /** Phase 39: set for an OpenCode session only. */
-  runtime?: SessionRuntime;
-  /** Issue #463: its folder's trust was revoked after the run loaded the project's setup. */
-  trustStale?: boolean;
-  /** Issue #1478: the host marked it quiet (a running session that says nothing), since when. */
-  quietSince?: string;
-  /** Issue #1478: the last tool it called before it went quiet. */
-  quietTool?: string | null;
-}
-
-export interface HostView extends HostConfig {
-  status: ConnectionStatus;
-  info: HelloResult | null;
-  /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
-  hostInfo: HostInfoResult | null;
-  /** When `hostInfo` arrived (epoch ms), so its uptime can be aged. */
-  infoAt: number;
-  /** The last failed try and the next one, while the host is offline. */
-  retry: RetryState | null;
-  /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
-  incompatibility: string | null;
-  /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
-  daemonUpdate: { target: string; failed: string | null } | null;
-  /** The daemon's update check asked for from the app: running, or why it did not run. */
-  updateCheck: { busy: boolean; failed: string | null } | null;
-  sessions: SidebarSession[];
-}
-
-export interface Selection {
-  hostId: string;
-  sessionId: string | null;
-}
 
 export interface AppState
   extends HistorySliceState,
@@ -265,51 +216,6 @@ export interface Notice {
   answersCommand?: true;
   /** A success toast's button: where the news leads (Open the card). */
   link?: { label: string; run: () => void };
-}
-
-export interface PendingItem {
-  hostId: string;
-  hostName: string;
-  sessionId: string;
-  sessionName: string;
-  /** Issue #1545: the project of the card that asks, so two cards of one title stay apart. */
-  projectName?: string;
-  requestId: string;
-  toolName: string;
-  createdAt: string;
-  /** A request of a session opened outside Flightdeck (`sessionId` is its claudeSessionId). */
-  external?: boolean;
-  /** The tool input, long strings cut (phase 8: the tray shows a summary). */
-  input?: Record<string, unknown>;
-  /** The session's folder (phase 10: the queue's card makes paths relative to it). */
-  cwd?: string | null;
-  /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
-  gate?: GateRef;
-  /** What the gate asks and shows, so it is approved in sight of it (issue #245). */
-  gateText?: { message: string; output?: string };
-  /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
-  risk?: RiskLevel;
-  riskReason?: string;
-  /** Issue #88: the request in plain words, for the surfaces outside the window; an older daemon sends none. */
-  plain?: PlainInfo;
-  /**
-   * Issue #1751: a terminal session waits at a plan approval or a question. It has no request to
-   * answer (`requestId` is made up): the person answers in the terminal, the app only opens it.
-   */
-  waiting?: "plan" | "question";
-  /** Phase 17: the daemon asks for a secret to run an action or a free command. */
-  vault?: true;
-  /** Phase 19: the rule lets this request be approved for the rest of the session. */
-  vaultOnce?: true;
-  /** Phase 19: what a rule made from this request matches ("Criar regra a partir disto"). */
-  vaultRule?: { secretId: string; match: Record<string, string> };
-}
-
-export interface GateRef {
-  runId: string;
-  stepId: string;
-  attempt: number;
-  cardId: string;
 }
 
 /** The parts of the state the requests waiting for the person are made of. */
@@ -463,21 +369,6 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
   return [...requests, ...known].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-/** What goes with an answer to a request, besides allow or deny. */
-export interface Answer {
-  /** "Allow in this session" and "always in this project" (phase 7). */
-  updatedPermissions?: PermissionUpdate[];
-  /** Why it was denied (phase 10: the card's reason). */
-  message?: string;
-  /** The tool's input as the person changed it (the answers of AskUserQuestion). */
-  updatedInput?: Record<string, unknown>;
-  /**
-   * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
-   * screen that forgets the risk cannot approve one with a click.
-   */
-  held?: boolean;
-}
-
 /**
  * The app's state when the store starts (#1596): one key, or one slice's initial state, per
  * domain. What the store already holds when it is built (the clock's start, the vault's usage
@@ -546,3 +437,6 @@ export function initialAppState(
 }
 
 export { HISTORY_PAGE, type HistoryFilter } from "../features/history/index.ts";
+export type { HostView } from "../features/hosts/index.ts";
+export type { Answer, GateRef, PendingItem } from "../features/needs-you/index.ts";
+export type { Selection, SidebarSession } from "../features/sessions/index.ts";

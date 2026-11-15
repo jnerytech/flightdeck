@@ -17,6 +17,7 @@ export { type Finish, sinceLastLook } from "./domain/finished-list.ts";
 export { groupName, hubRowOrder } from "./domain/hub-groups.ts";
 export { sessionLineText } from "./domain/hub-status.ts";
 export { CONTINUATION } from "./domain/resume-offer.ts";
+export type { Selection } from "./domain/selection.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
 export type { SessionState } from "./domain/session-state.ts";
@@ -36,6 +37,7 @@ export {
   SessionViews,
   VIEW_LABEL,
 } from "./domain/session-views.ts";
+export type { SidebarSession } from "./domain/sidebar-session.ts";
 export { elsewhereNotice, waitingCards } from "./domain/start-elsewhere.ts";
 export { sessionTabOffers } from "./domain/tab-offers.ts";
 export { inputSummary } from "./domain/tool-input.ts";
