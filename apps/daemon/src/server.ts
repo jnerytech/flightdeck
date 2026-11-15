@@ -21,7 +21,8 @@ import {
 import { closeLine } from "./server/close-log.ts";
 import { serverContext } from "./server/context.ts";
 import { drainAll } from "./server/delta-coalescer.ts";
-import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
+import { runHandler } from "./server/dispatch.ts";
+import type { Call, Handler } from "./server/domain/handler.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
 import type { ServerOptions } from "./server-options.ts";

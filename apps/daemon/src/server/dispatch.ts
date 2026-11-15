@@ -5,43 +5,8 @@
  * `*.watch`): the dispatcher sends the ack and runs the rest in the same synchronous step, so no
  * frame can fall between them.
  */
-import type { Command, CommandPayload, CommandResults, CommandType } from "@flightdeck/protocol";
-import type { ServerContext } from "./context.ts";
-import type { Outgoing, Socket } from "./transport.ts";
-
-export interface Call {
-  ws: Socket;
-  send(frame: Outgoing): void;
-  server: ServerContext;
-}
-
-/**
- * A class, not a plain object: a handler's reply is awaited, and an object with a `then` method
- * would be taken for a promise.
- */
-export class AfterAck<T extends CommandType> {
-  constructor(
-    readonly data: CommandResults[T] | undefined,
-    readonly rest: () => void,
-  ) {}
-}
-
-export type Reply<T extends CommandType> = CommandResults[T] | undefined | AfterAck<T>;
-
-export type Handler<T extends CommandType> = (
-  payload: CommandPayload<T>,
-  call: Call,
-) => Reply<T> | Promise<Reply<T>>;
-
-export type Handlers = { [T in CommandType]: Handler<T> };
-
-/** The ack goes out with `data`, then `rest` runs, with nothing in between. */
-export function afterAck<T extends CommandType>(
-  data: CommandResults[T] | undefined,
-  rest: () => void,
-): AfterAck<T> {
-  return new AfterAck(data, rest);
-}
+import type { Command, CommandPayload, CommandType } from "@flightdeck/protocol";
+import { AfterAck, type Call, type Handler } from "./domain/handler.ts";
 
 /** Runs a command's handler and sends its ack; a throw goes up to the transport's error mapping. */
 export async function runHandler<T extends CommandType>(
