@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import type { HubRow } from "./domain/hub.ts";
 import { rowOffers } from "./domain/hub-derive.ts";
-import type { HubRow } from "./hub.ts";
 import { focusRenameField } from "./rename-form";
 
 /** What a row's actions menu reads and calls back: the hub keeps the rename and move state. */

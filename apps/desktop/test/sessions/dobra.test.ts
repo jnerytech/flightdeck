@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import {
+  DEFAULT_HUB_FILTER,
+  type HubGroup,
+  type HubRow,
+} from "../../src/features/sessions/domain/hub.ts";
 import { hubGroups } from "../../src/features/sessions/domain/hub-groups.ts";
 import { capGroups, hubView, isSearching } from "../../src/features/sessions/domain/hub-view.ts";
-import { DEFAULT_HUB_FILTER, type HubGroup, type HubRow } from "../../src/features/sessions/hub.ts";
 
 const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({
   key: `h/${n}`,

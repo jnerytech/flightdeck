@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { unanswered } from "../../src/features/sessions/domain/resume-offer.ts";
 import {
   DEFAULT_HUB_FILTER,
   HUB_FILTER_KEY,
@@ -7,7 +6,8 @@ import {
   loadHubFilter,
   loadHubOpen,
   takeHubHost,
-} from "../../src/features/sessions/hub.ts";
+} from "../../src/features/sessions/domain/hub.ts";
+import { unanswered } from "../../src/features/sessions/domain/resume-offer.ts";
 import {
   loadAutoResume,
   loadHandled,

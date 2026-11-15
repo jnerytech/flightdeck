@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { hubRows } from "../../src/features/sessions/hub.ts";
+import { hubRows } from "../../src/features/sessions/domain/hub.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
@@ -12,7 +12,7 @@ const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
-const { rowRoute } = await import("../../src/features/sessions/row-route.ts");
+const { rowRoute } = await import("../../src/features/sessions/domain/row-route.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

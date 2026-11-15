@@ -11,7 +11,7 @@ import {
   loadHubFilter,
   saveHubFilter,
   takeHubHost,
-} from "../../src/features/sessions/hub.ts";
+} from "../../src/features/sessions/domain/hub.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

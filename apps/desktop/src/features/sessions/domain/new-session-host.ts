@@ -1,4 +1,4 @@
-import type { Selection } from "./domain/selection.ts";
+import type { Selection } from "./selection.ts";
 
 /** The host a "New session" button starts on: the last one used if online, else the first online. */
 export function newSessionHost<H extends { id: string; status: string }>(
