@@ -120,7 +120,7 @@ export function holdLines(
 }
 
 /** #1406: what Update from the base did to one card. */
-export type UpdateOutcome = "updated" | "current" | "conflicted" | "failed";
+type UpdateOutcome = "updated" | "current" | "conflicted" | "failed";
 
 export interface UpdateResult {
   card: Card;
