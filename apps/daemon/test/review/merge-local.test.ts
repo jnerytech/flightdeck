@@ -2,58 +2,16 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Changes } from "../../src/review/changes.ts";
-import { startServer } from "../../src/server.ts";
-import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
-import { must } from "../support/helpers.ts";
-import { FrameClient } from "../support/history-helpers.ts";
+import { cardWhen, git } from "../support/board-helpers.ts";
+import { commit, ready, runCleanups } from "../support/review-merge-local.ts";
 
 // Real git in temp repositories, several worktrees per test: more than the default 5 s.
 setDefaultTimeout(30_000);
 
-const TOKEN = "merge-token-0123456789abcdef";
-const cleanups: Array<() => unknown> = [];
-afterEach(async () => {
-  for (const fn of cleanups.splice(0).reverse()) await fn();
-});
-
-/** Writes and commits a file in `cwd`. */
-function commit(cwd: string, file: string, text: string, message = `muda ${file}`) {
-  writeFileSync(join(cwd, file), text);
-  git(cwd, "add", file);
-  git(cwd, "commit", "-q", "-m", message);
-}
+afterEach(runCleanups);
 
 const sha = (cwd: string, ref = "HEAD") => git(cwd, "rev-parse", ref);
 const clean = (cwd: string) => git(cwd, "status", "--porcelain") === "";
-
-/** A board, its project and a card started and idle, with the card's worktree. */
-async function ready(title = "Integrar", description = "oi", base?: string) {
-  const ctx = newBoard();
-  cleanups.push(() => ctx.board.stop());
-  if (base) git(ctx.repo, "branch", base);
-  const project = await ctx.board.addProject({
-    path: ctx.repo,
-    promptTemplate: "",
-    ...(base ? { baseBranch: base } : {}),
-  });
-  const card = ctx.board.createCard(project.id, { title, description });
-  await ctx.board.startCard(card.id);
-  const started = await cardWhen(
-    ctx.board,
-    card.id,
-    // The first turn over: idle, or holding an approval (the busy card).
-    (c) =>
-      c.worktreePath !== null &&
-      (c.sessionStatus === "idle" || c.sessionStatus === "awaiting_permission"),
-  );
-  return {
-    ...ctx,
-    project,
-    cardId: card.id,
-    worktree: must(started?.worktreePath, "worktreePath"),
-    branch: started?.branch ?? "",
-  };
-}
 
 const code = (promise: Promise<unknown>) =>
   promise.then(
@@ -224,32 +182,6 @@ describe("merge-local", () => {
     // A card never started has nothing to merge.
     const idle = gone.board.createCard(gone.project.id, { title: "Parado", description: "x" });
     expect(await message(gone.board.mergeLocal(idle.id, "merge", true))).toContain("no worktree");
-  });
-
-  test("card.updateFromBase e card.mergeLocal pelo protocolo", async () => {
-    const ctx = await ready();
-    commit(ctx.worktree, "feito.txt", "feito\n");
-    commit(ctx.repo, "c.txt", "c\n");
-    const server = startServer({
-      manager: ctx.manager,
-      board: ctx.board,
-      hostName: "h",
-      bind: "127.0.0.1",
-      port: 0,
-      token: TOKEN,
-      allowedRoots: [ctx.root],
-    });
-    cleanups.push(() => server.stop());
-    const client = new FrameClient(server.url);
-    cleanups.push(() => client.close());
-    await client.request("hello", { token: TOKEN, client: "t" });
-    expect(await client.data("card.updateFromBase", { cardId: ctx.cardId })).toMatchObject({
-      id: ctx.cardId,
-    });
-    expect(git(ctx.worktree, "rev-list", "--left-right", "--count", "main...HEAD")).toBe("0\t1");
-    expect(
-      await client.data("card.mergeLocal", { cardId: ctx.cardId, mode: "squash", confirm: true }),
-    ).toMatchObject({ column: "done" });
   });
 
   test("depois do merge, a pasta da worktree que não saiu vira aviso no card, que vai a Concluído mesmo assim", async () => {
