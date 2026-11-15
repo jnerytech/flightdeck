@@ -111,5 +111,5 @@
   "scripts/test/guards/lazy-wait-ratchet.test.ts": 28,
   "scripts/test/guards/sleep-ratchet.test.ts": 21,
   "scripts/test/harness/migrate-waits.test.ts": 6,
-  "scripts/test/slot/slot.test.ts": 6
+  "scripts/test/slot/slot-priority.test.ts": 6
 }
