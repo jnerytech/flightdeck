@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { isPublicAddress, type WebhookRequest, WebhookSender } from "../../src/webhook/sender.ts";
+import type { WebhookRequest } from "../../src/webhook/domain/webhook-guard.ts";
+import { isPublicAddress, WebhookSender } from "../../src/webhook/sender.ts";
 
 const SECRET_URL = "https://hooks.slack.com/services/T000/B000/XXXXSECRETXXXX";
 

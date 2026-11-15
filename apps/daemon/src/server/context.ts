@@ -7,7 +7,6 @@ import type { SessionLine } from "@flightdeck/protocol";
 import { type LiveState, sessionLine } from "../history/index.ts";
 import type { ServerOptions } from "../server-options.ts";
 import type { SessionManager } from "../sessions/index.ts";
-import { featuresOf } from "./features.ts";
 import {
   type GatedGroup,
   type GatedOption,
@@ -15,7 +14,8 @@ import {
   type GroupService,
   need,
   needIn,
-} from "./gates.ts";
+} from "./domain/gates.ts";
+import { featuresOf } from "./features.ts";
 
 export interface ServerContext {
   opts: ServerOptions;

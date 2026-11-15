@@ -13,26 +13,23 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useWand, type WandBinding } from "@/features/assistant/index.ts";
 import { WandButton, WandPanel } from "@/features/assistant/ui.ts";
-import type { MenuItem, PromptSnippets } from "@/features/snippets/index.ts";
+import type { PromptSnippets } from "@/features/snippets/index.ts";
 import { PromptMenu } from "@/features/snippets/ui.ts";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
-import { NativeSelect } from "@/shared/layout/index.ts";
 import { isBusy } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
-import { commandItemsOf, slashFill } from "./domain/command-menu.ts";
-import { composerModeMenu, offersModelPicker } from "./domain/composer-pickers.ts";
+import { composerPickers } from "./composer-pickers.tsx";
+import { commandItemsOf, offeredPrompts } from "./domain/command-menu.ts";
+import { composerModeMenu } from "./domain/composer-pickers.ts";
 import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-queue.ts";
 import { nextMode } from "./domain/mode-menu.ts";
-import { activityOf } from "./domain/session-activity.ts";
+import { activityOf, openTool } from "./domain/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "./domain/session-images.ts";
 import type { SessionState } from "./domain/session-state.ts";
 import { EndWithChangesDialog } from "./end-with-changes-dialog.tsx";
-import { ModeChip } from "./mode-chip";
-import { ModelChip } from "./model-chip";
-import { ModelOptions } from "./model-options.tsx";
 import {
   Composer,
   ComposerDock,
@@ -110,93 +107,6 @@ interface SessionViewProps {
   pickPath?: (done: (path: string | null) => void) => ReactNode;
   /** The AI wand of the message box (phase 40): the assistant and where "no provider" goes. */
   assist?: WandBinding;
-}
-
-/** The snippets of the host and the commands of the session behind one `/` menu. */
-function offeredPrompts(
-  prompts: PromptSnippets | undefined,
-  slash: SessionViewProps["session"]["slashCommands"],
-  commandItems: MenuItem[],
-): PromptSnippets | undefined {
-  if (!prompts && !slash) return undefined;
-  return {
-    list: async () => [...((await prompts?.list()) ?? []), ...commandItems],
-    fill: async (key) => slashFill(key) ?? (await prompts?.fill(key)) ?? "",
-  };
-}
-
-/** What the composer's pickers hold: the person's picks, and how a pick is made. */
-interface PickerState {
-  model: string;
-  setModel(value: string): void;
-  effort: EffortLevel | null;
-  setEffort(level: EffortLevel | null): void;
-  mode: PermissionMode | null;
-  modeMenu: ReturnType<typeof composerModeMenu>;
-  chooseMode(next: SettableMode): void;
-}
-
-/** The pickers of what the session lets change (model and effort, mode); the rest shows as text. */
-function composerPickers(
-  props: SessionViewProps,
-  t: T,
-  state: PickerState,
-): { model?: ReactNode; mode?: ReactNode } {
-  const { actions, session } = props;
-  const opencode = props.runtime === "opencode";
-  const pickers: { model?: ReactNode; mode?: ReactNode } = {};
-  if (
-    offersModelPicker({
-      settings: Boolean(props.settings),
-      canSetModel: Boolean(actions.setModel),
-      opencode,
-      hasModels: Boolean(props.models),
-    })
-  ) {
-    pickers.model = opencode ? (
-      <NativeSelect
-        compact
-        inline
-        aria-label={t("session.modelLabel")}
-        value={state.model}
-        onChange={(e) => {
-          state.setModel(e.target.value);
-          void actions.setModel?.(e.target.value || null);
-        }}
-      >
-        <option value="">{t("session.modelDefault")}</option>
-        <ModelOptions models={props.models ?? []} />
-      </NativeSelect>
-    ) : (
-      <ModelChip
-        t={t}
-        model={state.model}
-        current={session.model}
-        effort={state.effort}
-        effortAvailable={Boolean(props.effort && actions.setEffort)}
-        onPickModel={(value) => {
-          state.setModel(value);
-          void actions.setModel?.(value || null);
-        }}
-        onPickEffort={(level) => {
-          state.setEffort(level);
-          void actions.setEffort?.(level);
-        }}
-      />
-    );
-  }
-  if (props.settings && actions.setMode) {
-    pickers.mode = (
-      <ModeChip
-        t={t}
-        mode={state.mode}
-        rows={state.modeMenu}
-        onPick={state.chooseMode}
-        onOpenHostSettings={props.onOpenHostSettings}
-      />
-    );
-  }
-  return pickers;
 }
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
@@ -732,18 +642,4 @@ export function SessionView(props: Readonly<SessionViewProps>) {
         })}
     </SessionPane>
   );
-}
-
-/** The tool the turn is in: the last one called that has not answered yet. */
-function openTool(session: SessionState): string | null {
-  for (let i = session.items.length - 1; i >= 0; i--) {
-    const item = session.items[i];
-    if (item?.kind !== "assistant") continue;
-    for (let j = item.blocks.length - 1; j >= 0; j--) {
-      const block = item.blocks[j];
-      if (block?.type === "tool_use" && !(block.id in session.toolResults)) return block.name;
-    }
-    return null;
-  }
-  return null;
 }
