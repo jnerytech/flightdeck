@@ -10,7 +10,7 @@ import {
   type HostFacts,
   offeredHosts,
   startElsewhere,
-} from "./start-elsewhere.ts";
+} from "./domain/start-elsewhere.ts";
 
 /** What another host said when the Start N confirm opened: its projects and its limit. */
 interface Listed {

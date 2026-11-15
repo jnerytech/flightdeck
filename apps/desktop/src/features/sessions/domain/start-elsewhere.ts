@@ -1,6 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
-import type { T } from "../../i18n/index.ts";
-import { answerOf, type BulkRefusal, queueSplit } from "../board/index.ts";
+import type { T } from "../../../i18n/index.ts";
+import { answerOf, type BulkRefusal, queueSplit } from "../../board/index.ts";
 
 /** A host that could start the cards that would wait here, with its project of the same repository. */
 export interface Elsewhere {
