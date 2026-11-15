@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
 import { positionsBefore } from "../../src/features/board/board-model.ts";
+import { BoardWidth, COLUMN_WIDTH_KEY } from "../../src/features/board/board-select.ts";
 import {
-  BoardWidth,
   COLUMN_WIDTH,
-  COLUMN_WIDTH_KEY,
   clampWidth,
   columnCount,
   countLabel,
@@ -16,7 +15,7 @@ import {
   rangeSelection,
   shownSelection,
   toggleSelection,
-} from "../../src/features/board/board-select.ts";
+} from "../../src/features/board/domain/board-select.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { Platform } from "../../src/platform/types.ts";
 

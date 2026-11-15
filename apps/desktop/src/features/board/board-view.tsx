@@ -98,6 +98,14 @@ import {
 import { cardKey } from "./board-card-keys.ts";
 import { BoardLoadError } from "./board-load-error.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./board-model.ts";
+import { BulkRunDialog } from "./bulk-run-dialog.tsx";
+import { CardStartDialog } from "./card-start-dialog.tsx";
+import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
+import { BoardColumnEmpty } from "./column-empty.tsx";
+import { DeleteCardDialog } from "./delete-card-dialog.tsx";
+import { askAbout, dragNeeds, type Lacking, missingFor } from "./domain/board-contracts.ts";
+import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
+import type { BoardKeyAction } from "./domain/board-keys.ts";
 import {
   type BulkRefusal,
   COLUMN_GAP,
@@ -111,15 +119,7 @@ import {
   rangeSelection,
   shownSelection,
   toggleSelection,
-} from "./board-select.ts";
-import { BulkRunDialog } from "./bulk-run-dialog.tsx";
-import { CardStartDialog } from "./card-start-dialog.tsx";
-import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
-import { BoardColumnEmpty } from "./column-empty.tsx";
-import { DeleteCardDialog } from "./delete-card-dialog.tsx";
-import { askAbout, dragNeeds, type Lacking, missingFor } from "./domain/board-contracts.ts";
-import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
-import type { BoardKeyAction } from "./domain/board-keys.ts";
+} from "./domain/board-select.ts";
 import { cardStartBlock } from "./domain/card-start-block.ts";
 import { radarBadge } from "./domain/conflict-radar.ts";
 import { NewCardDialog } from "./new-card-dialog.tsx";

@@ -4,7 +4,7 @@ import { reasonText } from "../../i18n/errors.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { COLUMNS, filterCards, positionsBefore } from "./board-model.ts";
-import type { BulkRefusal } from "./board-select.ts";
+import type { BulkRefusal } from "./domain/board-select.ts";
 
 /** The cards the board shows: the text filter, "only blocked" and the branch picked in the sidebar tree. */
 export function shownCards(
