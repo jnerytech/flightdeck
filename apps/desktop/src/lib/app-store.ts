@@ -7,7 +7,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { WORKSPACE_KEY, Workspace } from "@/features/shell/domain/workspace.ts";
+import { WORKSPACE_KEY, Workspace } from "@/features/tabs/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import {
   composeHosts,
@@ -58,11 +58,10 @@ export type {
   Notice,
   PendingItem,
   ReleaseNotesResult,
-  Selection,
   SidebarSession,
 } from "./app-state.ts";
 export { HISTORY_PAGE, needsYou } from "./app-state.ts";
-export type { HostCommandType, HostResult } from "./kernel.ts";
+export type { HostResult } from "./kernel.ts";
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;

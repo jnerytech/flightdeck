@@ -1,6 +1,6 @@
 import type { Key, T } from "../../../i18n/index.ts";
-import type { HostView } from "../../../lib/app-store.ts";
 import type { ConnectionStatus } from "../host-connection.ts";
+import type { HostView } from "./host-view.ts";
 
 /** What a host's connection looks like: its text and the family of its color. */
 export type HostTone = "online" | "reconnecting" | "offline" | "refused" | "incompatible";

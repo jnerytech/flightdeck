@@ -13,10 +13,10 @@ export { hostColorVar } from "./domain/host-color.ts";
 export { draftFromLink, draftUrl } from "./domain/host-draft.ts";
 export { statusLine } from "./domain/host-link-line.ts";
 export type { HostNameError } from "./domain/host-name.ts";
-export type { RetryState } from "./domain/host-offline.ts";
 export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
 export { hostDotView, hostStatusView } from "./domain/host-status.ts";
 export { hostVersionText } from "./domain/host-version.ts";
+export type { HostView } from "./domain/host-view.ts";
 export { holdAwake } from "./domain/keep-awake.ts";
 export { pairingErrorText } from "./domain/pairing-text.ts";
 export {
