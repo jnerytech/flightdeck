@@ -13,10 +13,10 @@ import { FlightdeckError, UNTRUSTED_MARK, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import { localDay } from "../quota/index.ts";
 import { type CronSpec, parseCron } from "./domain/cron.ts";
-import { MINUTE, minuteOf, planSlots, scanFrom } from "./domain/cron-slots.ts";
 import { type AutomationEvent, causeOf, contentOf, isExternal, keyOf } from "./domain/event.ts";
 import { actionOf, triggerOf } from "./domain/row-json.ts";
 import { refusal, ruleProblem } from "./domain/rule-check.ts";
+import { Scheduler } from "./scheduler.ts";
 
 export interface AutomationInput {
   projectId: string;
@@ -102,19 +102,24 @@ export class Automations {
   private readonly clock: () => number;
   private readonly day: (ms: number) => string;
   private readonly specs = new Map<string, CronSpec>();
-  /** The minute tick, while a cron automation is on; the issue search, while an issue one is. */
-  private tickTimer: ReturnType<typeof setInterval> | null = null;
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
-  private started = false;
+  private readonly scheduler: Scheduler;
   private unwatchChecks: () => void = () => {};
-  /** The search and the tick in progress, so `idle` can wait for them. */
-  private searching: Promise<void> | null = null;
-  private ticking: Promise<void> | null = null;
 
   constructor(private readonly opts: AutomationsOptions) {
     this.db = opts.db;
     this.clock = opts.clock ?? Date.now;
     this.day = opts.day ?? localDay;
+    this.scheduler = new Scheduler({
+      db: opts.db,
+      clock: this.clock,
+      ...(opts.tickMs === undefined ? {} : { tickMs: opts.tickMs }),
+      ...(opts.pollMs === undefined ? {} : { pollMs: opts.pollMs }),
+      enabled: () => this.enabled(),
+      spec: (auto) => this.spec(auto),
+      fire: (event) => this.fire(event),
+      record: (auto, at, cause, status, detail) => this.record(auto, at, cause, status, detail),
+      search: () => this.search(),
+    });
   }
 
   list(projectId: string): Automation[] {
@@ -160,7 +165,7 @@ export class Automations {
         existing?.created_at ?? new Date(this.clock()).toISOString(),
       );
     this.specs.delete(id);
-    this.arm();
+    this.scheduler.arm();
     return toAutomation(this.row(id) as Row);
   }
 
@@ -178,7 +183,7 @@ export class Automations {
     }
     this.db.query("DELETE FROM automations WHERE id = ?").run(id);
     this.specs.delete(id);
-    this.arm();
+    this.scheduler.arm();
     return this.list(row.project_id);
   }
 
@@ -193,7 +198,7 @@ export class Automations {
     }
     if (!this.row(id)) throw notFound(id);
     this.db.query("UPDATE automations SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id);
-    this.arm();
+    this.scheduler.arm();
     return toAutomation(this.row(id) as Row);
   }
 
@@ -234,25 +239,14 @@ export class Automations {
     });
   }
 
-  /** Fires the cron automations whose minute has come; slots that went by unseen are missed. */
-  async tick(now: number): Promise<void> {
-    // A tick that finds another one running leaves its minutes to the next: they are scanned
-    // from the last minute seen.
-    if (this.ticking) return;
-    this.ticking = this.advance(now, true).finally(() => {
-      this.ticking = null;
-    });
-    await this.ticking;
+  /** Fires the cron automations whose minute has come: see `Scheduler.tick`. */
+  tick(now: number): Promise<void> {
+    return this.scheduler.tick(now);
   }
 
-  /** The search of issues for `issue_label` automations, one list per project. */
-  async pollIssues(): Promise<void> {
-    // One search at a time: a slow CLI must not pile searches up under a short interval.
-    if (this.searching) return;
-    this.searching = this.search().finally(() => {
-      this.searching = null;
-    });
-    await this.searching;
+  /** The search of issues for `issue_label` automations: see `Scheduler.pollIssues`. */
+  pollIssues(): Promise<void> {
+    return this.scheduler.pollIssues();
   }
 
   private async search(): Promise<void> {
@@ -277,99 +271,23 @@ export class Automations {
     });
   }
 
-  /**
-   * Slots that came up while the daemon was stopped are only recorded as missed, never run; then
-   * the scheduler and the issue search start.
-   */
+  /** Starts the scheduler (see `Scheduler.start`) and listens to the PR's failing checks. */
   start(): void {
-    void this.advance(this.clock(), false);
+    this.scheduler.start();
     this.unwatchChecks = this.opts.board.onChecksFailing((cardId, failed) =>
       this.onChecksFailing(cardId, failed),
     );
-    this.started = true;
-    this.arm(false);
-  }
-
-  /**
-   * Each timer runs only while an automation needs it: the minute tick for a cron one, the issue
-   * search for an `issue_label` one. A tick that starts later (the first cron automation was just
-   * turned on) starts from this minute: the time before it was nobody's slot to miss.
-   */
-  private arm(afterStart = true): void {
-    const on = this.started ? this.enabled() : [];
-    const wantTick = on.some((auto) => auto.trigger.type === "cron");
-    const wantPoll = on.some((auto) => auto.trigger.type === "issue_label");
-    if (wantTick && this.tickTimer === null) {
-      if (afterStart) this.markClock(this.clock());
-      this.tickTimer = setInterval(() => void this.tick(this.clock()), this.opts.tickMs ?? MINUTE);
-    } else if (!wantTick && this.tickTimer !== null) {
-      clearInterval(this.tickTimer);
-      this.tickTimer = null;
-    }
-    if (wantPoll && this.pollTimer === null) {
-      this.pollTimer = setInterval(() => void this.pollIssues(), this.opts.pollMs ?? 5 * MINUTE);
-    } else if (!wantPoll && this.pollTimer !== null) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
-    }
   }
 
   /** Resolves when the tick and the search in progress, if any, are done. */
-  async idle(): Promise<void> {
-    await Promise.all([this.ticking, this.searching]);
+  idle(): Promise<void> {
+    return this.scheduler.idle();
   }
 
   stop(): void {
-    this.started = false;
-    this.arm();
+    this.scheduler.stop();
     this.unwatchChecks();
     this.unwatchChecks = () => {};
-  }
-
-  private markClock(now: number): void {
-    this.db
-      .query(
-        "INSERT INTO automation_clock (id, last_tick) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET last_tick = excluded.last_tick",
-      )
-      .run(minuteOf(now));
-  }
-
-  /** The minutes since the last one seen, up to `now`: recent ones fire (when `fire`), old ones are missed. */
-  private async advance(now: number, fire: boolean): Promise<void> {
-    const minute = minuteOf(now);
-    const last = this.db
-      .query<{ last_tick: number }, []>("SELECT last_tick FROM automation_clock WHERE id = 1")
-      .get()?.last_tick;
-    this.db
-      .query(
-        "INSERT INTO automation_clock (id, last_tick) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET last_tick = excluded.last_tick",
-      )
-      .run(minute);
-    const from = scanFrom(last, minute);
-    const crons = this.enabled().filter((auto) => auto.trigger.type === "cron");
-    for (const auto of crons) {
-      const spec = this.spec(auto);
-      const zone = (auto.trigger as { tz: string }).tz;
-      const { due, missed } = planSlots(spec, zone, from, minute, fire, last !== undefined);
-      for (const slot of due) {
-        const event = {
-          type: "cron",
-          projectId: auto.projectId,
-          automationId: auto.id,
-          minute: slot,
-        } as const;
-        await this.fire(event); // NOSONAR: a boot (fire=false) never gets here and must finish without yielding
-      }
-      for (const slot of missed) {
-        this.record(
-          auto,
-          slot,
-          `missed schedule of ${new Date(slot).toISOString()}`,
-          "missed",
-          "the daemon was stopped",
-        );
-      }
-    }
   }
 
   private async run(auto: Automation, event: AutomationEvent): Promise<void> {
