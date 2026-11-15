@@ -6,12 +6,11 @@
  */
 
 import type { Database } from "bun:sqlite";
-import { join } from "node:path";
 import { assistantDir } from "../assistant/domain/paths.ts";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
 import { ulid } from "../kernel/index.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
-import { summarizeInput } from "./domain/bind-input.ts";
+import { autoApproveDir, autoApprovePrompt, ruleDecision } from "./domain/auto-approve-rules.ts";
 import type { Risk } from "./domain/risk.ts";
 
 export interface AutoApproveSettings {
@@ -75,11 +74,6 @@ export interface AutoApproverOptions {
   };
 }
 
-/** The folder the AI's queries run in: excluded from the history, so they never show up. */
-export function autoApproveDir(dataDir: string): string {
-  return join(dataDir, "auto-approve");
-}
-
 /** The history's excluded folders, with the automatic approval's. */
 export function historyExcludes(config: {
   dataDir: string;
@@ -90,50 +84,6 @@ export function historyExcludes(config: {
     autoApproveDir(config.dataDir),
     assistantDir(config.dataDir),
   ];
-}
-
-const POLICY =
-  "Aprove só se for claramente seguro e dentro do pedido; na dúvida, ask. " +
-  'Responda com decision ("allow" ou "ask") e reason.';
-
-/**
- * The never-automatic rules, in order: a suspended session, high risk, the network, and low risk
- * when the project lets it pass without AI. Null when none applies, so the AI is asked.
- */
-function ruleDecision(input: {
-  risk: Risk;
-  suspendedReason: string | null;
-  lowWithoutAi: boolean;
-}): { decision: "allow" | "ask"; reason: string; by: "rule"; model: null } | null {
-  const rule = (decision: "allow" | "ask", reason: string) => ({
-    decision,
-    reason,
-    by: "rule" as const,
-    model: null,
-  });
-  if (input.suspendedReason !== null) {
-    return rule("ask", `aprovação automática suspensa: ${input.suspendedReason}`);
-  }
-  if (input.risk.level === "high") return rule("ask", "risco alto nunca é automático");
-  if (input.risk.network) return rule("ask", "acesso à rede nunca é automático");
-  if (input.risk.level === "low" && input.lowWithoutAi) return rule("allow", "risco baixo, sem IA");
-  return null;
-}
-
-/** What the AI is asked about a request: the tool, its input, the cwd, the risk and the card's ask. */
-function autoApprovePrompt(
-  request: { toolName: string; input: Record<string, unknown>; cwd: string; risk: Risk },
-  description: string | undefined,
-): string {
-  return [
-    "Um agente de código pede permissão para usar uma ferramenta.",
-    `ferramenta: ${request.toolName}`,
-    `entrada: ${JSON.stringify(summarizeInput(request.input))}`,
-    `cwd: ${request.cwd}`,
-    `risco: ${request.risk.level} (${request.risk.reason})`,
-    ...(description ? [`pedido do card: ${description.slice(0, 1000)}`] : []),
-    POLICY,
-  ].join("\n");
 }
 
 interface Row {
@@ -247,7 +197,7 @@ export class AutoApprover {
     const suspended = this.suspended().find((s) => keys.has(s.sessionKey));
     const ruled = ruleDecision({
       risk: request.risk,
-      suspendedReason: suspended ? suspended.reason : null,
+      suspended: suspended ?? null,
       lowWithoutAi: context.settings.lowWithoutAi,
     });
     if (ruled) return ruled;
