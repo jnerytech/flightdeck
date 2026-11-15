@@ -188,7 +188,9 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
   [
     "guard",
     [
-      /^scripts\/lib\/(?:pr\/(?:security-gate|handoff)|guards\/tdd-audit|machine\/bounded-run)\.ts$/,
+      /^scripts\/lib\/(?:guards\/tdd-audit|machine\/bounded-run)\.ts$/,
+      // The whole folder of the PR flow, so the merge and check logic stays under review wherever it lives (#3344).
+      /^scripts\/lib\/pr\//,
       // The whole folder of the hook rules, so a rule moved out of claude-hooks.ts stays under review (#1589).
       /^scripts\/lib\/hooks\//,
       /^scripts\/(?:handoff-check|pr-flow)\.ts$/,
