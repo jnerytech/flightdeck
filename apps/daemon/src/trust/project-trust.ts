@@ -4,7 +4,8 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { isInside, rootNames, samePath } from "../kernel/index.ts";
 import { grantingRecord, mainOfGitFile, repoOfWorktreeArea } from "./domain/trust-resolve.ts";
-import { type TrustRootFs, trustsManyProjects } from "./trust-root.ts";
+import { type TrustRootFs, trustsManyProjects } from "./domain/trust-root.ts";
+import { diskTrustRootFs } from "./trust-root-disk.ts";
 
 export type TrustSource = "person" | "migration";
 
@@ -177,7 +178,11 @@ export class ProjectTrust {
       real.map(async (root) => {
         // A root that cannot be read is not known to be one project: it grants nothing, and the
         // daemon still boots.
-        const many = await trustsManyProjects(root, real, this.opts.rootFs).catch(() => true);
+        const many = await trustsManyProjects(
+          root,
+          real,
+          this.opts.rootFs ?? diskTrustRootFs,
+        ).catch(() => true);
         return many ? null : root;
       }),
     );
