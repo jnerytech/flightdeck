@@ -1,5 +1,5 @@
 import type { BoardColumn, Card, ContractOverrides } from "@flightdeck/protocol";
-import { Columns3, FolderOpen, ListTodo, Lock, Plus } from "lucide-react";
+import { Columns3 } from "lucide-react";
 import {
   type KeyboardEvent,
   memo,
@@ -10,12 +10,9 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { BoardNotice } from "@/features/board/board-notice";
 import { BoardStatus } from "@/features/board/board-status";
-import { BoardSyncControl } from "@/features/board/board-sync";
 import { ColumnSwitcher } from "@/features/board/column-switcher";
-import { ContractDialog } from "@/features/board/contract-dialog";
 import {
   boardFeatures,
   boardOrder,
@@ -32,22 +29,21 @@ import { quietBadge } from "@/features/board/quiet-badge-view";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { BoardFilesPanel } from "@/features/files/ui.ts";
 import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/index.ts";
-import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
+import { WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/ui.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, LoadingState, Page, Toolbar } from "@/shared/layout/index.ts";
+import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { useWidth } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { IssuesPanel } from "../issues/ui.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import { cardKey } from "./board-card-keys.ts";
 import { ColumnLane } from "./board-column.tsx";
+import { BoardDialogs } from "./board-dialogs.tsx";
+import { BoardFilters } from "./board-filters.tsx";
 import { BoardLoadError } from "./board-load-error.tsx";
-import { CardStartDialog } from "./card-start-dialog.tsx";
 import { CardTile } from "./card-tile.tsx";
-import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
 import { bulkSplit } from "./domain/board-bulk.ts";
 import { askAbout, dragNeeds } from "./domain/board-contracts.ts";
@@ -66,15 +62,11 @@ import {
   toggleSelection,
 } from "./domain/board-select.ts";
 import { cardStartBlock } from "./domain/card-start-block.ts";
-import { NewCardDialog } from "./new-card-dialog.tsx";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
 import { type MoveAsk, useSelectionActions } from "./use-selection-actions.tsx";
 import { useStartAsk } from "./use-start-ask.tsx";
-
-/** How long a card just made is waited for before the focus gives up on it (#1546). */
-const MADE_CARD_WAIT_MS = 5000;
 
 const BOARDVIEW_KEYS = [
   "runs",
@@ -454,56 +446,27 @@ export const BoardView = memo(function BoardView(props: {
               )
             }
           >
-            <Toolbar label={t("hub.filters")}>
-              <Input
-                aria-label={t("kanban.filter")}
-                placeholder={t("hub.filterPlaceholder")}
-                className="h-8 w-40 text-xs"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
-              {withDeps && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-pressed={onlyBlocked}
-                  onClick={() => setOnlyBlocked(!onlyBlocked)}
-                >
-                  <Lock aria-hidden="true" />
-                  {t("deps.filter")}
-                </Button>
-              )}
-              {withSync && <BoardSyncControl store={store} hostId={hostId} projectId={projectId} />}
-              {files && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-pressed={filesShown}
-                  onClick={() =>
-                    setFilesChoice({ path: treeBranch?.path ?? "", open: !filesShown })
-                  }
-                >
-                  <FolderOpen aria-hidden="true" />
-                  {t("board.files")}
-                </Button>
-              )}
-              {withIssues && (
-                <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
-                  <ListTodo aria-hidden="true" />
-                  {t("issuesUi.button")}
-                </Button>
-              )}
-              <AddProject
-                store={store}
-                hostId={hostId}
-                variant="outline"
-                onAdded={(added) => props.onOpenProject?.(added.id)}
-              />
-              <Button size="sm" onClick={() => setCreating(true)}>
-                <Plus aria-hidden="true" />
-                {t("kanban.newCard")}
-              </Button>
-            </Toolbar>
+            <BoardFilters
+              t={t}
+              store={store}
+              hostId={hostId}
+              projectId={projectId}
+              filter={filter}
+              onFilter={setFilter}
+              withDeps={withDeps}
+              onlyBlocked={onlyBlocked}
+              onToggleBlocked={() => setOnlyBlocked(!onlyBlocked)}
+              withSync={withSync}
+              withFiles={Boolean(files)}
+              filesShown={filesShown}
+              onToggleFiles={() =>
+                setFilesChoice({ path: treeBranch?.path ?? "", open: !filesShown })
+              }
+              withIssues={withIssues}
+              onOpenIssues={() => setIssuesOpen(true)}
+              onOpenProject={props.onOpenProject}
+              onNewCard={() => setCreating(true)}
+            />
           </SelectionSlot>
           {treeBranch && (
             <WorktreeChip filter={treeBranch} t={t} onClear={() => store.setWorktreeFilter(null)} />
@@ -686,96 +649,40 @@ export const BoardView = memo(function BoardView(props: {
           {files && filesShown && <BoardFilesPanel store={store} hostId={hostId} files={files} />}
         </div>
       </div>
-      {deleting && (
-        <DeleteCardDialog
-          t={t}
-          store={store}
-          hostId={hostId}
-          card={deleting}
-          onClose={() => setDeleting(null)}
-        />
-      )}
-      {ask && (
-        <ContractDialog
-          t={t}
-          column={t(`kanban.columns.${ask.column}` as Key)}
-          lacking={ask.lacking}
-          qualifying={ask.cards.length - ask.lacking.length}
-          onRestoreFocus={(cardId) =>
-            document.querySelector<HTMLElement>(`[data-card="${cardId}"] [data-card-open]`)?.focus()
-          }
-          onCancel={() => {
-            setAsk(null);
-            refocus.current = null;
-          }}
-          onMoveAll={() => {
-            setAsk(null);
-            const [only] = ask.cards;
-            // The person went on anyway: the host is told, and keeps a notice on the card.
-            if (only && ask.cards.length === 1) runMove(only.id, ask.column, ask.targetId, true);
-            else void moveSelected(ask.column, ask.targetId, ask.cards, true);
-          }}
-          onMoveQualifying={() => {
-            setAsk(null);
-            const lacks = new Set(ask.lacking.map((l) => l.card.id));
-            void moveSelected(
-              ask.column,
-              ask.targetId,
-              ask.cards.filter((card) => !lacks.has(card.id)),
-            );
-          }}
-        />
-      )}
-      {selectionActions.dialog}
-      {bulkRun.dialog}
-      {issuesOpen && project && (
-        <IssuesPanel
-          store={store}
-          hostId={hostId}
-          project={project}
-          cards={all}
-          onClose={() => setIssuesOpen(false)}
-          onProject={setProject}
-          onOpenCard={props.onOpenCard}
-        />
-      )}
-      {startAsk.dialog}
-      {starting && (
-        <CardStartDialog
-          store={store}
-          hostId={hostId}
-          card={starting}
-          onClose={() => setStarting(null)}
-          onStarted={() =>
-            store.success(t("kanban.started", { title: starting.title }), {
-              label: t("kanban.openCard"),
-              run: () => props.onOpenCard(starting.id),
-            })
-          }
-        />
-      )}
-      <NewCardDialog
+      <BoardDialogs
         t={t}
         store={store}
         hostId={hostId}
         projectId={projectId}
-        open={creating}
-        column={createIn}
-        cardTemplates={withCardTemplates}
-        onClose={() => {
+        project={project}
+        cards={all}
+        hookDialogs={
+          <>
+            {selectionActions.dialog}
+            {bulkRun.dialog}
+            {startAsk.dialog}
+          </>
+        }
+        deleting={deleting}
+        onDeleteClose={() => setDeleting(null)}
+        ask={ask}
+        onAskClose={() => setAsk(null)}
+        refocus={refocus}
+        runMove={runMove}
+        moveSelected={moveSelected}
+        issuesOpen={issuesOpen}
+        onIssuesClose={() => setIssuesOpen(false)}
+        onProject={setProject}
+        starting={starting}
+        onStartingClose={() => setStarting(null)}
+        creating={creating}
+        createIn={createIn}
+        onCreatingClose={() => {
           setCreating(false);
           setCreateIn("backlog");
         }}
+        cardTemplates={withCardTemplates}
         onOpenCard={props.onOpenCard}
-        onMade={(card) => {
-          // The card is not on the board yet: the focus waits for it (index -1 is never where it is).
-          refocus.current = {
-            cardId: card.id,
-            column: card.column,
-            index: -1,
-            until: Date.now() + MADE_CARD_WAIT_MS,
-          };
-        }}
         onOpenSettings={props.onOpenSettings}
       />
     </Page>
