@@ -9,7 +9,7 @@ import type {
   SessionImage,
   ToolInput,
 } from "@flightdeck/protocol";
-import type { UsageTokens } from "../costs/usage-indexer.ts";
+import type { UsageTokens } from "../kernel/index.ts";
 
 /** One window of the plan quota, as a runtime read it (`resetsAt` in milliseconds). */
 export interface QuotaReading {

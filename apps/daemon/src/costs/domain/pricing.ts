@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { UsageTokens } from "./usage-tokens.ts";
+import type { UsageTokens } from "../../kernel/index.ts";
 
 /** API prices of a model, in US$ per million tokens. */
 const ModelPrice = z.object({

@@ -13,6 +13,7 @@ export { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer
 export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
 export type { CacheTtl } from "./domain/cache-timer.ts";
+export { type Finish, sinceLastLook } from "./domain/finished-list.ts";
 export { groupName, hubRowOrder } from "./domain/hub-groups.ts";
 export { sessionLineText } from "./domain/hub-status.ts";
 export { CONTINUATION } from "./domain/resume-offer.ts";
@@ -41,11 +42,7 @@ export { inputSummary } from "./domain/tool-input.ts";
 export { messageParts } from "./domain/tool-line.ts";
 export { type Turn, turnsOf } from "./domain/turns.ts";
 export { ExternalSessionsSlice } from "./external.ts";
-export {
-  type Finish,
-  FinishedSlice,
-  sinceLastLook,
-} from "./finished.ts";
+export { FinishedSlice } from "./finished.ts";
 export { toolLoader } from "./history-tool.ts";
 export {
   type HubFilter,
