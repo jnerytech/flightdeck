@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sinceLastLook } from "../../src/features/sessions/finished.ts";
+import { sinceLastLook } from "../../src/features/sessions/domain/finished-list.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

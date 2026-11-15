@@ -1,7 +1,7 @@
 /** What the prints seed into the page's storage: the bell's notifications and the Finished list. */
 
 import { requestLink } from "../../../apps/desktop/src/features/permissions/domain/request-link.ts";
-import type { Finish } from "../../../apps/desktop/src/features/sessions/finished.ts";
+import type { Finish } from "../../../apps/desktop/src/features/sessions/domain/finished-list.ts";
 
 /**
  * The notifications of the bell's print: today in UTC (the prints' zone), and one three days ago.
