@@ -5,7 +5,7 @@ import type {
   WatchSettings,
   WatchUpdatedFrame,
 } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { PrFixer } from "./fix.ts";
 import type { Traces } from "./trace.ts";

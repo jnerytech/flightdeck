@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import { closingLine } from "../issues/index.ts";
 import { trimEndOf } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/index.ts";
