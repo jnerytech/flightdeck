@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SnippetPicker } from "@/features/snippets/ui.ts";
@@ -6,6 +6,7 @@ import { IconTip } from "@/shared/feedback/index.ts";
 import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
+import { LazyFileViewer } from "../files/ui.ts";
 import {
   type FindFlags,
   findPatternProblem,
@@ -25,11 +26,6 @@ import {
 } from "./xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
-// CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first path opened.
-const FileViewer = lazy(() =>
-  import("../files/file-viewer.tsx").then((m) => ({ default: m.FileViewer })),
-);
-
 export function TerminalPage(
   props: Readonly<{
     store: AppStore;
@@ -343,7 +339,7 @@ export function TerminalPage(
       {viewing && (
         <div data-slot="terminal-file" className="terminal-file">
           <Suspense fallback={null}>
-            <FileViewer
+            <LazyFileViewer
               store={store}
               hostId={hostId}
               target={`terminal:${terminalId}`}
