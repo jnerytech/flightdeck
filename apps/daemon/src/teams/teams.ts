@@ -4,7 +4,6 @@
  */
 
 import {
-  type EffortLevel,
   inSequence,
   type PermissionMode,
   type SessionTeam,
@@ -15,11 +14,9 @@ import {
 } from "@flightdeck/protocol";
 import { parseJsonOr, ulid } from "../kernel/index.ts";
 import { MANAGED_STATE } from "../messaging/index.ts";
-import { withoutPersonas } from "../personas/index.ts";
 import type { NewTeam, TeamPatch } from "./domain/input.ts";
 import {
   checksChanged,
-  coordinatorInstructions,
   goalChanged,
   INSTRUCTIONS_VERSION,
   PAUSED_BY_QUOTA,
@@ -28,10 +25,7 @@ import {
   RESUMED_BY_QUOTA,
   STOP_QUOTA,
   STOP_USER,
-  type TeamBrief,
   teamClosed,
-  withCoordinatorBrief,
-  workerInstructions,
   workerJoined,
   workerLeft,
   youLeft,
@@ -55,14 +49,8 @@ import {
 import { PerKeyQueue } from "./domain/serial.ts";
 import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./domain/stored.ts";
 import { toInfo, toMember, toStatus } from "./domain/team-view.ts";
-import {
-  label,
-  MAX_WORKERS,
-  NO_SPEC,
-  numberOf,
-  type WorkerSpec,
-  type WorkerStart,
-} from "./domain/worker.ts";
+import { label, MAX_WORKERS, NO_SPEC, numberOf, type WorkerSpec } from "./domain/worker.ts";
+import { Launch } from "./launch.ts";
 import type { TeamsOptions } from "./options.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
@@ -71,15 +59,13 @@ const COORDINATOR_PERSONA = "coordenador";
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
   private readonly unsubscribe: Array<() => void> = [];
-  /** The persona each worker card was started with, for the standard names. */
-  private readonly cardPersonas = new Map<string, string>();
-  /** The team, role and number each worker card was started with (issue #101). */
-  private readonly cardTeams = new Map<string, SessionTeam>();
   /** A team's member changes run one at a time (#2090). */
   private readonly changes = new PerKeyQueue();
+  private readonly launch: Launch;
   private blocked: boolean;
 
   constructor(private readonly opts: TeamsOptions) {
+    this.launch = new Launch(opts);
     this.blocked = opts.quota?.blocked() != null;
     if (opts.quota) this.unsubscribe.push(opts.quota.watch(() => this.onQuota()));
   }
@@ -214,7 +200,7 @@ export class Teams {
    * after a restart.
    */
   teamOfCard(cardId: string): SessionTeam | null {
-    const known = this.cardTeams.get(cardId);
+    const known = this.launch.cardTeam(cardId);
     if (known) return known;
     const rows = this.opts.db.query("SELECT * FROM teams").all() as TeamRow[];
     for (const row of rows) {
@@ -226,40 +212,7 @@ export class Teams {
 
   /** The persona a worker's card was started with; the standard name reads it. */
   personaOfCard(cardId: string): string | null {
-    return this.cardPersonas.get(cardId) ?? null;
-  }
-
-  /** Creates a worker's card with its instructions and starts it (the quota queue still applies). */
-  private async startWorker(
-    team: { name: string; goal: string; checks: string[]; projectId: string },
-    worker: WorkerStart,
-  ): Promise<StoredMember> {
-    const { name, persona, coordinator, model, number, permission, effort, brief: told } = worker;
-    const brief: TeamBrief = { ...team, workers: [] };
-    const card = this.opts.board.createCard(team.projectId, {
-      title: name,
-      description: withCoordinatorBrief(workerInstructions(brief, coordinator), told),
-      // The card's variant is where a card keeps the model, the effort and the mode its session opens in.
-      ...(model || effort || permission
-        ? { variant: { label: "team", model, effort, persona, permissionMode: permission } }
-        : {}),
-    });
-    // Before the card starts: its session is named with this persona from the first moment.
-    if (persona) this.cardPersonas.set(card.id, persona);
-    this.cardTeams.set(card.id, { name: label(team.name), role: "worker", number });
-    await (this.opts.startWorker
-      ? this.opts.startWorker(card.id, persona, model)
-      : this.opts.board.startCard(card.id));
-    return {
-      name,
-      role: "worker",
-      persona,
-      model,
-      permission,
-      cardId: card.id,
-      sessionId: null,
-      number,
-    };
+    return this.launch.cardPersona(cardId);
   }
 
   async create(input: NewTeam): Promise<TeamInfo> {
@@ -276,8 +229,6 @@ export class Teams {
     await inSequence(input.workerPersonas ?? [], async (p) => {
       workerPersonas.push(await this.checkPersona(p));
     });
-    const coordinatorModel = input.coordinatorModel ?? null;
-    const coordinatorEffort = input.coordinatorEffort ?? null;
     const coordinatorPermission = input.coordinatorPermission ?? null;
     // Only the modes of workers the team has: a longer list is not used, so it is not refused either.
     this.checkPermissions([
@@ -287,80 +238,11 @@ export class Teams {
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
     const id = ulid((this.opts.clock ?? Date.now)());
-    const workerNames = Array.from(
-      { length: input.workers },
-      (_, i) => `${label(name)} · executora ${i + 1}`,
+    const { sessionId, members } = await this.launch.start(
+      input,
+      { name, checks, projectId: project.id, projectPath: project.path },
+      { coordinator: coordinatorPersona, workers: workerPersonas },
     );
-    const team = { name, goal: input.goal, checks, projectId: project.id };
-
-    const prompt = coordinatorInstructions({
-      ...team,
-      workers: workerNames.map((n, i) => ({
-        name: n,
-        persona: workerPersonas[i] ?? null,
-        cardId: null,
-      })),
-    });
-    const startCoordinator =
-      this.opts.startCoordinator ??
-      (async (start: {
-        cwd: string;
-        prompt: string;
-        name: string;
-        model: string | null;
-        effort: EffortLevel | null;
-        permissionMode: PermissionMode | null;
-      }) =>
-        this.opts.manager.create(
-          {
-            cwd: start.cwd,
-            prompt: start.prompt,
-            name: start.name,
-            ...(start.model ? { model: start.model } : {}),
-            ...(start.effort ? { effort: start.effort } : {}),
-            ...(start.permissionMode ? { permissionMode: start.permissionMode } : {}),
-          },
-          { prepared: await (this.opts.preparePersonas ?? withoutPersonas)(undefined, start.cwd) },
-        ));
-    const coordinatorName = `${label(name)} · coordenadora`;
-    // The session is named as it starts, and its persona is set on that name right below.
-    await this.opts.warm?.(project.path);
-    const { sessionId } = await startCoordinator({
-      cwd: project.path,
-      prompt,
-      name: coordinatorName,
-      persona: coordinatorPersona,
-      model: coordinatorModel,
-      effort: coordinatorEffort,
-      permissionMode: coordinatorPermission,
-    });
-    if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
-    this.opts.names?.setTeam?.(sessionId, { name: label(name), role: "coordinator", number: null });
-    const address = `${this.opts.host}/${sessionId}`;
-    const members: StoredMember[] = [
-      {
-        name: coordinatorName,
-        role: "coordinator",
-        persona: coordinatorPersona,
-        model: coordinatorModel,
-        permission: coordinatorPermission,
-        cardId: null,
-        sessionId,
-      },
-    ];
-    await inSequence(workerNames.entries(), async ([i, workerName]) => {
-      members.push(
-        await this.startWorker(team, {
-          name: workerName,
-          persona: workerPersonas[i] ?? null,
-          coordinator: address,
-          model: input.workerModels?.[i] ?? null,
-          number: i + 1,
-          permission: input.workerPermissions?.[i] ?? null,
-          effort: input.workerEfforts?.[i] ?? null,
-        }),
-      );
-    });
     this.opts.db
       .query(
         `INSERT INTO teams (id, name, project_id, goal, coordinator, members, checks, state,
@@ -468,7 +350,7 @@ export class Teams {
     this.opts.db.query("DELETE FROM teams WHERE id = ?").run(id);
     for (const member of info.members) {
       if (member.sessionId) this.opts.names?.clearTeam?.(member.sessionId);
-      if (member.cardId) this.cardTeams.delete(member.cardId);
+      if (member.cardId) this.launch.forgetCardTeam(member.cardId);
     }
     for (const listener of this.listeners)
       listener({ type: "teams.updated", team: info, reason: null });
@@ -506,10 +388,7 @@ export class Teams {
     this.opts.applyPersona?.(target.sessionId, persona);
     // A worker's name may still be waiting for its folder's project key: it is born with the
     // card's persona, which is kept up to date here.
-    if (target.cardId) {
-      if (persona) this.cardPersonas.set(target.cardId, persona);
-      else this.cardPersonas.delete(target.cardId);
-    }
+    if (target.cardId) this.launch.setCardPersona(target.cardId, persona);
     if (this.opts.names?.get(target.sessionId)) {
       this.opts.names.setPersona(target.sessionId, persona);
     }
@@ -536,7 +415,7 @@ export class Teams {
       const number = Math.max(0, ...taken) + 1;
       taken.push(number);
       const added =
-        await /* NOSONAR: workers start one at a time: each takes its own worktree and a free slot */ this.startWorker(
+        await /* NOSONAR: workers start one at a time: each takes its own worktree and a free slot */ this.launch.startWorker(
           team,
           {
             ...spec,

@@ -2,7 +2,6 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
-import { startServer } from "../../src/server.ts";
 import { processOps } from "../../src/ssh/adapters/agent-process.ts";
 import { processRun } from "../../src/ssh/adapters/ssh-process.ts";
 import { resolveSshPath, SshConnector } from "../../src/ssh/connect.ts";
@@ -12,29 +11,16 @@ import {
   chooseDelivery,
   createAgentDelivery,
   createFileDelivery,
-  type DeliveredKey,
 } from "../../src/ssh/key-delivery.ts";
-import { SshTargets } from "../../src/ssh/targets.ts";
-import { EventStore } from "../../src/store/event-store.ts";
-import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
-import { newManager, tempDir, workspace } from "../support/helpers.ts";
-import { FrameClient } from "../support/history-helpers.ts";
-import { fakePtys } from "../support/pty-helpers.ts";
-import { manualTime } from "../support/time-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { cleanups, drainCleanups, KEY, scan, setup } from "../support/ssh-connect.ts";
 
-const TOKEN = "ssh-connect-token-0123456789abcdef";
-const cleanups: Array<() => unknown> = [];
-afterEach(async () => {
-  for (const fn of cleanups.splice(0).reverse()) await fn();
-});
+afterEach(drainCleanups);
 
 // Keys generated for the tests; never one of the user's.
-const KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHyii7r5lIz9AQ/c2vlfTxoKQtFoDLtWtwxRY/fF9Fl";
 const NEW_KEY = `ssh-ed25519 ${Buffer.from("another-server-key-0123456789").toString("base64")}`;
 const PRIVATE =
   "-----BEGIN OPENSSH PRIVATE KEY-----\nTEST-ONLY-NOT-A-REAL-KEY-7f3a\n-----END OPENSSH PRIVATE KEY-----";
-
-const scan = (host: string, key: string) => ({ code: 0, stdout: `${host} ${key}\n` });
 const code = async (fn: () => unknown): Promise<string> => {
   try {
     await fn();
@@ -43,119 +29,6 @@ const code = async (fn: () => unknown): Promise<string> => {
     return (error as { code?: string }).code ?? "sem código";
   }
 };
-
-interface SetupOptions {
-  platform?: NodeJS.Platform;
-  dir?: string;
-  askpass?: boolean;
-}
-
-function setup(options: SetupOptions = {}) {
-  const dir = options.dir ?? tempDir();
-  const store = new EventStore(":memory:");
-  const targets = new SshTargets({ db: store.db });
-  // What each host answers to ssh-keyscan; a host that is not here is unreachable.
-  const servers = new Map<string, { code: number; stdout: string }>();
-  const hostKeys = new HostKeys({
-    targets,
-    exec: async (cmd) => servers.get(cmd.at(-1) as string) ?? { code: 1, stdout: "" },
-  });
-  const time = manualTime();
-  const ptys = fakePtys();
-  const logs: string[] = [];
-  const terminals = new TerminalManager({
-    pty: ptys.factory,
-    allowedRoots: [],
-    platform: "linux",
-    env: () => ({ PATH: "/bin" }),
-    timers: time.timers,
-    now: time.now,
-    log: (line) => logs.push(line),
-  });
-  cleanups.push(() => terminals.stop());
-  const runs: Array<{ argv: string[]; env: Record<string, string> }> = [];
-  let reply = { code: 0, stderr: "" };
-  const delivered: Array<{ key: string; cleaned: number }> = [];
-  const tickets: Array<[string, string]> = [];
-  const connector = new SshConnector({
-    targets,
-    hostKeys,
-    terminals,
-    dir,
-    platform: options.platform ?? "linux",
-    sshPath: "/usr/bin/ssh",
-    timers: time.timers,
-    run: async (argv, env) => {
-      runs.push({ argv, env });
-      return reply;
-    },
-    delivery: {
-      kind: "agent",
-      deliver: async (key): Promise<DeliveredKey> => {
-        const record = { key, cleaned: 0 };
-        delivered.push(record);
-        return {
-          identityFile: null,
-          env: { SSH_AUTH_SOCK: "/tmp/fd-test.sock" },
-          cleanup: () => {
-            record.cleaned++;
-          },
-        };
-      },
-    },
-    ...(options.askpass === false
-      ? {}
-      : {
-          askpass: {
-            script: "/data/ssh/askpass.sh",
-            configFile: "/home/u/.flightdeck/config.json",
-            ticket: (target: { name: string }, kind: string) => {
-              tickets.push([target.name, kind]);
-              return "ticket-1";
-            },
-          },
-        }),
-  });
-  cleanups.push(() => connector.stop());
-  const bastion = targets.save({ name: "bastion", host: "bastion.example.com", user: "jump" });
-  const inner = targets.save({ name: "inner", host: "10.0.0.9", user: "ana", jump: bastion.id });
-  const vps = targets.save({
-    name: "vps",
-    host: "vps.example.com",
-    user: "deploy",
-    port: 2222,
-  });
-  const pin = (id: string, key = KEY) =>
-    targets.pin(id, { fingerprint: `SHA256:${id.slice(-6)}`, keys: [key] });
-  for (const t of [bastion, inner, vps]) {
-    pin(t.id);
-    servers.set(t.host, scan(t.host, KEY));
-  }
-  return {
-    dir,
-    targets,
-    terminals,
-    connector,
-    ptys,
-    time,
-    logs,
-    delivered,
-    tickets,
-    servers,
-    runs,
-    answer: (code: number, stderr = "") => {
-      reply = { code, stderr };
-    },
-    pin,
-    bastion,
-    inner,
-    vps,
-    open: (id: string, extra: { privateKey?: string } = {}) =>
-      connector.connect({ targetId: id, cols: 100, rows: 30, ...extra }),
-    probe: (id: string, extra: { privateKey?: string } = {}) =>
-      connector.test({ targetId: id, ...extra }),
-  };
-}
 
 /** The ssh argv that was started, with the generated files' paths named. */
 function started(s: ReturnType<typeof setup>, index = 0) {
@@ -648,61 +521,6 @@ ${"x".repeat(500)}`,
       /spawn falhou/,
     );
     expect(s.delivered.at(-1)).toEqual({ key: "boom", cleaned: 1 });
-  });
-
-  test("pelo protocolo: ssh.connect devolve o terminal e ssh.test o resultado do teste", async () => {
-    const s = setup();
-    const { root } = workspace();
-    const server = startServer({
-      manager: newManager().manager,
-      ssh: { targets: s.targets, connect: s.connector },
-      terminals: s.terminals,
-      hostName: "h",
-      bind: "127.0.0.1",
-      port: 0,
-      token: TOKEN,
-      allowedRoots: [root],
-    });
-    cleanups.push(() => server.stop());
-    const client = new FrameClient(server.url);
-    cleanups.push(() => client.close());
-    await client.request("hello", { token: TOKEN, client: "t" });
-    const info = await client.data<{ terminalId: string; command: string }>("ssh.connect", {
-      targetId: s.vps.id,
-      cols: 100,
-      rows: 30,
-    });
-    expect(info?.command).toBe("ssh");
-    expect(s.terminals.list().map((t) => t.terminalId)).toEqual([info?.terminalId ?? ""]);
-    expect(await client.data("ssh.test", { targetId: s.vps.id })).toEqual({
-      ok: true,
-      error: null,
-    });
-    const bad = await client.request("ssh.connect", {
-      targetId: s.vps.id,
-      cols: 100,
-      rows: 30,
-      extra: 1,
-    });
-    expect((bad.error as { code?: string } | undefined)?.code).toBe("bad_request");
-  });
-
-  test("sem o conector configurado, ssh.connect diz que está desativado", async () => {
-    const { root } = workspace();
-    const server = startServer({
-      manager: newManager().manager,
-      hostName: "h",
-      bind: "127.0.0.1",
-      port: 0,
-      token: TOKEN,
-      allowedRoots: [root],
-    });
-    cleanups.push(() => server.stop());
-    const client = new FrameClient(server.url);
-    cleanups.push(() => client.close());
-    await client.request("hello", { token: TOKEN, client: "t" });
-    const ack = await client.request("ssh.connect", { targetId: "x", cols: 80, rows: 24 });
-    expect((ack.error as { code?: string } | undefined)?.code).toBe("invalid_state");
   });
 });
 

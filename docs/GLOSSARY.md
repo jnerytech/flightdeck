@@ -162,6 +162,7 @@ test's baseline, with the issue that renames them.
 | `account` | account | The Claude account the host's `claude` is signed in to, shown and never asked for |
 | `actions` | action | Declared commands with places for vault secrets, their trust and their runs |
 | `activity` | activity | What happened on the host since a time, read from what the daemon already keeps |
+| `agent-setup` | agent setup | The protocol's schemas of the agent-setup commands: knowledge, task templates, plugins and the harness (the rest stay in `agent-setup.ts`) |
 | `agentcfg` | agent | A project's Claude Code configuration: MCP servers, CLAUDE.md, agents and skills |
 | `appupdate` | app update | The app's own signed update: the check, the download in the background, the install, and the one on quit |
 | `assistant` | assistant | The host's assistant: checks a request, writes a commit message or a PR text |
