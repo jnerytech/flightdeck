@@ -1,41 +1,25 @@
-import type { CostsFilter, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
+import type { CostsFilter, CostsSummary } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ALL_CLIENTS, costByClient } from "@/features/clients/index.ts";
 import { RoiPeople, RoiSettingsPanel, RoiTable } from "@/features/roi/ui.ts";
-import { ScopeMenu } from "@/features/shell/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import {
-  EmptyState,
-  LoadingState,
-  NativeSelect,
-  Page,
-  Panel,
-  Toolbar,
-} from "@/shared/layout/index.ts";
+import { EmptyState, LoadingState, Page, Panel } from "@/shared/layout/index.ts";
 import { basename, uniqueKeys } from "@/shared/lib/index.ts";
-import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
 import { exportCosts } from "./costs-export.ts";
+import { CostsFilters } from "./costs-filters.tsx";
 import { Breakdown, CostsNotices } from "./costs-parts.tsx";
 import { DayChart } from "./day-chart.tsx";
-import {
-  daysBetween,
-  PERIODS,
-  type Period,
-  periodRange,
-  projectLabel,
-  usd,
-} from "./domain/costs.ts";
+import { daysBetween, type Period, periodRange, projectLabel, usd } from "./domain/costs.ts";
 import {
   costsHosts,
   hostsOffering,
@@ -48,8 +32,6 @@ import { awayKey } from "./domain/data-scope.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
 import { useCostsLoad, useCostsRoute, useCostsStatus } from "./use-costs-page.ts";
-
-const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
 
 export type TopSession = CostsSummary["topSessions"][number];
 
@@ -179,75 +161,20 @@ export const CostsPage = memo(function CostsPage(props: {
         </>
       }
       toolbar={
-        <Toolbar label={t("costsUi.filters")}>
-          {(state.hosts.length > 1 || projects.length > 0) && (
-            <ScopeMenu
-              store={store}
-              hosts={state.hosts}
-              projects={projects}
-              scope={dataScope}
-              onPick={endVisit}
-            />
-          )}
-          {PERIODS.map((p) => (
-            <Button
-              key={p}
-              variant="outline"
-              size="sm"
-              aria-pressed={period === p}
-              className="aria-pressed:bg-accent"
-              onClick={() => setPeriod(p)}
-            >
-              {t(`periods.${p}` as Key)}
-            </Button>
-          ))}
-          {period === "range" && (
-            <>
-              <Input
-                type="date"
-                aria-label={t("costsUi.from")}
-                className="h-8 w-36 text-xs"
-                value={range.from}
-                onChange={(e) => setRange({ ...range, from: e.target.value })}
-              />
-              <Input
-                type="date"
-                aria-label={t("costsUi.to")}
-                className="h-8 w-36 text-xs"
-                value={range.to}
-                onChange={(e) => setRange({ ...range, to: e.target.value })}
-              />
-            </>
-          )}
-          <NativeSelect
-            inline
-            compact
-            aria-label={t("costsUi.model")}
-            value={filters.model ?? ""}
-            onChange={(e) => setFilter("model", e.target.value)}
-          >
-            <option value="">{t("costsUi.allModels")}</option>
-            {(all?.byModel ?? []).map((m) => (
-              <option key={m.model} value={m.model}>
-                {m.model}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            inline
-            compact
-            aria-label={t("costsUi.origin")}
-            value={filters.origin ?? ""}
-            onChange={(e) => setFilter("origin", e.target.value)}
-          >
-            <option value="">{t("costsUi.allOrigins")}</option>
-            {ORIGINS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </NativeSelect>
-        </Toolbar>
+        <CostsFilters
+          store={store}
+          hosts={state.hosts}
+          projects={projects}
+          scope={dataScope}
+          onPickScope={endVisit}
+          period={period}
+          onPeriod={setPeriod}
+          range={range}
+          onRange={setRange}
+          filters={filters}
+          onFilter={setFilter}
+          models={(all?.byModel ?? []).map((m) => m.model)}
+        />
       }
     >
       <div className="flex flex-col gap-5">
