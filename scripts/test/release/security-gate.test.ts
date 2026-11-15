@@ -340,6 +340,23 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("the files that decide which persona of a project is trusted or write its persona files are risky by path, so a change to them needs a review (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/personas/store.ts",
+        "apps/daemon/src/personas/adapters/persona-rows.ts",
+        "apps/daemon/src/personas/adapters/persona-files.ts",
+        "apps/daemon/src/personas/open-session.ts",
+        "apps/daemon/src/personas/adapters/deeper/persona-rows.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/personas/adapters/persona-files.ts", "persona trust"],
+      ["apps/daemon/src/personas/adapters/persona-rows.ts", "persona trust"],
+      ["apps/daemon/src/personas/store.ts", "persona trust"],
+    ]);
+  });
+
   test("the domain files that decide a permission, a trust or a secret's use are risky by path, wherever they live (#1589)", () => {
     const added = new Map(
       [

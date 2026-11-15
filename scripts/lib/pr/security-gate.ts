@@ -240,6 +240,12 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
       /^apps\/daemon\/src\/worktrees\/domain\/cleanup-rules\.ts$/,
     ],
   ],
+  // The persona store and its adapters: they keep which content of a project's persona files is
+  // trusted to run (`persona_trust`) and write and remove those files under the project's folder (#1589).
+  [
+    "persona trust",
+    [/^apps\/daemon\/src\/personas\/(?:store\.ts|adapters\/persona-(?:rows|files)\.ts)$/],
+  ],
   ["workflow", [/^\.github\/workflows\//]],
   // The gate and the checks it stands with: a change that weakens one needs a review too.
   [
