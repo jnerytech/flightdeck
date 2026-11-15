@@ -1,9 +1,9 @@
 /**
  * Issue #1568: which PR provider a project's `origin` remote points to. Pure over the remote address:
- * the git call that reads it stays in `board/pr-provider.ts`.
+ * the git call that reads it stays in `pr-hosts/pr-provider.ts`.
  */
 import { stripRemote } from "../../central/index.ts";
-import { azureCoords } from "../../issues/index.ts";
+import { azureCoords } from "./azure-remote.ts";
 
 export type DetectedProvider = "github" | "azure-devops";
 

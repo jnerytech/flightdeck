@@ -1,10 +1,10 @@
 import type { Database } from "bun:sqlite";
 import type { PrProviderKind } from "@flightdeck/protocol";
 import { z } from "zod";
-import { prProvider } from "../board/pr.ts";
 import { TRUSTED_ASSOCIATIONS } from "../github/index.ts";
 import { parseJsonOr } from "../kernel/index.ts";
 import type { PrCheck, PrComment, PrProvider } from "../pr/index.ts";
+import { prProvider } from "../pr-hosts/index.ts";
 import type { WatchBoard } from "./ports.ts";
 import { readWatchSettings, type WatchSettings } from "./settings.ts";
 

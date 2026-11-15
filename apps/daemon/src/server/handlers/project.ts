@@ -3,9 +3,9 @@
  * setup (harness) and its templates, and finding or cloning repositories. The board itself
  * (`board.*`) and the allowed roots (`roots.add`) are separate.
  */
-import { detectProvider } from "../../board/pr-provider.ts";
 import type { TemplateMarkdown } from "../../harness/index.ts";
 import { FlightdeckError, featureOff, resolveAllowedCwd, rootNames } from "../../kernel/index.ts";
+import { detectProvider } from "../../pr-hosts/index.ts";
 import { cloneRepo, scanRepos, spawnGit } from "../../projects/index.ts";
 import { diskTrustRootFs, trustsManyProjects } from "../../trust/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";

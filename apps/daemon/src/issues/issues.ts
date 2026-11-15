@@ -8,8 +8,8 @@ import { git } from "../git/index.ts";
 import { GithubIssues, githubCoords } from "../github/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
+import { azureCoords } from "../pr-hosts/index.ts";
 import { parseIssueRef } from "./domain/issue-ref.ts";
-import { azureCoords } from "./domain/remote.ts";
 import { AzureIssues, type IssueProvider } from "./providers.ts";
 
 export type { Issue };

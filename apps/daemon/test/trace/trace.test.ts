@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli } from "../../src/board/pr.ts";
+import { AzureDevOpsCli } from "../../src/pr-hosts/pr.ts";
 import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { Traces } from "../../src/watch/trace.ts";
 import { git } from "../support/board-helpers.ts";
