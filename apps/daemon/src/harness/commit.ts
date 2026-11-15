@@ -7,8 +7,7 @@
 import { createHash } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import type { HarnessCommitted, SecretScanner } from "@flightdeck/protocol";
-import { commitBase, commitOnNewBranch, safeGit } from "../board/branch-commit.ts";
-import { readInside } from "../board/index.ts";
+import { commitBase, commitOnNewBranch, readInside, safeGit } from "../board/index.ts";
 import { FlightdeckError, HEAD, refArg, samePath } from "../kernel/index.ts";
 import { harnessRefusal, refuse, setupFile, stale } from "./domain/commit-rules.ts";
 import { SETTINGS } from "./domain/settings-proposal.ts";
