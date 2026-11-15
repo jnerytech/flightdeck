@@ -66,7 +66,7 @@ import {
 import type { TeamsOptions } from "./options.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
-export const COORDINATOR_PERSONA = "coordenador";
+const COORDINATOR_PERSONA = "coordenador";
 
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
