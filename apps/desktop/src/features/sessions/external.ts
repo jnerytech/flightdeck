@@ -2,17 +2,26 @@ import type {
   ExternalPermissionFrame,
   ExternalSession,
   ExternalUpdated,
+  HistorySessionSummary,
+  SessionMeta,
+  SessionSummary,
 } from "@flightdeck/protocol";
 import { requestLink } from "@/features/permissions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
-import type { AppState } from "../../lib/app-store.ts";
 import type { InboxSlice } from "../inbox/index.ts";
 import { externalRequestNotification, externalWaitNotification } from "../inbox/index.ts";
 import { sessionKey } from "./domain/session-key.ts";
 
-type ExternalState = Pick<AppState, "hosts" | "externals" | "meta" | "externalRequests" | "hub">;
-type ExternalPatch = Partial<Pick<AppState, "externals" | "meta" | "externalRequests">>;
+/** The parts of the app state the external sessions read. */
+interface ExternalState {
+  hosts: readonly { id: string; name: string }[];
+  externals: Record<string, ExternalSession>;
+  meta: Record<string, SessionMeta>;
+  externalRequests: Record<string, ExternalPermissionFrame>;
+  hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
+}
+type ExternalPatch = Partial<Pick<ExternalState, "externals" | "meta" | "externalRequests">>;
 
 /** What the external sessions read and ask through the app's store. */
 export interface ExternalSessionsCore {
