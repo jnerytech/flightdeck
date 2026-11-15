@@ -10,5 +10,4 @@ export type { Board } from "./board.ts";
 export { runCardCli } from "./card-cli.ts";
 export { createInside, readInside, type Walk, walkInside } from "./create-inside.ts";
 export { manageCard } from "./domain/manage.ts";
-export { prProvider } from "./pr.ts";
 export { readSpecText } from "./spec.ts";

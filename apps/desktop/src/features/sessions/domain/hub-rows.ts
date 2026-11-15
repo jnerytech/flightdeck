@@ -99,10 +99,10 @@ interface LiveSession {
 }
 
 /**
- * The fields of the app's state the rows read (`HubRowState`, in hub.ts, picks the same ones from
- * `AppState`), so this file does not import the store and stays out of its import cycle.
+ * The fields of the app's state the rows read, declared here (the app's state fits it) so this
+ * file and hub.ts do not import the store and stay out of its import cycle.
  */
-interface RowSource {
+export interface HubRowState {
   hosts: ReadonlyArray<{ id: string; name: string; sessions: ReadonlyArray<LiveSession> }>;
   hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
   meta: Record<string, SessionMeta>;
@@ -117,7 +117,7 @@ interface RowSource {
  * (from hooks) and the history, each claudeSessionId once (managed, then external, then history).
  */
 /** `t`: the dictionaries, so a team session is named by its persona (#101); without, as before. */
-export function hubRows(state: RowSource, t?: T): HubRow[] {
+export function hubRows(state: HubRowState, t?: T): HubRow[] {
   return state.hosts.flatMap((host) => {
     const data = state.hub[host.id] ?? { managed: [], history: [] };
     const meta = (id: string | null) =>

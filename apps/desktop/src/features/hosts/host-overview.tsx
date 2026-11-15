@@ -22,7 +22,7 @@ import { hostProjectCards, hostSessionRows } from "./domain/host-overview-model.
 export function HostOverview(
   props: Readonly<{
     store: AppStore;
-    state: Pick<AppState, "projects" | "cards"> & HubRowState;
+    state: Pick<AppState, "projects" | "cards" | "hosts"> & Omit<HubRowState, "hosts">;
     host: { id: string; name: string };
     onOpenSession(row: HubRow): void;
     onOpenProject(card: ProjectCard): void;

@@ -9,7 +9,7 @@ import { buildProjectCards, type ProjectCard } from "./domain/project-cards.ts";
 /** One card per project of every online host, with the week's cost each host reports (issue #9). */
 export function useProjectCards(
   store: AppStore,
-  state: Pick<AppState, "projects" | "cards"> & HubRowState,
+  state: Pick<AppState, "projects" | "cards" | "hosts"> & Omit<HubRowState, "hosts">,
 ): ProjectCard[] {
   const [costs, setCosts] = useState<Record<string, CostsSummary | undefined>>({});
   // The projects and their cards come from the palette's load; the week's cost from each host.

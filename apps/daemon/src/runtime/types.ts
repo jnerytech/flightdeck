@@ -2,7 +2,6 @@ import type {
   EffortLevel,
   McpLiveStatus,
   PermissionMode,
-  PermissionUpdate,
   PersonaAgent,
   PersonaFields,
   SessionEvent,
@@ -10,6 +9,11 @@ import type {
   ToolInput,
 } from "@flightdeck/protocol";
 import type { UsageTokens } from "../kernel/index.ts";
+import type {
+  PermissionDecision,
+  PermissionJudgeRequest,
+  PermissionJudgeVerdict,
+} from "../permissions/index.ts";
 
 /** One window of the plan quota, as a runtime read it (`resetsAt` in milliseconds). */
 export interface QuotaReading {
@@ -31,10 +35,6 @@ export type RuntimeEvent =
       }
     >
   | { type: "quota"; windows: QuotaReading[] };
-
-export type PermissionDecision =
-  | { behavior: "allow"; updatedInput?: ToolInput; updatedPermissions?: PermissionUpdate[] }
-  | { behavior: "deny"; message: string };
 
 export type CanUseToolFn = (
   toolName: string,
@@ -110,21 +110,9 @@ export interface ForkOptions {
   dir?: string;
 }
 
-/** Phase 13: a short isolated query that judges one permission request. */
-export interface JudgeOptions {
-  model: string;
-  prompt: string;
-  /** A folder of its own, excluded from the history. */
-  cwd: string;
-  signal?: AbortSignal;
-}
-
-export interface JudgeResult {
-  decision: "allow" | "ask" | "deny";
-  reason: string;
-  /** What the query used, for the costs; absent when the runtime does not know. */
-  tokens?: UsageTokens;
-}
+/** Phase 13: the permission domain declares the judge query; the engines answer it. */
+export type JudgeOptions = PermissionJudgeRequest;
+export type JudgeResult = PermissionJudgeVerdict;
 
 /** Phase 40: one short isolated call of the AI assistant: a system prompt, a text, an answer. */
 export interface CompleteOptions {

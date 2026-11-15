@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
 import { AsyncQueue } from "../../src/kernel/async-queue.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import type { PermissionDecision } from "../../src/permissions/index.ts";
 import { OpenCodeRuntime } from "../../src/runtime/opencode-runtime.ts";
 import type {
   AgentRun,
   CanUseToolFn,
-  PermissionDecision,
   RuntimeEvent,
   StartOptions,
 } from "../../src/runtime/types.ts";

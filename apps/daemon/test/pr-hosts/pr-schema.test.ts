@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli } from "../../src/board/pr.ts";
 import { GithubCli } from "../../src/github/index.ts";
+import { AzureDevOpsCli } from "../../src/pr-hosts/pr.ts";
 import { tempDir } from "../support/helpers.ts";
 
 // Issue #1609: what a CLI prints is checked against a schema; a reply that does not fit fails the

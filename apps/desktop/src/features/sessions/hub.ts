@@ -1,18 +1,10 @@
 import { z } from "zod";
 import { readStored } from "@/shared/lib/index.ts";
-import type { AppState } from "../../lib/app-store.ts";
 import type { HubFilter, HubGroup, HubOrigin, HubRow, HubState } from "./domain/hub-row.ts";
 
 export { isOver } from "./domain/hub-row.ts";
-export { externalState, hubRows } from "./domain/hub-rows.ts";
+export { externalState, type HubRowState, hubRows } from "./domain/hub-rows.ts";
 export type { HubFilter, HubGroup, HubRow, HubState };
-
-/** The parts of the state the rows are made of. */
-export type HubRowState = Pick<
-  AppState,
-  "hosts" | "hub" | "meta" | "externals" | "names" | "background"
-> &
-  Partial<Pick<AppState, "personas">>;
 
 /** Where the hub's filters are kept (not the typed text: a stale one would hide rows). */
 export const HUB_FILTER_KEY = "flightdeck.hubFilter";
