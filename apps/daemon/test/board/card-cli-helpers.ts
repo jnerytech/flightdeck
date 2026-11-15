@@ -4,7 +4,7 @@ import type { Card } from "@flightdeck/protocol";
 export const TOKEN = "card-cli-token-0123456789abcdef";
 
 /** What the daemon says for a command: data, or `{ error }` for a refusal. */
-export type Answer = unknown | { error: { code: string; message: string } };
+type Answer = unknown | { error: { code: string; message: string } };
 export type Handlers = Record<
   string,
   (payload: Record<string, unknown>) => Answer | Promise<Answer>

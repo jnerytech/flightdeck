@@ -35,7 +35,7 @@ export interface FakeRule {
 }
 
 /** What a fake call gives back: the shape of runCommand's result. */
-export interface FakeAnswer {
+interface FakeAnswer {
   code: number;
   stdout: string;
   stderr: string;

@@ -5,7 +5,7 @@
  */
 import { whichOnPath } from "../../src/kernel/which.ts";
 
-export function claudeHookShell(command: string, platform = process.platform): string[] {
+function claudeHookShell(command: string, platform = process.platform): string[] {
   if (platform !== "win32") return ["sh", "-c", command];
   const bash = process.env.CLAUDE_CODE_GIT_BASH_PATH ?? whichOnPath("bash") ?? "bash";
   return [bash, "-c", command];

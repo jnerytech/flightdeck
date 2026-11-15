@@ -11,7 +11,7 @@
 export const HEAVY_TESTS = 20;
 
 /** The forms a worker session runs instead of a full coverage run (#674). */
-export const HEAVY_ALLOWED =
+const HEAVY_ALLOWED =
   "`bun run test:related -- --fast --tier unit,component`; each touched test with `bun --config=bunfig.area.toml test <file>`; or `bun run coverage:funcs <file> --tests <a few tests>`";
 
 /** Whether an override's value is a reason, not a bare switch such as 1 or true (#674). */

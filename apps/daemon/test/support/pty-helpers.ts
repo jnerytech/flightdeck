@@ -4,7 +4,7 @@ import type { TerminalFrame, TerminalSink } from "../../src/terminal/terminal-ma
 const encoder = new TextEncoder();
 
 /** What the test sees of one fake PTY, and the hands to drive it. */
-export interface FakePty {
+interface FakePty {
   argv: string[];
   cwd: string;
   env: Record<string, string>;

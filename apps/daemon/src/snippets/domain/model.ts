@@ -12,11 +12,9 @@ import { FlightdeckError } from "../../kernel/index.ts";
 export {
   fieldsOf,
   hasControl,
-  placeholders,
   SecretScanner,
   type SnippetContext,
   type SnippetDef,
-  SPECIAL_VARS,
 } from "@flightdeck/protocol";
 
 /** The model's refusals as protocol errors, with their code (`bad_request`, `snippet_secret`). */

@@ -112,7 +112,7 @@ async function pastLimit(top: string, names: string, max: number): Promise<boole
  * resolution of a conflict wrote (`++`) counts. Only real file headers are skipped, not an added
  * line that happens to start with `++`.
  */
-export function addedText(diff: string): string {
+function addedText(diff: string): string {
   const added: string[] = [];
   let columns = 0;
   for (const line of diff.split("\n")) {
