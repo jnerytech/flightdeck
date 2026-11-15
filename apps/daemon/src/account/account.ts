@@ -1,7 +1,8 @@
-import type { AccountState, AccountStatus } from "@flightdeck/protocol";
+import type { AccountState } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { Quota, Timers } from "../quota/index.ts";
-import type { AccountInfoReading, AuthStatus, UsageReading } from "./domain/readings.ts";
+import { EMPTY, LOGIN_COMMAND, statusOfAuth, statusOfInfo } from "./domain/account-status.ts";
+import type { AccountInfoReading, UsageReading } from "./domain/readings.ts";
 import type { AccountReaders } from "./readers.ts";
 
 export interface AccountOptions {
@@ -12,8 +13,6 @@ export interface AccountOptions {
   timers?: Timers;
 }
 
-const LOGIN_COMMAND = "claude auth login";
-
 /** While somebody watches, the account is read this often (the stream only covers turns). */
 export const POLL_MS = 5 * 60_000;
 /** A person's refresh is refused when the last read started less than this ago. */
@@ -23,46 +22,6 @@ const realTimers: Timers = {
   set: (fn, ms) => setTimeout(fn, ms),
   clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
-
-/** The empty reading a host has before the first read. */
-const EMPTY: AccountState = {
-  status: "unknown",
-  name: null,
-  organization: null,
-  plan: null,
-  provider: null,
-  windows: [],
-  readAt: null,
-  stale: false,
-  error: null,
-  source: "status",
-  loginCommand: LOGIN_COMMAND,
-};
-
-/** What `claude auth status` says about how the host is signed in. */
-function statusOfAuth(auth: AuthStatus): AccountStatus {
-  if (auth.loggedIn === false) return "signed_out";
-  switch (auth.authMethod) {
-    case "claude.ai":
-      return "signed_in";
-    // An API key, or a token for a gateway: no plan, no windows.
-    case "api_key":
-    case "oauth_token":
-      return "api_key";
-    case "third_party":
-      return "third_party";
-    default:
-      return "unknown";
-  }
-}
-
-/** With no status to go by, what the SDK's account info says. */
-function statusOfInfo(info: AccountInfoReading | null): AccountStatus {
-  if (info === null) return "unknown";
-  if (info.email !== null) return "signed_in";
-  if (info.apiKeySource !== null) return "api_key";
-  return info.tokenSource === "none" ? "signed_out" : "unknown";
-}
 
 /**
  * The Claude account of the host: what its own `claude` says about who is signed in and the plan
