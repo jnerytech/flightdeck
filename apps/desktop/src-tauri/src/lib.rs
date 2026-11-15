@@ -203,6 +203,19 @@ fn generate_key(comment: &str) -> Result<GeneratedKey, String> {
 #[derive(Default)]
 struct PickedFile(std::sync::Mutex<Option<std::path::PathBuf>>);
 
+/// Takes the file picked last out of `picked` when `path` names it; any other path is refused.
+fn take_picked(
+    picked: &std::sync::Mutex<Option<std::path::PathBuf>>,
+    path: &str,
+) -> Result<Option<std::path::PathBuf>, String> {
+    let mut picked = picked.lock().map_err(|e| e.to_string())?;
+    if picked.as_deref() != Some(std::path::Path::new(path)) {
+        return Err("only the file picked last can be deleted".to_string());
+    }
+    // Delete the path the dialog gave, not the string the frontend sent.
+    Ok(picked.take())
+}
+
 #[derive(serde::Serialize)]
 struct PickedFileInfo {
     path: String,
@@ -597,19 +610,6 @@ async fn oauth_loopback_cancel(app: tauri::AppHandle, id: u64) -> Result<(), Str
         Ok(())
     })
     .await
-}
-
-/// Takes the file picked last out of `picked` when `path` names it; any other path is refused.
-fn take_picked(
-    picked: &std::sync::Mutex<Option<std::path::PathBuf>>,
-    path: &str,
-) -> Result<Option<std::path::PathBuf>, String> {
-    let mut picked = picked.lock().map_err(|e| e.to_string())?;
-    if picked.as_deref() != Some(std::path::Path::new(path)) {
-        return Err("only the file picked last can be deleted".to_string());
-    }
-    // Delete the path the dialog gave, not the string the frontend sent.
-    Ok(picked.take())
 }
 
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
