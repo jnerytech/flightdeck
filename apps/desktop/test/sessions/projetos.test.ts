@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { hubGroups } from "../../src/features/sessions/domain/hub-groups.ts";
 import {
   DEFAULT_HUB_FILTER,
   type HubRow,
-  hubGroups,
   hubView,
   loadHubOpen,
   saveHubOpen,

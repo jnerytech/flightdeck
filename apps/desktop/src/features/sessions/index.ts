@@ -13,6 +13,7 @@ export { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer
 export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
 export type { CacheTtl } from "./domain/cache-timer.ts";
+export { groupName, hubRowOrder } from "./domain/hub-groups.ts";
 export { byProject, CONTINUATION } from "./domain/resume-offer.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
@@ -35,13 +36,11 @@ export {
 } from "./finished.ts";
 export { toolLoader } from "./history-tool.ts";
 export {
-  groupName,
   type HubFilter,
   type HubRow,
   type HubRowState,
   type HubState,
   type HubView,
-  hubRowOrder,
   hubRows,
   isOver,
   loadHubFilter,
