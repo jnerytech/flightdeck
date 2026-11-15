@@ -8,7 +8,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 const UPDATECARD_KEYS = ["appUpdate", "settings"] as const;
 
 /** Where a version's notes are read. */
-export const releaseUrl = (version: string) =>
+const releaseUrl = (version: string) =>
   `https://github.com/jnerytech/flightdeck/releases/tag/v${version}`;
 
 /**

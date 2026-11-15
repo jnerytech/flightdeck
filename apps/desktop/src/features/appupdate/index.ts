@@ -3,7 +3,6 @@
  * background, the install and the one on quit. Another domain imports from here, never a file inside.
  */
 export {
-  type AppUpdateCore,
   AppUpdateSlice,
   type AppUpdateState,
   initialAppUpdateState,
