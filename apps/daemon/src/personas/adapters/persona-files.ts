@@ -1,13 +1,13 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../kernel/index.ts";
 
 /**
  * A project's versioned personas, one `<id>.md` each under `.flightdeck/personas` (#1589). Every
  * function takes the project folder the store already resolved against the allowed roots and
- * builds the path itself, from an id that matches the id pattern or a name the folder listed:
- * no caller hands it a path.
+ * builds the path itself, from an id that matches the id pattern or a name that is one plain
+ * `.md` file name: no caller hands it a path.
  */
 
 const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -35,6 +35,7 @@ export async function listPersonaNames(project: string): Promise<string[] | null
 
 /** The text of a file the folder lists; a file over the size limit is refused. */
 export async function readPersonaSource(project: string, name: string): Promise<string> {
+  if (!name.endsWith(".md") || basename(name) !== name) throw invalidId();
   const path = join(personaDir(project), name);
   if ((await stat(path)).size > MAX_FILE_BYTES) {
     throw new FlightdeckError("bad_request", "file too big", "persona_file_big");
