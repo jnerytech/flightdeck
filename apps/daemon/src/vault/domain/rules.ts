@@ -11,12 +11,12 @@ import {
   type VaultRequester,
 } from "@flightdeck/protocol";
 
-export type Decision = "allow" | "ask" | "deny";
+type Decision = "allow" | "ask" | "deny";
 export type Purpose = "ssh" | "action" | "run_with_secret";
 export type Day = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type Risk = "low" | "medium" | "high";
 
-export interface RuleWindow {
+interface RuleWindow {
   days: Day[];
   /** `HH:MM`, in the PC's time zone. */
   from: string;
@@ -24,7 +24,7 @@ export interface RuleWindow {
   to: string;
 }
 
-export interface RuleMatch {
+interface RuleMatch {
   requester?: VaultRequester;
   purpose?: Purpose;
   /** The action's name, with `*` as a wildcard. */

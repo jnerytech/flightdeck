@@ -6,7 +6,7 @@
 
 import key from "../../../../../release/flightdeck.pub" with { type: "text" };
 
-export const PUBLIC_KEY: string = key;
+const PUBLIC_KEY: string = key;
 
 /**
  * The key `daemon.update.apply` checks with. A daemon running from source (smokes, tests) may

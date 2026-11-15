@@ -5,7 +5,7 @@
  */
 
 /** Hook events that can decide for the user; a plugin listening to them gets the attention mark. */
-export const SENSITIVE_EVENTS = ["PreToolUse", "PermissionRequest"];
+const SENSITIVE_EVENTS = ["PreToolUse", "PermissionRequest"];
 
 export interface PluginHook {
   event: string;
