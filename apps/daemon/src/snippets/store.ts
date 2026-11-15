@@ -6,6 +6,7 @@ import { type Snippet, type SnippetFileInfo, SnippetInput, SnippetVar } from "@f
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr, resolveAllowedCwd, ulid } from "../kernel/index.ts";
 import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./domain/model.ts";
+import { fileId, parseFileId, toYaml } from "./domain/snippet-file.ts";
 
 export interface SnippetsOptions {
   db: Database;
@@ -54,53 +55,9 @@ interface LoadedFile {
   defs: SnippetDef[];
 }
 
-const FILE_PREFIX = "file:";
 const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
   new FlightdeckError("bad_request", message, reason, params);
 const notFound = () => new FlightdeckError("not_found", "snippet not found", "not_found");
-
-/** The id of a snippet of the versioned file: it has no row of its own. */
-const fileId = (projectPath: string, name: string) => `${FILE_PREFIX}${projectPath}:${name}`;
-
-function parseFileId(id: string): { projectPath: string; name: string } | null {
-  if (!id.startsWith(FILE_PREFIX)) return null;
-  const rest = id.slice(FILE_PREFIX.length);
-  const at = rest.lastIndexOf(":");
-  return at < 1 ? null : { projectPath: rest.slice(0, at), name: rest.slice(at + 1) };
-}
-
-const quoted = (text: string) => JSON.stringify(text);
-
-/** Block YAML for the file, with JSON strings (which are YAML's double-quoted ones). */
-function toYaml(defs: SnippetDef[]): string {
-  if (defs.length === 0) return "[]\n";
-  const lines: string[] = [];
-  for (const def of defs) {
-    lines.push(
-      `- name: ${quoted(def.name)}`,
-      `  type: ${def.type}`,
-      def.type === "command"
-        ? `  run: ${quoted(def.run as string)}`
-        : `  text: ${quoted(def.text as string)}`,
-    );
-    const vars = Object.entries(def.vars);
-    if (vars.length > 0) {
-      lines.push("  vars:");
-      for (const [key, spec] of vars) lines.push(`    ${key}: ${flowVar(spec)}`);
-    }
-    if (def.tags.length > 0) lines.push(`  tags: [${def.tags.map(quoted).join(", ")}]`);
-  }
-  return `${lines.join("\n")}\n`;
-}
-
-function flowVar(spec: SnippetVar): string {
-  const parts: string[] = [];
-  if (spec.default !== undefined) parts.push(`default: ${quoted(spec.default)}`);
-  if (spec.options && spec.options.length > 0) {
-    parts.push(`options: [${spec.options.map(quoted).join(", ")}]`);
-  }
-  return parts.length === 0 ? "{}" : `{ ${parts.join(", ")} }`;
-}
 
 /**
  * The snippets of this host (phase 18): the host's own, the project ones kept in the daemon, and
