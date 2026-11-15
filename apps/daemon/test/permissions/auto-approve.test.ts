@@ -9,9 +9,9 @@ import {
   type AutoApproveRequest,
   AutoApprover,
   type AutoApproveSettings,
-  autoApproveDir,
   historyExcludes,
 } from "../../src/permissions/auto-approve.ts";
+import { autoApproveDir } from "../../src/permissions/domain/auto-approve-rules.ts";
 import { RiskClassifier, type RiskLevel } from "../../src/permissions/domain/risk.ts";
 import { localDay } from "../../src/quota/usage.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../../src/runtime/claude-sdk-runtime.ts";
