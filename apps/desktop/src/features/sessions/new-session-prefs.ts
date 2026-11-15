@@ -2,15 +2,10 @@ import type { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { readStored } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
+import { CLAUDE_MODELS, type RememberedFolder } from "./domain/new-session-choices.ts";
 
 /** Where the New session form's last choices are kept on this computer. */
 export const NEW_SESSION_PREFS_KEY = "flightdeck.newSessionPrefs";
-
-/** The folder last chosen on a host: one of its roots and the subfolder under it. */
-export interface RememberedFolder {
-  root: string;
-  sub: string;
-}
 
 /** What the form starts from: the mode and model last used, and each host's last folder. */
 export interface NewSessionPrefsValue {
@@ -27,9 +22,6 @@ const KEPT_MODES: ReadonlySet<PermissionMode> = new Set([
   "auto",
   "dontAsk",
 ]);
-
-/** The models the form offers for a Claude session; nothing else is kept as the starting model. */
-export const CLAUDE_MODELS: readonly string[] = ["opus", "sonnet", "haiku"];
 
 const NOTHING: NewSessionPrefsValue = { mode: "default", model: "", folders: {} };
 
