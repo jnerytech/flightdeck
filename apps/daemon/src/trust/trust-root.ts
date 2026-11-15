@@ -31,7 +31,7 @@ export const diskTrustRootFs: TrustRootFs = {
 export async function trustsManyProjects(
   path: string,
   roots: readonly string[],
-  fs: TrustRootFs = diskTrustRootFs,
+  fs: TrustRootFs,
 ): Promise<boolean> {
   for (const root of roots) {
     if (!isInside(path, root)) continue;
