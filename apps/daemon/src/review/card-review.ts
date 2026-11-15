@@ -6,7 +6,7 @@
  */
 import type { Database } from "bun:sqlite";
 import type { CardDiff } from "@flightdeck/protocol";
-import type { UsageTokens } from "../costs/index.ts";
+import type { UsageTokens } from "../kernel/index.ts";
 import { FlightdeckError, parseJsonOr } from "../kernel/index.ts";
 // Direct: claude-sdk-runtime imports quota, which imports the runtime entry (a cycle through the entry).
 import { CompleteCutShort } from "../runtime/claude-sdk-runtime.ts";

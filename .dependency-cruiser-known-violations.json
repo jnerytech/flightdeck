@@ -56,32 +56,10 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/costs/usage-indexer.ts",
-    "to": "apps/daemon/src/quota/usage.ts",
-    "unresolvedTo": "../quota/usage.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/assistant/domain/paths.ts",
     "unresolvedTo": "../assistant/domain/paths.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/permissions/auto-approve.ts",
-    "to": "apps/daemon/src/costs/usage-indexer.ts",
-    "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -115,28 +93,6 @@
     "to": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
     "unresolvedTo": "../runtime/claude-sdk-runtime.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
-    "to": "apps/daemon/src/costs/usage-indexer.ts",
-    "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/runtime/types.ts",
-    "to": "apps/daemon/src/costs/usage-indexer.ts",
-    "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
