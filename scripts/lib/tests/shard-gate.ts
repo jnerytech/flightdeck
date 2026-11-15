@@ -408,6 +408,8 @@ function writeEmptyShard(
   deps.write(join(out, "marker.json"), JSON.stringify(marker));
   const bun = marker.kind === "bun";
   deps.write(join(out, bun ? "lcov.info" : "funcs.json"), bun ? "" : "{}");
+  // The shard's own slow-test step reads a report: an empty one has no test over a limit (#3295).
+  if (bun) deps.write(join(out, "junit.xml"), "<testsuites></testsuites>");
   deps.print(
     `shard ${marker.shard}/${marker.of} ${marker.kind}: no test file in this PR's selection`,
   );
