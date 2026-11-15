@@ -4,7 +4,7 @@
  * of the snapshot are restored and files created after it removed, only inside the repository and
  * never ignored ones. A `safety` snapshot of the current state is taken first, so it can be undone.
  */
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { gitBytes } from "../git/index.ts";
@@ -123,30 +123,84 @@ export class Rewinder {
   private async snapshotDiff(target: SnapshotRow) {
     const current = await this.opts.snapshots.currentTree(target.repo);
     const names = (
-      await gitBytes(target.repo, ["diff", "--name-status", "--no-renames", target.tree, current])
-    ).stdout
-      .toString()
-      .trim();
+      await gitBytes(target.repo, [
+        "diff",
+        "-z",
+        "--name-status",
+        "--no-renames",
+        target.tree,
+        current,
+      ])
+    ).stdout.toString();
     const numstat = (
-      await gitBytes(target.repo, ["diff", "--numstat", "--no-renames", target.tree, current])
-    ).stdout
-      .toString()
-      .trim();
+      await gitBytes(target.repo, ["diff", "-z", "--numstat", "--no-renames", target.tree, current])
+    ).stdout.toString();
     return { preview: { via: "snapshot" as const, ...previewOf(names, numstat) } };
   }
 
+  /**
+   * Puts back the files of the target. Everything is read and checked first, so a path that
+   * runs through a link, or a blob that cannot be read, stops the rewind before it writes anything.
+   */
   private async restore(target: SnapshotRow): Promise<RewindPreview> {
     const { preview } = await this.snapshotDiff(target);
+    const plan: Array<{ rel: string; blob: Buffer | null }> = [];
+    const refuseLink = async (rel: string, writing: boolean) => {
+      if (!(await runsThroughLink(target.repo, rel, writing))) return;
+      throw new FlightdeckError(
+        "invalid_state",
+        `${rel} is, or sits inside, a link: nothing was rewound`,
+        "rewind_through_link",
+        { path: rel },
+      );
+    };
     await inSequence(preview.files, async (file) => {
-      const path = join(target.repo, file.path);
-      if (file.change === "created") {
-        await rm(path, { force: true });
+      const created = file.change === "created";
+      await refuseLink(file.path, !created);
+      if (created) {
+        plan.push({ rel: file.path, blob: null });
         return;
       }
       const blob = await gitBytes(target.repo, ["cat-file", "blob", `${target.tree}:${file.path}`]);
+      if (blob.code !== 0) {
+        throw new FlightdeckError(
+          "invalid_state",
+          `${file.path} cannot be read from the snapshot: nothing was rewound`,
+          "rewind_blob_unreadable",
+          { path: file.path },
+        );
+      }
+      plan.push({ rel: file.path, blob: blob.stdout });
+    });
+    await inSequence(plan, async ({ rel, blob }) => {
+      // Again right before the write: something that ran since the first check may have added a link.
+      await refuseLink(rel, blob !== null);
+      const path = join(target.repo, rel);
+      if (!blob) {
+        await rm(path, { force: true });
+        return;
+      }
       await mkdir(dirname(path), { recursive: true });
-      await writeFile(path, blob.stdout);
+      await writeFile(path, blob);
     });
     return preview;
   }
+}
+
+/**
+ * Whether touching `rel` in `repo` would leave it through a link: a folder on the way is one or,
+ * when the file is written, the file is. Removing a link as the last step is fine: that takes only
+ * the link.
+ */
+async function runsThroughLink(repo: string, rel: string, writing: boolean): Promise<boolean> {
+  const parts = rel.split("/");
+  let at = repo;
+  for (const [index, part] of parts.entries()) {
+    if (index === parts.length - 1 && !writing) return false;
+    at = join(at, part);
+    const info = await lstat(at).catch(() => null);
+    if (!info) return false;
+    if (info.isSymbolicLink()) return true;
+  }
+  return false;
 }

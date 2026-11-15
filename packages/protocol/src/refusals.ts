@@ -122,6 +122,8 @@ export const DAEMON_REASONS = [
   "rewind_turn_running",
   "snapshot_missing",
   "rewind_no_safety_snapshot",
+  "rewind_through_link",
+  "rewind_blob_unreadable",
   "fork_unsupported",
   "bypass_not_allowed",
   "bypass_confirm",

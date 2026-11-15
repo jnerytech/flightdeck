@@ -151,6 +151,9 @@ export const refusals = {
     snapshot_missing: "Turn {n} has no snapshot in this session.",
     rewind_no_safety_snapshot:
       "The safety snapshot could not be taken ({why}), so nothing was rewound.",
+    rewind_through_link:
+      "{path} is a link, or sits inside one: nothing was rewound. Remove the link and try again.",
+    rewind_blob_unreadable: "{path} could not be read from the snapshot: nothing was rewound.",
     fork_unsupported: "This runtime cannot fork sessions.",
     ssh_hostkey_exists:
       "A server key is already saved for this destination: forget it before replacing it.",

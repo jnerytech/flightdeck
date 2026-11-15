@@ -9,9 +9,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { PLAIN_PATH } from "../../src/central/domain/claude-launch-args.ts";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
-import { PLAIN_PATH, RECEPTOR_FILE, TERMINAL_LAUNCH_VAR } from "../../src/central/wrapper.ts";
+import { RECEPTOR_FILE, TERMINAL_LAUNCH_VAR } from "../../src/central/wrapper.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";

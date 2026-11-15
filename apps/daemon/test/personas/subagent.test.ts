@@ -4,9 +4,13 @@ import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { PersonaInput } from "@flightdeck/protocol";
 import { Board } from "../../src/board/board.ts";
+import {
+  INLINE_AGENTS_MAX,
+  interactiveAgents,
+} from "../../src/central/domain/claude-launch-args.ts";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { type Receptor, startReceptor } from "../../src/central/receptor.ts";
-import { INLINE_AGENTS_MAX, interactiveAgents, RECEPTOR_FILE } from "../../src/central/wrapper.ts";
+import { RECEPTOR_FILE } from "../../src/central/wrapper.ts";
 import { runCli } from "../../src/main.ts";
 import { personaHash } from "../../src/personas/domain/model.ts";
 import { preparePersonas } from "../../src/personas/domain/prepare.ts";
