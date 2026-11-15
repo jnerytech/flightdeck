@@ -3,7 +3,7 @@
  * review's file tree, the editor and its search).
  */
 import { listDirs, listFiles } from "../../files/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const filesHandlers = {
   "files.sessions": (payload, { server }) => {
