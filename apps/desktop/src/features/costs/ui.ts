@@ -3,4 +3,5 @@
  * feature's state never reaches a screen.
  */
 export { BudgetsSection } from "./budgets-section.tsx";
+export { costsOpener } from "./open-cost-session.ts";
 export { UsagePanel } from "./usage-panel.tsx";
