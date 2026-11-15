@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { assistantDir } from "../../src/assistant/domain/paths.ts";
 import { Budgets } from "../../src/costs/budgets.ts";
 import { Costs } from "../../src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";
 import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
+import { assistantDir } from "../../src/kernel/index.ts";
 import { historyExcludes } from "../../src/permissions/auto-approve.ts";
 import { autoApproveDir } from "../../src/permissions/domain/auto-approve-rules.ts";
 import { EventStore } from "../../src/store/event-store.ts";
