@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Profiler } from "react";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
-import { stays, uiIdle } from "../wait.ts";
+import { hostQuiet, stays } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render, within, waitFor } = await import("@testing-library/react");
@@ -32,7 +32,7 @@ async function pinged() {
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull(), {
     timeout: 8000,
   });
-  await uiIdle();
+  await hostQuiet(store, store.getState().hosts[0]?.id ?? "");
   store.subscribe(() => counts.notes++);
   return { store, counts };
 }

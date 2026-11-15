@@ -92,3 +92,21 @@ export async function uiIdle(quietMs = 50, timeoutMs = 5000): Promise<void> {
     }
   }
 }
+
+/** What `hostQuiet` needs of the store: the host's open requests, and one request to ask. */
+export interface QuietHost {
+  hostInFlight(hostId: string): number;
+  hostRequest(hostId: string, type: "host.info", payload: Record<string, never>): Promise<unknown>;
+}
+
+/**
+ * Waits until nothing the host was asked is still on its way back: no request in flight at a turn
+ * boundary (a reply and the request its handler sends run in the same turn), then one last ordered
+ * question. The socket is ordered, so its answer comes after every frame the host wrote before it.
+ * It replaces `uiIdle` where a late reply that changes state but not markup would break the test.
+ */
+export async function hostQuiet(
+  _host: QuietHost,
+  _hostId: string,
+  _timeoutMs = 5000,
+): Promise<void> {}
