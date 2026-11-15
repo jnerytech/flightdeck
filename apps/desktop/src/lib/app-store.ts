@@ -18,7 +18,7 @@ import {
 import { composeLifecycle, type Lifecycle } from "../app/compose/lifecycle.ts";
 import { composeShell, type ShellSlices } from "../app/compose/shell.ts";
 import { composeVault, type VaultSlices } from "../app/compose/vault.ts";
-import { sameNotice } from "../app/notice-lifetime.ts";
+import { describeError, Notices } from "../app/notices.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BudgetsSlice, localDay, wireBudgets } from "../features/costs/index.ts";
 import { HostLink, HostTabs, loadHosts, RequestError, saveHosts } from "../features/hosts/index.ts";
@@ -41,7 +41,6 @@ import type {
   AppStoreOptions,
   GateRef,
   HostView,
-  Notice,
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
@@ -80,10 +79,6 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-function describeError(error: unknown): string {
-  return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
-}
-
 /**
  * The slices each composition module builds are the store's fields: the constructor assigns them
  * (`Object.assign`), and the merged interface gives them their types (#2376).
@@ -117,7 +112,12 @@ export class AppStore {
   private readonly handlers: LinkHandlers;
   /** The start and the stop of the app, with the timers they own (#2376). */
   private readonly lifecycle: Lifecycle;
-  private noticeSeq = 0;
+  /** The toasts and the error banner. */
+  private readonly notices = new Notices({
+    state: () => this.state,
+    update: (patch) => this.update(patch),
+    log: (level, source, message) => this.appLog.log(level, source, message),
+  });
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
 
   /** The spending limits of each host (phase 8, #1596). */
@@ -306,7 +306,7 @@ export class AppStore {
       slices: () => this,
       link: () => this.link,
       updateHost: (hostId, change) => this.updateHost(hostId, change),
-      nextNoticeId: () => ++this.noticeSeq,
+      nextNoticeId: this.notices.nextId,
       keepUsage: () => this.keepUsage(),
       onRun: (hostId, run) => this.onRun(hostId, run),
       historyChanged: (hostId, change) => {
@@ -595,50 +595,25 @@ export class AppStore {
   }
 
   reportError(message: string): void {
-    this.fail(new Error(message));
+    this.notices.reportError(message);
   }
 
   clearError(): void {
-    this.update({ error: null });
+    this.notices.clearError();
   }
 
   /** A short success toast (copied, saved, started…), already translated. */
   success(text: string, link?: { label: string; run: () => void }): void {
-    this.update({
-      notices: [
-        ...this.state.notices,
-        { id: ++this.noticeSeq, kind: "success", code: "", text, ...(link ? { link } : {}) },
-      ],
-    });
+    this.notices.success(text, link);
   }
 
   /** A toast closed (or shown, for successes): it leaves the list. */
   dismissNotice(id: number): void {
-    this.update({ notices: this.state.notices.filter((n) => n.id !== id) });
+    this.notices.dismiss(id);
   }
 
-  /**
-   * A host's error: a toast titled by its code, with the daemon's message as the detail. `text`
-   * replaces the old one-line form kept in `error` (and the detail of a codeless one).
-   */
   private fail(error: unknown, text?: string, retry?: () => void, answersCommand = false): void {
-    const code = error instanceof RequestError ? error.code : "";
-    const message = error instanceof Error ? error.message : String(error);
-    const prefix = code ? `${code}: ` : "";
-    this.appLog.log("error", "refusal", `${prefix}${text ?? message}`);
-    const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
-    if (error instanceof RequestError && error.reason) {
-      notice.reason = error.reason;
-      notice.params = error.params ?? {};
-    }
-    if (error instanceof RequestError && error.hostId) notice.hostId = error.hostId;
-    if (retry) notice.retry = retry;
-    if (answersCommand) notice.answersCommand = true;
-    // The same error again takes the old one's place (#581): one toast, the newest, with a fresh timer.
-    this.update({
-      error: text ?? describeError(error),
-      notices: [...this.state.notices.filter((n) => !sameNotice(n, notice)), notice],
-    });
+    this.notices.fail(error, text, retry, answersCommand);
   }
 
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
