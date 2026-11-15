@@ -47,6 +47,7 @@ import {
   showsStateWord,
   worktreesOf,
 } from "./domain/hub-derive.ts";
+import { hubGroups } from "./domain/hub-groups.ts";
 import {
   awayHost,
   hubProjectKeys,
@@ -64,7 +65,6 @@ import {
   type HubGroupView,
   type HubRow,
   type HubView,
-  hubGroups,
   hubRows,
   hubView,
   isSearching,

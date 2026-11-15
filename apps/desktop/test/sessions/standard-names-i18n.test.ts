@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionNameInfo } from "@flightdeck/protocol";
+import { hubRowOrder } from "../../src/features/sessions/domain/hub-groups.ts";
 import { sessionLabel } from "../../src/features/sessions/domain/session-label.ts";
-import { hubRowOrder, hubRows } from "../../src/features/sessions/hub.ts";
+import { hubRows } from "../../src/features/sessions/hub.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
 
