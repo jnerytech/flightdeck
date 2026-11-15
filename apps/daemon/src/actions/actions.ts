@@ -41,6 +41,7 @@ import {
   type VaultRules,
 } from "../vault/index.ts";
 import { ActionCatalog, type ActionProject, type Found } from "./catalog.ts";
+import { type Approval, approvalRefusal } from "./domain/approval-check.ts";
 import { FREE, freeAction, freeRemote, freeSecretIds } from "./domain/free-command.ts";
 import { resolveParams } from "./domain/run-params.ts";
 import { type RunRow, runInfoOf } from "./domain/run-row.ts";
@@ -96,8 +97,6 @@ const invalid = (message: string, reason?: string, params?: Record<string, strin
   new FlightdeckError("invalid_state", message, reason, params);
 const now = () => new Date().toISOString();
 
-const HOLD_MS = 2000;
-
 export class Actions {
   private readonly listeners = new Set<(frame: ActionsFrame) => void>();
   private readonly pending = new Map<string, Waiting>();
@@ -139,14 +138,7 @@ export class Actions {
   }
 
   /** The user approved a request that asked; the delivery of its secret is allowed after this. */
-  approve(
-    requestId: string,
-    approval: {
-      via: "app" | "tray";
-      heldMs?: number;
-      scope?: "once" | "session";
-    },
-  ): void {
+  approve(requestId: string, approval: Approval): void {
     const waiting = this.pending.get(requestId);
     if (!waiting) {
       throw new FlightdeckError(
@@ -155,31 +147,8 @@ export class Actions {
         "action_request_gone",
       );
     }
-    if (waiting.decision !== "ask")
-      throw invalid("the request needs no approval", "action_no_approval_needed");
-    if (waiting.needsHold) {
-      if (approval.via === "tray") {
-        throw invalid(
-          "the tray does not approve prod or high-risk requests: approve in the app",
-          "action_tray_refused",
-        );
-      }
-      if ((approval.heldMs ?? 0) < HOLD_MS)
-        throw invalid("hold the Approve button for 2 s", "action_hold_needed");
-      // An approval for the session would let the next uses through without the button held.
-      if (approval.scope === "session") {
-        throw invalid(
-          "a prod or high-risk request is not approved for the session: one use at a time",
-          "action_session_refused_risky",
-        );
-      }
-    }
-    if (approval.scope === "session" && !waiting.once) {
-      throw invalid(
-        "the rule does not allow approving for the session: this request asks on every use",
-        "action_session_refused_rule",
-      );
-    }
+    const refusal = approvalRefusal(waiting, approval);
+    if (refusal) throw invalid(refusal.message, refusal.reason);
     waiting.approved = { by: approval.via, scope: approval.scope ?? "once" };
   }
 
