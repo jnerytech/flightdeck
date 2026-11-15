@@ -5,8 +5,8 @@ import { useT } from "@/i18n/context";
 import { Inline, NativeSelect, Panel, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { nodeNumbers, nodeTitle } from "./domain/node-text.ts";
 import { flatten, turnOf } from "./domain/trace.ts";
-import { nodeNumbers, nodeTitle } from "./node-text.ts";
 
 const SPEEDS = [1, 2, 4];
 

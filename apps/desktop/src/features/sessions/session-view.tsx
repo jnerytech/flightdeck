@@ -33,6 +33,7 @@ import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-qu
 import { nextMode } from "./domain/mode-menu.ts";
 import { missedAfter, rememberPosition, type ScrollPosition } from "./domain/scroll-memory.ts";
 import { activityOf } from "./domain/session-activity.ts";
+import { type ImageRefusal, readImage, refuseImage } from "./domain/session-images.ts";
 import type { ChatItem, SessionState } from "./domain/session-state.ts";
 import { EndWithChangesDialog } from "./end-with-changes-dialog.tsx";
 import { MessageActions } from "./message-actions";
@@ -49,7 +50,6 @@ import {
   Timeline,
 } from "./parts";
 import { RuntimeBadge } from "./runtime-badge";
-import { type ImageRefusal, readImage, refuseImage } from "./session-images.ts";
 import { StatusBadge } from "./status-badge.tsx";
 import { SessionStatusLine } from "./status-line";
 import { ToolCall } from "./tool-call.tsx";
