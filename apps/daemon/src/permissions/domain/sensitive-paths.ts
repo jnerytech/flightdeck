@@ -8,7 +8,7 @@
 import { ntfsName } from "../../kernel/index.ts";
 
 /** A file whose name starts with one of these holds a secret: `.env`, `.env.local`, `id_rsa`. */
-export const SECRET_PREFIXES: readonly string[] = [".env", "id_"];
+const SECRET_PREFIXES: readonly string[] = [".env", "id_"];
 /** Files that hold a token, a password or a history of commands (issue #439). */
 export const SECRET_NAMES: ReadonlySet<string> = new Set([
   ".claude.json",

@@ -15,7 +15,6 @@ export type {
   AgentRuntime,
   CompleteOptions,
   CompleteResult,
-  PermissionDecision,
   QuotaReading,
   RewindFilesResult,
   RuntimeEvent,
