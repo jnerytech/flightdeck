@@ -1,4 +1,4 @@
-import type { EffortLevel, SessionImage } from "@flightdeck/protocol";
+import type { EffortLevel } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,9 @@ import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
 import { ComposerAttachments } from "./composer-attachments.tsx";
 import { composerPickers } from "./composer-pickers.tsx";
+import { ComposerQueue } from "./composer-queue.tsx";
 import { commandItemsOf, offeredPrompts } from "./domain/command-menu.ts";
-import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-queue.ts";
+import { interruptOnEscape, submitAction } from "./domain/composer-queue.ts";
 import { nextMode } from "./domain/mode-menu.ts";
 import { activityOf, openTool } from "./domain/session-activity.ts";
 import type { SessionState } from "./domain/session-state.ts";
@@ -35,6 +36,7 @@ import { StatusBadge } from "./status-badge.tsx";
 import { SessionStatusLine } from "./status-line";
 import { TimelineItem } from "./timeline-item.tsx";
 import { useComposerImages } from "./use-composer-images.ts";
+import { useComposerQueue } from "./use-composer-queue.ts";
 import { useConversationScroll } from "./use-conversation-scroll.ts";
 import { useEndSession } from "./use-end-session.tsx";
 import { useModePick } from "./use-mode-pick.ts";
@@ -178,29 +180,12 @@ export function SessionView(props: Readonly<SessionViewProps>) {
 
   const { attached, setAttached, refusal, setRefusal, attach } = useComposerImages(props.images);
 
-  /** Messages written during a turn: they wait here and go out, in order, as the turns end. */
-  const [queued, setQueued] = useState<Array<{ text: string; images: SessionImage[] }>>([]);
-  /** A queued message went out and its turn has not shown up yet: the next one waits for it. */
-  const awaiting = useRef<number | null>(null);
-  const nextQueued = queued[0];
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the head of the queue is what it reads
-  useEffect(() => {
-    const step = queueStep({
-      working,
-      closed,
-      hasNext: nextQueued !== undefined,
-      awaiting: awaiting.current,
-      cards,
-    });
-    awaiting.current = step.awaiting;
-    if (!step.send || !nextQueued) return;
-    void actions
-      .send(nextQueued.text, nextQueued.images.length > 0 ? nextQueued.images : undefined)
-      .then(() => setQueued((rest) => rest.slice(1)))
-      .catch(() => {
-        awaiting.current = null;
-      });
-  }, [working, closed, nextQueued, cards]);
+  const { queued, enqueue, remove } = useComposerQueue({
+    send: actions.send,
+    working,
+    closed,
+    cards,
+  });
 
   const submit = () => {
     const value = text.trim();
@@ -214,7 +199,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     setAttached([]);
     setRefusal(null);
     if (action === "queue") {
-      setQueued((before) => [...before, { text: value, images: attached }]);
+      enqueue({ text: value, images: attached });
       return undefined;
     }
     return actions.send(value, attached.length > 0 ? attached : undefined);
@@ -334,45 +319,17 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           onFill={setText}
           input={box}
         />
-        {queued.length > 0 && (
-          <ul aria-label={t("session.queue")} className="composer-images">
-            {queued.map((item, at) => (
-              <li
-                // biome-ignore lint/suspicious/noArrayIndexKey: the queue is only ever edited by position
-                key={at} // NOSONAR: the queue is only ever edited by position
-                className="composer-queued"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm">{item.text}</span>
-                {item.images.length > 0 && (
-                  <span className="text-muted-foreground text-xs">
-                    {t("session.imagesSent", { count: String(item.images.length) })}
-                  </span>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={t("session.queueEdit", { text: item.text })}
-                  onClick={() => {
-                    setQueued((before) => before.filter((_, i) => i !== at));
-                    setText(item.text);
-                    setAttached(item.images);
-                    box.current?.focus();
-                  }}
-                >
-                  {t("session.edit")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={t("session.queueRemove", { text: item.text })}
-                  onClick={() => setQueued((before) => before.filter((_, i) => i !== at))}
-                >
-                  {t("session.remove")}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ComposerQueue
+          t={t}
+          queued={queued}
+          onEdit={(item, at) => {
+            remove(at);
+            setText(item.text);
+            setAttached(item.images);
+            box.current?.focus();
+          }}
+          onRemove={remove}
+        />
         <ComposerAttachments
           t={t}
           attached={attached}
