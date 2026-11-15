@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Project } from "@flightdeck/protocol";
-import { must } from "../board/worktree.ts";
+import { must } from "../board/index.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
 import { hashOf } from "../workflows/index.ts";
