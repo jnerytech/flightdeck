@@ -3,7 +3,7 @@ import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
-import { normalizeCwd } from "../history/index.ts";
+import { isExcludedCwd, normalizeCwd } from "../history/index.ts";
 import { parseJsonOr, type UsageTokens, ulid } from "../kernel/index.ts";
 import { localDay } from "../quota/index.ts";
 import { type FileEdit, readLine } from "./domain/transcript-line.ts";
@@ -305,12 +305,6 @@ export class UsageIndexer {
     return files;
   }
 
-  private isExcluded(cwd: string | null): boolean {
-    if (!cwd) return false;
-    const path = normalizeCwd(cwd);
-    return this.excludes.some((ex) => path === ex || path.startsWith(`${ex}/`));
-  }
-
   /** One more write of a file by a session; a tool call read again counts once. */
   private recordEdit(claudeSessionId: string, edit: FileEdit, at: string): void {
     const inserted = this.db
@@ -402,7 +396,7 @@ export class UsageIndexer {
       for (const line of chunk.subarray(0, end).toString("utf8").split("\n")) {
         const read = readLine(line);
         cwd = read.cwd ?? cwd;
-        if (this.isExcluded(cwd)) continue;
+        if (isExcludedCwd(cwd, this.excludes)) continue;
         for (const edit of read.at ? read.edits : []) {
           this.recordEdit(file.claudeSessionId, edit, read.at as string);
         }
