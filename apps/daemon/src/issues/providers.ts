@@ -16,10 +16,6 @@ import {
 } from "./domain/az-work-item.ts";
 import { parseIssueRef } from "./domain/issue-ref.ts";
 
-// The board's card flow still imports these two from here; its move behind the entry is a step of
-// its own (the entry cannot serve it yet: issues.ts imports the board, a cycle).
-export { closingLine, parseIssueRef } from "./domain/issue-ref.ts";
-
 export interface IssueProvider {
   /** `github:owner/repo#id` or `azure:org/project#id`. */
   refOf(id: string): string;
