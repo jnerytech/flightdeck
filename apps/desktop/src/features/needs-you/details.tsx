@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { ApprovalCard, GateText } from "@/features/permissions/ui.ts";
-import { CONTINUATION, type Finish, pendingText, pendingWhere } from "@/features/sessions/index.ts";
+import { CONTINUATION, type Finish } from "@/features/sessions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
@@ -10,6 +10,7 @@ import type { AppStore, PendingItem } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { type LoopAlert, loopPairKey } from "../messaging/index.ts";
 import type { WatchAlert } from "../watch/index.ts";
+import { pendingText, pendingWhere } from "./domain/pending-text.ts";
 import { type QuietAlert, quietText } from "./domain/quiet.ts";
 import type { Entry } from "./domain/same-row.ts";
 import { hostNameOf } from "./entry-row.tsx";

@@ -4,4 +4,5 @@
  */
 
 export type { Answer, GateRef, PendingItem } from "./domain/pending-item.ts";
+export { pendingText, pendingWhere } from "./domain/pending-text.ts";
 export { type QuietAlert, quietAlerts, quietText } from "./domain/quiet.ts";
