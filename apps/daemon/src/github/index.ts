@@ -6,10 +6,11 @@
  * re-export it without a cycle. Another domain imports from here, never a file inside.
  */
 
-export { GithubIssues, TRUSTED_ASSOCIATIONS } from "./adapters/gh-issues.ts";
+export { GithubIssues } from "./adapters/gh-issues.ts";
 export { GithubCli } from "./adapters/gh-pr.ts";
 export { type ClosedIssues, closedIssues } from "./adapters/issues-closed.ts";
 export { githubCoords } from "./adapters/remote.ts";
 export type { AlertList } from "./domain/alerts.ts";
 export type { GhResult, GhRunner } from "./domain/gh-runner.ts";
 export { githubStatus } from "./domain/status.ts";
+export { TRUSTED_ASSOCIATIONS } from "./domain/trust.ts";
