@@ -274,6 +274,19 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("the file that asks the app for a secret is risky by path, so a change to its approval or audit order needs a review (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/actions/secret-requests.ts",
+        "apps/daemon/src/actions/catalog.ts",
+        "apps/daemon/src/actions/deeper/secret-requests.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/actions/secret-requests.ts", "secret requests"],
+    ]);
+  });
+
   test("every file of the pr folder is a guard, so the merge and check logic stays under review wherever it lives (#3344)", () => {
     const added = new Map(
       [
@@ -292,6 +305,43 @@ describe("security-gate", () => {
       ["scripts/lib/pr/pr-flow.ts", "guard"],
       ["scripts/lib/pr/pr-merge.ts", "guard"],
       ["scripts/lib/pr/pr-types.ts", "guard"],
+    ]);
+  });
+
+  test("the domain files that decide a permission, a trust or a secret's use are risky by path, wherever they live (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/actions/domain/approval-check.ts",
+        "apps/daemon/src/actions/domain/secret-use.ts",
+        "apps/daemon/src/actions/domain/mask.ts",
+        "apps/daemon/src/git/domain/diff-secrets.ts",
+        "apps/daemon/src/github/domain/trust.ts",
+        "apps/daemon/src/messaging/domain/policy.ts",
+        "apps/daemon/src/permissions/domain/decision.ts",
+        "apps/daemon/src/permissions/domain/deeper/nested.ts",
+        "apps/daemon/src/permissions/index.ts",
+        "apps/daemon/src/publish/domain/pr-secrets.ts",
+        "apps/daemon/src/ssh/domain/connect-rules.ts",
+        "apps/daemon/src/teleport/domain/secrets.ts",
+        "apps/daemon/src/terminal/domain/policy.ts",
+        "apps/daemon/src/trust/domain/trust-resolve.ts",
+        "apps/daemon/src/trust/index.ts",
+        "apps/daemon/src/board/domain/arena-rules.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/actions/domain/approval-check.ts", "permission decision"],
+      ["apps/daemon/src/actions/domain/secret-use.ts", "secret rules"],
+      ["apps/daemon/src/git/domain/diff-secrets.ts", "secret rules"],
+      ["apps/daemon/src/github/domain/trust.ts", "permission decision"],
+      ["apps/daemon/src/messaging/domain/policy.ts", "permission decision"],
+      ["apps/daemon/src/permissions/domain/decision.ts", "permission decision"],
+      ["apps/daemon/src/permissions/domain/deeper/nested.ts", "permission decision"],
+      ["apps/daemon/src/publish/domain/pr-secrets.ts", "secret rules"],
+      ["apps/daemon/src/ssh/domain/connect-rules.ts", "permission decision"],
+      ["apps/daemon/src/teleport/domain/secrets.ts", "secret rules"],
+      ["apps/daemon/src/terminal/domain/policy.ts", "permission decision"],
+      ["apps/daemon/src/trust/domain/trust-resolve.ts", "permission decision"],
     ]);
   });
 
