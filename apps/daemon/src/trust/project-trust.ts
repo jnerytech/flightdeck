@@ -1,8 +1,9 @@
 /** Which projects may bring their own hooks, MCP servers and settings into a managed session (issue #196). */
 import type { Database } from "bun:sqlite";
 import { readFile, stat } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { isInside, rootNames, samePath } from "../kernel/index.ts";
+import { grantingRecord, mainOfGitFile, repoOfWorktreeArea } from "./domain/trust-resolve.ts";
 import { type TrustRootFs, trustsManyProjects } from "./trust-root.ts";
 
 export type TrustSource = "person" | "migration";
@@ -40,19 +41,6 @@ interface Row {
   trusted_at: string;
   source: TrustSource;
   scope: "tree" | "exact";
-}
-
-/** Where a card's worktree is made: inside the repo, in a folder this name gives away. */
-const WORKTREE_AREAS = [
-  `${sep}.flightdeck${sep}worktrees${sep}`,
-  `${sep}.claude${sep}worktrees${sep}`,
-];
-
-/** The repo a path of a worktree area belongs to (what comes before the area), or null. */
-function repoOfWorktreeArea(path: string): string | null {
-  const here = `${resolve(path)}${sep}`;
-  const found = WORKTREE_AREAS.map((area) => here.indexOf(area)).filter((at) => at >= 0);
-  return found.length > 0 ? here.slice(0, Math.min(...found)) || sep : null;
 }
 
 /** What a folder's git boundary says: the main checkout of a worktree, or none for a nested clone. */
@@ -98,22 +86,15 @@ export class ProjectTrust {
 
   /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
   via(cwd: string, deep = true): string | null {
-    const here = resolve(cwd);
     const roots = [...(this.opts.roots?.() ?? []).map((root) => resolve(root)), ...this.realRoots];
-    const granting = this.rows()
-      .filter((row) => {
-        if (row.scope === "exact") return (this.opts.sameFolder ?? samePath)(row.path, here);
-        // A root, or a folder that holds one, would trust every clone made inside it, unless the
-        // root is itself one project: then its own record is the person's trust of that project.
-        // `deep` off: only at the root itself, since nothing here looks at git boundaries below it.
-        const oneProject =
-          this.projectRoots.some((root) => samePath(root, row.path)) &&
-          (deep || samePath(row.path, here));
-        if (!oneProject && roots.some((root) => isInside(row.path, root))) return false;
-        return isInside(row.path, here);
-      })
-      .sort((a, b) => b.path.length - a.path.length);
-    return granting[0]?.path ?? null;
+    return grantingRecord(
+      this.rows(),
+      roots,
+      this.projectRoots,
+      resolve(cwd),
+      deep,
+      this.opts.sameFolder ?? samePath,
+    );
   }
 
   /** Trusts a folder and everything inside it; a repeat changes nothing. */
@@ -231,20 +212,9 @@ export class ProjectTrust {
       const text = await (this.opts.readText ?? ((path) => readFile(path, "utf8")))(git).catch(
         () => "",
       );
-      // Read by lines, not by a pattern: `\s*(.+)` backtracks on a long run of spaces.
-      const line = text.split(/\r?\n/).find((entry) => entry.startsWith("gitdir:"));
-      const gitdir = line?.slice("gitdir:".length).trim();
-      return { main: gitdir ? this.mainOfGitdir(gitdir, dir) : null };
+      return { main: mainOfGitFile(text, dir) };
     }
     return null;
-  }
-
-  /** `<main>/.git/worktrees/<name>` names its main checkout; a submodule's gitdir does not. */
-  private mainOfGitdir(gitdir: string, from: string): string | null {
-    const dir = resolve(from, gitdir);
-    const marker = `${sep}.git${sep}worktrees${sep}`;
-    const at = `${dir}${sep}`.indexOf(marker);
-    return at > 0 ? dir.slice(0, at) : null;
   }
 
   sessionTrust(cwd: string): SessionTrust {
