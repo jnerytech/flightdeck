@@ -1,6 +1,6 @@
 import type { SessionState } from "./session-state.ts";
 
-export type ToolGroup = "command" | "edit" | "read" | "search" | "web" | "agent" | "other";
+type ToolGroup = "command" | "edit" | "read" | "search" | "web" | "agent" | "other";
 
 /** What the session is doing right now, for the line above the message box. */
 export type Activity =

@@ -2,7 +2,7 @@
 export const CACHE_TTLS = [300_000, 3_600_000] as const;
 export type CacheTtl = (typeof CACHE_TTLS)[number];
 
-export type CachePhase = "warm" | "warning" | "cold";
+type CachePhase = "warm" | "warning" | "cold";
 
 export interface CacheTimerView {
   phase: CachePhase;

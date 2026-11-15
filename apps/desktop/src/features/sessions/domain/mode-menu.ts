@@ -1,7 +1,7 @@
 import { clampPermissionMode, type PermissionMode, type SettableMode } from "@flightdeck/protocol";
 
 /** Why a mode cannot be picked: the host's bypass switch is off, or it is looser than the start mode. */
-export type ModeBlock = "bypassOff" | "looserThanStart";
+type ModeBlock = "bypassOff" | "looserThanStart";
 
 export interface ModeRow {
   mode: SettableMode;

@@ -66,10 +66,10 @@ export interface Drop {
 }
 
 /** Silence after which a link counts as dead: three of the daemon's 15 s heartbeats. */
-export const STALE_MS = 45_000;
+const STALE_MS = 45_000;
 
 /** How long a connection may take to get its `hello` answered before it is given up. */
-export const CONNECT_TIMEOUT_MS = 15_000;
+const CONNECT_TIMEOUT_MS = 15_000;
 
 /** The clock and the interval of the watchdog: the real ones unless a test drives them. */
 const REAL_WATCHDOG = {
