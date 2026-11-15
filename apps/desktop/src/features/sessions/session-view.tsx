@@ -26,7 +26,6 @@ import { nextMode } from "./domain/mode-menu.ts";
 import { activityOf, openTool } from "./domain/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "./domain/session-images.ts";
 import type { SessionState } from "./domain/session-state.ts";
-import { EndWithChangesDialog } from "./end-with-changes-dialog.tsx";
 import {
   Composer,
   ComposerDock,
@@ -42,6 +41,7 @@ import { StatusBadge } from "./status-badge.tsx";
 import { SessionStatusLine } from "./status-line";
 import { TimelineItem } from "./timeline-item.tsx";
 import { useConversationScroll } from "./use-conversation-scroll.ts";
+import { useEndSession } from "./use-end-session.tsx";
 import { useModePick } from "./use-mode-pick.ts";
 import { WorkingRow } from "./working-row";
 
@@ -122,9 +122,12 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const { session, actions } = props;
   const [text, setText] = useState("");
   const wand = useWand(props.assist, text, setText);
-  const [closing, setClosing] = useState(false);
-  // #1133: how many files End found uncommitted, while it asks about them.
-  const [unsaved, setUnsaved] = useState<number | null>(null);
+  const endSession = useEndSession({
+    actions,
+    t,
+    uncommitted: props.uncommitted,
+    onCommitFirst: props.onCommitFirst,
+  });
   const [picking, setPicking] = useState(false);
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
@@ -177,12 +180,6 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     if (caret.current !== null) box.current?.setSelectionRange(caret.current, caret.current);
     caret.current = null;
   }, [text]);
-  /** The session is being ended: Encerrar is busy until the daemon says so. */
-  const [ending, setEnding] = useState(false);
-  const end = () => {
-    setEnding(true);
-    void actions.close().finally(() => setEnding(false));
-  };
 
   /** The images waiting to go with the next message, and why the last file was turned away. */
   const [attached, setAttached] = useState<SessionImage[]>([]);
@@ -298,49 +295,15 @@ export function SessionView(props: Readonly<SessionViewProps>) {
               <ActionButton
                 variant="outline"
                 size="sm"
-                pending={ending}
-                onClick={async () => {
-                  const count = props.uncommitted ? await props.uncommitted().catch(() => 0) : 0;
-                  if (count > 0) setUnsaved(count);
-                  else setClosing(true);
-                }}
+                pending={endSession.ending}
+                onClick={endSession.press}
               >
                 {t("session.end")}
               </ActionButton>
             )}
           </>
         }
-        dialogs={
-          <>
-            {closing && (
-              <ConfirmDialog
-                message={t("session.endMessage")}
-                confirmLabel={t("session.endConfirm")}
-                destructive
-                onConfirm={() => {
-                  setClosing(false);
-                  end();
-                }}
-                onCancel={() => setClosing(false)}
-              />
-            )}
-            {unsaved !== null && (
-              <EndWithChangesDialog
-                t={t}
-                files={unsaved}
-                onCommit={() => {
-                  setUnsaved(null);
-                  props.onCommitFirst?.();
-                }}
-                onEnd={() => {
-                  setUnsaved(null);
-                  end();
-                }}
-                onCancel={() => setUnsaved(null)}
-              />
-            )}
-          </>
-        }
+        dialogs={endSession.dialogs}
         extra={opencode ? undefined : props.persona}
       />
       {/* The summary lines up with the header and the conversation (issue #177). */}
