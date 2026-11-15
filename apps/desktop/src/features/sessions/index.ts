@@ -63,7 +63,6 @@ export {
 export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { newSessionHost } from "./new-session-host.ts";
 export { NewSessionPrefs } from "./new-session-prefs.ts";
-export { pendingText, pendingWhere } from "./pending-text.ts";
 export { rowRoute } from "./row-route.ts";
 export type { SessionActions } from "./session-actions.ts";
 export {

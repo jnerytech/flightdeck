@@ -1,11 +1,11 @@
 import { memo, type ReactNode } from "react";
 import type { ClientColor } from "@/features/clients/index.ts";
 import { ClientChip } from "@/features/clients/ui.ts";
-import { pendingText, pendingWhere } from "@/features/sessions/index.ts";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { StatusDot } from "@/shared/status/index.ts";
+import { pendingText, pendingWhere } from "./domain/pending-text.ts";
 import { quietText } from "./domain/quiet.ts";
 import { type Entry, sameRow } from "./domain/same-row.ts";
 
