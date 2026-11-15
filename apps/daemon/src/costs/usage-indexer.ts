@@ -405,9 +405,11 @@ export class UsageIndexer {
       .toString("utf8")
       .split("\n")
       .map((line) => readLine(line));
-    // The folder of the lines that come before the first `cwd` is the first one the file names.
+    // The folder of the lines that come before the first `cwd` is the first one the file names (a
+    // session that changed folders before that line is judged by it: an accepted approximation).
     const folder = cwd ?? reads.find((read) => read.cwd)?.cwd ?? null;
-    // With excluded folders, a slice that does not say its folder yet waits, offset unmoved.
+    // With excluded folders, a slice that does not say its folder yet waits, offset unmoved (#3273:
+    // a file whose first slice has no `cwd` at all stays unindexed, an accepted trade-off).
     if (folder === null && this.excludes.length > 0) return done;
     this.db.transaction(() => {
       for (const read of reads) {
