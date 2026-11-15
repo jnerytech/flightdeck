@@ -33,7 +33,7 @@ const LAZY_SCREENS = [
 ];
 
 /**
- * Where Screens.tsx loads a lazy screen from (#1597): a screen that moved into its feature folder
+ * Where route-screens.tsx loads a lazy screen from (#1597): a screen that moved into its feature folder
  * is `features/<name without "Page", lowercased>/page.tsx`, or in the plural folder (`HostPage` is
  * in `features/hosts`); a screen that is a file of its domain, not its `page.tsx`, is named in
  * `FILE_OF`; the rest are still `app/<name>.tsx`. Looking at the disk means a move into a
@@ -75,9 +75,12 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
       : resolve(dirname(from), specifier);
 
   test("no file the entry loads imports a lazy screen statically", () => {
-    const loaders = ["Screens.tsx", "App.tsx", "../features/shell/sidebar.tsx"].map((file) =>
-      resolve(APP, file),
-    );
+    const loaders = [
+      "Screens.tsx",
+      "route-screens.tsx",
+      "App.tsx",
+      "../features/shell/sidebar.tsx",
+    ].map((file) => resolve(APP, file));
     const lazyFiles = LAZY_SCREENS.map((name) => resolve(APP, specifierOf(name)));
     const eager = loaders.flatMap((file) =>
       staticImports(readFileSync(file, "utf8"))
@@ -87,8 +90,8 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
     expect(eager).toEqual([]);
   });
 
-  test("Screens.tsx loads each of them with import() inside React.lazy", () => {
-    const source = read("Screens.tsx");
+  test("route-screens.tsx loads each of them with import() inside React.lazy", () => {
+    const source = read("route-screens.tsx");
     for (const name of LAZY_SCREENS) {
       expect(source).toContain(`import("${specifierOf(name)}")`);
     }
