@@ -48,7 +48,7 @@ export function installClaudeGuard(
 }
 
 /** Lines recorded by the sentinel; empty when `claude` was never executed. */
-export function claudeCalls(guard: ClaudeGuard): string[] {
+function claudeCalls(guard: ClaudeGuard): string[] {
   return existsSync(guard.log) ? logLines(readFileSync(guard.log, "utf8")) : [];
 }
 

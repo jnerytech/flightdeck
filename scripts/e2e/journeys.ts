@@ -162,7 +162,7 @@ export async function createSession(c: Context, prompt: string, name?: string) {
  * fills, so the first reading can be a few lines short): null once it is right, or the last
  * reading when it never is within the wait (#747).
  */
-export async function pinnedOnceSettled(page: Page): Promise<string | null> {
+async function pinnedOnceSettled(page: Page): Promise<string | null> {
   const deadline = Date.now() + WAIT;
   let reading = await page.evaluate(pinnedProblem);
   while (reading !== null && Date.now() < deadline) {
@@ -185,7 +185,7 @@ export async function waitFor(check: () => Promise<boolean>, what: string, timeo
  * The screen's main action is inside the window as the page settles (nothing scrolled it there) and
  * can take a click: the #731 and #732 class of bug, where it sat below the fold (#754).
  */
-export async function inReach(c: Context, what: string, button: Locator) {
+async function inReach(c: Context, what: string, button: Locator) {
   await button.waitFor({ timeout: WAIT });
   let seen = "";
   const fits = async () => {

@@ -3,7 +3,7 @@ import type { Platform } from "@/platform/types.ts";
 export type Density = "compact" | "comfortable";
 
 /** Where the choice is kept; compact (32 px rows) when absent. */
-export const DENSITY_KEY = "flightdeck.density";
+const DENSITY_KEY = "flightdeck.density";
 
 /** How tall the list rows are: compact (32 px) or comfortable (40 px), kept across starts. */
 export class DensityController {
