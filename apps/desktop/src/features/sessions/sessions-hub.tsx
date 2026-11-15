@@ -1,13 +1,6 @@
-import type { SessionMeta } from "@flightdeck/protocol";
-import { MoreHorizontal, Radio, Server, X } from "lucide-react";
+import { Radio, Server, X } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AssignMenu } from "@/features/clients/assign-menu.tsx";
@@ -26,7 +19,6 @@ import { CardGrid, EmptyState, Page, Toolbar } from "@/shared/layout/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { hasFeature } from "../../lib/version.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope, usd } from "../costs/index.ts";
 import { typing } from "../shortcuts/index.ts";
@@ -40,7 +32,6 @@ import {
   hostlessHub,
   personasOf,
   refreshSignature,
-  rowOffers,
   rowSummary,
   showsStateWord,
   worktreesOf,
@@ -66,8 +57,9 @@ import {
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
 import { type HubFilter, type HubRow, type HubView, hubRows } from "./hub.ts";
 import { HubFilterMenu } from "./hub-filter-menu.tsx";
+import { type RowActionsContext, rowActions, setRowMeta } from "./hub-row-actions.tsx";
 import { newSessionHost } from "./new-session-host.ts";
-import { focusRenameField, focusRowActions, RenameForm } from "./rename-form";
+import { focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
 import { ViewToggle } from "./view-toggle.tsx";
@@ -140,8 +132,6 @@ export function SessionsHub(
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   /** Issue #100: the session being moved to another host (the preview's dialog). */
   const [moving, setMoving] = useState<HubRow | null>(null);
-  const canTeleport = (hostId: string) =>
-    hasFeature(state.hosts.find((h) => h.id === hostId)?.hostInfo?.features, "teleport", false);
   // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
   // keeps failing to connect changes status on every attempt: only being online counts.
   const signature = refreshSignature(state.hosts);
@@ -288,100 +278,23 @@ export function SessionsHub(
     setFilter(next);
     store.viewPrefs.saveHubFilter(next);
   };
-  const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
-    void store.sessionLists.setMeta(row.hostId, row.claudeSessionId as string, patch);
 
-  // The row menu reads the mutes: a change of them draws it again.
+  // rowActions reads the mutes: a change of them draws the menu again.
   useSyncExternalStore(store.notifyPrefs.subscribe, () => store.notifyPrefs.value);
-  /** The key notifications use for this session: the host's own id, else the Claude one. */
-  const sessionKeyOf = (row: HubRow) => `${row.hostId}/${row.sessionId ?? row.claudeSessionId}`;
-  const isMuted = (row: HubRow) =>
-    store.notifyPrefs.value.mutedSessions.includes(sessionKeyOf(row));
   /** Closes the rename form and puts the focus back on the row's actions button. */
   const closeRename = (row: HubRow) => {
     focusRowActions(row.claudeSessionId);
     setRenaming(null);
   };
-  /** The row's actions menu, the same in a line and on a card. */
-  const rowActions = (row: HubRow) => {
-    if (!row.claudeSessionId) return null;
-    const offers = rowOffers(row, {
-      teleportPreview: state.settings.teleportPreview,
-      canTeleport: () => canTeleport(row.hostId),
-    });
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={t("hub.actions", { title: row.title })}
-            data-row-actions={row.claudeSessionId}
-            className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-          >
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          // Rename opens a form: the menu hands it the focus, not back to its own button.
-          onCloseAutoFocus={(event) => {
-            if (renaming?.claudeSessionId !== row.claudeSessionId) return;
-            event.preventDefault();
-            focusRenameField();
-          }}
-        >
-          <DropdownMenuItem
-            onSelect={() => {
-              store.hostTabs.openNextInNewTab();
-              props.onOpen(row);
-            }}
-          >
-            {t("tabs.openInNew")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setRenaming(row)}>{t("hub.rename")}</DropdownMenuItem>
-          {offers.sleep && (
-            <DropdownMenuItem
-              onSelect={() => void store.commands.sleep(row.hostId, row.sessionId as string)}
-            >
-              {t("hub.sleepNow")}
-            </DropdownMenuItem>
-          )}
-          {offers.teleport && (
-            <DropdownMenuItem onSelect={() => setMoving(row)}>
-              {t("teleportUi.menu")}
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
-            {row.pinned ? t("hub.unpin") : t("hub.pin")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => store.notifyPrefs.muteSession(sessionKeyOf(row), !isMuted(row))}
-          >
-            {isMuted(row) ? t("notifyPrefs.unmuteSession") : t("notifyPrefs.mutedLabel")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() =>
-              store.notifyPrefs.snooze(sessionKeyOf(row), store.now() + 3_600_000, store.now())
-            }
-          >
-            {t("notifyPrefs.snooze")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => meta(row, { archived: !row.archived })}>
-            {row.archived ? t("hub.unarchive") : t("hub.archive")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() =>
-              void store.system.copyText(`flightdeckd claude --resume ${row.claudeSessionId}`)
-            }
-          >
-            {t("hub.copyCommand")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
+  const rowCtx: RowActionsContext = {
+    store,
+    hosts: state.hosts,
+    teleportPreview: state.settings.teleportPreview,
+    renaming,
+    onOpen: props.onOpen,
+    onRename: setRenaming,
+    onMove: setMoving,
   };
-
   /** A card's cost, when its host reported one. */
   /** The prompt cache countdown: only an idle session that says since when it has been idle. */
   const cacheOf = (row: HubRow) =>
@@ -517,7 +430,7 @@ export function SessionsHub(
             key={renaming.claudeSessionId}
             title={renaming.title}
             onSave={(name) => {
-              meta(renaming, { name: name || null });
+              setRowMeta(store, renaming, { name: name || null });
               closeRename(renaming);
             }}
             onCancel={() => closeRename(renaming)}
@@ -619,7 +532,7 @@ export function SessionsHub(
                           setCursor(listed.findIndex((r) => r.key === row.key));
                           props.onOpen(row);
                         }}
-                        actions={rowActions(row)}
+                        actions={rowActions(rowCtx, row)}
                       />
                     ))}
                   </CardGrid>
@@ -740,7 +653,7 @@ export function SessionsHub(
                               </time>
                             )
                           )}
-                          {rowActions(row)}
+                          {rowActions(rowCtx, row)}
                           <span
                             data-slot="summary"
                             className={cn(
