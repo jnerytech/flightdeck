@@ -1,37 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { gitRunner } from "../../src/projects/adapters/git-clone.ts";
-import { cloneRepo, type GitRunner, scanRepos } from "../../src/projects/project-find.ts";
+import { cloneRepo, scanRepos } from "../../src/projects/project-find.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { BASELINE_FEATURES, newManager, poll, reasonOf, tempDir } from "../support/helpers.ts";
-
-/** A root with repos at several depths, plus things a scan must not enter or follow. */
-function tree() {
-  const base = realpathSync.native(tempDir("fd-find-"));
-  const root = join(base, "code");
-  for (const dir of [
-    "app/.git",
-    "group/lib/.git",
-    "group/deep/er/too/.git",
-    "plain/notes",
-    "node_modules/pkg/.git",
-    ".hidden/repo/.git",
-    "app/packages/inner/.git",
-  ]) {
-    mkdirSync(join(root, dir), { recursive: true });
-  }
-  // A worktree keeps `.git` as a file.
-  mkdirSync(join(root, "wt"));
-  writeFileSync(join(root, "wt", ".git"), "gitdir: /elsewhere");
-  const outside = join(base, "outside");
-  mkdirSync(join(outside, "stolen/.git"), { recursive: true });
-  symlinkSync(join(outside, "stolen"), join(root, "link"));
-  return { base, root, outside };
-}
+import { fakeGit, tree } from "../support/projects-find.ts";
 
 const names = (result: { repos: Array<{ name: string }> }) => result.repos.map((r) => r.name);
 
@@ -73,17 +50,6 @@ describe("projetos-busca: scanning the allowed roots", () => {
     expect(names(twice)).toEqual(["app", "lib", "wt"]);
   });
 });
-
-/** A git that creates the folder it was asked to clone into, and remembers its arguments. */
-function fakeGit(code = 0, stderr = "") {
-  const calls: string[][] = [];
-  const git: GitRunner = async (args) => {
-    calls.push(args);
-    if (code === 0) mkdirSync(args[args.length - 1] as string, { recursive: true });
-    return { code, stderr };
-  };
-  return { git, calls };
-}
 
 const refusal = async (promise: Promise<unknown>) => {
   const error = await promise.then(
