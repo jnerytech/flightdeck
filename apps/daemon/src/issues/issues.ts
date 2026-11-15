@@ -3,9 +3,8 @@
  * and turned into cards. An issue from a third party is marked, and a card made from it gets no
  * automatic approval until you resume it.
  */
-import type { Issue } from "@flightdeck/protocol";
+import type { Card, Issue } from "@flightdeck/protocol";
 import type { Board } from "../board/index.ts";
-import type { Card } from "../board/types.ts";
 import { git } from "../git/index.ts";
 import { GithubIssues, githubCoords } from "../github/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
