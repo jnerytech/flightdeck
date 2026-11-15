@@ -45,8 +45,6 @@ export interface RunningServer {
   stop(): Promise<void>;
 }
 
-export { tokenMatches };
-
 export function startServer(opts: ServerOptions): RunningServer {
   const { manager } = opts;
 

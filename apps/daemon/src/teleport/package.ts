@@ -24,8 +24,6 @@ import { addSecrets, secretLines, TELEPORT_MAX_BYTES } from "./domain/secrets.ts
 import { onDisk } from "./on-disk.ts";
 import { EVENT_LOOP_PACE } from "./pace.ts";
 
-export { secretLines, TELEPORT_MAX_BYTES };
-
 /** What a teleport reads of a session. */
 export interface TeleportSession {
   id: string;
