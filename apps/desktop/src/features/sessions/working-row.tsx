@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import { Inline } from "@/shared/layout/index.ts";
-
-/** "12s", "1m 5s": how long the turn has been running. */
-export function elapsed(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  return total < 60 ? `${total}s` : `${Math.floor(total / 60)}m ${total % 60}s`;
-}
+import { elapsed } from "./domain/session-text.ts";
 
 /**
  * The last row of a conversation while Claude works: moving dots, how long the turn has run and
