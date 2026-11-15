@@ -1,6 +1,6 @@
 import type { CommandPayload, VaultRequestFrame } from "@flightdeck/protocol";
-import { checkDelivery } from "./domain/vault-delivery.ts";
-import type { SecretMeta, Vault } from "./vault.ts";
+import { checkDelivery, type DeliveryDeps } from "./domain/vault-delivery.ts";
+import type { SecretMeta } from "./vault.ts";
 
 /** What the app decides about a request of the daemon. */
 export type VaultDecision = { kind: "deny"; reason: string } | { kind: "deliver" };
@@ -35,10 +35,7 @@ export interface VaultOutcome {
 
 export type VaultDeliverPayload = CommandPayload<"vault.deliver">;
 
-export interface AnswerDeps {
-  hostId: string;
-  hostUrl: string;
-  vault: Pick<Vault, "list" | "value">;
+export interface AnswerDeps extends DeliveryDeps {
   policy: VaultPolicy;
   deliver: (payload: VaultDeliverPayload) => Promise<unknown>;
   now: () => number;
