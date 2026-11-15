@@ -7,7 +7,7 @@ import { detectProvider } from "../../board/pr-provider.ts";
 import type { TemplateMarkdown } from "../../harness/index.ts";
 import { FlightdeckError, featureOff, resolveAllowedCwd, rootNames } from "../../kernel/index.ts";
 import { cloneRepo, scanRepos, spawnGit } from "../../projects/index.ts";
-import { trustsManyProjects } from "../../trust/index.ts";
+import { diskTrustRootFs, trustsManyProjects } from "../../trust/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
 import type { ServerContext } from "../context.ts";
 import type { Handlers } from "../dispatch.ts";
@@ -79,7 +79,7 @@ export const projectHandlers = {
     // trusting it would trust every clone inside (#592).
     if (
       payload.trusted &&
-      (await trustsManyProjects(path, await rootNames(server.opts.allowedRoots)))
+      (await trustsManyProjects(path, await rootNames(server.opts.allowedRoots), diskTrustRootFs))
     ) {
       throw new FlightdeckError(
         "invalid_state",
