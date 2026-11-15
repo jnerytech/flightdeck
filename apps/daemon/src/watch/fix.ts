@@ -2,7 +2,6 @@ import type { Database } from "bun:sqlite";
 import type { PrProviderKind } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/index.ts";
-import { prProvider } from "../board/pr.ts";
 import { git as realGit } from "../git/index.ts";
 import {
   assertBranchName,
@@ -13,6 +12,7 @@ import {
   ulid,
 } from "../kernel/index.ts";
 import { BUILD_LOG_BYTES, type PrProvider, tail } from "../pr/index.ts";
+import { prProvider } from "../pr-hosts/index.ts";
 import { type BoundedCheckRunner, MAX_VALUE } from "../workflows/index.ts";
 import { masked, runChecks } from "./domain/check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./domain/drift.ts";
