@@ -13,12 +13,24 @@ export { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer
 export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
 export type { CacheTtl } from "./domain/cache-timer.ts";
+export { type Finish, sinceLastLook } from "./domain/finished-list.ts";
 export { groupName, hubRowOrder } from "./domain/hub-groups.ts";
 export { sessionLineText } from "./domain/hub-status.ts";
 export { CONTINUATION } from "./domain/resume-offer.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
 export type { SessionState } from "./domain/session-state.ts";
+export {
+  hiddenTiles,
+  lastLines,
+  loadTileLayout,
+  pendingOf,
+  pickTiles,
+  saveTileLayout,
+  TILE_LAYOUTS,
+  type TileLayout,
+  tileColumns,
+} from "./domain/session-tiles.ts";
 export {
   type SessionView as SessionViewName,
   SessionViews,
@@ -30,17 +42,12 @@ export { inputSummary } from "./domain/tool-input.ts";
 export { messageParts } from "./domain/tool-line.ts";
 export { type Turn, turnsOf } from "./domain/turns.ts";
 export { ExternalSessionsSlice } from "./external.ts";
-export {
-  type Finish,
-  FinishedSlice,
-  sinceLastLook,
-} from "./finished.ts";
+export { FinishedSlice } from "./finished.ts";
 export { toolLoader } from "./history-tool.ts";
 export {
   type HubFilter,
   type HubRow,
   type HubRowState,
-  type HubState,
   type HubView,
   hubRows,
   isOver,
@@ -66,17 +73,6 @@ export {
 export { SessionStreamSlice } from "./stream.ts";
 export type { SessionSubscriptions } from "./subscriptions.ts";
 export { SummariesSlice } from "./summaries.ts";
-export {
-  hiddenTiles,
-  lastLines,
-  loadTileLayout,
-  pendingOf,
-  pickTiles,
-  saveTileLayout,
-  TILE_LAYOUTS,
-  type TileLayout,
-  tileColumns,
-} from "./tiles.ts";
 export { formatMs } from "./timing.ts";
 export { useDraft } from "./use-draft.ts";
 export { useFollow } from "./use-follow.ts";

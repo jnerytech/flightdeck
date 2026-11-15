@@ -3,8 +3,12 @@ import {
   emptySession,
   type SessionState,
 } from "../../src/features/sessions/domain/session-state.ts";
+import {
+  lastLines,
+  pendingOf,
+  pickTiles,
+} from "../../src/features/sessions/domain/session-tiles.ts";
 import type { HubRow } from "../../src/features/sessions/hub.ts";
-import { lastLines, pendingOf, pickTiles } from "../../src/features/sessions/tiles.ts";
 
 const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({
   key: `h/m/s${n}`,
