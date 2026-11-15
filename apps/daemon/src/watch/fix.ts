@@ -1,7 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { PrProviderKind } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import type { Board } from "../board/index.ts";
 import { git as realGit } from "../git/index.ts";
 import {
   assertBranchName,
@@ -18,6 +17,7 @@ import { masked, runChecks } from "./domain/check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./domain/drift.ts";
 import { buildPrompt, heldSummary } from "./domain/fix-prompt.ts";
 import { COMMIT_ID, type FixRound, type RoundRow, toRound } from "./domain/fix-round.ts";
+import type { WatchBoard } from "./ports.ts";
 import type { WatchSettings } from "./settings.ts";
 import type { PrWatcher, WatchTrigger } from "./watch.ts";
 
@@ -26,7 +26,7 @@ export type { FixRound } from "./domain/fix-round.ts";
 
 export interface PrFixerOptions {
   db: Database;
-  board: Pick<Board, "getCard" | "getProject" | "fixCard" | "moveCard">;
+  board: Pick<WatchBoard, "getCard" | "getProject" | "fixCard" | "moveCard">;
   watcher: PrWatcher;
   provider?: (kind: PrProviderKind) => PrProvider | null;
   /** Runs the project's local checks in the card's worktree. */

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { ShortArea } from "@/shared/layout/index.ts";
 import { useHeight, useWidth } from "@/shared/lib/index.ts";
 
 /** Below this width of the header's own box it is one line and the actions fold into a menu. */
@@ -14,9 +15,6 @@ const NARROW_HEADER = 560;
  * and the summary starts folded, so the conversation keeps its room (#232).
  */
 const SHORT_AREA = 600;
-
-/** Whether the session's area is short; `SessionPane` measures it. */
-export const ShortArea = createContext(false);
 
 /**
  * Whether the conversation needs the room: the area is short, or a request waits for the person

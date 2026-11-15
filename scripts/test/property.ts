@@ -1,7 +1,7 @@
 import fc from "fast-check";
 
 /** The seed of every property test: a failure reproduces on any machine (issue #1608). */
-export const PROPERTY_SEED = 20261112;
+const PROPERTY_SEED = 20261112;
 
 /**
  * Checks a property over `runs` generated inputs from the fixed seed. A counterexample is printed

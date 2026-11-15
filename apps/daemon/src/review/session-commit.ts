@@ -79,10 +79,10 @@ const stale = () =>
   refuse("changes_commit_stale", "the files changed since they were shown: look again");
 
 /** The digest of a file over the size a commit checks: it is never read to make one. */
-export const TOO_LARGE = "too-large";
+const TOO_LARGE = "too-large";
 
 /** A file in the working tree as it is now: the sha256 of its bytes, `deleted`, or `too-large`. */
-export async function fileDigest(root: string, path: string): Promise<string> {
+async function fileDigest(root: string, path: string): Promise<string> {
   const full = join(root, path);
   const info = await lstat(full).catch(() => null);
   if (info === null) return "deleted";

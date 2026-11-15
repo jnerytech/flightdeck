@@ -7,7 +7,6 @@ export {
   COVERAGE_VAR,
   createInstrumenter,
   type FunctionCoverage,
-  type Instrumenter,
   onLoadFor,
 } from "./funcs-hooks.ts";
 

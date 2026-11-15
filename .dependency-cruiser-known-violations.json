@@ -1,17 +1,6 @@
 [
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/assistant/wand-controls.tsx",
-    "to": "apps/desktop/src/features/sessions/parts.tsx",
-    "unresolvedTo": "@/features/sessions/parts",
-    "dependencyTypes": ["undetermined", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/desktop/src/features/backup/backup-bundle.ts",
     "to": "apps/desktop/src/features/vault/domain/vault-backup.ts",
     "unresolvedTo": "../vault/domain/vault-backup.ts",
@@ -34,17 +23,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/hosts/host-tabs.ts",
-    "to": "apps/desktop/src/features/tabs/tabs.ts",
-    "unresolvedTo": "../tabs/tabs.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/desktop/src/features/shell/domain/nav-active.ts",
     "to": "apps/desktop/src/features/tabs/domain/tab-badge.ts",
     "unresolvedTo": "../../tabs/domain/tab-badge.ts",
@@ -52,61 +30,6 @@
     "rule": {
       "severity": "error",
       "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/desktop/src/features/shell/domain/workspace.ts",
-    "to": "apps/desktop/src/features/tabs/tabs.ts",
-    "unresolvedTo": "../../tabs/tabs.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/desktop/src/features/terminal/page.tsx",
-    "to": "apps/desktop/src/features/files/file-viewer.tsx",
-    "unresolvedTo": "../files/file-viewer.tsx",
-    "dependencyTypes": ["local", "dynamic-import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/card-pr-flow.ts",
-    "to": "apps/daemon/src/issues/providers.ts",
-    "unresolvedTo": "../issues/providers.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/check-loop-host.ts",
-    "to": "apps/daemon/src/watch/domain/check-run.ts",
-    "unresolvedTo": "../watch/domain/check-run.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/check-loop.ts",
-    "to": "apps/daemon/src/watch/settings.ts",
-    "unresolvedTo": "../watch/settings.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
     }
   },
   {

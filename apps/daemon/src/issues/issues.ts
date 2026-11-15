@@ -3,8 +3,7 @@
  * and turned into cards. An issue from a third party is marked, and a card made from it gets no
  * automatic approval until you resume it.
  */
-import type { Card, Issue } from "@flightdeck/protocol";
-import type { Board } from "../board/index.ts";
+import type { Card, Issue, Project } from "@flightdeck/protocol";
 import { git } from "../git/index.ts";
 import { GithubIssues, githubCoords } from "../github/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
@@ -15,8 +14,22 @@ import { AzureIssues, type IssueProvider } from "./providers.ts";
 
 export type { Issue };
 
+/**
+ * What the issues service asks of the board (#1589). The issues domain owns this port, so it
+ * imports nothing from the board: the board's pull request flow can import the issues entry
+ * without a cycle.
+ */
+interface IssuesBoard {
+  cardForIssue(projectId: string, issueRef: string): string | null;
+  createCard(
+    projectId: string,
+    input: { title: string; description: string; issueRef: string; issueExternal: boolean },
+  ): Card;
+  getProject(id: string): Project;
+}
+
 export interface IssuesOptions {
-  board: Board;
+  board: IssuesBoard;
   /** Where a card from a third-party issue is suspended. */
   autoApprove?: Pick<AutoApprover, "suspend">;
 }

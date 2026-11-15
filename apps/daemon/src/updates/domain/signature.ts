@@ -7,7 +7,7 @@ import { createHash, createPublicKey, type KeyObject, verify } from "node:crypto
 
 const ED25519_SPKI = Buffer.from("302a300506032b6570032100", "hex");
 
-export class SignatureError extends Error {}
+class SignatureError extends Error {}
 
 /** The minisign text: as given, or decoded when it comes wrapped in base64. */
 function unwrap(text: string): string[] {

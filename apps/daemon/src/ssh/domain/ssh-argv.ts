@@ -22,7 +22,7 @@ export interface AskpassHook {
 type Delivered = { identityFile: string | null };
 
 /** The value of a path in an ssh option or config: slashes on Windows, quotes around spaces. */
-export function sshValue(win: boolean, path: string): string {
+function sshValue(win: boolean, path: string): string {
   const text = win ? path.replaceAll("\\", "/") : path;
   return /\s/.test(text) ? `"${text}"` : text;
 }
