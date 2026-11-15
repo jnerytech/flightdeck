@@ -4,7 +4,7 @@
  * its recent subjects. Never author names, emails, hashes, or file contents outside the diff.
  */
 import { readdir } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import {
   type AssistantContextBundle,
   byCodeUnit,
@@ -15,8 +15,7 @@ import {
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg } from "../kernel/index.ts";
-import { isCredentialPath } from "../permissions/index.ts";
-import { REMOVED_LINE } from "../watch/index.ts";
+import { blocks, CONVENTIONAL, hidden, render, stat } from "./domain/diff-context.ts";
 
 export interface ContextDeps {
   /** A card's worktree and base branch; refuses a card that does not exist. */
@@ -36,16 +35,6 @@ const MARKDOWN_MAX = 64 * 1024;
 /** The largest untracked file whose content is read; a larger one is listed like a binary file. */
 const UNTRACKED_MAX = 256 * 1024;
 
-const LOCKFILES = new Set([
-  "bun.lock",
-  "bun.lockb",
-  "package-lock.json",
-  "yarn.lock",
-  "pnpm-lock.yaml",
-  "Cargo.lock",
-  "poetry.lock",
-]);
-
 const STAGED = [
   "-c",
   "core.quotePath=false",
@@ -55,29 +44,11 @@ const STAGED = [
   "--no-ext-diff",
   "-M",
 ];
-const CONVENTIONAL = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: /;
-const RULE_WORDS = /commit|conventional|scope|pr title|message/i;
-
 function refuse(
   reason: "assistant_no_changes" | "assistant_not_a_repo",
   message: string,
 ): FlightdeckError {
   return new FlightdeckError("invalid_state", message, reason);
-}
-
-/** A file the model is not shown: binary, over the cap, a lockfile, minified or generated, build output, a credential. */
-function hidden(file: DiffFile): boolean {
-  const path = file.path.replaceAll("\\", "/");
-  const name = basename(path);
-  return (
-    file.binary ||
-    file.tooLarge === true ||
-    LOCKFILES.has(name) ||
-    /\.min\.(js|css)$|\.map$|\.generated\./.test(name) ||
-    /(^|\/)(dist|build)\//.test(path) ||
-    isCredentialPath(path) ||
-    (file.oldPath !== null && isCredentialPath(file.oldPath.replaceAll("\\", "/")))
-  );
 }
 
 /** The repository's top level, or the refusal for a folder that is not in one. */
@@ -99,56 +70,6 @@ async function changes(
   if (source.kind === "worktree") return { root, files: await workingDiff(root, UNTRACKED_MAX) };
   const staged = await git(root, ...STAGED);
   return { root, files: parseUnifiedDiff(staged.stdout, true) };
-}
-
-const KEY_BEGIN = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
-const KEY_END = /-----END [A-Z ]*PRIVATE KEY-----/;
-
-/** One file's diff as the model reads it, its secret-looking lines taken out, and a private key from its BEGIN line to its END line. */
-function render(
-  file: DiffFile,
-  scanner: ContextDeps["scanner"],
-): { text: string; redacted: number } {
-  let redacted = 0;
-  const lines = [`--- ${file.path}`];
-  for (const hunk of file.hunks) {
-    lines.push(hunk.header);
-    let inKey = false;
-    for (const line of hunk.lines) {
-      const keyLine: boolean = inKey || KEY_BEGIN.test(line.text);
-      inKey = keyLine && !KEY_END.test(line.text);
-      if (keyLine || scanner.scan(line.text).length > 0) {
-        redacted++;
-        lines.push(`${line.op}${REMOVED_LINE}`);
-      } else {
-        lines.push(`${line.op}${line.text}`);
-      }
-    }
-  }
-  return { text: lines.join("\n"), redacted };
-}
-
-function stat(files: DiffFile[]): string {
-  // Byte order, as git sorts paths.
-  const sorted = [...files].sort((a, b) => (a.path < b.path ? -1 : 1));
-  const width = Math.max(...sorted.map((f) => f.path.length));
-  return sorted
-    .map((f) => {
-      const bar = `${f.additions > 0 ? "+" : ""}${f.deletions > 0 ? "-" : ""}`;
-      return ` ${f.path.padEnd(width)} | ${f.additions + f.deletions} ${bar}`.trimEnd();
-    })
-    .join("\n");
-}
-
-/** The paragraphs and list items of a Markdown file that talk about commits or messages. */
-function blocks(text: string): string[] {
-  const out: string[] = [];
-  for (const paragraph of text.split(/\n\s*\n/)) {
-    // A list is one block per item: a line that starts an item opens the next one.
-    const items = paragraph.split(/\n(?=(?:[-*]|\d+\.) )/);
-    for (const item of items) if (RULE_WORDS.test(item)) out.push(item.trim());
-  }
-  return out;
 }
 
 /** The start of a regular file as text; null for a link, a folder, a pipe or a missing file. */
