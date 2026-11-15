@@ -122,20 +122,20 @@ export class Rewinder {
   /** What differs between the target's tree and the working tree now (in a temporary snapshot tree). */
   private async snapshotDiff(target: SnapshotRow) {
     const current = await this.opts.snapshots.currentTree(target.repo);
-    const names = (
-      await gitBytes(target.repo, [
-        "diff",
-        "-z",
-        "--name-status",
-        "--no-renames",
-        target.tree,
-        current,
-      ])
-    ).stdout.toString();
-    const numstat = (
-      await gitBytes(target.repo, ["diff", "-z", "--numstat", "--no-renames", target.tree, current])
-    ).stdout.toString();
-    return { preview: { via: "snapshot" as const, ...previewOf(names, numstat) } };
+    const diff = (flag: string) =>
+      gitBytes(target.repo, ["diff", "-z", flag, "--no-renames", target.tree, current]);
+    const names = await diff("--name-status");
+    // A failed file list must not read as "nothing changed": a rewind would restore nothing and say so.
+    if (names.code !== 0) throw new Error(`git diff failed (${names.code})`);
+    // The line counts are for display only: git cannot count a blob that is gone, and the restore
+    // then refuses that file by name (rewind_blob_unreadable).
+    const numstat = await diff("--numstat");
+    return {
+      preview: {
+        via: "snapshot" as const,
+        ...previewOf(names.stdout.toString(), numstat.code === 0 ? numstat.stdout.toString() : ""),
+      },
+    };
   }
 
   /**
