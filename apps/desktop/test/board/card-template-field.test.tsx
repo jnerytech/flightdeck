@@ -9,8 +9,9 @@ import { settle, stays } from "../wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { TContext } = await import("../../src/i18n/context.tsx");
-const { applyTemplate, CardTemplateField, startPersonaOf, startWorkflowOf } = await import(
-  "../../src/features/board/card-template-field.tsx"
+const { CardTemplateField } = await import("../../src/features/board/card-template-field.tsx");
+const { applyTemplate, startPersonaOf, startWorkflowOf } = await import(
+  "../../src/features/board/domain/card-template.ts"
 );
 
 afterEach(cleanup);

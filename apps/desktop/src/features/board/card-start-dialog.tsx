@@ -12,7 +12,7 @@ import { AppDialogContent } from "@/shared/feedback/index.ts";
 import { NativeSelect } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
+import { startPersonaOf, startWorkflowOf } from "./domain/card-template.ts";
 
 /**
  * "Iniciar card" from the board's card menu: the workflow and the persona the card starts with
