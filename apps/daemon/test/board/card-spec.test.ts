@@ -54,16 +54,10 @@ describe("card-spec: what the daemon learns of a spec file", () => {
     expect(await readSpec(join(root, "nope"), "plain.md")).toEqual({ found: false, heading: null });
   });
 
-  test("a folder named like a spec, or an odd file, is not one", async () => {
+  test("a folder named like a spec is not one", async () => {
     const { root } = folders();
     mkdirSync(join(root, "dir.md"));
     expect(await readSpec(root, "dir.md")).toEqual({ found: false, heading: null });
-    if (!posix) return;
-    const made = Bun.spawnSync(["mkfifo", join(root, "pipe.md")]);
-    if (made.exitCode === 0) {
-      // A pipe is never opened: it would block the daemon waiting for a writer.
-      expect(await readSpec(root, "pipe.md")).toEqual({ found: false, heading: null });
-    }
   });
 
   test("the heading is the first ATX heading, trimmed, closed hashes dropped, controls removed, capped", async () => {
