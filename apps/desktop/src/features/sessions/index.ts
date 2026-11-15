@@ -14,6 +14,7 @@ export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
 export type { CacheTtl } from "./domain/cache-timer.ts";
 export { groupName, hubRowOrder } from "./domain/hub-groups.ts";
+export { sessionLineText } from "./domain/hub-status.ts";
 export { byProject, CONTINUATION } from "./domain/resume-offer.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
@@ -49,7 +50,6 @@ export {
   saveHubFilter,
   saveHubOpen,
   saveHubView,
-  sessionLineText,
   takeHubHost,
 } from "./hub.ts";
 export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";

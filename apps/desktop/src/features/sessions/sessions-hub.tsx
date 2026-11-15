@@ -56,6 +56,7 @@ import {
   rowsInScope,
   scopeKeys,
 } from "./domain/hub-scope.ts";
+import { rowStatus, sessionLineText, sharedMeta } from "./domain/hub-status.ts";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
 import {
   activeCount,
@@ -68,9 +69,6 @@ import {
   hubRows,
   hubView,
   isSearching,
-  rowStatus,
-  sessionLineText,
-  sharedMeta,
 } from "./hub.ts";
 import { newSessionHost } from "./new-session-host.ts";
 import { focusRenameField, focusRowActions, RenameForm } from "./rename-form";
