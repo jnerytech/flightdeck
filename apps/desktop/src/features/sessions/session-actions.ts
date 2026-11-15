@@ -5,7 +5,7 @@ import type {
   SettableMode,
 } from "@flightdeck/protocol";
 
-/** What goes with an answer to a request, besides allow or deny (the shape the needs-you `Answer` has). */
+/** What goes with an answer to a request, besides allow or deny: the shape of `Answer` in features/needs-you/domain/pending-item.ts, which documents each field. */
 interface SessionAnswer {
   updatedPermissions?: PermissionUpdate[];
   message?: string;
