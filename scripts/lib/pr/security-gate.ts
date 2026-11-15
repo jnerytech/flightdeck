@@ -183,6 +183,20 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
   ["vault or pairing", [/(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i]],
   // The Tauri shell's capabilities and config (CSP, scopes).
   ["tauri config", [/\/src-tauri\/capabilities\//, /(?:^|\/)tauri(?:\.[\w-]+)?\.conf\.json$/]],
+  // The domain files that hold the rule for a secret's use or for who may do what: a change to
+  // one weakens a check the daemon relies on, wherever the file lives (#1589).
+  ["secret rules", [/^apps\/daemon\/src\/[^/]+\/domain\/[^/]*secrets?[^/]*\.ts$/i]],
+  [
+    "permission decision",
+    [
+      /^apps\/daemon\/src\/(?:permissions|trust)\/domain\//,
+      /^apps\/daemon\/src\/actions\/domain\/approval-check\.ts$/,
+      /^apps\/daemon\/src\/github\/domain\/trust\.ts$/,
+      /^apps\/daemon\/src\/messaging\/domain\/policy\.ts$/,
+      /^apps\/daemon\/src\/ssh\/domain\/connect-rules\.ts$/,
+      /^apps\/daemon\/src\/terminal\/domain\/policy\.ts$/,
+    ],
+  ],
   ["workflow", [/^\.github\/workflows\//]],
   // The gate and the checks it stands with: a change that weakens one needs a review too.
   [
