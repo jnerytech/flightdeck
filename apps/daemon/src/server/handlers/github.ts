@@ -2,7 +2,7 @@
  * Issue #1288: the github domain: the sign-in with GitHub, starting from a GitHub project (phase 37)
  * and the board sync with an external board (phase 38).
  */
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const githubHandlers = {
   "boardsync.boards": async (_payload, { server }) => {

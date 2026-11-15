@@ -3,7 +3,7 @@
  * and the feed switch. Each command asks for a folder the host allows before it reads one.
  */
 import { resolveAllowedCwd } from "../../kernel/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const knowledgeHandlers = {
   "knowledge.list": async (payload, { server }) => {

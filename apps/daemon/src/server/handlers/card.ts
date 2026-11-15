@@ -5,7 +5,7 @@
  */
 import { manageCard } from "../../board/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const cardHandlers = {
   "card.startArena": async (payload, { server }) => {
