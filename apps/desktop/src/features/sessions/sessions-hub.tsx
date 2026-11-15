@@ -1,5 +1,5 @@
 import { Radio, Server, X } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,25 +11,19 @@ import type { Density } from "@/features/shell/index.ts";
 import { ScopeMenu } from "@/features/shell/ui.ts";
 import { TeleportMove } from "@/features/teleport/ui.ts";
 import { cn } from "@/lib/utils";
-import { useKeyed } from "@/shared/hooks/index.ts";
 import { CardGrid, EmptyState, Page, Toolbar } from "@/shared/layout/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
 import { ALL_SCOPE, awayKey, usd } from "../costs/index.ts";
-import { typing } from "../shortcuts/index.ts";
 import { AsleepMark } from "./asleep-mark";
 import { CacheTimer } from "./cache-timer";
 import type { HubFilter, HubRow, HubView } from "./domain/hub.ts";
 import {
-  costAsks,
-  cursorMove,
   filterCount,
-  hasBackgroundHost,
   hostlessHub,
   personasOf,
-  refreshSignature,
   rowSummary,
   showsStateWord,
 } from "./domain/hub-derive.ts";
@@ -43,12 +37,12 @@ import { type RowActionsContext, rowActions, setRowMeta } from "./hub-row-action
 import { focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
+import { useHubCosts } from "./use-hub-costs.ts";
+import { useHubCursor } from "./use-hub-cursor.ts";
 import { useHubList } from "./use-hub-list.ts";
+import { useHubRefresh } from "./use-hub-refresh.ts";
 import { type HubProject, useHubScope } from "./use-hub-scope.ts";
 import { ViewToggle } from "./view-toggle.tsx";
-
-/** How often the hub asks the hosts about their background sessions. */
-const BG_REFRESH_MS = 10_000;
 
 /** The key of a row's state: an asleep session is its own word, though it is idle underneath. */
 const stateKey = (row: HubRow) => (row.asleep ? "asleep" : row.state);
@@ -87,33 +81,7 @@ export function SessionsHub(
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   /** Issue #100: the session being moved to another host (the preview's dialog). */
   const [moving, setMoving] = useState<HubRow | null>(null);
-  // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
-  // keeps failing to connect changes status on every attempt: only being online counts.
-  const signature = refreshSignature(state.hosts);
-  useEffect(() => {
-    if (signature) void store.sessionLists.refresh();
-  }, [store, signature]);
-
-  // Background sessions change state on their own (a permission asked, a turn done): while the
-  // hub is open and a host has them, it asks again every BG_REFRESH_MS.
-  const withBackground = hasBackgroundHost(state.hosts);
-  useEffect(() => {
-    if (!withBackground) return;
-    let stopped = false;
-    let cancel: (() => void) | undefined;
-    const schedule = () => {
-      cancel = store.later(() => {
-        void store.sessionLists.refresh().then(() => {
-          if (!stopped) schedule();
-        });
-      }, BG_REFRESH_MS);
-    };
-    schedule();
-    return () => {
-      stopped = true;
-      cancel?.();
-    };
-  }, [store, withBackground]);
+  useHubRefresh(store, state.hosts);
 
   const {
     picked,
@@ -136,38 +104,8 @@ export function SessionsHub(
   const personas = personasOf(rows);
   /** The rows as listed, top to bottom: what J and K walk. */
   const listed = groups.flatMap((g) => g.rows);
-  /** The row the keyboard is on (-1: none yet). */
-  const [cursor, setCursor] = useState(-1);
-  // J and K move the cursor, Enter opens the row under it (a focused button keeps its own Enter).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
-      const moved = cursorMove(e.key, cursor, listed.length);
-      if (moved !== null) setCursor(moved);
-      else if (
-        e.key === "Enter" &&
-        listed[cursor] &&
-        (e.target as HTMLElement).tagName !== "BUTTON"
-      ) {
-        props.onOpen(listed[cursor] as HubRow);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-  /** Estimated cost of each row's session, by row key (hosts with costs, phase 8). */
-  const [costs, setCosts] = useState<Record<string, number>>({});
-  const asked = useKeyed(costAsks(state.hosts, rows));
-  useEffect(() => {
-    void Promise.all(
-      asked.map(async ([hostId, ids]) => {
-        const result = await store.hostCommand(hostId, "costs.sessions", {
-          claudeSessionIds: ids.slice(0, 500),
-        });
-        return Object.entries(result?.costs ?? {}).map(([id, cost]) => [`${hostId}/${id}`, cost]);
-      }),
-    ).then((all) => setCosts(Object.fromEntries(all.flat())));
-  }, [store, asked]);
+  const { activeKey, mark } = useHubCursor(listed, props.onOpen);
+  const costs = useHubCosts(store, state.hosts, rows);
   const set = (patch: Partial<HubFilter>) => {
     const next = { ...filter, ...patch };
     setFilter(next);
@@ -418,9 +356,9 @@ export function SessionsHub(
                         cache={cacheOf(row)}
                         runtime={row.runtime ? t("session.runtimeOpenCode") : null}
                         current={props.isOpen(row)}
-                        active={listed[cursor]?.key === row.key}
+                        active={activeKey === row.key}
                         onOpen={() => {
-                          setCursor(listed.findIndex((r) => r.key === row.key));
+                          mark(row);
                           props.onOpen(row);
                         }}
                         actions={rowActions(rowCtx, row)}
@@ -452,7 +390,7 @@ export function SessionsHub(
                           key={row.key}
                           aria-label={row.title}
                           aria-current={props.isOpen(row) ? "true" : undefined}
-                          data-active={listed[cursor]?.key === row.key}
+                          data-active={activeKey === row.key}
                           className={cn(
                             "group flex items-center gap-x-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
                             props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
@@ -467,7 +405,7 @@ export function SessionsHub(
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setCursor(listed.findIndex((r) => r.key === row.key));
+                                  mark(row);
                                   props.onOpen(row);
                                 }}
                                 className="row-title min-w-0 flex-1 truncate text-left font-medium text-sm"
