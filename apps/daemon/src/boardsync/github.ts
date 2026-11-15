@@ -3,13 +3,9 @@
  * daemon holds no token. Query text is constant and every value goes as a variable.
  */
 import { z } from "zod";
-import {
-  type GhResult,
-  type GhRunner,
-  githubStatus,
-  TRUSTED_ASSOCIATIONS,
-} from "../github/index.ts";
+import { type GhResult, type GhRunner, githubStatus } from "../github/index.ts";
 import { FlightdeckError, parseJsonOr } from "../kernel/index.ts";
+import { type GhNode, toItem } from "./domain/item.ts";
 import type {
   BoardProvider,
   ExternalBoard,
@@ -52,23 +48,6 @@ const refuse = (
   params?: Record<string, string | number>,
   code: "invalid_state" | "bad_request" = "invalid_state",
 ) => new FlightdeckError(code, message, reason, params);
-
-interface GhNode {
-  id: string;
-  isArchived: boolean;
-  updatedAt: string;
-  fieldValueByName: { name: string } | null;
-  content: {
-    __typename: string;
-    number?: number;
-    title: string;
-    body: string | null;
-    url?: string;
-    repository?: { nameWithOwner: string };
-    author?: { login?: string } | null;
-    authorAssociation?: string;
-  } | null;
-}
 
 /** The text of the first `[...]` with something inside, which is where gh names the missing scopes. */
 export function firstBracketed(text: string): string | undefined {
@@ -256,38 +235,4 @@ export class GithubBoards implements BoardProvider {
     }>(SET_QUERY, { board: boardId, item: itemId, field: field.fieldId, option: optionId });
     return { updatedAt: data.updateProjectV2ItemFieldValue.projectV2Item.updatedAt };
   }
-}
-
-function toItem(raw: GhNode, me: string): ExternalItem {
-  const content = raw.content;
-  const base = {
-    id: raw.id,
-    status: raw.fieldValueByName?.name ?? null,
-    updatedAt: raw.updatedAt,
-    archived: raw.isArchived,
-  };
-  if (!content) return { ...base, url: "", title: "", body: "", content: null };
-  if (content.__typename === "DraftIssue") {
-    return {
-      ...base,
-      url: "",
-      title: content.title,
-      body: content.body ?? "",
-      content: { kind: "draft" },
-    };
-  }
-  const author = (content.author?.login ?? "").toLowerCase();
-  const external =
-    author !== me && !TRUSTED_ASSOCIATIONS.has((content.authorAssociation ?? "").toUpperCase());
-  return {
-    ...base,
-    url: content.url ?? "",
-    title: content.title,
-    body: content.body ?? "",
-    content: {
-      kind: content.__typename === "PullRequest" ? "pull_request" : "issue",
-      ref: `github:${content.repository?.nameWithOwner ?? ""}#${content.number ?? ""}`,
-      external,
-    },
-  };
 }
