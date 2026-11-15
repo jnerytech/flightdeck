@@ -1,11 +1,5 @@
-import {
-  type EffortLevel,
-  inSequence,
-  SESSION_IMAGE_MAX_BYTES,
-  SESSION_IMAGE_MAX_COUNT,
-  type SessionImage,
-} from "@flightdeck/protocol";
-import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lucide-react";
+import type { EffortLevel, SessionImage } from "@flightdeck/protocol";
+import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,12 +13,12 @@ import { isBusy } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
+import { ComposerAttachments } from "./composer-attachments.tsx";
 import { composerPickers } from "./composer-pickers.tsx";
 import { commandItemsOf, offeredPrompts } from "./domain/command-menu.ts";
 import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-queue.ts";
 import { nextMode } from "./domain/mode-menu.ts";
 import { activityOf, openTool } from "./domain/session-activity.ts";
-import { type ImageRefusal, readImage, refuseImage } from "./domain/session-images.ts";
 import type { SessionState } from "./domain/session-state.ts";
 import {
   Composer,
@@ -40,6 +34,7 @@ import type { SessionActions } from "./session-actions.ts";
 import { StatusBadge } from "./status-badge.tsx";
 import { SessionStatusLine } from "./status-line";
 import { TimelineItem } from "./timeline-item.tsx";
+import { useComposerImages } from "./use-composer-images.ts";
 import { useConversationScroll } from "./use-conversation-scroll.ts";
 import { useEndSession } from "./use-end-session.tsx";
 import { useModePick } from "./use-mode-pick.ts";
@@ -181,26 +176,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     caret.current = null;
   }, [text]);
 
-  /** The images waiting to go with the next message, and why the last file was turned away. */
-  const [attached, setAttached] = useState<SessionImage[]>([]);
-  const [refusal, setRefusal] = useState<ImageRefusal | null>(null);
-  const attach = async (files: File[]) => {
-    const images = files.filter((file) => file.type.startsWith("image/"));
-    if (!props.images || images.length === 0) return;
-    let have = attached.length;
-    const taken: SessionImage[] = [];
-    let turned: ImageRefusal | null = null;
-    await inSequence(images, async (file) => {
-      const why = refuseImage(file, have);
-      if (why) turned = why;
-      else {
-        taken.push(await readImage(file));
-        have++;
-      }
-    });
-    setRefusal(turned);
-    if (taken.length > 0) setAttached((before) => [...before, ...taken]);
-  };
+  const { attached, setAttached, refusal, setRefusal, attach } = useComposerImages(props.images);
 
   /** Messages written during a turn: they wait here and go out, in order, as the turns end. */
   const [queued, setQueued] = useState<Array<{ text: string; images: SessionImage[] }>>([]);
@@ -397,37 +373,12 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             ))}
           </ul>
         )}
-        {(attached.length > 0 || refusal) && (
-          <div className="composer-images">
-            {attached.map((image, at) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: two pasted copies of one image look the same
-              <div key={`${at}:${image.data.slice(-16)}`} className="composer-image">
-                <img
-                  alt={t("session.imageAttached", { n: String(at + 1) })}
-                  src={`data:${image.mediaType};base64,${image.data}`}
-                  className="composer-thumb"
-                />
-                <IconActionButton
-                  label={t("session.imageRemove", { n: String(at + 1) })}
-                  onClick={() => setAttached((before) => before.filter((_, i) => i !== at))}
-                >
-                  <X aria-hidden="true" />
-                </IconActionButton>
-              </div>
-            ))}
-            {refusal && (
-              <p role="alert" className="text-status-error text-xs">
-                {t(`session.imageRefused.${refusal}`, {
-                  max: String(
-                    refusal === "size"
-                      ? SESSION_IMAGE_MAX_BYTES / (1024 * 1024)
-                      : SESSION_IMAGE_MAX_COUNT,
-                  ),
-                })}
-              </p>
-            )}
-          </div>
-        )}
+        <ComposerAttachments
+          t={t}
+          attached={attached}
+          refusal={refusal}
+          onRemove={(at) => setAttached((before) => before.filter((_, i) => i !== at))}
+        />
         {working && <ActivityLine activity={activity} t={t} />}
         {wand && <WandPanel wand={wand} t={t} />}
         <Composer busy={working}>

@@ -56,14 +56,11 @@ import {
   filteredColumnCount,
   filteredCountLabel,
   fitColumnWidth,
-  pruneSelection,
-  rangeSelection,
-  shownSelection,
-  toggleSelection,
 } from "./domain/board-select.ts";
 import { cardStartBlock } from "./domain/card-start-block.ts";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
+import { useCardSelection } from "./use-card-selection.ts";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
 import { type MoveAsk, useSelectionActions } from "./use-selection-actions.tsx";
 import { useStartAsk } from "./use-start-ask.tsx";
@@ -138,8 +135,6 @@ export const BoardView = memo(function BoardView(props: {
   const [ask, setAsk] = useState<MoveAsk | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
-  /** The selected cards (Ctrl-click), the last one picked (the anchor of a Shift range) and what a bulk action left to say. */
-  const [picked, setPicked] = useState<string[]>([]);
   /** #1198: the card the board's Tab stop is on, and the column a narrow board shows. */
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
   const [shownColumn, setShownColumn] = useState<BoardColumn | null>(null);
@@ -147,12 +142,9 @@ export const BoardView = memo(function BoardView(props: {
   const pendingFocus = useRef<string | null>(null);
   const lastKey = useRef({ key: "", at: 0 });
   const hintId = useId();
-  const anchor = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
-  /** A keyboard range (#1354): the selection it started from, so Shift+Up can shrink it back. */
-  const rangeBase = useRef<string[] | null>(null);
   /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
   const moveFrom = useRef<string | null>(null);
   // A batch of moves or discards is running: nothing else may start.
@@ -204,12 +196,17 @@ export const BoardView = memo(function BoardView(props: {
         }
       : { count: columnCount(inColumn), label: countLabel(t, inColumn) };
   const boardIds = boardOrder(shown);
-  const selection = pruneSelection(
-    picked,
-    all.map((card) => card.id),
-  );
-  const acting = shownSelection(selection, boardIds);
-  const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
+  const {
+    setPicked,
+    anchor,
+    rangeBase,
+    selection,
+    acting,
+    actingCards,
+    clearSelection,
+    select,
+    selectRange,
+  } = useCardSelection({ all, shown, boardIds, focusBoard: () => boardRef.current?.focus() });
   const nameRefusals = (refused: BulkRefusal[]) => refusalNames(refused, t);
   /** #1354: what Start N and Stop N take from the selection. */
   const split = bulkSplit(actingCards, t);
@@ -268,26 +265,6 @@ export const BoardView = memo(function BoardView(props: {
     boardRef,
   });
   const { moveSelected, updateSelected, updating } = selectionActions;
-  /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
-  const clearSelection = () => {
-    anchor.current = null;
-    rangeBase.current = null;
-    setPicked([]);
-    boardRef.current?.focus();
-  };
-  const select = (card: Card) => {
-    rangeBase.current = null;
-    // Only a card just selected anchors the next Shift-click.
-    if (!selection.includes(card.id)) anchor.current = card.id;
-    else if (anchor.current === card.id) anchor.current = null;
-    setPicked(toggleSelection(selection, card.id));
-  };
-  const selectRange = (card: Card) => {
-    rangeBase.current = null;
-    const order = shown.filter((other) => other.column === card.column).map((other) => other.id);
-    setPicked(rangeSelection(order, anchor.current, card.id, selection));
-    anchor.current = card.id;
-  };
   /** #1553: the cards whose session says nothing, by session, with the badge's words. */
   const nowMs = store.now();
   const quietBySession = new Map(quietAlerts(state, nowMs, t).map((alert) => [alert.key, alert]));
