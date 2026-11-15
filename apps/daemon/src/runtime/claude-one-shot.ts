@@ -10,7 +10,7 @@ import { CompleteCutShort } from "./domain/complete-cut-short.ts";
 import type { CompleteOptions, CompleteResult, JudgeOptions, JudgeResult } from "./types.ts";
 
 /** The part of the SDK's `query` a one-shot call uses: a prompt in, the messages out. */
-export type OneShotQuery = (params: {
+type OneShotQuery = (params: {
   prompt: AsyncIterable<SDKUserMessage>;
   options: Options;
 }) => AsyncIterable<SDKMessage>;
