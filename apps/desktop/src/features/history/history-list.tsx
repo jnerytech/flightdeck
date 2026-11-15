@@ -1,4 +1,4 @@
-import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
+import type { HistorySessionSummary } from "@flightdeck/protocol";
 import { History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,40 +21,10 @@ import { basename } from "@/shared/lib/index.ts";
 import type { AppStore, HistoryFilter } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { usageProjectLabel, usd } from "../costs/index.ts";
+import { type Draft, emptyReason, toFilter } from "./domain/history-filter.ts";
 import { HistoryCard } from "./history-card.tsx";
 
 /** Native selects, as in the hub. */
-
-interface Draft {
-  cwd: string;
-  /** Set by a usage row of a remote project; the chip clears it. */
-  projectKey: string;
-  from: string;
-  to: string;
-  origin: "" | HistoryOrigin;
-}
-
-/** Date inputs give whole days; the daemon compares ISO timestamps (UTC). */
-/** Why the list is empty once it is read: the hidden automated runs, the filters, or nothing yet. */
-function emptyReason(why: {
-  open: boolean;
-  automated: boolean;
-  filtered: boolean;
-}): "automated" | "filtered" | "nothing" | null {
-  if (!why.open) return null;
-  if (why.automated) return "automated";
-  return why.filtered ? "filtered" : "nothing";
-}
-
-function toFilter(draft: Draft): HistoryFilter {
-  return {
-    ...(draft.cwd.trim() ? { cwd: draft.cwd.trim() } : {}),
-    ...(draft.projectKey ? { projectKey: draft.projectKey } : {}),
-    ...(draft.from ? { from: `${draft.from}T00:00:00.000Z` } : {}),
-    ...(draft.to ? { to: `${draft.to}T23:59:59.999Z` } : {}),
-    ...(draft.origin ? { origin: draft.origin } : {}),
-  };
-}
 
 /** Indexed sessions of one host, newest first, with folder, period and origin filters. */
 export function HistoryList(

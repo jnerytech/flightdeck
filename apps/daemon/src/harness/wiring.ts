@@ -4,8 +4,9 @@ import { featureOff, present } from "../kernel/index.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
 import { type ApplyOptions, applyHarness } from "./apply.ts";
 import { commitHarness } from "./commit.ts";
+import type { PreviewPart } from "./domain/settings-proposal.ts";
 import { type DraftDeps, HarnessDrafts } from "./draft.ts";
-import { type PreviewPart, previewHarness } from "./preview.ts";
+import { previewHarness } from "./preview.ts";
 import { detectStack } from "./stack.ts";
 import { HarnessTemplates } from "./templates-store.ts";
 
