@@ -300,7 +300,7 @@ describe("security-gate", () => {
       [
         "apps/daemon/src/actions/domain/approval-check.ts",
         "apps/daemon/src/actions/domain/secret-use.ts",
-        "apps/daemon/src/actions/domain/mask.ts",
+        "apps/daemon/src/actions/domain/run-params.ts",
         "apps/daemon/src/git/domain/diff-secrets.ts",
         "apps/daemon/src/github/domain/trust.ts",
         "apps/daemon/src/messaging/domain/policy.ts",
