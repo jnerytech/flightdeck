@@ -26,7 +26,7 @@ export class AfterAck<T extends CommandType> {
   ) {}
 }
 
-export type Reply<T extends CommandType> = CommandResults[T] | undefined | AfterAck<T>;
+type Reply<T extends CommandType> = CommandResults[T] | undefined | AfterAck<T>;
 
 export type Handler<T extends CommandType> = (
   payload: CommandPayload<T>,
