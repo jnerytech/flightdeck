@@ -3,11 +3,10 @@ import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
 import { actionPolicy, type VaultAnswer } from "./domain/vault-approval.ts";
+import { checkDelivery, type DeliveryRefusal } from "./domain/vault-delivery.ts";
 import type { SecretMeta, Vault } from "./vault.ts";
 import {
   answerVaultRequest,
-  checkDelivery,
-  type DeliveryRefusal,
   type VaultOutcome,
   type VaultPolicy,
   type VaultRequestContext,
