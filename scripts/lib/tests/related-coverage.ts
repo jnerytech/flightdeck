@@ -23,7 +23,8 @@ export function coverageTargets(
 }
 
 /** bunfig.toml's `coveragePathIgnorePatterns`, as one test: the files the full suite's gate skips. */
-export const WHOLE_SUITE_IGNORED = /(?:^|\/)(?:test\/|components\/ui\/|scripts\/demo-seed\.ts$)/;
+export const WHOLE_SUITE_IGNORED =
+  /(?:^|\/)(?:test\/|components\/ui\/|scripts\/demo-seed\.ts$|scripts\/lib\/demo\/seed-[^/]+\.ts$)/;
 
 /**
  * #762: of the files a changed test newly loads, the ones the full suite's coverage gate counts. That
