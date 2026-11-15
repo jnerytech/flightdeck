@@ -10,7 +10,6 @@ import {
   useSwitcherHosts,
 } from "@/features/hosts/index.ts";
 import { RenameHostDialog } from "@/features/hosts/ui.ts";
-import { pendingCount } from "@/features/needs-you/index.ts";
 import { activeWorktreeFilter, projectTree } from "@/features/projects/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/ui.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
@@ -25,6 +24,7 @@ import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
 import { ProgressRing } from "@/shared/status/index.ts";
 import { activeNav } from "./domain/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "./domain/nav-badges.ts";
+import { pendingCount } from "./domain/pending-count.ts";
 import { SidebarFoot } from "./sidebar-foot.tsx";
 import { HostsList, ITEM } from "./sidebar-hosts.tsx";
 import { NavButton, NavGroup, NavIcon } from "./sidebar-nav.tsx";

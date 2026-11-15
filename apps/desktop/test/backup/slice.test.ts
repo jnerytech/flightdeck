@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { RestorePreview, RestoreResult } from "../../src/features/backup/backup-bundle.ts";
-import { BackupError } from "../../src/features/backup/backup-error.ts";
 import { DriveError } from "../../src/features/backup/drive-target.ts";
 import { type BackupCore, BackupSlice } from "../../src/features/backup/index.ts";
+import { BackupError } from "../../src/features/vault/domain/backup-error.ts";
 
 const PREVIEW = { token: "p" } as unknown as RestorePreview;
 const RESULT = { restored: 1 } as unknown as RestoreResult;
