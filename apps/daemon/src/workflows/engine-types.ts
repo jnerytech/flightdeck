@@ -74,3 +74,27 @@ export interface RunRow {
 export const now = () => new Date().toISOString();
 
 export const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/** The run was ended by the board while it waited: nothing more to do. */
+export class Abandoned extends Error {}
+
+/** Fails the run with a reason the app translates (`status_reason_key` and its params). */
+export class Refused extends Error {
+  constructor(
+    readonly reasonKey: string,
+    readonly params: Record<string, string>,
+    why: string,
+  ) {
+    super(why);
+  }
+}
+
+/** Ends the run with a status of its own (not `failed`), such as a rejected gate. */
+export class Stop extends Error {
+  constructor(
+    readonly status: RunStatus,
+    why: string,
+  ) {
+    super(why);
+  }
+}
