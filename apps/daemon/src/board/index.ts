@@ -7,6 +7,7 @@
  */
 
 export type { Board } from "./board.ts";
+export { commitBase, commitOnNewBranch, safeGit } from "./branch-commit.ts";
 export { runCardCli } from "./card-cli.ts";
 export { createInside, readInside, type Walk, walkInside } from "./create-inside.ts";
 export { cardDiff, workingDiff } from "./diff.ts";
