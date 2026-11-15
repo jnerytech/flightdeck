@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { Rewinder } from "../../src/checkpoints/rewind.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
@@ -7,7 +15,7 @@ import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { git, gitRepo } from "../support/board-helpers.ts";
-import { newManager, poll } from "../support/helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "rewind-token-0123456789abcdef";
@@ -36,6 +44,29 @@ async function turnInRepo(sessions = { busy: () => false, rewindFiles: async () 
   await snapshots.take({ cwd: repo, claudeSessionId: "s1", kind: "after" });
   const turn = "row" in before ? before.row.n : -1;
   return { store, snapshots, repo, turn, rewinder: new Rewinder({ snapshots, sessions }) };
+}
+
+/** A repo where `before` runs, the `before` snapshot is taken, and then `after` runs. */
+async function turnWith(before: (repo: string) => void, after: (repo: string) => void) {
+  const store = new EventStore(":memory:");
+  cleanups.push(() => store.close());
+  const snapshots = new Snapshots({ db: store.db });
+  const { repo } = gitRepo();
+  before(repo);
+  const taken = await snapshots.take({ cwd: repo, claudeSessionId: "s1", kind: "before" });
+  after(repo);
+  const turn = "row" in taken ? taken.row.n : -1;
+  const sessions = { busy: () => false, rewindFiles: async () => null };
+  return { repo, turn, rewinder: new Rewinder({ snapshots, sessions }) };
+}
+
+async function reason(promise: Promise<unknown>): Promise<string> {
+  try {
+    await promise;
+    return "ok";
+  } catch (error) {
+    return (error as { reason?: string }).reason ?? (error as Error).message;
+  }
 }
 
 async function code(promise: Promise<unknown>): Promise<string> {
@@ -195,4 +226,94 @@ describe("rewind", () => {
     await client.data("rewind.undo", { claudeSessionId: "s1", confirm: true });
     expect(existsSync(join(repo, "novo.txt"))).toBe(true);
   });
+});
+
+describe("rewind: odd names and links (#3024)", () => {
+  const NAMES = ["café.txt", 'a"b.txt', "a\nb.txt", "tab\there.txt", "back\\slash.txt"];
+
+  test("a name with an accent, quote, newline, tab or backslash is previewed, restored and removed under its real name", async () => {
+    const { rewinder, repo, turn } = await turnWith(
+      (dir) => {
+        for (const name of NAMES) writeFileSync(join(dir, name), `before ${name}\n`);
+      },
+      (dir) => {
+        for (const name of NAMES) writeFileSync(join(dir, name), `after ${name}\n`);
+        writeFileSync(join(dir, "novo-é.txt"), "created\n");
+      },
+    );
+    const preview = await rewinder.preview("s1", turn);
+    expect(preview.files.map((f) => f.path).sort()).toEqual([...NAMES, "novo-é.txt"].sort());
+    await rewinder.apply("s1", turn, true);
+    for (const name of NAMES) expect(read(join(repo, name))).toBe(`before ${name}\n`);
+    expect(existsSync(join(repo, "novo-é.txt"))).toBe(false);
+    expect(readdirSync(repo).filter((n) => n.startsWith('"'))).toEqual([]);
+  });
+
+  test("a snapshot blob that cannot be read stops the rewind and writes nothing", async () => {
+    const { rewinder, repo, turn } = await turnWith(
+      (dir) => writeFileSync(join(dir, "gone.txt"), "only in the snapshot\n"),
+      (dir) => writeFileSync(join(dir, "gone.txt"), "changed after\n"),
+    );
+    // The blob of the "before" content: hash it from a temporary file, then remove its loose object.
+    const copy = join(tempDir("fd-rewind-blob-"), "before.txt");
+    writeFileSync(copy, "only in the snapshot\n");
+    const before = git(repo, "hash-object", copy).trim();
+    rmSync(join(repo, ".git", "objects", before.slice(0, 2), before.slice(2)), { force: true });
+    expect(await reason(rewinder.apply("s1", turn, true))).toBe("rewind_blob_unreadable");
+    expect(read(join(repo, "gone.txt"))).toBe("changed after\n");
+  });
+
+  test.skipIf(process.platform === "win32")(
+    "a folder that became a link out of the repo is not written through, and undo leaves the outside alone",
+    async () => {
+      const outside = tempDir("fd-rewind-outside-");
+      const { rewinder, repo, turn } = await turnWith(
+        (dir) => {
+          mkdirSync(join(dir, "d"));
+          writeFileSync(join(dir, "d", "f"), "inside\n");
+        },
+        (dir) => {
+          rmSync(join(dir, "d"), { recursive: true });
+          symlinkSync(outside, join(dir, "d"));
+        },
+      );
+      expect(await reason(rewinder.apply("s1", turn, true))).toBe("rewind_through_link");
+      expect(readdirSync(outside)).toEqual([]);
+      await rewinder.undo("s1", true);
+      expect(readdirSync(outside)).toEqual([]);
+      expect(existsSync(join(repo, "d", "f"))).toBe(false);
+    },
+  );
+
+  test.skipIf(process.platform === "win32")(
+    "a file that became a link to a file out of the repo is not written through",
+    async () => {
+      const outside = join(tempDir("fd-rewind-outside-"), "target.txt");
+      writeFileSync(outside, "outside\n");
+      const { rewinder, turn } = await turnWith(
+        (dir) => writeFileSync(join(dir, "f"), "inside\n"),
+        (dir) => {
+          rmSync(join(dir, "f"));
+          symlinkSync(outside, join(dir, "f"));
+        },
+      );
+      expect(await reason(rewinder.apply("s1", turn, true))).toBe("rewind_through_link");
+      expect(read(outside)).toBe("outside\n");
+    },
+  );
+
+  test.skipIf(process.platform === "win32")(
+    "a link created after the turn is removed as a link, never followed",
+    async () => {
+      const outside = join(tempDir("fd-rewind-outside-"), "target.txt");
+      writeFileSync(outside, "outside\n");
+      const { rewinder, repo, turn } = await turnWith(
+        () => undefined,
+        (dir) => symlinkSync(outside, join(dir, "novo-link")),
+      );
+      await rewinder.apply("s1", turn, true);
+      expect(existsSync(join(repo, "novo-link"))).toBe(false);
+      expect(read(outside)).toBe("outside\n");
+    },
+  );
 });

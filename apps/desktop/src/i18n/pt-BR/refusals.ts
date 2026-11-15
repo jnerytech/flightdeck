@@ -152,6 +152,9 @@ export const refusals = {
     snapshot_missing: "O turno {n} não tem snapshot nesta sessão.",
     rewind_no_safety_snapshot:
       "Não deu para guardar o snapshot de segurança ({why}); nada foi voltado.",
+    rewind_through_link:
+      "{path} é um link, ou está dentro de um: nada foi voltado. Remova o link e tente de novo.",
+    rewind_blob_unreadable: "Não deu para ler {path} do snapshot: nada foi voltado.",
     fork_unsupported: "Este runtime não bifurca sessões.",
     ssh_hostkey_exists:
       "Já há uma chave de servidor guardada para este destino: esqueça-a antes de trocar.",
