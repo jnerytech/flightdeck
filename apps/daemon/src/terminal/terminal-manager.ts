@@ -1,30 +1,13 @@
-import type { TerminalData, TerminalExited, TerminalResync } from "@flightdeck/protocol";
 import { FlightdeckError, resolveAllowedCwd, ulid, whichOnPath } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
-import {
-  acknowledge,
-  type ClientFlow,
-  canSend,
-  enqueue,
-  holdsOutput,
-  recordSent,
-  takeBatch,
-} from "./domain/client-flow.ts";
 import { launchArgv, terminalEnv } from "./domain/launch-spec.ts";
-import { Ring } from "./domain/ring.ts";
 import { defaultShell } from "./domain/shell.ts";
+import { TerminalOutput, type TerminalSink } from "./output.ts";
 import type { Pty, PtyFactory } from "./pty.ts";
 
-/** What the manager sends a connected client. */
-export type TerminalFrame = TerminalData | TerminalExited | TerminalResync;
-
-/** One connection's end of its attached terminals. */
-export interface TerminalSink {
-  send(frame: TerminalFrame): void;
-  /** Bytes the connection has queued and not yet sent (`ws.getBufferedAmount()`). */
-  backlog(): number;
-}
+// The sink and its frames live with the output they carry; the manager's callers read them from here.
+export type { TerminalFrame, TerminalSink } from "./output.ts";
 
 export interface TerminalInfo {
   terminalId: string;
@@ -111,11 +94,6 @@ const realTimers: Timers = {
   clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-interface Client extends ClientFlow {
-  sink: TerminalSink;
-  exitSent: boolean;
-}
-
 interface Entry {
   id: string;
   cwd: string;
@@ -127,8 +105,7 @@ interface Entry {
   rows: number;
   launchId: string | null;
   pty: Pty;
-  ring: Ring;
-  clients: Map<TerminalSink, Client>;
+  output: TerminalOutput;
   /** Run when the process ends (daemon code that opened it). */
   afterExit: ((exitCode: number) => void) | undefined;
   exitCode: number | null;
@@ -251,7 +228,7 @@ export class TerminalManager {
       cwd: entry.cwd,
       command: entry.program,
       startedAt: entry.startedAt,
-      attached: entry.clients.size,
+      attached: entry.output.attached,
       cols: entry.cols,
       rows: entry.rows,
       exitCode: entry.exitCode,
@@ -325,8 +302,7 @@ export class TerminalManager {
       rows: req.rows,
       launchId,
       pty,
-      ring: new Ring(SCROLLBACK_BYTES),
-      clients: new Map(),
+      output: new TerminalOutput(id, SCROLLBACK_BYTES),
       afterExit: req.onExit,
       exitCode: null,
       closing: false,
@@ -365,22 +341,13 @@ export class TerminalManager {
     this.assertOn();
     const entry = this.get(terminalId);
     const exited = entry.exitCode !== null;
-    entry.clients.set(sink, {
-      sink,
-      queue: [],
-      queued: 0,
-      resync: false,
-      flow,
-      unacked: 0,
-      paused: false,
-      // The result already says it ended.
-      exitSent: exited,
-    });
+    // The result already says it ended, so no end frame follows.
+    const scrollback = entry.output.attach(sink, flow, exited);
     if (!exited) this.clearIdle(entry);
-    this.log(`terminal ${terminalId} anexado (${entry.clients.size})`);
+    this.log(`terminal ${terminalId} anexado (${entry.output.attached})`);
     return {
       terminalId,
-      scrollback: Buffer.from(entry.ring.snapshot()).toString("base64"),
+      scrollback,
       cols: entry.cols,
       rows: entry.rows,
       exitCode: entry.exitCode,
@@ -393,9 +360,7 @@ export class TerminalManager {
    * detached, the terminal is gone) or from a client that did not ask for flow control is ignored.
    */
   ack(terminalId: string, sink: TerminalSink, bytes: number): void {
-    const client = this.entries.get(terminalId)?.clients.get(sink);
-    if (!client?.flow) return;
-    if (acknowledge(client, bytes)) this.scheduleFlush();
+    if (this.entries.get(terminalId)?.output.ack(sink, bytes)) this.scheduleFlush();
   }
 
   detach(terminalId: string, sink: TerminalSink): void {
@@ -405,15 +370,15 @@ export class TerminalManager {
 
   private release(terminalId: string, sink: TerminalSink): void {
     const entry = this.get(terminalId);
-    if (!entry.clients.delete(sink)) return;
-    this.log(`terminal ${terminalId} desanexado (${entry.clients.size})`);
-    if (entry.exitCode === null && entry.clients.size === 0) this.startIdle(entry);
+    if (!entry.output.release(sink)) return;
+    this.log(`terminal ${terminalId} desanexado (${entry.output.attached})`);
+    if (entry.exitCode === null && entry.output.attached === 0) this.startIdle(entry);
   }
 
   /** The connection is gone: every terminal it was attached to keeps running. */
   detachAll(sink: TerminalSink): void {
     for (const entry of [...this.entries.values()] /* NOSONAR: release may remove it */) {
-      if (entry.clients.has(sink)) this.release(entry.id, sink);
+      if (entry.output.has(sink)) this.release(entry.id, sink);
     }
   }
 
@@ -434,8 +399,7 @@ export class TerminalManager {
       entry.pty.kill();
       return;
     }
-    for (const client of sink ? [sink] : [...entry.clients.keys()])
-      this.release(terminalId, client);
+    for (const client of sink ? [sink] : entry.output.sinks()) this.release(terminalId, client);
   }
 
   list(): TerminalInfo[] {
@@ -471,14 +435,7 @@ export class TerminalManager {
   private onData(id: string, chunk: Uint8Array): void {
     const entry = this.entries.get(id);
     if (!entry) return;
-    entry.ring.append(chunk);
-    const copy = chunk.slice();
-    for (const client of entry.clients.values()) {
-      if (client.resync) continue;
-      if (enqueue(client, copy, () => client.sink.backlog())) {
-        client.sink.send({ type: "terminal.resync", terminalId: id });
-      }
-    }
+    entry.output.write(chunk);
     this.scheduleFlush();
   }
 
@@ -487,38 +444,10 @@ export class TerminalManager {
     this.flushTimer = this.timers.set(() => {
       this.flushTimer = null;
       let held = false;
-      for (const entry of this.entries.values()) held = this.flush(entry) || held;
+      for (const entry of this.entries.values()) held = entry.output.flush(entry.exitCode) || held;
       // Something is held for a full connection: look again in a moment.
       if (held) this.scheduleFlush();
     }, FLUSH_MS);
-  }
-
-  /** Sends what each client can take, in frames of at most 16 KB; true when something is held. */
-  private flush(entry: Entry): boolean {
-    let held = false;
-    for (const client of entry.clients.values()) {
-      while (canSend(client, () => client.sink.backlog())) {
-        const batch = takeBatch(client);
-        client.sink.send({
-          type: "terminal.data",
-          terminalId: entry.id,
-          data: Buffer.from(batch).toString("base64"),
-        });
-        recordSent(client, batch.length);
-      }
-      if (holdsOutput(client)) {
-        // A paused client is not looked at again until its ack arrives.
-        if (!client.paused) held = true;
-      } else if (entry.exitCode !== null && !client.exitSent) {
-        client.exitSent = true;
-        client.sink.send({
-          type: "terminal.exited",
-          terminalId: entry.id,
-          exitCode: entry.exitCode,
-        });
-      }
-    }
-    return held;
   }
 
   // -- life -------------------------------------------------------------------
@@ -530,7 +459,7 @@ export class TerminalManager {
     this.log(`terminal ${id} encerrado (código ${exitCode})`);
     entry.afterExit?.(exitCode);
     // The pending output goes first, then the end.
-    if (this.flush(entry)) this.scheduleFlush();
+    if (entry.output.flush(entry.exitCode)) this.scheduleFlush();
     if (entry.closing) this.remove(entry);
     else this.startIdle(entry);
   }
