@@ -158,24 +158,6 @@ export async function createSession(c: Context, prompt: string, name?: string) {
 }
 
 /**
- * Clicks `trigger` until `expected` shows. For a click whose result is the page's own state (a
- * dialog): a page drawn again in between drops it, and one more click brings it back. Gives up
- * after a few tries and lets the caller's own wait name what is missing.
- */
-export async function clickUntil(trigger: Locator, expected: Locator, tries = 4) {
-  for (let attempt = 0; attempt < tries; attempt++) {
-    // Late, not lost: a dialog that came after the wait hides the trigger behind it.
-    if ((await expected.count()) > 0) return;
-    await trigger.click();
-    const shown = await expected.waitFor({ timeout: 4000 }).then(
-      () => true,
-      () => false,
-    );
-    if (shown) return;
-  }
-}
-
-/**
  * Where a session opened, measured until it holds (the view follows the end while the timeline
  * fills, so the first reading can be a few lines short): null once it is right, or the last
  * reading when it never is within the wait (#747).
