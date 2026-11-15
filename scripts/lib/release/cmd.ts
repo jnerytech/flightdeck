@@ -14,7 +14,7 @@
 import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "../pr/branch-pr.ts";
 import { PACKAGES } from "./index.ts";
 
-export interface ReleaseResult {
+interface ReleaseResult {
   code: number;
   stdout: string;
 }
