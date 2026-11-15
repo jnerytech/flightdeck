@@ -438,5 +438,5 @@ export function initialAppState(
 
 export { HISTORY_PAGE, type HistoryFilter } from "../features/history/index.ts";
 export type { HostView } from "../features/hosts/index.ts";
-export type { Answer, GateRef, PendingItem } from "../features/needs-you/index.ts";
+export type { GateRef, PendingItem } from "../features/needs-you/index.ts";
 export type { SidebarSession } from "../features/sessions/index.ts";

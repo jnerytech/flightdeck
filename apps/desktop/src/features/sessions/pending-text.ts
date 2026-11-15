@@ -1,5 +1,5 @@
 import type { T } from "../../i18n/index.ts";
-import type { PendingItem } from "../../lib/app-store.ts";
+import type { PendingItem } from "../needs-you/index.ts";
 import { inputSummary } from "./domain/tool-input.ts";
 
 /**
