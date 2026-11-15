@@ -11,6 +11,7 @@ export {
   type LimitedMore,
   runCommand,
   runLimited,
+  shellCommand,
 } from "./command.ts";
 export { API_KEY_VARS, buildChildEnv } from "./env.ts";
 export { FlightdeckError, featureOff, refusalOf } from "./errors.ts";

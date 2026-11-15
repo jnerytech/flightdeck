@@ -30,6 +30,12 @@ export async function killTree(
   else kill(-pid, "SIGKILL");
 }
 
+/** `cmd.exe /d /s /c` on Windows (ComSpec), `sh -c` elsewhere. */
+export function shellCommand(script: string, platform = process.platform): string[] {
+  if (platform === "win32") return [process.env.ComSpec ?? "cmd.exe", "/d", "/s", "/c", script];
+  return ["sh", "-c", script];
+}
+
 /**
  * Runs a command in `cwd` and collects its exit code and output; `input` goes to its stdin. With
  * `timeoutMs`, a command still running at the limit is killed with everything it started and the
