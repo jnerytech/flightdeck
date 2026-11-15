@@ -1,5 +1,5 @@
 import { realpath, stat } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { FlightdeckError } from "./errors.ts";
 
 const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
@@ -11,6 +11,15 @@ async function realDir(path: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Phase 40: the assistant's scratch folder: its one-shot calls run there; nothing is kept. It sits
+ * here, not in the assistant domain, because the history's exclusions (permissions) name it too and
+ * the assistant reaches permissions back (#1589).
+ */
+export function assistantDir(dataDir: string): string {
+  return join(dataDir, "assistant");
 }
 
 /** True when `child` is `root` itself or lies inside it. Both must be real paths. */

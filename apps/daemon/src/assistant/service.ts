@@ -18,10 +18,9 @@ import {
   type SecretScanner,
 } from "@flightdeck/protocol";
 import type { UsageIndexer } from "../costs/index.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { assistantDir, FlightdeckError } from "../kernel/index.ts";
 import { type Quota, realTimers, type Timers } from "../quota/index.ts";
 import type { CompleteOptions, CompleteResult } from "../runtime/index.ts";
-import { assistantDir } from "./domain/paths.ts";
 
 /** How long a second call waits for the one running on this host before it gives up. */
 const WAIT_MS = 10_000;
