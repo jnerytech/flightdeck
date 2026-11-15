@@ -6,4 +6,4 @@ export type { Budgets } from "./budgets.ts";
 export type { Costs } from "./costs.ts";
 export { statuslineData } from "./domain/statusline.ts";
 export { readConfig, runStatusline } from "./statusline.ts";
-export type { UsageIndexer, UsageTokens } from "./usage-indexer.ts";
+export type { UsageIndexer } from "./usage-indexer.ts";

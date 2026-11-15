@@ -10,7 +10,8 @@ import {
   type Pricing,
   resolvePricing,
 } from "../../src/costs/domain/pricing.ts";
-import { UsageIndexer, type UsageTokens } from "../../src/costs/usage-indexer.ts";
+import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
+import type { UsageTokens } from "../../src/kernel/index.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { BASELINE_FEATURES, newManager, tempDir } from "../support/helpers.ts";
