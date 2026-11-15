@@ -25,7 +25,7 @@ export interface MemoryGateOptions {
 /** The default share of used memory from which new runs wait. */
 export const MEMORY_PAUSE_AT = 0.9;
 /** Once holding, runs go again only this far under the threshold, so the hold does not flap. */
-export const MEMORY_RELEASE_MARGIN = 0.02;
+const MEMORY_RELEASE_MARGIN = 0.02;
 
 /**
  * The OS's memory as the hold reads it, or null where it would mislead. Linux (WSL too) gives

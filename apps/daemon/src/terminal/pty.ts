@@ -26,7 +26,7 @@ export type PtyFactory = (start: PtyStart) => Pty;
 /** The part of `Bun.spawn` the adapter uses. */
 export type SpawnFn = (argv: string[], options: Record<string, unknown>) => SpawnedProcess;
 
-export interface SpawnedProcess {
+interface SpawnedProcess {
   pid?: number;
   exited: Promise<number>;
   terminal?: { write(data: string): number; resize(cols: number, rows: number): void };

@@ -24,7 +24,7 @@ export interface IdleQueryDeps {
   claudePath: string | null;
 }
 
-export const READ_TIMEOUT_MS = 20_000;
+const READ_TIMEOUT_MS = 20_000;
 
 /** A read that failed or hung: the app shows a retry and the last good reading. */
 function unavailable(why: string): FlightdeckError {

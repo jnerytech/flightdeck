@@ -24,7 +24,7 @@ export interface HookTarget {
   platform?: NodeJS.Platform;
 }
 
-export interface HookEntry {
+interface HookEntry {
   type: "command" | "http";
   command?: string;
   url?: string;

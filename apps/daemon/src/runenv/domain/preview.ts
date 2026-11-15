@@ -4,7 +4,7 @@
  */
 
 /** Whether the address answers: the real probe asks it over HTTP. */
-export type ReadyProbe = (url: string) => Promise<boolean>;
+type ReadyProbe = (url: string) => Promise<boolean>;
 
 export type ReadyResult = "ready" | "timeout" | "stopped";
 

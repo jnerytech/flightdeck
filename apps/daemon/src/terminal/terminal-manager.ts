@@ -107,7 +107,7 @@ export interface TerminalManagerOptions {
 }
 
 /** What each terminal keeps of its output. */
-export const SCROLLBACK_BYTES = 2 * 1024 * 1024;
+const SCROLLBACK_BYTES = 2 * 1024 * 1024;
 const FLUSH_MS = 16;
 const DEFAULT_MAX = 10;
 const DEFAULT_IDLE_MINUTES = 120;

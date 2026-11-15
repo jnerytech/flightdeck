@@ -34,7 +34,7 @@ export interface DoctorDeps {
 }
 
 /** A stable key per check, so the app can name it and say how to fix it in its own language. */
-export type DoctorCheckId =
+type DoctorCheckId =
   | "config"
   | "folders"
   | "service"

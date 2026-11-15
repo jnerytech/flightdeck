@@ -9,7 +9,7 @@ import type { Quota } from "../quota/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 
 /** The personas of phase 20 plug in here. */
-export interface TeamPersonas {
+interface TeamPersonas {
   resolve(
     id: string,
   ): { id: string; name: string } | null | Promise<{ id: string; name: string } | null>;

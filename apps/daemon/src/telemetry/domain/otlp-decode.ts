@@ -18,7 +18,7 @@ export class OtlpDecodeError extends Error {}
  * names of the decision. Anything else (prompts, responses, tool input and parameters, full
  * errors, paths, e-mail and account ids) is dropped even when an exporter sends it.
  */
-export const KEPT_ATTRS: ReadonlySet<string> = new Set([
+const KEPT_ATTRS: ReadonlySet<string> = new Set([
   "tool_name",
   "tool_use_id",
   "request_id",

@@ -62,7 +62,7 @@ export interface InstalledPlugin {
   errors: string[];
 }
 
-export interface AvailablePlugin {
+interface AvailablePlugin {
   id: string;
   name: string;
   marketplace: string;
@@ -70,7 +70,7 @@ export interface AvailablePlugin {
   version?: string;
 }
 
-export interface MarketplaceInfo {
+interface MarketplaceInfo {
   name: string;
   source: string;
   /** The repository, URL or path the marketplace came from. */
@@ -119,7 +119,7 @@ export interface PluginPreview {
   validation?: { success: boolean; errors: string[] };
 }
 
-export interface InventoryDiff {
+interface InventoryDiff {
   hooks: { added: string[]; removed: string[] };
   monitors: { added: string[]; removed: string[] };
   skills: { added: string[]; removed: string[] };

@@ -26,7 +26,7 @@ import {
 export const isPublicAddress = (address: string): boolean => isPublicIp(address, isIP(address));
 const isLoopback = (address: string): boolean => isLoopbackIp(address, isIP(address));
 
-export type Resolver = (host: string) => Promise<string[]>;
+type Resolver = (host: string) => Promise<string[]>;
 
 export interface WebhookSenderOptions {
   resolve?: Resolver;
