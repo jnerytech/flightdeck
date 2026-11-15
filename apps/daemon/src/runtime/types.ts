@@ -2,7 +2,6 @@ import type {
   EffortLevel,
   McpLiveStatus,
   PermissionMode,
-  PermissionUpdate,
   PersonaAgent,
   PersonaFields,
   SessionEvent,
