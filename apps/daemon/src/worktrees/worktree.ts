@@ -1,14 +1,8 @@
 import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { git, gitWith } from "../git/index.ts";
-import {
-  assertBranchName,
-  type CommandResult,
-  FlightdeckError,
-  type Rev,
-  refArg,
-} from "../kernel/index.ts";
+import { git, gitWith, must } from "../git/index.ts";
+import { assertBranchName, FlightdeckError, type Rev, refArg } from "../kernel/index.ts";
 import { LOCAL_SETTINGS } from "./domain/local-settings.ts";
 
 /** Whether `path` exists, asked without blocking. */
@@ -21,18 +15,6 @@ const exists = (path: string): Promise<boolean> =>
 /** Line added to `.git/info/exclude`: worktrees live inside the repo but never show up in it.
  * Only the worktrees: phase 5 keeps versioned workflows in `.flightdeck/workflows`. */
 const EXCLUDE_LINE = ".flightdeck/worktrees/";
-
-/** Throws with git's own message when a command fails. */
-export function must(result: CommandResult, what: string): CommandResult {
-  if (result.code !== 0)
-    throw new FlightdeckError(
-      "invalid_state",
-      `${what}: ${result.stderr.trim()}`,
-      "command_failed",
-      { what, output: result.stderr.trim() },
-    );
-  return result;
-}
 
 /** `Ação: corrigir o Login!` → `acao-corrigir-o-login`; `card` when nothing is left. */
 function slugify(title: string): string {

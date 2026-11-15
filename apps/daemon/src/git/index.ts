@@ -4,4 +4,14 @@
  * optional byte and time limit); another domain imports from here.
  */
 
-export { git, gitBytes, gitLimited, gitLimitedFor, gitWith } from "./adapters/git.ts";
+export { git, gitBytes, gitLimitedFor, gitWith } from "./adapters/git.ts";
+export { cardDiff, workingDiff } from "./diff.ts";
+export { parseUnifiedDiff } from "./domain/diff-parse.ts";
+export { must } from "./domain/must.ts";
+export {
+  aheadBehind,
+  assertLocalBranch,
+  mergeIntoBase,
+  pendingFiles,
+  rebaseOnto,
+} from "./merge.ts";
