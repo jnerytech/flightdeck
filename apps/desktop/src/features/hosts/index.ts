@@ -11,6 +11,7 @@ export { type GithubHost, githubSignedIn } from "./domain/github-session.ts";
 export { hostNeedsAttention } from "./domain/host-attention.ts";
 export { hostColorVar } from "./domain/host-color.ts";
 export { hostDownReason } from "./domain/host-down-reason.ts";
+export { draftFromLink, draftUrl } from "./domain/host-draft.ts";
 export type { HostNameError } from "./domain/host-name.ts";
 export type { RetryState } from "./domain/host-offline.ts";
 export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
