@@ -18,7 +18,7 @@ export interface Drift {
 }
 
 /** The smallest churn limit: a round may always change this many lines in the PR's files. */
-export const MIN_CHURN_LIMIT = 200;
+const MIN_CHURN_LIMIT = 200;
 
 /** The files of `git diff --numstat -z --no-renames`. */
 export function parseNumstat(text: string): FileChange[] {
