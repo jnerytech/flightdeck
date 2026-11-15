@@ -16,7 +16,7 @@ setDefaultTimeout(30_000);
 const TOKEN = "pr-comments-token-0123456789abcdef";
 afterEach(runCleanups);
 
-describe("pr-comentarios pelo protocolo", () => {
+describe("pr-comments over the wire", () => {
   test("pr.comments e pr.comments.send pelo protocolo", async () => {
     fake("gh", GH_RULES);
     const ctx = await cardWithPr("github", GH_URL);
