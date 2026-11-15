@@ -3,7 +3,7 @@ import {
   mergeStance,
   openPullRequests,
   prFacts,
-} from "../../src/features/board/pull-requests-model.ts";
+} from "../../src/features/board/domain/pull-requests-model.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
 
