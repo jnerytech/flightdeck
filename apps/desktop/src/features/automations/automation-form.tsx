@@ -1,9 +1,4 @@
-import type {
-  Automation,
-  AutomationAction,
-  AutomationTrigger,
-  WorkflowInfo,
-} from "@flightdeck/protocol";
+import type { Automation, WorkflowInfo } from "@flightdeck/protocol";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,6 +8,7 @@ import { Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { AppDialogContent } from "../../shared/feedback/index.ts";
+import { actionOf, type Draft, draftOf, STEPS, triggerOf } from "./domain/automation-draft.ts";
 import {
   type ActionType,
   actionsFor,
@@ -20,60 +16,6 @@ import {
   TRIGGER_TYPES,
   type TriggerType,
 } from "./domain/automations.ts";
-
-const STEPS = ["trigger", "action", "limit"] as const;
-
-interface Draft {
-  trigger: TriggerType;
-  expr: string;
-  tz: string;
-  label: string;
-  action: ActionType;
-  workflow: string;
-  name: string;
-  max: string;
-  external: boolean;
-}
-
-/** The form's starting point: the saved automation, or a weekday morning schedule. */
-function draftOf(initial: Automation | null): Draft {
-  const { trigger, action } = initial ?? {
-    trigger: {
-      type: "cron" as const,
-      expr: "0 9 * * 1-5",
-      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    },
-    action: { type: "start_workflow" as const, workflow: "" },
-  };
-  return {
-    trigger: trigger.type,
-    expr: trigger.type === "cron" ? trigger.expr : "0 9 * * 1-5",
-    tz: trigger.type === "cron" ? trigger.tz : Intl.DateTimeFormat().resolvedOptions().timeZone,
-    label: trigger.type === "issue_label" ? trigger.label : "",
-    action: action.type,
-    workflow: action.type === "start_workflow" ? action.workflow : "",
-    name: initial?.name ?? "",
-    max: String(initial?.maxRunsPerDay ?? 10),
-    external: initial?.allowExternalAuthors ?? false,
-  };
-}
-
-function triggerOf(draft: Draft): AutomationTrigger {
-  switch (draft.trigger) {
-    case "cron":
-      return { type: "cron", expr: draft.expr.trim(), tz: draft.tz.trim() };
-    case "issue_label":
-      return { type: "issue_label", label: draft.label.trim() };
-    default:
-      return { type: draft.trigger };
-  }
-}
-
-function actionOf(draft: Draft, workflow: string): AutomationAction {
-  return draft.action === "start_workflow"
-    ? { type: "start_workflow", workflow }
-    : { type: draft.action };
-}
 
 /**
  * The guided creation of an automation (and the editing of one): the trigger, the action that
@@ -93,7 +35,9 @@ export function AutomationForm(
   const { store, initial } = props;
   const { t } = store.i18n;
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<Draft>(() => draftOf(initial));
+  const [draft, setDraft] = useState<Draft>(() =>
+    draftOf(initial, Intl.DateTimeFormat().resolvedOptions().timeZone),
+  );
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
 
   const usable = props.workflows.filter((w) => w.errors.length === 0);

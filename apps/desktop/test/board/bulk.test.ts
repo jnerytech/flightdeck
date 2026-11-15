@@ -14,7 +14,7 @@ import {
   startQuotaLines,
   updateMany,
   updateSummary,
-} from "../../src/features/board/board-bulk.ts";
+} from "../../src/features/board/domain/board-bulk.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 /**
