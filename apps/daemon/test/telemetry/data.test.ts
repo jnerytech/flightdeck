@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Costs } from "../../src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../src/costs/domain/pricing.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import type { OtlpEvent } from "../../src/telemetry/otlp.ts";
+import type { OtlpEvent } from "../../src/telemetry/domain/otlp-decode.ts";
 import { TelemetryStore } from "../../src/telemetry/store.ts";
 
 const NOW = Date.UTC(2026, 10, 1, 12, 0, 0);
