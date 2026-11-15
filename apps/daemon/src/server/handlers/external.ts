@@ -7,7 +7,7 @@ import type { ExternalSession, ExternalStatus, SessionLine } from "@flightdeck/p
 import { messageExternal } from "../../central/index.ts";
 import { FlightdeckError } from "../../kernel/index.ts";
 import type { ServerContext } from "../context.ts";
-import { afterAck, type Handlers } from "../dispatch.ts";
+import { afterAck, type Handlers } from "../domain/handler.ts";
 
 const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
   running: "running",

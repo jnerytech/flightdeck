@@ -2,7 +2,7 @@
  * Issue #1288: the watch domain: a card's pull request watched and fixed (phase 22).
  */
 import { requireVaultTransport } from "../../vault/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 /**
  * Issue #1361: the fields a far client may change: the switch and the brakes on spending (rounds,
