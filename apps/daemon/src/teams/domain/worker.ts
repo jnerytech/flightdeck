@@ -30,3 +30,9 @@ export function numberOf(member: StoredMember): number | null {
   const parsed = /executora (\d+)$/.exec(member.name)?.[1];
   return parsed ? Number(parsed) : null;
 }
+
+/**
+ * The name the cards and sessions of a team carry. A card's branch comes from its title cut short,
+ * so a long team name would give every worker the same branch: it is cut before the number.
+ */
+export const label = (name: string): string => name.slice(0, 24).trimEnd();
