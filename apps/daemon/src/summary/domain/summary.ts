@@ -6,7 +6,7 @@ import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
 import { promptText } from "../../history/index.ts";
 import { parseJsonText } from "../../kernel/index.ts";
 
-export interface PendingQuestion {
+interface PendingQuestion {
   kind: "permission" | "question";
   text: string;
 }
