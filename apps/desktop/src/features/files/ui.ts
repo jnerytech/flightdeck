@@ -6,4 +6,5 @@
  */
 export { BoardFilesPanel } from "./board-files-panel.tsx";
 export { FileExplorer } from "./file-explorer.tsx";
+export { LazyFileViewer } from "./lazy-file-viewer.ts";
 export { SessionFiles } from "./session-files.tsx";

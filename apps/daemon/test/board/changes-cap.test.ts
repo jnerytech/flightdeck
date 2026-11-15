@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { appendFileSync, existsSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cardDiff, DIFF_FILE_MAX, DIFF_LIMITS, workingDiff } from "../../src/board/diff.ts";
+import { cardDiff, DIFF_FILE_MAX, DIFF_LIMITS, workingDiff } from "../../src/git/diff.ts";
 import { type Rev, refArg } from "../../src/kernel/index.ts";
 import { git, gitRepo } from "../support/board-helpers.ts";
 
