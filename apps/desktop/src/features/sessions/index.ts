@@ -37,7 +37,6 @@ export {
   SessionViews,
   VIEW_LABEL,
 } from "./domain/session-views.ts";
-export type { SidebarSession } from "./domain/sidebar-session.ts";
 export { elsewhereNotice, waitingCards } from "./domain/start-elsewhere.ts";
 export { sessionTabOffers } from "./domain/tab-offers.ts";
 export { inputSummary } from "./domain/tool-input.ts";
