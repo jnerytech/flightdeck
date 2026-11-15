@@ -5,7 +5,6 @@ import {
   type EventEnvelope,
   parseServerMessage,
   SessionEvent,
-  type SessionEventOf,
 } from "@flightdeck/protocol";
 import {
   applyEnvelope,
@@ -16,16 +15,13 @@ import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { SummaryService } from "../../src/summary/service.ts";
 import { newManager, poll, reasonOf, tempDir } from "../support/helpers.ts";
+import { summaries } from "../support/summaries.ts";
 
-type Summary = SessionEventOf<"session.summary">;
 const TOKEN = "resumos-token-0123456789abc";
 const servers: RunningServer[] = [];
 afterEach(async () => {
   for (const s of servers.splice(0)) await s.stop();
 });
-
-const summaries = (list: EventEnvelope[]) =>
-  list.flatMap((e) => (e.event.type === "session.summary" ? [e.event as Summary] : []));
 
 describe("resumos", () => {
   test("schema: sessions.watch e session.summary", () => {
