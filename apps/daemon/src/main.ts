@@ -14,8 +14,9 @@ import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
 import { createCentral } from "./central/wiring.ts";
 import { Snapshots } from "./checkpoints/index.ts";
 import { createCheckpoints } from "./checkpoints/wiring.ts";
-import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import type { CliDeps } from "./cli/commands.ts";
+import { configPath } from "./cli/config-path.ts";
+import { type CliArgs, parseArgs } from "./cli/domain/args.ts";
 import { reportFailure } from "./cli/domain/exit.ts";
 import { runCommandCli } from "./cli/run.ts";
 import {
@@ -95,8 +96,8 @@ import { FolderLocks } from "./worktrees/domain/locks.ts";
 import { createWorktreesModule } from "./worktrees/wiring.ts";
 import { createWsl, type WslItem } from "./wsl/index.ts";
 
-export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
 export { type CliDeps, HOOK_CONNECT_TIMEOUT_MS } from "./cli/commands.ts";
+export { type CliArgs, parseArgs, type ServiceAction } from "./cli/domain/args.ts";
 
 export interface Daemon {
   url: string;

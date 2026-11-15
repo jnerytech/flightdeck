@@ -1,5 +1,5 @@
-import { parseArgs } from "./args.ts";
 import { type CliDeps, COMMANDS } from "./commands.ts";
+import { parseArgs } from "./domain/args.ts";
 import { reportFailure } from "./domain/exit.ts";
 
 /**
