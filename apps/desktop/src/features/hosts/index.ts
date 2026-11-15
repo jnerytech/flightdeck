@@ -10,7 +10,6 @@ export { awaitedHost } from "./domain/awaited-host.ts";
 export { type GithubHost, githubSignedIn } from "./domain/github-session.ts";
 export { hostNeedsAttention } from "./domain/host-attention.ts";
 export { hostColorVar } from "./domain/host-color.ts";
-export { hostDownReason } from "./domain/host-down-reason.ts";
 export { draftFromLink, draftUrl } from "./domain/host-draft.ts";
 export { statusLine } from "./domain/host-link-line.ts";
 export type { HostNameError } from "./domain/host-name.ts";
