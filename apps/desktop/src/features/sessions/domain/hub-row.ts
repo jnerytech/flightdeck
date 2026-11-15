@@ -3,6 +3,11 @@ import type { SessionLine, SessionPersona } from "@flightdeck/protocol";
 export type HubOrigin = "flightdeck" | "terminal" | "history" | "background";
 export type HubState = "running" | "needs_you" | "idle" | "ended" | "failed";
 
+/** A session that is over: ended on purpose or failed (#1132). It is not live, and folds into the earlier ones. */
+export function isOver(state: HubState): boolean {
+  return state === "ended" || state === "failed";
+}
+
 /** One line of the Sessões screen, whatever the session's origin. */
 export interface HubRow {
   key: string;
