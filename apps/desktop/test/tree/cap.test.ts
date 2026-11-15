@@ -3,7 +3,7 @@ import {
   projectTree,
   type TreeProject,
 } from "../../src/features/projects/domain/project-tree-model.ts";
-import type { HubRow } from "../../src/features/sessions/hub.ts";
+import type { HubRow } from "../../src/features/sessions/domain/hub.ts";
 import {
   FOLD_ABOVE,
   foldedByDefault,

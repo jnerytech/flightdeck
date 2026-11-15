@@ -14,9 +14,26 @@ export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
 export type { CacheTtl } from "./domain/cache-timer.ts";
 export { type Finish, sinceLastLook } from "./domain/finished-list.ts";
+export {
+  type HubFilter,
+  type HubRow,
+  type HubRowState,
+  type HubView,
+  hubRows,
+  isOver,
+  loadHubFilter,
+  loadHubOpen,
+  loadHubView,
+  saveHubFilter,
+  saveHubOpen,
+  saveHubView,
+  takeHubHost,
+} from "./domain/hub.ts";
 export { groupName, hubRowOrder } from "./domain/hub-groups.ts";
 export { sessionLineText } from "./domain/hub-status.ts";
+export { newSessionHost } from "./domain/new-session-host.ts";
 export { CONTINUATION } from "./domain/resume-offer.ts";
+export { rowRoute } from "./domain/row-route.ts";
 export type { Selection } from "./domain/selection.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
@@ -39,31 +56,15 @@ export {
 } from "./domain/session-views.ts";
 export { elsewhereNotice, waitingCards } from "./domain/start-elsewhere.ts";
 export { sessionTabOffers } from "./domain/tab-offers.ts";
+export { formatMs } from "./domain/timing.ts";
 export { inputSummary } from "./domain/tool-input.ts";
 export { messageParts } from "./domain/tool-line.ts";
 export { type Turn, turnsOf } from "./domain/turns.ts";
 export { ExternalSessionsSlice } from "./external.ts";
 export { FinishedSlice } from "./finished.ts";
 export { toolLoader } from "./history-tool.ts";
-export {
-  type HubFilter,
-  type HubRow,
-  type HubRowState,
-  type HubView,
-  hubRows,
-  isOver,
-  loadHubFilter,
-  loadHubOpen,
-  loadHubView,
-  saveHubFilter,
-  saveHubOpen,
-  saveHubView,
-  takeHubHost,
-} from "./hub.ts";
 export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
-export { newSessionHost } from "./new-session-host.ts";
 export { NewSessionPrefs } from "./new-session-prefs.ts";
-export { rowRoute } from "./row-route.ts";
 export type { SessionActions } from "./session-actions.ts";
 export {
   initialSessionsState,
@@ -73,7 +74,6 @@ export {
 export { SessionStreamSlice } from "./stream.ts";
 export type { SessionSubscriptions } from "./subscriptions.ts";
 export { SummariesSlice } from "./summaries.ts";
-export { formatMs } from "./timing.ts";
 export { useDraft } from "./use-draft.ts";
 export { useFollow } from "./use-follow.ts";
 export { useSessionCost } from "./use-session-cost.ts";

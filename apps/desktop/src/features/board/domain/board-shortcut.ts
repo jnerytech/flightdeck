@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { WorktreeFilter } from "@/features/projects/index.ts";
 import { readStored, validValues } from "@/shared/lib/index.ts";
 
 type Storage = { getItem(key: string): string | null; setItem(key: string, value: string): void };
@@ -29,7 +28,7 @@ export function saveLastBoard(storage: Storage, hostId: string, projectId: strin
 export function boardShortcut(input: {
   hostId: string;
   projectIds: string[];
-  worktree: WorktreeFilter | null;
+  worktree: { hostId: string; projectId: string } | null;
   remembered: string | null;
 }): string | null {
   const { hostId, projectIds, worktree, remembered } = input;
