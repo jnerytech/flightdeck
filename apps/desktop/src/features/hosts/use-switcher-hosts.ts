@@ -1,12 +1,19 @@
 import { useMemo, useSyncExternalStore } from "react";
-import type { AppStore } from "../../lib/app-store.ts";
 import { switcherHosts } from "./domain/switcher-hosts.ts";
+
+/** What the switcher's hooks read of the app store: the tabs' host, the window's host and the tab scope. */
+interface SwitcherStore {
+  hostTabs: { subscribe(listener: () => void): () => void; readonly version: number };
+  activeHostId(): string | null;
+  uiModes: { hostId(): string | null };
+  tabScope: { subscribe(listener: () => void): () => void; readonly value: "host" | "all" };
+}
 
 /**
  * The host the top bar's switcher names (#932): the active tab's host, else the one the window
  * shows. Redraws when the switcher moves.
  */
-export function useSwitcherHostId(store: AppStore): string | null {
+export function useSwitcherHostId(store: SwitcherStore): string | null {
   useSyncExternalStore(store.hostTabs.subscribe, () => store.hostTabs.version);
   return store.activeHostId() ?? store.uiModes.hostId();
 }
@@ -16,7 +23,7 @@ export function useSwitcherHostId(store: AppStore): string | null {
  * Redraws when either changes.
  */
 export function useSwitcherHosts<T extends { id: string }>(
-  store: AppStore,
+  store: SwitcherStore,
   hosts: readonly T[],
 ): T[] {
   const hostId = useSwitcherHostId(store);

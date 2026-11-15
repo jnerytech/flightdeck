@@ -7,8 +7,8 @@ import type {
 } from "@flightdeck/protocol";
 import { type HostConnection, RequestError } from "@/features/hosts/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
-import type { Selection } from "../../lib/app-store.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
+import type { Selection } from "./domain/selection.ts";
 
 /** What the commands read and ask through the app's store. */
 export interface SessionCommandsCore {

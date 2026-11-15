@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AppStore } from "../../lib/app-store.ts";
+import type { AppKernel } from "../../lib/kernel.ts";
 
 /**
  * The estimated cost of a session, once its Claude session is known and the host reports costs
@@ -7,7 +7,7 @@ import type { AppStore } from "../../lib/app-store.ts";
  * host answers (and when it has no figure).
  */
 export function useSessionCost(
-  store: Pick<AppStore, "hostCommand">,
+  store: Pick<AppKernel<object>, "hostCommand">,
   hostId: string,
   claudeSessionId: string | null | undefined,
   withCosts: boolean,

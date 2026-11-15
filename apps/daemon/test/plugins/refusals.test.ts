@@ -3,13 +3,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
-import {
-  type CliResult,
-  claudeCli,
-  type Pin,
-  type PluginCli,
-  Plugins,
-} from "../../src/plugins/plugins.ts";
+import { claudeCli, Plugins } from "../../src/plugins/plugins.ts";
+import type { CliResult, Pin, PluginCli } from "../../src/plugins/ports.ts";
 import { tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(30_000);
