@@ -30,7 +30,7 @@ import {
 
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 
-import type { WorkflowEngine } from "../workflows/engine.ts";
+import type { WorkflowEngine } from "../workflows/index.ts";
 import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
 import type { FixResult } from "./session-follow.ts";
 import type { BoardOptions, Card, Project, RunRow } from "./types.ts";
