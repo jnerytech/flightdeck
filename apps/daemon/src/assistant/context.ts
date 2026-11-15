@@ -12,7 +12,8 @@ import {
   type DiffFile,
   type SecretScanner,
 } from "@flightdeck/protocol";
-import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
+import { cardDiff, workingDiff } from "../board/diff.ts";
+import { parseUnifiedDiff } from "../board/index.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, readRegular, refArg } from "../kernel/index.ts";
 import { blocks, CONVENTIONAL, hidden, render, stat } from "./domain/diff-context.ts";
