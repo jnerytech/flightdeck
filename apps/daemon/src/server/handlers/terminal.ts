@@ -2,7 +2,7 @@
  * Issue #248: the terminal domain: the embedded terminals and Claude Code's background sessions.
  */
 import { FlightdeckError } from "../../kernel/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 import { terminalSink } from "../transport.ts";
 
 export const terminalHandlers = {

@@ -5,7 +5,7 @@
 import { FlightdeckError } from "../../kernel/index.ts";
 import { addAllowedRoot } from "../../projects/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const hostChangesHandlers = {
   "resources.endOrphan": async (payload, { ws, server }) => {

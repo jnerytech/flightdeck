@@ -1,17 +1,5 @@
 import type { BoardColumn, Card, ContractOverrides } from "@flightdeck/protocol";
-import {
-  Circle,
-  CircleAlert,
-  CircleCheck,
-  CircleCheckBig,
-  Columns3,
-  FolderOpen,
-  ListTodo,
-  Loader,
-  Lock,
-  type LucideIcon,
-  Plus,
-} from "lucide-react";
+import { Columns3, FolderOpen, ListTodo, Lock, Plus } from "lucide-react";
 import {
   type KeyboardEvent,
   memo,
@@ -21,32 +9,25 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BoardNotice } from "@/features/board/board-notice";
 import { BoardStatus } from "@/features/board/board-status";
 import { BoardSyncControl } from "@/features/board/board-sync";
-import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
-import { ColumnHandle } from "@/features/board/column-handle";
 import { ColumnSwitcher } from "@/features/board/column-switcher";
 import { ContractDialog } from "@/features/board/contract-dialog";
 import {
   boardFeatures,
   boardOrder,
-  cardMoveBody,
   cardMoves,
   columnCards,
-  dropPositions,
   idsByColumn,
   moveLabel,
   refusalNames,
   showingColumn,
   shownCards,
-  stayingPicks,
   tabStops,
 } from "@/features/board/domain/board-derive";
-import { needsText } from "@/features/board/needs-badge";
 import { quietBadge } from "@/features/board/quiet-badge-view";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { BoardFilesPanel } from "@/features/files/ui.ts";
@@ -54,30 +35,22 @@ import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/ind
 import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/ui.ts";
 import { useStoreSlice } from "@/lib/use-store";
-import { cn } from "@/lib/utils";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, Inline, LoadingState, Page, Toolbar } from "@/shared/layout/index.ts";
+import { EmptyState, LoadingState, Page, Toolbar } from "@/shared/layout/index.ts";
 import { useWidth } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { IssuesPanel } from "../issues/ui.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import { cardKey } from "./board-card-keys.ts";
+import { ColumnLane } from "./board-column.tsx";
 import { BoardLoadError } from "./board-load-error.tsx";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 import { CardTile } from "./card-tile.tsx";
-import { BoardColumnEmpty } from "./column-empty.tsx";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
-import {
-  bulkSplit,
-  refusalNotice,
-  requestResult,
-  runMany,
-  updateMany,
-  updateSummary,
-} from "./domain/board-bulk.ts";
-import { askAbout, dragNeeds, type Lacking } from "./domain/board-contracts.ts";
+import { bulkSplit } from "./domain/board-bulk.ts";
+import { askAbout, dragNeeds } from "./domain/board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
 import {
   type BulkRefusal,
@@ -87,7 +60,6 @@ import {
   filteredColumnCount,
   filteredCountLabel,
   fitColumnWidth,
-  moveMany,
   pruneSelection,
   rangeSelection,
   shownSelection,
@@ -98,16 +70,8 @@ import { NewCardDialog } from "./new-card-dialog.tsx";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
+import { type MoveAsk, useSelectionActions } from "./use-selection-actions.tsx";
 import { useStartAsk } from "./use-start-ask.tsx";
-
-/** The icon of each column's status, drawn in the column's own tone. */
-const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
-  backlog: Circle,
-  in_progress: Loader,
-  waiting: CircleAlert,
-  review: CircleCheck,
-  done: CircleCheckBig,
-};
 
 /** How long a card just made is waited for before the focus gives up on it (#1546). */
 const MADE_CARD_WAIT_MS = 5000;
@@ -179,12 +143,7 @@ export const BoardView = memo(function BoardView(props: {
   /** The cards being dragged: the columns that ask for something say what, until they let go. */
   const [dragCards, setDragCards] = useState<Card[]>([]);
   /** A move waiting on the person's answer: the cards lack something its column asks (issue #78). */
-  const [ask, setAsk] = useState<{
-    column: BoardColumn;
-    targetId?: string;
-    cards: Card[];
-    lacking: Lacking[];
-  } | null>(null);
+  const [ask, setAsk] = useState<MoveAsk | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
   /** The selected cards (Ctrl-click), the last one picked (the anchor of a Shift range) and what a bulk action left to say. */
@@ -198,7 +157,6 @@ export const BoardView = memo(function BoardView(props: {
   const hintId = useId();
   const anchor = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [discardingMany, setDiscardingMany] = useState(false);
   /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
   /** A keyboard range (#1354): the selection it started from, so Shift+Up can shrink it back. */
@@ -260,75 +218,7 @@ export const BoardView = memo(function BoardView(props: {
   );
   const acting = shownSelection(selection, boardIds);
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
-  /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
-  const moveSelected = async (
-    column: BoardColumn,
-    targetId?: string,
-    only?: Card[],
-    force = false,
-  ) => {
-    if (busy) return;
-    // One question for the whole group; a group already asked about (`only`) goes straight on.
-    if (!only) {
-      const lacking = askAbout(column, actingCards, contracts);
-      if (lacking.length > 0) {
-        setAsk({ column, targetId, cards: actingCards, lacking });
-        return;
-      }
-    }
-    const cards = only ?? actingCards;
-    const ids = new Set(cards.map((card) => card.id));
-    setBusy(true);
-    // Dropped on a card, the group lands before it, in the board's order.
-    const positions = dropPositions(columnOf(column), cards, targetId);
-    const refused = await moveMany(
-      cards,
-      column,
-      async (cardId, to, position) => {
-        const answer = await store.hostRequest(
-          hostId,
-          "card.move",
-          cardMoveBody(cardId, to, position, force),
-        );
-        return requestResult(answer);
-      },
-      positions,
-    );
-    const stayed = new Set(refused.map((r) => r.card.id));
-    setPicked((before) => stayingPicks(before, ids, stayed));
-    setNotice(
-      refusalNotice(t, refused, nameRefusals(refused), {
-        one: "board.stayedOne",
-        many: "board.stayed",
-      }),
-    );
-    setBusy(false);
-    boardRef.current?.focus();
-  };
   const nameRefusals = (refused: BulkRefusal[]) => refusalNames(refused, t);
-  /** Discards the started cards and deletes the others, one after the other. */
-  const discardSelected = async () => {
-    if (busy) return;
-    const cards = actingCards;
-    setDiscardingMany(false);
-    setBusy(true);
-    const failed = await runMany(cards, async (card) =>
-      requestResult(
-        await store.hostRequest(hostId, discardCommand(card), { cardId: card.id, confirm: true }),
-      ),
-    );
-    // A discard is not atomic on the host: a card it refused may be partly cleaned up, so it is
-    // not left selected for a second try that would fail on what is already gone.
-    setPicked((before) => before.filter((id) => !acting.includes(id)));
-    setNotice(
-      refusalNotice(t, failed, nameRefusals(failed), {
-        one: "board.discardFailedOne",
-        many: "board.discardFailed",
-      }),
-    );
-    setBusy(false);
-    boardRef.current?.focus();
-  };
   /** #1354: what Start N and Stop N take from the selection. */
   const split = bulkSplit(actingCards, t);
   /**
@@ -349,53 +239,6 @@ export const BoardView = memo(function BoardView(props: {
     if (el?.isConnected) el.focus();
     else boardRef.current?.focus();
   };
-  /** #1406: runs of Update from the base that finished; each puts the focus back after its render. */
-  const [updated, setUpdated] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a finished run is the only trigger
-  useEffect(() => {
-    if (updated > 0) restoreOpener();
-  }, [updated]);
-  /** #1406: the run of Update from the base, card by card: how far it got. */
-  const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
-  /**
-   * #1406: updates the selection's idle cards with a branch from their base, one at a time. A card
-   * already on its base is not rebased; a conflicted or refused one stays selected, named.
-   */
-  const updateSelected = async () => {
-    if (busy || split.update.length === 0) return;
-    const cards = split.update;
-    rememberOpener();
-    setBusy(true);
-    setNotice(null);
-    setUpdating({ done: 0, total: cards.length });
-    const results = await updateMany(cards, {
-      behind: async (card) => {
-        const answer = await store.hostRequest(hostId, "changes.get", {
-          target: `card:${card.id}`,
-        });
-        return answer.ok ? (answer.data.position?.behind ?? null) : null;
-      },
-      update: async (card) => {
-        const answer = await store.hostRequest(hostId, "card.updateFromBase", {
-          cardId: card.id,
-        });
-        return requestResult(answer);
-      },
-      onProgress: (done, total) => setUpdating({ done, total }),
-    });
-    const went = new Set(
-      results
-        .filter((r) => r.outcome === "updated" || r.outcome === "current")
-        .map((r) => r.card.id),
-    );
-    setPicked((before) => before.filter((id) => !went.has(id)));
-    setNotice(updateSummary(t, results));
-    setUpdating(null);
-    setBusy(false);
-    // The button was disabled while it ran, and a browser takes the focus off a disabled button:
-    // it goes back once the render has turned the button on again.
-    setUpdated((n) => n + 1);
-  };
   const bulkRun = useBulkRun({
     store,
     hostId,
@@ -414,6 +257,25 @@ export const BoardView = memo(function BoardView(props: {
     opener: { remember: rememberOpener, restore: restoreOpener },
     boardRef,
   });
+  const columnOf = (column: BoardColumn) => columnCards(all, column);
+  const selectionActions = useSelectionActions({
+    store,
+    hostId,
+    acting,
+    actingCards,
+    split,
+    contracts,
+    columnOf,
+    busy,
+    setBusy,
+    setAsk,
+    setPicked,
+    setNotice,
+    nameRefusals,
+    opener: { remember: rememberOpener, restore: restoreOpener },
+    boardRef,
+  });
+  const { moveSelected, updateSelected, updating } = selectionActions;
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
     anchor.current = null;
@@ -443,7 +305,6 @@ export const BoardView = memo(function BoardView(props: {
 
   /** The card to focus once a move has happened: where it was, to tell when it has moved. */
   const refocus = useRef<MoveFocus | null>(null);
-  const columnOf = (column: BoardColumn) => columnCards(all, column);
   const runMove = (cardId: string, column: BoardColumn, targetId?: string, force = false) => {
     const others = columnOf(column).filter((card) => card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
@@ -563,10 +424,7 @@ export const BoardView = memo(function BoardView(props: {
                   shown={acting.length}
                   hidden={selection.length - acting.length}
                   onMove={(column) => void moveSelected(column)}
-                  onDiscard={() => {
-                    rememberOpener();
-                    setDiscardingMany(true);
-                  }}
+                  onDiscard={selectionActions.askDiscard}
                   onClear={clearSelection}
                   busy={busy}
                   onEscape={clearSelection}
@@ -722,150 +580,106 @@ export const BoardView = memo(function BoardView(props: {
               /** What the dragged cards would lack here: said by the column until they let go. */
               const asking = dragNeeds(id, dragCards, contracts);
               return (
-                <section
+                <ColumnLane
                   key={id}
+                  t={t}
+                  id={id}
                   hidden={switcher && id !== showing}
-                  aria-label={t(`kanban.columns.${id}` as Key)}
-                  aria-describedby={asking.length > 0 ? `needs-${id}` : undefined}
-                  data-column={id}
-                  data-needs={asking.length > 0 ? "true" : undefined}
-                  className={cn(
-                    "board-column group/lane relative snap-start",
-                    over === id && "drop-over",
-                    asking.length > 0 && "column-needs",
+                  asking={asking}
+                  over={over === id}
+                  {...counts(
+                    shown.filter((card) => card.column === id).length,
+                    all.filter((card) => card.column === id).length,
                   )}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragEnter={() => setOver(id)}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
+                  empty={all.every((card) => card.column !== id)}
+                  noMatches={
+                    filtering &&
+                    all.some((card) => card.column === id) &&
+                    shown.every((card) => card.column !== id)
+                  }
+                  onAdd={() => {
+                    setCreateIn(id);
+                    setCreating(true);
                   }}
+                  onDragEnter={() => setOver(id)}
+                  onDragLeave={() => setOver(null)}
                   onDrop={() => {
                     setOver(null);
                     drop(id);
                   }}
+                  handle={
+                    switcher
+                      ? undefined
+                      : {
+                          width,
+                          index: COLUMNS.findIndex((column) => column.id === id) + 1,
+                          last: id === COLUMNS.at(-1)?.id,
+                          onChange: (next) => store.boardWidth.set(next, false),
+                          onCommit: () => store.boardWidth.persist(),
+                        }
+                  }
                 >
-                  <ColumnHeader
-                    id={id}
-                    title={t(`kanban.columns.${id}` as Key)}
-                    {...counts(
-                      shown.filter((card) => card.column === id).length,
-                      all.filter((card) => card.column === id).length,
-                    )}
-                    addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
-                    onAdd={() => {
-                      setCreateIn(id);
-                      setCreating(true);
-                    }}
-                  />
-                  {asking.length > 0 && (
-                    <p id={`needs-${id}`} className="column-hint">
-                      {t("board.contract.hint", { needs: needsText(t, asking) })}
-                    </p>
-                  )}
-                  <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto empty:hidden">
-                    {shown
-                      .filter((card) => card.column === id)
-                      .map((card) => (
-                        <CardTile
-                          key={card.id}
-                          card={card}
-                          contracts={contracts}
-                          quiet={quietOf(card)}
-                          workflow={
-                            card.workflowRunId
-                              ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
-                              : undefined
-                          }
-                          formatTime={(iso) => store.formatTime(iso)}
-                          labels={{
-                            actions: store.i18n.t("board.cardActions", { title: card.title }),
-                            start: store.i18n.t("board.startCard"),
-                            edit: store.i18n.t("board.edit"),
-                            delete: store.i18n.t("board.delete"),
-                            select: t("board.selectCard"),
-                            deselect: t("board.deselectCard"),
-                            selectNamed: t("board.selectCardNamed", { title: card.title }),
-                          }}
-                          startOff={startOffText(cardStartBlock(card), store.i18n.t)}
-                          deps={{
-                            waiting: titlesOf(card.waitingOn),
-                            holding: titlesOf(card.blocking),
-                          }}
-                          moves={movesOf(card)}
-                          onOpen={() => props.onOpenCard(card.id)}
-                          onEdit={() => props.onOpenCard(card.id, true)}
-                          onDelete={() => setDeleting(card)}
-                          onStart={() => startAsk.ask(card, contracts, () => setStarting(card))}
-                          locked={busy}
-                          selected={selection.includes(card.id)}
-                          selecting={selection.length > 0}
-                          onStartSelection={bulkRun.askStart}
-                          onMoveSelection={() => {
-                            moveFrom.current = card.id;
-                            setMoveMenuOpen(true);
-                          }}
-                          onToggleSelect={() => select(card)}
-                          onRangeSelect={() => selectRange(card)}
-                          tabbable={stops.has(card.id)}
-                          hintId={hintId}
-                          onFocus={() => setFocusedCard(card.id)}
-                          onKey={keyOn(card.id)}
-                          onDragStart={() => {
-                            dragging.current = card.id;
-                            draggingMany.current =
-                              acting.includes(card.id) && acting.length > 1 ? acting : null;
-                            setDragCards(draggingMany.current ? actingCards : [card]);
-                          }}
-                          onDragEnd={() => setDragCards([])}
-                          onDropOn={() => {
-                            setOver(null);
-                            drop(id, card.id);
-                          }}
-                        />
-                      ))}
-                  </ul>
-                  {all.every((card) => card.column !== id) && (
-                    <BoardColumnEmpty
-                      label={t("kanban.emptyName", {
-                        empty: t("kanban.empty"),
-                        action: t("kanban.addCard"),
-                      })}
-                      text={t("kanban.empty")}
-                      onAdd={() => {
-                        setCreateIn(id);
-                        setCreating(true);
-                      }}
-                    />
-                  )}
-                  {filtering &&
-                    all.some((card) => card.column === id) &&
-                    shown.every((card) => card.column !== id) && (
-                      <p className="column-empty">{t("board.noMatches")}</p>
-                    )}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    aria-label={t("board.quickAdd", { column: t(`kanban.columns.${id}` as Key) })}
-                    className="w-full focus-visible:opacity-100 group-hover/lane:opacity-100 [@media(hover:hover)]:opacity-0"
-                    onClick={() => {
-                      setCreateIn(id);
-                      setCreating(true);
-                    }}
-                  >
-                    <Plus aria-hidden="true" />
-                    {t("kanban.newCard")}
-                  </Button>
-                  {!switcher && (
-                    <ColumnHandle
-                      t={t}
-                      width={width}
-                      index={COLUMNS.findIndex((column) => column.id === id) + 1}
-                      last={id === COLUMNS.at(-1)?.id}
-                      onChange={(next) => store.boardWidth.set(next, false)}
-                      onCommit={() => store.boardWidth.persist()}
-                    />
-                  )}
-                </section>
+                  {shown
+                    .filter((card) => card.column === id)
+                    .map((card) => (
+                      <CardTile
+                        key={card.id}
+                        card={card}
+                        contracts={contracts}
+                        quiet={quietOf(card)}
+                        workflow={
+                          card.workflowRunId
+                            ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
+                            : undefined
+                        }
+                        formatTime={(iso) => store.formatTime(iso)}
+                        labels={{
+                          actions: store.i18n.t("board.cardActions", { title: card.title }),
+                          start: store.i18n.t("board.startCard"),
+                          edit: store.i18n.t("board.edit"),
+                          delete: store.i18n.t("board.delete"),
+                          select: t("board.selectCard"),
+                          deselect: t("board.deselectCard"),
+                          selectNamed: t("board.selectCardNamed", { title: card.title }),
+                        }}
+                        startOff={startOffText(cardStartBlock(card), store.i18n.t)}
+                        deps={{
+                          waiting: titlesOf(card.waitingOn),
+                          holding: titlesOf(card.blocking),
+                        }}
+                        moves={movesOf(card)}
+                        onOpen={() => props.onOpenCard(card.id)}
+                        onEdit={() => props.onOpenCard(card.id, true)}
+                        onDelete={() => setDeleting(card)}
+                        onStart={() => startAsk.ask(card, contracts, () => setStarting(card))}
+                        locked={busy}
+                        selected={selection.includes(card.id)}
+                        selecting={selection.length > 0}
+                        onStartSelection={bulkRun.askStart}
+                        onMoveSelection={() => {
+                          moveFrom.current = card.id;
+                          setMoveMenuOpen(true);
+                        }}
+                        onToggleSelect={() => select(card)}
+                        onRangeSelect={() => selectRange(card)}
+                        tabbable={stops.has(card.id)}
+                        hintId={hintId}
+                        onFocus={() => setFocusedCard(card.id)}
+                        onKey={keyOn(card.id)}
+                        onDragStart={() => {
+                          dragging.current = card.id;
+                          draggingMany.current =
+                            acting.includes(card.id) && acting.length > 1 ? acting : null;
+                          setDragCards(draggingMany.current ? actingCards : [card]);
+                        }}
+                        onDragEnd={() => setDragCards([])}
+                        onDropOn={() => {
+                          setOver(null);
+                          drop(id, card.id);
+                        }}
+                      />
+                    ))}
+                </ColumnLane>
               );
             })}
           </div>
@@ -912,15 +726,7 @@ export const BoardView = memo(function BoardView(props: {
           }}
         />
       )}
-      {discardingMany && (
-        <BulkDiscardDialog
-          cards={actingCards}
-          t={t}
-          onCancel={() => setDiscardingMany(false)}
-          onConfirm={() => void discardSelected()}
-          onRestoreFocus={restoreOpener}
-        />
-      )}
+      {selectionActions.dialog}
       {bulkRun.dialog}
       {issuesOpen && project && (
         <IssuesPanel
@@ -975,37 +781,3 @@ export const BoardView = memo(function BoardView(props: {
     </Page>
   );
 });
-
-/** A column's head: its status icon and name, the count as a pill, and a + that adds a card to it. */
-function ColumnHeader(
-  props: Readonly<{
-    id: BoardColumn;
-    title: string;
-    /** The count as shown: `n`, or `n / total` while a filter hides some. */
-    count: string;
-    /** The count in words, for a screen reader. */
-    label: string;
-    addLabel: string;
-    onAdd(): void;
-  }>,
-) {
-  const Icon = COLUMN_ICONS[props.id];
-  return (
-    <Inline gap={2} className="column-head flex-nowrap">
-      <Icon data-slot="column-icon" aria-hidden="true" />
-      <h3 className="column-title">{props.title}</h3>
-      <Badge variant="secondary" className="column-count" role="img" aria-label={props.label}>
-        <span aria-hidden="true">{props.count}</span>
-      </Badge>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-6"
-        aria-label={props.addLabel}
-        onClick={props.onAdd}
-      >
-        <Plus aria-hidden="true" />
-      </Button>
-    </Inline>
-  );
-}

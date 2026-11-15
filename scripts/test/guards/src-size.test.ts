@@ -87,13 +87,13 @@ describe("src-size (#1592)", () => {
       .stdout.split("\n")
       .filter(isMeasured);
     expect(paths.length).toBeGreaterThan(500);
-    const counts = oversizedSources(
-      paths.map((path) => ({ path, text: readFileSync(join(ROOT, path), "utf8") })),
-    );
+    const files = paths.map((path) => ({ path, text: readFileSync(join(ROOT, path), "utf8") }));
+    const counts = oversizedSources(files);
     const file = join(ROOT, "src-size-baseline.json");
     const baseline = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
     expect(overBaseline(counts, baseline)).toEqual([]);
-    // Proof that the measure sees oversized files at all: some file is still past the limit.
-    expect(Math.max(0, ...Object.values(counts))).toBeGreaterThan(SRC_LIMIT);
+    // No file is past the limit any more (#1592, #1589), so the proof that the real tree is read
+    // is its biggest file: a read that came back empty would leave it far below this floor.
+    expect(Math.max(...files.map((f) => f.text.split("\n").length))).toBeGreaterThan(500);
   });
 });

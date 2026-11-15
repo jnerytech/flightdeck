@@ -4,7 +4,7 @@
  * parts, then finishes the import or aborts.
  */
 import { importPackage } from "../../teleport/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const teleportHandlers = {
   "teleport.prepare": async (payload, { server }) => {
