@@ -1,41 +1,24 @@
-import type { CostsFilter, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
+import type { CostsFilter, CostsSummary } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ALL_CLIENTS, costByClient } from "@/features/clients/index.ts";
 import { RoiPeople, RoiSettingsPanel, RoiTable } from "@/features/roi/ui.ts";
-import { ScopeMenu } from "@/features/shell/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
-import { useFormatNumber, useT } from "@/i18n/context";
+import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import {
-  EmptyState,
-  LoadingState,
-  NativeSelect,
-  Page,
-  Panel,
-  Toolbar,
-} from "@/shared/layout/index.ts";
-import { basename, uniqueKeys } from "@/shared/lib/index.ts";
-import type { Key } from "../../i18n/index.ts";
+import { EmptyState, LoadingState, Page, Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
 import { exportCosts } from "./costs-export.ts";
-import { Breakdown, CostsNotices } from "./costs-parts.tsx";
+import { CostsFilters } from "./costs-filters.tsx";
+import { CostsNotices } from "./costs-parts.tsx";
+import { CostsBreakdowns, CostsTopSessions, CostsTotals } from "./costs-report.tsx";
 import { DayChart } from "./day-chart.tsx";
-import {
-  daysBetween,
-  PERIODS,
-  type Period,
-  periodRange,
-  projectLabel,
-  usd,
-} from "./domain/costs.ts";
+import { daysBetween, type Period, periodRange, projectLabel } from "./domain/costs.ts";
 import {
   costsHosts,
   hostsOffering,
@@ -43,18 +26,13 @@ import {
   periodProjectKeys,
   withFilter,
 } from "./domain/costs-derive.ts";
-import { awayHost, hostScope, topModel } from "./domain/costs-scope.ts";
+import { awayHost, hostScope } from "./domain/costs-scope.ts";
 import { awayKey } from "./domain/data-scope.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
 import { useCostsLoad, useCostsRoute, useCostsStatus } from "./use-costs-page.ts";
 
-const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
-
 export type TopSession = CostsSummary["topSessions"][number];
-
-const tokensOf = (t: CostsSummary["totals"]["tokens"]) =>
-  t.input + t.output + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
 
 const COSTSPAGE_KEYS = [
   "personas",
@@ -81,7 +59,6 @@ export const CostsPage = memo(function CostsPage(props: {
   period?: Exclude<Period, "range">;
 }) {
   const t = useT();
-  const number = useFormatNumber();
   const { store } = props;
   const state = useStoreSlice(store, COSTSPAGE_KEYS);
   const hosts = costsHosts(state.hosts);
@@ -138,8 +115,6 @@ export const CostsPage = memo(function CostsPage(props: {
     setFilters(withFilter(filters, name, value));
   const exportCsv = () => exportCosts(store, { acrossHosts, hostId, hosts }, filter);
   const byDay = summary?.byDay ?? [];
-  // The same session can come from two hosts: each row needs a key of its own.
-  const topKeys = uniqueKeys((summary?.topSessions ?? []).map((s) => s.claudeSessionId));
   // One set of labels for the whole screen, so a project reads the same in the list, the chart
   // and the table; two that share a folder name are told apart.
   // They are told apart against every project the app knows, as on Home (issue #881).
@@ -158,7 +133,6 @@ export const CostsPage = memo(function CostsPage(props: {
       : [];
 
   const loading = useMinLoading(hostId !== "" && summary === null);
-  const top = topModel(summary?.byModel ?? []);
   const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
   return (
     <Page
@@ -179,75 +153,20 @@ export const CostsPage = memo(function CostsPage(props: {
         </>
       }
       toolbar={
-        <Toolbar label={t("costsUi.filters")}>
-          {(state.hosts.length > 1 || projects.length > 0) && (
-            <ScopeMenu
-              store={store}
-              hosts={state.hosts}
-              projects={projects}
-              scope={dataScope}
-              onPick={endVisit}
-            />
-          )}
-          {PERIODS.map((p) => (
-            <Button
-              key={p}
-              variant="outline"
-              size="sm"
-              aria-pressed={period === p}
-              className="aria-pressed:bg-accent"
-              onClick={() => setPeriod(p)}
-            >
-              {t(`periods.${p}` as Key)}
-            </Button>
-          ))}
-          {period === "range" && (
-            <>
-              <Input
-                type="date"
-                aria-label={t("costsUi.from")}
-                className="h-8 w-36 text-xs"
-                value={range.from}
-                onChange={(e) => setRange({ ...range, from: e.target.value })}
-              />
-              <Input
-                type="date"
-                aria-label={t("costsUi.to")}
-                className="h-8 w-36 text-xs"
-                value={range.to}
-                onChange={(e) => setRange({ ...range, to: e.target.value })}
-              />
-            </>
-          )}
-          <NativeSelect
-            inline
-            compact
-            aria-label={t("costsUi.model")}
-            value={filters.model ?? ""}
-            onChange={(e) => setFilter("model", e.target.value)}
-          >
-            <option value="">{t("costsUi.allModels")}</option>
-            {(all?.byModel ?? []).map((m) => (
-              <option key={m.model} value={m.model}>
-                {m.model}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            inline
-            compact
-            aria-label={t("costsUi.origin")}
-            value={filters.origin ?? ""}
-            onChange={(e) => setFilter("origin", e.target.value)}
-          >
-            <option value="">{t("costsUi.allOrigins")}</option>
-            {ORIGINS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </NativeSelect>
-        </Toolbar>
+        <CostsFilters
+          store={store}
+          hosts={state.hosts}
+          projects={projects}
+          scope={dataScope}
+          onPickScope={endVisit}
+          period={period}
+          onPeriod={setPeriod}
+          range={range}
+          onRange={setRange}
+          filters={filters}
+          onFilter={setFilter}
+          models={(all?.byModel ?? []).map((m) => m.model)}
+        />
       }
     >
       <div className="flex flex-col gap-5">
@@ -309,33 +228,7 @@ export const CostsPage = memo(function CostsPage(props: {
         )}
         {summary && !empty && (
           <>
-            <dl className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-              {[
-                [t("costsUi.estimated"), usd(summary.totals.costUsd, t.lang)],
-                [t("costsUi.tokens"), number(tokensOf(summary.totals.tokens))],
-                [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd, t.lang)],
-                ...(top
-                  ? [[t("costsUi.topModel"), `${top.model} · ${usd(top.costUsd, t.lang)}`]]
-                  : []),
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border bg-card p-4">
-                  <dt className="text-muted-foreground text-xs">{label}</dt>
-                  <dd
-                    className={cn(
-                      "font-semibold tabular-nums",
-                      label === t("costsUi.topModel") ? "text-base" : "text-xl",
-                    )}
-                  >
-                    <output aria-label={label}>{value}</output>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            {(status?.unpriced ?? []).map((u) => (
-              <p key={u.model} className="text-muted-foreground text-xs">
-                {t("costsUi.unpriced", { model: u.model })}
-              </p>
-            ))}
+            <CostsTotals summary={summary} unpriced={status?.unpriced ?? []} />
             <section aria-label={t("costsUi.perDay")}>
               <Panel title={t("costsUi.perDay")}>
                 <DayChart
@@ -357,39 +250,13 @@ export const CostsPage = memo(function CostsPage(props: {
                 projectName={projectName}
               />
             )}
-            <div className="grid gap-4 @3xl:grid-cols-3">
-              <Breakdown
-                name={t("costsUi.byProject")}
-                rows={summary.byProject.map((p) => ({
-                  id: p.projectKey,
-                  label: projectName(p.projectKey),
-                  costUsd: p.costUsd,
-                }))}
-              />
-              {byClient.length > 0 && (
-                <Breakdown
-                  name={t("costsUi.byClient")}
-                  rows={byClient.map((c) => ({ label: c.name, costUsd: c.costUsd }))}
-                />
-              )}
-              <Breakdown
-                name={t("costsUi.byModel")}
-                rows={summary.byModel.map((m) => ({ label: m.model, costUsd: m.costUsd }))}
-              />
-              <Breakdown
-                name={t("costsUi.byOrigin")}
-                rows={summary.byOrigin.map((o) => ({ label: o.origin, costUsd: o.costUsd }))}
-              />
-              {withPersonas && (
-                <Breakdown
-                  name={t("costsUi.byPersona")}
-                  rows={summary.byPersona.map((p) => ({
-                    label: personaName(p.persona),
-                    costUsd: p.costUsd,
-                  }))}
-                />
-              )}
-            </div>
+            <CostsBreakdowns
+              summary={summary}
+              projectName={projectName}
+              byClient={byClient}
+              withPersonas={withPersonas}
+              personaName={personaName}
+            />
             {acrossHosts ? (
               <InlineNotice tone="info">
                 {/* Quota is per host by nature: on every host there is one line, and the way to pick. */}
@@ -419,26 +286,11 @@ export const CostsPage = memo(function CostsPage(props: {
                 label={projectName}
               />
             )}
-            <section aria-label={t("costsUi.top")}>
-              <Panel title={t("costsUi.top")}>
-                <ul className="flex flex-col">
-                  {summary.topSessions.map((s, i) => (
-                    <li key={topKeys[i]}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto w-full justify-start whitespace-normal py-1 text-left"
-                        onClick={() =>
-                          props.onOpenSession(sessionHost[s.claudeSessionId] ?? hostId, s)
-                        }
-                      >
-                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectName(s.projectKey)} · ${usd(s.costUsd, t.lang)}`}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </Panel>
-            </section>
+            <CostsTopSessions
+              sessions={summary.topSessions}
+              projectName={projectName}
+              onOpen={(s) => props.onOpenSession(sessionHost[s.claudeSessionId] ?? hostId, s)}
+            />
             {/* What the person types for the return on cost, after the reports it changes (#588). */}
             {withRoi && <RoiSettingsPanel store={store} />}
           </>
