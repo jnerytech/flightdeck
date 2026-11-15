@@ -5,6 +5,9 @@ import { IconTip } from "@/shared/feedback/index.ts";
 import { NAV_ICONS, type NavKey } from "./nav-icons.ts";
 import { ITEM } from "./sidebar-hosts.tsx";
 
+/** The classes of an item's icon in the bar. */
+export const NAV_ICON = "size-4 shrink-0";
+
 /** The icon of one of the screens the bar lists, the same one its tab wears. */
 export function NavIcon({ name, ...props }: LucideProps & { name: NavKey }) {
   const Icon = NAV_ICONS[name];
