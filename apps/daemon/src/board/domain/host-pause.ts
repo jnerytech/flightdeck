@@ -4,12 +4,6 @@
  * The switch is the host's config (`pauseNewRuns`), so it survives a restart.
  */
 
-/** The pause as `host.info` and `host.pause` say it: the switch and how many sessions still run. */
-export interface HostPauseStatus {
-  paused: boolean;
-  running: number;
-}
-
 export class HostPause {
   private on: boolean;
   private readonly listeners = new Set<() => void>();
