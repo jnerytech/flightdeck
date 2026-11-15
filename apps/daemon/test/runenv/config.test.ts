@@ -1,13 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { RUN_CONFIG_PATH, RunConfigs } from "../../src/runenv/config.ts";
 import {
   declaredCommands,
   isDeclared,
   parseRunConfig,
-  RUN_CONFIG_PATH,
-  RunConfigs,
-} from "../../src/runenv/config.ts";
+} from "../../src/runenv/domain/run-config.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 
 /** The example of docs/SPEC-fase-24.md. */
