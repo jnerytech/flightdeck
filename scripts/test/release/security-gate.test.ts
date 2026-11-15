@@ -302,6 +302,23 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("the files that decide a snippet's trust or write the project's snippets file are risky by path, so a change to them needs a review (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/snippets/store.ts",
+        "apps/daemon/src/snippets/adapters/snippet-rows.ts",
+        "apps/daemon/src/snippets/adapters/snippet-yaml-file.ts",
+        "apps/daemon/src/snippets/history.ts",
+        "apps/daemon/src/snippets/adapters/deeper/snippet-rows.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/snippets/adapters/snippet-rows.ts", "snippet trust"],
+      ["apps/daemon/src/snippets/adapters/snippet-yaml-file.ts", "snippet trust"],
+      ["apps/daemon/src/snippets/store.ts", "snippet trust"],
+    ]);
+  });
+
   test("every file of the pr folder is a guard, so the merge and check logic stays under review wherever it lives (#3344)", () => {
     const added = new Map(
       [
