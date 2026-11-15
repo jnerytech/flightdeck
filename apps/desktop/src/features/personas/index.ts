@@ -6,7 +6,7 @@
  */
 
 export { takesEffort } from "./domain/effort.ts";
-export { type AppPersona, GlobalPersonas, personaInput } from "./domain/global-personas.ts";
+export { GlobalPersonas } from "./domain/global-personas.ts";
 export type { PermissionChoice } from "./permission-select.tsx";
 export {
   initialPersonasState,

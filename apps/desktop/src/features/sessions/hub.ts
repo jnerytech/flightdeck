@@ -5,7 +5,7 @@ import type { HubFilter, HubGroup, HubOrigin, HubRow, HubState } from "./domain/
 
 export { isOver } from "./domain/hub-row.ts";
 export { externalState, hubRows } from "./domain/hub-rows.ts";
-export type { HubFilter, HubGroup, HubOrigin, HubRow, HubState };
+export type { HubFilter, HubGroup, HubRow, HubState };
 
 /** The parts of the state the rows are made of. */
 export type HubRowState = Pick<

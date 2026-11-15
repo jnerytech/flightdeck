@@ -5,7 +5,7 @@ export type Theme = "light" | "dark";
 
 /** Where the choice is kept; "system" (the default) when absent. */
 export const THEME_KEY = "flightdeck.theme";
-export const DARK_QUERY = "(prefers-color-scheme: dark)";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 const MODES: ReadonlySet<ThemeMode> = new Set<ThemeMode>(["light", "dark", "system"]);
 

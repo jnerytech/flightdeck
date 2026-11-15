@@ -1,11 +1,11 @@
-export type StepKind = "given" | "when" | "then";
+type StepKind = "given" | "when" | "then";
 
-export interface Step {
+interface Step {
   kind: StepKind;
   text: string;
 }
 
-export interface Scenario {
+interface Scenario {
   title: string;
   steps: Step[];
 }

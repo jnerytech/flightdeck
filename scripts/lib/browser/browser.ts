@@ -3,7 +3,7 @@ import { whichOnPath } from "../../../apps/daemon/src/kernel/which.ts";
 export type BrowserAttempt = { channel: "chrome" | "msedge" } | { executablePath: string };
 
 /** The names of a distribution's Chromium, in the order they are tried. */
-export const CHROMIUM_NAMES = ["chromium", "chromium-browser"];
+const CHROMIUM_NAMES = ["chromium", "chromium-browser"];
 
 /**
  * How to start a browser, best first: the installed Chrome, Edge when Chrome refuses automation
@@ -38,7 +38,7 @@ export async function launchFirst<T>(
 }
 
 /** Executables the e2e runner looks for on a Linux or macOS PATH, best first. */
-export const RUNNER_BROWSER_NAMES = [
+const RUNNER_BROWSER_NAMES = [
   "google-chrome",
   "google-chrome-stable",
   "chromium",

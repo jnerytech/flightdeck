@@ -222,7 +222,7 @@ export function figures(period: RoiPeriod, money: RoiMoney, lang: string): Figur
   };
 }
 
-export type Verdict = "more" | "fewer" | "same" | "none";
+type Verdict = "more" | "fewer" | "same" | "none";
 
 export interface Comparison {
   verdict: Verdict;
@@ -301,5 +301,3 @@ export function headline(
     },
   };
 }
-
-export type { RoiWeek } from "@flightdeck/protocol";

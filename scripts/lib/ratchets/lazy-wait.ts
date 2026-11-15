@@ -5,7 +5,7 @@ import { relative, resolve } from "node:path";
 const SHARED = new Set(["wait.ts", "helpers.ts", "fixtures.ts"]);
 
 /** Lines after a fixed wait, in its own block, that still count as "right after it". */
-export const WINDOW = 5;
+const WINDOW = 5;
 
 /** A wait of a fixed time: `Bun.sleep(…)`, `sleep(…)` or `setTimeout(…)`. */
 const FIXED_WAIT = /\b(?:Bun\.sleep|sleep|setTimeout)\(/;

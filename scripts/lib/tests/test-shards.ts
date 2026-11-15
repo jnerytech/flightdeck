@@ -47,7 +47,7 @@ const bunTest = (platform: NodeJS.Platform) => [
 export const ARG_BUDGET = 8000;
 
 /** The files in order, cut into batches whose arguments stay within `ARG_BUDGET` characters. */
-export function batches(files: string[], budget = ARG_BUDGET): string[][] {
+function batches(files: string[], budget = ARG_BUDGET): string[][] {
   const out: string[][] = [];
   let batch: string[] = [];
   let length = 0;

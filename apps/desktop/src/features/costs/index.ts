@@ -7,25 +7,19 @@
  */
 
 export {
-  type ClientBudgetsCore,
   ClientBudgetsSlice,
   type ClientBudgetsSliceState,
   initialClientBudgetsState,
 } from "./client-budgets-store.ts";
 export {
-  ACTION_LABELS,
-  type BudgetAlert,
   budgetAlerts,
   budgetLabel,
   budgetLimitText,
   budgetLine,
-  estimateNote,
-  projectName,
   share,
 } from "./domain/budgets.ts";
 export {
   CLIENT_BUDGET_ALERTS_KEY,
-  type ClientBudgetState,
   evaluateClientBudgets,
 } from "./domain/client-budgets.ts";
 export {

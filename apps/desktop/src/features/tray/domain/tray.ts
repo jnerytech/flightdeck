@@ -5,7 +5,7 @@ import type { TrayMenu, TrayStatus } from "../../../platform/types.ts";
 import { pendingText, pendingWhere } from "../../sessions/index.ts";
 
 /** Requests listed in the tray submenu; the rest become "e mais N…". */
-export const TRAY_MENU_MAX = 10;
+const TRAY_MENU_MAX = 10;
 
 /** How long the submenu waits for the list to settle before it is rebuilt. */
 export const TRAY_MENU_DELAY_MS = 500;

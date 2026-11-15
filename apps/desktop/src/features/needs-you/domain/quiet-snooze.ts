@@ -19,7 +19,7 @@ export function loadQuietSnooze(storage: Storage, nowMs: number): Record<string,
   return Object.fromEntries(Object.entries(kept).filter(([, until]) => until > nowMs));
 }
 
-export function saveQuietSnooze(storage: Storage, snoozes: Record<string, number>): void {
+function saveQuietSnooze(storage: Storage, snoozes: Record<string, number>): void {
   try {
     storage.setItem(QUIET_SNOOZE_KEY, JSON.stringify(snoozes));
   } catch {
@@ -28,7 +28,7 @@ export function saveQuietSnooze(storage: Storage, snoozes: Record<string, number
 }
 
 /** Issue #1478: how long "Not stuck" keeps a quiet session out of Needs you. */
-export const QUIET_SNOOZE_MS = 60 * 60 * 1000;
+const QUIET_SNOOZE_MS = 60 * 60 * 1000;
 
 /** What "Not stuck" reads and changes through the app's store (#1596). */
 export interface QuietSnoozeCore {

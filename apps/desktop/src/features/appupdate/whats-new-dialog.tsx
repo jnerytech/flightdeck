@@ -15,7 +15,7 @@ import { formatDate } from "@/i18n/format";
 import type { AppStore, ReleaseNotesResult } from "../../lib/app-store.ts";
 
 /** Every release, on GitHub: "View all" opens it. */
-export const RELEASES_PAGE = "https://github.com/jnerytech/flightdeck/releases";
+const RELEASES_PAGE = "https://github.com/jnerytech/flightdeck/releases";
 
 /**
  * What's new: the latest releases of the app, from the first host that can read them (issue #125).

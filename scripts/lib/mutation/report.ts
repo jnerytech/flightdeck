@@ -4,7 +4,7 @@
  * the job summary. scripts/mutation-weekly.ts wires the real Stryker and the files.
  */
 
-export interface ReportMutant {
+interface ReportMutant {
   id: string;
   mutatorName: string;
   replacement?: string;

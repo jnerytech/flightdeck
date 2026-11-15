@@ -9,7 +9,7 @@ import type { GhResult } from "../ci/branch.ts";
 export const REPO = "jnerytech/flightdeck";
 
 /** The headings of the draft, in order; an issue no keyword places goes to Other. */
-export const AREAS = [
+const AREAS = [
   "Board",
   "Workflows",
   "Sessions",

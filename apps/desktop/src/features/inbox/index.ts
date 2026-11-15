@@ -11,5 +11,5 @@ export {
   externalWaitNotification,
   summaryNotifications,
 } from "./domain/notify.ts";
-export { type InboxCore, InboxSlice } from "./store.ts";
+export { InboxSlice } from "./store.ts";
 export { wireInbox } from "./wire.ts";

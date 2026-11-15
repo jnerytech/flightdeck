@@ -9,7 +9,6 @@ export {
   initialSettingsState,
   NOTIFY_UPDATES_KEY,
   type Settings,
-  type SettingsCore,
   type SettingsPlatform,
   SettingsSlice,
   type SettingsSliceState,
