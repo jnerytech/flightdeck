@@ -15,8 +15,8 @@ import { workflowCard } from "./workflow-helpers.ts";
 export const NET = 60_000;
 
 export const TOKEN = "automacoes-token-0123456789a";
-export const WF = "steps:\n  - id: work\n    agent: { prompt: 'faça' }\n";
-export const GH_REMOTE = "git@github.com:Acme/App.git";
+const WF = "steps:\n  - id: work\n    agent: { prompt: 'faça' }\n";
+const GH_REMOTE = "git@github.com:Acme/App.git";
 export const UTC = (text: string) => Date.parse(text);
 
 export const ghIssue = (n: number, over: Record<string, unknown> = {}) => ({
