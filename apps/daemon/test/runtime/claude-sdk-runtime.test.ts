@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 import type { Options, SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
   ClaudeSdkRuntime,
-  normalizeSdkMessage,
   type QueryFn,
   resolveClaudePath,
 } from "../../src/runtime/claude-sdk-runtime.ts";
 import { describeCommands } from "../../src/runtime/domain/commands.ts";
+import { normalizeSdkMessage } from "../../src/runtime/domain/sdk-events.ts";
 import type { CanUseToolFn, RuntimeEvent } from "../../src/runtime/types.ts";
 
 // Synthetic SDK messages: only the fields the normalizer reads matter.
