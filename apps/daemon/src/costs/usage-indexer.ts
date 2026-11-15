@@ -1,12 +1,16 @@
 import type { Database } from "bun:sqlite";
-import { open, readdir, stat } from "node:fs/promises";
-import { basename, join } from "node:path";
-import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { isExcludedCwd, normalizeCwd } from "../history/index.ts";
 import { parseJsonOr, type UsageTokens, ulid } from "../kernel/index.ts";
 import { localDay } from "../quota/index.ts";
-import { type FileEdit, readLine } from "./domain/transcript-line.ts";
+import {
+  listTranscripts,
+  readSlice,
+  sizeOf,
+  type TranscriptFile,
+} from "./adapters/transcript-files.ts";
+import { UsageStore } from "./adapters/usage-store.ts";
+import { readLine } from "./domain/transcript-line.ts";
 
 /** Where the usage of a message came from. */
 export type UsageOrigin =
@@ -48,31 +52,6 @@ export interface InitialLoad {
   filesTotal: number;
 }
 
-/** One transcript file: a session's own, or one of its subagents' (`<id>/subagents/*.jsonl`). */
-interface TranscriptFile {
-  path: string;
-  claudeSessionId: string;
-  subagent: boolean;
-}
-
-const sizeOf = (path: string) =>
-  stat(path).then(
-    (info) => info.size,
-    () => null,
-  );
-
-/** `length` bytes of the file from `offset`, read without holding the event loop. */
-async function readSlice(path: string, offset: number, length: number): Promise<Buffer> {
-  const chunk = Buffer.alloc(length);
-  const handle = await open(path, "r");
-  try {
-    await handle.read(chunk, 0, length, offset);
-  } finally {
-    await handle.close();
-  }
-  return chunk;
-}
-
 /** Whose session this is: the managed kind and, for cards and workflows, the project folder. */
 interface Owner {
   origin: Exclude<UsageOrigin, "subagent">;
@@ -85,44 +64,13 @@ const SLICE_BYTES = 1 << 20;
 const zeroTimer = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-/** A folder's entries; none when it does not exist (a session folder without `subagents/`). */
-const entries = (dir: string) => readdir(dir, { withFileTypes: true }).catch(() => []);
-
-/** A managed session's kind; the project folder of its card when it ran one. */
-const OWNER = `SELECT
-  (SELECT p.path FROM sessions s JOIN step_runs st ON st.session_id = s.id
-     JOIN workflow_runs w ON w.id = st.run_id JOIN cards c ON c.id = w.card_id
-     JOIN projects p ON p.id = c.project_id WHERE s.claude_session_id = $id LIMIT 1) AS workflow,
-  (SELECT p.path FROM sessions s JOIN card_runs r ON r.session_id = s.id
-     JOIN cards c ON c.id = r.card_id JOIN projects p ON p.id = c.project_id
-     WHERE s.claude_session_id = $id LIMIT 1) AS card,
-  EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id) AS app`;
-
-/** The transcripts of one project folder: its sessions' files and their subagents' files. */
-async function projectFiles(project: string): Promise<TranscriptFile[]> {
-  const files: TranscriptFile[] = [];
-  await inSequence(await entries(project), async (item) => {
-    if (item.isFile() && item.name.endsWith(".jsonl")) {
-      const path = join(project, item.name);
-      files.push({ path, claudeSessionId: basename(item.name, ".jsonl"), subagent: false });
-    } else if (item.isDirectory()) {
-      const subagents = join(project, item.name, "subagents");
-      for (const sub of await entries(subagents)) {
-        if (!sub.isFile() || !sub.name.endsWith(".jsonl")) continue;
-        files.push({ path: join(subagents, sub.name), claudeSessionId: item.name, subagent: true });
-      }
-    }
-  });
-  return files;
-}
-
 /**
  * The usage of every assistant message of the transcripts, read incrementally with offsets of
  * its own (`usage_files`). Claude Code writes one line per content block, each with the same
  * `message.id` and usage, so the id is the key: a message counts once, also when read again.
  */
 export class UsageIndexer {
-  private readonly db: Database;
+  private readonly store: UsageStore;
   private readonly excludes: string[];
   private readonly day: (ms: number) => string;
   private load: InitialLoad = { state: "running", filesDone: 0, filesTotal: 0 };
@@ -131,7 +79,7 @@ export class UsageIndexer {
   private stopped = false;
 
   constructor(readonly opts: UsageIndexerOptions) {
-    this.db = opts.db;
+    this.store = new UsageStore(opts.db);
     this.excludes = (opts.excludeCwds ?? []).map(normalizeCwd);
     this.day = opts.day ?? localDay;
   }
@@ -153,30 +101,23 @@ export class UsageIndexer {
     const { tokens } = entry;
     const origin = entry.origin ?? "auto-approve";
     // The id is the table's key: a record sent twice (the app's pending queue) is one row.
-    this.db
-      .query(
-        `INSERT OR IGNORE INTO usage_entries (message_id, claude_session_id, at, day, project_key,
-           model, origin, speed, input, output, cache_read, cache_write_5m, cache_write_1h,
-           cost_usd, provider)
-         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        entry.messageId ?? `${origin}-${ulid()}`,
-        entry.at,
-        this.day(Date.parse(entry.at)),
-        this.opts.projectKey(entry.projectPath),
-        entry.model,
-        origin,
-        tokens.speed,
-        tokens.input,
-        tokens.output,
-        tokens.cacheRead,
-        tokens.cacheWrite5m,
-        tokens.cacheWrite1h,
-        // What the provider billed wins over the table; a model with neither stays unpriced.
-        entry.costUsd ?? this.opts.cost?.(tokens) ?? null,
-        entry.provider ?? null,
-      );
+    this.store.insertRecord({
+      id: entry.messageId ?? `${origin}-${ulid()}`,
+      at: entry.at,
+      day: this.day(Date.parse(entry.at)),
+      key: this.opts.projectKey(entry.projectPath),
+      model: entry.model,
+      origin,
+      speed: tokens.speed,
+      input: tokens.input,
+      output: tokens.output,
+      cacheRead: tokens.cacheRead,
+      cache5m: tokens.cacheWrite5m,
+      cache1h: tokens.cacheWrite1h,
+      // What the provider billed wins over the table; a model with neither stays unpriced.
+      cost: entry.costUsd ?? this.opts.cost?.(tokens) ?? null,
+      provider: entry.provider ?? null,
+    });
   }
 
   /** Progress of the first pass. */
@@ -222,7 +163,7 @@ export class UsageIndexer {
   async pass(): Promise<number> {
     this.reclassify();
     const owners = new Map<string, Owner>();
-    const files = await this.files();
+    const files = await listTranscripts(this.opts.roots);
     const first = this.load.state === "running";
     if (first) this.load = { state: "running", filesDone: 0, filesTotal: files.length };
     let added = 0;
@@ -261,67 +202,21 @@ export class UsageIndexer {
 
   /** Sessions read as the terminal's that a managed session claimed since (its id came later). */
   private reclassify(): void {
-    const claimed = this.db
-      .query<{ id: string }, []>(
-        `SELECT DISTINCT claude_session_id AS id FROM usage_entries WHERE origin = 'terminal'
-           AND claude_session_id IN (SELECT claude_session_id FROM sessions)`,
-      )
-      .all();
-    for (const { id } of claimed) {
+    for (const id of this.store.claimedTerminalSessions()) {
       const owner = this.owner(id);
-      this.db
-        .query(
-          `UPDATE usage_entries SET
-             origin = CASE WHEN origin = 'terminal' THEN $origin ELSE origin END,
-             project_key = COALESCE($key, project_key)
-           WHERE claude_session_id = $id`,
-        )
-        .run({
-          id,
-          origin: owner.origin,
-          key: owner.projectPath === null ? null : this.opts.projectKey(owner.projectPath),
-        });
+      this.store.reclassify(
+        id,
+        owner.origin,
+        owner.projectPath === null ? null : this.opts.projectKey(owner.projectPath),
+      );
     }
   }
 
   private owner(claudeSessionId: string): Owner {
-    const row = this.db.query(OWNER).get({ id: claudeSessionId }) as {
-      workflow: string | null;
-      card: string | null;
-      app: number;
-    };
+    const row = this.store.owner(claudeSessionId);
     if (row.workflow !== null) return { origin: "workflow", projectPath: row.workflow };
     if (row.card !== null) return { origin: "card", projectPath: row.card };
     return { origin: row.app ? "app" : "terminal", projectPath: null };
-  }
-
-  private async files(): Promise<TranscriptFile[]> {
-    const files: TranscriptFile[] = [];
-    await inSequence(this.opts.roots, async (root) => {
-      await inSequence(await entries(root), async (dir) => {
-        if (dir.isDirectory()) files.push(...(await projectFiles(join(root, dir.name))));
-      });
-    });
-    return files;
-  }
-
-  /** One more write of a file by a session; a tool call read again counts once. */
-  private recordEdit(claudeSessionId: string, edit: FileEdit, at: string): void {
-    const inserted = this.db
-      .query(
-        `INSERT OR IGNORE INTO session_file_edits (tool_use_id, claude_session_id, path, at)
-         VALUES (?, ?, ?, ?)`,
-      )
-      .run(edit.toolUseId, claudeSessionId, edit.path, at);
-    if (inserted.changes === 0) return;
-    this.db
-      .query(
-        `INSERT INTO session_files (claude_session_id, path, edits, first_at, last_at)
-         VALUES ($id, $path, 1, $at, $at)
-         ON CONFLICT (claude_session_id, path) DO UPDATE SET edits = edits + 1,
-           first_at = MIN(first_at, $at), last_at = MAX(last_at, $at)`,
-      )
-      .run({ id: claudeSessionId, path: edit.path, at });
   }
 
   /**
@@ -332,11 +227,7 @@ export class UsageIndexer {
   private async warm(file: TranscriptFile, owner: Owner): Promise<void> {
     const size = await sizeOf(file.path);
     if (size === null || !this.opts.warmKeys) return;
-    const row = this.db
-      .query<{ offset: number; cwd: string | null }, [string]>(
-        "SELECT offset, cwd FROM usage_files WHERE path = ?",
-      )
-      .get(file.path);
+    const row = this.store.file(file.path);
     const offset = size < (row?.offset ?? 0) ? 0 : (row?.offset ?? 0);
     if (size === offset) return;
     const chunk = await readSlice(
@@ -370,11 +261,7 @@ export class UsageIndexer {
     // Gone since the listing (a session deleted meanwhile): nothing to read.
     const size = await sizeOf(file.path);
     if (size === null) return done;
-    const row = this.db
-      .query<{ offset: number; cwd: string | null }, [string]>(
-        "SELECT offset, cwd FROM usage_files WHERE path = ?",
-      )
-      .get(file.path);
+    const row = this.store.file(file.path);
     const reset = size < (row?.offset ?? 0);
     const offset = reset ? 0 : (row?.offset ?? 0);
     if (!reset && size === offset) return done;
@@ -390,12 +277,6 @@ export class UsageIndexer {
     }
     let cwd = row?.cwd ?? null;
     let added = 0;
-    const insert = this.db.query(
-      `INSERT OR IGNORE INTO usage_entries (message_id, claude_session_id, at, day, project_key,
-         model, origin, speed, input, output, cache_read, cache_write_5m, cache_write_1h, cost_usd)
-       VALUES ($id, $session, $at, $day, $key, $model, $origin, $speed, $input, $output,
-         $cacheRead, $cache5m, $cache1h, $cost)`,
-    );
     const reads = chunk
       .subarray(0, end)
       .toString("utf8")
@@ -407,17 +288,17 @@ export class UsageIndexer {
     // With excluded folders, a slice that does not say its folder yet waits, offset unmoved (#3273:
     // a file whose first slice has no `cwd` at all stays unindexed, an accepted trade-off).
     if (folder === null && this.excludes.length > 0) return done;
-    this.db.transaction(() => {
+    this.store.inTransaction(() => {
       for (const read of reads) {
         cwd = read.cwd ?? cwd;
         if (isExcludedCwd(cwd ?? folder, this.excludes)) continue;
         for (const edit of read.at ? read.edits : []) {
-          this.recordEdit(file.claudeSessionId, edit, read.at as string);
+          this.store.recordEdit(file.claudeSessionId, edit, read.at as string);
         }
         if (!read.usage) continue;
         const { messageId, at, tokens } = read.usage;
         const keyOf = owner.projectPath ?? cwd ?? "";
-        added += insert.run({
+        added += this.store.addEntry({
           id: messageId,
           session: file.claudeSessionId,
           at,
@@ -432,15 +313,10 @@ export class UsageIndexer {
           cache5m: tokens.cacheWrite5m,
           cache1h: tokens.cacheWrite1h,
           cost: this.opts.cost?.(tokens) ?? null,
-        }).changes;
+        });
       }
-      this.db
-        .query(
-          `INSERT INTO usage_files (path, size, offset, cwd) VALUES ($path, $size, $offset, $cwd)
-           ON CONFLICT(path) DO UPDATE SET size = $size, offset = $offset, cwd = $cwd`,
-        )
-        .run({ path: file.path, size, offset: offset + end, cwd });
-    })();
+      this.store.saveFile(file.path, size, offset + end, cwd);
+    });
     return { added, more: end > 0 && offset + end < size };
   }
 }
