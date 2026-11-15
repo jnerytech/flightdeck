@@ -311,6 +311,7 @@ describe("security-gate", () => {
         "apps/daemon/src/publish/domain/pr-secrets.ts",
         "apps/daemon/src/ssh/domain/connect-rules.ts",
         "apps/daemon/src/teleport/domain/secrets.ts",
+        "apps/daemon/src/terminal/domain/policy.ts",
         "apps/daemon/src/trust/domain/trust-resolve.ts",
         "apps/daemon/src/trust/index.ts",
         "apps/daemon/src/board/domain/arena-rules.ts",
@@ -327,6 +328,7 @@ describe("security-gate", () => {
       ["apps/daemon/src/publish/domain/pr-secrets.ts", "secret rules"],
       ["apps/daemon/src/ssh/domain/connect-rules.ts", "permission decision"],
       ["apps/daemon/src/teleport/domain/secrets.ts", "secret rules"],
+      ["apps/daemon/src/terminal/domain/policy.ts", "permission decision"],
       ["apps/daemon/src/trust/domain/trust-resolve.ts", "permission decision"],
     ]);
   });
