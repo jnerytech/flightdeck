@@ -179,6 +179,7 @@ describe("refusal-english: mcp, the vault rules, messaging, issues and automatio
  */
 const MSGS3_FILES = [
   "teams/teams.ts",
+  "teams/domain/refusals.ts",
   "service/domain/install.ts",
   "names/names.ts",
   "names/domain/format.ts",
@@ -210,10 +211,8 @@ const MSGS3_PORTUGUESE = new RegExp(
  */
 const MSGS3_SHOWN: Record<string, string[]> = {
   // The pause and resume messages live with the instructions (#2090); only their presence is checked.
-  "teams/domain/instructions.ts": ["resume: "],
-  "teams/teams.ts": [
-    " · executora ",
-    " · coordenadora",
+  "teams/domain/instructions.ts": [
+    "resume: ",
     "a cota do plano passou do limite",
     "a cota do plano reiniciou",
     "foi encerrado: não há mais",
@@ -224,6 +223,7 @@ const MSGS3_SHOWN: Record<string, string[]> = {
     "O objetivo do time mudou",
     "Os comandos de verificação do time",
   ],
+  "teams/teams.ts": [" · executora ", " · coordenadora"],
   "board/card-lifecycle.ts": ["card parado antes de começar"],
   // Issue #1523: the board split moved these with their code.
   "board/projects.ts": ["Trabalhe somente nesta worktree", "com mensagens descritivas"],
