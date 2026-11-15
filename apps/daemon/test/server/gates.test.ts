@@ -6,7 +6,7 @@ import {
   type GroupKey,
   need,
   needIn,
-} from "../../src/server/gates.ts";
+} from "../../src/server/domain/gates.ts";
 import type { ServerOptions } from "../../src/server.ts";
 
 /**
