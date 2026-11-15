@@ -8,7 +8,7 @@ import {
   reviewHold,
 } from "../../src/review/card-review.ts";
 import { REVIEW_SCHEMA } from "../../src/review/domain/second-opinion.ts";
-import { CompleteCutShort } from "../../src/runtime/claude-sdk-runtime.ts";
+import { CompleteCutShort } from "../../src/runtime/index.ts";
 import type { CompleteOptions, CompleteResult } from "../../src/runtime/types.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 
