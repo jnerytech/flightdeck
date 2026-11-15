@@ -4,7 +4,7 @@
  */
 import { FlightdeckError } from "../../kernel/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const securityHandlers = {
   "vault.deliver": (payload, { ws, server }) => {

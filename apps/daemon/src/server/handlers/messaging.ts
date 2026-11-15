@@ -1,7 +1,7 @@
 /**
  * Issue #248: the messaging domain: messages between sessions, teams, and the messaging settings.
  */
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const messagingHandlers = {
   "teams.list": (payload, { server }) => {

@@ -1,7 +1,7 @@
 /**
  * Issue #248, #1288: the worktree domain: the git worktrees of a project, and removing them.
  */
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const worktreesHandlers = {
   "worktree.list": async (payload, { server }) => {

@@ -1,5 +1,5 @@
 import { Radio, Server, X } from "lucide-react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -7,12 +7,10 @@ import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { ALL_CLIENTS, UNASSIGNED } from "@/features/clients/index.ts";
 import { HostsBanner } from "@/features/hosts/ui.ts";
-import { activeWorktreeFilter } from "@/features/projects/index.ts";
 import { WorktreeChip } from "@/features/projects/ui.ts";
 import type { Density } from "@/features/shell/index.ts";
 import { ScopeMenu } from "@/features/shell/ui.ts";
 import { TeleportMove } from "@/features/teleport/ui.ts";
-import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { useKeyed } from "@/shared/hooks/index.ts";
 import { CardGrid, EmptyState, Page, Toolbar } from "@/shared/layout/index.ts";
@@ -20,7 +18,7 @@ import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
-import { ALL_SCOPE, activeScope, awayKey, type DataScope, usd } from "../costs/index.ts";
+import { ALL_SCOPE, awayKey, usd } from "../costs/index.ts";
 import { typing } from "../shortcuts/index.ts";
 import { AsleepMark } from "./asleep-mark";
 import { CacheTimer } from "./cache-timer";
@@ -34,34 +32,20 @@ import {
   refreshSignature,
   rowSummary,
   showsStateWord,
-  worktreesOf,
 } from "./domain/hub-derive.ts";
-import { hubGroups } from "./domain/hub-groups.ts";
-import {
-  awayHost,
-  hubProjectKeys,
-  projectChoices,
-  projectName,
-  rowsInScope,
-  scopeKeys,
-} from "./domain/hub-scope.ts";
+import { projectName } from "./domain/hub-scope.ts";
 import { rowStatus, sessionLineText, sharedMeta } from "./domain/hub-status.ts";
-import {
-  activeCount,
-  capGroups,
-  HUB_ROW_CAP,
-  type HubGroupView,
-  hubView,
-  isSearching,
-} from "./domain/hub-view.ts";
+import { activeCount, HUB_ROW_CAP } from "./domain/hub-view.ts";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
-import { type HubFilter, type HubRow, type HubView, hubRows } from "./hub.ts";
+import type { HubFilter, HubRow, HubView } from "./hub.ts";
 import { HubFilterMenu } from "./hub-filter-menu.tsx";
 import { type RowActionsContext, rowActions, setRowMeta } from "./hub-row-actions.tsx";
 import { newSessionHost } from "./new-session-host.ts";
 import { focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
+import { useHubList } from "./use-hub-list.ts";
+import { type HubProject, useHubScope } from "./use-hub-scope.ts";
 import { ViewToggle } from "./view-toggle.tsx";
 
 /** How often the hub asks the hosts about their background sessions. */
@@ -86,7 +70,7 @@ export function SessionsHub(
     isOpen(row: HubRow): boolean;
     density: Density;
     /** Only this project's sessions, with a chip that clears it (from the project page). */
-    project?: { hostId: string; projectKey: string; name: string };
+    project?: HubProject;
     /** Only this host's sessions (its name), set by the route: it applies the host filter once. */
     host?: string;
   }>,
@@ -95,40 +79,12 @@ export function SessionsHub(
   const { t } = store.i18n;
   const [filter, setFilter] = useState<HubFilter>(() => store.viewPrefs.hubFilter());
   const [view, setView] = useState<HubView>(() => store.viewPrefs.hubView());
-  // The project the route asked for. Clearing it here sticks while the hub stays mounted (opening
-  // a session changes the route but not the list); a different project from the route replaces it.
-  const [only, setOnly] = useState(props.project ?? null);
-  const askedKey = props.project ? `${props.project.hostId}/${props.project.projectKey}` : "";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a different project asked for by the route applies
-  useEffect(() => {
-    if (props.project) setOnly(props.project);
-  }, [askedKey]);
-  // The data scope (#126): the hub lists the sessions of its hosts. A host asked for by the route
-  // ("See all" on its page, a name) wins for this visit and never rewrites the scope (#207); any
-  // pick in the Data from menu ends the visit. Showing every host from a visit widens the visit.
-  const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
-  const [visit, setVisit] = useState(props.host);
-  const [visitAll, setVisitAll] = useState(false);
-  useEffect(() => {
-    if (props.host === undefined) return;
-    setVisit(props.host);
-    setVisitAll(false);
-  }, [props.host]);
-  useEffect(
-    () =>
-      store.dataScope.subscribe(() => {
-        setVisit(undefined);
-        setVisitAll(false);
-      }),
-    [store],
+  const { only, clearOnly, hostScope, scoped, scopedProject, away, showAllHosts } = useHubScope(
+    store,
+    state,
+    props.project,
+    props.host,
   );
-  const visiting = visit === undefined ? undefined : state.hosts.find((h) => h.name === visit);
-  let hostScope: DataScope = activeScope(kept, state.hosts, state.hostsLoaded);
-  if (visitAll) hostScope = ALL_SCOPE;
-  else if (visiting) hostScope = { kind: "host", hostId: visiting.id };
-  // A project scope (#126 slice 4) shows that project's sessions, on every host it is on.
-  const { host: scoped, project: scopedProject } = scopeKeys(hostScope);
-  const away = awayHost(state.hosts, hostScope);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   /** Issue #100: the session being moved to another host (the preview's dialog). */
   const [moving, setMoving] = useState<HubRow | null>(null);
@@ -160,82 +116,22 @@ export function SessionsHub(
     };
   }, [store, withBackground]);
 
-  // The branch picked in the sidebar tree, when it still points at a checkout that is there.
-  const picked = activeWorktreeFilter(state);
-  const pickedProject = picked
-    ? state.projects[picked.hostId]?.find((p) => p.id === picked.projectId)
-    : undefined;
-  const worktrees = useMemo(() => worktreesOf(state.cards, picked), [state.cards, picked]);
-  // Only what the rows are made of recomputes them (a typing indicator or an error does not).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
-  const allRows = useMemo(
-    () =>
-      store.clientScope.get().filter(hubRows(state, t), state.clientSelection, (r) => r.projectKey),
-    [
-      store,
-      state.hosts,
-      state.hub,
-      state.meta,
-      state.externals,
-      state.names,
-      state.background,
-      state.personas,
-      t,
-      state.clientList,
-      state.clientOverrides,
-      state.clientSelection,
-    ],
-  );
-  // The hub's projects, for the Projects group of the scope menu (as Home and Costs offer theirs).
-  const projectKeys = useMemo(
-    () => hubProjectKeys(allRows, scopedProject),
-    [allRows, scopedProject],
-  );
-  const projectNames = useProjectLabels(store, projectKeys);
-  const projects = useMemo(
-    () => projectChoices(projectKeys, projectNames),
-    [projectKeys, projectNames],
-  );
-  const rows = useMemo(
-    () =>
-      rowsInScope(allRows, {
-        host: scoped,
-        project: scopedProject,
-        only,
-        picked,
-        pickedProject,
-        worktrees,
-      }),
-    [allRows, scoped, scopedProject, only, picked, pickedProject, worktrees],
-  );
-  const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
-  /** How many rows are drawn: the cap, and one more cap for each "show more". */
-  const [limit, setLimit] = useState(HUB_ROW_CAP);
-  // Each project: open when it has live sessions (or a search is on), its history behind a count.
-  const [openState, setOpenState] = useState<Record<string, boolean | undefined>>(() =>
-    store.viewPrefs.hubOpen(),
-  );
-  /** What the person opened or folded is remembered, per project. */
-  const setOpen = (next: Record<string, boolean | undefined>) => {
-    setOpenState(next);
-    store.viewPrefs.saveHubOpen(next);
-  };
-  const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
-  // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
-  const searching = isSearching(filter);
-  const views = useMemo(
-    () => hubView(allGroups, openState, earlierOpen, searching),
-    [allGroups, openState, earlierOpen, searching],
-  );
-  const { groups, hidden } = useMemo(
-    () =>
-      capGroups(
-        views.map((v) => ({ ...v.group, rows: v.rows })),
-        limit,
-      ),
-    [views, limit],
-  );
-  const viewOf = (key: string): HubGroupView | undefined => views.find((v) => v.group.key === key);
+  const {
+    picked,
+    projects,
+    projectNames,
+    rows,
+    allGroups,
+    groups,
+    hidden,
+    viewOf,
+    searching,
+    openState,
+    setOpen,
+    earlierOpen,
+    setEarlierOpen,
+    showMore,
+  } = useHubList(store, state, filter, { scoped, scopedProject, only });
   const scope = store.clientScope.get();
   // The personas the sessions run in: the Persona filter offers only those.
   const personas = personasOf(rows);
@@ -360,11 +256,7 @@ export function SessionsHub(
         {away && (
           <InlineNotice tone="info">
             <span>{t(awayKey(away.status, "sessions"), { host: away.name })} </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => (visiting ? setVisitAll(true) : store.dataScope.set(ALL_SCOPE))}
-            >
+            <Button variant="outline" size="sm" onClick={showAllHosts}>
               {t("scope.showAll")}
             </Button>
           </InlineNotice>
@@ -408,7 +300,7 @@ export function SessionsHub(
               size="icon"
               className="size-5"
               aria-label={t("hub.clearProjectFilter")}
-              onClick={() => setOnly(null)}
+              onClick={clearOnly}
             >
               <X aria-hidden="true" />
             </Button>
@@ -688,11 +580,7 @@ export function SessionsHub(
           );
         })}
         {hidden > 0 && (
-          <Button
-            variant="outline"
-            className="self-center"
-            onClick={() => setLimit(limit + HUB_ROW_CAP)}
-          >
+          <Button variant="outline" className="self-center" onClick={showMore}>
             {t("hub.showMore", { n: Math.min(hidden, HUB_ROW_CAP) })}
           </Button>
         )}
