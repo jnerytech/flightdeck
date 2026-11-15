@@ -28,8 +28,7 @@ import {
   RiskClassifier,
   writeTarget,
 } from "../permissions/index.ts";
-import type { PreparedPersonas } from "../personas/domain/prepare.ts";
-import { snapshotOf } from "../personas/domain/snapshot.ts";
+import { type PreparedPersonas, snapshotOf } from "../personas/index.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
 import { type EventStore, personaBadge } from "../store/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";

@@ -1,6 +1,7 @@
 import type { RiskLevel } from "@flightdeck/protocol";
 import { isInside } from "@/shared/lib/index.ts";
-import type { HubRow, HubState, SessionState } from "./index.ts";
+import type { HubRow, HubState } from "./hub-row.ts";
+import type { SessionState } from "./session-state.ts";
 
 export const TILE_COUNT_KEY = "flightdeck.tileCount";
 

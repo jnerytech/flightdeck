@@ -144,50 +144,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-manager.ts",
-    "to": "apps/daemon/src/personas/domain/prepare.ts",
-    "unresolvedTo": "../personas/domain/prepare.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-manager.ts",
-    "to": "apps/daemon/src/personas/domain/snapshot.ts",
-    "unresolvedTo": "../personas/domain/snapshot.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-runs.ts",
-    "to": "apps/daemon/src/personas/domain/snapshot.ts",
-    "unresolvedTo": "../personas/domain/snapshot.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/store/event-store.ts",
-    "to": "apps/daemon/src/personas/domain/snapshot.ts",
-    "unresolvedTo": "../personas/domain/snapshot.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/watch/fix.ts",
     "to": "apps/daemon/src/board/pr.ts",
     "unresolvedTo": "../board/pr.ts",
