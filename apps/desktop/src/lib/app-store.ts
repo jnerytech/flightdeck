@@ -107,8 +107,9 @@ export class AppStore {
   private readonly handlers: LinkHandlers;
   /** The start and the stop of the app, with the timers they own (#2376). */
   private readonly lifecycle: Lifecycle;
-  /** The toasts and the error banner. */
+  /** What time it is and how an instant is shown (the injected clock in tests). */
   private readonly time: Clock;
+  /** The toasts and the error banner. */
   private readonly notices = new Notices({
     state: () => this.state,
     update: (patch) => this.update(patch),
