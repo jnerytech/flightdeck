@@ -6,7 +6,11 @@
  * Another domain imports from here.
  */
 
-export { type BoundedCheckRunner, shellCheckRunner } from "./check-runner.ts";
+export {
+  type BoundedCheckRunner,
+  type CheckRunner,
+  shellCheckRunner,
+} from "./check-runner.ts";
 export { CARDS_PER_RUN, type CardsRaised, type Finding } from "./domain/findings.ts";
 export { MAX_VALUE } from "./domain/interpolate.ts";
 export { referencesIn, replaceReferences } from "./domain/references.ts";
