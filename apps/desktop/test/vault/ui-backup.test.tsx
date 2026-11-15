@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { Vault } from "../../src/features/vault/vault.ts";
 import {
   exportVault,
   fromFdvault,
   previewImport,
   toFdvault,
-} from "../../src/features/vault/vault-backup.ts";
+} from "../../src/features/vault/domain/vault-backup.ts";
+import { Vault } from "../../src/features/vault/vault.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";

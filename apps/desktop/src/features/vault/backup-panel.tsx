@@ -4,7 +4,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
-import type { ConflictChoice, ImportPreview } from "./vault-backup";
+import type { ConflictChoice, ImportPreview } from "./domain/vault-backup.ts";
 
 /** Phase 16: the encrypted backup (`.fdvault`): export, and import with a preview. */
 export function BackupPanel(props: Readonly<{ store: AppStore }>) {
