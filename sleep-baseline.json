@@ -3,7 +3,7 @@
   "apps/daemon/test/actions/protocol.test.ts": 1,
   "apps/daemon/test/actions/ssh-exec.test.ts": 1,
   "apps/daemon/test/actions/timing.test.ts": 1,
-  "apps/daemon/test/automations/automations.test.ts": 3,
+  "apps/daemon/test/automations/automations-events.test.ts": 3,
   "apps/daemon/test/automations/daemon-idle.test.ts": 4,
   "apps/daemon/test/board/arena.test.ts": 1,
   "apps/daemon/test/board/board.test.ts": 9,
