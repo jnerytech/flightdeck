@@ -1,45 +1,22 @@
-import type { EffortLevel } from "@flightdeck/protocol";
-import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square } from "lucide-react";
-import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useWand, type WandBinding } from "@/features/assistant/index.ts";
-import { WandButton, WandPanel } from "@/features/assistant/ui.ts";
+import type { WandBinding } from "@/features/assistant/index.ts";
 import type { PromptSnippets } from "@/features/snippets/index.ts";
-import { PromptMenu } from "@/features/snippets/ui.ts";
 import { useT } from "@/i18n/context";
-import { ActionButton, ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
-import { isBusy } from "@/shared/lib/index.ts";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
-import { ActivityLine } from "./activity-line";
-import { ComposerAttachments } from "./composer-attachments.tsx";
-import { composerPickers } from "./composer-pickers.tsx";
-import { ComposerQueue } from "./composer-queue.tsx";
-import { commandItemsOf, offeredPrompts } from "./domain/command-menu.ts";
-import { interruptOnEscape, submitAction } from "./domain/composer-queue.ts";
-import { nextMode } from "./domain/mode-menu.ts";
-import { activityOf, openTool } from "./domain/session-activity.ts";
+import { openTool } from "./domain/session-activity.ts";
 import type { SessionState } from "./domain/session-state.ts";
-import {
-  Composer,
-  ComposerDock,
-  Message,
-  RecapSlot,
-  SessionHeader,
-  SessionPane,
-  Timeline,
-} from "./parts";
+import { Message, RecapSlot, SessionHeader, SessionPane, Timeline } from "./parts";
 import { RuntimeBadge } from "./runtime-badge";
 import type { SessionActions } from "./session-actions.ts";
+import { SessionComposer } from "./session-composer.tsx";
 import { StatusBadge } from "./status-badge.tsx";
-import { SessionStatusLine } from "./status-line";
 import { TimelineItem } from "./timeline-item.tsx";
-import { useComposerImages } from "./use-composer-images.ts";
-import { useComposerQueue } from "./use-composer-queue.ts";
 import { useConversationScroll } from "./use-conversation-scroll.ts";
 import { useEndSession } from "./use-end-session.tsx";
-import { useModePick } from "./use-mode-pick.ts";
 import { WorkingRow } from "./working-row";
 
 interface SessionViewProps {
@@ -109,7 +86,6 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
-  const cards = props.session.items.length;
   const { timeline, away, missed, handlers, jumpToEnd } = useConversationScroll({
     session: props.session,
     focusRequestId,
@@ -117,103 +93,18 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   });
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
-  const [text, setText] = useState("");
-  const wand = useWand(props.assist, text, setText);
   const endSession = useEndSession({
     actions,
     t,
     uncommitted: props.uncommitted,
     onCommitFirst: props.onCommitFirst,
   });
-  const [picking, setPicking] = useState(false);
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
-  const { mode, modeMenu, chooseMode, bypassAsk, cancelBypass, confirmBypass } = useModePick({
-    session,
-    scrollKey: props.scrollKey,
-    actions,
-    bypassAllowed: Boolean(props.bypass),
-    opencode,
-  });
-  const [model, setModel] = useState("");
-  const [effort, setEffort] = useState<EffortLevel | null>(null);
-  const slash = session.slashCommands;
-  const described = session.commands;
-  // A daemon that describes the commands gives each its group and its description; an older one
-  // gives the names only, and the menu groups them by the shape of the name.
-  const commandItems = useMemo(() => commandItemsOf(described, slash), [described, slash]);
-  // Typing `/` offers the snippets and the commands of the session together.
-  const offered = useMemo(
-    () => offeredPrompts(props.prompts, slash, commandItems),
-    [props.prompts, slash, commandItems],
-  );
   const latestAssistant = [...session.items]
     .reverse()
     .find((item) => item.kind === "assistant")?.seq;
-  const working = isBusy(session.status);
-  const activity = activityOf(session);
   const closed = session.status === "ended" || session.status === "error";
-
-  const box = useRef<HTMLTextAreaElement>(null);
-  const files = useRef<HTMLInputElement>(null);
-  // Text handed over from elsewhere (a review from Changes) goes after what is typed, once.
-  const { composerFill: fill, onComposerFilled } = props;
-  const takenFill = useRef<string | null>(null);
-  useEffect(() => {
-    if (!fill) {
-      takenFill.current = null;
-      return;
-    }
-    if (takenFill.current === fill) return;
-    takenFill.current = fill;
-    setText((before) => (before.trim() ? `${before}\n\n${fill}` : fill));
-    box.current?.focus();
-    onComposerFilled?.();
-  }, [fill, onComposerFilled]);
-  /** Where the cursor goes once Ctrl+Enter has put a line break in the text. */
-  const caret = useRef<number | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the new text is when the cursor moves
-  useLayoutEffect(() => {
-    if (caret.current !== null) box.current?.setSelectionRange(caret.current, caret.current);
-    caret.current = null;
-  }, [text]);
-
-  const { attached, setAttached, refusal, setRefusal, attach } = useComposerImages(props.images);
-
-  const { queued, enqueue, remove } = useComposerQueue({
-    send: actions.send,
-    working,
-    closed,
-    cards,
-  });
-
-  const submit = () => {
-    const value = text.trim();
-    const action = submitAction(value, attached.length, working);
-    if (action === "focus") {
-      // A click with nothing to send is not dead: the cursor goes where the text is typed.
-      box.current?.focus();
-      return undefined;
-    }
-    setText("");
-    setAttached([]);
-    setRefusal(null);
-    if (action === "queue") {
-      enqueue({ text: value, images: attached });
-      return undefined;
-    }
-    return actions.send(value, attached.length > 0 ? attached : undefined);
-  };
-
-  const pickers = composerPickers(props, t, {
-    model,
-    setModel,
-    effort,
-    setEffort,
-    mode,
-    modeMenu,
-    chooseMode,
-  });
 
   return (
     <SessionPane waiting={session.pending.length > 0}>
@@ -311,171 +202,26 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           </Button>
         )}
       </div>
-      <ComposerDock>
-        <PromptMenu
-          prompts={offered}
-          text={text}
-          label={t("session.snippets")}
-          onFill={setText}
-          input={box}
-        />
-        <ComposerQueue
-          t={t}
-          queued={queued}
-          onEdit={(item, at) => {
-            remove(at);
-            setText(item.text);
-            setAttached(item.images);
-            box.current?.focus();
-          }}
-          onRemove={remove}
-        />
-        <ComposerAttachments
-          t={t}
-          attached={attached}
-          refusal={refusal}
-          onRemove={(at) => setAttached((before) => before.filter((_, i) => i !== at))}
-        />
-        {working && <ActivityLine activity={activity} t={t} />}
-        {wand && <WandPanel wand={wand} t={t} />}
-        <Composer busy={working}>
-          {props.images && (
-            <>
-              <IconActionButton label={t("session.attach")} onClick={() => files.current?.click()}>
-                <Plus aria-hidden="true" />
-              </IconActionButton>
-              <input
-                ref={files}
-                type="file"
-                multiple
-                hidden
-                aria-hidden="true"
-                tabIndex={-1}
-                accept="image/png,image/jpeg,image/gif,image/webp"
-                onChange={(e) => {
-                  void attach(Array.from(e.target.files ?? []));
-                  e.target.value = "";
-                }}
-              />
-            </>
-          )}
-          {props.prompts && (
-            <IconActionButton
-              label={t("session.insertSnippet")}
-              onClick={() => {
-                setText("/");
-                box.current?.focus();
-              }}
-            >
-              <BookText aria-hidden="true" />
-            </IconActionButton>
-          )}
-          {props.pickPath && (
-            <IconActionButton label={t("session.mentionFolder")} onClick={() => setPicking(true)}>
-              <AtSign aria-hidden="true" />
-            </IconActionButton>
-          )}
-          {wand && <WandButton wand={wand} t={t} />}
-          <Textarea
-            ref={box}
-            aria-label={t("session.message")}
-            placeholder={t("session.placeholder")}
-            title={t("session.shortcuts")}
-            aria-keyshortcuts="Enter"
-            value={text}
-            className="composer-box max-h-40 min-h-9 flex-1 resize-none"
-            rows={1}
-            onChange={(e) => setText(e.target.value)}
-            onPaste={(e) => {
-              const files = Array.from(e.clipboardData?.files ?? []);
-              if (props.images && files.some((file) => file.type.startsWith("image/"))) {
-                e.preventDefault();
-                void attach(files);
-              }
-            }}
-            onDragOver={(e) => props.images && e.preventDefault()}
-            onDrop={(e) => {
-              if (!props.images) return;
-              e.preventDefault();
-              void attach(Array.from(e.dataTransfer?.files ?? []));
-            }}
-            onKeyDown={(e) => {
-              if (wand?.onKeyDown(e)) return;
-              interruptOnEscape(e, working, actions.interrupt);
-              if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
-                // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
-                const next = nextMode(modeMenu, mode);
-                if (next) {
-                  e.preventDefault();
-                  chooseMode(next);
-                }
-                return;
-              }
-              if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
-              if (e.ctrlKey || e.metaKey) {
-                // Ctrl+Enter breaks the line where the cursor is (a textarea only does it for Shift).
-                e.preventDefault();
-                const field = e.currentTarget;
-                const at = field.selectionStart;
-                caret.current = at + 1;
-                setText(`${text.slice(0, at)}\n${text.slice(field.selectionEnd)}`);
-              } else if (!e.shiftKey) {
-                e.preventDefault();
-                void submit();
-              }
-            }}
-          />
-          {working ? (
-            <>
-              <ActionButton variant="outline" aria-keyshortcuts="Enter" onClick={submit}>
-                {t("session.queueAdd")}
-              </ActionButton>
-              <ActionButton
-                variant="destructive"
-                aria-label={t("session.stopTurn")}
-                onClick={() => actions.interrupt()}
-              >
-                <Square aria-hidden="true" />
-                {t("session.interrupt")}
-              </ActionButton>
-            </>
-          ) : (
-            (text.trim() !== "" || attached.length > 0) && (
-              <ActionButton
-                size="icon"
-                aria-label={t("session.send")}
-                aria-keyshortcuts="Enter"
-                onClick={submit}
-              >
-                <CornerDownLeft aria-hidden="true" />
-              </ActionButton>
-            )
-          )}
-        </Composer>
-        {bypassAsk && props.bypass && (
-          <ConfirmDialog
-            destructive
-            message={t("session.bypassMessage", { host: props.bypass.host, session: props.title })}
-            confirmLabel={t("session.bypassConfirm")}
-            onCancel={cancelBypass}
-            onConfirm={confirmBypass}
-          />
-        )}
-        <SessionStatusLine
-          t={t}
-          model={session.model}
-          mode={mode}
-          pickers={pickers}
-          working={working}
-          {...(props.cache ? { cache: props.cache } : {})}
-        />
-      </ComposerDock>
-      {picking &&
-        props.pickPath?.((path) => {
-          setPicking(false);
-          if (path) setText((before) => `${before}@${path} `);
-          box.current?.focus();
-        })}
+      <SessionComposer
+        title={props.title}
+        session={session}
+        actions={actions}
+        t={t}
+        scrollKey={props.scrollKey}
+        composerFill={props.composerFill}
+        onComposerFilled={props.onComposerFilled}
+        prompts={props.prompts}
+        images={props.images}
+        settings={props.settings}
+        bypass={props.bypass}
+        cache={props.cache}
+        pickPath={props.pickPath}
+        assist={props.assist}
+        runtime={props.runtime}
+        effort={props.effort}
+        models={props.models}
+        onOpenHostSettings={props.onOpenHostSettings}
+      />
     </SessionPane>
   );
 }
