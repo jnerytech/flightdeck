@@ -16,204 +16,36 @@ import {
 } from "../kernel/index.ts";
 import { runClaudePlugin } from "./adapters/claude-plugin.ts";
 import { AnyJson, JsonObject, PinsJson } from "./domain/json-reads.ts";
+import {
+  arg,
+  invalid,
+  isObject,
+  type Json,
+  lastJsonLine,
+  list,
+  type PluginScope,
+  shownCommandOf,
+  split,
+  text,
+} from "./domain/plugin-json.ts";
 import type { PluginInventory } from "./domain/plugin-manifest.ts";
+import {
+  type ChangeResult,
+  diffOf,
+  type InstalledPlugin,
+  type PluginList,
+  type PluginPreview,
+  type UpdatePreview,
+} from "./domain/results.ts";
 import { inspectPlugin } from "./inventory.ts";
-
-export interface CliResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-}
-
-/** Runs `claude plugin <args>`. */
-export interface PluginCli {
-  run(args: string[]): Promise<CliResult>;
-}
-
-/** A version the person fixed: updates are refused until it is released. */
-export interface Pin {
-  version: string;
-  /** The content hash of the plugin when it was pinned. */
-  hash: string;
-  at: string;
-}
-
-/** A store may answer at once (a map in memory) or later (a file). */
-type Later<T> = T | Promise<T>;
-
-export interface PinStore {
-  all(): Later<Record<string, Pin>>;
-  set(id: string, pin: Pin): Later<void>;
-  delete(id: string): Later<void>;
-}
-
-export interface InstalledPlugin {
-  id: string;
-  name: string;
-  marketplace: string;
-  version: string;
-  scope: string;
-  enabled: boolean;
-  /** Where the plugin's files are, as the CLI reports. */
-  path: string;
-  pinned: Pin | null;
-  /** Null when the folder could not be read. */
-  inventory: PluginInventory | null;
-  errors: string[];
-}
-
-interface AvailablePlugin {
-  id: string;
-  name: string;
-  marketplace: string;
-  description?: string;
-  version?: string;
-}
-
-interface MarketplaceInfo {
-  name: string;
-  source: string;
-  /** The repository, URL or path the marketplace came from. */
-  origin?: string;
-  location?: string;
-}
-
-export interface PluginList {
-  installed: InstalledPlugin[];
-  available: AvailablePlugin[];
-  marketplaces: MarketplaceInfo[];
-}
-
-export interface PluginsOptions {
-  cli: PluginCli;
-  pins: PinStore;
-  clock?: () => number;
-  /** Told of every install, update, removal and marketplace change that landed. */
-  record?: (decision: PluginDecision) => Later<void>;
-}
-
-export interface PluginDecision {
-  action:
-    | "install"
-    | "update"
-    | "uninstall"
-    | "marketplace-add"
-    | "marketplace-remove"
-    | "rollback";
-  /** The plugin id, or the marketplace name or source. */
-  target: string;
-  /** The content hash that was confirmed, when there is one. */
-  hash?: string;
-  at: string;
-}
-
-/** What the person sees before an install or update, and the hash the confirmation must repeat. */
-export interface PluginPreview {
-  plugin: string;
-  version?: string;
-  /** Null when the content cannot be shown (a plugin fetched from another repository). */
-  inventory: PluginInventory | null;
-  hash: string | null;
-  reason?: "not-local";
-  /** The CLI's validation of a local plugin folder. */
-  validation?: { success: boolean; errors: string[] };
-}
-
-interface InventoryDiff {
-  hooks: { added: string[]; removed: string[] };
-  monitors: { added: string[]; removed: string[] };
-  skills: { added: string[]; removed: string[] };
-  agents: { added: string[]; removed: string[] };
-  commands: { added: string[]; removed: string[] };
-  mcpServers: { added: string[]; removed: string[] };
-}
-
-export interface UpdatePreview {
-  plugin: string;
-  from: { version: string; hash: string };
-  to: { version: string; hash: string };
-  inventory: PluginInventory;
-  diff: InventoryDiff;
-  /** The marketplace has the same content already installed. */
-  unchanged: boolean;
-}
-
-/** What a change that went to the CLI came to. */
-export interface ChangeResult {
-  outcome: "ok" | "failed" | "unchanged" | "needs-command-confirmation" | "rolled-back";
-  message: string;
-  /** A command the marketplace declares, to be shown to the person: only its `sha256` accepts it. */
-  shownCommand?: { command?: string; plugin?: string; sha256: string };
-}
-
-/** Added and removed lines of each kind of component between two inventories. */
-function diffOf(from: PluginInventory, to: PluginInventory): InventoryDiff {
-  const delta = (before: string[], after: string[]) => ({
-    added: after.filter((x) => !before.includes(x)),
-    removed: before.filter((x) => !after.includes(x)),
-  });
-  const hooks = (i: PluginInventory) => i.hooks.map((h) => `${h.event}: ${h.command ?? h.type}`);
-  return {
-    hooks: delta(hooks(from), hooks(to)),
-    monitors: delta(
-      from.monitors.map((m) => m.name),
-      to.monitors.map((m) => m.name),
-    ),
-    skills: delta(from.skills, to.skills),
-    agents: delta(from.agents, to.agents),
-    commands: delta(from.commands, to.commands),
-    mcpServers: delta(
-      from.mcpServers.map((m) => m.name),
-      to.mcpServers.map((m) => m.name),
-    ),
-  };
-}
-
-type Params = Record<string, string | number>;
-const bad = (message: string, reason: string, params?: Params) =>
-  new FlightdeckError("bad_request", message, reason, params);
-
-/** A value that goes to the CLI as an argument: never one that would read as an option. */
-function arg(value: string): string {
-  if (value.startsWith("-")) throw bad(`value refused: ${value}`, "plugin_arg_refused", { value });
-  return value;
-}
-
-const invalid = (message: string, reason: string, params?: Params) =>
-  new FlightdeckError("invalid_state", message, reason, params);
-
-type Json = Record<string, unknown>;
-const isObject = (value: unknown): value is Json =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-const text = (value: unknown) => (typeof value === "string" ? value : undefined);
-const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
-
-/** The id `name@marketplace` split at its last `@`. */
-function split(id: string): { name: string; marketplace: string } {
-  const at = id.lastIndexOf("@");
-  return at < 0
-    ? { name: id, marketplace: "" }
-    : { name: id.slice(0, at), marketplace: id.slice(at + 1) };
-}
-
-/** The CLI prints its answer as JSON on the last line; null when that line is not an object. */
-function lastJsonLine(stdout: string): Json | null {
-  const line = stdout.trim().split(/\r?\n/).at(-1) ?? "";
-  return parseJsonOr(JsonObject.nullable(), line, null);
-}
-
-/** The command the marketplace wants shown, when it came with a hash to send back. */
-function shownCommandOf(value: unknown): ChangeResult["shownCommand"] | null {
-  if (!isObject(value)) return null;
-  const sha256 = text(value.sha256);
-  if (!sha256) return null;
-  const command = text(value.command);
-  const plugin = text(value.plugin);
-  return { ...(command ? { command } : {}), ...(plugin ? { plugin } : {}), sha256 };
-}
-
-/** Where a plugin is installed: for the user, for the project, or local to this checkout. */
-type PluginScope = "user" | "project" | "local";
+import type {
+  CliResult,
+  Pin,
+  PinStore,
+  PluginCli,
+  PluginDecision,
+  PluginsOptions,
+} from "./ports.ts";
 
 export class Plugins {
   constructor(private readonly opts: PluginsOptions) {}
