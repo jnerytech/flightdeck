@@ -6,3 +6,4 @@
 
 export { tabIntent } from "./domain/tab-shortcut.ts";
 export type { TabOrder } from "./domain/tab-switcher.ts";
+export { type Navigation, type Tab, Tabs } from "./tabs.ts";

@@ -1,10 +1,10 @@
 import type { Database } from "bun:sqlite";
-import type { Board } from "../board/index.ts";
 import { closingLine } from "../issues/index.ts";
 import { trimEndOf } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/index.ts";
 import { REMOVED_LINE } from "./domain/check-run.ts";
 import type { FixRound, PrFixer } from "./fix.ts";
+import type { WatchBoard } from "./ports.ts";
 
 /** One session that worked on a card, for the trail of its PR (phase 22). */
 interface TraceSession {
@@ -40,7 +40,7 @@ export interface UrlTrace {
 
 export interface TracesOptions {
   db: Database;
-  board: Pick<Board, "getCard">;
+  board: Pick<WatchBoard, "getCard">;
   fixer: Pick<PrFixer, "rounds">;
   /** The Claude session id of a managed session. */
   claudeSessionOf: (sessionId: string) => string | null;
