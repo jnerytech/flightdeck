@@ -7,7 +7,7 @@ import type {
   TelemetrySummary,
 } from "@flightdeck/protocol";
 import { byCodeUnit } from "@flightdeck/protocol";
-import type { OtlpEvent } from "./otlp.ts";
+import type { OtlpEvent } from "./domain/otlp-decode.ts";
 
 /** One stored event of a terminal session's telemetry. */
 export interface TelemetryRow {

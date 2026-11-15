@@ -7,9 +7,8 @@ import {
   decodeLogs,
   OtlpDecodeError,
   type OtlpEvent,
-  type OtlpReceiver,
-  startOtlpReceiver,
-} from "../../src/telemetry/otlp.ts";
+} from "../../src/telemetry/domain/otlp-decode.ts";
+import { type OtlpReceiver, startOtlpReceiver } from "../../src/telemetry/otlp.ts";
 import { jsonLogs, protobufLogs, type TestRecord } from "./otlp-helpers.ts";
 
 const TOKEN = "otlp-token-0123456789abcdef";
