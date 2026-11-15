@@ -1,24 +1,50 @@
 import type { PersonaSwitchResult, SessionPersona } from "@flightdeck/protocol";
-import { type Central, messageExternal } from "../central/index.ts";
 import { FlightdeckError, settled } from "../kernel/index.ts";
-import type { SessionManager } from "../sessions/index.ts";
 import type { Language } from "./domain/language.ts";
 import type { PersonaContext, PersonaRef, ResolvedPersona } from "./domain/prepare.ts";
 import { leaveMessage, roleMessage } from "./domain/role-message.ts";
+
+/** What the switch asks of the session manager (the sessions domain fits it as it is). */
+interface PersonaSessions {
+  get(sessionId: string): { cwd: string };
+  send(sessionId: string, text: string): { queued: boolean };
+  appliedPersona(sessionId: string): SessionPersona | null;
+  markPersona(sessionId: string, badge: SessionPersona | null): void;
+}
+
+/** What the switch asks of the terminal sessions and their channels (the central domain fits it). */
+interface PersonaTerminals {
+  external: {
+    get(claudeSessionId: string): { cwd: string | null; launchId: string | null } | null;
+    appliedPersona(claudeSessionId: string): SessionPersona | null;
+    setPersona(claudeSessionId: string, badge: SessionPersona | null): unknown;
+  };
+  receptor?: { sendToLaunch(launchId: string, text: string): boolean };
+}
 
 export interface OpenSessionPersonasOptions {
   /** Resolves a persona (the project's, the host's, the pack's or one from the app). */
   personas?: {
     resolve(ref: PersonaRef, ctx: PersonaContext): Promise<ResolvedPersona> | ResolvedPersona;
   };
-  manager: Pick<SessionManager, "get" | "send" | "appliedPersona" | "markPersona">;
+  manager: PersonaSessions;
   /** Terminal sessions and their channels (phase 5). */
-  central?: Pick<Central, "external" | "receptor">;
+  central?: PersonaTerminals;
 }
 
 export interface SwitchTarget {
   sessionId?: string;
   claudeSessionId?: string;
+}
+
+/** Sends to the channel of a terminal session opened with `flightdeckd claude`; `false` without one. */
+function messageTerminal(
+  central: PersonaTerminals,
+  claudeSessionId: string,
+  text: string,
+): boolean {
+  const launchId = central.external.get(claudeSessionId)?.launchId;
+  return launchId ? (central.receptor?.sendToLaunch(launchId, text) ?? false) : false;
 }
 
 const badRequest = (message: string, reason: string, params?: Record<string, string | number>) =>
@@ -110,7 +136,7 @@ export class OpenSessionPersonas {
       : { managed: false, id: request.claudeSessionId as string };
   }
 
-  private external(): Pick<Central, "external" | "receptor"> {
+  private external(): PersonaTerminals {
     if (!this.opts.central)
       throw new FlightdeckError(
         "invalid_state",
@@ -128,7 +154,7 @@ export class OpenSessionPersonas {
     if (target.managed) {
       return this.opts.manager.send(target.id, text).queued ? "queued" : "sent";
     }
-    if (!messageExternal(this.external(), target.id, text)) {
+    if (!messageTerminal(this.external(), target.id, text)) {
       throw new FlightdeckError(
         "invalid_state",
         "session without a channel: only sessions opened with flightdeckd claude receive messages",

@@ -3,7 +3,7 @@ import { checkDelivery, type DeliveryDeps } from "./domain/vault-delivery.ts";
 import type { SecretMeta } from "./vault.ts";
 
 /** What the app decides about a request of the daemon. */
-export type VaultDecision = { kind: "deny"; reason: string } | { kind: "deliver" };
+type VaultDecision = { kind: "deny"; reason: string } | { kind: "deliver" };
 
 export interface VaultRequestContext {
   request: VaultRequestFrame;
@@ -33,7 +33,7 @@ export interface VaultOutcome {
   reason: string;
 }
 
-export type VaultDeliverPayload = CommandPayload<"vault.deliver">;
+type VaultDeliverPayload = CommandPayload<"vault.deliver">;
 
 export interface AnswerDeps extends DeliveryDeps {
   policy: VaultPolicy;

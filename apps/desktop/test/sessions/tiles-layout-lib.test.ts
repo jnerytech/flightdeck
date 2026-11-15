@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { HubRow } from "../../src/features/sessions/hub.ts";
 import {
   DEFAULT_TILE_LAYOUT,
   hiddenTiles,
@@ -10,7 +9,8 @@ import {
   TILE_LAYOUTS,
   tileColumns,
   tileSlots,
-} from "../../src/features/sessions/tiles.ts";
+} from "../../src/features/sessions/domain/session-tiles.ts";
+import type { HubRow } from "../../src/features/sessions/hub.ts";
 
 const row = (n: number): HubRow => ({
   key: `h/m/s${n}`,

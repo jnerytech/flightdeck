@@ -14,7 +14,7 @@ import {
   type ToolInput,
 } from "@flightdeck/protocol";
 import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
-import type { PersonaSnapshot } from "../personas/domain/snapshot.ts";
+import type { PersonaSnapshot } from "../personas/index.ts";
 import { AgentsJson, ModePayload, PersonaSnapshotJson } from "./domain/row-json.ts";
 import {
   type PermissionRecord,
