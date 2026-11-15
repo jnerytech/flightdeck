@@ -1,8 +1,8 @@
 import type { HistoryToolDetail } from "@flightdeck/protocol";
-import type { AppStore } from "../../lib/app-store.ts";
+import type { AppKernel } from "../../lib/kernel.ts";
 import { hasFeature } from "../../lib/version.ts";
 
-type Request = AppStore["hostRequest"];
+type Request = AppKernel<object>["hostRequest"];
 
 /**
  * The loader of each stored tool row of a transcript (#606): on a host that answers `history.tool`,
