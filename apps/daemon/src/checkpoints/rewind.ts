@@ -10,6 +10,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { gitBytes } from "../git/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
+import { previewOf } from "./domain/rewind-preview.ts";
 import type { SnapshotRow, Snapshots } from "./snapshots.ts";
 
 export interface RewindSessions {
@@ -29,8 +30,6 @@ export interface RewindPreview {
   insertions: number;
   deletions: number;
 }
-
-const CHANGES: Record<string, string> = { M: "modified", A: "created", D: "deleted" };
 
 export class Rewinder {
   constructor(private readonly opts: { snapshots: Snapshots; sessions: RewindSessions }) {}
@@ -128,27 +127,12 @@ export class Rewinder {
     ).stdout
       .toString()
       .trim();
-    const files = names
-      ? names.split("\n").map((line) => {
-          const [status, path] = line.split("\t") as [string, string];
-          // From the target's point of view: created after it, deleted after it, or changed.
-          return { path, change: CHANGES[status] ?? "modified" };
-        })
-      : [];
     const numstat = (
       await gitBytes(target.repo, ["diff", "--numstat", "--no-renames", target.tree, current])
     ).stdout
       .toString()
       .trim();
-    let insertions = 0;
-    let deletions = 0;
-    for (const line of numstat ? numstat.split("\n") : []) {
-      const [added, removed] = line.split("\t");
-      // Going back removes what was added after the target, and puts back what was removed.
-      deletions += Number(added) || 0;
-      insertions += Number(removed) || 0;
-    }
-    return { preview: { via: "snapshot" as const, files, insertions, deletions } };
+    return { preview: { via: "snapshot" as const, ...previewOf(names, numstat) } };
   }
 
   private async restore(target: SnapshotRow): Promise<RewindPreview> {
