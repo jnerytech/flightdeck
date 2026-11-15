@@ -5,5 +5,5 @@
  */
 
 export type { InboxEntry } from "./domain/inbox.ts";
-export { type InboxCore, InboxSlice } from "./store.ts";
+export { InboxSlice } from "./store.ts";
 export { wireInbox } from "./wire.ts";
