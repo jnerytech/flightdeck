@@ -1,4 +1,4 @@
-import type { DiffFile, DiffHunk } from "../types.ts";
+import type { DiffFile, DiffHunk } from "@flightdeck/protocol";
 
 /** Splits `git diff` output into files with their hunks and line counts. */
 export function parseUnifiedDiff(text: string, uncommitted: boolean): DiffFile[] {
