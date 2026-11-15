@@ -43,6 +43,7 @@ import {
 import { ActionCatalog, type ActionProject, type Found } from "./catalog.ts";
 import { FREE, freeAction, freeRemote, freeSecretIds } from "./domain/free-command.ts";
 import { resolveParams } from "./domain/run-params.ts";
+import { type RunRow, runInfoOf } from "./domain/run-row.ts";
 import { approvalOf, secretsOf } from "./domain/schema.ts";
 import {
   type Ask,
@@ -94,19 +95,6 @@ export const REQUEST_TTL_MS = 10 * 60_000;
 const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", message, reason, params);
 const now = () => new Date().toISOString();
-
-interface RunRow {
-  id: string;
-  scope: string;
-  name: string;
-  requested_by: VaultRequester;
-  started_at: string;
-  duration_ms: number;
-  exit_code: number;
-  timed_out: number;
-  truncated: number;
-  output: string;
-}
 
 const HOLD_MS = 2000;
 
@@ -378,18 +366,7 @@ export class Actions {
          ORDER BY rowid DESC LIMIT ?3`,
       )
       .all(input.projectId ?? null, input.name ?? null, input.limit ?? 50) as RunRow[];
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      projectId: row.scope || null,
-      requestedBy: row.requested_by,
-      startedAt: row.started_at,
-      durationMs: row.duration_ms,
-      exitCode: row.exit_code,
-      timedOut: row.timed_out === 1,
-      truncated: row.truncated === 1,
-      output: row.output,
-    }));
+    return rows.map(runInfoOf);
   }
 
   // --- secrets ---
