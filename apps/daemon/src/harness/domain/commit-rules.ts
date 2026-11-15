@@ -2,7 +2,7 @@ import { FlightdeckError } from "../../kernel/index.ts";
 import { SETTINGS } from "./settings-proposal.ts";
 import { plainName } from "./template-vetting.ts";
 
-/** What the shared branch commit (board/branch-commit.ts) reports; the harness words each under its own reason. */
+/** What the shared branch commit (publish/branch-commit.ts) reports; the harness words each under its own reason. */
 type BranchCommitFailure = "no_head" | "identity" | "branch_taken" | "git";
 
 /**

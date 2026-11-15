@@ -5,10 +5,9 @@
  * docs/decisions/2026-11-08-workflow-template-add.md.
  */
 import type { SecretScanner, WorkflowTemplate, WorkflowTemplateAdded } from "@flightdeck/protocol";
-import { commitBase, commitOnNewBranch, safeGit } from "../board/branch-commit.ts";
-import { publishPr } from "../board/publish-pr.ts";
 import { assertBranchName, FlightdeckError, refArg } from "../kernel/index.ts";
 import type { PrProvider } from "../pr/index.ts";
+import { commitBase, commitOnNewBranch, publishPr, safeGit } from "../publish/index.ts";
 import { branchName, refuse, templateRefusal } from "./domain/template-add.ts";
 
 export interface TemplateAddDeps {
