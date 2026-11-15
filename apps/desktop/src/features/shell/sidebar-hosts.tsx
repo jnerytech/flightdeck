@@ -7,8 +7,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { requiredMissing } from "@/features/deps/index.ts";
-import { hostDotView, hostInitial, hostRailLabel } from "@/features/hosts/index.ts";
-import { HostVersionTip, hostVersionText } from "@/features/hosts/ui.ts";
+import {
+  hostDotView,
+  hostInitial,
+  hostRailLabel,
+  hostVersionText,
+} from "@/features/hosts/index.ts";
+import { HostVersionTip } from "@/features/hosts/ui.ts";
 import type { Key, T } from "@/i18n/index.ts";
 import type { AppState, HostView } from "@/lib/app-store.ts";
 import type { Route } from "@/lib/router.ts";
