@@ -1,15 +1,30 @@
-import type { CostsSummary } from "@flightdeck/protocol";
+import type { Card, CostsSummary, Project } from "@flightdeck/protocol";
 import { useEffect, useMemo, useState } from "react";
 import { type HubRowState, hubRows } from "@/features/sessions/index.ts";
-import type { AppState, AppStore } from "../../lib/app-store.ts";
+import type { AppKernel } from "../../lib/kernel.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { addDays } from "../costs/index.ts";
+import type { HostView } from "../hosts/index.ts";
 import { buildProjectCards, type ProjectCard } from "./domain/project-cards.ts";
+
+/** What the cards hook asks of the store: the palette's load, the day, the host command and a project's key. */
+interface ProjectCardsStore extends Pick<AppKernel<object>, "hostCommand"> {
+  palette: { load(): Promise<void> };
+  today(): string;
+  projectList: { keyOf(hostId: string, project: Project): string };
+}
+
+/** The part of the app's state the cards read: the hosts, their projects and cards. */
+interface ProjectCardsState {
+  projects: Record<string, Project[]>;
+  cards: Record<string, Card>;
+  hosts: HostView[];
+}
 
 /** One card per project of every online host, with the week's cost each host reports (issue #9). */
 export function useProjectCards(
-  store: AppStore,
-  state: Pick<AppState, "projects" | "cards" | "hosts"> & Omit<HubRowState, "hosts">,
+  store: ProjectCardsStore,
+  state: ProjectCardsState & Omit<HubRowState, "hosts">,
 ): ProjectCard[] {
   const [costs, setCosts] = useState<Record<string, CostsSummary | undefined>>({});
   // The projects and their cards come from the palette's load; the week's cost from each host.

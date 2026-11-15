@@ -1,5 +1,10 @@
-import type { WatchInfo } from "@flightdeck/protocol";
-import type { AppState } from "../../../lib/app-store.ts";
+import type { Card, WatchInfo } from "@flightdeck/protocol";
+
+/** The part of the app's state the watch alerts read: the PR watches and the cards they belong to. */
+interface WatchAlertState {
+  watches: Record<string, WatchInfo>;
+  cards: Record<string, Pick<Card, "title" | "projectId">>;
+}
 
 /** A card whose PR watch asks for the person, for "Precisa de você" (phase 22). */
 export interface WatchAlert {
@@ -11,7 +16,7 @@ export interface WatchAlert {
   watch: WatchInfo;
 }
 
-export function watchAlerts(state: AppState): WatchAlert[] {
+export function watchAlerts(state: WatchAlertState): WatchAlert[] {
   return Object.entries(state.watches)
     .filter(([, watch]) => watch.status === "needs_you")
     .map(([key, watch]) => {
