@@ -6,10 +6,10 @@ import {
   type AssistantRunPayload,
   SecretScanner,
 } from "@flightdeck/protocol";
-import { assistantDir } from "../../src/assistant/domain/paths.ts";
 import { assistantService } from "../../src/assistant/factory.ts";
 import { AssistantService } from "../../src/assistant/service.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import { assistantDir } from "../../src/kernel/index.ts";
 import { startDaemon } from "../../src/main.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../../src/runtime/types.ts";

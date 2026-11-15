@@ -29,7 +29,7 @@ export {
 export type { Logger } from "./logger.ts";
 export { DEFAULT_ALLOWED_NETWORKS, ipInNetworks, parseCidr } from "./networks.ts";
 export { ntfsName } from "./ntfs-name.ts";
-export { isInside, resolveAllowedCwd, rootNames, samePath } from "./paths.ts";
+export { assistantDir, isInside, resolveAllowedCwd, rootNames, samePath } from "./paths.ts";
 export { present } from "./present.ts";
 export { readRegular, readRegularSized } from "./read-regular.ts";
 export { assertBranchName, HEAD, type Rev, refArg } from "./ref-arg.ts";
