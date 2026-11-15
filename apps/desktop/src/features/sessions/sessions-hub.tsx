@@ -57,19 +57,16 @@ import {
   scopeKeys,
 } from "./domain/hub-scope.ts";
 import { rowStatus, sessionLineText, sharedMeta } from "./domain/hub-status.ts";
-import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
 import {
   activeCount,
   capGroups,
   HUB_ROW_CAP,
-  type HubFilter,
   type HubGroupView,
-  type HubRow,
-  type HubView,
-  hubRows,
   hubView,
   isSearching,
-} from "./hub.ts";
+} from "./domain/hub-view.ts";
+import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
+import { type HubFilter, type HubRow, type HubView, hubRows } from "./hub.ts";
 import { newSessionHost } from "./new-session-host.ts";
 import { focusRenameField, focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
