@@ -15,7 +15,7 @@
   "apps/daemon/test/central/hot-key.test.ts": 3,
   "apps/daemon/test/central/local-messages.test.ts": 1,
   "apps/daemon/test/central/project-key.test.ts": 2,
-  "apps/daemon/test/checkpoints/snapshots.test.ts": 1,
+  "apps/daemon/test/checkpoints/snapshots-daemon.test.ts": 1,
   "apps/daemon/test/core/heartbeat.test.ts": 2,
   "apps/daemon/test/core/pairing.test.ts": 1,
   "apps/daemon/test/core/protocol-compat.test.ts": 2,
