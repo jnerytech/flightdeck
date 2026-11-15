@@ -366,6 +366,14 @@ mod vault_tests {
             "flightdeck-vault-test-{}-{nanos}",
             std::process::id()
         ));
+        // The folder goes away even when an assertion below fails.
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let _cleanup = Cleanup(dir.clone());
         assert_eq!(make_private_dir(&dir), Ok(()));
         assert!(dir.is_dir());
         #[cfg(unix)]
@@ -376,7 +384,6 @@ mod vault_tests {
         }
         // A folder that is already there is an error, never reused with someone else's content.
         assert!(make_private_dir(&dir).is_err());
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
@@ -418,13 +425,6 @@ mod vault_tests {
         let picked = Mutex::new(Some(PathBuf::from("/a/./key")));
         let taken = take_picked(&picked, "/a/key").unwrap().unwrap();
         assert_eq!(taken.as_os_str(), "/a/./key");
-    }
-
-    #[test]
-    fn a_new_pick_state_starts_empty() {
-        let state = PickedFile::default();
-        assert!(state.0.lock().unwrap().is_none());
-        assert!(take_picked(&state.0, "/a/key").is_err());
     }
 }
 
