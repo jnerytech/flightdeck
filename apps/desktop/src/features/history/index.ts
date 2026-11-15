@@ -6,12 +6,10 @@
 export {
   type GlobalHit,
   HISTORY_PAGE,
-  type HistoryCore,
   type HistoryFilter,
   HistorySlice,
   type HistorySliceState,
   initialHistoryState,
   type ReaderTarget,
-  type SearchState,
 } from "./store.ts";
 export { wireHistory } from "./wire.ts";
