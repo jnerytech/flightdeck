@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { ProjectMemory } from "../../src/memory/memory.ts";
@@ -324,7 +324,7 @@ describe("recusas-revisao: the project memory says why it refuses", () => {
     const { memory, repo, dir } = memorySetup();
     const out = tempDir("fd-out-");
     const real = dir;
-    Bun.spawnSync(["rm", "-rf", real]);
+    rmSync(real, { recursive: true, force: true });
     symlinkSync(out, real);
     expect(await refused(() => memory.read(repo, "a.md"))).toMatchObject({
       code: "bad_request",
