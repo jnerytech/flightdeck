@@ -27,23 +27,19 @@ import { Input } from "@/components/ui/input";
 import { BoardNotice } from "@/features/board/board-notice";
 import { BoardStatus } from "@/features/board/board-status";
 import { BoardSyncControl } from "@/features/board/board-sync";
-import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
 import { ColumnHandle } from "@/features/board/column-handle";
 import { ColumnSwitcher } from "@/features/board/column-switcher";
 import { ContractDialog } from "@/features/board/contract-dialog";
 import {
   boardFeatures,
   boardOrder,
-  cardMoveBody,
   cardMoves,
   columnCards,
-  dropPositions,
   idsByColumn,
   moveLabel,
   refusalNames,
   showingColumn,
   shownCards,
-  stayingPicks,
   tabStops,
 } from "@/features/board/domain/board-derive";
 import { needsText } from "@/features/board/needs-badge";
@@ -69,15 +65,8 @@ import { CardTile } from "./card-tile.tsx";
 import { BoardColumnEmpty } from "./column-empty.tsx";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
-import {
-  bulkSplit,
-  refusalNotice,
-  requestResult,
-  runMany,
-  updateMany,
-  updateSummary,
-} from "./domain/board-bulk.ts";
-import { askAbout, dragNeeds, type Lacking } from "./domain/board-contracts.ts";
+import { bulkSplit } from "./domain/board-bulk.ts";
+import { askAbout, dragNeeds } from "./domain/board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
 import {
   type BulkRefusal,
@@ -87,7 +76,6 @@ import {
   filteredColumnCount,
   filteredCountLabel,
   fitColumnWidth,
-  moveMany,
   pruneSelection,
   rangeSelection,
   shownSelection,
@@ -98,6 +86,7 @@ import { NewCardDialog } from "./new-card-dialog.tsx";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
+import { type MoveAsk, useSelectionActions } from "./use-selection-actions.tsx";
 import { useStartAsk } from "./use-start-ask.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
@@ -179,12 +168,7 @@ export const BoardView = memo(function BoardView(props: {
   /** The cards being dragged: the columns that ask for something say what, until they let go. */
   const [dragCards, setDragCards] = useState<Card[]>([]);
   /** A move waiting on the person's answer: the cards lack something its column asks (issue #78). */
-  const [ask, setAsk] = useState<{
-    column: BoardColumn;
-    targetId?: string;
-    cards: Card[];
-    lacking: Lacking[];
-  } | null>(null);
+  const [ask, setAsk] = useState<MoveAsk | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
   /** The selected cards (Ctrl-click), the last one picked (the anchor of a Shift range) and what a bulk action left to say. */
@@ -198,7 +182,6 @@ export const BoardView = memo(function BoardView(props: {
   const hintId = useId();
   const anchor = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [discardingMany, setDiscardingMany] = useState(false);
   /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
   /** A keyboard range (#1354): the selection it started from, so Shift+Up can shrink it back. */
@@ -260,75 +243,7 @@ export const BoardView = memo(function BoardView(props: {
   );
   const acting = shownSelection(selection, boardIds);
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
-  /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
-  const moveSelected = async (
-    column: BoardColumn,
-    targetId?: string,
-    only?: Card[],
-    force = false,
-  ) => {
-    if (busy) return;
-    // One question for the whole group; a group already asked about (`only`) goes straight on.
-    if (!only) {
-      const lacking = askAbout(column, actingCards, contracts);
-      if (lacking.length > 0) {
-        setAsk({ column, targetId, cards: actingCards, lacking });
-        return;
-      }
-    }
-    const cards = only ?? actingCards;
-    const ids = new Set(cards.map((card) => card.id));
-    setBusy(true);
-    // Dropped on a card, the group lands before it, in the board's order.
-    const positions = dropPositions(columnOf(column), cards, targetId);
-    const refused = await moveMany(
-      cards,
-      column,
-      async (cardId, to, position) => {
-        const answer = await store.hostRequest(
-          hostId,
-          "card.move",
-          cardMoveBody(cardId, to, position, force),
-        );
-        return requestResult(answer);
-      },
-      positions,
-    );
-    const stayed = new Set(refused.map((r) => r.card.id));
-    setPicked((before) => stayingPicks(before, ids, stayed));
-    setNotice(
-      refusalNotice(t, refused, nameRefusals(refused), {
-        one: "board.stayedOne",
-        many: "board.stayed",
-      }),
-    );
-    setBusy(false);
-    boardRef.current?.focus();
-  };
   const nameRefusals = (refused: BulkRefusal[]) => refusalNames(refused, t);
-  /** Discards the started cards and deletes the others, one after the other. */
-  const discardSelected = async () => {
-    if (busy) return;
-    const cards = actingCards;
-    setDiscardingMany(false);
-    setBusy(true);
-    const failed = await runMany(cards, async (card) =>
-      requestResult(
-        await store.hostRequest(hostId, discardCommand(card), { cardId: card.id, confirm: true }),
-      ),
-    );
-    // A discard is not atomic on the host: a card it refused may be partly cleaned up, so it is
-    // not left selected for a second try that would fail on what is already gone.
-    setPicked((before) => before.filter((id) => !acting.includes(id)));
-    setNotice(
-      refusalNotice(t, failed, nameRefusals(failed), {
-        one: "board.discardFailedOne",
-        many: "board.discardFailed",
-      }),
-    );
-    setBusy(false);
-    boardRef.current?.focus();
-  };
   /** #1354: what Start N and Stop N take from the selection. */
   const split = bulkSplit(actingCards, t);
   /**
@@ -349,53 +264,6 @@ export const BoardView = memo(function BoardView(props: {
     if (el?.isConnected) el.focus();
     else boardRef.current?.focus();
   };
-  /** #1406: runs of Update from the base that finished; each puts the focus back after its render. */
-  const [updated, setUpdated] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a finished run is the only trigger
-  useEffect(() => {
-    if (updated > 0) restoreOpener();
-  }, [updated]);
-  /** #1406: the run of Update from the base, card by card: how far it got. */
-  const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
-  /**
-   * #1406: updates the selection's idle cards with a branch from their base, one at a time. A card
-   * already on its base is not rebased; a conflicted or refused one stays selected, named.
-   */
-  const updateSelected = async () => {
-    if (busy || split.update.length === 0) return;
-    const cards = split.update;
-    rememberOpener();
-    setBusy(true);
-    setNotice(null);
-    setUpdating({ done: 0, total: cards.length });
-    const results = await updateMany(cards, {
-      behind: async (card) => {
-        const answer = await store.hostRequest(hostId, "changes.get", {
-          target: `card:${card.id}`,
-        });
-        return answer.ok ? (answer.data.position?.behind ?? null) : null;
-      },
-      update: async (card) => {
-        const answer = await store.hostRequest(hostId, "card.updateFromBase", {
-          cardId: card.id,
-        });
-        return requestResult(answer);
-      },
-      onProgress: (done, total) => setUpdating({ done, total }),
-    });
-    const went = new Set(
-      results
-        .filter((r) => r.outcome === "updated" || r.outcome === "current")
-        .map((r) => r.card.id),
-    );
-    setPicked((before) => before.filter((id) => !went.has(id)));
-    setNotice(updateSummary(t, results));
-    setUpdating(null);
-    setBusy(false);
-    // The button was disabled while it ran, and a browser takes the focus off a disabled button:
-    // it goes back once the render has turned the button on again.
-    setUpdated((n) => n + 1);
-  };
   const bulkRun = useBulkRun({
     store,
     hostId,
@@ -414,6 +282,25 @@ export const BoardView = memo(function BoardView(props: {
     opener: { remember: rememberOpener, restore: restoreOpener },
     boardRef,
   });
+  const columnOf = (column: BoardColumn) => columnCards(all, column);
+  const selectionActions = useSelectionActions({
+    store,
+    hostId,
+    acting,
+    actingCards,
+    split,
+    contracts,
+    columnOf,
+    busy,
+    setBusy,
+    setAsk,
+    setPicked,
+    setNotice,
+    nameRefusals,
+    opener: { remember: rememberOpener, restore: restoreOpener },
+    boardRef,
+  });
+  const { moveSelected, updateSelected, updating } = selectionActions;
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
     anchor.current = null;
@@ -443,7 +330,6 @@ export const BoardView = memo(function BoardView(props: {
 
   /** The card to focus once a move has happened: where it was, to tell when it has moved. */
   const refocus = useRef<MoveFocus | null>(null);
-  const columnOf = (column: BoardColumn) => columnCards(all, column);
   const runMove = (cardId: string, column: BoardColumn, targetId?: string, force = false) => {
     const others = columnOf(column).filter((card) => card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
@@ -563,10 +449,7 @@ export const BoardView = memo(function BoardView(props: {
                   shown={acting.length}
                   hidden={selection.length - acting.length}
                   onMove={(column) => void moveSelected(column)}
-                  onDiscard={() => {
-                    rememberOpener();
-                    setDiscardingMany(true);
-                  }}
+                  onDiscard={selectionActions.askDiscard}
                   onClear={clearSelection}
                   busy={busy}
                   onEscape={clearSelection}
@@ -912,15 +795,7 @@ export const BoardView = memo(function BoardView(props: {
           }}
         />
       )}
-      {discardingMany && (
-        <BulkDiscardDialog
-          cards={actingCards}
-          t={t}
-          onCancel={() => setDiscardingMany(false)}
-          onConfirm={() => void discardSelected()}
-          onRestoreFocus={restoreOpener}
-        />
-      )}
+      {selectionActions.dialog}
       {bulkRun.dialog}
       {issuesOpen && project && (
         <IssuesPanel
