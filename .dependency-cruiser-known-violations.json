@@ -243,28 +243,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/workflows/check-runner.ts",
-    "to": "apps/daemon/src/board/setup.ts",
-    "unresolvedTo": "../board/setup.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/engine-types.ts",
-    "to": "apps/daemon/src/board/domain/columns.ts",
-    "unresolvedTo": "../board/domain/columns.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/workflows/template-add.ts",
     "to": "apps/daemon/src/board/branch-commit.ts",
     "unresolvedTo": "../board/branch-commit.ts",

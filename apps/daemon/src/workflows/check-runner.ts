@@ -1,7 +1,6 @@
 import { appendFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { shellCommand } from "../board/setup.ts";
-import { killTree, runCommand, runLimited, whichOnPath } from "../kernel/index.ts";
+import { killTree, runCommand, runLimited, shellCommand, whichOnPath } from "../kernel/index.ts";
 import { checkEnvironment } from "./domain/check-env.ts";
 import { MAX_VALUE } from "./domain/interpolate.ts";
 

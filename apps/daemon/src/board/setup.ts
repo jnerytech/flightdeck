@@ -1,10 +1,4 @@
-import { FlightdeckError, runCommand } from "../kernel/index.ts";
-
-/** `cmd.exe /d /s /c` on Windows (ComSpec), `sh -c` elsewhere. */
-export function shellCommand(script: string, platform = process.platform): string[] {
-  if (platform === "win32") return [process.env.ComSpec ?? "cmd.exe", "/d", "/s", "/c", script];
-  return ["sh", "-c", script];
-}
+import { FlightdeckError, runCommand, shellCommand } from "../kernel/index.ts";
 
 /**
  * Runs the project's setup script in the worktree. It is the only shell command Flightdeck runs
