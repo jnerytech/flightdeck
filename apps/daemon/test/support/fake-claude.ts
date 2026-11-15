@@ -50,6 +50,19 @@ export interface FakeClaude {
 
 const MAIN = join(import.meta.dir, "fake-claude-main.ts");
 
+/** What the fake in `dir` did, in order: the finished lines of its `events.jsonl`. */
+export function readFakeEvents(dir: string): FakeClaudeEvent[] {
+  const file = join(dir, "events.jsonl");
+  if (!existsSync(file)) return [];
+  // The fake may still be writing the last line: only newline-terminated lines are events.
+  const text = readFileSync(file, "utf8");
+  const finished = text.slice(0, text.lastIndexOf("\n") + 1);
+  return finished
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "")
+    .map((line) => JSON.parse(line) as FakeClaudeEvent);
+}
+
 export function installFakeClaude(
   steps: FakeClaudeStep[],
   env: Record<string, string | undefined> = process.env,
@@ -79,17 +92,7 @@ export function installFakeClaude(
       if (on) writeFileSync(join(dir, "fail"), "");
       else rmSync(join(dir, "fail"), { force: true });
     },
-    events: () => {
-      const file = join(dir, "events.jsonl");
-      if (!existsSync(file)) return [];
-      // The fake may still be writing the last line: only newline-terminated lines are events.
-      const text = readFileSync(file, "utf8");
-      const finished = text.slice(0, text.lastIndexOf("\n") + 1);
-      return finished
-        .split(/\r?\n/)
-        .filter((line) => line.trim() !== "")
-        .map((line) => JSON.parse(line) as FakeClaudeEvent);
-    },
+    events: () => readFakeEvents(dir),
     restore: () => {
       for (const [key, value] of saved) env[key] = value;
     },
