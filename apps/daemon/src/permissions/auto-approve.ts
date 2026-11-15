@@ -9,9 +9,9 @@ import type { Database } from "bun:sqlite";
 import { assistantDir } from "../assistant/domain/paths.ts";
 import type { UsageTokens } from "../kernel/index.ts";
 import { ulid } from "../kernel/index.ts";
-import type { AgentRuntime } from "../runtime/types.ts";
 import { autoApproveDir, autoApprovePrompt, ruleDecision } from "./domain/auto-approve-rules.ts";
 import type { Risk } from "./domain/risk.ts";
+import type { PermissionJudge } from "./ports.ts";
 
 export interface AutoApproveSettings {
   enabled: boolean;
@@ -62,7 +62,7 @@ export interface AutoApproveContext {
 
 export interface AutoApproverOptions {
   db: Database;
-  runtime: Pick<AgentRuntime, "judgePermission">;
+  runtime: PermissionJudge;
   dataDir: string;
   /** The project (and card) of a cwd; null outside the projects. */
   context(cwd: string): AutoApproveContext | null;
@@ -216,7 +216,7 @@ export class AutoApprover {
     });
     try {
       const answer = await Promise.race([
-        (this.opts.runtime.judgePermission as NonNullable<AgentRuntime["judgePermission"]>)({
+        (this.opts.runtime.judgePermission as NonNullable<PermissionJudge["judgePermission"]>)({
           model,
           prompt: autoApprovePrompt(request, context.description),
           cwd: autoApproveDir(this.opts.dataDir),

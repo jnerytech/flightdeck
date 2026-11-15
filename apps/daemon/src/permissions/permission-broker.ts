@@ -7,10 +7,10 @@ import type {
   ToolInput,
 } from "@flightdeck/protocol";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
-import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/index.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
 import { bindInput } from "./domain/bind-input.ts";
+import type { PermissionDecision } from "./domain/decision.ts";
 import { requireHold } from "./domain/hold.ts";
 import { alwaysAsks, checkUpdates } from "./domain/permission-updates.ts";
 import type { Risk, RiskLevel } from "./domain/risk.ts";
