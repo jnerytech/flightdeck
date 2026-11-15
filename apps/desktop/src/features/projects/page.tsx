@@ -13,9 +13,8 @@ import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/ui.ts";
 import { RulesSection } from "../permissions/ui.ts";
 import { TerminalButton } from "../terminal/ui.ts";
-import { AddProject } from "./add-project.tsx";
-import { HostBoardLanding } from "./board-landing.tsx";
 import { FindProjects } from "./find-projects.tsx";
+import { ProjectsPicker } from "./projects-picker.tsx";
 import { StartFromGithub } from "./start-from-github.tsx";
 
 /** What a `.worktreeinclude` looks like: patterns in the format of `.gitignore`. */
@@ -144,55 +143,18 @@ export function ProjectsPage(
   });
 
   if (props.focus) {
-    const board = props.focus === "board";
-    // The picker shows the selected client's projects; the host's own screen below lists them all.
-    const state = store.getState();
-    const projects = store.clientScope
-      .get()
-      .filter(list?.projects ?? [], state.clientSelection, (p) =>
-        store.projectList.keyOf(hostId, p),
-      );
-    const hidden = (list?.projects.length ?? 0) > 0 && projects.length === 0;
     return (
-      <Page title={t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}>
-        {loading && <LoadingState label={t("states.loadingProjects")} />}
-        {!loading && hidden && <EmptyState title={t("clients.noneHere")} />}
-        {/* The Board screen of a host: its projects as cards (#669). */}
-        {!loading && board && !hidden && list && (
-          <HostBoardLanding
-            store={store}
-            hostId={hostId}
-            hostName={props.hostName}
-            projects={projects}
-            onOpenBoard={props.onOpenBoard}
-            onAdded={reloaded}
-          />
-        )}
-        {!loading && !board && list?.projects.length === 0 && (
-          <EmptyState
-            icon={FolderGit2}
-            title={t("states.emptyProjects")}
-            action={<AddProject store={store} hostId={hostId} onAdded={reloaded} />}
-          />
-        )}
-        {!loading && !board && (list?.projects.length ?? 0) > 0 && (
-          <div>
-            <AddProject store={store} hostId={hostId} variant="outline" onAdded={reloaded} />
-          </div>
-        )}
-        {!board && (
-          <ul aria-label={t("projectsUi.list")} className="flex flex-col">
-            {projects.map((project) => (
-              <li key={project.id} className="flex items-center gap-3">
-                <Button variant="ghost" onClick={() => props.onOpenWorkflows(project)}>
-                  {t("projectsUi.workflows", { name: project.name })}
-                </Button>
-                <span className="text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Page>
+      <ProjectsPicker
+        store={store}
+        hostId={hostId}
+        hostName={props.hostName}
+        focus={props.focus}
+        list={list}
+        loading={loading}
+        onOpenBoard={props.onOpenBoard}
+        onOpenWorkflows={props.onOpenWorkflows}
+        onChanged={reloaded}
+      />
     );
   }
 
