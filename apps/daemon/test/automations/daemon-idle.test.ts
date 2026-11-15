@@ -108,7 +108,7 @@ describe("daemon-idle: what a started daemon keeps running", () => {
     expect(timers.list().filter((t) => t.startsWith("automations/"))).toEqual([]);
     automations.toggle(cron.id, true, true);
     expect(timers.list().filter((t) => t.startsWith("automations/"))).toEqual([
-      "automations/automations.ts 60000",
+      "automations/scheduler.ts 60000",
     ]);
     const labeled = automations.save({
       projectId: project.id,
@@ -118,12 +118,12 @@ describe("daemon-idle: what a started daemon keeps running", () => {
     });
     automations.toggle(labeled.id, true, true);
     expect(timers.list().filter((t) => t.startsWith("automations/"))).toEqual([
-      "automations/automations.ts 300000",
-      "automations/automations.ts 60000",
+      "automations/scheduler.ts 300000",
+      "automations/scheduler.ts 60000",
     ]);
     automations.toggle(cron.id, false, true);
     expect(timers.list().filter((t) => t.startsWith("automations/"))).toEqual([
-      "automations/automations.ts 300000",
+      "automations/scheduler.ts 300000",
     ]);
     automations.remove(labeled.id, true);
     expect(timers.list().filter((t) => t.startsWith("automations/"))).toEqual([]);
