@@ -6,8 +6,8 @@
  */
 
 export { isLocalUrl, type TerminalEnv, type TerminalTarget } from "./domain/terminal.ts";
+export { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "./domain/terminal-view.ts";
 export { type ClosingTerminal, type TerminalListener, TerminalsSlice } from "./store.ts";
-export { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "./terminal-view.ts";
 export { useLaunchTerminal } from "./use-launch-terminal.ts";
 export { wireTerminals } from "./wire.ts";
 export type { XtermDeps } from "./xterm-screen.ts";

@@ -6,15 +6,17 @@ import {
   pasteNeedsConfirm,
   TERMINAL_FONT_DEFAULT,
   TERMINAL_FONT_FAMILY,
-  TERMINAL_FONT_KEY,
   TERMINAL_FONT_MAX,
   TERMINAL_FONT_MIN,
-  TERMINAL_READER_KEY,
-  TerminalFontController,
-  TerminalReaderSetting,
   terminalKeyAction,
   terminalTheme,
   terminalWheelAction,
+} from "../../src/features/terminal/domain/terminal-view.ts";
+import {
+  TERMINAL_FONT_KEY,
+  TERMINAL_READER_KEY,
+  TerminalFontController,
+  TerminalReaderSetting,
 } from "../../src/features/terminal/terminal-view.ts";
 
 const key = (
