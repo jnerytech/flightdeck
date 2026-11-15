@@ -4,7 +4,7 @@ import {
   hostSessionRows,
 } from "../../src/features/hosts/domain/host-overview-model.ts";
 import type { ProjectCard } from "../../src/features/projects/domain/project-cards.ts";
-import type { HubRow } from "../../src/features/sessions/hub.ts";
+import type { HubRow } from "../../src/features/sessions/domain/hub.ts";
 
 const row = (key: string, hostId: string, extra: Partial<HubRow> = {}): HubRow => ({
   key,

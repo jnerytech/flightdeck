@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../../daemon/test/support/helpers.ts";
-import { hubGroups } from "../../src/features/sessions/domain/hub-groups.ts";
 import {
   DEFAULT_HUB_FILTER,
   type HubRow,
   loadHubFilter,
   saveHubFilter,
-} from "../../src/features/sessions/hub.ts";
+} from "../../src/features/sessions/domain/hub.ts";
+import { hubGroups } from "../../src/features/sessions/domain/hub-groups.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { unfoldAll } from "../unfold.ts";

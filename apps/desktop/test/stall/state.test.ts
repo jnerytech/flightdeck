@@ -4,7 +4,7 @@ import {
   quietAlerts,
   quietText,
 } from "../../src/features/needs-you/domain/quiet.ts";
-import { type HubRowState, hubRows } from "../../src/features/sessions/hub.ts";
+import { type HubRowState, hubRows } from "../../src/features/sessions/domain/hub.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";

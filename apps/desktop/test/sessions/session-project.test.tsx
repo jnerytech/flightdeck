@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { DEFAULT_HUB_FILTER, hubRows } from "../../src/features/sessions/domain/hub.ts";
 import { hubGroups } from "../../src/features/sessions/domain/hub-groups.ts";
-import { DEFAULT_HUB_FILTER, hubRows } from "../../src/features/sessions/hub.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { uiIdle } from "../wait.ts";
