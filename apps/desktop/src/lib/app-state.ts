@@ -9,7 +9,6 @@ import type {
   ExternalSession,
   HistorySessionSummary,
   Project,
-  ReleaseNote,
   RunState,
   SessionMeta,
   SessionNameInfo,
@@ -21,6 +20,7 @@ import { basename } from "@/shared/lib/index.ts";
 import { type AccountSliceState, initialAccountState } from "../features/account/index.ts";
 import { type ActivitySliceState, initialActivityState } from "../features/activity/index.ts";
 import { type AppUpdateState, initialAppUpdateState } from "../features/appupdate/index.ts";
+
 import { type BackgroundSliceState, initialBackgroundState } from "../features/background/index.ts";
 import type { GoogleConfig } from "../features/backup/index.ts";
 import { type Client, loadSelection } from "../features/clients/index.ts";
@@ -151,12 +151,6 @@ export interface AppState
   /** Phase 9: the app's own update. */
   appUpdate: AppUpdateState;
 }
-
-/** What reading the app's release notes came to: the releases, no host that can read them, or a refusal. */
-export type ReleaseNotesResult =
-  | { kind: "ready"; releases: ReleaseNote[] }
-  | { kind: "none" }
-  | { kind: "error"; message: string };
 
 export interface AppStoreOptions {
   /** The screen of a fresh window; a window saved before keeps its tabs. Sessions when absent. */
