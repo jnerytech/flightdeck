@@ -3,17 +3,13 @@ import { Decrypter, Encrypter } from "age-encryption";
 import { parseJsonText, readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 import { HOSTS_KEY, type HostConfig, loadHosts } from "../hosts/index.ts";
-// A lazy chunk imports the backup file directly: the vault index leaves it out so `age` stays out of the entry chunk.
 import {
   type BackupEntry,
+  BackupError,
   type ConflictChoice,
-  DEFAULT_WORK_FACTOR,
-  fromFdvault,
-  MIN_PASSPHRASE,
-  sameSecret,
-  toFdvault,
-} from "../vault/domain/vault-backup.ts";
-import { BackupError, Vault } from "../vault/index.ts";
+  loadVaultBackup,
+  Vault,
+} from "../vault/index.ts";
 import {
   BACKUP_SETTING_KEYS,
   type BackupHost,
@@ -76,6 +72,7 @@ export async function createBackup(
   confirmation: string,
   options: BackupOptions = {},
 ): Promise<string> {
+  const { DEFAULT_WORK_FACTOR, MIN_PASSPHRASE, toFdvault } = await loadVaultBackup();
   if (passphrase.length < MIN_PASSPHRASE) throw new BackupError("short-passphrase");
   if (passphrase !== confirmation) throw new BackupError("mismatch");
   const settings: Record<string, string> = {};
@@ -111,6 +108,7 @@ export async function createBackup(
 
 async function readBundle(text: string, passphrase: string): Promise<Bundle> {
   try {
+    const { fromFdvault } = await loadVaultBackup();
     const decrypter = new Decrypter();
     decrypter.addPassphrase(passphrase);
     const body = parseJsonText(await decrypter.decrypt(fromFdvault(text), "text"), Bundle, null);
@@ -136,6 +134,7 @@ interface Judgement {
  * the preview saw, and two things with one name never share a verdict.
  */
 async function judge(platform: BackupPlatform, bundle: Bundle): Promise<Judgement> {
+  const { sameSecret } = await loadVaultBackup();
   const hosts = loadHosts(platform.storage);
   const vault = new Vault(platform);
   const secrets = vault.list();

@@ -7,8 +7,8 @@
 
 export { BoardCardsSlice } from "./board-cards.ts";
 export { BoardWidth } from "./board-select.ts";
-export { boardShortcut, loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 export { queueSplit } from "./domain/board-bulk.ts";
 export type { BoardFiles } from "./domain/board-files.ts";
 export { answerOf, type BulkRefusal } from "./domain/board-select.ts";
+export { boardShortcut, loadLastBoards, saveLastBoard } from "./domain/board-shortcut.ts";
 export { cardStartBlock } from "./domain/card-start-block.ts";
