@@ -39,6 +39,7 @@ import { TAB_ICONS, tabFacts, tabTitle } from "./tab-facts.ts";
 import { TabOverflow } from "./tab-overflow.tsx";
 import type { Tab, Tabs } from "./tabs.ts";
 import { useStripScroll } from "./use-strip-scroll.ts";
+import { useTabDrag } from "./use-tab-drag.ts";
 
 /** Past this many tabs the badges shrink to dots and the strip offers a menu of all of them. */
 const COMPACT_AT = 8;
@@ -113,10 +114,7 @@ export function TabBar(
     if (!shared || shared.tabs.includes(tab)) return null;
     return groupOf(tab)?.hostId ?? store.hostTabs.hostId;
   };
-  /** The tab being dragged to a new place. */
-  const dragged = useRef<string | null>(null);
-  /** The tab a drag is over and the side the dragged one will land on, to mark the place. */
-  const [dropOn, setDropOn] = useState<{ id: string; side: "before" | "after" } | null>(null);
+  const { dropOn, dragProps } = useTabDrag();
   /** What a screen reader is told about the last move or the host the row switched to. */
   const [announcement, setAnnouncement] = useState("");
   // The first area's row says which host it switched to and how many tabs it has, once, by its name.
@@ -370,30 +368,7 @@ export function TabBar(
                         e.stopPropagation();
                         store.closeTab(own, tab.id);
                       }}
-                      draggable
-                      onDragStart={() => {
-                        dragged.current = tab.id;
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        const from = own.tabs.findIndex((other) => other.id === dragged.current);
-                        if (from < 0 || own.tabs[from]?.id === tab.id) return setDropOn(null);
-                        setDropOn({
-                          id: tab.id,
-                          side: from < own.tabs.indexOf(tab) ? "after" : "before",
-                        });
-                      }}
-                      onDragEnd={() => {
-                        dragged.current = null;
-                        setDropOn(null);
-                      }}
-                      onDrop={() => {
-                        const id = dragged.current;
-                        dragged.current = null;
-                        setDropOn(null);
-                        if (id && own.tabs.some((other) => other.id === id))
-                          own.move(id, own.tabs.indexOf(tab));
-                      }}
+                      {...dragProps(tab, own)}
                     >
                       <Icon data-icon={kind} className="size-3.5 shrink-0" aria-hidden />
                       {!tab.pinned && (
