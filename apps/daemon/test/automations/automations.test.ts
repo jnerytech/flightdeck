@@ -7,7 +7,7 @@ const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-const { fake, setup } = automationsRig(cleanups);
+const { setup } = automationsRig(cleanups);
 
 describe("automacoes", () => {
   test("nasce desligada; ligar pede confirm; editar desliga de novo; desligar não pede confirm", async () => {

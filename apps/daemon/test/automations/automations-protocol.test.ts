@@ -9,7 +9,7 @@ const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-const { fake, setup } = automationsRig(cleanups);
+const { setup } = automationsRig(cleanups);
 
 describe("automacoes: protocol", () => {
   test("protocolo: automation.list, save, toggle, runs e remove; ligar e remover pedem confirm", async () => {

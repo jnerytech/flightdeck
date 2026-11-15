@@ -8,7 +8,7 @@ const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
-const { fake, setup } = automationsRig(cleanups);
+const { setup } = automationsRig(cleanups);
 
 describe("automacoes: cron", () => {
   test("cron: dispara no minuto certo, no fuso dado, uma vez por minuto; desligada nunca", async () => {
