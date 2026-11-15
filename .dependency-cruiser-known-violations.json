@@ -23,17 +23,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/shell/domain/nav-active.ts",
-    "to": "apps/desktop/src/features/tabs/domain/tab-badge.ts",
-    "unresolvedTo": "../../tabs/domain/tab-badge.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/domain/check-loop-engine.ts",
     "to": "apps/daemon/src/watch/domain/check-run.ts",
     "unresolvedTo": "../../watch/domain/check-run.ts",
