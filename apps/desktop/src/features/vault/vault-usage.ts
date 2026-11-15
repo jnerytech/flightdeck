@@ -2,7 +2,7 @@ import type { VaultUsed } from "@flightdeck/protocol";
 import { z } from "zod";
 import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
-import type { VaultOutcome } from "./vault-requests.ts";
+import type { VaultOutcome } from "./domain/vault-requests.ts";
 
 /** What happened to a request: it was delivered, it was refused, or the daemon reported the use. */
 type UsageKind = "delivered" | "denied" | "used";

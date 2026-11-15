@@ -1,6 +1,6 @@
 import type { CommandPayload, VaultRequestFrame } from "@flightdeck/protocol";
-import { checkDelivery, type DeliveryDeps } from "./domain/vault-delivery.ts";
-import type { SecretMeta } from "./vault.ts";
+import { checkDelivery, type DeliveryDeps } from "./vault-delivery.ts";
+import type { SecretMeta } from "./vault-types.ts";
 
 /** What the app decides about a request of the daemon. */
 type VaultDecision = { kind: "deny"; reason: string } | { kind: "deliver" };

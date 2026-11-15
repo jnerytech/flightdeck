@@ -13,6 +13,7 @@ export { BackupError, type BackupErrorCode } from "./domain/backup-error.ts";
 // start-up. `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file; only a type comes through here.
 export type { ConflictChoice } from "./domain/vault-backup.ts";
 export type { DeliveryRefusal } from "./domain/vault-delivery.ts";
+export type { VaultPolicy } from "./domain/vault-requests.ts";
 export {
   type VaultRulesCore,
   VaultRulesSlice,
@@ -23,7 +24,6 @@ export {
   VaultSecretsSlice,
 } from "./secrets-store.ts";
 export { type SecretMeta, Vault } from "./vault.ts";
-export type { VaultPolicy } from "./vault-requests.ts";
 export { VaultRules } from "./vault-rules.ts";
 export { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 export { wireVaultApprovals, wireVaultRules, wireVaultSecrets } from "./wire.ts";
