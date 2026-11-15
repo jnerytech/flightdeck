@@ -3,7 +3,7 @@ import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
-import { normalizeCwd } from "../history/index.ts";
+import { isExcludedCwd, normalizeCwd } from "../history/index.ts";
 import { parseJsonOr, type UsageTokens, ulid } from "../kernel/index.ts";
 import { localDay } from "../quota/index.ts";
 import { type FileEdit, readLine } from "./domain/transcript-line.ts";
@@ -305,12 +305,6 @@ export class UsageIndexer {
     return files;
   }
 
-  private isExcluded(cwd: string | null): boolean {
-    if (!cwd) return false;
-    const path = normalizeCwd(cwd);
-    return this.excludes.some((ex) => path === ex || path.startsWith(`${ex}/`));
-  }
-
   /** One more write of a file by a session; a tool call read again counts once. */
   private recordEdit(claudeSessionId: string, edit: FileEdit, at: string): void {
     const inserted = this.db
@@ -355,7 +349,9 @@ export class UsageIndexer {
       cwds.add(parseJsonOr(z.string(), `"${escaped}"`, ""));
     }
     // An excluded folder never reaches the project-key lookup (it would be a git call on it).
-    const folders = new Set([...cwds].filter((cwd) => cwd !== "" && !this.isExcluded(cwd)));
+    const folders = new Set(
+      [...cwds].filter((cwd) => cwd !== "" && !isExcludedCwd(cwd, this.excludes)),
+    );
     if (owner.projectPath) folders.add(owner.projectPath);
     await this.opts.warmKeys([...folders]);
   }
@@ -414,7 +410,7 @@ export class UsageIndexer {
     this.db.transaction(() => {
       for (const read of reads) {
         cwd = read.cwd ?? cwd;
-        if (this.isExcluded(cwd ?? folder)) continue;
+        if (isExcludedCwd(cwd ?? folder, this.excludes)) continue;
         for (const edit of read.at ? read.edits : []) {
           this.recordEdit(file.claudeSessionId, edit, read.at as string);
         }

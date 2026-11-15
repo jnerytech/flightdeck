@@ -6,7 +6,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { type HistoryRecord, lastTitle, parseLines } from "./domain/parser.ts";
 import { entrypointOf, sessionTitle, titleFrom } from "./domain/session-summary.ts";
 import { promptText } from "./domain/transcript-text.ts";
-import { normalizeCwd } from "./folder.ts";
+import { isExcludedCwd, normalizeCwd } from "./folder.ts";
 import { HistoryQueries, type HistorySession } from "./queries.ts";
 import { fts5Available } from "./search.ts";
 
@@ -385,7 +385,7 @@ export class HistoryIndexer {
     const cwd = wasExcluded
       ? ""
       : this.sessionCwd(claudeSessionId) || records.find((r) => r.cwd)?.cwd || "";
-    const excluded = wasExcluded || this.isExcluded(cwd);
+    const excluded = wasExcluded || isExcludedCwd(cwd, this.excludes);
 
     this.db.transaction(() => {
       if (reset || excluded) this.forget(claudeSessionId);
@@ -453,13 +453,6 @@ export class HistoryIndexer {
       .query("SELECT cwd FROM history_sessions WHERE claude_session_id = ?")
       .get(claudeSessionId) as { cwd: string } | null;
     return row?.cwd ?? "";
-  }
-
-  /** The project folder comes from the lines' `cwd`, never from the directory name. */
-  private isExcluded(cwd: string): boolean {
-    if (!cwd) return false;
-    const path = normalizeCwd(cwd);
-    return this.excludes.some((ex) => path === ex || path.startsWith(`${ex}/`));
   }
 
   /** Recomputes the session row from its stored messages and the records just read. */

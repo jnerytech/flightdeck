@@ -15,3 +15,18 @@ export function normalizeCwdFor(path: string, platform: string): string {
   const slashes = trimSlashes(path.replaceAll("\\", "/"));
   return platform === "win32" || platform === "darwin" ? slashes.toLowerCase() : slashes;
 }
+
+/**
+ * Whether a session's folder is an excluded one or below it, never a look-alike prefix; no folder
+ * is never excluded. The project folder comes from the lines' `cwd`, never from the directory
+ * name. `excludes` are already normalized for `platform`.
+ */
+export function isExcludedCwdFor(
+  cwd: string | null | undefined,
+  excludes: readonly string[],
+  platform: string,
+): boolean {
+  if (!cwd) return false;
+  const path = normalizeCwdFor(cwd, platform);
+  return excludes.some((ex) => path === ex || path.startsWith(`${ex}/`));
+}
