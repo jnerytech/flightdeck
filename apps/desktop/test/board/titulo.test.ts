@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { boardTitle } from "../../src/features/board/board-model.ts";
+import { boardTitle } from "../../src/features/board/domain/board.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 describe("board-titulo", () => {
