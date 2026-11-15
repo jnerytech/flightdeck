@@ -8,23 +8,10 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import type { Fingerprint } from "./domain/fingerprint.ts";
+import { canonical, type Fingerprint } from "./domain/fingerprint.ts";
 import type { ActionDef } from "./domain/schema.ts";
 
 const sha = (data: string | Buffer) => createHash("sha256").update(data).digest("hex");
-
-/** JSON with the keys sorted, so the same declaration always gives the same text. */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (typeof value === "object" && value !== null) {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => a.localeCompare(b));
-    const pairs = entries.map(([k, v]) => JSON.stringify(k) + ":" + canonical(v));
-    return "{" + pairs.join(",") + "}";
-  }
-  return JSON.stringify(value);
-}
 
 const exists = (path: string) =>
   stat(path).then(
@@ -54,14 +41,4 @@ export async function fingerprint(action: ActionDef, base: string): Promise<Fing
     files[relative(base, path).replaceAll("\\", "/")] = sha(await readFile(path));
   });
   return { declaration: sha(canonical(declared)), files };
-}
-
-/** What differs between what was trusted and what is there now: "declaração" and/or file paths. */
-export function changes(trusted: Fingerprint, current: Fingerprint): string[] {
-  const out: string[] = [];
-  if (trusted.declaration !== current.declaration) out.push("declaração");
-  for (const path of new Set([...Object.keys(trusted.files), ...Object.keys(current.files)])) {
-    if (trusted.files[path] !== current.files[path]) out.push(path);
-  }
-  return out;
 }

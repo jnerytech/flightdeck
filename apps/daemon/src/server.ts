@@ -18,10 +18,10 @@ import {
   ipInNetworks,
   tokenMatches,
 } from "./kernel/index.ts";
-import { closeLine } from "./server/close-log.ts";
 import { serverContext } from "./server/context.ts";
 import { drainAll } from "./server/delta-coalescer.ts";
 import { runHandler } from "./server/dispatch.ts";
+import { closeLine } from "./server/domain/close-log.ts";
 import type { Call, Handler } from "./server/domain/handler.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
