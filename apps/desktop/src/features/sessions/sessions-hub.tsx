@@ -1,17 +1,15 @@
 import { Radio, Server, X } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ALL_CLIENTS, UNASSIGNED } from "@/features/clients/index.ts";
 import { AssignMenu, ClientChip } from "@/features/clients/ui.ts";
 import { HostsBanner } from "@/features/hosts/ui.ts";
 import { WorktreeChip } from "@/features/projects/ui.ts";
 import type { Density } from "@/features/shell/index.ts";
-import { ScopeMenu } from "@/features/shell/ui.ts";
 import { TeleportMove } from "@/features/teleport/ui.ts";
 import { cn } from "@/lib/utils";
-import { CardGrid, EmptyState, Page, Toolbar } from "@/shared/layout/index.ts";
+import { CardGrid, EmptyState, Page } from "@/shared/layout/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
@@ -32,8 +30,8 @@ import { rowStatus, sessionLineText, sharedMeta } from "./domain/hub-status.ts";
 import { activeCount, HUB_ROW_CAP } from "./domain/hub-view.ts";
 import { newSessionHost } from "./domain/new-session-host.ts";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
-import { HubFilterMenu } from "./hub-filter-menu.tsx";
 import { type RowActionsContext, rowActions, setRowMeta } from "./hub-row-actions.tsx";
+import { HubToolbar } from "./hub-toolbar.tsx";
 import { focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
@@ -42,7 +40,6 @@ import { useHubCursor } from "./use-hub-cursor.ts";
 import { useHubList } from "./use-hub-list.ts";
 import { useHubRefresh } from "./use-hub-refresh.ts";
 import { type HubProject, useHubScope } from "./use-hub-scope.ts";
-import { ViewToggle } from "./view-toggle.tsx";
 
 /** The key of a row's state: an asleep session is its own word, though it is idle underneath. */
 const stateKey = (row: HubRow) => (row.asleep ? "asleep" : row.state);
@@ -145,29 +142,23 @@ export function SessionsHub(
   const starter = newSessionHost(state.hosts, state.selected);
   const hostless = hostlessHub(state.hosts, rows.length);
   const toolbar = (
-    <Toolbar label={t("hub.filters")}>
-      {state.hostsLoaded && (state.hosts.length > 1 || scopedProject !== "") && (
-        <ScopeMenu store={store} hosts={state.hosts} projects={projects} scope={hostScope} />
-      )}
-      <ViewToggle
-        view={view}
-        label={t("hub.view")}
-        listLabel={t("hub.viewList")}
-        cardsLabel={t("hub.viewCards")}
-        onChange={(next) => {
-          setView(next);
-          store.viewPrefs.saveHubView(next);
-        }}
-      />
-      <Input
-        aria-label={t("hub.filterLabel")}
-        placeholder={t("hub.filterPlaceholder")}
-        value={filter.text}
-        onChange={(e) => set({ text: e.target.value })}
-        className="toolbar-field h-8 min-w-32 text-xs"
-      />
-      <HubFilterMenu t={t} filter={filter} active={active} personas={personas} set={set} />
-    </Toolbar>
+    <HubToolbar
+      store={store}
+      hosts={state.hosts}
+      hostsLoaded={state.hostsLoaded}
+      projects={projects}
+      scope={hostScope}
+      scopedProject={scopedProject}
+      view={view}
+      onView={(next) => {
+        setView(next);
+        store.viewPrefs.saveHubView(next);
+      }}
+      filter={filter}
+      active={active}
+      personas={personas}
+      set={set}
+    />
   );
 
   return (
