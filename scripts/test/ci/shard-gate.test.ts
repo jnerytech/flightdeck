@@ -723,6 +723,10 @@ describe("shard-gate run and merge over a PR's selection (#1761)", () => {
       expect(d.files.get(join("/tmp/out", kind === "bun" ? "lcov.info" : "funcs.json"))).toBe(
         kind === "bun" ? "" : "{}",
       );
+      // The shard's own slow-test step (#3295) reads a report: an empty one, not a missing one.
+      expect(d.files.get(join("/tmp/out", "junit.xml"))).toBe(
+        kind === "bun" ? "<testsuites></testsuites>" : undefined,
+      );
     }
   });
 
