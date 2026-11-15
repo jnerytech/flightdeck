@@ -5,7 +5,7 @@ import type { Platform } from "../../platform/types.ts";
 import type { VaultOutcome } from "./vault-requests.ts";
 
 /** What happened to a request: it was delivered, it was refused, or the daemon reported the use. */
-export type UsageKind = "delivered" | "denied" | "used";
+type UsageKind = "delivered" | "denied" | "used";
 
 /** One line of the usage log; never holds a secret's value. */
 export interface UsageEntry {
