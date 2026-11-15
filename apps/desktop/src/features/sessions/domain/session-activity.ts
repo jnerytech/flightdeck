@@ -43,3 +43,17 @@ export function activityOf(session: SessionState): Activity {
   }
   return session.streaming !== "" ? { kind: "writing" } : { kind: "thinking" };
 }
+
+/** The tool the turn is in: the last one called that has not answered yet. */
+export function openTool(session: SessionState): string | null {
+  for (let i = session.items.length - 1; i >= 0; i--) {
+    const item = session.items[i];
+    if (item?.kind !== "assistant") continue;
+    for (let j = item.blocks.length - 1; j >= 0; j--) {
+      const block = item.blocks[j];
+      if (block?.type === "tool_use" && !(block.id in session.toolResults)) return block.name;
+    }
+    return null;
+  }
+  return null;
+}
