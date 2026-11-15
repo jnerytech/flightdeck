@@ -4,11 +4,13 @@ import {
   CACHE_TIMER_KEY,
   CACHE_TTL_KEY,
   CacheTimerSettings,
+  SharedClock,
+} from "../../src/features/sessions/cache-timer-model.ts";
+import {
   cacheTimer,
   clockText,
-  SharedClock,
   spokenParts,
-} from "../../src/features/sessions/cache-timer-model.ts";
+} from "../../src/features/sessions/domain/cache-timer.ts";
 import type { Platform } from "../../src/platform/types.ts";
 import { settle } from "../wait.ts";
 
