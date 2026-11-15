@@ -122,7 +122,8 @@ describe("telas-rotas: routes that open a screen", () => {
     const { TContext } = await import("../../src/i18n/context.tsx");
     const { translator } = await import("../../src/i18n/index.ts");
     const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
-    // A second instance of the module: its lazy screens start unloaded, unlike the preloaded ones.
+    // A second instance of the module: its own lazy screen (Settings) starts unloaded, unlike the
+    // preloaded ones of the route tables.
     const specifier = "../../src/app/route-screens.tsx?unloaded";
     const fresh = (await import(specifier)) as typeof import("../../src/app/route-screens.tsx");
     const noop = () => {};
@@ -131,7 +132,7 @@ describe("telas-rotas: routes that open a screen", () => {
       <TContext.Provider value={translator("en")}>
         <TooltipProvider>
           {fresh.routeDetail({
-            route: { name: "snippets" },
+            route: { name: "settings" },
             store,
             state: store.getState(),
             theme: "system",
