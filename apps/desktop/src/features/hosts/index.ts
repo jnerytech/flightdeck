@@ -31,6 +31,7 @@ export { HostCommands } from "./host-commands.ts";
 export { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 export { HostTabs } from "./host-tabs.ts";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
+export { restoreKeptTabs } from "./kept-tabs.ts";
 export { HostLink, type HostRoutes, type OnlineStep } from "./link.ts";
 export { HostRosterSlice } from "./roster-store.ts";
 export {
