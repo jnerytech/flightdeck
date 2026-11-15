@@ -34,7 +34,13 @@ const FILES = [
 
 /** The folders of #957: every `.ts` file in them is read, so a new file is covered at once. */
 // Issue #1288: the server's handler modules word the refusals that left server.ts.
-const FOLDERS = ["../src/updates", "../src/plugins", "../src/runenv", "../src/server"];
+const FOLDERS = [
+  "../src/updates",
+  "../src/plugins",
+  "../src/runenv",
+  "../src/runenv/domain",
+  "../src/server",
+];
 
 /** Words that only a Portuguese sentence has in a refusal (found by reading the files). */
 const PORTUGUESE =
@@ -47,7 +53,7 @@ const PORTUGUESE =
  */
 const SHOWN_TO_THE_PERSON: Array<{ file: string; fragment: string }> = [
   { file: "plugins/inventory.ts", fragment: ": caminho fora do plugin: " },
-  { file: "runenv/config.ts", fragment: "precisa ser uma lista de textos" },
+  { file: "runenv/domain/run-config.ts", fragment: "precisa ser uma lista de textos" },
   { file: "runenv/manager.ts", fragment: "o setup falhou (código " },
 ];
 

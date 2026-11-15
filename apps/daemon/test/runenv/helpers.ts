@@ -1,4 +1,4 @@
-import type { RunConfig } from "../../src/runenv/config.ts";
+import type { RunConfig } from "../../src/runenv/domain/run-config.ts";
 import type { RunHost } from "../../src/runenv/manager.ts";
 
 export interface SpawnedRun {
