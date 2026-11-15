@@ -254,61 +254,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/review/changes.ts",
-    "to": "apps/daemon/src/board/diff.ts",
-    "unresolvedTo": "../board/diff.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/changes.ts",
-    "to": "apps/daemon/src/board/merge.ts",
-    "unresolvedTo": "../board/merge.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/files.ts",
-    "to": "apps/daemon/src/board/worktree.ts",
-    "unresolvedTo": "../board/worktree.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/session-pr.ts",
-    "to": "apps/daemon/src/board/pr.ts",
-    "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/session-pr.ts",
-    "to": "apps/daemon/src/board/publish-pr.ts",
-    "unresolvedTo": "../board/publish-pr.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/runenv/config.ts",
     "to": "apps/daemon/src/board/worktree.ts",
     "unresolvedTo": "../board/worktree.ts",
@@ -354,17 +299,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/sessions/session-manager.ts",
-    "to": "apps/daemon/src/personas/domain/model.ts",
-    "unresolvedTo": "../personas/domain/model.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-manager.ts",
     "to": "apps/daemon/src/personas/domain/prepare.ts",
     "unresolvedTo": "../personas/domain/prepare.ts",
     "dependencyTypes": ["local", "import", "type-only"],
@@ -378,17 +312,6 @@
     "from": "apps/daemon/src/sessions/session-manager.ts",
     "to": "apps/daemon/src/personas/domain/snapshot.ts",
     "unresolvedTo": "../personas/domain/snapshot.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-runs.ts",
-    "to": "apps/daemon/src/personas/domain/model.ts",
-    "unresolvedTo": "../personas/domain/model.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
