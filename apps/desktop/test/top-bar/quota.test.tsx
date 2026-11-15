@@ -8,7 +8,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { QuotaGlanceButton } = await import("../../src/features/shell/status-bar.tsx");
+const { QuotaGlanceButton } = await import("../../src/features/shell/quota-glance-button.tsx");
 
 afterEach(() => cleanup());
 
