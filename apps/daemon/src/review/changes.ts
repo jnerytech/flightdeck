@@ -6,8 +6,8 @@ import type { Board } from "../board/index.ts";
 import { aheadBehind, cardDiff, git, workingDiff } from "../git/index.ts";
 import { FlightdeckError, HEAD, refArg, resolveAllowedCwd } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
+import { commitHooks, withDigests } from "./commit-files.ts";
 import type { ChangesReader, ChangesResult, ResolvedTarget } from "./domain/target.ts";
-import { commitHooks, withDigests } from "./session-commit.ts";
 import { pushAddress } from "./session-pr.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
