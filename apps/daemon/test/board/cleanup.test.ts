@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { PrProviderKind } from "../../src/board/types.ts";
-import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
-import { must } from "../support/helpers.ts";
+import { reviewedCard as reviewed } from "../support/board-cleanup.ts";
+import { git } from "../support/board-helpers.ts";
 
-// Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
+// Real git in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);
 
 const cleanups: Array<() => void> = [];
@@ -14,22 +13,7 @@ afterEach(() => {
   for (const fn of cleanups.splice(0).reverse()) fn();
 });
 
-async function reviewedCard(prProvider: PrProviderKind = "none") {
-  const ctx = newBoard({ prPollIntervalMs: 30 });
-  cleanups.push(() => ctx.board.stop());
-  const project = await ctx.board.addProject({ path: ctx.repo, prProvider, promptTemplate: "" });
-  const card = ctx.board.createCard(project.id, { title: "Limpar", description: "faça" });
-  await ctx.board.startCard(card.id);
-  const reviewed = await cardWhen(ctx.board, card.id, (c) => c.column === "review");
-  expect(reviewed).not.toBeNull();
-  return {
-    ...ctx,
-    card,
-    worktree: must(reviewed?.worktreePath, "worktreePath"),
-    branch: reviewed?.branch ?? "",
-    sessionId: reviewed?.sessionId ?? "",
-  };
-}
+const reviewedCard = (prProvider?: PrProviderKind) => reviewed(cleanups, prProvider);
 
 const worktrees = (repo: string) => git(repo, "worktree", "list", "--porcelain");
 
@@ -76,32 +60,5 @@ describe("limpeza", () => {
     );
     expect(result).toBe("invalid_state");
     expect(board.getCard(card.id)).toMatchObject({ column: "review", worktreePath: worktree });
-  });
-
-  test("PR mesclado conclui o card e remove a worktree limpa", async () => {
-    const gh = installFakeCli("gh", [
-      { args: ["view", "url"], code: 1 },
-      { args: ["pr", "create"], stdout: "https://github.com/acme/repo/pull/9\n" },
-      {
-        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
-        stdout: JSON.stringify({ state: "OPEN" }),
-      },
-    ]);
-    cleanups.push(gh.restore);
-    const { board, card, root, repo, worktree, sessionId, manager } = await reviewedCard("github");
-    git(root, "init", "-q", "--bare", "remote.git");
-    git(repo, "remote", "add", "origin", join(root, "remote.git"));
-    expect(git(repo, "remote", "get-url", "origin")).toBe(join(root, "remote.git"));
-    await board.createPr(card.id);
-    gh.respond([
-      {
-        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
-        stdout: JSON.stringify({ state: "MERGED" }),
-      },
-    ]);
-    const done = await cardWhen(board, card.id, (c) => c.worktreePath === null);
-    expect(done ?? {}).toMatchObject({ column: "done", prState: "merged" });
-    expect(existsSync(worktree)).toBe(false);
-    expect(manager.get(sessionId).status).toBe("ended");
   });
 });

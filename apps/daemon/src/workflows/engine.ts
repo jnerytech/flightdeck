@@ -11,6 +11,13 @@ import { git } from "../git/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import { noSpending } from "./domain/budget.ts";
+import {
+  childrenOf,
+  type ResumeRefusal,
+  resumeRefusal,
+  sourceRefusal,
+  staleRows,
+} from "./domain/resume-check.ts";
 import { parseWorkflow, type Workflow } from "./domain/schema.ts";
 import {
   type EngineHost,
@@ -23,15 +30,6 @@ import { WorkflowRegistry } from "./registry.ts";
 import { hashOf } from "./repo.ts";
 import { RunStore } from "./run-store.ts";
 import { StepRunner } from "./step-runner.ts";
-
-/** #1266: the rows the engine names after a step: a parallel's items, a loop's check and do. */
-function childrenOf(definition: string, stepId: string): Set<string> {
-  const step = parseWorkflow(definition).workflow?.steps.find((s) => s.id === stepId);
-  if (!step) return new Set();
-  if ("parallel" in step) return new Set(step.parallel.map((_, i) => `${stepId}.${i}`));
-  if ("loop" in step) return new Set([`${stepId}.check`, `${stepId}.do`]);
-  return new Set();
-}
 
 /** The commit a worktree's HEAD is at, from git; null when it cannot say. */
 async function gitHead(worktree: string): Promise<string | null> {
@@ -294,36 +292,36 @@ export class WorkflowEngine {
     const from =
       workflow.steps.find((step) => this.store.stepRow(run.id, step.id, 1)?.status !== "completed")
         ?.id ?? "";
-    const no = (reason: string, params?: Record<string, string>): RunResumeCheck => ({
+    const no = ({ reason, params }: ResumeRefusal): RunResumeCheck => ({
       from,
       ok: false,
       reason,
       ...(params ? { params } : {}),
     });
-    if (run.status !== "failed" || this.resuming.has(run.id)) return no("run_resume_not_failed");
-    // What runs is the stored definition: it must still be the one its hash names.
-    if (hashOf(run.definition) !== run.workflow_hash) {
-      return no("run_resume_workflow_changed", { name: run.workflow_name });
-    }
-    let card: Card;
+    let card: Card | null;
     try {
       card = this.host.card(run.card_id);
     } catch {
-      return no("run_resume_card");
+      card = null;
     }
-    if (card.discarded || !card.worktreePath || card.workflowRunId !== run.id) {
-      return no("run_resume_card");
-    }
-    if (!run.head_at_end) return no("run_resume_no_head");
+    const early = resumeRefusal({
+      name: run.workflow_name,
+      failedAndFree: run.status === "failed" && !this.resuming.has(run.id),
+      definitionIntact: hashOf(run.definition) === run.workflow_hash,
+      cardTakesIt:
+        card !== null && !card.discarded && !!card.worktreePath && card.workflowRunId === run.id,
+      hasHead: !!run.head_at_end,
+    });
+    if (early) return no(early);
     const source = await this.registry.source(project, run.workflow_name).catch(() => null);
-    if (source?.hash !== run.workflow_hash) {
-      return no("run_resume_workflow_changed", { name: run.workflow_name });
-    }
-    if (!this.registry.trusted(project.id, run.workflow_name, source.hash)) {
-      return no("workflow_not_trusted", { name: run.workflow_name });
-    }
-    if ((await this.headOf(card.worktreePath).catch(() => null)) !== run.head_at_end) {
-      return no("run_resume_branch_moved");
+    const late = sourceRefusal(run.workflow_name, run.workflow_hash, source?.hash, () =>
+      this.registry.trusted(project.id, run.workflow_name, run.workflow_hash),
+    );
+    if (late) return no(late);
+    // `early` said the card has a worktree.
+    const worktree = card?.worktreePath ?? "";
+    if ((await this.headOf(worktree).catch(() => null)) !== run.head_at_end) {
+      return no({ reason: "run_resume_branch_moved" });
     }
     return { from, ok: true };
   }
@@ -392,15 +390,12 @@ export class WorkflowEngine {
       // names after it (`<id>.<n>` of a parallel, `<id>.check` and `<id>.do` of a loop), taken from
       // its definition, so a step whose id only looks like one of them keeps its result.
       const own = childrenOf(run.definition, from);
-      const stale = this.db
+      const rows = this.db
         .query<{ step_id: string; attempt: number; status: string }, [string]>(
           "SELECT step_id, attempt, status FROM step_runs WHERE run_id = ?",
         )
-        .all(run.id)
-        .filter(
-          (row) => row.status !== "completed" || row.step_id === check.from || own.has(row.step_id),
-        );
-      for (const row of stale) {
+        .all(run.id);
+      for (const row of staleRows(rows, check.from, own)) {
         this.db
           .query("DELETE FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?")
           .run(run.id, row.step_id, row.attempt);
