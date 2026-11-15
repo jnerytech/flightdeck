@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli } from "../../src/board/pr.ts";
 import { GithubCli } from "../../src/github/index.ts";
 import { AzureIssues } from "../../src/issues/providers.ts";
 import {
@@ -10,6 +9,7 @@ import {
   mapSpawnError,
   sanitizeAzArgs,
 } from "../../src/pr/domain/az-text.ts";
+import { AzureDevOpsCli } from "../../src/pr-hosts/pr.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];

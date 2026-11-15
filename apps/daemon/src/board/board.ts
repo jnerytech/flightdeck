@@ -13,6 +13,7 @@ import type {
 } from "@flightdeck/protocol";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { PrComment } from "../pr/index.ts";
+import { prProvider } from "../pr-hosts/index.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/index.ts";
 import { addWorkflowTemplate, shellCheckRunner, WorkflowEngine } from "../workflows/index.ts";
 import { Arenas } from "./arena.ts";
@@ -26,7 +27,6 @@ import { CheckLoopHost } from "./check-loop-host.ts";
 import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import { Launcher, PENDING_NOTICE } from "./launch.ts";
-import { prProvider } from "./pr.ts";
 import { PrPoll } from "./pr-poll.ts";
 import { Projects } from "./projects.ts";
 import { RadarFeed } from "./radar-feed.ts";

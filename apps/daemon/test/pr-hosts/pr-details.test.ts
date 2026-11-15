@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { AzureDevOpsCli } from "../../src/board/pr.ts";
 import { GithubCli } from "../../src/github/index.ts";
 import { azureDetails, githubDetails } from "../../src/pr/domain/pr-details.ts";
+import { AzureDevOpsCli } from "../../src/pr-hosts/pr.ts";
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {
