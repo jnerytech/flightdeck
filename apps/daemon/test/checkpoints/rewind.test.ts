@@ -249,6 +249,17 @@ describe("rewind: odd names and links (#3024)", () => {
     expect(readdirSync(repo).filter((n) => n.startsWith('"'))).toEqual([]);
   });
 
+  test("a git diff that fails is an error for the preview and the rewind, which restores nothing", async () => {
+    const { store, rewinder, repo, turn } = await turnInRepo();
+    // The target's tree is something git cannot read: both diffs exit non-zero.
+    store.db.run("UPDATE snapshots SET tree = ? WHERE kind = 'before'", ["0".repeat(40)]);
+    expect(await code(rewinder.preview("s1", turn))).not.toBe("ok");
+    expect(await code(rewinder.apply("s1", turn, true))).not.toBe("ok");
+    expect(read(join(repo, "README.md"))).toBe("# repo\nlinha nova\n");
+    expect(existsSync(join(repo, "novo.txt"))).toBe(true);
+    expect(existsSync(join(repo, "apagar.txt"))).toBe(false);
+  });
+
   test("a snapshot blob that cannot be read stops the rewind and writes nothing", async () => {
     const { rewinder, repo, turn } = await turnWith(
       (dir) => writeFileSync(join(dir, "gone.txt"), "only in the snapshot\n"),
