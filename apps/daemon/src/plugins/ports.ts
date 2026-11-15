@@ -32,9 +32,19 @@ export interface PinStore {
   delete(id: string): Later<void>;
 }
 
+/** What the manager reads of a marketplace's folder. */
+export interface PluginFiles {
+  /** The text of the catalog (`.claude-plugin/marketplace.json`) in the marketplace folder `location`. */
+  readCatalog(location: string): Promise<string>;
+  /** The path with its symbolic links resolved; it rejects when the path does not exist. */
+  realpath(path: string): Promise<string>;
+}
+
 export interface PluginsOptions {
   cli: PluginCli;
   pins: PinStore;
+  /** The marketplace folders; the disk when left out. */
+  files?: PluginFiles;
   clock?: () => number;
   /** Told of every install, update, removal and marketplace change that landed. */
   record?: (decision: PluginDecision) => Later<void>;

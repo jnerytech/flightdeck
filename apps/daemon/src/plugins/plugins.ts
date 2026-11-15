@@ -4,9 +4,9 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import { readFile, realpath } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { FlightdeckError, isInside, parseJsonWith } from "../kernel/index.ts";
+import { diskPluginFiles } from "./adapters/plugin-files.ts";
 import { AnyJson, JsonObject } from "./domain/json-reads.ts";
 import {
   arg,
@@ -30,10 +30,14 @@ import {
   type UpdatePreview,
 } from "./domain/results.ts";
 import { inspectPlugin } from "./inventory.ts";
-import type { CliResult, Pin, PluginDecision, PluginsOptions } from "./ports.ts";
+import type { CliResult, Pin, PluginDecision, PluginFiles, PluginsOptions } from "./ports.ts";
 
 export class Plugins {
-  constructor(private readonly opts: PluginsOptions) {}
+  private readonly files: PluginFiles;
+
+  constructor(private readonly opts: PluginsOptions) {
+    this.files = opts.files ?? diskPluginFiles;
+  }
 
   private closed = false;
 
@@ -361,10 +365,7 @@ export class Plugins {
       );
     let catalog: unknown;
     try {
-      catalog = parseJsonWith(
-        AnyJson,
-        await readFile(join(location, ".claude-plugin", "marketplace.json"), "utf8"),
-      );
+      catalog = parseJsonWith(AnyJson, await this.files.readCatalog(location));
     } catch {
       throw invalid(
         `the catalog of the marketplace ${marketplace} could not be read`,
@@ -387,8 +388,8 @@ export class Plugins {
     const dir = resolve(location, source);
     // The catalog was just read from `location`, so it is there; the plugin's folder may not be.
     const [realLocation, realDir] = await Promise.all([
-      realpath(location),
-      realpath(dir).catch(() => null),
+      this.files.realpath(location),
+      this.files.realpath(dir).catch(() => null),
     ]);
     if (!realDir || !isInside(realLocation, realDir)) return null;
     return dir;
