@@ -89,17 +89,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/review/card-review.ts",
-    "to": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
-    "unresolvedTo": "../runtime/claude-sdk-runtime.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/server/handlers/project.ts",
     "to": "apps/daemon/src/board/pr-provider.ts",
     "unresolvedTo": "../../board/pr-provider.ts",
