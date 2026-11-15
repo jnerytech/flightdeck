@@ -7,6 +7,7 @@ import { envInput, remoteCommand } from "../actions/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
 import type { TerminalManager } from "../terminal/index.ts";
+import { execTarget, jumpChain, refuseAuth, refuseHostKey } from "./domain/connect-rules.ts";
 import {
   type AskpassHook,
   askpassEnv,
@@ -155,31 +156,9 @@ export class SshConnector {
     timeoutS: number;
     privateKey?: string;
   }): Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean }> {
-    const target = this.opts.targets.byName(req.target);
-    if (!target && this.opts.targets.countNamed(req.target) === 0) {
-      throw new FlightdeckError(
-        "not_found",
-        `destination ${req.target} not found`,
-        "ssh_target_unknown",
-        { name: req.target },
-      );
-    }
-    if (!target) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `more than one destination is named ${req.target}`,
-        "ssh_target_ambiguous",
-        { name: req.target },
-      );
-    }
-    if (target.auth === "password") {
-      throw new FlightdeckError(
-        "invalid_state",
-        `${target.name} uses a password: an ssh action runs with nobody to type it`,
-        "ssh_password_in_action",
-        { name: target.name },
-      );
-    }
+    const target = execTarget(req.target, this.opts.targets.byName(req.target), () =>
+      this.opts.targets.countNamed(req.target),
+    );
     const run = this.opts.exec;
     if (!run) {
       throw new FlightdeckError(
@@ -224,43 +203,8 @@ export class SshConnector {
     remote: string[] = [],
   ): Promise<Plan> {
     const { targets } = this.opts;
-    if (target.auth === "vault-key" && !privateKey) {
-      throw new FlightdeckError(
-        "bad_request",
-        "the vault key did not come with the request",
-        "ssh_key_missing",
-      );
-    }
-    if (target.auth !== "vault-key" && privateKey) {
-      throw new FlightdeckError(
-        "bad_request",
-        "a vault key only applies to vault-key",
-        "ssh_key_not_for_auth",
-      );
-    }
-    if (target.auth === "password" && !this.opts.askpass) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "a password needs askpass, which is not available",
-        "ssh_askpass_off",
-      );
-    }
-    // The outermost jump first, the target last.
-    const members: SshTarget[] = [];
-    for (let at: SshTarget | null = target; at; at = at.jump ? targets.get(at.jump) : null) {
-      members.unshift(at);
-    }
-    const hops = members.slice(0, -1);
-    for (const hop of hops) {
-      if (hop.auth === "vault-key" || hop.auth === "password") {
-        throw new FlightdeckError(
-          "invalid_state",
-          `jump ${hop.name} uses ${hop.auth}: a jump can only use agent or a key file`,
-          "ssh_jump_auth",
-          { name: hop.name, auth: hop.auth },
-        );
-      }
-    }
+    refuseAuth(target, privateKey, !!this.opts.askpass);
+    const { members, hops } = jumpChain(target, (id) => targets.get(id));
     await inSequence(members, async (member) => {
       await this.trust(member);
     });
@@ -316,22 +260,7 @@ export class SshConnector {
         { name: member.name },
       );
     }
-    if (check.status === "unknown") {
-      throw new FlightdeckError(
-        "hostkey_unconfirmed",
-        `${member.name}: confirm the fingerprint ${check.fingerprint} before connecting`,
-        "ssh_hostkey_unconfirmed",
-        { name: member.name, fingerprint: check.fingerprint },
-      );
-    }
-    if (check.status === "changed") {
-      throw new FlightdeckError(
-        "hostkey_changed",
-        `${member.name}: the server key changed (pinned ${check.pinned}, now ${check.fingerprint})`,
-        "ssh_hostkey_changed",
-        { name: member.name, pinned: check.pinned ?? "", fingerprint: check.fingerprint },
-      );
-    }
+    refuseHostKey(member, check);
   }
 
   /** Writes (once) the known_hosts and the ssh config, each named by the hash of its content. */
