@@ -81,6 +81,14 @@ import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { issueNumber } from "../issues/index.ts";
 import { ExternalSeal, IssuesPanel } from "../issues/ui.ts";
 import { quietAlerts } from "../needs-you/index.ts";
+import { cardKey } from "./board-card-keys.ts";
+import { BoardLoadError } from "./board-load-error.tsx";
+import { BulkRunDialog } from "./bulk-run-dialog.tsx";
+import { CardStartDialog } from "./card-start-dialog.tsx";
+import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
+import { BoardColumnEmpty } from "./column-empty.tsx";
+import { DeleteCardDialog } from "./delete-card-dialog.tsx";
+import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
 import {
   bulkRunOutcome,
   bulkSkipReason,
@@ -94,15 +102,7 @@ import {
   startQuotaLines,
   updateMany,
   updateSummary,
-} from "./board-bulk.ts";
-import { cardKey } from "./board-card-keys.ts";
-import { BoardLoadError } from "./board-load-error.tsx";
-import { BulkRunDialog } from "./bulk-run-dialog.tsx";
-import { CardStartDialog } from "./card-start-dialog.tsx";
-import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
-import { BoardColumnEmpty } from "./column-empty.tsx";
-import { DeleteCardDialog } from "./delete-card-dialog.tsx";
-import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
+} from "./domain/board-bulk.ts";
 import { askAbout, dragNeeds, type Lacking, missingFor } from "./domain/board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
 import type { BoardKeyAction } from "./domain/board-keys.ts";
