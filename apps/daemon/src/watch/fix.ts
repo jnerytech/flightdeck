@@ -17,6 +17,7 @@ import { masked, runChecks } from "./domain/check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./domain/drift.ts";
 import { buildPrompt, heldSummary } from "./domain/fix-prompt.ts";
 import { COMMIT_ID, type FixRound, type RoundRow, toRound } from "./domain/fix-round.ts";
+import { countedRounds, roundsUsedUp, spendLimit } from "./domain/round-limits.ts";
 import type { WatchBoard } from "./ports.ts";
 import type { WatchSettings } from "./settings.ts";
 import type { PrWatcher, WatchTrigger } from "./watch.ts";
@@ -288,8 +289,7 @@ export class PrFixer {
 
   /** The rounds that count against the limits: those since Vigiar was last turned on. */
   private counted(cardId: string): FixRound[] {
-    const all = this.rounds(cardId);
-    return all.slice(all.length - this.opts.watcher.roundsSinceStart(cardId));
+    return countedRounds(this.rounds(cardId), this.opts.watcher.roundsSinceStart(cardId));
   }
 
   /** Why no round may start for the card now, or `null`: the limits, before a session is paid for. */
@@ -311,25 +311,14 @@ export class PrFixer {
     const settings = watcher.settings(card.projectId);
     const reached = rounds ? this.roundLimit(cardId) : null;
     if (reached) return reached;
-    const done = this.counted(cardId);
-    const turns = done.reduce((sum, r) => sum + r.turns, 0);
-    if (settings.maxTurns !== null && turns >= settings.maxTurns) {
-      return `${turns} of ${settings.maxTurns} turns used on this PR`;
-    }
-    const cost = done.reduce((sum, r) => sum + r.costUsd, 0);
-    if (settings.budgetUsd !== null && cost >= settings.budgetUsd) {
-      return `US$ ${cost.toFixed(2)} of US$ ${settings.budgetUsd.toFixed(2)} spent on this PR`;
-    }
-    const day = db
-      .query<{ cost: number | null }, [string, string]>(
-        `SELECT SUM(r.cost_usd) AS cost FROM pr_watch_rounds r JOIN cards c ON c.id = r.card_id
-         WHERE c.project_id = ? AND r.started_at > ?`,
-      )
-      .get(card.projectId, new Date(this.now - DAY_MS).toISOString())?.cost as number | null;
-    if (settings.dailyUsd !== null && (day ?? 0) >= settings.dailyUsd) {
-      return `US$ ${(day ?? 0).toFixed(2)} of US$ ${settings.dailyUsd.toFixed(2)} per day spent by this project's rounds`;
-    }
-    return null;
+    const dayCost = (): number =>
+      db
+        .query<{ cost: number | null }, [string, string]>(
+          `SELECT SUM(r.cost_usd) AS cost FROM pr_watch_rounds r JOIN cards c ON c.id = r.card_id
+           WHERE c.project_id = ? AND r.started_at > ?`,
+        )
+        .get(card.projectId, new Date(this.now - DAY_MS).toISOString())?.cost ?? 0;
+    return spendLimit(this.counted(cardId), settings, dayCost);
   }
 
   /** The rounds that count against the card's limit, and the limit with the rounds allowed on top. */
@@ -344,13 +333,7 @@ export class PrFixer {
 
   /** The card's rounds used up: the reason with each round, or null while some are left. */
   private roundLimit(cardId: string): string | null {
-    const { max } = this.roundBudget(cardId);
-    const done = this.counted(cardId);
-    if (done.length < max) return null;
-    const list = done.map(
-      (r) => `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
-    );
-    return `limit of ${max} rounds reached — ${list.join("; ")}`;
+    return roundsUsedUp(this.counted(cardId), this.roundBudget(cardId).max);
   }
 
   /**
