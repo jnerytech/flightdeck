@@ -1,6 +1,5 @@
-import { ChevronDown, EyeOff, Plane, Plus } from "lucide-react";
+import { ChevronDown, Plane, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState, useSyncExternalStore } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClientSwitcher } from "@/features/clients/ui.ts";
 import {
@@ -11,7 +10,6 @@ import {
 } from "@/features/hosts/index.ts";
 import { RenameHostDialog } from "@/features/hosts/ui.ts";
 import { activeWorktreeFilter, projectTree } from "@/features/projects/index.ts";
-import { ProjectTree, RailFlyout } from "@/features/projects/ui.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { setupProgress, setupSteps } from "@/features/setup/index.ts";
 import { type SidebarGroup, toggleGroup } from "@/features/viewprefs/index.ts";
@@ -21,7 +19,6 @@ import type { Route } from "@/lib/router.ts";
 import { cn } from "@/lib/utils";
 import { APP_VERSION, anyHostHas } from "@/lib/version.ts";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
-import { ProgressRing } from "@/shared/status/index.ts";
 import { activeNav } from "./domain/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "./domain/nav-badges.ts";
 import { pendingCount } from "./domain/pending-count.ts";
@@ -29,6 +26,7 @@ import { SidebarFoot } from "./sidebar-foot.tsx";
 import { SidebarGroups } from "./sidebar-groups.tsx";
 import { HostsList, ITEM } from "./sidebar-hosts.tsx";
 import { NAV_ICON, NavButton, NavGroup, NavIcon } from "./sidebar-nav.tsx";
+import { SidebarWork } from "./sidebar-work.tsx";
 
 /** A section title that folds its list. */
 function SectionTitle(
@@ -175,10 +173,6 @@ export function Sidebar(
     setFolded(next);
     props.store.viewPrefs.setSidebarFolded(next);
   };
-  // The project tree beside the rail's Projects icon (#689). Only a collapsed bar has it open, so
-  // a bar that was expanded meanwhile does not bring it back on the next collapse.
-  const [projectsFlyout, setProjectsFlyout] = useState(false);
-  const projectsOpen = collapsed && projectsFlyout;
   /** The host whose removal is being confirmed. */
   const [removing, setRemoving] = useState<HostView | null>(null);
   const [renaming, setRenaming] = useState<HostView | null>(null);
@@ -220,138 +214,23 @@ export function Sidebar(
       {/* The one area that scrolls, between the fixed header and footer (#567). */}
       <div data-slot="sidebar-body" className="sidebar-body">
         <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
-          <NavGroup
-            label={t("sidebarGroups.work")}
+          <SidebarWork
+            t={t}
             collapsed={collapsed}
             folded={folded.includes("work")}
             onToggle={() => toggle("work")}
-          >
-            {showSetup && (
-              <div className="group/setup host-row">
-                <NavButton
-                  collapsed={collapsed}
-                  icon={<ProgressRing done={progress.done} total={progress.total} />}
-                  active={here === "setup"}
-                  label={t("setup.title")}
-                  name={t("setup.row", { done: progress.done, total: progress.total })}
-                  tail={
-                    <span className="shrink-0 text-sidebar-foreground/70 text-xs tabular-nums">
-                      {t("setup.count", { done: progress.done, total: progress.total })}
-                    </span>
-                  }
-                  onClick={() => go({ name: "setup" })}
-                />
-                {!collapsed && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover/setup:opacity-100"
-                    aria-label={t("setup.hide")}
-                    onClick={() => props.store.setup.setHidden(true)}
-                  >
-                    <EyeOff aria-hidden="true" />
-                  </Button>
-                )}
-              </div>
-            )}
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="overview" aria-hidden="true" className={NAV_ICON} />}
-              active={here === "overview"}
-              label={t("nav.overview")}
-              onClick={() => go({ name: "overview" })}
-            />
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="sessions" aria-hidden="true" className={NAV_ICON} />}
-              active={here === "sessions"}
-              label={t("sidebar.sessions")}
-              name={t("sidebar.openSessions")}
-              onClick={() => go({ name: "hub" })}
-            />
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="needs-you" aria-hidden="true" className={NAV_ICON} />}
-              active={here === "needs-you"}
-              strong={pending > 0}
-              attention={pending > 0}
-              {...(pending > 0 ? { hint: String(pending) } : {})}
-              label={t("sidebar.needsYou")}
-              onClick={() => go({ name: "needs-you" })}
-              tail={
-                pending > 0 && (
-                  <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
-                    {pending}
-                  </Badge>
-                )
-              }
-            />
-            {collapsed && tree.length > 0 ? (
-              // The rail has no room for the tree: the icon opens it beside the rail instead.
-              <RailFlyout
-                label={t("sidebar.projects")}
-                open={projectsOpen}
-                onOpenChange={setProjectsFlyout}
-                trigger={
-                  <NavButton
-                    collapsed={collapsed}
-                    icon={<NavIcon name="projects" aria-hidden="true" className={NAV_ICON} />}
-                    active={here === "projects"}
-                    label={t("sidebar.projects")}
-                    opens={{ expanded: projectsOpen }}
-                    onClick={() => setProjectsFlyout(!projectsOpen)}
-                  />
-                }
-              >
-                <ProjectTree
-                  store={props.store}
-                  tree={tree}
-                  filter={activeWorktreeFilter(state)}
-                  stay={here === "sessions"}
-                  allLink
-                  onPicked={() => setProjectsFlyout(false)}
-                  t={t}
-                  go={(route) => {
-                    setProjectsFlyout(false);
-                    go(route);
-                  }}
-                />
-              </RailFlyout>
-            ) : (
-              <NavButton
-                collapsed={collapsed}
-                icon={<NavIcon name="projects" aria-hidden="true" className={NAV_ICON} />}
-                active={here === "projects"}
-                label={t("sidebar.projects")}
-                onClick={() => go({ name: "all-projects" })}
-              />
-            )}
-            {!collapsed && tree.length > 0 && (
-              <ProjectTree
-                store={props.store}
-                tree={tree}
-                filter={activeWorktreeFilter(state)}
-                stay={here === "sessions"}
-                t={t}
-                go={go}
-              />
-            )}
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="board" aria-hidden="true" className={NAV_ICON} />}
-              active={here === "board"}
-              label={t("sidebar.board")}
-              disabled={!navHost}
-              onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
-            />
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="pull-requests" aria-hidden="true" className={NAV_ICON} />}
-              active={here === "pull-requests"}
-              label={t("sidebar.pullRequests")}
-              onClick={() => go({ name: "pull-requests" })}
-            />
-          </NavGroup>
+            here={here}
+            go={go}
+            pending={pending}
+            showSetup={showSetup}
+            progress={progress}
+            onHideSetup={() => props.store.setup.setHidden(true)}
+            store={props.store}
+            tree={tree}
+            filter={activeWorktreeFilter(state)}
+            navHost={navHost}
+            onOpenProjectScreen={props.onOpenProjectScreen}
+          />
           <SidebarGroups
             hosts={state.hosts}
             navHostId={navHost?.id}
