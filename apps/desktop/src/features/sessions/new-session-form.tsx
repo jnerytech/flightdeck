@@ -13,7 +13,6 @@ import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/ui.ts";
-import { ModelOptions } from "./model-options.tsx";
 import {
   choicesToKeep,
   createPayload,
@@ -24,8 +23,9 @@ import {
   startChoices,
   startFolder,
   underRoot,
-} from "./new-session.ts";
-import { CLAUDE_MODELS } from "./new-session-prefs.ts";
+} from "./domain/new-session.ts";
+import { CLAUDE_MODELS } from "./domain/new-session-choices.ts";
+import { ModelOptions } from "./model-options.tsx";
 
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 type Runtime = "claude" | "opencode";

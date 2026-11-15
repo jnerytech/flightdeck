@@ -9,6 +9,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { EmptyState, OpenedPanel, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { BackupPanel } from "./backup-panel.tsx";
+import type { SecretInfo } from "./domain/vault-types.ts";
 import { EditSecretForm } from "./edit-secret-form.tsx";
 import { NewSecretForm } from "./new-secret-form.tsx";
 import { RulesEditor } from "./rules-editor.tsx";
@@ -16,7 +17,6 @@ import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
 import type { SecretMeta } from "./vault.ts";
 import { VaultReport } from "./vault-report.tsx";
-import type { SecretInfo } from "./vault-types.ts";
 
 const REVEAL_MS = 10_000;
 const CLEAR_MS = 30_000;

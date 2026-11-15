@@ -10,7 +10,7 @@ import { updateConfigFile } from "../config.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { installService, resolveServiceClaude, type ServiceContext } from "./domain/install.ts";
 import { lingerState } from "./domain/linger.ts";
-import { stableBinPath } from "./update.ts";
+import { stableBinPath } from "./domain/version.ts";
 
 /** What the app is told after the install. */
 export interface AppServiceResult {

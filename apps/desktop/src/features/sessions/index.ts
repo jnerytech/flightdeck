@@ -17,6 +17,7 @@ export {
 } from "./cache-timer-model.ts";
 export { SessionCommandsSlice } from "./commands.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
+export { byProject, CONTINUATION } from "./domain/resume-offer.ts";
 export { sessionKey } from "./domain/session-key.ts";
 export { sessionLabel } from "./domain/session-label.ts";
 export type { SessionState } from "./domain/session-state.ts";
@@ -58,7 +59,6 @@ export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { newSessionHost } from "./new-session-host.ts";
 export { NewSessionPrefs } from "./new-session-prefs.ts";
 export { pendingText, pendingWhere } from "./pending-text.ts";
-export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { rowRoute } from "./row-route.ts";
 export type { SessionActions } from "./session-view.tsx";
 export { elsewhereNotice, waitingCards } from "./start-elsewhere.ts";
