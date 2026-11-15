@@ -2,7 +2,7 @@
  * Phase 30: sending webhooks politely. One queue per target, one send at a time, paced, with
  * retries and backoff, and a stop for a target the receiver will never accept.
  */
-import { KIND_LABEL, type NotifyEvent } from "./webhook-format.ts";
+import { KIND_LABEL, type NotifyEvent } from "./domain/webhook-format.ts";
 
 /** What a send gave back: the HTTP status, `null` when the request itself failed. */
 export interface SendResult {

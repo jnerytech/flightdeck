@@ -5,7 +5,7 @@ import {
   type NotifyEvent,
   ntfyTopic,
   type WebhookKind,
-} from "../../src/features/webhook/webhook-format.ts";
+} from "../../src/features/webhook/domain/webhook-format.ts";
 
 const event = (over: Partial<NotifyEvent> = {}): NotifyEvent => ({
   id: "01JEVENT0000000000000000AA",
@@ -148,9 +148,15 @@ describe("webhook-formatar: generic", () => {
   });
 
   test("without a signing secret there is no signature header", async () => {
-    const out = await formatWebhook("generic", event());
+    const out = await formatWebhook("generic", event(), { now: () => 1_793_534_000_000 });
     expect(out.headers["X-Flightdeck-Signature"]).toBeUndefined();
-    expect(out.headers["X-Flightdeck-Timestamp"]).toBeDefined();
+    expect(out.headers["X-Flightdeck-Timestamp"]).toBe("1793534000");
+  });
+
+  test("a generic post with no clock does not compile: the formatter has none of its own", () => {
+    // @ts-expect-error the generic target is signed with the caller's clock, so `now` is required
+    const post = () => formatWebhook("generic", event());
+    expect(post).toBeInstanceOf(Function);
   });
 });
 
