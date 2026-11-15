@@ -1,13 +1,20 @@
 import type { RoiSummaryResult } from "@flightdeck/protocol";
-import type { AppState, HostResult } from "../../lib/app-store.ts";
+import type { HostResult } from "../../lib/kernel.ts";
 import { hostsWith } from "../../lib/version.ts";
 import type { RoiMoney } from "./domain/roi.ts";
 import type { RoiSettings } from "./domain/roi-settings.ts";
 
+/** The part of a host the ROI reads: whether it is online and offers `roi.summary`. */
+interface RoiHost {
+  id: string;
+  status: string;
+  hostInfo?: { features?: readonly string[] | undefined } | null | undefined;
+}
+
 /** What the ROI reads and asks through the app's store. */
 export interface RoiCore {
   /** The hosts the app knows. */
-  hosts(): AppState["hosts"];
+  hosts(): RoiHost[];
   /** Milliseconds now. */
   now(): number;
   /** A host's `roi.summary`, its refusal coming back as a result instead of a banner. */

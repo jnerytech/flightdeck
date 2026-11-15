@@ -34,17 +34,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/domain/check-loop-engine.ts",
-    "to": "apps/daemon/src/watch/domain/check-run.ts",
-    "unresolvedTo": "../../watch/domain/check-run.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/types.ts",
     "to": "apps/daemon/src/workflows/check-runner.ts",
     "unresolvedTo": "../workflows/check-runner.ts",
