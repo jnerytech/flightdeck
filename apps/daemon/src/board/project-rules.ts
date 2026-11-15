@@ -2,9 +2,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { PermissionRule } from "@flightdeck/protocol";
 import { FlightdeckError, layoutLike, parseJsonText, writeFileAtomic } from "../kernel/index.ts";
-
-/** Where Claude Code keeps a project's local (not versioned) settings. */
-export const LOCAL_SETTINGS = ".claude/settings.local.json";
+import { LOCAL_SETTINGS } from "../worktrees/index.ts";
 
 type Settings = Record<string, unknown> & { permissions?: Record<string, unknown> };
 

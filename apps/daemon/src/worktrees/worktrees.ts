@@ -1,7 +1,6 @@
 import { lstat, readFile, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { WorktreeItem, WorktreeRemoveResult, WorktreesResult } from "@flightdeck/protocol";
-import { LOCAL_SETTINGS } from "../board/project-rules.ts";
 import { type CommandResult, samePath } from "../kernel/index.ts";
 import {
   blockersOf,
@@ -21,6 +20,7 @@ import {
   statusDirty,
   type WorktreeCard,
 } from "./domain/cleanup-rules.ts";
+import { LOCAL_SETTINGS } from "./domain/local-settings.ts";
 import type { FolderLocks } from "./domain/locks.ts";
 
 export interface WorktreeProject {
