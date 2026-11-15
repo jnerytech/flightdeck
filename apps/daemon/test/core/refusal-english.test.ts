@@ -365,6 +365,7 @@ const MSGS5_FILES = [
   "sessions/session-runs.ts",
   "runtime/claude-sdk-runtime.ts",
   "plugins/plugins.ts",
+  "plugins/domain/plugin-json.ts",
   "actions/actions.ts",
   "actions/catalog.ts",
 ];

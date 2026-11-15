@@ -15,15 +15,8 @@ import { dirname, join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { startDaemon } from "../../src/main.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
-import {
-  claudeCli,
-  filePins,
-  type Pin,
-  type PinStore,
-  type PluginDecision,
-  Plugins,
-  pluginDecisionLog,
-} from "../../src/plugins/plugins.ts";
+import { claudeCli, filePins, Plugins, pluginDecisionLog } from "../../src/plugins/plugins.ts";
+import type { Pin, PinStore, PluginDecision } from "../../src/plugins/ports.ts";
 import { startServer } from "../../src/server.ts";
 import { gitRepo, newBoard } from "../support/board-helpers.ts";
 import { BASELINE_FEATURES, tempDir } from "../support/helpers.ts";

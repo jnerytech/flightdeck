@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  type CliResult,
-  type PinStore,
-  type PluginCli,
-  Plugins,
-} from "../../src/plugins/plugins.ts";
+import { Plugins } from "../../src/plugins/plugins.ts";
+import type { CliResult, PinStore, PluginCli } from "../../src/plugins/ports.ts";
 import { startServer } from "../../src/server.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
