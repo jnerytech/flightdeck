@@ -6,7 +6,6 @@
 import {
   type EffortLevel,
   inSequence,
-  type MessageInfo,
   type PermissionMode,
   type SessionTeam,
   type TeamInfo,
@@ -31,7 +30,9 @@ import {
 } from "./domain/instructions.ts";
 import { PerKeyQueue } from "./domain/serial.ts";
 import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./domain/stored.ts";
+import { toInfo, toMember, toStatus } from "./domain/team-view.ts";
 import {
+  label,
   MAX_WORKERS,
   NO_SPEC,
   numberOf,
@@ -42,12 +43,6 @@ import type { TeamsOptions } from "./options.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
-
-/**
- * The name the cards and sessions of a team carry. A card's branch comes from its title cut short,
- * so a long team name would give every worker the same branch: it is cut before the number.
- */
-const label = (name: string): string => name.slice(0, 24).trimEnd();
 
 const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("bad_request", message, reason, params);
@@ -122,34 +117,15 @@ export class Teams {
     } else if (sessionId) {
       state = MANAGED_STATE[this.opts.manager.get(sessionId).status];
     }
-    return {
-      name: stored.name,
-      role: stored.role,
-      persona: stored.persona,
-      model: stored.model ?? null,
-      permission: stored.permission ?? null,
-      cardId: stored.cardId,
-      sessionId,
-      address: sessionId ? `${this.opts.host}/${sessionId}` : null,
-      sessionState: state,
-      number: numberOf(stored),
-    };
+    return toMember(stored, this.opts.host, { sessionId, state });
   }
 
   private info(row: TeamRow): TeamInfo {
-    return {
-      id: row.id,
-      name: row.name,
-      projectId: row.project_id,
-      goal: row.goal,
-      coordinator: row.coordinator,
-      members: this.stored(row).map((m) => this.member(m)),
-      checks: parseJsonOr(STORED_CHECKS, row.checks, []),
-      state: row.state,
-      pausedBy: row.paused_by,
-      instructionsVersion: row.instructions_version,
-      createdAt: row.created_at,
-    };
+    return toInfo(
+      row,
+      this.stored(row).map((m) => this.member(m)),
+      parseJsonOr(STORED_CHECKS, row.checks, []),
+    );
   }
 
   list(projectId?: string): TeamInfo[] {
@@ -238,29 +214,8 @@ export class Teams {
         team: team.name,
       });
     }
-    const messages = this.opts.messaging
-      .list({ team: id, days: 365, limit: 1000 })
-      .filter((m) => m.kind === "session");
-    const last = (member: TeamMember): MessageInfo | undefined =>
-      messages.find((m) => m.fromSession === member.sessionId);
-    const row = this.row(id);
-    return {
-      team,
-      messages: messages.length,
-      outcome:
-        row.report_text && row.report_at
-          ? { text: row.report_text, at: row.report_at, done: row.report_done === 1 }
-          : null,
-      members: team.members.map((member) => {
-        const report = last(member);
-        return {
-          ...member,
-          lastReport: report ? { text: report.text, at: report.createdAt } : null,
-          sent: messages.filter((m) => m.fromSession === member.sessionId).length,
-          received: messages.filter((m) => m.toSession === member.sessionId).length,
-        };
-      }),
-    };
+    const listed = this.opts.messaging.list({ team: id, days: 365, limit: 1000 });
+    return toStatus(team, this.row(id), listed);
   }
 
   // --- creating ---

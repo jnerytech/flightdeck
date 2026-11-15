@@ -1,32 +1,6 @@
-import {
-  ArrowLeft,
-  ArrowLeftRight,
-  ArrowRight,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Pin,
-  PinOff,
-  Plus,
-  X,
-} from "lucide-react";
-import {
-  type CSSProperties,
-  Fragment,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { type CSSProperties, Fragment, type ReactNode, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { HostDot } from "@/features/hosts/ui.ts";
 import { CacheTimer } from "@/features/sessions/ui.ts";
 import { cn } from "@/lib/utils";
@@ -36,9 +10,11 @@ import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { tabKind } from "./domain/tab-badge.ts";
 import { TabBadgeGlyph } from "./tab-badge-glyph.tsx";
 import { TAB_ICONS, tabFacts, tabTitle } from "./tab-facts.ts";
+import { ActiveMenu } from "./tab-menu.tsx";
 import { TabOverflow } from "./tab-overflow.tsx";
 import type { Tab, Tabs } from "./tabs.ts";
 import { useStripScroll } from "./use-strip-scroll.ts";
+import { useTabAnnounce } from "./use-tab-announce.ts";
 import { useTabDrag } from "./use-tab-drag.ts";
 
 /** Past this many tabs the badges shrink to dots and the strip offers a menu of all of them. */
@@ -115,67 +91,24 @@ export function TabBar(
     return groupOf(tab)?.hostId ?? store.hostTabs.hostId;
   };
   const { dropOn, dragProps } = useTabDrag();
-  /** What a screen reader is told about the last move or the host the row switched to. */
-  const [announcement, setAnnouncement] = useState("");
-  // The first area's row says which host it switched to and how many tabs it has, once, by its name.
-  // A window that opens on a host says nothing, and neither does a host not loaded yet: the id is
-  // not a name a person knows.
-  const rowHost = shared ? store.hostTabs.hostId : null;
-  const rowName = state.hosts.find((h) => h.id === rowHost)?.name ?? null;
-  const hostTabCount = rowHost ? store.hostTabs.tabCount(rowHost) : 0;
-  const announcedHost = useRef<string | null | undefined>(undefined);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new tab in the same host does not speak
-  useEffect(() => {
-    if (announcedHost.current === undefined) {
-      announcedHost.current = rowHost;
-      return;
-    }
-    if (!rowHost || rowName === null || announcedHost.current === rowHost) return;
-    announcedHost.current = rowHost;
-    setAnnouncement(t("tabs.hostCount", { host: rowName, n: hostTabCount }));
-  }, [rowHost, rowName]);
-  /** The tab a keyboard move just went off with: the focus goes back to it. */
-  const focusTab = useRef<string | null>(null);
   const active = sharedActive ? undefined : tabs.tabs.find((tab) => tab.id === tabs.activeId);
-  /** A move button just went off with the focus on it: the focus goes to the tab instead. */
-  const refocusTab = useRef(false);
   const { scrollerProps, tablist, more, step } = useStripScroll([
     tabs.activeId,
     row.length,
     sharedActive,
     shared?.activeId,
   ]);
-  const compact = row.length > COMPACT_AT;
-  useEffect(() => {
-    if (focusTab.current) {
-      const id = focusTab.current;
-      focusTab.current = null;
-      tablist.current?.querySelector<HTMLElement>(`[role="tab"][data-tab-id="${id}"]`)?.focus();
-    }
-    if (!refocusTab.current) return;
-    refocusTab.current = false;
-    tablist.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+  const { announcement, moveByKey, shift } = useTabAnnounce({
+    store,
+    state,
+    tabs,
+    shared,
+    setOf,
+    tablist,
   });
+  const compact = row.length > COMPACT_AT;
   // No tab, no strip: the area shows the start screen alone.
   if (row.length === 0) return null;
-  const shift = (id: string, delta: -1 | 1) => {
-    tabs.shift(id, delta);
-    refocusTab.current = !tabs.canShift(id, delta);
-  };
-  /** Moves a tab one place with the keyboard and says where it went. */
-  const moveByKey = (tab: Tab, delta: -1 | 1) => {
-    const own = setOf(tab);
-    if (!own.canShift(tab.id, delta)) return;
-    own.shift(tab.id, delta);
-    focusTab.current = tab.id;
-    setAnnouncement(
-      t("tabs.moved", {
-        title: tabTitle(tab, state, store),
-        n: own.tabs.findIndex((other) => other.id === tab.id) + 1,
-        total: own.tabs.length,
-      }),
-    );
-  };
   const activeLabel = active ? tabTitle(active, state, store) : "";
   /** Every tab of the row as the list of all tabs shows it. */
   const listRows = row.map((tab) => {
@@ -211,44 +144,8 @@ export function TabBar(
       <Plus />
     </Button>
   );
-  /** The current tab's menu: move, pin and the rest, at the end of the strip and of the narrow row. */
   const activeMenu = active && (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mb-0.5 size-7"
-          aria-label={t("tabs.actions", { title: activeLabel })}
-        >
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          disabled={!tabs.canShift(active.id, -1)}
-          onSelect={() => shift(active.id, -1)}
-        >
-          <ArrowLeft aria-hidden="true" />
-          {t("tabs.moveLeft", { title: activeLabel })}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={!tabs.canShift(active.id, 1)}
-          onSelect={() => shift(active.id, 1)}
-        >
-          <ArrowRight aria-hidden="true" />
-          {t("tabs.moveRight", { title: activeLabel })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => store.workspace.moveToOtherArea(active.id)}>
-          <ArrowLeftRight aria-hidden="true" />
-          {t("tabs.moveToOther", { title: activeLabel })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => tabs.pin(active.id, !active.pinned)}>
-          {active.pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
-          {t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ActiveMenu store={store} tabs={tabs} active={active} label={activeLabel} shift={shift} />
   );
   if (narrow) {
     // One button: the current tab (icon, title, its host's dot) and how many there are; it opens
