@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { CLOSE_HEARTBEAT } from "@flightdeck/protocol";
-import { type CloseFacts, closeLine } from "../../src/server/close-log.ts";
+import { type CloseFacts, closeLine } from "../../src/server/domain/close-log.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { newManager, poll } from "../support/helpers.ts";
 
