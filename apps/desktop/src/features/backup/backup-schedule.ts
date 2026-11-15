@@ -2,17 +2,9 @@ import { z } from "zod";
 import { readStored } from "@/shared/lib/index.ts";
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
 import { type BackupFolder, folderTarget } from "./backup-target.ts";
-import {
-  type BackupSchedule,
-  backupFileName,
-  type Cadence,
-  DEFAULT_KEEP,
-  isDue,
-  type RunReport,
-  type ScheduleTarget,
-  type SkipReason,
-} from "./domain/backup-schedule.ts";
-import { type BackupTarget, keepNewest } from "./domain/backup-target.ts";
+import { type BackupSchedule, DEFAULT_KEEP, type RunReport } from "./domain/backup-schedule.ts";
+import type { BackupTarget } from "./domain/backup-target.ts";
+import { type RunPorts, runDueBackup } from "./domain/run-schedule.ts";
 import { DriveError } from "./drive-target.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
@@ -48,48 +40,16 @@ export function saveSchedule(storage: BackupPlatform["storage"], schedule: Backu
   storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, target, folder, keep, lastRunAt }));
 }
 
-/** Where a due run writes: the Drive target or the stored folder, or the reason there is none. */
-async function pickTarget(deps: {
-  folder: BackupFolder | undefined;
-  drive?: BackupTarget | null;
-  schedule: BackupSchedule;
-  passphrase: string | null;
-}): Promise<{ target: BackupTarget; passphrase: string } | { reason: SkipReason }> {
-  const { folder, schedule } = deps;
-  const onDrive = schedule.target === "drive";
-  // The folder in the saved schedule is only a copy; the one that counts is the stored pick.
-  if (!onDrive && !(await folder?.current().catch(() => null))) return { reason: "no-folder" };
-  const { passphrase } = deps;
-  if (!passphrase) return { reason: "no-passphrase" };
-  const target = onDrive ? deps.drive : folder && folderTarget(folder);
-  return target ? { target, passphrase } : { reason: onDrive ? "drive-auth" : "no-folder" };
-}
+const PORTS: RunPorts<BackupPlatform, BackupOptions, BackupFolder> = {
+  // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
+  createBackup: async (platform, passphrase, options) =>
+    (await import("./backup-bundle.ts")).createBackup(platform, passphrase, passphrase, options),
+  folderTarget,
+  isAuthError: (error) => error instanceof DriveError && error.kind === "auth",
+};
 
-/** Writes one backup into the target; the reason it failed, or null when it is there. */
-async function writeBackup(
-  deps: { platform: BackupPlatform; options?: BackupOptions },
-  target: BackupTarget,
-  passphrase: string,
-  name: string,
-): Promise<SkipReason | null> {
-  try {
-    // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
-    const { createBackup } = await import("./backup-bundle.ts");
-    const text = await createBackup(deps.platform, passphrase, passphrase, deps.options);
-    await target.put(name, text);
-    return null;
-  } catch (error) {
-    // A sign-in Google no longer honours is the person's to fix; anything else is a failed write.
-    return error instanceof DriveError && error.kind === "auth" ? "drive-auth" : "failed";
-  }
-}
-
-/**
- * Runs the schedule once: when it is due, writes a backup into the folder, then keeps the newest
- * `keep` files named like a backup and removes the rest. Nothing is removed unless the write worked,
- * and a skipped run says why instead of failing silently. The passphrase comes from memory.
- */
-export async function runScheduledBackup(deps: {
+/** Runs the schedule once with the app's own folder, encryption and Drive errors (rules in `domain/run-schedule.ts`). */
+export function runScheduledBackup(deps: {
   platform: BackupPlatform;
   folder: BackupFolder | undefined;
   /** The Drive target, when the app can sign in; null or absent when it cannot. */
@@ -99,25 +59,5 @@ export async function runScheduledBackup(deps: {
   now: number;
   options?: BackupOptions;
 }): Promise<RunReport> {
-  const { folder, schedule, now } = deps;
-  if (schedule.cadence === "off") return { status: "idle" };
-  const at = now;
-  const onDrive = schedule.target === "drive";
-  if (!onDrive && (schedule.folder === "" || !folder)) {
-    return { status: "skipped", reason: "no-folder", at };
-  }
-  if (!isDue(schedule, now)) return { status: "idle" };
-  const picked = await pickTarget(deps);
-  if ("reason" in picked) return { status: "skipped", reason: picked.reason, at };
-  const { target, passphrase: secret } = picked;
-  const keep = Math.max(1, Math.floor(schedule.keep));
-  const name = backupFileName(now);
-  const failed = await writeBackup(deps, target, secret, name);
-  if (failed) return { status: "skipped", reason: failed, at };
-  // The backup exists now. Pruning keeps it and the newest others, whatever their dates say; if the
-  // folder cannot be read or cleaned, the run still counts as done and says the prune failed.
-  const pruned = await keepNewest(target, keep, name);
-  return pruned.ok
-    ? { status: "done", name, kept: pruned.kept, removed: pruned.removed, prune: "ok", at }
-    : { status: "done", name, kept: 1, removed: pruned.removed, prune: "failed", at };
+  return runDueBackup(deps, PORTS);
 }
