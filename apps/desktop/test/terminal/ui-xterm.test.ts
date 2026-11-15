@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FIND_DECORATIONS } from "../../src/features/terminal/terminal-view.ts";
+import { FIND_DECORATIONS } from "../../src/features/terminal/domain/terminal-view.ts";
 import {
   createXtermScreen,
   type XtermDeps,
