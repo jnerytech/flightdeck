@@ -54,7 +54,7 @@
   "apps/daemon/test/teams/personas.test.ts": 1,
   "apps/daemon/test/teams/teams.test.ts": 1,
   "apps/daemon/test/telemetry/otlp-on.test.ts": 3,
-  "apps/daemon/test/terminal/daemon.test.ts": 4,
+  "apps/daemon/test/terminal/daemon-pty.test.ts": 4,
   "apps/daemon/test/terminal/flow.test.ts": 1,
   "apps/daemon/test/updates/daemon-apply.test.ts": 1,
   "apps/daemon/test/updates/daemon-check.test.ts": 5,
