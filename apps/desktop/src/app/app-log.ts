@@ -1,9 +1,10 @@
 import { SecretScanner, scrubHome } from "@flightdeck/protocol";
 import type { LogLevel } from "@/shared/lib/index.ts";
 import type { LogSink } from "../platform/types.ts";
+import { type Budget, LOG_BURST, spend } from "./domain/log-budget.ts";
 import { isReactError, type ReactErrorInfo, reactErrorLine } from "./domain/react-error-line.ts";
 
-export { isReactError, type ReactErrorInfo, reactErrorLine };
+export { isReactError, LOG_BURST, type ReactErrorInfo, reactErrorLine };
 
 export interface AppLogOptions {
   sink?: LogSink;
@@ -16,19 +17,8 @@ export interface AppLogOptions {
 const KEEP = 200;
 /** A message is cut here: a log line is for reading, not for dumping a payload. */
 const MAX_MESSAGE = 2000;
-/** A source may log this many lines at once (issue #259)... */
-export const LOG_BURST = 50;
-/** ...and gets this many more each second, up to the burst. */
-const LOG_PER_SECOND = 10;
 /** Lines waiting for the write in flight, at most: a sink that hangs holds no more. */
 export const LOG_QUEUE = 500;
-
-/** One source's budget: a token bucket refilled from the clock. */
-interface Budget {
-  tokens: number;
-  at: number;
-  dropped: number;
-}
 
 /**
  * The app's log. Every line is redacted by the protocol's secret scanner before it goes anywhere
@@ -62,7 +52,7 @@ export class AppLog {
     this.busy = true;
     try {
       const at = this.now();
-      const budget = this.spend(source, at);
+      const budget = spend(this.budgets, source, at);
       if (!budget) return;
       if (budget.dropped > 0) {
         this.keep(
@@ -96,20 +86,6 @@ export class AppLog {
 
   private line(at: number, level: LogLevel, source: string, text: string): string {
     return `${new Date(at).toISOString()} ${level.toUpperCase()} ${source} ${text}`;
-  }
-
-  /** The source's budget with one line taken from it, or null (and counted) when it has none. */
-  private spend(source: string, at: number): Budget | null {
-    const budget = this.budgets.get(source) ?? { tokens: LOG_BURST, at, dropped: 0 };
-    this.budgets.set(source, budget);
-    budget.tokens = Math.min(LOG_BURST, budget.tokens + ((at - budget.at) / 1000) * LOG_PER_SECOND);
-    budget.at = at;
-    if (budget.tokens < 1) {
-      budget.dropped++;
-      return null;
-    }
-    budget.tokens--;
-    return budget;
   }
 
   private keep(line: string): void {
