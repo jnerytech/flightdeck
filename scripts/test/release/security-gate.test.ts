@@ -332,6 +332,39 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("the domain files that build a spawn, mask a secret, check an address or a signature, or guard a path are risky by path (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/actions/domain/free-command.ts",
+        "apps/daemon/src/actions/domain/mask.ts",
+        "apps/daemon/src/actions/domain/run-params.ts",
+        "apps/daemon/src/projects/domain/system-folders.ts",
+        "apps/daemon/src/ssh/domain/known-hosts.ts",
+        "apps/daemon/src/ssh/domain/ssh-argv.ts",
+        "apps/daemon/src/updates/domain/public-key.ts",
+        "apps/daemon/src/updates/domain/signature.ts",
+        "apps/daemon/src/watch/domain/check-command.ts",
+        "apps/daemon/src/webhook/domain/address.ts",
+        "apps/daemon/src/webhook/domain/webhook-guard.ts",
+        "apps/daemon/src/worktrees/domain/cleanup-rules.ts",
+        "apps/daemon/src/worktrees/domain/branch-names.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/actions/domain/free-command.ts", "spawn arguments"],
+      ["apps/daemon/src/actions/domain/mask.ts", "secret masking"],
+      ["apps/daemon/src/projects/domain/system-folders.ts", "path guard"],
+      ["apps/daemon/src/ssh/domain/known-hosts.ts", "address or signature check"],
+      ["apps/daemon/src/ssh/domain/ssh-argv.ts", "spawn arguments"],
+      ["apps/daemon/src/updates/domain/public-key.ts", "address or signature check"],
+      ["apps/daemon/src/updates/domain/signature.ts", "address or signature check"],
+      ["apps/daemon/src/watch/domain/check-command.ts", "spawn arguments"],
+      ["apps/daemon/src/webhook/domain/address.ts", "address or signature check"],
+      ["apps/daemon/src/webhook/domain/webhook-guard.ts", "address or signature check"],
+      ["apps/daemon/src/worktrees/domain/cleanup-rules.ts", "path guard"],
+    ]);
+  });
+
   test("the permission words count in any case (#273)", () => {
     const added = new Map([
       ["scripts/a.sh", ["CHMOD 777 x"]],
