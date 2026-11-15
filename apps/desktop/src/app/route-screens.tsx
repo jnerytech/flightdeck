@@ -306,7 +306,11 @@ function filteredScreen(props: ScreenProps): ReactNode | undefined {
 function routeScreen(props: ScreenProps): ReactNode {
   const { route, store, state, go } = props;
   const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
-  const waitScreen = hostWaitScreen(props);
+  const waitScreen = hostWaitScreen({
+    route: props.route,
+    store: props.store,
+    hosts: props.state.hosts,
+  });
   if (waitScreen !== undefined) return waitScreen;
 
   if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;

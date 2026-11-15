@@ -34,12 +34,12 @@ export function LoadingScreen() {
 export function hostWaitScreen(props: {
   route: Route;
   store: AppStore;
-  state: AppState;
+  hosts: readonly HostInfo[];
 }): ReactNode {
-  const { route, store, state } = props;
+  const { route, store, hosts } = props;
   const waiting = awaitedHost(route);
   if (!waiting) return undefined;
-  const waitHost = state.hosts.find((h) => h.id === waiting);
+  const waitHost = hosts.find((h) => h.id === waiting);
   // Issue #227: once a try has failed, the host is down, not on its way: a spinner there was a dead
   // end. The host's banner says why and offers to reconnect.
   if (
