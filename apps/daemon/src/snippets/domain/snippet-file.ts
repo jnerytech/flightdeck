@@ -1,10 +1,11 @@
 /**
  * The snippets of a project's versioned `.flightdeck/snippets.yaml`: the id a file snippet gets
  * (it has no row of its own) and the block YAML written back. Pure text over the model's defs; the
- * file itself is read and written by the store.
+ * file itself is read and written by the snippet-yaml-file adapter.
  */
-import type { SnippetVar } from "@flightdeck/protocol";
-import type { SnippetDef } from "./model.ts";
+import { SnippetInput, type SnippetVar } from "@flightdeck/protocol";
+import { FlightdeckError } from "../../kernel/index.ts";
+import { normalizeSnippet, type SecretScanner, type SnippetDef } from "./model.ts";
 
 const FILE_PREFIX = "file:";
 
@@ -49,4 +50,47 @@ function flowVar(spec: SnippetVar): string {
     parts.push(`options: [${spec.options.map(quoted).join(", ")}]`);
   }
   return parts.length === 0 ? "{}" : `{ ${parts.join(", ")} }`;
+}
+
+/**
+ * A YAML (or JSON, which YAML reads too) list of snippets: the valid ones, normalized and with
+ * unique names, and why each of the others was left out. Shared by the versioned file and an
+ * import from a file.
+ */
+export function parseSnippetList(
+  text: string,
+  scanner: SecretScanner,
+): { defs: SnippetDef[]; errors: string[] } {
+  const errors: string[] = [];
+  const defs: SnippetDef[] = [];
+  let data: unknown;
+  try {
+    data = Bun.YAML.parse(text) ?? [];
+  } catch (error) {
+    errors.push(`YAML inválido: ${(error as Error).message}`);
+    data = [];
+  }
+  if (!Array.isArray(data)) {
+    errors.push("o arquivo precisa ser uma lista de snippets");
+    data = [];
+  }
+  for (const [index, item] of (data as unknown[]).entries()) {
+    const parsed = SnippetInput.safeParse(item);
+    const label = parsed.success ? parsed.data.name : `entrada ${index + 1}`;
+    if (!parsed.success) {
+      errors.push(`${label}: ${(parsed.error.issues[0] as { message: string }).message}`);
+      continue;
+    }
+    try {
+      const def = normalizeSnippet(parsed.data, scanner);
+      if (defs.some((d) => d.name === def.name))
+        throw new FlightdeckError("bad_request", "repeated name", "name_taken", {
+          name: def.name,
+        });
+      defs.push(def);
+    } catch (error) {
+      errors.push(`${label}: ${(error as Error).message}`);
+    }
+  }
+  return { defs, errors };
 }
