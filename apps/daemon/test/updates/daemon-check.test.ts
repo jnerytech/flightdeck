@@ -41,15 +41,25 @@ function releaseServer(initial: unknown) {
 
 function checker(url: string, currentVersion = "0.8.0") {
   const time = manualTime(Date.parse("2026-11-02T10:00:00.000Z"));
+  const waiting: Array<() => void> = [];
   const updates = new UpdateChecker({
     manifestUrl: url,
     checkIntervalH: 24,
     currentVersion,
     now: time.now,
     timers: time.timers,
+    onChecked: () => {
+      for (const done of waiting.splice(0)) done();
+    },
   });
   cleanups.push(() => updates.stop());
-  return { updates, time };
+  /** Moves the clock by `ms` and waits until the check that came due has ended (no guessed sleep). */
+  const advanceAndCheck = async (ms: number) => {
+    const checked = new Promise<void>((resolve) => waiting.push(resolve));
+    time.advance(ms);
+    await checked;
+  };
+  return { updates, time, advanceAndCheck };
 }
 
 describe("daemon-update-check", () => {
@@ -64,7 +74,7 @@ describe("daemon-update-check", () => {
 
   test("baixa o manifesto ao subir e de novo a cada intervalo, comparando com a própria versão", async () => {
     const release = releaseServer(manifest("0.9.0"));
-    const { updates, time } = checker(release.url);
+    const { updates, time, advanceAndCheck } = checker(release.url);
     expect(updates.status()).toBeNull();
     await updates.start();
     expect(updates.status()).toEqual({
@@ -74,10 +84,9 @@ describe("daemon-update-check", () => {
     });
     release.state.body = JSON.stringify(manifest("0.9.1"));
     time.advance(23 * HOUR);
-    await Bun.sleep(20);
-    expect(release.state.hits).toBe(1);
-    time.advance(HOUR);
-    await Bun.sleep(20);
+    // The timer is still waiting, so no early check began; one that began would also leave it unarmed.
+    expect(time.pending.some((timer) => !timer.cleared)).toBe(true);
+    await advanceAndCheck(HOUR);
     expect(release.state.hits).toBe(2);
     expect(updates.status()).toMatchObject({ available: true, version: "0.9.1" });
   });
@@ -93,18 +102,16 @@ describe("daemon-update-check", () => {
 
   test("manifesto inválido, HTTP de erro ou servidor fora do ar viram erro, sem derrubar o daemon", async () => {
     const release = releaseServer({ version: "nove" });
-    const { updates, time } = checker(release.url);
+    const { updates, advanceAndCheck } = checker(release.url);
     await updates.start();
     expect(updates.status()).toMatchObject({ available: false, version: null });
     expect(updates.status()?.error).toStartWith("invalid manifest");
     release.state.body = "<html>não é JSON</html>";
-    time.advance(24 * HOUR);
-    await Bun.sleep(20);
+    await advanceAndCheck(24 * HOUR);
     expect(updates.status()?.error).toStartWith("invalid manifest");
     release.state.status = 404;
     release.state.body = "não achei";
-    time.advance(24 * HOUR);
-    await Bun.sleep(20);
+    await advanceAndCheck(24 * HOUR);
     expect(updates.status()?.error).toBe("the server answered HTTP 404");
     const down = checker("http://127.0.0.1:9/daemon-latest.json");
     await down.updates.start();

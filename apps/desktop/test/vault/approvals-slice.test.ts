@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { VaultRequestFrame } from "@flightdeck/protocol";
+import type { VaultOutcome, VaultPolicy } from "../../src/features/vault/domain/vault-requests.ts";
 import { type VaultApprovalsCore, VaultApprovalsSlice } from "../../src/features/vault/index.ts";
 import type { SecretMeta } from "../../src/features/vault/vault.ts";
-import type { VaultOutcome, VaultPolicy } from "../../src/features/vault/vault-requests.ts";
 import type { PendingItem } from "../../src/lib/app-store.ts";
 
 const VALUE = "the-secret-value-123";

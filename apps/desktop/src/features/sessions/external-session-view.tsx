@@ -18,7 +18,7 @@ import { CheckpointsButton } from "../checkpoints/ui.ts";
 import { useLaunchTerminal } from "../terminal/index.ts";
 import { TerminalButton } from "../terminal/ui.ts";
 import { approvalRequestOf, externalRequestsOf, externalTitle } from "./domain/external-view.ts";
-import { externalState } from "./hub.ts";
+import { externalState } from "./domain/hub.ts";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "./parts";
 
 /**

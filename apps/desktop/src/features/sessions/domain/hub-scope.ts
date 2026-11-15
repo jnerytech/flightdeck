@@ -1,6 +1,6 @@
 import { rowInFilter, type WorktreeFilter } from "@/features/projects/index.ts";
 import { type DataScope, projectLabel } from "../../costs/index.ts";
-import type { HubRow } from "../hub.ts";
+import type { HubRow } from "./hub.ts";
 
 type Where = Pick<HubRow, "hostId" | "projectKey" | "cwd">;
 

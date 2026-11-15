@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { HubRow } from "../../src/features/sessions/domain/hub.ts";
 import {
   emptySession,
   type SessionState,
@@ -8,7 +9,6 @@ import {
   pendingOf,
   pickTiles,
 } from "../../src/features/sessions/domain/session-tiles.ts";
-import type { HubRow } from "../../src/features/sessions/hub.ts";
 
 const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({
   key: `h/m/s${n}`,
