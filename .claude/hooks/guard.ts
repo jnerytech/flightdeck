@@ -65,7 +65,7 @@ if (typeof command === "string") {
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
   // #741: gh is asked for a push, in the push's own checkout: without an override to decide, with
   // one to log the run's age. A failed lookup is asked once more, then the push holds with the
-  // override line (budgetedGh, prRunVia and pushWaitCheck in scripts/lib/hooks/claude-hooks.ts).
+  // override line (budgetedGh, prRunVia and pushWaitCheck in scripts/lib/hooks/push-wait.ts).
   const ghCalls = budgetedGh(
     (args, dir) => {
       // 3 s each, and each starts only in the first 6 s, so the retry never takes the hook past
