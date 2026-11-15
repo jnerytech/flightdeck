@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { cacheTimer, spokenParts } from "./cache-timer-model.ts";
+import { cacheTimer, spokenParts } from "./domain/cache-timer.ts";
 
 const NEVER = () => () => {};
 

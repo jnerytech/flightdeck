@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { RunConfig } from "../../src/runenv/config.ts";
+import type { RunConfig } from "../../src/runenv/domain/run-config.ts";
 import { RunManager, type RunState } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";
 import { EventStore } from "../../src/store/event-store.ts";

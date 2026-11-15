@@ -25,7 +25,7 @@ import { loadConfig } from "../apps/daemon/src/config.ts";
 import { ulid } from "../apps/daemon/src/kernel/ulid.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { INSTRUCTIONS_VERSION } from "../apps/daemon/src/teams/domain/instructions.ts";
-import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
+import { serializeTemplate } from "../apps/daemon/src/templates/domain/template-file.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/support/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { demoCardTemplates } from "./lib/demo/card-templates.ts";
