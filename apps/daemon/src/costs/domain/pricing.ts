@@ -20,7 +20,7 @@ const ModelPrice = z.object({
     )
     .optional(),
 });
-export type ModelPrice = z.infer<typeof ModelPrice>;
+type ModelPrice = z.infer<typeof ModelPrice>;
 
 /** `pricing` in the config: overrides of the default table, model by model. */
 export const PricingConfig = z.object({
