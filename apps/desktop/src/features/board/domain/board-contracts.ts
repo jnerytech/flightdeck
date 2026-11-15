@@ -7,6 +7,7 @@ import {
   missingFor as cardMissing,
   contractOf as columnContract,
 } from "@flightdeck/protocol";
+import type { Key, T } from "../../../i18n/index.ts";
 
 /** What a card still lacks for a column, as a reader would say it. */
 export type Need = ContractNeed;
@@ -73,3 +74,7 @@ export function startNeeds(card: Card, overrides: ContractOverrides = {}): Need[
   if (contractOf("in_progress", overrides)?.enforce !== "confirm") return [];
   return missingFor("in_progress", card, overrides).filter((need) => need === "criteria");
 }
+
+/** What a card lacks, in words: "a PR link, passing checks". */
+export const needsText = (t: T, needs: readonly Need[]) =>
+  needs.map((need) => t(`board.contract.needs.${need}` as Key)).join(", ");
