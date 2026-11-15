@@ -13,10 +13,11 @@ import {
 import { BUILD_LOG_BYTES, type PrProvider, tail } from "../pr/index.ts";
 import { prProvider } from "../pr-hosts/index.ts";
 import type { BoundedCheckRunner } from "../workflows/index.ts";
+import { RoundStore, type Spent } from "./adapters/round-store.ts";
 import { checkFailure, masked, runChecks } from "./domain/check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./domain/drift.ts";
 import { buildPrompt, heldSummary } from "./domain/fix-prompt.ts";
-import { COMMIT_ID, type FixRound, type RoundRow, toRound } from "./domain/fix-round.ts";
+import { COMMIT_ID, type FixRound, type RoundRow } from "./domain/fix-round.ts";
 import { heldMoved, resolvedRound } from "./domain/held-round.ts";
 import { countedRounds, failuresInARow, roundsUsedUp, spendLimit } from "./domain/round-limits.ts";
 import type { WatchBoard } from "./ports.ts";
@@ -53,15 +54,11 @@ export class PrFixer {
   /** Cards whose held round is being pushed or dropped now: one at a time. */
   private readonly resolving = new Set<string>();
   private readonly pending = new Set<Promise<void>>();
+  private readonly store: RoundStore;
 
   constructor(private readonly opts: PrFixerOptions) {
-    // A round the daemon left running when it stopped will never end by itself.
-    opts.db
-      .query(
-        `UPDATE pr_watch_rounds SET status = 'failed', summary = 'the daemon stopped during the round',
-           ended_at = ? WHERE status = 'running'`,
-      )
-      .run(new Date().toISOString());
+    this.store = new RoundStore(opts.db);
+    this.store.failRunning(new Date().toISOString());
   }
 
   private get now(): number {
@@ -88,14 +85,9 @@ export class PrFixer {
    * Refused when the round is not the card's held one, or when the branch moved since the hold.
    */
   async resolveHeld(cardId: string, roundId: string, action: "push" | "drop"): Promise<void> {
-    const { db, board } = this.opts;
     // An unknown card is refused (card_not_found) before its rounds are read.
-    board.getCard(cardId);
-    const last = db
-      .query<RoundRow, [string]>(
-        "SELECT * FROM pr_watch_rounds WHERE card_id = ? ORDER BY n DESC LIMIT 1",
-      )
-      .get(cardId);
+    this.opts.board.getCard(cardId);
+    const last = this.store.last(cardId);
     const busy = this.running.has(cardId) || this.resolving.has(cardId);
     if (last?.id !== roundId || last.status !== "held" || busy) {
       throw new FlightdeckError("invalid_state", "that round is not held", "watch_round_not_held");
@@ -109,7 +101,7 @@ export class PrFixer {
   }
 
   private async resolve(cardId: string, last: RoundRow, action: "push" | "drop"): Promise<void> {
-    const { db, board } = this.opts;
+    const { board } = this.opts;
     const card = board.getCard(cardId);
     const roundId = last.id;
     if (!card.worktreePath || !card.branch) {
@@ -159,12 +151,7 @@ export class PrFixer {
       );
     }
     const { status, summary } = resolvedRound(action, last.summary);
-    db.query("UPDATE pr_watch_rounds SET status = ?, summary = ?, ended_at = ? WHERE id = ?").run(
-      status,
-      summary,
-      new Date(this.now).toISOString(),
-      roundId,
-    );
+    this.store.settle(roundId, status, summary, new Date(this.now).toISOString());
     this.opts.onUpdate?.(cardId);
   }
 
@@ -224,21 +211,15 @@ export class PrFixer {
     roundId: string,
     worktree: string,
     measured: { drift: Drift } | { error: string },
-    end: (
-      status: "held",
-      summary: string,
-      spent?: { sessionId?: string | null; costUsd?: number; turns?: number },
-    ) => void,
-    spent: { sessionId?: string | null; costUsd?: number; turns?: number },
+    end: (status: "held", summary: string, spent?: Spent) => void,
+    spent: Spent,
   ): Promise<void> {
     const head = (await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD")).stdout.trim();
-    this.opts.db
-      .query("UPDATE pr_watch_rounds SET held_sha = ?, drift = ? WHERE id = ?")
-      .run(
-        COMMIT_ID.test(head) ? head : null,
-        "drift" in measured ? JSON.stringify(measured.drift) : null,
-        roundId,
-      );
+    this.store.setHeld(
+      roundId,
+      COMMIT_ID.test(head) ? head : null,
+      "drift" in measured ? JSON.stringify(measured.drift) : null,
+    );
     const summary = heldSummary(measured);
     end("held", summary, spent);
     this.needsYou(cardId, summary);
@@ -278,10 +259,7 @@ export class PrFixer {
   }
 
   rounds(cardId: string): FixRound[] {
-    return this.opts.db
-      .query<RoundRow, [string]>("SELECT * FROM pr_watch_rounds WHERE card_id = ? ORDER BY n")
-      .all(cardId)
-      .map(toRound);
+    return this.store.all(cardId);
   }
 
   /** The rounds that count against the limits: those since Vigiar was last turned on. */
@@ -296,7 +274,7 @@ export class PrFixer {
   }
 
   private limit(cardId: string, rounds = true): string | null {
-    const { board, watcher, db } = this.opts;
+    const { board, watcher } = this.opts;
     const card = board.getCard(cardId);
     const project = board.getProject(card.projectId);
     if (!card.branch || !card.worktreePath) {
@@ -309,12 +287,7 @@ export class PrFixer {
     const reached = rounds ? this.roundLimit(cardId) : null;
     if (reached) return reached;
     const dayCost = (): number =>
-      db
-        .query<{ cost: number | null }, [string, string]>(
-          `SELECT SUM(r.cost_usd) AS cost FROM pr_watch_rounds r JOIN cards c ON c.id = r.card_id
-           WHERE c.project_id = ? AND r.started_at > ?`,
-        )
-        .get(card.projectId, new Date(this.now - DAY_MS).toISOString())?.cost ?? 0;
+      this.store.costSince(card.projectId, new Date(this.now - DAY_MS).toISOString());
     return spendLimit(this.counted(cardId), settings, dayCost);
   }
 
@@ -346,7 +319,7 @@ export class PrFixer {
   }
 
   private async run(trigger: WatchTrigger): Promise<void> {
-    const { db, board, watcher } = this.opts;
+    const { board, watcher } = this.opts;
     const { cardId } = trigger;
     const card = board.getCard(cardId);
     const project = board.getProject(card.projectId);
@@ -357,47 +330,26 @@ export class PrFixer {
     const id = ulid();
     const n = this.rounds(cardId).length + 1;
     // A held round under this one goes with it: its commits are measured again with this round's.
-    db.query(
-      `UPDATE pr_watch_rounds SET status = 'stopped', summary = ?, ended_at = ?
-       WHERE card_id = ? AND status = 'held'`,
-    ).run(
+    this.store.supersedeHeld(
+      cardId,
       `superseded by round ${n}: its commits are measured and pushed with it`,
       new Date(this.now).toISOString(),
-      cardId,
     );
-    db.query(
-      `INSERT INTO pr_watch_rounds (id, card_id, n, status, trigger, started_at)
-       VALUES (?, ?, ?, 'running', ?, ?)`,
-    ).run(
+    this.store.start({
       id,
       cardId,
       n,
-      JSON.stringify({
+      trigger: JSON.stringify({
         failed: trigger.failed.map((c) => c.name),
         conflicts: trigger.conflicts,
         comments: trigger.comments.map((c) => c.id),
       }),
-      new Date(this.now).toISOString(),
-    );
+      at: new Date(this.now).toISOString(),
+    });
     this.opts.onUpdate?.(cardId);
-    const end = (
-      status: FixRound["status"],
-      summary: string,
-      spent: { sessionId?: string | null; costUsd?: number; turns?: number } = {},
-    ) => {
+    const end = (status: FixRound["status"], summary: string, spent: Spent = {}) => {
       if (this.stopped) return;
-      db.query(
-        `UPDATE pr_watch_rounds SET status = ?, summary = ?, session_id = COALESCE(?, session_id),
-           cost_usd = ?, turns = ?, ended_at = ? WHERE id = ?`,
-      ).run(
-        status,
-        summary,
-        spent.sessionId ?? null,
-        spent.costUsd ?? 0,
-        spent.turns ?? 0,
-        new Date(this.now).toISOString(),
-        id,
-      );
+      this.store.end(id, status, summary, spent, new Date(this.now).toISOString());
       this.opts.onUpdate?.(cardId);
     };
 
@@ -436,19 +388,15 @@ export class PrFixer {
     project: ReturnType<PrFixerOptions["board"]["getProject"]>;
     card: ReturnType<PrFixerOptions["board"]["getCard"]>;
     provider: PrProvider | null;
-    end: (
-      status: FixRound["status"],
-      summary: string,
-      spent?: { sessionId?: string | null; costUsd?: number; turns?: number },
-    ) => void;
+    end: (status: FixRound["status"], summary: string, spent?: Spent) => void;
   }): Promise<void> {
-    const { board, watcher, db } = this.opts;
+    const { board, watcher } = this.opts;
     const { id, trigger, n, branch, worktree, settings, project, card, provider, end } = input;
     const { cardId } = trigger;
     // Issue #77: where the round starts, so a drop takes back its commits only.
     const start = (await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD")).stdout.trim();
     if (COMMIT_ID.test(start)) {
-      db.query("UPDATE pr_watch_rounds SET base_sha = ? WHERE id = ?").run(start, id);
+      this.store.setBase(id, start);
     }
     const logs = await this.logs(provider, card.prUrl as string, project.path, trigger);
     const fixed = await board
@@ -533,13 +481,9 @@ export class PrFixer {
   /** A round that failed; enough of them in a row and the card asks for you. */
   private failed(
     cardId: string,
-    end: (
-      status: "failed",
-      summary: string,
-      spent?: { sessionId?: string | null; costUsd?: number; turns?: number },
-    ) => void,
+    end: (status: "failed", summary: string, spent?: Spent) => void,
     summary: string,
-    spent?: { sessionId?: string | null; costUsd?: number; turns?: number },
+    spent?: Spent,
   ): void {
     end("failed", summary, spent);
     const { watcher } = this.opts;
