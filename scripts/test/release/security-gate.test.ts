@@ -259,15 +259,18 @@ describe("security-gate", () => {
         "scripts/lib/hooks/redact.ts",
         "scripts/lib/hooks/shell-parse.ts",
         "scripts/lib/hooks/deeper/nested.ts",
+        "scripts/lib/hooks/rules.json",
         "scripts/lib/slot/heavy.ts",
       ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
     );
     expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
       ["scripts/lib/hooks/commit-rules.ts", "guard"],
+      ["scripts/lib/hooks/deeper/nested.ts", "guard"],
       ["scripts/lib/hooks/heavy-run-rules.ts", "guard"],
       ["scripts/lib/hooks/hook-log.ts", "guard"],
       ["scripts/lib/hooks/push-wait.ts", "guard"],
       ["scripts/lib/hooks/redact.ts", "guard"],
+      ["scripts/lib/hooks/rules.json", "guard"],
       ["scripts/lib/hooks/shell-parse.ts", "guard"],
     ]);
   });
