@@ -8,6 +8,7 @@ import type {
 } from "@flightdeck/protocol";
 import { z } from "zod";
 import { type ReleaseNotesResult, releaseNotes } from "@/features/appupdate/index.ts";
+import { fillComposer, takeComposerFill } from "@/features/sessions/index.ts";
 import { sessionRecap } from "@/features/summary/index.ts";
 import { WORKSPACE_KEY, type Workspace } from "@/features/tabs/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
@@ -397,18 +398,12 @@ export class AppStore {
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
   fillComposer(key: string, text: string): void {
-    const waiting = this.state.composerFill[key];
-    this.update({
-      composerFill: { ...this.state.composerFill, [key]: waiting ? `${waiting}\n\n${text}` : text },
-    });
+    fillComposer(this.kernel, key, text);
   }
 
   /** The text waiting for the session's box, which is now taken; `null` when there is none. */
   takeComposerFill(key: string): string | null {
-    const { [key]: text, ...rest } = this.state.composerFill;
-    if (text === undefined) return null;
-    this.update({ composerFill: rest });
-    return text;
+    return takeComposerFill(this.kernel, key);
   }
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
