@@ -9,7 +9,7 @@ import {
   type Rev,
   refArg,
 } from "../kernel/index.ts";
-import { LOCAL_SETTINGS } from "../worktrees/index.ts";
+import { LOCAL_SETTINGS } from "./domain/local-settings.ts";
 
 /** Whether `path` exists, asked without blocking. */
 const exists = (path: string): Promise<boolean> =>

@@ -8,6 +8,7 @@ import {
 } from "@flightdeck/protocol";
 import { git } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
+import { must } from "../worktrees/index.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import { readSpec } from "./spec.ts";
 import {
@@ -17,7 +18,6 @@ import {
   untrustedTemplate,
 } from "./spec-template.ts";
 import type { BoardColumn, BoardOptions, Card, Project } from "./types.ts";
-import { must } from "./worktree.ts";
 
 const now = () => new Date().toISOString();
 

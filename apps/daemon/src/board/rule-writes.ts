@@ -2,10 +2,9 @@ import type { Database } from "bun:sqlite";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import { isProjectRule } from "../permissions/index.ts";
-import { LOCAL_SETTINGS } from "../worktrees/index.ts";
+import { excludeLocalSettingsAsync, LOCAL_SETTINGS } from "../worktrees/index.ts";
 import { addRules, readRules, removeRule, ruleString } from "./project-rules.ts";
 import type { Card, Project } from "./types.ts";
-import { excludeLocalSettingsAsync } from "./worktree.ts";
 
 /** What the rule writes reach of the board (issue #1523). */
 export interface RuleWritesPort {

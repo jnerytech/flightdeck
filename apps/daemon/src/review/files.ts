@@ -18,7 +18,6 @@ import {
   type FileSearchResult,
   inSequence,
 } from "@flightdeck/protocol";
-import { must } from "../board/index.ts";
 import { git } from "../git/index.ts";
 import {
   FlightdeckError,
@@ -29,6 +28,7 @@ import {
   ulid,
 } from "../kernel/index.ts";
 import { credential } from "../permissions/index.ts";
+import { must } from "../worktrees/index.ts";
 import type { Changes } from "./changes.ts";
 import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
 import { type SearchOptions, searchRepository } from "./search.ts";

@@ -9,7 +9,14 @@ import { git } from "../git/index.ts";
 import { FlightdeckError, parseJsonWith, refArg, refusalOf } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import type { WorkflowEngine } from "../workflows/index.ts";
-import { folderRemoving } from "../worktrees/index.ts";
+import {
+  addWorktree,
+  excludeLocalSettingsAsync,
+  folderRemoving,
+  freshBase,
+  must,
+  WORKTREE_INCLUDE_LIMIT,
+} from "../worktrees/index.ts";
 import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import { pinnedPrompt } from "./domain/pins.ts";
@@ -24,13 +31,6 @@ import {
   writeSpec,
 } from "./spec-template.ts";
 import type { BoardOptions, Card, Project, RunRow } from "./types.ts";
-import {
-  addWorktree,
-  excludeLocalSettingsAsync,
-  freshBase,
-  must,
-  WORKTREE_INCLUDE_LIMIT,
-} from "./worktree.ts";
 
 const now = () => new Date().toISOString();
 
