@@ -1,5 +1,17 @@
-import type { EffortLevel, SessionImage, SettableMode } from "@flightdeck/protocol";
-import type { Answer } from "../../lib/app-store.ts";
+import type {
+  EffortLevel,
+  PermissionUpdate,
+  SessionImage,
+  SettableMode,
+} from "@flightdeck/protocol";
+
+/** What goes with an answer to a request, besides allow or deny (the shape the needs-you `Answer` has). */
+interface SessionAnswer {
+  updatedPermissions?: PermissionUpdate[];
+  message?: string;
+  updatedInput?: Record<string, unknown>;
+  held?: boolean;
+}
 
 export interface SessionActions {
   /** Copies a text (the approval's folder); the store's `sessionActions` does. */
@@ -14,5 +26,5 @@ export interface SessionActions {
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
-  respond(requestId: string, decision: "allow" | "deny", answer?: Answer): Promise<void>;
+  respond(requestId: string, decision: "allow" | "deny", answer?: SessionAnswer): Promise<void>;
 }

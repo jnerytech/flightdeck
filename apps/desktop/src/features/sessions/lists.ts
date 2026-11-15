@@ -5,19 +5,34 @@ import type {
   ExternalSession,
   HistorySessionSummary,
   SessionMeta,
+  SessionNameInfo,
   SessionSummary,
 } from "@flightdeck/protocol";
 import type { HostConnection } from "@/features/hosts/index.ts";
 import { nullOnError } from "@/shared/lib/index.ts";
-import type { AppState, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { sessionKey } from "./domain/session-key.ts";
 
 /** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
 export const HISTORY_LIST_LIMIT = 200;
 
-type ListsState = Pick<AppState, "hosts" | "hub" | "names" | "meta" | "externals">;
-type ListsPatch = Partial<Pick<AppState, "hub" | "names" | "meta" | "externals" | "background">>;
+/** The host a list is read from: its id, whether it is online and the features its daemon reports. */
+interface ListHost {
+  id: string;
+  status: string;
+  hostInfo: { features?: readonly string[] } | null;
+}
+
+/** The parts of the app state the session lists read and change. */
+interface ListsState {
+  hosts: readonly ListHost[];
+  hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
+  names: Record<string, SessionNameInfo[]>;
+  meta: Record<string, SessionMeta>;
+  externals: Record<string, ExternalSession>;
+  background: Record<string, BgList>;
+}
+type ListsPatch = Partial<Omit<ListsState, "hosts">>;
 
 /** Whether two values hold the same data (the answers of a host are plain JSON). */
 const sameJson = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
@@ -77,7 +92,7 @@ export class SessionListsSlice {
   }
 
   /** The session lists of one online host, read and folded into the state when they changed. */
-  private async refreshHost(host: HostView): Promise<void> {
+  private async refreshHost(host: ListHost): Promise<void> {
     const conn = this.core.connection(host.id) as HostConnection;
     const named = hasFeature(host.hostInfo?.features, "names", false);
     const withBackground = hasFeature(host.hostInfo?.features, "bg", false);

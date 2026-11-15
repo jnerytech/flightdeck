@@ -58,7 +58,6 @@ export type {
   Notice,
   PendingItem,
   ReleaseNotesResult,
-  Selection,
   SidebarSession,
 } from "./app-state.ts";
 export { HISTORY_PAGE, needsYou } from "./app-state.ts";
