@@ -5,7 +5,12 @@
 import { z } from "zod";
 import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
-import { KIND_LABEL, ntfyTopic, type WebhookKind, type WebhookType } from "./webhook-format.ts";
+import {
+  KIND_LABEL,
+  ntfyTopic,
+  type WebhookKind,
+  type WebhookType,
+} from "./domain/webhook-format.ts";
 
 export type TargetStatus = "new" | "ok" | "failing";
 
