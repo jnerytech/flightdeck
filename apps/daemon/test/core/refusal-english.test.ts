@@ -186,6 +186,7 @@ const MSGS3_FILES = [
   "messaging/domain/policy.ts",
   "board/board.ts",
   "board/projects.ts",
+  "board/domain/project-patch.ts",
   "board/rule-writes.ts",
   "board/launch.ts",
   "board/card-pr-flow.ts",
