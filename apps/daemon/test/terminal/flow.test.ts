@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { startServer } from "../../src/server.ts";
-import {
-  FLOW_HIGH_BYTES,
-  FLOW_LOW_BYTES,
-  TerminalManager,
-  type TerminalSink,
-} from "../../src/terminal/terminal-manager.ts";
+import { FLOW_HIGH_BYTES, FLOW_LOW_BYTES } from "../../src/terminal/domain/client-flow.ts";
+import { TerminalManager, type TerminalSink } from "../../src/terminal/terminal-manager.ts";
 import { newManager, poll, workspace } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 import { fakePtys, fakeSink } from "../support/pty-helpers.ts";

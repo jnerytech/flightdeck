@@ -10,6 +10,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { gitBytes } from "../git/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
+import { previewOf } from "./domain/rewind-preview.ts";
 import type { SnapshotRow, Snapshots } from "./snapshots.ts";
 
 export interface RewindSessions {
@@ -29,8 +30,6 @@ export interface RewindPreview {
   insertions: number;
   deletions: number;
 }
-
-const CHANGES: Record<string, string> = { M: "modified", A: "created", D: "deleted" };
 
 export class Rewinder {
   constructor(private readonly opts: { snapshots: Snapshots; sessions: RewindSessions }) {}
@@ -123,40 +122,17 @@ export class Rewinder {
   /** What differs between the target's tree and the working tree now (in a temporary snapshot tree). */
   private async snapshotDiff(target: SnapshotRow) {
     const current = await this.opts.snapshots.currentTree(target.repo);
-    // `-z`: git prints a path as it is, never quoted, so a name with an accent, quote or newline reads back whole.
     const names = (
-      await gitBytes(target.repo, [
-        "diff",
-        "-z",
-        "--name-status",
-        "--no-renames",
-        target.tree,
-        current,
-      ])
+      await gitBytes(target.repo, ["diff", "--name-status", "--no-renames", target.tree, current])
     ).stdout
       .toString()
-      .split("\0");
-    const files: RewindPreview["files"] = [];
-    // The records are `status NUL path NUL`; a final NUL leaves one empty field at the end.
-    for (let at = 0; at + 1 < names.length; at += 2) {
-      // From the target's point of view: created after it, deleted after it, or changed.
-      files.push({
-        path: names[at + 1] as string,
-        change: CHANGES[names[at] as string] ?? "modified",
-      });
-    }
+      .trim();
     const numstat = (
-      await gitBytes(target.repo, ["diff", "-z", "--numstat", "--no-renames", target.tree, current])
-    ).stdout.toString();
-    let insertions = 0;
-    let deletions = 0;
-    for (const line of numstat.split("\0")) {
-      const [added, removed] = line.split("\t");
-      // Going back removes what was added after the target, and puts back what was removed.
-      deletions += Number(added) || 0;
-      insertions += Number(removed) || 0;
-    }
-    return { preview: { via: "snapshot" as const, files, insertions, deletions } };
+      await gitBytes(target.repo, ["diff", "--numstat", "--no-renames", target.tree, current])
+    ).stdout
+      .toString()
+      .trim();
+    return { preview: { via: "snapshot" as const, ...previewOf(names, numstat) } };
   }
 
   /**
