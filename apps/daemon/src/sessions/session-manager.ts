@@ -36,15 +36,13 @@ import { type EventStore, personaBadge } from "../store/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
 import { ActivityClock, type ToolNote } from "./domain/activity-clock.ts";
 import { interruptedSessions, RESTART_REASON } from "./domain/interrupted.ts";
+import { LiveSettings } from "./domain/live-settings.ts";
 import {
   bypassNotAllowed,
   personasUnavailable,
-  refuseLooserMode,
-  runtimeUnsupported,
   sessionEnded,
   sessionNotEnded,
   sessionNotFound,
-  sessionNotLive,
 } from "./domain/refusals.ts";
 import type { QuietInfo } from "./domain/stall.ts";
 import { pendingView, summaryEvent, withQuiet, withSleep } from "./domain/summary-view.ts";
@@ -84,6 +82,8 @@ export class SessionManager {
   >();
   /** #1595: the sessions' agent runs, driven with the manager's stores and state. */
   private readonly runs: SessionRuns;
+  /** What a person changes in a live session: mode, model, effort and MCP servers. */
+  private readonly settings: LiveSettings;
 
   constructor(private readonly opts: SessionManagerOptions) {
     this.store = opts.store;
@@ -120,6 +120,14 @@ export class SessionManager {
       emit: (sessionId, event) => this.emit(sessionId, event),
       setStatus: (sessionId, status, reason) => this.setStatus(sessionId, status, reason),
       bypassAllowed: () => this.bypassAllowed(),
+    });
+    this.settings = new LiveSettings({
+      runOf: (sessionId) => this.live.get(sessionId)?.run,
+      runtimeOf: (sessionId) => this.store.getSession(sessionId)?.runtime,
+      startMode: (sessionId) => this.get(sessionId).permissionMode,
+      bypassAllowed: () => this.bypassAllowed(),
+      emit: (sessionId, event) => this.emit(sessionId, event),
+      efforts: this.efforts,
     });
     this.recover();
   }
@@ -553,13 +561,6 @@ export class SessionManager {
 
   // -- internals ------------------------------------------------------------
 
-  /** Phase 39: refuses a Claude-only feature for an OpenCode session. */
-  private claudeOnly(sessionId: string, feature: string): void {
-    // An unknown session keeps its own refusal (the feature is not live).
-    if (this.store.getSession(sessionId)?.runtime !== "opencode") return;
-    throw runtimeUnsupported(feature);
-  }
-
   /** The persona applied to the open session, if any. */
   appliedPersona(sessionId: string): SessionPersona | null {
     this.get(sessionId);
@@ -576,63 +577,33 @@ export class SessionManager {
     this.emitSummary(sessionId);
   }
 
-  /** Phase 12: turns an MCP server of a live managed session on or off right away. */
-  async toggleMcpServer(sessionId: string, name: string, enabled: boolean): Promise<void> {
-    this.claudeOnly(sessionId, "mcp");
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.toggleMcpServer) {
-      throw sessionNotLive("mcpSet");
-    }
-    await run.toggleMcpServer(name, enabled);
-  }
-
   private bypassAllowed(): boolean {
     return this.opts.allowBypass?.() === true;
   }
 
   /** Changes the permission mode of a live managed session, for its next tool requests. */
-  async setPermissionMode(sessionId: string, mode: PermissionMode): Promise<void> {
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.setPermissionMode) {
-      throw sessionNotLive("mode");
-    }
-    refuseLooserMode(mode, () => this.get(sessionId).permissionMode, this.bypassAllowed());
-    await run.setPermissionMode(mode);
-    // Told to every app, and kept for a reload (#935); the start mode stays the session's limit.
-    // A run that ended during the change reports nothing after its last status.
-    if (this.live.get(sessionId)?.run !== run) return;
-    this.emit(sessionId, { type: "session.mode", permissionMode: mode });
+  setPermissionMode(sessionId: string, mode: PermissionMode): Promise<void> {
+    return this.settings.setPermissionMode(sessionId, mode);
   }
 
   /** Changes the model of a live managed session, for its next turn; null is the default. */
-  async setModel(sessionId: string, model: string | null): Promise<void> {
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.setModel) {
-      throw sessionNotLive("model");
-    }
-    await run.setModel(model ?? undefined);
+  setModel(sessionId: string, model: string | null): Promise<void> {
+    return this.settings.setModel(sessionId, model);
   }
 
   /** Changes the effort of a live managed session, for its next turn; null is the model's default. */
-  async setEffort(sessionId: string, effort: EffortLevel | null): Promise<void> {
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.setEffort) {
-      throw sessionNotLive("effort");
-    }
-    await run.setEffort(effort ?? undefined);
-    // A session resumed later starts with the effort it was left at (not kept across restarts).
-    if (effort) this.efforts.set(sessionId, effort);
-    else this.efforts.delete(sessionId);
+  setEffort(sessionId: string, effort: EffortLevel | null): Promise<void> {
+    return this.settings.setEffort(sessionId, effort);
+  }
+
+  /** Phase 12: turns an MCP server of a live managed session on or off right away. */
+  toggleMcpServer(sessionId: string, name: string, enabled: boolean): Promise<void> {
+    return this.settings.toggleMcpServer(sessionId, name, enabled);
   }
 
   /** Phase 12: the live status of a managed session's MCP servers, as its runtime reports it. */
-  async mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {
-    this.claudeOnly(sessionId, "mcp");
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.mcpServerStatus) {
-      throw sessionNotLive("mcpQuery");
-    }
-    return run.mcpServerStatus();
+  mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {
+    return this.settings.mcpStatus(sessionId);
   }
 
   /** Phase 12: a turn is running (or waiting for a permission) in this Claude session. */
