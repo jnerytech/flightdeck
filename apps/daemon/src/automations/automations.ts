@@ -12,10 +12,11 @@ import type { Issues } from "../issues/index.ts";
 import { FlightdeckError, UNTRUSTED_MARK, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import { localDay } from "../quota/index.ts";
-import { type CronError, type CronSpec, parseCron, validTimeZone } from "./domain/cron.ts";
+import { type CronSpec, parseCron } from "./domain/cron.ts";
 import { MINUTE, minuteOf, planSlots, scanFrom } from "./domain/cron-slots.ts";
 import { type AutomationEvent, causeOf, contentOf, isExternal, keyOf } from "./domain/event.ts";
 import { actionOf, triggerOf } from "./domain/row-json.ts";
+import { refusal, ruleProblem } from "./domain/rule-check.ts";
 
 export interface AutomationInput {
   projectId: string;
@@ -378,18 +379,9 @@ export class Automations {
     if (seen.changes === 0) return;
     const at = event.type === "cron" ? event.minute : this.clock();
     const cause = causeOf(event);
-    if (isExternal(event) && !auto.allowExternalAuthors) {
-      this.record(
-        auto,
-        at,
-        cause,
-        "ignored",
-        "external author: the automation does not act on third-party content",
-      );
-      return;
-    }
-    if (this.today(auto.id, at) >= auto.maxRunsPerDay) {
-      this.record(auto, at, cause, "limited", `limit of ${auto.maxRunsPerDay} runs per day`);
+    const refused = refusal(auto, event, () => this.today(auto.id, at));
+    if (refused) {
+      this.record(auto, at, cause, refused.status, refused.detail);
       return;
     }
     try {
@@ -533,28 +525,7 @@ export class Automations {
 
   /** Refuses what the automation could never do. */
   private check(trigger: Automation["trigger"], action: Automation["action"]): void {
-    if (trigger.type === "cron") {
-      try {
-        parseCron(trigger.expr);
-      } catch (error) {
-        const cron = error as CronError;
-        throw bad(cron.message, cron.reason, cron.params);
-      }
-      if (!validTimeZone(trigger.tz))
-        throw bad(`unknown time zone: ${trigger.tz}`, "automation_tz_unknown", { tz: trigger.tz });
-    }
-    if (
-      action.type === "send_to_card" &&
-      trigger.type !== "pr_comment" &&
-      trigger.type !== "ci_failed"
-    ) {
-      throw bad(
-        "send_to_card needs a trigger with a card: pr_comment or ci_failed",
-        "automation_send_needs_card",
-      );
-    }
-    if (action.type === "create_card" && trigger.type !== "issue_label") {
-      throw bad("create_card needs the issue_label trigger", "automation_create_needs_label");
-    }
+    const problem = ruleProblem(trigger, action);
+    if (problem) throw bad(problem.message, problem.reason, problem.params);
   }
 }
