@@ -10,7 +10,7 @@ import type { RuntimeKind } from "../config.ts";
 import { FlightdeckError, ipInNetworks } from "../kernel/index.ts";
 
 /** Loopback, and the ranges Tailscale uses (WireGuard encrypts them). */
-export const VAULT_NETWORKS = ["127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48"]; // NOSONAR: loopback and Tailscale's documented ranges
+const VAULT_NETWORKS = ["127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48"]; // NOSONAR: loopback and Tailscale's documented ranges
 
 /** Whether a connection from `address` may deliver a secret. */
 export function isVaultTransport(address: string): boolean {
