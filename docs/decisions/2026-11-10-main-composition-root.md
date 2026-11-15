@@ -10,7 +10,7 @@ moves 1 to 8 (#1660 to #1668).
 1. **main.ts is the composition root.** It parses nothing, runs no command and builds no domain by
    hand: it calls each domain's constructor function in order, passes what one domain needs from
    another, and keeps `runCli` (which picks a command or starts the daemon) and the command table.
-2. **The command line is a driving adapter, `cli/`.** `cli/args.ts` parses the words and flags;
+2. **The command line is a driving adapter, `cli/`.** `cli/domain/args.ts` parses the words and flags;
    one file per domain the commands drive (`host.ts` service and update, `maintenance.ts`,
    `claude-settings.ts` hooks and telemetry, `setup.ts` setup, doctor and pair, `history.ts`)
    holds those commands. A command depends on its domains; no domain imports `cli/`.

@@ -9,7 +9,8 @@ import { HistoryIndexer } from "../history/index.ts";
 import { type Logger, withLock } from "../kernel/index.ts";
 import { historyExcludes } from "../permissions/index.ts";
 import { EventStore } from "../store/index.ts";
-import { type CliArgs, configPath } from "./args.ts";
+import { configPath } from "./config-path.ts";
+import type { CliArgs } from "./domain/args.ts";
 
 /** What the history command needs of the command line's deps (main.ts's `CliDeps`). */
 export interface HistoryCommandDeps {
