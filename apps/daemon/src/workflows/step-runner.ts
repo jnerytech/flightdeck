@@ -31,6 +31,7 @@ import {
   type WorkflowEngineOptions,
 } from "./engine-types.ts";
 import { hashOf } from "./repo.ts";
+import type { RunStore } from "./run-store.ts";
 
 /** The run was ended by the board while it waited: nothing more to do. */
 class Abandoned extends Error {}
@@ -71,13 +72,8 @@ export interface StepContext {
   clock: () => number;
   gates: Map<string, () => void>;
   quotaWaits: Map<string, number | null>;
-  row(id: string): RunRow;
-  stepRow(runId: string, stepId: string, attempt: number): StepRow | null;
-  setStatus(runId: string, status: RunStatus, why: string | null): void;
-  end(runId: string, status: RunStatus, why: string | null): void;
-  setReasonKey(runId: string, key: string, params: Record<string, string | number>): void;
-  emit(runId: string): void;
-  active(runId: string): boolean;
+  /** The runs as rows: read, moved and announced to the watchers. */
+  store: RunStore;
   trusted(projectId: string, name: string, hash: string): boolean;
   recordHead(runId: string, worktree: string): Promise<void>;
 }
@@ -87,7 +83,7 @@ export class StepRunner {
   constructor(private readonly ctx: StepContext) {}
 
   async execute(runId: string, worktree: string): Promise<void> {
-    const run = this.ctx.row(runId);
+    const run = this.ctx.store.row(runId);
     // Validated when the run was prepared.
     const workflow = parseWorkflow(run.definition).workflow as Workflow;
     const context: InterpolationContext = { inputs: col.inputsOf(run.inputs), steps: {} };
@@ -103,7 +99,7 @@ export class StepRunner {
       if (error instanceof Stop) this.finish(run, error.status, error.message);
       else if (error instanceof Refused) {
         this.finish(run, "failed", error.message);
-        this.ctx.setReasonKey(run.id, error.reasonKey, error.params);
+        this.ctx.store.setReasonKey(run.id, error.reasonKey, error.params);
       } else this.finish(run, "failed", reason(error));
     }
   }
@@ -115,10 +111,12 @@ export class StepRunner {
     context: InterpolationContext,
   ): Promise<{ output?: string; outputs?: string[] }> {
     // Replayed after a restart: a finished step gives back what it stored.
-    const finished = this.ctx.stepRow(run.id, step.id, 1);
+    const finished = this.ctx.store.stepRow(run.id, step.id, 1);
     if (finished?.status === "completed") {
       if (!("parallel" in step)) return { output: finished.output ?? "" };
-      const items = step.parallel.map((_, i) => this.ctx.stepRow(run.id, `${step.id}.${i}`, 1));
+      const items = step.parallel.map((_, i) =>
+        this.ctx.store.stepRow(run.id, `${step.id}.${i}`, 1),
+      );
       return { outputs: items.map((item) => item?.output ?? "") };
     }
     if ("gate" in step) return { output: await this.gateStep(run, step.id, step.gate, context) };
@@ -152,7 +150,7 @@ export class StepRunner {
          VALUES (?, ?, 1, 'parallel', 'running', ?)`,
       )
       .run(run.id, stepId, now());
-    this.ctx.emit(run.id);
+    this.ctx.store.emit(run.id);
     const extra = this.ctx.host.takeSlots(run.card_id, items.length - 1);
     const outputs: string[] = [];
     /** By item index: the first declared failure is the one reported. */
@@ -195,7 +193,7 @@ export class StepRunner {
          VALUES (?, ?, 1, 'pr', 'running', ?)`,
       )
       .run(run.id, stepId, now());
-    this.ctx.emit(run.id);
+    this.ctx.store.emit(run.id);
     try {
       const url = await this.ctx.host.createPr(run.card_id);
       this.endStep(run.id, stepId, 1, "completed", url);
@@ -219,7 +217,7 @@ export class StepRunner {
          VALUES (?, ?, 1, 'cards', 'running', ?)`,
       )
       .run(run.id, stepId, now());
-    this.ctx.emit(run.id);
+    this.ctx.store.emit(run.id);
     // The reply is untrusted text: any shape problem raises nothing and the run says why.
     const parsed = parseFindings(context.steps[from]?.output ?? "");
     if (!parsed.ok) {
@@ -286,7 +284,7 @@ export class StepRunner {
          VALUES (?, ?, 1, 'loop', 'running', ?)`,
       )
       .run(run.id, stepId, now());
-    this.ctx.emit(run.id);
+    this.ctx.store.emit(run.id);
     try {
       for (let attempt = 1; ; attempt++) {
         const check =
@@ -324,7 +322,7 @@ export class StepRunner {
     gate: { message: string; show?: string },
     context: InterpolationContext,
   ): Promise<string> {
-    let answer = this.ctx.stepRow(run.id, stepId, 1);
+    let answer = this.ctx.store.stepRow(run.id, stepId, 1);
     if (!answer) {
       const show = gate.show === undefined ? null : interpolate(gate.show, context);
       this.ctx.db
@@ -333,8 +331,8 @@ export class StepRunner {
            VALUES (?, ?, 1, 'gate', 'waiting', ?, ?, ?)`,
         )
         .run(run.id, stepId, show, interpolate(gate.message, context), now());
-      this.ctx.emit(run.id);
-      this.ctx.setStatus(run.id, "waiting", null);
+      this.ctx.store.emit(run.id);
+      this.ctx.store.setStatus(run.id, "waiting", null);
       this.ctx.host.place(run.card_id, { type: "workflow", state: "waiting" });
       this.ctx.host.release(run.card_id);
     }
@@ -342,15 +340,15 @@ export class StepRunner {
     if (answer?.status !== "approved") {
       await new Promise<void>((resolve) => this.ctx.gates.set(`${run.id}/${stepId}/1`, resolve));
     }
-    answer = this.ctx.stepRow(run.id, stepId, 1) as StepRow;
+    answer = this.ctx.store.stepRow(run.id, stepId, 1) as StepRow;
     if (answer.status === "rejected") {
       const note = answer.note ? `: ${answer.note}` : "";
       throw new Stop("rejected", `gate ${stepId} recusado${note}`);
     }
     // Approved while waiting: take a slot again (a run past the gate already holds one).
-    if (this.ctx.row(run.id).status === "waiting") {
+    if (this.ctx.store.row(run.id).status === "waiting") {
       await this.ctx.host.acquire(run.card_id);
-      this.ctx.setStatus(run.id, "running", null);
+      this.ctx.store.setStatus(run.id, "running", null);
       this.ctx.host.place(run.card_id, { type: "workflow", state: "running" });
     }
     return answer.note ?? "";
@@ -365,7 +363,7 @@ export class StepRunner {
     command: string,
   ): Promise<CheckResult> {
     // A check that finished before a restart keeps its result; one cut short runs again.
-    const done = this.ctx.stepRow(run.id, stepId, attempt);
+    const done = this.ctx.store.stepRow(run.id, stepId, attempt);
     if (done?.ended_at) return { exitCode: done.exit_code ?? 1, output: done.output ?? "" };
     this.ctx.db
       .query(
@@ -374,7 +372,7 @@ export class StepRunner {
          ON CONFLICT (run_id, step_id, attempt) DO UPDATE SET started_at = excluded.started_at`,
       )
       .run(run.id, stepId, attempt, now());
-    this.ctx.emit(run.id);
+    this.ctx.store.emit(run.id);
     try {
       if (!this.allowed(run.id, command)) {
         throw new Error(`comando fora do workflow confiado: ${command}`);
@@ -391,7 +389,7 @@ export class StepRunner {
 
   /** `command` is literally a check of the run's workflow, whose content is still trusted. */
   private allowed(runId: string, command: string): boolean {
-    const run = this.ctx.row(runId);
+    const run = this.ctx.store.row(runId);
     const { projectId } = this.ctx.host.card(run.card_id);
     const intact =
       hashOf(run.definition) === run.workflow_hash &&
@@ -408,24 +406,27 @@ export class StepRunner {
     action: AgentAction,
     context: InterpolationContext,
   ): Promise<string> {
-    const cut = this.ctx.stepRow(run.id, stepId, attempt);
+    const cut = this.ctx.store.stepRow(run.id, stepId, attempt);
     if (cut?.status === "completed") return cut.output ?? "";
     // Checked before every turn: a run over its budget pauses instead of spending more.
-    const over = overBudget(col.budgetOf(run.budget), col.spendingOf(this.ctx.row(run.id).usage));
+    const over = overBudget(
+      col.budgetOf(run.budget),
+      col.spendingOf(this.ctx.store.row(run.id).usage),
+    );
     if (over) throw new Stop("paused", over);
     // At the same point: over the plan quota, the turn waits for the window to reset.
     const quota = this.ctx.host.waitQuota();
     if (quota) {
       this.ctx.quotaWaits.set(run.id, quota.until);
-      this.ctx.setStatus(run.id, "running", "aguardando cota");
+      this.ctx.store.setStatus(run.id, "running", "aguardando cota");
       await quota.done;
       this.ctx.quotaWaits.delete(run.id);
-      if (!this.ctx.active(run.id)) throw new Abandoned();
-      this.ctx.setStatus(run.id, "running", null);
+      if (!this.ctx.store.active(run.id)) throw new Abandoned();
+      this.ctx.store.setStatus(run.id, "running", null);
     }
     const prompt = interpolate(action.prompt, context);
     let target = action.continue
-      ? (this.ctx.stepRow(run.id, action.continue, 1)?.session_id ?? null)
+      ? (this.ctx.store.stepRow(run.id, action.continue, 1)?.session_id ?? null)
       : null;
     if (cut) {
       // The turn was cut short by a restart: same session, the prompt again with a note.
@@ -437,7 +438,7 @@ export class StepRunner {
            VALUES (?, ?, ?, 'agent', 'running', ?, ?)`,
         )
         .run(run.id, stepId, attempt, target, now());
-      this.ctx.emit(run.id);
+      this.ctx.store.emit(run.id);
     }
     const text = cut ? `${RESUMED_NOTE}\n\n${prompt}` : prompt;
     try {
@@ -485,7 +486,7 @@ export class StepRunner {
     this.ctx.db
       .query("UPDATE step_runs SET session_id = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(sessionId, run.id, stepId, attempt);
-    this.ctx.emit(run.id);
+    this.ctx.store.emit(run.id);
     return this.awaitTurn(run, { stepId, attempt }, sessionId, 0, started);
   }
 
@@ -543,12 +544,12 @@ export class StepRunner {
     step: { stepId: string; attempt: number },
     turn: Parameters<typeof addTurn>[1],
   ): void {
-    const before = col.spendingOf(this.ctx.row(runId).usage);
+    const before = col.spendingOf(this.ctx.store.row(runId).usage);
     const spending = addTurn(before, turn);
     this.ctx.db
       .query("UPDATE workflow_runs SET usage = ? WHERE id = ?")
       .run(JSON.stringify(spending), runId);
-    const row = this.ctx.stepRow(runId, step.stepId, step.attempt) as StepRow;
+    const row = this.ctx.store.stepRow(runId, step.stepId, step.attempt) as StepRow;
     const share = col.stepUsageOf(row.usage) ?? { turns: 0, minutes: 0, costUsd: 0 };
     const usage = {
       turns: share.turns + 1,
@@ -558,7 +559,7 @@ export class StepRunner {
     this.ctx.db
       .query("UPDATE step_runs SET usage = ? WHERE run_id = ? AND step_id = ? AND attempt = ?")
       .run(JSON.stringify(usage), runId, step.stepId, step.attempt);
-    this.ctx.emit(runId);
+    this.ctx.store.emit(runId);
   }
 
   private endStep(
@@ -575,12 +576,12 @@ export class StepRunner {
          WHERE run_id = ? AND step_id = ? AND attempt = ?`,
       )
       .run(status, output, exitCode, now(), runId, stepId, attempt);
-    this.ctx.emit(runId);
+    this.ctx.store.emit(runId);
   }
 
   /** The run is over: the card goes to Em revisão (completed) or Esperando você. */
   private finish(run: RunRow, status: RunStatus, why: string | null): void {
-    this.ctx.end(run.id, status, why);
+    this.ctx.store.end(run.id, status, why);
     this.ctx.host.place(run.card_id, {
       type: "workflow",
       state: status === "completed" ? "done" : "waiting",
