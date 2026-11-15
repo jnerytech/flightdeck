@@ -4,18 +4,10 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import { appendFile, mkdir, readFile, realpath } from "node:fs/promises";
-import { basename, dirname, join, resolve } from "node:path";
-import {
-  FlightdeckError,
-  isInside,
-  parseJsonOr,
-  parseJsonWith,
-  whichOnPath,
-  writeFileAtomic,
-} from "../kernel/index.ts";
-import { runClaudePlugin } from "./adapters/claude-plugin.ts";
-import { AnyJson, JsonObject, PinsJson } from "./domain/json-reads.ts";
+import { readFile, realpath } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
+import { FlightdeckError, isInside, parseJsonWith } from "../kernel/index.ts";
+import { AnyJson, JsonObject } from "./domain/json-reads.ts";
 import {
   arg,
   invalid,
@@ -38,14 +30,7 @@ import {
   type UpdatePreview,
 } from "./domain/results.ts";
 import { inspectPlugin } from "./inventory.ts";
-import type {
-  CliResult,
-  Pin,
-  PinStore,
-  PluginCli,
-  PluginDecision,
-  PluginsOptions,
-} from "./ports.ts";
+import type { CliResult, Pin, PluginDecision, PluginsOptions } from "./ports.ts";
 
 export class Plugins {
   constructor(private readonly opts: PluginsOptions) {}
@@ -498,55 +483,4 @@ export class Plugins {
       });
     }
   }
-}
-
-/** The CLI found on PATH (`claude plugin ...`), with the environment of the daemon. */
-export function claudeCli(
-  options: { timeoutMs?: number; executable?: () => string | null } = {},
-): PluginCli {
-  return {
-    run: async (args) => {
-      const executable = (options.executable ?? (() => whichOnPath("claude")))();
-      if (!executable) throw invalid("claude was not found on the PATH", "claude_not_found");
-      return runClaudePlugin(executable, args, options.timeoutMs ?? 120_000);
-    },
-  };
-}
-
-/** A recorder that appends each decision as a line of JSON to `path`. */
-export function pluginDecisionLog(path: string): (decision: PluginDecision) => Promise<void> {
-  return async (decision) => {
-    await mkdir(dirname(path), { recursive: true });
-    await appendFile(path, `${JSON.stringify(decision)}\n`);
-  };
-}
-
-/** Pins kept in a JSON file; one that cannot be read is no pin at all. */
-export function filePins(path: string): PinStore {
-  const read = async (): Promise<Record<string, Pin>> => {
-    try {
-      return parseJsonOr<Record<string, Pin>>(PinsJson, await readFile(path, "utf8"), {});
-    } catch {
-      return {};
-    }
-  };
-  // Changes go one after the other, so two at once cannot read the same file and lose one.
-  let turn: Promise<unknown> = Promise.resolve();
-  const change = (apply: (pins: Record<string, Pin>) => Record<string, Pin>): Promise<void> => {
-    const done = turn.then(async () => {
-      await mkdir(dirname(path), { recursive: true });
-      await writeFileAtomic(path, JSON.stringify(apply(await read()), null, 2));
-    });
-    turn = done.catch(() => {});
-    return done;
-  };
-  return {
-    all: read,
-    set: (id, pin) => change((pins) => ({ ...pins, [id]: pin })),
-    delete: (id) =>
-      change((pins) => {
-        const { [id]: _gone, ...rest } = pins;
-        return rest;
-      }),
-  };
 }

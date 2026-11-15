@@ -1,8 +1,8 @@
 import type { HelloResult, HostInfoResult } from "@flightdeck/protocol";
-import type { SidebarSession } from "../../sessions/index.ts";
 import type { ConnectionStatus } from "../host-connection.ts";
 import type { HostConfig } from "../hosts.ts";
 import type { RetryState } from "./host-offline.ts";
+import type { SidebarSession } from "./sidebar-session.ts";
 
 export interface HostView extends HostConfig {
   status: ConnectionStatus;

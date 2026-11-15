@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
-import { parseStat, procfsReader } from "../../src/resources/procfs.ts";
+import { parseStat } from "../../src/resources/domain/proc-stat.ts";
+import { procfsReader } from "../../src/resources/procfs.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
