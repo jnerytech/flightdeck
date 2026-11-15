@@ -1,11 +1,7 @@
 import { CircleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { Key, T } from "../../i18n/index.ts";
-import type { Need } from "./domain/board-contracts.ts";
-
-/** What a card lacks, in words: "a PR link, passing checks". */
-export const needsText = (t: T, needs: readonly Need[]) =>
-  needs.map((need) => t(`board.contract.needs.${need}` as Key)).join(", ");
+import type { T } from "../../i18n/index.ts";
+import { type Need, needsText } from "./domain/board-contracts.ts";
 
 /** The mark a card wears while it lacks what its column asks: words and an icon, not only colour. */
 export function NeedsBadge(

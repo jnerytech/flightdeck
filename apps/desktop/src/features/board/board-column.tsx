@@ -12,11 +12,12 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ColumnHandle } from "@/features/board/column-handle";
-import { needsText } from "@/features/board/needs-badge";
+
 import { cn } from "@/lib/utils";
 import { Inline } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { BoardColumnEmpty } from "./column-empty.tsx";
+import { needsText } from "./domain/board-contracts.ts";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<ColumnId, LucideIcon> = {

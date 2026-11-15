@@ -1,12 +1,11 @@
 import type { Database } from "bun:sqlite";
-import type { RunStatus, StepRun, StepStatus, StepType } from "@flightdeck/protocol";
+import type { RunStatus } from "@flightdeck/protocol";
 import type { BoardEvent } from "../board/domain/columns.ts";
 import type { Card } from "../board/types.ts";
 import type { Prepare } from "../personas/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { CheckRunner } from "./check-runner.ts";
 import type { CardsRaised, Finding } from "./domain/findings.ts";
-import * as col from "./domain/row-json.ts";
 
 /**
  * The workflow engine's ports and its rows (#1595): what it needs from the board and the host,
@@ -68,37 +67,6 @@ export interface RunRow {
   /** #1266: the worktree's HEAD when the run failed; null before the column, or with no step run. */
   head_at_end: string | null;
 }
-
-export interface StepRow {
-  run_id: string;
-  step_id: string;
-  attempt: number;
-  type: StepType;
-  status: StepStatus;
-  session_id: string | null;
-  output: string | null;
-  exit_code: number | null;
-  note: string | null;
-  message: string | null;
-  usage: string | null;
-  started_at: string;
-  ended_at: string | null;
-}
-
-export const toStep = (row: StepRow): StepRun => ({
-  stepId: row.step_id,
-  attempt: row.attempt,
-  type: row.type,
-  status: row.status,
-  sessionId: row.session_id,
-  output: row.output,
-  exitCode: row.exit_code,
-  note: row.note,
-  message: row.message,
-  usage: col.stepUsageOf(row.usage),
-  startedAt: row.started_at,
-  endedAt: row.ended_at,
-});
 
 export const now = () => new Date().toISOString();
 
