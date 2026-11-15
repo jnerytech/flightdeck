@@ -1,16 +1,23 @@
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index.ts";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Panel } from "@/shared/layout/index.ts";
 import type { Settings as SettingsState } from "./index.ts";
 
-/** The Shortcut block: the global key that opens the search, with its problem, its error and Save. */
+/**
+ * The Shortcut block: the global key that opens the search, with its problem, its error and Save.
+ * The page holds the draft, so a search that hides the block does not lose an unsaved edit.
+ */
 export function ShortcutSection(
-  props: Readonly<{ settings: SettingsState; t: T; onGlobalShortcut(text: string): void }>,
+  props: Readonly<{
+    settings: SettingsState;
+    t: T;
+    draft: string;
+    onDraft(text: string): void;
+    onGlobalShortcut(text: string): void;
+  }>,
 ) {
-  const { settings, t } = props;
-  const [shortcut, setShortcut] = useState(settings.globalShortcut);
+  const { settings, t, draft: shortcut } = props;
   const shortcutOff = !settings.globalShortcutSupported;
   return (
     <Panel title={t("prefs.shortcut")}>
@@ -27,7 +34,7 @@ export function ShortcutSection(
               className="w-56"
               value={shortcut}
               disabled={shortcutOff}
-              onChange={(e) => setShortcut(e.target.value)}
+              onChange={(e) => props.onDraft(e.target.value)}
             />
           )}
         </Field>

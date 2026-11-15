@@ -64,6 +64,7 @@ export const Settings = memo(function Settings(props: {
   const state = useStoreSlice(store, SETTINGS_KEYS);
   const { t } = props;
   const { settings } = props;
+  const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const [query, setQuery] = useState("");
   // Budgets came with the costs (phase 8).
   const budgetHosts = hostsWith(state.hosts, "costs");
@@ -152,7 +153,15 @@ export const Settings = memo(function Settings(props: {
       id: "shortcut",
       label: t("prefs.shortcut"),
       words: t("settingsRail.words.shortcut"),
-      node: <ShortcutSection settings={settings} t={t} onGlobalShortcut={props.onGlobalShortcut} />,
+      node: (
+        <ShortcutSection
+          settings={settings}
+          t={t}
+          draft={shortcut}
+          onDraft={setShortcut}
+          onGlobalShortcut={props.onGlobalShortcut}
+        />
+      ),
     },
     ...(budgetHosts.length > 0
       ? [
