@@ -5,6 +5,7 @@ import { assertBranchName, FlightdeckError, refArg } from "../kernel/index.ts";
 import { type PrComment, prMessage } from "../pr/index.ts";
 import { cardDiff } from "./diff.ts";
 import type { BoardEvent } from "./domain/columns.ts";
+import { assertNoSecretInPr } from "./domain/pr-secrets.ts";
 import {
   aheadBehind,
   assertLocalBranch,
@@ -13,7 +14,7 @@ import {
   rebaseOnto,
 } from "./merge.ts";
 import { prProvider } from "./pr.ts";
-import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
+import { publishPr } from "./publish-pr.ts";
 import type { BoardOptions, Card, CardDiff, Project } from "./types.ts";
 
 /** A card's session in one of these is still working: no rebase or merge under it. */
