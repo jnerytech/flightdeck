@@ -23,7 +23,7 @@ export interface HomeTask {
 }
 
 /** Where the tasks run and what they may use: the host's name, link and allowed folders. */
-export interface HomeWhere {
+interface HomeWhere {
   hostName: string;
   status: ConnectionStatus;
   /** `null` until the host has told which folders tasks may use. */
