@@ -4,7 +4,7 @@
  * only); installing, updating and removing only happen on an explicit confirmation tied to the
  * hash of the content that was shown, and the CLI is never given `-y`.
  */
-import { basename, join, resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { FlightdeckError, isInside, parseJsonWith } from "../kernel/index.ts";
 import { diskPluginFiles } from "./adapters/plugin-files.ts";
 import { AnyJson, JsonObject } from "./domain/json-reads.ts";
