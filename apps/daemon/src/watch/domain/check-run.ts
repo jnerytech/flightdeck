@@ -4,7 +4,7 @@
  * secret across a later cut is still caught (docs/decisions/2026-11-09-check-loop.md).
  */
 import { SecretScanner } from "../../snippets/index.ts";
-import type { BoundedCheckRunner } from "../../workflows/index.ts";
+import { type BoundedCheckRunner, MAX_VALUE } from "../../workflows/index.ts";
 import { type CheckRefusal, checkCommandRefusal } from "./check-command.ts";
 
 const scanner = new SecretScanner();
@@ -32,6 +32,43 @@ export type CheckOutcome =
       tooLarge: boolean;
       output: string;
     };
+
+/**
+ * Why the first local check did not pass (refused, timed out, too large, failed), or null when
+ * all passed. A refused command is not the round's to fix (#1361): it says so with `refused`.
+ */
+export function checkFailure(
+  outcome: CheckOutcome,
+  timeoutMin: number,
+): { text: string; refused: boolean } | null {
+  switch (outcome.kind) {
+    case "passed":
+      return null;
+    case "refused":
+      return {
+        text: `local check refused (${outcome.refusal}): ${outcome.command}`,
+        refused: true,
+      };
+    case "aborted":
+      return { text: `local check stopped: ${outcome.command}`, refused: false };
+    default:
+      if (outcome.timedOut) {
+        const text = `local check timed out: ${outcome.command} (after ${timeoutMin} min)`;
+        return { text, refused: false };
+      }
+      if (outcome.tooLarge) {
+        return {
+          text: `local check stopped: ${outcome.command} printed more than 4 MB`,
+          refused: false,
+        };
+      }
+      // Masked whole by runChecks, so the cut below cannot split a secret's line unmasked.
+      return {
+        text: `local check failed: ${outcome.command} (exit ${outcome.exitCode})\n${outcome.output.slice(-MAX_VALUE)}`,
+        refused: false,
+      };
+  }
+}
 
 export async function runChecks(input: {
   checks: readonly string[];

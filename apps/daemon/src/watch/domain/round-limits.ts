@@ -12,6 +12,16 @@ export function countedRounds(all: FixRound[], sinceStart: number): FixRound[] {
   return all.slice(all.length - sinceStart);
 }
 
+/** How many of the latest rounds failed one after the other, counting back from the last. */
+export function failuresInARow(rounds: FixRound[]): number {
+  let inARow = 0;
+  for (const round of [...rounds].reverse()) {
+    if (round.status !== "failed") break;
+    inARow++;
+  }
+  return inARow;
+}
+
 /** The card's rounds used up: the reason with each round, or null while some are left. */
 export function roundsUsedUp(done: FixRound[], max: number): string | null {
   if (done.length < max) return null;
