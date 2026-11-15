@@ -7,7 +7,7 @@
 import { DENIED_TOOLS, type EvalOptions, homeDenials } from "./harness-eval.ts";
 
 /** One planted commit: its message and the files it adds. */
-export interface PlantedCommit {
+interface PlantedCommit {
   subject: string;
   body: string;
   files: { path: string; content: string }[];
