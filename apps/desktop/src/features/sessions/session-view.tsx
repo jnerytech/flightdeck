@@ -1,11 +1,9 @@
 import {
   type EffortLevel,
   inSequence,
-  type PermissionMode,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   type SessionImage,
-  type SettableMode,
 } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -23,7 +21,6 @@ import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
 import { composerPickers } from "./composer-pickers.tsx";
 import { commandItemsOf, offeredPrompts } from "./domain/command-menu.ts";
-import { composerModeMenu } from "./domain/composer-pickers.ts";
 import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-queue.ts";
 import { nextMode } from "./domain/mode-menu.ts";
 import { activityOf, openTool } from "./domain/session-activity.ts";
@@ -45,6 +42,7 @@ import { StatusBadge } from "./status-badge.tsx";
 import { SessionStatusLine } from "./status-line";
 import { TimelineItem } from "./timeline-item.tsx";
 import { useConversationScroll } from "./use-conversation-scroll.ts";
+import { useModePick } from "./use-mode-pick.ts";
 import { WorkingRow } from "./working-row";
 
 interface SessionViewProps {
@@ -128,45 +126,15 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   // #1133: how many files End found uncommitted, while it asks about them.
   const [unsaved, setUnsaved] = useState<number | null>(null);
   const [picking, setPicking] = useState(false);
-  // The session's own mode, null until it says (#935): never a guess of Default.
-  const start = session.permissionMode ?? null;
-  // The mode it runs in now: the last one it reported, else the one it opened with.
-  const current = session.mode ?? start;
-  // A pick belongs to the session and the mode it was made over: another session, or a new mode
-  // from this one, shows its own.
-  const owner = `${props.scrollKey ?? ""}|${current ?? ""}`;
-  const [picks, setPicks] = useState<Readonly<Record<string, PermissionMode>>>({});
-  const mode = picks[owner] ?? current;
-  /**
-   * Shows the pick at once and asks the host; a refusal (said in the error bar) takes it back, so
-   * the chip shows the session's own mode again (#935).
-   */
-  const pickMode = (next: SettableMode) => {
-    const key = owner;
-    setPicks((all) => ({ ...all, [key]: next }));
-    void actions.setMode?.(next).then((taken) => {
-      if (taken !== false) return;
-      setPicks(({ [key]: _refused, ...rest }) => rest);
-    });
-  };
-  const [bypassAsk, setBypassAsk] = useState(false);
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
-  // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
-  const modeMenu = composerModeMenu({
-    current: mode,
-    start,
+  const { mode, modeMenu, chooseMode, bypassAsk, cancelBypass, confirmBypass } = useModePick({
+    session,
+    scrollKey: props.scrollKey,
+    actions,
     bypassAllowed: Boolean(props.bypass),
     opencode,
   });
-  /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
-  const chooseMode = (next: SettableMode) => {
-    if (next === "bypassPermissions") {
-      setBypassAsk(true);
-      return;
-    }
-    pickMode(next);
-  };
   const [model, setModel] = useState("");
   const [effort, setEffort] = useState<EffortLevel | null>(null);
   const slash = session.slashCommands;
@@ -618,11 +586,8 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             destructive
             message={t("session.bypassMessage", { host: props.bypass.host, session: props.title })}
             confirmLabel={t("session.bypassConfirm")}
-            onCancel={() => setBypassAsk(false)}
-            onConfirm={() => {
-              setBypassAsk(false);
-              pickMode("bypassPermissions");
-            }}
+            onCancel={cancelBypass}
+            onConfirm={confirmBypass}
           />
         )}
         <SessionStatusLine
