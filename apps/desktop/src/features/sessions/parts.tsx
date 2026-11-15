@@ -23,7 +23,7 @@ export const ShortArea = createContext(false);
  * (issue #488). The header, the not-trusted notice and the summary then take one line each, so the
  * request card stays whole.
  */
-export const TightArea = createContext(false);
+const TightArea = createContext(false);
 
 /** The area is short or a request waits: what the bands over the conversation read. */
 export function useTight(): boolean {

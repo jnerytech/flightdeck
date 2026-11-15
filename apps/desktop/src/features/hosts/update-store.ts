@@ -3,10 +3,10 @@ import type { T } from "../../i18n/index.ts";
 import { APP_VERSION, isNewer } from "../../lib/version.ts";
 
 /** The least time between two checks the app starts by itself for one host. */
-export const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
+const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
 
 /** How long a host may take to come back on the new version before the page says it is late. */
-export const DAEMON_UPDATE_TIMEOUT_MS = 120_000;
+const DAEMON_UPDATE_TIMEOUT_MS = 120_000;
 
 /** What the daemon update reads and writes of a host (#1596): its status, info and update marks. */
 export interface HostUpdateView {

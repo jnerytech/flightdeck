@@ -10,7 +10,7 @@ export interface TerminalHost {
 }
 
 /** What draws the output (xterm in the app). */
-export interface TerminalScreen {
+interface TerminalScreen {
   /** `done` runs once xterm has drawn the bytes. */
   write(bytes: Uint8Array, done?: () => void): void;
   reset(): void;
@@ -18,7 +18,7 @@ export interface TerminalScreen {
 
 export type TerminalState = "attaching" | "live" | "detached" | "ended";
 
-export type Schedule = (run: () => void, ms: number) => () => void;
+type Schedule = (run: () => void, ms: number) => () => void;
 
 export interface TerminalSessionOptions {
   terminalId: string;

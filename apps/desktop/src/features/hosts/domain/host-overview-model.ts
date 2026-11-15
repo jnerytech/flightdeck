@@ -2,7 +2,7 @@ import type { ProjectCard } from "@/features/projects/index.ts";
 import { type HubRow, hubRowOrder } from "../../sessions/index.ts";
 
 /** How many sessions and projects the host page's overview shows before "See all". */
-export const HOST_PREVIEW = 6;
+const HOST_PREVIEW = 6;
 
 /** The host's own sessions: the ones that need you first, then pinned and latest; archived ones stay out. */
 export function hostSessionRows(rows: HubRow[], hostId: string, limit = HOST_PREVIEW): HubRow[] {

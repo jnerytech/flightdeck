@@ -60,7 +60,6 @@ export { rowRoute } from "./row-route.ts";
 export type { SessionActions } from "./session-actions.ts";
 export {
   initialSessionsState,
-  type ResumeOffer,
   type SessionsCore,
   SessionsSlice,
   type SessionsSliceState,

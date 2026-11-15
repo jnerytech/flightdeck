@@ -2,8 +2,8 @@
   "binaries": 1,
   "dependencies": 1,
   "devDependencies": 1,
-  "exports": 118,
+  "exports": 104,
   "files": 15,
-  "types": 100,
+  "types": 86,
   "unlisted": 1
 }

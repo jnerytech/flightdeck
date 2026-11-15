@@ -6,7 +6,7 @@ import { HarnessTemplatesSection } from "@/features/harness/ui.ts";
 import type { ProjectCard } from "@/features/projects/index.ts";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
-import { useHostLatency, useStoreSlice } from "@/lib/use-store";
+import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { FieldRow, Page, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
@@ -22,12 +22,12 @@ import { BypassSwitch } from "./bypass-switch.tsx";
 import { DaemonUpdate } from "./daemon-update.tsx";
 import { hostDownReason } from "./domain/host-down-reason.ts";
 import type { HostNameError } from "./domain/host-name.ts";
-import { hostUptime } from "./domain/host-offline.ts";
 import { GithubPanel } from "./github-panel.tsx";
 import { HostAccount } from "./host-account.tsx";
 import { HostAutoUpdate } from "./host-auto-update.tsx";
 import { HostCompare } from "./host-compare.tsx";
 import { HostHealth } from "./host-health.tsx";
+import { HostIncompatibleNotice, HostInfoPanel } from "./host-info-panel.tsx";
 import { HostLogs } from "./host-logs.tsx";
 import { HostOfflineBanner } from "./host-offline-banner.tsx";
 import { HostOverview } from "./host-overview.tsx";
@@ -41,7 +41,6 @@ import { RenameHostDialog } from "./rename-host-dialog.tsx";
 import { ResumePanel } from "./resume-panel.tsx";
 import { SimpleModePanel } from "./simple-mode-panel.tsx";
 import { SleepSetting } from "./sleep-setting.tsx";
-import { useNow } from "./use-now.ts";
 
 /** What the overview reads from the app: the sessions, the projects and the cards of the hosts. */
 const OVERVIEW_KEYS = [
@@ -126,7 +125,6 @@ export function HostPage(
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
   const [removing, setRemoving] = useState(false);
   const [tab, setTab] = useState(props.section ? tabOf(props.section) : "overview");
-  const now = useNow();
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
   useEffect(() => {
@@ -228,26 +226,7 @@ export function HostPage(
             {...(props.onPairAgain ? { onPairAgain: props.onPairAgain } : {})}
           />
         )}
-        {host.status === "incompatible" && (
-          <InlineNotice>
-            <span className="flex flex-col gap-1">
-              {/* Issue #181: one sentence of the catalog; the daemon's own words stay under Details. */}
-              <span>{t("errors.protocol_incompatible")}</span>
-              {host.incompatibility && (
-                <details>
-                  <summary>{t("toast.details")}</summary>
-                  {host.incompatibility}
-                </details>
-              )}
-              <span>
-                {t("hostPage.incompatibleFix", { version: APP_VERSION })}{" "}
-                <code className="rounded bg-muted px-1 font-mono text-xs">
-                  flightdeckd update --from {t("daemonUpdate.binary")}
-                </code>
-              </span>
-            </span>
-          </InlineNotice>
-        )}
+        {host.status === "incompatible" && <HostIncompatibleNotice host={host} />}
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
         )}
@@ -281,34 +260,7 @@ export function HostPage(
                     />
                   )}
                   <HostResources store={store} host={host} />
-                  <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
-                    {info ? (
-                      <ul className="flex flex-col gap-1 text-sm">
-                        <li>{`${info.os} · ${info.arch}`}</li>
-                        <li>{t("hostPage.daemon", { version: info.daemonVersion })}</li>
-                        <li>{t("hostPage.app", { version: APP_VERSION })}</li>
-                        {info.daemonVersion !== APP_VERSION && (
-                          <li className="text-status-needs-you">{t("hostPage.differs")}</li>
-                        )}
-                        <li>
-                          {t("hostPage.claude", {
-                            version: info.claudeVersion ?? t("hostPage.unknown"),
-                          })}
-                        </li>
-                        <li>{t("hostPage.active", { n: info.activeSessions })}</li>
-                        <li>
-                          {t("hostPage.uptime", {
-                            n: hostUptime(info.uptimeSec, host.infoAt, now),
-                          })}
-                        </li>
-                        <HostLatency store={store} hostId={host.id} />
-                      </ul>
-                    ) : (
-                      <p className="text-muted-foreground text-sm">
-                        {offline ? t("hostOffline.title") : t("hostPage.unavailable")}
-                      </p>
-                    )}
-                  </Panel>
+                  <HostInfoPanel store={store} host={host} offline={offline} />
                 </div>
                 <div data-slot="host-overview-work" className="host-overview-column">
                   <HostOverview
@@ -458,11 +410,4 @@ export function HostPage(
       </div>
     </Page>
   );
-}
-
-/** The heartbeat latency line: the only part of the page that renders on a ping. */
-function HostLatency(props: Readonly<{ store: AppStore; hostId: string }>) {
-  const t = useT();
-  const latency = useHostLatency(props.store, props.hostId);
-  return <li>{t("hostPage.latency", { value: latency === null ? "—" : `${latency} ms` })}</li>;
 }

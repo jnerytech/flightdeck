@@ -17,6 +17,7 @@ import { z } from "zod";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { slug } from "../names/index.ts";
 import { formatSessionMessage, formatSystemMessage } from "./domain/header.ts";
+import { blankParty, relayAnswer, sharedTeam } from "./domain/parties.ts";
 import {
   DAY_MS,
   FLIGHTDECK,
@@ -351,8 +352,7 @@ export class Messaging {
     }
 
     const id = ulid(this.ms());
-    const teamId =
-      sender.teamId !== null && sender.teamId === target.party.teamId ? sender.teamId : null;
+    const teamId = sharedTeam(sender, target.party);
     const record = (status: MessageInfo["status"], formatted: string | null) =>
       this.insert({
         id,
@@ -504,29 +504,13 @@ export class Messaging {
   /** A message from another host, handed over by the app; idempotent by id. */
   relay(message: RelayMessage): SendResult {
     const existing = this.store.row(message.id);
-    if (existing) {
-      return {
-        id: existing.id,
-        status:
-          existing.status === "delivered" || existing.status === "queued"
-            ? existing.status
-            : "refused",
-        reason: existing.reason,
-      };
-    }
+    if (existing) return relayAnswer(existing);
     const from: Party = { ...message.from };
     const refuse = (reason: string, to?: Party): SendResult => {
       this.insert({
         id: message.id,
         sender: from,
-        to: to ?? {
-          id: message.toSession,
-          host: message.toHost,
-          name: null,
-          persona: null,
-          projectKey: null,
-          teamId: null,
-        },
+        to: to ?? blankParty(message.toSession, message.toHost),
         text: message.text,
         status: "refused",
         reason,
@@ -563,7 +547,7 @@ export class Messaging {
       text: message.text,
       status: outcome.status,
       reason: null,
-      teamId: from.teamId !== null && from.teamId === to.teamId ? from.teamId : null,
+      teamId: sharedTeam(from, to),
       kind: message.kind,
       untrusted: message.untrusted,
       formatted,
@@ -604,24 +588,8 @@ export class Messaging {
     const { id: sessionId } = addressParts(to);
     const info = this.opts.endpoints.list().find((e) => e.id === sessionId);
     const id = ulid(this.ms());
-    const target: Party = info
-      ? this.partyOf(info)
-      : {
-          id: sessionId,
-          host: this.opts.host,
-          name: null,
-          persona: null,
-          projectKey: null,
-          teamId: null,
-        };
-    const from: Party = {
-      id: FLIGHTDECK,
-      host: this.opts.host,
-      name: null,
-      persona: null,
-      projectKey: null,
-      teamId: null,
-    };
+    const target: Party = info ? this.partyOf(info) : blankParty(sessionId, this.opts.host);
+    const from = blankParty(FLIGHTDECK, this.opts.host);
     const record = (
       status: MessageInfo["status"],
       reason: string | null,
@@ -737,14 +705,7 @@ export class Messaging {
     this.insert({
       id,
       sender,
-      to: target ?? {
-        id: sessionId,
-        host: host ?? this.opts.host,
-        name: null,
-        persona: null,
-        projectKey: null,
-        teamId: null,
-      },
+      to: target ?? blankParty(sessionId, host ?? this.opts.host),
       text,
       status: "refused",
       reason,

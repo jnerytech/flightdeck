@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /** The spacing scale: 4, 8, 12, 16, 24 and 32 px. */
 export type Gap = 1 | 2 | 3 | 4 | 6 | 8;
 
-export type Columns = 1 | 2 | 3 | 4 | 5 | 6;
+type Columns = 1 | 2 | 3 | 4 | 5 | 6;
 
 /** Columns per breakpoint, from the smallest. */
 export interface GridCols {
