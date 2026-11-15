@@ -12,7 +12,7 @@ const { applyEnvelope, emptySession } = await import(
   "../../src/features/sessions/domain/session-state.ts"
 );
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
-const { errorText } = await import("../../src/features/sessions/timeline-item.tsx");
+const { errorText } = await import("../../src/features/sessions/domain/session-text.ts");
 const { translator } = await import("../../src/i18n/index.ts");
 
 setDefaultTimeout(30_000);
