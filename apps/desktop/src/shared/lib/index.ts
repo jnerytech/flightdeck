@@ -1,7 +1,8 @@
-/** Helpers with no domain (paths, bytes, widths, backoff, contrast, status tone, stored JSON, requests whose error becomes null, React keys for repeated ids), public entry (#1589): another folder imports from here, never a file inside. */
+/** Helpers with no domain (paths, flattened tool fields, bytes, widths, backoff, contrast, status tone, stored JSON, requests whose error becomes null, React keys for repeated ids), public entry (#1589): another folder imports from here, never a file inside. */
 export { backoffDelay } from "./backoff.ts";
 export { contrastRatio } from "./contrast.ts";
 export { languageFor, loadLanguage } from "./file-language.ts";
+export { flattenFields } from "./flatten-fields.ts";
 export { formatBytes } from "./format-bytes.ts";
 export {
   clampListWidth,
