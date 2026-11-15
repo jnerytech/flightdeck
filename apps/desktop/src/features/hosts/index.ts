@@ -27,6 +27,7 @@ export {
   type HealthSliceState,
   initialHealthState,
 } from "./health-store.ts";
+export { HostCommands } from "./host-commands.ts";
 export { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 export { HostTabs } from "./host-tabs.ts";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
