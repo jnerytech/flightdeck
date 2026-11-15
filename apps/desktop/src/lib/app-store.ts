@@ -8,7 +8,6 @@ import type {
 } from "@flightdeck/protocol";
 import { z } from "zod";
 import { type ReleaseNotesResult, releaseNotes } from "@/features/appupdate/index.ts";
-import { fillComposer, takeComposerFill } from "@/features/sessions/index.ts";
 import { sessionRecap } from "@/features/summary/index.ts";
 import { WORKSPACE_KEY, type Workspace } from "@/features/tabs/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
@@ -31,7 +30,12 @@ import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import type { Answer } from "../features/needs-you/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
-import { SessionViews, sessionKey } from "../features/sessions/index.ts";
+import {
+  fillComposer,
+  SessionViews,
+  sessionKey,
+  takeComposerFill,
+} from "../features/sessions/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
