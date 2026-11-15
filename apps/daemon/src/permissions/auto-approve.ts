@@ -96,6 +96,46 @@ const POLICY =
   "Aprove só se for claramente seguro e dentro do pedido; na dúvida, ask. " +
   'Responda com decision ("allow" ou "ask") e reason.';
 
+/**
+ * The never-automatic rules, in order: a suspended session, high risk, the network, and low risk
+ * when the project lets it pass without AI. Null when none applies, so the AI is asked.
+ */
+function ruleDecision(input: {
+  risk: Risk;
+  suspendedReason: string | null;
+  lowWithoutAi: boolean;
+}): { decision: "allow" | "ask"; reason: string; by: "rule"; model: null } | null {
+  const rule = (decision: "allow" | "ask", reason: string) => ({
+    decision,
+    reason,
+    by: "rule" as const,
+    model: null,
+  });
+  if (input.suspendedReason !== null) {
+    return rule("ask", `aprovação automática suspensa: ${input.suspendedReason}`);
+  }
+  if (input.risk.level === "high") return rule("ask", "risco alto nunca é automático");
+  if (input.risk.network) return rule("ask", "acesso à rede nunca é automático");
+  if (input.risk.level === "low" && input.lowWithoutAi) return rule("allow", "risco baixo, sem IA");
+  return null;
+}
+
+/** What the AI is asked about a request: the tool, its input, the cwd, the risk and the card's ask. */
+function autoApprovePrompt(
+  request: { toolName: string; input: Record<string, unknown>; cwd: string; risk: Risk },
+  description: string | undefined,
+): string {
+  return [
+    "Um agente de código pede permissão para usar uma ferramenta.",
+    `ferramenta: ${request.toolName}`,
+    `entrada: ${JSON.stringify(summarizeInput(request.input))}`,
+    `cwd: ${request.cwd}`,
+    `risco: ${request.risk.level} (${request.risk.reason})`,
+    ...(description ? [`pedido do card: ${description.slice(0, 1000)}`] : []),
+    POLICY,
+  ].join("\n");
+}
+
 interface Row {
   id: string;
   project_id: string;
@@ -199,24 +239,18 @@ export class AutoApprover {
     request: AutoApproveRequest,
     context: AutoApproveContext,
   ): Promise<AutoDecision> {
-    const rule = (decision: "allow" | "ask", reason: string): AutoDecision => ({
-      decision,
-      reason,
-      by: "rule",
-      model: null,
-    });
     // Suspended in this session, or in the card whose worktree it works in.
     const keys = new Set([
       request.sessionKey,
       ...(context.cardId ? [`card:${context.cardId}`] : []),
     ]);
     const suspended = this.suspended().find((s) => keys.has(s.sessionKey));
-    if (suspended) return rule("ask", `aprovação automática suspensa: ${suspended.reason}`);
-    if (request.risk.level === "high") return rule("ask", "risco alto nunca é automático");
-    if (request.risk.network) return rule("ask", "acesso à rede nunca é automático");
-    if (request.risk.level === "low" && context.settings.lowWithoutAi) {
-      return rule("allow", "risco baixo, sem IA");
-    }
+    const ruled = ruleDecision({
+      risk: request.risk,
+      suspendedReason: suspended ? suspended.reason : null,
+      lowWithoutAi: context.settings.lowWithoutAi,
+    });
+    if (ruled) return ruled;
     const { model } = context.settings;
     const ai = (decision: "allow" | "ask", reason: string): AutoDecision => ({
       decision,
@@ -234,7 +268,7 @@ export class AutoApprover {
       const answer = await Promise.race([
         (this.opts.runtime.judgePermission as NonNullable<AgentRuntime["judgePermission"]>)({
           model,
-          prompt: this.prompt(request, context),
+          prompt: autoApprovePrompt(request, context.description),
           cwd: autoApproveDir(this.opts.dataDir),
           signal: controller.signal,
         }),
@@ -261,17 +295,5 @@ export class AutoApprover {
     } finally {
       clearTimeout(timer);
     }
-  }
-
-  private prompt(request: AutoApproveRequest, context: AutoApproveContext): string {
-    return [
-      "Um agente de código pede permissão para usar uma ferramenta.",
-      `ferramenta: ${request.toolName}`,
-      `entrada: ${JSON.stringify(summarizeInput(request.input))}`,
-      `cwd: ${request.cwd}`,
-      `risco: ${request.risk.level} (${request.risk.reason})`,
-      ...(context.description ? [`pedido do card: ${context.description.slice(0, 1000)}`] : []),
-      POLICY,
-    ].join("\n");
   }
 }
