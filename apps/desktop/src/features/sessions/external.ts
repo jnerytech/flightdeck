@@ -6,11 +6,14 @@ import type {
   SessionMeta,
   SessionSummary,
 } from "@flightdeck/protocol";
-import { requestLink } from "@/features/permissions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { InboxSlice } from "../inbox/index.ts";
-import { externalRequestNotification, externalWaitNotification } from "../inbox/index.ts";
+import {
+  externalRequestNotification,
+  externalWaitNotification,
+  requestLink,
+} from "../inbox/index.ts";
 import { sessionKey } from "./domain/session-key.ts";
 
 /** The parts of the app state the external sessions read. */

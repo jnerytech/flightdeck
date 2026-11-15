@@ -7,6 +7,5 @@
 export type { ApprovalRequest } from "./approval-card.tsx";
 export { shortPath } from "./domain/approval.ts";
 export { HIGH_RISK_HOLD_MS } from "./domain/hold.ts";
-export { parseRequestLink, requestLink } from "./domain/request-link.ts";
 export { PermissionsSlice } from "./store.ts";
 export { wirePermissions } from "./wire.ts";
