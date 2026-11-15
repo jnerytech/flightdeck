@@ -40,11 +40,9 @@ import {
   dropPositions,
   idsByColumn,
   moveLabel,
-  queueMaxOf,
   refusalNames,
   showingColumn,
   shownCards,
-  startableWorkflows,
   stayingPicks,
   tabStops,
 } from "@/features/board/domain/board-derive";
@@ -52,11 +50,9 @@ import { needsText } from "@/features/board/needs-badge";
 import { quietBadge } from "@/features/board/quiet-badge-view";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { BoardFilesPanel } from "@/features/files/ui.ts";
-import { useSuggestedPersona } from "@/features/personas/ui.ts";
 import { activeWorktreeFilter, worktreeOfProject } from "@/features/projects/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/ui.ts";
 import { RoiCard } from "@/features/roi/ui.ts";
-import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { useMinLoading } from "@/shared/hooks/index.ts";
@@ -68,23 +64,16 @@ import { IssuesPanel } from "../issues/ui.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import { cardKey } from "./board-card-keys.ts";
 import { BoardLoadError } from "./board-load-error.tsx";
-import { BulkRunDialog } from "./bulk-run-dialog.tsx";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 import { CardTile } from "./card-tile.tsx";
 import { BoardColumnEmpty } from "./column-empty.tsx";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
 import {
-  bulkRunOutcome,
-  bulkSkipReason,
   bulkSplit,
-  bulkTitle,
-  holdLines,
   refusalNotice,
   requestResult,
   runMany,
-  startConfirmLines,
-  startQuotaLines,
   updateMany,
   updateSummary,
 } from "./domain/board-bulk.ts";
@@ -105,9 +94,9 @@ import {
   toggleSelection,
 } from "./domain/board-select.ts";
 import { cardStartBlock } from "./domain/card-start-block.ts";
-import { startPersonaOf, startWorkflowOf } from "./domain/card-template.ts";
 import { NewCardDialog } from "./new-card-dialog.tsx";
 import { useBoardProject } from "./use-board-project.ts";
+import { useBulkRun } from "./use-bulk-run.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
 import { useStartAsk } from "./use-start-ask.tsx";
 
@@ -214,19 +203,6 @@ export const BoardView = memo(function BoardView(props: {
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
   /** A keyboard range (#1354): the selection it started from, so Shift+Up can shrink it back. */
   const rangeBase = useRef<string[] | null>(null);
-  /** #1354: the Start N or Stop N confirm, and the host's limit of runs at once (null: not known). */
-  const [bulk, setBulk] = useState<"start" | "stop" | null>(null);
-  const [queueMax, setQueueMax] = useState<number | null | undefined>(undefined);
-  /** The project's workflows (their inputs), asked when Start N's confirm opens; null until then. */
-  const [workflows, setWorkflows] = useState<Array<{ name: string; inputs: string[] }> | null>(
-    null,
-  );
-  const [workflowsFailed, setWorkflowsFailed] = useState(false);
-  /** #1414: the host's memory was at or over its hold when the confirm opened. */
-  const [memoryOver, setMemoryOver] = useState(false);
-  /** Which open of Start N's confirm the host's replies belong to. */
-  const startAsked = useRef(0);
-  const suggestedPersona = useSuggestedPersona(store, hostId, "dev");
   /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
   const moveFrom = useRef<string | null>(null);
   // A batch of moves or discards is running: nothing else may start.
@@ -253,15 +229,6 @@ export const BoardView = memo(function BoardView(props: {
   const splitWidth = useWidth(splitRef);
   const narrow = splitWidth > 0 && splitWidth < 900;
   const { t } = store.i18n;
-  /** #1422: the other hosts a Start that would wait can go to. */
-  const elsewhere = useStartElsewhere({
-    store,
-    hostId,
-    sourceKey: project ? store.projectList.keyOf(hostId, project) : null,
-    hosts: state.hosts,
-    cards: state.cards,
-    t,
-  });
 
   // The sidebar's Board item opens this board next time on this host (#669).
   useEffect(() => store.viewPrefs.rememberBoard(hostId, projectId), [store, hostId, projectId]);
@@ -368,6 +335,8 @@ export const BoardView = memo(function BoardView(props: {
    * #1426: what had the focus when a selection's confirm opened (a card, the bar's button). Closing
    * the confirm puts it back there, or on the board when it is gone.
    */
+  // After a move the card is somewhere else, so its old element is gone: focus the new one.
+  const boardRef = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const rememberOpener = () => {
     const el = document.activeElement;
@@ -379,47 +348,6 @@ export const BoardView = memo(function BoardView(props: {
     opener.current = null;
     if (el?.isConnected) el.focus();
     else boardRef.current?.focus();
-  };
-  /** Opens Start N's confirm, and asks the host its limit and the project's workflows for it. */
-  const askStart = () => {
-    if (busy || split.start.length === 0) return;
-    rememberOpener();
-    // Each open asks again; a reply to an earlier open is dropped (#1390's review).
-    const asked = ++startAsked.current;
-    setQueueMax(undefined);
-    setWorkflows(null);
-    setWorkflowsFailed(false);
-    setMemoryOver(false);
-    setBulk("start");
-    elsewhere.load();
-    // Start waits for both (the confirm's button is off): the queue line and each card's workflow.
-    void store.hostCommand(hostId, "project.list", {}).then((list) => {
-      if (asked !== startAsked.current) return;
-      setQueueMax(queueMaxOf(list));
-    });
-    // The memory hold, read now: with nothing queued yet no card carries its reason (#1414). It
-    // fails open: a host that does not answer gets no line, and Start does not wait for it.
-    if (withMemoryPause) {
-      // The host's own verdict (#1418's review): the share alone is wrong a margin under the hold,
-      // and on a host with no reading (macOS). An older host that does not say gets no line.
-      void store
-        .hostRequest(hostId, "resources.get", {})
-        .then((answer) => {
-          if (asked !== startAsked.current || !answer.ok) return;
-          setMemoryOver(answer.data.memoryHolding === true);
-        })
-        .catch(() => {});
-    }
-    void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
-      if (asked !== startAsked.current) return;
-      // A read that failed is not an empty list: Start stays off and the confirm says why.
-      if (!result) {
-        setWorkflowsFailed(true);
-        return;
-      }
-      // As the start dialog does: only a trusted workflow with no errors goes with a card.
-      setWorkflows(startableWorkflows(result.workflows));
-    });
   };
   /** #1406: runs of Update from the base that finished; each puts the focus back after its render. */
   const [updated, setUpdated] = useState(0);
@@ -468,110 +396,24 @@ export const BoardView = memo(function BoardView(props: {
     // it goes back once the render has turned the button on again.
     setUpdated((n) => n + 1);
   };
-  const askStop = () => {
-    if (busy || split.stop.length === 0) return;
-    rememberOpener();
-    setBulk("stop");
-  };
-  /** A card whose workflow asks for inputs starts from its own dialog, where they are typed. */
-  const workflowOf = (card: Card) =>
-    startWorkflowOf(
-      card,
-      (workflows ?? []).map((w) => w.name),
-    );
-  const needsInputs = (card: Card) =>
-    (workflows?.find((w) => w.name === workflowOf(card))?.inputs.length ?? 0) > 0;
-  const startable = split.start.filter((card) => !needsInputs(card));
-  const startReady = queueMax !== undefined && workflows !== null;
-  /** The host's cards holding a run: the queue's places they take. */
-  const runningOnHost = Object.entries(state.cards).filter(
-    ([key, card]) => key.startsWith(`${hostId}/`) && cardStartBlock(card) === "running",
-  ).length;
-  /** Starts or stops the cards one at a time; the ones that went leave the selection. */
-  const runSelected = async (kind: "start" | "stop") => {
-    if (busy) return;
-    const cards = kind === "start" ? startable : split.stop;
-    setBulk(null);
-    setBusy(true);
-    const personaIds = (state.personas[hostId] ?? []).map((p) => p.id);
-    const refused = await runMany(cards, async (card) => {
-      const workflow = workflowOf(card);
-      const persona = store.personas.ref(startPersonaOf(card, personaIds) ?? suggestedPersona);
-      const answer =
-        kind === "start"
-          ? await store.hostRequest(hostId, "card.start", {
-              cardId: card.id,
-              ...(workflow ? { workflow, inputs: {} } : {}),
-              ...(persona ? { persona } : {}),
-            })
-          : await store.hostRequest(hostId, "card.stop", { cardId: card.id });
-      return requestResult(answer);
-    });
-    const stayed = new Set(refused.map((r) => r.card.id));
-    const went = new Set(cards.map((card) => card.id).filter((id) => !stayed.has(id)));
-    setPicked((before) => before.filter((id) => !went.has(id)));
-    setNotice(bulkRunOutcome(t, kind, refused, nameRefusals(refused)));
-    setBusy(false);
-    boardRef.current?.focus();
-  };
-  const hostName = state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
-  /**
-   * The host's quota lines, and every hold that keeps new cards waiting (the quota's pause limit, a
-   * budget, the host's memory). A hold keeps every new card waiting, so the queue line then says they
-   * all join the queue, never "N start now" (#1414).
-   */
-  const quota = startQuotaLines(t, hostName, {
-    quota: state.quota[hostId],
-    account: state.account[hostId],
-    now: Date.now(),
-    formatTime: (iso) => store.formatTime(iso),
+  const bulkRun = useBulkRun({
+    store,
+    hostId,
+    projectId,
+    project,
+    all,
+    actingCards,
+    split,
+    contracts,
+    busy,
+    setBusy,
+    setPicked,
+    setNotice,
+    memoryPause: withMemoryPause,
+    nameRefusals,
+    opener: { remember: rememberOpener, restore: restoreOpener },
+    boardRef,
   });
-  const quotaLines = quota.lines;
-  const holds = [...quota.holds];
-  holds.push(
-    ...holdLines(t, hostName, {
-      budgets: state.budgets[hostId] ?? [],
-      projectKey: project ? store.projectList.keyOf(hostId, project) : null,
-      cards: all,
-      memoryOver,
-      // #1481: a paused host is a hold like the others: the confirm names it and the cards join the queue.
-      paused: state.hosts.find((h) => h.id === hostId)?.hostInfo?.pause?.paused === true,
-    }),
-  );
-  /** #1422: the startable cards that would wait here, and the hosts they could start on. */
-  const waiting = waitingCards(startable, {
-    held: holds.length > 0,
-    max: queueMax ?? null,
-    running: runningOnHost,
-  });
-  const otherHosts = bulk === "start" && startReady ? elsewhere.offers(waiting) : [];
-  /** Hands the cards that would wait to another host: made and started there, then Done here. */
-  const startOnOther = async (hostIdOther: string) => {
-    const target = otherHosts.find((o) => o.hostId === hostIdOther);
-    if (busy || !target) return;
-    setBulk(null);
-    setBusy(true);
-    const outcome = await elsewhere.run(target, waiting);
-    const went = new Set(outcome.moved.map((m) => m.card.id));
-    setPicked((before) => before.filter((id) => !went.has(id)));
-    setNotice(elsewhereNotice(t, outcome, target.name, nameRefusals));
-    setBusy(false);
-    boardRef.current?.focus();
-  };
-  /** The confirm's lines: the host's queue, quota and holds for Start, where the cards land for Stop. */
-  const bulkLines = (): string[] =>
-    bulk === "stop"
-      ? [t("board.stopBody")]
-      : startConfirmLines(t, {
-          workflowsFailed,
-          queueMax,
-          startable,
-          runningOnHost,
-          quotaLines,
-          holds,
-          waitingElsewhere: otherHosts.length > 0 ? waiting.length : 0,
-          contracts,
-        });
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
     anchor.current = null;
@@ -645,8 +487,6 @@ export const BoardView = memo(function BoardView(props: {
       },
     }));
   };
-  // After a move the card is somewhere else, so its old element is gone: focus the new one.
-  const boardRef = useRef<HTMLDivElement>(null);
   // Until the person picks a width, the columns share what the window gives them (#1030).
   const boardPx = useWidth(boardRef);
   const width = chosen ? chosenWidth : fitColumnWidth(boardPx, COLUMNS.length, COLUMN_GAP);
@@ -734,8 +574,8 @@ export const BoardView = memo(function BoardView(props: {
                   onMoveOpenChange={setMoveMenuOpen}
                   startCount={split.start.length}
                   stopCount={split.stop.length}
-                  onStart={askStart}
-                  onStop={askStop}
+                  onStart={bulkRun.askStart}
+                  onStop={bulkRun.askStop}
                   updateCount={split.update.length}
                   onUpdate={() => void updateSelected()}
                   updating={updating}
@@ -959,7 +799,7 @@ export const BoardView = memo(function BoardView(props: {
                           locked={busy}
                           selected={selection.includes(card.id)}
                           selecting={selection.length > 0}
-                          onStartSelection={askStart}
+                          onStartSelection={bulkRun.askStart}
                           onMoveSelection={() => {
                             moveFrom.current = card.id;
                             setMoveMenuOpen(true);
@@ -1081,31 +921,7 @@ export const BoardView = memo(function BoardView(props: {
           onRestoreFocus={restoreOpener}
         />
       )}
-      {bulk && (
-        <BulkRunDialog
-          t={t}
-          title={bulkTitle(t, bulk, { start: startable.length, stop: split.stop.length })}
-          lines={bulkLines()}
-          items={actingCards.map((card) => {
-            const skip = bulkSkipReason(t, bulk, split, card, needsInputs(card));
-            return { id: card.id, title: card.title, ...(skip ? { skipped: skip } : {}) };
-          })}
-          confirmLabel={
-            bulk === "start"
-              ? t("board.startSelected", { n: startable.length })
-              : t("board.stopSelected", { n: split.stop.length })
-          }
-          confirmDisabled={bulk === "start" && (!startReady || startable.length === 0)}
-          alternatives={otherHosts.map((o) => ({
-            id: o.hostId,
-            label: t("board.startOn", { host: o.name }),
-          }))}
-          onAlternative={(id) => void startOnOther(id)}
-          onCancel={() => setBulk(null)}
-          onConfirm={() => void runSelected(bulk)}
-          onRestoreFocus={restoreOpener}
-        />
-      )}
+      {bulkRun.dialog}
       {issuesOpen && project && (
         <IssuesPanel
           store={store}
