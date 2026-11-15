@@ -4,7 +4,10 @@
     "from": "apps/desktop/src/features/backup/backup-bundle.ts",
     "to": "apps/desktop/src/features/vault/domain/vault-backup.ts",
     "unresolvedTo": "../vault/domain/vault-backup.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "desktop-no-deep-cross-domain"
@@ -15,7 +18,10 @@
     "from": "apps/desktop/src/features/hosts/host-tabs.ts",
     "to": "apps/desktop/src/features/shell/domain/workspace.ts",
     "unresolvedTo": "@/features/shell/domain/workspace.ts",
-    "dependencyTypes": ["undetermined", "import"],
+    "dependencyTypes": [
+      "undetermined",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "desktop-no-deep-cross-domain"
@@ -26,7 +32,10 @@
     "from": "apps/desktop/src/features/shell/domain/nav-active.ts",
     "to": "apps/desktop/src/features/tabs/domain/tab-badge.ts",
     "unresolvedTo": "../../tabs/domain/tab-badge.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "desktop-no-deep-cross-domain"
@@ -37,7 +46,10 @@
     "from": "apps/daemon/src/board/domain/check-loop-engine.ts",
     "to": "apps/daemon/src/watch/domain/check-run.ts",
     "unresolvedTo": "../../watch/domain/check-run.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -48,7 +60,10 @@
     "from": "apps/daemon/src/costs/usage-indexer.ts",
     "to": "apps/daemon/src/quota/usage.ts",
     "unresolvedTo": "../quota/usage.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -59,7 +74,10 @@
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/assistant/domain/paths.ts",
     "unresolvedTo": "../assistant/domain/paths.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -70,7 +88,11 @@
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/costs/usage-indexer.ts",
     "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
+    "dependencyTypes": [
+      "local",
+      "import",
+      "type-only"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -81,7 +103,11 @@
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/runtime/types.ts",
     "unresolvedTo": "../runtime/types.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
+    "dependencyTypes": [
+      "local",
+      "import",
+      "type-only"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -92,7 +118,11 @@
     "from": "apps/daemon/src/permissions/permission-broker.ts",
     "to": "apps/daemon/src/runtime/types.ts",
     "unresolvedTo": "../runtime/types.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
+    "dependencyTypes": [
+      "local",
+      "import",
+      "type-only"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -103,7 +133,10 @@
     "from": "apps/daemon/src/review/card-review.ts",
     "to": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
     "unresolvedTo": "../runtime/claude-sdk-runtime.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -114,7 +147,11 @@
     "from": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
     "to": "apps/daemon/src/costs/usage-indexer.ts",
     "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
+    "dependencyTypes": [
+      "local",
+      "import",
+      "type-only"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -125,7 +162,11 @@
     "from": "apps/daemon/src/runtime/types.ts",
     "to": "apps/daemon/src/costs/usage-indexer.ts",
     "unresolvedTo": "../costs/usage-indexer.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
+    "dependencyTypes": [
+      "local",
+      "import",
+      "type-only"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -136,7 +177,10 @@
     "from": "apps/daemon/src/server/handlers/project.ts",
     "to": "apps/daemon/src/board/pr-provider.ts",
     "unresolvedTo": "../../board/pr-provider.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -147,7 +191,10 @@
     "from": "apps/daemon/src/watch/fix.ts",
     "to": "apps/daemon/src/board/pr.ts",
     "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
@@ -158,7 +205,10 @@
     "from": "apps/daemon/src/watch/watch.ts",
     "to": "apps/daemon/src/board/pr.ts",
     "unresolvedTo": "../board/pr.ts",
-    "dependencyTypes": ["local", "import"],
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
