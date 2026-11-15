@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { MASK } from "../../src/agentcfg/domain/mcp-view.ts";
 import { AgentConfig } from "../../src/agentcfg/files.ts";
-import { MASK, McpConfig } from "../../src/agentcfg/mcp.ts";
+import { McpConfig } from "../../src/agentcfg/mcp.ts";
 import { Forker } from "../../src/checkpoints/fork.ts";
 import { Rewinder } from "../../src/checkpoints/rewind.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";

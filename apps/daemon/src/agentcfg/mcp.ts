@@ -17,27 +17,13 @@ import {
   samePath,
   writeFileAtomic,
 } from "../kernel/index.ts";
-
-/** What secrets (env and headers values) look like in the app. */
-export const MASK = "••••••";
-
-export interface McpServerConfig {
-  type?: "stdio" | "http" | "sse";
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  headers?: Record<string, string>;
-}
-
-export interface McpServerView extends McpServerConfig {
-  name: string;
-  /** `project` (.mcp.json), `user` or `user-project` (both from ~/.claude.json). */
-  origin: "project" | "user" | "user-project";
-  readOnly: boolean;
-  transport: "stdio" | "http" | "sse";
-  enabled: boolean;
-}
+import {
+  hasMaskedSecret,
+  type McpServerConfig,
+  type McpServerView,
+  toggleLists,
+  viewOf,
+} from "./domain/mcp-view.ts";
 
 export type McpTestResult =
   | { preview: { command?: string; args?: string[]; url?: string } }
@@ -59,50 +45,6 @@ async function writeJson(path: string, value: Json): Promise<void> {
 }
 
 const servers = (value: unknown) => (value ?? {}) as Record<string, McpServerConfig>;
-
-const masked = (values?: Record<string, string>) =>
-  values ? Object.fromEntries(Object.keys(values).map((k) => [k, MASK])) : undefined;
-
-/** One server as the app lists it: secrets masked, where it comes from, whether it is on. */
-function viewOf(
-  name: string,
-  config: McpServerConfig,
-  origin: McpServerView["origin"],
-  disabled: string[],
-): McpServerView {
-  const { env, headers, ...rest } = config;
-  return {
-    name,
-    ...rest,
-    ...(env ? { env: masked(env) } : {}),
-    ...(headers ? { headers: masked(headers) } : {}),
-    origin,
-    readOnly: origin !== "project",
-    transport: config.type ?? (config.url ? "http" : "stdio"),
-    enabled: origin !== "project" || !disabled.includes(name),
-  };
-}
-
-/** True when an env or header value still shows the mask, so saving it would write the mask over a secret. */
-function hasMaskedSecret(config: McpServerConfig): boolean {
-  const secrets = { ...config.env, ...config.headers };
-  return Object.values(secrets).includes(MASK);
-}
-
-/** The enabled and disabled lists of settings.local.json once `name` is turned on or off. */
-function toggleLists(
-  current: Json,
-  name: string,
-  enabled: boolean,
-): { disabledMcpjsonServers: string[]; enabledMcpjsonServers: string[] } {
-  const without = (key: string) => ((current[key] ?? []) as string[]).filter((n) => n !== name);
-  const on = without("enabledMcpjsonServers");
-  const off = without("disabledMcpjsonServers");
-  return {
-    disabledMcpjsonServers: enabled ? off : [...off, name],
-    enabledMcpjsonServers: enabled ? [...on, name] : on,
-  };
-}
 
 const missing = (name: string) =>
   new FlightdeckError("not_found", `MCP server ${name} does not exist`, "mcp_server_missing", {
