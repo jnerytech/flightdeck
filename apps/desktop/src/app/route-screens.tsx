@@ -1,12 +1,12 @@
-import { type ReactNode, Suspense, useState } from "react";
+import { type ReactNode, Suspense } from "react";
 import { TranscriptReader } from "@/features/history/ui.ts";
-import { awaitedHost, draftUrl, type HostDraft } from "@/features/hosts/index.ts";
-import { FirstRun, HostForm, HostOfflineBanner } from "@/features/hosts/ui.ts";
+import { awaitedHost } from "@/features/hosts/index.ts";
+import { AddHost, HostOfflineBanner } from "@/features/hosts/ui.ts";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
 import { rowRoute } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { useT } from "@/i18n/context";
-import { LoadingState, Page } from "@/shared/layout/index.ts";
+import { LoadingState } from "@/shared/layout/index.ts";
 import { lazyScreen } from "../app/lazy-screen.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { costsOpener } from "../features/costs/ui.ts";
@@ -50,52 +50,6 @@ const TeamsPage = lazyScreen(() => import("../features/teams/page.tsx"), "TeamsP
 const VaultPage = lazyScreen(() => import("../features/vault/page.tsx"), "VaultPage");
 const WorkflowsPage = lazyScreen(() => import("../features/workflows/page.tsx"), "WorkflowsPage");
 const Settings = lazyScreen(() => import("../features/settings/page.tsx"), "Settings");
-
-/** Adding a host: by hand, or prefilled by a pairing link (saving still needs the click). */
-function AddHost(
-  props: Readonly<{
-    store: AppStore;
-    draft?: HostDraft;
-    empty: boolean;
-    go(r: Route): void;
-  }>,
-) {
-  const [error, setError] = useState<string | null>(null);
-  const submit = async (draft: HostDraft) => {
-    setError(null);
-    const result = await props.store.roster.testAndAdd({
-      name: draft.name,
-      url: draftUrl(draft),
-      token: draft.token,
-    });
-    // A new host opens its own page: that is where it is checked and its folders are chosen.
-    if (result.ok) props.go({ name: "host", host: result.hostId });
-    else setError(result.error);
-  };
-  const { t } = props.store.i18n;
-  // A page: a title, and a body that scrolls from its top. A centered box that scrolled hid the
-  // top of a screen taller than the window, out of reach (#728).
-  return (
-    <Page
-      title={t(props.empty ? "welcome.title" : "welcome.titleMore")}
-      {...(props.empty ? { subtitle: t("welcome.addHost") } : {})}
-    >
-      <div className="flex w-full max-w-xl flex-col gap-6">
-        <FirstRun onCopy={(text) => void props.store.system.copyText(text)} />
-        <HostForm
-          {...(props.draft
-            ? {
-                initial: props.draft,
-                notice: props.store.i18n.t("hostForm.fromLink"),
-              }
-            : {})}
-          error={error}
-          onSubmit={(draft) => submit(draft)}
-        />
-      </div>
-    </Page>
-  );
-}
 
 export interface ScreenProps {
   route: Route;
