@@ -1,6 +1,5 @@
 import type { Database } from "bun:sqlite";
 import { inSequence } from "@flightdeck/protocol";
-import { z } from "zod";
 import type { Board } from "../board/board.ts";
 import { prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
@@ -9,7 +8,6 @@ import {
   assertBranchName,
   type CommandResult,
   FlightdeckError,
-  parseJsonOr,
   refArg,
   settled,
   ulid,
@@ -19,27 +17,12 @@ import { type BoundedCheckRunner, MAX_VALUE } from "../workflows/index.ts";
 import { masked, runChecks } from "./domain/check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./domain/drift.ts";
 import { buildPrompt, heldSummary } from "./domain/fix-prompt.ts";
+import { COMMIT_ID, type FixRound, type RoundRow, toRound } from "./domain/fix-round.ts";
 import type { WatchSettings } from "./settings.ts";
 import type { PrWatcher, WatchTrigger } from "./watch.ts";
 
-/** One round of fixing a PR, as it is kept and shown (phase 22). */
-export interface FixRound {
-  id: string;
-  cardId: string;
-  n: number;
-  /** `held`: the round drifted from its PR (#77); its commits wait for you. */
-  status: "running" | "pushed" | "failed" | "stopped" | "held";
-  /** What started it: the failed checks, the conflict, the comments. */
-  trigger: { failed: string[]; conflicts: boolean; comments: string[] };
-  summary: string | null;
-  sessionId: string | null;
-  costUsd: number;
-  turns: number;
-  startedAt: string;
-  endedAt: string | null;
-  /** A held round's files outside the PR and its churn (#77). */
-  drift: Drift | null;
-}
+// The trace and the service read the round from here; the type lives with its row mapping.
+export type { FixRound } from "./domain/fix-round.ts";
 
 export interface PrFixerOptions {
   db: Database;
@@ -54,48 +37,6 @@ export interface PrFixerOptions {
   onUpdate?: (cardId: string) => void;
   clock?: () => number;
 }
-
-interface RoundRow {
-  id: string;
-  card_id: string;
-  n: number;
-  status: FixRound["status"];
-  trigger: string;
-  summary: string | null;
-  session_id: string | null;
-  cost_usd: number;
-  turns: number;
-  started_at: string;
-  ended_at: string | null;
-  base_sha: string | null;
-  held_sha: string | null;
-  drift: string | null;
-}
-
-const TRIGGER = z.object({
-  failed: z.array(z.string()),
-  conflicts: z.boolean(),
-  comments: z.array(z.string()),
-});
-const DRIFT = z.object({ outside: z.array(z.string()), churn: z.number(), limit: z.number() });
-
-const toRound = (row: RoundRow): FixRound => ({
-  id: row.id,
-  cardId: row.card_id,
-  n: row.n,
-  status: row.status,
-  trigger: parseJsonOr(TRIGGER, row.trigger, { failed: [], conflicts: false, comments: [] }),
-  summary: row.summary,
-  sessionId: row.session_id,
-  costUsd: row.cost_usd,
-  turns: row.turns,
-  startedAt: row.started_at,
-  endedAt: row.ended_at,
-  drift: row.drift ? parseJsonOr(DRIFT.nullable(), row.drift, null) : null,
-});
-
-/** A commit id as git prints it (SHA-1 or SHA-256): the only form a stored one goes back into git as. */
-const COMMIT_ID = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 
 /** What a diff reads, whatever the repository's config: no fsmonitor hook, no external diff or text filter. */
 const SAFE_GIT = ["-c", "core.fsmonitor=false"];
