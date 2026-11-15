@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { REMOVED_LINE, runChecks } from "../../src/watch/domain/check-run.ts";
 import type { BoundedCheckResult } from "../../src/workflows/check-runner.ts";
-import { checkEnvironment } from "../../src/workflows/check-runner.ts";
+import { checkEnvironment } from "../../src/workflows/domain/check-env.ts";
 
 /**
  * Issue #1361 (slice 1c-2a): the project's checks, run in order up to the first that does not
