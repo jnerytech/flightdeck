@@ -221,17 +221,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/teleport/import.ts",
-    "to": "apps/daemon/src/board/worktree.ts",
-    "unresolvedTo": "../board/worktree.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/watch/fix.ts",
     "to": "apps/daemon/src/board/pr.ts",
     "unresolvedTo": "../board/pr.ts",
@@ -269,17 +258,6 @@
     "to": "apps/daemon/src/board/domain/columns.ts",
     "unresolvedTo": "../board/domain/columns.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/repo.ts",
-    "to": "apps/daemon/src/board/worktree.ts",
-    "unresolvedTo": "../board/worktree.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"

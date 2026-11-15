@@ -22,7 +22,7 @@ export interface CheckRunner {
 }
 
 /** Set by the tests and smokes (scripts/test/check-guard.ts). */
-export const CHECK_GUARD_ENV = "FLIGHTDECK_CHECK_GUARD";
+const CHECK_GUARD_ENV = "FLIGHTDECK_CHECK_GUARD";
 
 /**
  * Under the test guard, only commands whose executable (resolved on the current PATH) lives in

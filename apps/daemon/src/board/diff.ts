@@ -3,9 +3,9 @@ import { inSequence } from "@flightdeck/protocol";
 import { git, gitLimited } from "../git/index.ts";
 import { type Rev, readRegularSized, refArg } from "../kernel/index.ts";
 import { credential, maskConfig, maskedConfig } from "../permissions/index.ts";
+import { must } from "../worktrees/index.ts";
 import { parseUnifiedDiff } from "./domain/diff-parse.ts";
 import type { CardDiff, DiffFile } from "./types.ts";
-import { must } from "./worktree.ts";
 
 /** Paths as written, not octal-escaped. */
 const RAW_PATHS = ["-c", "core.quotePath=false"];
