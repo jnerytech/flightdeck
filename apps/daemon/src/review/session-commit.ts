@@ -38,6 +38,18 @@ import {
   runCommand,
   whichOnPath,
 } from "../kernel/index.ts";
+import {
+  COMMIT_HOOKS,
+  digestOfRead,
+  hooksThatRun,
+  IN_PROGRESS_MARKS,
+  inProgressState,
+  linkDigest,
+  MAX_SCAN,
+  otherDigest,
+  type Read,
+  TOO_LARGE,
+} from "./domain/commit-digest.ts";
 import type { ChangesReader } from "./domain/target.ts";
 
 export interface SessionCommitDeps {
@@ -60,8 +72,6 @@ export interface SessionCommitInput {
 }
 
 const TIMEOUT_MS = 120_000;
-/** A chosen file is read whole for the secret scan: past this, it is refused instead. */
-const MAX_SCAN = 8 * 1024 * 1024;
 /** The end of a failed hook's output that the refusal carries. */
 const MAX_OUTPUT = 2000;
 /** Not defined on Windows: there the lstat before the open stands alone. */
@@ -78,20 +88,17 @@ const refuse = (reason: string, message: string, params?: Record<string, string>
 const stale = () =>
   refuse("changes_commit_stale", "the files changed since they were shown: look again");
 
-/** The digest of a file over the size a commit checks: it is never read to make one. */
-const TOO_LARGE = "too-large";
-
 /** A file in the working tree as it is now: the sha256 of its bytes, `deleted`, or `too-large`. */
 async function fileDigest(root: string, path: string): Promise<string> {
   const full = join(root, path);
   const info = await lstat(full).catch(() => null);
   if (info === null) return "deleted";
-  const hash = createHash("sha256");
   // A link is what it points at as text, never the file it reaches.
-  if (info.isSymbolicLink()) return hash.update(`link\0${await readlink(full)}`).digest("hex");
-  if (!info.isFile()) return hash.update(`other\0${info.mode}`).digest("hex");
+  if (info.isSymbolicLink()) return linkDigest(await readlink(full));
+  if (!info.isFile()) return otherDigest(info.mode);
   // Never read whole on a refresh: a commit refuses it anyway.
   if (info.size > MAX_SCAN) return TOO_LARGE;
+  const hash = createHash("sha256");
   for await (const chunk of createReadStream(full)) hash.update(chunk as Buffer);
   return hash.digest("hex");
 }
@@ -108,12 +115,6 @@ export async function withDigests(root: string, files: DiffFile[]): Promise<Diff
     out.push(read ? { ...file, digest: await fileDigest(root, file.path) } : file);
   });
   return out;
-}
-
-/** A chosen file as it was read: its bytes, or a link's text. */
-interface Read {
-  data: Buffer;
-  link: boolean;
 }
 
 /**
@@ -140,21 +141,6 @@ async function bytesOf(root: string, path: string): Promise<Read | null | "too l
 }
 
 /**
- * The hooks a commit from the app runs: the commit's own, and those the new branch's switch, the
- * ref update and the index write run; then `pre-push`, which the PR's push runs.
- */
-const COMMIT_HOOKS = [
-  "pre-commit",
-  "prepare-commit-msg",
-  "commit-msg",
-  "post-commit",
-  "post-checkout",
-  "reference-transaction",
-  "post-index-change",
-  "pre-push",
-];
-
-/**
  * The commit hooks a commit of the checkout at `root` runs: those present (and executable, outside
  * Windows) in the folder git takes them from, which accounts for `core.hooksPath` and a linked
  * worktree. The person sees them before confirming a commit.
@@ -175,39 +161,22 @@ export async function commitHooks(root: string): Promise<string[] | undefined> {
   const infos = await Promise.all(
     COMMIT_HOOKS.map((name) => stat(join(folder, name)).catch(() => null)),
   );
-  return COMMIT_HOOKS.filter((_, i) => {
-    const info = infos[i];
-    const runs = process.platform === "win32" || ((info?.mode ?? 0) & 0o111) !== 0;
-    return info?.isFile() === true && runs;
-  });
-}
-
-/** The digest the app was sent for a file as read now: its bytes, a link's target, or deleted. */
-function digestOf(bytes: Read | null): string {
-  if (bytes === null) return "deleted";
-  const data = bytes.link ? `link\0${bytes.data.toString("utf8")}` : bytes.data;
-  return createHash("sha256").update(data).digest("hex");
+  return hooksThatRun(infos, process.platform === "win32");
 }
 
 /** Which operation is half done in the checkout, if any: a commit now would mix into it. */
 async function inProgress(gitDir: string): Promise<string | null> {
-  const marks: Array<[string, string]> = [
-    ["MERGE_HEAD", "merge"],
-    ["rebase-merge", "rebase"],
-    ["rebase-apply", "rebase"],
-    ["CHERRY_PICK_HEAD", "cherry-pick"],
-    ["REVERT_HEAD", "revert"],
-  ];
-  for (const [mark, state] of marks) {
-    if (
-      await lstat(join(gitDir, mark)).then(
+  const present = new Set<string>();
+  await Promise.all(
+    IN_PROGRESS_MARKS.map(async ([mark]) => {
+      const there = await lstat(join(gitDir, mark)).then(
         () => true,
         () => false,
-      )
-    )
-      return state;
-  }
-  return null;
+      );
+      if (there) present.add(mark);
+    }),
+  );
+  return inProgressState(present);
 }
 
 /** The commits of plain sessions, and the branch each started from (the PR's base, D2). */
@@ -383,7 +352,7 @@ export class SessionCommits {
           file: file.path,
         });
       }
-      if (digestOf(bytes) !== sent[file.path]) throw stale();
+      if (digestOfRead(bytes) !== sent[file.path]) throw stale();
       if (bytes !== null && this.deps.scanner.scan(bytes.data.toString("utf8")).length > 0) {
         throw refuse(
           "changes_commit_secret",
