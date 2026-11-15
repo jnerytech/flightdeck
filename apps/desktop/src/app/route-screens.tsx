@@ -13,12 +13,13 @@ import { PAGE_ROUTES } from "./page-routes.tsx";
 import { hostOf } from "./route-table.ts";
 import { SESSION_ROUTES } from "./session-routes.tsx";
 
-const Settings = lazyScreen(() => import("../features/settings/page.tsx"), "Settings");
-
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
- * keeps the entry chunk under its limit; scripts/test/demo/screens-lazy.test.ts lists them).
+ * keeps the entry chunk under its limit; scripts/test/demo/screens-lazy.test.ts lists them). The
+ * route tables load their own; this file loads Settings.
  */
+const Settings = lazyScreen(() => import("../features/settings/page.tsx"), "Settings");
+
 /** The form that adds a host: the route asks for it, or there is no host yet. */
 function addHostScreen(props: ScreenProps): ReactNode {
   const { route, store, state, go } = props;
@@ -34,7 +35,11 @@ function addHostScreen(props: ScreenProps): ReactNode {
   );
 }
 
-const ROUTES = { ...SESSION_ROUTES, ...BOARD_ROUTES, ...PAGE_ROUTES };
+const ROUTES: Partial<Record<Route["name"], AnyBuilder>> = {
+  ...SESSION_ROUTES,
+  ...BOARD_ROUTES,
+  ...PAGE_ROUTES,
+} as Partial<Record<Route["name"], AnyBuilder>>;
 type AnyBuilder = (props: ScreenProps, route: Route) => ReactNode;
 
 /** What a route shows on its own; `null` is the Sessões screen with nothing open. */
@@ -66,8 +71,7 @@ function routeScreen(props: ScreenProps): ReactNode {
   if (route.name === "add-host" || state.hosts.length === 0) return addHostScreen(props);
   const filtered = filteredScreen(props);
   if (filtered !== undefined) return filtered;
-  const build = (ROUTES as Partial<Record<Route["name"], AnyBuilder>>)[route.name];
-  if (build) return build(props, route);
+  if (Object.hasOwn(ROUTES, route.name)) return ROUTES[route.name]?.(props, route);
   // "home": the selected session, the selected host's new-session form, or the hub.
   const selected = state.selected;
   if (selected?.sessionId && hostOf(props, selected.hostId)) {
