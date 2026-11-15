@@ -5,5 +5,5 @@ preload = ["./scripts/test/preload.ts"]
 coverage = true
 coverageSkipTestFiles = true
 coverageReporter = ["lcov"]
-coveragePathIgnorePatterns = ["**/test/**", "**/components/ui/**", "**/scripts/demo-seed.ts"]
+coveragePathIgnorePatterns = ["**/test/**", "**/components/ui/**", "**/scripts/demo-seed.ts", "**/scripts/lib/demo/seed-files.ts", "**/scripts/lib/demo/seed-host.ts"]
 pathIgnorePatterns = ["mods/**"]
