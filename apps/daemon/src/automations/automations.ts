@@ -273,10 +273,11 @@ export class Automations {
 
   /** Starts the scheduler (see `Scheduler.start`) and listens to the PR's failing checks. */
   start(): void {
-    this.scheduler.start();
-    this.unwatchChecks = this.opts.board.onChecksFailing((cardId, failed) =>
-      this.onChecksFailing(cardId, failed),
-    );
+    this.scheduler.start(() => {
+      this.unwatchChecks = this.opts.board.onChecksFailing((cardId, failed) =>
+        this.onChecksFailing(cardId, failed),
+      );
+    });
   }
 
   /** Resolves when the tick and the search in progress, if any, are done. */

@@ -48,10 +48,11 @@ export class Scheduler {
 
   /**
    * Slots that came up while the daemon was stopped are only recorded as missed, never run; then
-   * the timers start.
+   * `listen` runs (the caller's own subscriptions) and the timers start.
    */
-  start(): void {
+  start(listen: () => void): void {
     void this.advance(this.deps.clock(), false);
+    listen();
     this.started = true;
     this.arm(false);
   }
