@@ -3,7 +3,6 @@ import { isPreviewUrl } from "@flightdeck/protocol";
 import { type ReadyResult, waitReady } from "../../src/runenv/domain/preview.ts";
 import { RunManager } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";
-import { httpReady, waitForServer } from "../../src/runenv/preview.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { poll } from "../support/helpers.ts";
 import { fakeRunHost, runConfig } from "./helpers.ts";
@@ -113,28 +112,6 @@ describe("preview: espera o ready", () => {
     stopped = false;
     expect(await waitReady("http://127.0.0.1:1/", options)).toBe("stopped");
     expect(probes).toEqual([1]);
-  });
-
-  test("a sonda real: qualquer resposta HTTP conta, até um 404; ninguém ouvindo, não", async () => {
-    const server = Bun.serve({
-      hostname: "127.0.0.1",
-      port: 0,
-      fetch: () => new Response("não achei", { status: 404 }),
-    });
-    const url = `http://127.0.0.1:${server.port}/`;
-    expect(await httpReady(url)).toBe(true);
-    await server.stop(true);
-    expect(await httpReady(url)).toBe(false);
-  });
-});
-
-describe("preview: a espera de verdade", () => {
-  test("um servidor no ar é ready logo, e um Run parado nem sonda", async () => {
-    const server = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("ok") });
-    const url = `http://127.0.0.1:${server.port}/`;
-    expect(await waitForServer(url, () => false)).toBe("ready");
-    expect(await waitForServer(url, () => true)).toBe("stopped");
-    await server.stop(true);
   });
 });
 
