@@ -1,12 +1,8 @@
 import {
   ChevronDown,
   ChevronRight,
-  CircleAlert,
-  CircleX,
   EyeOff,
-  Lock,
   type LucideProps,
-  MoreHorizontal,
   Plane,
   Plus,
   Search,
@@ -16,26 +12,16 @@ import {
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
-import { requiredMissing } from "@/features/deps/index.ts";
 import {
   type GithubHost,
   githubSignedIn,
   type HostNameError,
-  hostDotView,
-  hostInitial,
   hostNeedsAttention,
-  hostRailLabel,
   useSwitcherHostId,
   useSwitcherHosts,
 } from "@/features/hosts/index.ts";
-import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/ui.ts";
+import { RenameHostDialog } from "@/features/hosts/ui.ts";
 import { pendingCount } from "@/features/needs-you/index.ts";
 import { activeWorktreeFilter, projectTree } from "@/features/projects/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/ui.ts";
@@ -43,21 +29,19 @@ import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { setupProgress, setupSteps } from "@/features/setup/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/ui.ts";
 import { type SidebarGroup, toggleGroup } from "@/features/viewprefs/index.ts";
-import type { Key, T } from "@/i18n/index.ts";
+import type { T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
 import type { Route } from "@/lib/router.ts";
 import { cn } from "@/lib/utils";
-import { APP_VERSION, anyHostHas, hasFeature } from "@/lib/version.ts";
+import { APP_VERSION, anyHostHas } from "@/lib/version.ts";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
-import { ProgressRing, StatusDot } from "@/shared/status/index.ts";
+import { ProgressRing } from "@/shared/status/index.ts";
 import { AccountFooter } from "./account-footer.tsx";
 import { footAccount } from "./domain/foot-account.ts";
 import { activeNav } from "./domain/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "./domain/nav-badges.ts";
 import { NAV_ICONS, type NavKey } from "./nav-icons.ts";
-
-const ITEM =
-  "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-normal text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+import { HostsList, ITEM } from "./sidebar-hosts.tsx";
 
 /** The icon of one of the screens the bar lists, the same one its tab wears. */
 function NavIcon({ name, ...props }: LucideProps & { name: NavKey }) {
@@ -379,132 +363,21 @@ export function Sidebar(
     props.store.density.subscribe,
     () => props.store.density.value,
   );
-  /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
+  /** The host whose page is open. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
-  const versionOf = (host: HostView) =>
-    hostVersionText(t, host.hostInfo?.daemonVersion, APP_VERSION);
-  const hostsList = collapsed ? (
-    <div className="rail-hosts">
-      {state.hosts.map((host) => (
-        <IconTip key={host.id} label={hostRailLabel(host.name, versionOf(host))}>
-          <button
-            type="button"
-            aria-label={t("sidebar.openHost", { host: host.name })}
-            aria-current={hereHost === host.id ? "page" : undefined}
-            className={cn("rail-host", hereHost === host.id && "nav-active bg-sidebar-accent")}
-            onClick={() => go({ name: "host", host: host.id })}
-          >
-            <span data-slot="host-initial" aria-hidden="true" className="rail-host-initial">
-              {hostInitial(host.name)}
-            </span>
-            <span className="rail-host-status">
-              <HostDot host={host} t={t} />
-            </span>
-          </button>
-        </IconTip>
-      ))}
-    </div>
-  ) : (
-    <ul className="host-list">
-      {state.hosts.map((host) => (
-        <li key={host.id} className="group host-row">
-          <HostVersionTip text={versionOf(host)}>
-            <button
-              type="button"
-              className={cn(
-                ITEM,
-                "min-w-0 flex-1",
-                hereHost === host.id &&
-                  "nav-active bg-sidebar-accent font-medium text-sidebar-foreground",
-              )}
-              aria-current={hereHost === host.id ? "page" : undefined}
-              aria-label={t("sidebar.openHost", { host: host.name })}
-              onClick={() => go({ name: "host", host: host.id })}
-            >
-              <HostDot host={host} t={t} />
-              <span className="min-w-0 flex-1 truncate">{host.name}</span>
-            </button>
-          </HostVersionTip>
-          {host.hostInfo?.ui?.mode === "simple" && (
-            <span data-slot="host-mode-badge" className="host-mode-badge">
-              {t("sidebar.hostSimple")}
-            </span>
-          )}
-          {host.hostInfo?.ui?.locked === true && (
-            <Lock
-              role="img"
-              aria-label={t("sidebar.hostLocked", { host: host.name })}
-              className="size-3.5 shrink-0 text-muted-foreground"
-            />
-          )}
-          {requiredMissing(state.deps[host.id]) && (
-            <CircleX
-              role="img"
-              aria-label={t("hostDeps.badge", { host: host.name })}
-              className="size-3.5 shrink-0 text-status-error"
-            />
-          )}
-          {host.hostInfo?.apiKeySanitized === false && (
-            <TriangleAlert
-              role="img"
-              aria-label={t("sidebar.keyPassed", { host: host.name })}
-              className="size-3.5 shrink-0 text-status-needs-you"
-            />
-          )}
-          {host.hostInfo && host.hostInfo.daemonVersion !== APP_VERSION && (
-            <CircleAlert
-              role="img"
-              aria-label={t("sidebar.versionDiffers", { host: host.name })}
-              className="size-3.5 shrink-0 text-status-needs-you"
-            />
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                aria-label={t("sidebar.hostMenu", { host: host.name })}
-              >
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {/* An incompatible host offers nothing but its page and removal. */}
-              <DropdownMenuItem
-                onSelect={() => {
-                  props.onNewTab();
-                  go({ name: "host", host: host.id });
-                }}
-              >
-                {t("tabs.openInNew")}
-              </DropdownMenuItem>
-              {host.status !== "incompatible" && (
-                <>
-                  <DropdownMenuItem onSelect={() => go({ name: "history", host: host.id })}>
-                    {t("sidebar.hostHistory")}
-                  </DropdownMenuItem>
-                  {hasFeature(host.hostInfo?.features, "workflows", true) && (
-                    <DropdownMenuItem onSelect={() => go({ name: "projects", host: host.id })}>
-                      {t("sidebar.hostProjects")}
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onSelect={() => props.onNewSession(host.id)}>
-                    {t("sidebar.newSession")}
-                  </DropdownMenuItem>
-                </>
-              )}
-              <DropdownMenuItem onSelect={() => setRenaming(host)}>
-                {t("hostPage.rename")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setRemoving(host)}>
-                {t("sidebar.removeHost")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </li>
-      ))}
-    </ul>
+  const hostsList = (
+    <HostsList
+      hosts={state.hosts}
+      deps={state.deps}
+      collapsed={collapsed}
+      hereHost={hereHost}
+      t={t}
+      go={go}
+      onNewTab={props.onNewTab}
+      onNewSession={props.onNewSession}
+      onRename={setRenaming}
+      onRemove={setRemoving}
+    />
   );
 
   return (
@@ -943,19 +816,5 @@ export function Sidebar(
         />
       )}
     </div>
-  );
-}
-
-/** A host's connection state as a dot. */
-function HostDot(props: Readonly<{ host: HostView; t: T }>) {
-  return (
-    <StatusDot
-      dot
-      {...hostDotView(props.host.status)}
-      label={props.t("sidebar.hostState", {
-        host: props.host.name,
-        state: props.t(`hosts.status.${props.host.status}` as Key),
-      })}
-    />
   );
 }
