@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { git } from "../git/index.ts";
+import { git, must } from "../git/index.ts";
 import { type Rev, refArg } from "../kernel/index.ts";
-import { must } from "../worktrees/index.ts";
 import { WORKFLOWS_DIR } from "./domain/workflows-dir.ts";
 
 export interface WorkflowSource {

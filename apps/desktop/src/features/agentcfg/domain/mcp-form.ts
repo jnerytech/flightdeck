@@ -3,7 +3,7 @@ import type { McpServerView } from "@flightdeck/protocol";
 type Transport = McpServerView["transport"];
 
 /** What the daemon shows in place of an env or header value it hides. */
-export const MASK = "••••••";
+const MASK = "••••••";
 
 /** The form of an MCP server: lists are one entry per line. */
 export interface McpDraft {
@@ -87,7 +87,7 @@ export function serverFromDraft(draft: McpDraft) {
 }
 
 /** Whether a secret is still the mask: the daemon refuses to save it. */
-export const hasMask = (draft: McpDraft) =>
+const hasMask = (draft: McpDraft) =>
   draft.transport === "stdio"
     ? Object.values(pairs(draft.env, "=")).includes(MASK)
     : Object.values(pairs(draft.headers, ":")).includes(MASK);

@@ -3,7 +3,7 @@ import { copyFileSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { type ContextDeps, extractRules, repoContext } from "../../src/assistant/context.ts";
-import { workingDiff } from "../../src/board/diff.ts";
+import { workingDiff } from "../../src/git/diff.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { credential, isCredentialPath } from "../../src/permissions/domain/risk.ts";
 import { REMOVED_LINE } from "../../src/watch/domain/check-run.ts";

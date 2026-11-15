@@ -11,7 +11,6 @@ export {
   addWorktree,
   excludeLocalSettingsAsync,
   freshBase,
-  must,
   WORKTREE_INCLUDE,
   WORKTREE_INCLUDE_LIMIT,
 } from "./worktree.ts";

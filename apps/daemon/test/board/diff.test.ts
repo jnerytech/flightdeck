@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseUnifiedDiff } from "../../src/board/domain/diff-parse.ts";
 import type { DiffFile } from "../../src/board/types.ts";
+import { parseUnifiedDiff } from "../../src/git/domain/diff-parse.ts";
 import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
 import { must } from "../support/helpers.ts";
 
