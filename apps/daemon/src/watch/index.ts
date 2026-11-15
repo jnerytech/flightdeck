@@ -5,6 +5,6 @@
  * this entry closes no cycle. Another domain imports from here.
  */
 
-export { REMOVED_LINE, runChecks } from "./domain/check-run.ts";
+export { type CheckOutcome, masked, REMOVED_LINE, runChecks } from "./domain/check-run.ts";
 export type { WatchSettings } from "./settings.ts";
 export { createWatch, type WatchDeps } from "./wiring.ts";
