@@ -5,7 +5,6 @@
  * picker component is in ui.ts (#2451).
  */
 export {
-  type ApprovalHost,
   type VaultApprovalsCore,
   VaultApprovalsSlice,
 } from "./approvals-store.ts";
@@ -15,16 +14,11 @@ export type { VaultAnswer } from "./domain/vault-approval.ts";
 export type { ConflictChoice } from "./domain/vault-backup.ts";
 export type { DeliveryRefusal } from "./domain/vault-delivery.ts";
 export {
-  type RulesConnection,
-  type RulesHost,
-  type RulesRefusal,
   type VaultRulesCore,
   VaultRulesSlice,
 } from "./rules-store.ts";
-export { type VaultScanCore, VaultScanSlice } from "./scan-store.ts";
-export type { SecretPickerProps } from "./secret-picker.tsx";
+export { VaultScanSlice } from "./scan-store.ts";
 export {
-  type VaultFileFailure,
   type VaultSecretsCore,
   VaultSecretsSlice,
 } from "./secrets-store.ts";
