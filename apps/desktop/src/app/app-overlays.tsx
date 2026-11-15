@@ -12,8 +12,8 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 
 /**
  * What sits above the screens: notices, the resume offers, the tab switcher, the dialogs a store
- * flag opens, the `?` sheet, "what's new" and the Ctrl+K search. `App` keeps the flags and the
- * navigation; this only draws them.
+ * flag opens, the `?` sheet and "what's new". `App` keeps the flags and the navigation, and passes
+ * the Ctrl+K search in as children; this only draws them.
  */
 export function AppOverlays(
   props: Readonly<{
