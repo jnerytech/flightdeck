@@ -11,7 +11,8 @@ import type { Route } from "../../lib/router.ts";
 import { type LoopAlert, loopPairKey } from "../messaging/index.ts";
 import type { WatchAlert } from "../watch/index.ts";
 import { type QuietAlert, quietText } from "./domain/quiet.ts";
-import { type Entry, hostNameOf } from "./entry-row.tsx";
+import type { Entry } from "./domain/same-row.ts";
+import { hostNameOf } from "./entry-row.tsx";
 
 /** The right-hand side for something that is not a request: a column that scrolls by itself. */
 function DetailColumn(props: Readonly<{ children: ReactNode }>) {

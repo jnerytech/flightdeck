@@ -14,7 +14,8 @@ import { typing } from "../shortcuts/index.ts";
 import { watchAlerts } from "../watch/index.ts";
 import { Detail } from "./details.tsx";
 import { quietAlerts } from "./domain/quiet.ts";
-import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "./entry-row.tsx";
+import type { Entry } from "./domain/same-row.ts";
+import { EntryRow, hostNameOf, ROW_PAD } from "./entry-row.tsx";
 import { WhileAway } from "./while-away.tsx";
 
 /** A key pressed on a control of the "While you were away" summary is that control's, not the list's. */
