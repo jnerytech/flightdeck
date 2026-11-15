@@ -2,11 +2,11 @@ import { type ReactNode, Suspense } from "react";
 import { TranscriptReader } from "@/features/history/ui.ts";
 import { AddHost } from "@/features/hosts/ui.ts";
 import { rowRoute } from "@/features/sessions/index.ts";
+import { filteredScreen } from "../app/filtered-screen.tsx";
 import { externalScreen, hostScreen, projectsScreen } from "../app/host-screens.tsx";
 import { lazyScreen } from "../app/lazy-screen.ts";
 import { hostWaitScreen, LoadingScreen, type ScreenProps } from "../app/screen-states.tsx";
 import { ActivityBoard } from "../features/activity/board.tsx";
-import { costsOpener } from "../features/costs/ui.ts";
 import { NeedsYou } from "../features/needs-you/page.tsx";
 import { ManagedSession } from "../features/sessions/managed-session.tsx";
 import { NewSession } from "../features/sessions/new-session.tsx";
@@ -14,8 +14,6 @@ import { StartScreen } from "../features/sessions/start-screen.tsx";
 import { settingsActions } from "../features/settings/ui.ts";
 import { SetupPage } from "../features/setup/page.tsx";
 import { TerminalPage } from "../features/terminal/ui.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import type { Route } from "../lib/router.ts";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
@@ -31,16 +29,12 @@ const ClientsPage = lazyScreen(() => import("../features/clients/page.tsx"), "Cl
 const ConnectionsPage = lazyScreen(() => import("../features/ssh/page.tsx"), "ConnectionsPage");
 const Messaging = lazyScreen(() => import("../features/messaging/page.tsx"), "ConversationsPage");
 const PrsPage = lazyScreen(() => import("../features/board/pull-requests.tsx"), "PullRequestsPage");
-const CostsPage = lazyScreen(() => import("../features/costs/page.tsx"), "CostsPage");
 const HomePage = lazyScreen(() => import("../features/home/page.tsx"), "HomePage");
 const PersonasPage = lazyScreen(() => import("../features/personas/page.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("../features/plugins/page.tsx"), "PluginsPage");
 const PreviewPage = lazyScreen(() => import("../features/runenv/page.tsx"), "PreviewPage");
-const Overview = lazyScreen(() => import("../features/projects/overview.tsx"), "ProjectsOverview");
 const ProjectPage = lazyScreen(() => import("../features/projects/project.tsx"), "ProjectPage");
 const SnippetsPage = lazyScreen(() => import("../features/snippets/page.tsx"), "SnippetsPage");
-const TeamsPage = lazyScreen(() => import("../features/teams/page.tsx"), "TeamsPage");
-const VaultPage = lazyScreen(() => import("../features/vault/page.tsx"), "VaultPage");
 const WorkflowsPage = lazyScreen(() => import("../features/workflows/page.tsx"), "WorkflowsPage");
 const Settings = lazyScreen(() => import("../features/settings/page.tsx"), "Settings");
 
@@ -57,65 +51,6 @@ function addHostScreen(props: ScreenProps): ReactNode {
       {...(draft ? { draft } : {})}
     />
   );
-}
-
-/** The costs, narrowed by whatever the route names: a host, a project, a client or a period. */
-function costsScreen(
-  store: AppStore,
-  route: Extract<Route, { name: "costs" }>,
-  go: (route: Route) => void,
-): ReactNode {
-  return (
-    <CostsPage
-      store={store}
-      onOpenSession={costsOpener(go)}
-      {...(route.host ? { host: route.host } : {})}
-      {...(route.projectKey ? { projectKey: route.projectKey } : {})}
-      {...(route.client ? { client: route.client } : {})}
-      {...(route.period ? { period: route.period } : {})}
-    />
-  );
-}
-
-/** The screens a route narrows with an optional host, team, rule or the costs' filters; undefined for the others. */
-function filteredScreen(props: ScreenProps): ReactNode | undefined {
-  const { route, store, state, go } = props;
-  switch (route.name) {
-    case "teams":
-      return (
-        <TeamsPage
-          store={store}
-          {...(route.host ? { host: route.host } : {})}
-          {...(route.team ? { team: route.team } : {})}
-          go={go}
-        />
-      );
-    case "all-projects":
-      return (
-        <Overview
-          store={store}
-          state={state}
-          {...(route.host ? { host: route.host } : {})}
-          onClearHost={() => go({ name: "all-projects" })}
-          onOpen={(card) => go({ name: "project", host: card.hostId, projectId: card.projectId })}
-          onAdded={(hostId, project) =>
-            go({ name: "project", host: hostId, projectId: project.id })
-          }
-        />
-      );
-    case "costs":
-      return costsScreen(store, route, go);
-    case "vault":
-      return (
-        <VaultPage
-          key={JSON.stringify(route.rule ?? null)}
-          store={store}
-          {...(route.rule ? { rule: route.rule } : {})}
-        />
-      );
-    default:
-      return undefined;
-  }
 }
 
 /** What a route shows on its own; `null` is the Sessões screen with nothing open. */
