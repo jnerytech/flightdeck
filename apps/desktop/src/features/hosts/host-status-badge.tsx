@@ -1,7 +1,7 @@
 import type { T } from "@/i18n/index";
 import { cn } from "@/lib/utils";
+import { type HostTone, hostStatusView } from "./domain/host-status";
 import type { ConnectionStatus } from "./host-connection";
-import { type HostTone, hostStatusView } from "./host-status";
 
 // Whole class names, so Tailwind finds them; colors come from the state tokens.
 const TONE_CLASS: Record<HostTone, string> = {

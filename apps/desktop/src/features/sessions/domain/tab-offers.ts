@@ -1,5 +1,5 @@
-import type { HostView } from "../../lib/app-store.ts";
-import { hasFeature } from "../../lib/version.ts";
+import type { HostView } from "../../../lib/app-store.ts";
+import { hasFeature } from "../../../lib/version.ts";
 
 /**
  * What the tabs of a session's page offer: the host's features, and Phase 39: these tabs read Claude

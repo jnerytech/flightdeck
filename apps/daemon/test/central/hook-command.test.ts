@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { hookEntries } from "../../src/central/domain/hook-entries.ts";
 import { ExternalSessions } from "../../src/central/external.ts";
-import { hookEntries } from "../../src/central/hooks-install.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
 import { runCli } from "../../src/main.ts";
 import { daemonCommand } from "../../src/service/domain/install.ts";
