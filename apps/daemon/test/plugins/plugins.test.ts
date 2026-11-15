@@ -14,8 +14,11 @@ import {
 import { dirname, join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { startDaemon } from "../../src/main.ts";
+import { claudeCli } from "../../src/plugins/adapters/claude-plugin.ts";
+import { pluginDecisionLog } from "../../src/plugins/adapters/decision-log.ts";
+import { filePins } from "../../src/plugins/adapters/pin-store.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
-import { claudeCli, filePins, Plugins, pluginDecisionLog } from "../../src/plugins/plugins.ts";
+import { Plugins } from "../../src/plugins/plugins.ts";
 import type { Pin, PinStore, PluginDecision } from "../../src/plugins/ports.ts";
 import { startServer } from "../../src/server.ts";
 import { gitRepo, newBoard } from "../support/board-helpers.ts";

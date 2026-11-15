@@ -2,8 +2,9 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import { claudeCli } from "../../src/plugins/adapters/claude-plugin.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
-import { claudeCli, Plugins } from "../../src/plugins/plugins.ts";
+import { Plugins } from "../../src/plugins/plugins.ts";
 import type { CliResult, Pin, PluginCli } from "../../src/plugins/ports.ts";
 import { tempDir } from "../support/helpers.ts";
 
