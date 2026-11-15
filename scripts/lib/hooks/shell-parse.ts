@@ -22,7 +22,7 @@ const HEREDOC_START = /<<-?[ \t]*(['"]?)(\w+)\1/;
  * The command without heredoc bodies, which are data, not commands: from `<<TAG` to the line that
  * holds only TAG. A line scan, not one regex, so a long command cannot make it backtrack (S8786).
  */
-export function withoutHeredocs(command: string): string {
+function withoutHeredocs(command: string): string {
   const lines = command.split("\n");
   const kept: string[] = [];
   let i = 0;
@@ -195,4 +195,9 @@ export function prefixAssignment(segment: string, name: string): string | undefi
 /** A segment's words, with a quoted string (and what it touches) kept whole as one word. */
 export function shellWords(segment: string): string[] {
   return segment.match(/(?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'])+/g) ?? [];
+}
+
+/** The command without heredoc bodies and quoted text, which are data, not commands. */
+export function commandWords(command: string): string {
+  return withoutHeredocs(command).replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
 }

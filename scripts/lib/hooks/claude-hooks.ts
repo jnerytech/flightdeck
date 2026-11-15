@@ -6,20 +6,18 @@ import { existsSync, lstatSync, readFileSync, statSync, writeFileSync } from "no
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { FORBIDDEN_MARKERS, uncommentedOffLinux } from "../guards/tdd-audit.ts";
 import { assertionCounts, weakensAssertions } from "../guards/weak-assert.ts";
-import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "../slot/heavy.ts";
-import type { CommitGateDeps } from "./commit-rules.ts";
+import { heavyReasonGiven } from "../slot/heavy.ts";
 import { commitWaived } from "./commit-rules.ts";
+import { heavyRunWaived } from "./heavy-run-rules.ts";
+import type { PushGuardDeps } from "./push-rules.ts";
+import { pushedBranches } from "./push-rules.ts";
 import { printable, redacted } from "./redact.ts";
 import type { GitCall } from "./shell-parse.ts";
-import {
-  gitCalls,
-  prefixAssignment,
-  rawSegments,
-  shellWords,
-  withoutHeredocs,
-} from "./shell-parse.ts";
+import { gitCalls, prefixAssignment } from "./shell-parse.ts";
 
 export { commitViolation, commitWaived } from "./commit-rules.ts";
+export { heavyRunViolation, heavyRunWaived, slotViolation } from "./heavy-run-rules.ts";
+export { prMergeViolation, pushViolation } from "./push-rules.ts";
 export { blockDetail, printable } from "./redact.ts";
 
 /** Paths written by tools, relative to a checkout; a trailing slash means the whole folder. */
@@ -44,11 +42,6 @@ const TEST_MARKERS = [
   ...FORBIDDEN_MARKERS,
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
-
-/** The command without heredoc bodies and quoted text, which are data, not commands. */
-function commandWords(command: string): string {
-  return withoutHeredocs(command).replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
-}
 
 /** The subcommand and its arguments of each git invocation in a (possibly chained) command. */
 function gitInvocations(command: string): { sub: string; args: string[] }[] {
@@ -298,144 +291,6 @@ function testEditTexts(
 }
 
 /**
- * Why a heavy run (the full suite, e2e, the prints, the smokes, the builds) is blocked outside
- * `bun run slot --` (CLAUDE.md: two at once make the timing tests flaky). `env` is the hook's own
- * environment: under a slot holder (`FLIGHTDECK_SLOT_HOLDER`) the run is already in the slot.
- */
-export function slotViolation(
-  command: string,
-  env: Record<string, string | undefined>,
-): string | null {
-  if (env.FLIGHTDECK_SLOT_HOLDER) return null;
-  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
-    const words = segment.trim().split(/\s+/);
-    const i = words.indexOf("bun");
-    if (i < 0) continue;
-    const run = words[i + 1] === "run" ? words[i + 2] : undefined;
-    if (run === "slot") continue;
-    // `bun test` with no file is the whole suite.
-    const wholeSuite =
-      words[i + 1] === "test" && words.slice(i + 2).every((w) => w.startsWith("-"));
-    if (!wholeSuite && !(run && HEAVY.test(run))) continue;
-    const heavy = words.slice(i).join(" ");
-    return `${heavy} is heavy: run it through the slot, \`bun run slot -- ${heavy}\` (CLAUDE.md: two heavy runs at once make the timing tests flaky).`;
-  }
-  return null;
-}
-
-/** The coverage scripts by the names a command may give them: the package script or its file. */
-const COVERAGE_SCRIPTS: Record<string, string> = {
-  "test:related": "test:related",
-  "scripts/test-related.ts": "test:related",
-  "coverage:funcs": "coverage:funcs",
-  "scripts/coverage-funcs.ts": "coverage:funcs",
-};
-
-/** The flags of `bun` and `bun run` that take the next word as their value. */
-const BUN_VALUE_FLAGS = new Set(["--cwd", "--config", "-c", "--env-file", "--preload", "-r"]);
-
-/**
- * The coverage script a command starts at word `i`, with its arguments: `bun [run] [flags] <name>`
- * (with bun's shorthand) or `npm run [flags] <name>`, where the name is the package script or its
- * file (#687). The name is the first word after the flags and their values, so a script file given
- * to another script (`bun run lint scripts/test-related.ts`) is no run of it.
- */
-function coverageScriptAt(words: string[], i: number): { script: string; args: string[] } | null {
-  const npm = words[i] === "npm" && words[i + 1] === "run";
-  if (words[i] !== "bun" && !npm) return null;
-  let at = npm ? i + 2 : i + 1;
-  while (at < words.length && (words[at]?.startsWith("-") || (!npm && words[at] === "run"))) {
-    at += BUN_VALUE_FLAGS.has(words[at] as string) ? 2 : 1;
-  }
-  const script = COVERAGE_SCRIPTS[(words[at] ?? "").replace(/^\.\//, "")];
-  return script ? { script, args: words.slice(at + 1) } : null;
-}
-
-/**
- * Every full coverage run a command starts, through the slot or not, each with the override in
- * front of its own segment (#687: an override elsewhere in the command, or in front of another
- * heavy run, does not count). It reads the first coverage script of each segment only: a run
- * inside `bash -c`, `xargs` or `$(...)` counts once at most, or not at all when quoted.
- */
-function heavyRuns(command: string): Array<{ what: string; override: string | undefined }> {
-  const runs: Array<{ what: string; override: string | undefined }> = [];
-  for (const segment of rawSegments(command)) {
-    const words = shellWords(segment);
-    const start = words.findIndex((_, i) => coverageScriptAt(words, i) !== null);
-    if (start < 0) continue;
-    const found = coverageScriptAt(words, start) as { script: string; args: string[] };
-    const override = prefixAssignment(segment, "FLIGHTDECK_SLOT_HEAVY");
-    // The script's own check reads its environment, which an assignment in the command sets, in
-    // front of it or after a wrapper such as `env` or `slot --` (#687).
-    if (words.slice(0, start).some((word) => /^["']?FLIGHTDECK_COORDINATOR=/.test(word))) {
-      runs.push({
-        what: `FLIGHTDECK_COORDINATOR set in the command (only the coordinator's own environment marks the coordinator) with ${found.script}`,
-        override,
-      });
-      continue;
-    }
-    const what = heavyScript(found.script, found.args);
-    if (what) runs.push({ what, override });
-  }
-  return runs;
-}
-
-/** How many test files every `--tests` names: Infinity for a glob or a command's output (#687). */
-function testsGiven(args: string[]): number {
-  const given: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i] as string;
-    if (arg.startsWith("--tests=")) given.push(...arg.slice("--tests=".length).split(","));
-    if (arg !== "--tests") continue;
-    while (i + 1 < args.length && !(args[i + 1] as string).startsWith("-")) {
-      given.push(args[++i] as string);
-    }
-  }
-  // * ? [ $ or ` stand for an unknown number of files, quoted or not: the script takes no glob.
-  const unbounded = given.some((a) => /[*?[$`]/.test(a));
-  return unbounded ? Number.POSITIVE_INFINITY : given.filter((a) => a !== "").length;
-}
-
-/** Whether a coverage script with these arguments is a full coverage run, and how to name it. */
-function heavyScript(script: string, args: string[]): string | null {
-  if (script === "test:related") {
-    const light = args.some((a) => a === "--fast" || a === "--tier" || a.startsWith("--tier="));
-    return args.includes("--pr") || !light
-      ? "a plain, --base or --pr `bun run test:related`"
-      : null;
-  }
-  const given = testsGiven(args);
-  if (given === Number.POSITIVE_INFINITY) {
-    return "`bun run coverage:funcs` over a glob or a command's output after --tests";
-  }
-  return given > HEAVY_TESTS ? `\`bun run coverage:funcs\` over ${given} test files` : null;
-}
-
-/**
- * Why a worker session's full coverage run is refused (#674): a plain, `--base` or `--pr`
- * `test:related`, or a `coverage:funcs` over more than 20 given test files, holds the shared slot
- * for 12 to 25 minutes for what the PR's CI does anyway. The coordinator
- * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and an override with a reason pass;
- * coverage:funcs's own limit still asks the coordinator for a reason (#725).
- */
-export function heavyRunViolation(
-  command: string,
-  env: Record<string, string | undefined>,
-): string | null {
-  if (env.FLIGHTDECK_COORDINATOR) return null;
-  const heavy = heavyRuns(command).find((run) => !heavyReasonGiven(run.override));
-  if (!heavy) return null;
-  if (heavy.override === undefined) return heavyRunMessage(heavy.what);
-  return `FLIGHTDECK_SLOT_HEAVY needs a reason: give the reason as the value. ${heavyRunMessage(heavy.what)}`;
-}
-
-/** Whether a refused heavy run goes ahead on an override that gives its reason (#674). */
-export function heavyRunWaived(command: string): boolean {
-  const runs = heavyRuns(command);
-  return runs.length > 0 && runs.every((run) => heavyReasonGiven(run.override));
-}
-
-/**
  * What the guard logs for a call it lets through (#687): its waivers, or one allow, never both, so
  * harness:stats counts the call once. A call that both waives a heavy run and commits with a
  * TDD-Waiver logs the two waivers.
@@ -467,98 +322,6 @@ export function guardAllowLogs(
     }));
   }
   return [{ rule: null, decision: "allow" }];
-}
-
-/** The package scripts that run only through the slot (CLAUDE.md). */
-const HEAVY =
-  /^(test|coverage|fast-coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
-
-/**
- * Why a `bun run pr -- merge|tag`, a `gh pr merge` or a REST merge is blocked (#271): sessions
- * open their PRs and turn on auto-merge; merging by hand and tagging are the coordinator's
- * (`FLIGHTDECK_COORDINATOR=1` in the hook's own environment, not one set in the command).
- */
-export function prMergeViolation(
-  command: string,
-  env: Record<string, string | undefined>,
-): string | null {
-  if (env.FLIGHTDECK_COORDINATOR) return null;
-  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
-    const what = handMerge(segment.trim().split(/\s+/));
-    if (what) {
-      return `${what} is the coordinator's: a session opens its PR and turns on auto-merge, \`bun run pr -- auto <n>\` (CLAUDE.md).`;
-    }
-  }
-  return null;
-}
-
-/** The hand merge or tag one command's words run, or null. */
-function handMerge(words: string[]): string | null {
-  const g = words.indexOf("gh");
-  if (g >= 0 && words[g + 1] === "pr" && words[g + 2] === "merge") return "gh pr merge";
-  if (g >= 0 && words[g + 1] === "api" && words.some((w) => /\/pulls\/\d+\/merge$/.test(w))) {
-    return "a REST merge";
-  }
-  if (releaseCommand(words)) return "bun run release";
-  if (releaseCloseApply(words)) return "bun run release:close --apply";
-  const sub = prFlowCommand(words);
-  return sub === "merge" || sub === "tag" ? `bun run pr -- ${sub}` : null;
-}
-
-/** True for `bun run release` (or `bun scripts/release-cmd.ts`): it pushes a branch and tags (#275). */
-function releaseCommand(words: string[]): boolean {
-  const b = words.indexOf("bun");
-  if (b < 0) return false;
-  const [first, second] = words.slice(b + 1);
-  return (first === "run" && second === "release") || (first?.endsWith("release-cmd.ts") ?? false);
-}
-
-/** True for `bun run release:close ... --apply` (or `bun scripts/release-close.ts ...`): it closes issues on GitHub (#287). */
-function releaseCloseApply(words: string[]): boolean {
-  const b = words.indexOf("bun");
-  if (b < 0) return false;
-  const [first, second] = words.slice(b + 1);
-  const closes =
-    (first === "run" && second === "release:close") ||
-    (first?.endsWith("release-close.ts") ?? false);
-  return closes && words.includes("--apply");
-}
-
-/** The `bun run pr` (or `bun scripts/pr-flow.ts`) command these words run, or undefined. */
-function prFlowCommand(words: string[]): string | undefined {
-  const b = words.indexOf("bun");
-  if (b < 0) return undefined;
-  const rest = words.slice(b + 1);
-  let at = -1;
-  if (rest[0] === "run" && rest[1] === "pr") at = 2;
-  else if (rest[0]?.endsWith("pr-flow.ts")) at = 1;
-  return at < 0 ? undefined : rest.slice(at).find((w) => w !== "--");
-}
-
-export interface PushGuardDeps extends CommitGateDeps {
-  /** The hook's own environment: `FLIGHTDECK_COORDINATOR=1` marks the session that may push all. */
-  env: Record<string, string | undefined>;
-}
-
-/**
- * Why a `git push` is blocked (#218): sessions push only their own work branches. Pushing main,
- * an rc/* branch or a tag, `--tags`/`--all`/`--mirror`, a bare `--force` or a `+` refspec, and a
- * `--force-with-lease` to any branch but the one checked out are blocked. The coordinator
- * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and other repositories pass.
- */
-export function pushViolation(command: string, cwd: string, deps: PushGuardDeps): string | null {
-  if (deps.env.FLIGHTDECK_COORDINATOR) return null;
-  for (const call of gitCalls(command, cwd)) {
-    if (call.sub !== "push" || call.dir === null) continue;
-    if (deps.inProject && !deps.inProject(call.dir)) continue;
-    const dir = call.dir;
-    const reason = pushRuleViolation(
-      call.args.map((a) => a.value),
-      (args) => deps.git(args, dir),
-    );
-    if (reason) return reason;
-  }
-  return null;
 }
 
 /** The latest pull-request CI run of a branch, as the push-wait rule reads it (#741). */
@@ -792,24 +555,6 @@ export function pushWaitPass(run: PrRun): PushWaitPass | null {
   return null;
 }
 
-/**
- * The branches a push updates (#756 review): each refspec's destination, or HEAD's branch for a
- * bare push. None for a delete; a tag and a release-v* branch never wait.
- */
-function pushedBranches(call: GitCall, git: (args: string[]) => string | null): string[] {
-  const words = readPushWords(call.args.map((a) => a.word));
-  if (words.deleting) return [];
-  const current = git(["symbolic-ref", "--short", "HEAD"])?.trim() || null;
-  const refspecs = words.positional.slice(1);
-  const targets: PushTarget[] =
-    refspecs.length === 0
-      ? [{ dst: current, tag: false, plus: false }]
-      : refspecs.map((spec) => pushTarget(spec, false, current, git));
-  return targets.flatMap(({ dst, tag }) =>
-    dst && !tag && !dst.startsWith("release-v") ? [dst] : [],
-  );
-}
-
 /** The guard's gh for push-wait (#945 review): calls start only before `limit`; why nothing answered. */
 export function budgetedGh(
   spawn: (args: string[], dir: string) => { stdout: string | null; missing: boolean },
@@ -887,106 +632,6 @@ function pushNowOverride(
       return run && run !== "none" && run.inProgress ? [run.minutes] : [];
     });
     return ages.length > 0 ? { detail, minutes: Math.min(...ages) } : { detail };
-  }
-  return null;
-}
-
-const OWN_BRANCHES =
-  "sessions push only their own work branches; the coordinator pushes main, rc/* and tags (CLAUDE.md).";
-/** `git push` options that take their value as the next word. */
-const PUSH_OPTIONS_WITH_VALUE = new Set([
-  "-o",
-  "--push-option",
-  "--repo",
-  "--receive-pack",
-  "--exec",
-]);
-
-interface PushWords {
-  /** The refusal for a flag that is blocked outright (`--tags`, `--mirror`...). */
-  blocked: string | null;
-  positional: string[];
-  bareForce: boolean;
-  lease: boolean;
-  deleting: boolean;
-}
-
-/** The words after `git push`, sorted into the remote and refspecs, and the flags the rules look at. */
-function readPushWords(args: string[]): PushWords {
-  const words: PushWords = {
-    blocked: null,
-    positional: [],
-    bareForce: false,
-    lease: false,
-    deleting: false,
-  };
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i] ?? "";
-    if (a.includes('"') || a.includes("'")) continue;
-    if (["--tags", "--all", "--mirror", "--follow-tags"].includes(a)) {
-      return { ...words, blocked: `git push ${a} is blocked: ${OWN_BRANCHES}` };
-    }
-    if (a === "-f" || a === "--force") words.bareForce = true;
-    else if (a.startsWith("--force-with-lease") || a === "--force-if-includes") words.lease = true;
-    else if (a === "-d" || a === "--delete") words.deleting = true;
-    else if (PUSH_OPTIONS_WITH_VALUE.has(a)) i++;
-    else if (!a.startsWith("-")) words.positional.push(a);
-  }
-  return words;
-}
-
-type PushTarget = { dst: string | null; tag: boolean; plus: boolean };
-
-/** Where one refspec pushes to: the branch (or tag) it names, and whether it forces with a `+`. */
-function pushTarget(
-  spec: string,
-  deleting: boolean,
-  current: string | null,
-  git: (args: string[]) => string | null,
-): PushTarget {
-  const plus = spec.startsWith("+");
-  const bare = plus ? spec.slice(1) : spec;
-  const colon = bare.indexOf(":");
-  const src = colon < 0 ? bare : bare.slice(0, colon);
-  let dst = deleting || colon < 0 ? bare : bare.slice(colon + 1);
-  if (dst.startsWith("refs/tags/")) return { dst, tag: true, plus };
-  dst = dst.replace(/^refs\/heads\//, "");
-  if (dst === "HEAD") return { dst: current, tag: false, plus };
-  const tag =
-    colon < 0 && !deleting && git(["show-ref", "--verify", "--quiet", `refs/tags/${src}`]) !== null;
-  return { dst, tag, plus };
-}
-
-/** Why one push target is refused (a tag, main or an rc branch, a force, a lease elsewhere), or null. */
-function targetViolation(target: PushTarget, words: PushWords, current: string | null) {
-  const { dst, tag, plus } = target;
-  if (tag) return `git push of the tag ${dst} is blocked: ${OWN_BRANCHES}`;
-  if (dst === null) return null;
-  if (dst === "main" || dst.startsWith("rc/")) {
-    return `git push to ${dst} is blocked: ${OWN_BRANCHES}`;
-  }
-  if (words.bareForce || plus) {
-    return `git push --force is blocked: use --force-with-lease, and only on the branch checked out here (${current ?? "none"}).`;
-  }
-  if (words.lease && dst !== current) {
-    return `git push --force-with-lease to ${dst} is blocked: force only the branch checked out here (${current ?? "none"}); ${OWN_BRANCHES}`;
-  }
-  return null;
-}
-
-/** The rules of `pushViolation` for one `git push` with these words after `push`. */
-function pushRuleViolation(args: string[], git: (args: string[]) => string | null): string | null {
-  const words = readPushWords(args);
-  if (words.blocked) return words.blocked;
-  const current = git(["symbolic-ref", "--short", "HEAD"])?.trim() || null;
-  const refspecs = words.positional.slice(1);
-  const targets: PushTarget[] =
-    refspecs.length === 0
-      ? [{ dst: current, tag: false, plus: false }]
-      : refspecs.map((spec) => pushTarget(spec, words.deleting, current, git));
-  for (const target of targets) {
-    const violation = targetViolation(target, words, current);
-    if (violation) return violation;
   }
   return null;
 }
