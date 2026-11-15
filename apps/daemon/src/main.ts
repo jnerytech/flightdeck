@@ -1,7 +1,7 @@
 import { unwatchFile, watchFile } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
-import { Account, accountReaders, demoAccountReaders } from "./account/index.ts";
+import { Account } from "./account/index.ts";
 import { createVault } from "./actions/wiring.ts";
 import { createActivity } from "./activity/wiring.ts";
 import { assistantService } from "./assistant/factory.ts";
@@ -23,7 +23,6 @@ import {
   type Config,
   claudeSettingsPath,
   loadConfig,
-  type RuntimeKind,
   readToken,
   updateConfigFile,
   userHome,
@@ -66,11 +65,11 @@ import {
 import { createReview } from "./review/wiring.ts";
 import { createRoi } from "./roi/wiring.ts";
 import { createRunEnv } from "./runenv/wiring.ts";
-import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/domain/flightdeck-mcp.ts";
-import { FakeRuntime } from "./runtime/fake-runtime.ts";
-import { type AgentRuntime, claudeVersionProbe } from "./runtime/index.ts";
+import { flightdeckMcpServer } from "./runtime/domain/flightdeck-mcp.ts";
+import type { AgentRuntime } from "./runtime/index.ts";
 import { createOpenCodeServer } from "./runtime/opencode-server.ts";
 import { createOpenCode } from "./runtime/opencode-wiring.ts";
+import { createRuntime } from "./runtime/wiring.ts";
 import { createModuleRunner, serverGroup } from "./server/index.ts";
 import { startServer } from "./server.ts";
 import { daemonCommand, osServiceContext } from "./service/index.ts";
@@ -105,39 +104,6 @@ export interface Daemon {
   stop(): Promise<void>;
   /** What the daemon says: the console and, redacted, the log file. */
   logger: Logger;
-}
-
-interface CreatedRuntime {
-  runtime: AgentRuntime;
-  /** What `host.info` reports about `claude`; only the real runtime has one. */
-  claude?: { path: string | null; version(): Promise<string | null> };
-  /** What the account card reads (phase 34); the real runtime asks its `claude`, the fake one answers a demo account. */
-  accountReaders?: ReturnType<typeof accountReaders>;
-}
-
-async function createRuntime(
-  kind: RuntimeKind,
-  claudePath?: string,
-  mcpServer?: FlightdeckMcpServer,
-): Promise<CreatedRuntime> {
-  if (kind === "fake")
-    return { runtime: new FakeRuntime(), accountReaders: demoAccountReaders(Date.now) };
-  const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
-  const runtime = new ClaudeSdkRuntime({
-    ...(claudePath ? { claudePath } : {}),
-    ...(mcpServer ? { mcpServer } : {}),
-  });
-  const path = runtime.claudePath ?? null;
-  const { query } = await import("@anthropic-ai/claude-agent-sdk");
-  return {
-    runtime,
-    claude: { path, version: claudeVersionProbe(path, spawnExec) },
-    accountReaders: accountReaders({
-      claudePath: path,
-      exec: spawnExec,
-      query: query as unknown as Parameters<typeof accountReaders>[0]["query"],
-    }),
-  };
 }
 
 /** What `startDaemon` takes besides the command line: the seams the tests and the demo give. */

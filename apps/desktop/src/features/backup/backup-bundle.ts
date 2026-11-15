@@ -4,7 +4,6 @@ import { z } from "zod";
 import { parseJsonText, readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 import { HOSTS_KEY, type HostConfig, loadHosts } from "../hosts/index.ts";
-import { Vault } from "../vault/index.ts";
 // A lazy chunk imports the backup file directly: the vault index leaves it out so `age` stays out of the entry chunk.
 import {
   type BackupEntry,
@@ -14,7 +13,8 @@ import {
   MIN_PASSPHRASE,
   sameSecret,
   toFdvault,
-} from "../vault/vault-backup.ts";
+} from "../vault/domain/vault-backup.ts";
+import { Vault } from "../vault/index.ts";
 import { BackupError } from "./backup-error.ts";
 import {
   hostLabel,
