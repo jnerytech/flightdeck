@@ -4,7 +4,7 @@
  * automatic approval until you resume it.
  */
 import type { Issue } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import type { Card } from "../board/types.ts";
 import { git } from "../git/index.ts";
 import { GithubIssues, githubCoords } from "../github/index.ts";
