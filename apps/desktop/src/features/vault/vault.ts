@@ -1,34 +1,15 @@
 import { z } from "zod";
 import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
-import { describeSecret, type SecretInfo, type SecretType } from "./domain/vault-types.ts";
+import {
+  describeSecret,
+  type SecretInfo,
+  type SecretMeta,
+  SecretMetaSchema,
+  type SecretType,
+} from "./domain/vault-types.ts";
 
-export type { SecretType };
-
-/** What the vault knows about a secret besides its value; never the value itself. */
-export interface SecretMeta {
-  id: string;
-  name: string;
-  type: SecretType;
-  description: string;
-  tags: string[];
-  createdAt: number;
-  lastUsedAt: number | null;
-  /** The hosts the secret may be delivered to; the local host only by default. */
-  allowedHosts: string[];
-}
-
-/** What a stored or imported secret must look like: identity, tags and hosts are required (they decide who may use it), the rest has a default. */
-export const SecretMetaSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.enum(["ssh-key", "password", "token", "env"]),
-  description: z.string().catch(""),
-  tags: z.array(z.string()),
-  createdAt: z.number().catch(0),
-  lastUsedAt: z.number().nullable().catch(null),
-  allowedHosts: z.array(z.string()),
-});
+export type { SecretMeta, SecretType };
 
 export interface NewSecret {
   name: string;
