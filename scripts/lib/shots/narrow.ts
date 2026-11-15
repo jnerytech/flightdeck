@@ -3,7 +3,7 @@
  * 1280x800 one, resizing the same page. Only the dark prints do it: the width does not depend on
  * the theme, and both languages run (pt-BR strings are longer).
  */
-export const NARROW_SIZES: ReadonlyArray<{ width: number; height: number }> = [
+const NARROW_SIZES: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1024, height: 700 },
   { width: 640, height: 800 },
   { width: 390, height: 844 },

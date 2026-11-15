@@ -13,7 +13,7 @@ export interface SlotHolder {
   startedAt: number;
 }
 
-export interface SlotFs {
+interface SlotFs {
   /** Creates the file with all its content in one atomic step; false when it already exists. */
   create(path: string, data: string): boolean;
   read(path: string): string | null;
@@ -131,7 +131,7 @@ export const POLL_MS = 2000;
 /** How often a `--priority` run lowers the other test processes. */
 export const RENICE_MS = 5000;
 /** The niceness the other sessions' test processes are raised to. */
-export const NICE_OTHERS = 15;
+const NICE_OTHERS = 15;
 /** A holder older than this is reported as suspicious (never taken over). */
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 /** A hold past this is LONG: the holder, its waiters and `--status` say so, and the hook log keeps it (#833). */
@@ -142,9 +142,9 @@ export const SLOT_TEST_FILES = 60;
  * #1541: with the suite's CI timings known, the limit is this many seconds of estimated CI time:
  * a run over 60 unit files takes seconds, one of 40 slow files may hold the slot for minutes.
  */
-export const SLOT_TEST_SECONDS = 60;
+const SLOT_TEST_SECONDS = 60;
 /** Past this many files a run needs a reason whatever the timings say (stale or missing ones). */
-export const SLOT_TEST_FILES_CAP = 3 * SLOT_TEST_FILES;
+const SLOT_TEST_FILES_CAP = 3 * SLOT_TEST_FILES;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
@@ -284,7 +284,7 @@ function waiterPath(env: SlotEnv, pid: number): string {
  * unreadable waiter files count for nothing, and a pid shows once (a waiter file being written
  * has a staging copy under the same prefix).
  */
-export function waiters(env: SlotEnv): SlotHolder[] {
+function waiters(env: SlotEnv): SlotHolder[] {
   const byPid = new Map<number, SlotHolder>();
   for (const path of env.fs.list(`${env.path}.wait.`)) {
     const waiter = parseHolder(env.fs.read(path));
@@ -457,7 +457,7 @@ export function cancel(env: SlotEnv): number {
  * Stops the waiters whose shell is gone (their parent is pid 1), by process group, and forgets
  * them; waiter files of dead processes are cleaned up. The holder is never touched (#236).
  */
-export function reap(env: SlotEnv): number {
+function reap(env: SlotEnv): number {
   let reaped = 0;
   // Two orphan waiters of one group are stopped by one signal to it.
   const stopped = new Set<number>();

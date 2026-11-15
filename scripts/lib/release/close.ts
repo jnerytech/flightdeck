@@ -1,4 +1,5 @@
 import { inSequence } from "@flightdeck/protocol";
+
 /**
  * `bun run release:close -- <tag> [--apply] [--since <tag>]` (issue #252): after a release tag, the
  * issues the tag ships get "Shipped in <tag>", are closed and go to Done on the board, and the
@@ -8,7 +9,7 @@ import { inSequence } from "@flightdeck/protocol";
  * PR that said Refs) is named and left open. A dry run by default, and a second run repeats nothing.
  */
 
-export interface GhResult {
+interface GhResult {
   code: number;
   stdout: string;
 }
@@ -66,7 +67,7 @@ export function issueRefs(log: string): { closes: number[]; mentioned: number[] 
 }
 
 /** The pull requests merged into the range, from the subjects of its merge commits. */
-export function mergedPulls(subjects: string): number[] {
+function mergedPulls(subjects: string): number[] {
   return subjects
     .split("\n")
     .map((line) => MERGE_SUBJECT.exec(line)?.[1])
