@@ -7,7 +7,9 @@ import { envInput, remoteCommand } from "../actions/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
 import type { TerminalManager } from "../terminal/index.ts";
-import { type HostKeys, knownHostsLines, ScanFailed } from "./hostkey.ts";
+import { knownHostsLines } from "./domain/known-hosts.ts";
+import { translate } from "./domain/test-result.ts";
+import { type HostKeys, ScanFailed } from "./hostkey.ts";
 import type { DeliveredKey, KeyDelivery } from "./key-delivery.ts";
 import type { SshTargets } from "./targets.ts";
 
@@ -86,29 +88,6 @@ interface Plan {
   timer?: unknown;
   /** Idempotent: takes the delivered key away and forgets the timer. */
   release(): Promise<void>;
-}
-
-/** What ssh printed, in words for the person. */
-function translate(stderr: string, code: number): SshTestResult {
-  const failed = (error: string, reason?: string, params?: Record<string, string | number>) => ({
-    ok: false,
-    error,
-    ...(reason ? { reason } : {}),
-    ...(params ? { params } : {}),
-  });
-  if (/Permission denied/i.test(stderr)) return failed("authentication refused", "ssh_test_auth");
-  if (/Connection refused/i.test(stderr)) return failed("connection refused", "ssh_test_refused");
-  if (/Could not resolve hostname/i.test(stderr)) {
-    return failed("host not found", "ssh_test_host_unknown");
-  }
-  if (/timed out/i.test(stderr)) return failed("timed out", "ssh_test_timeout");
-  if (/Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED/i.test(stderr)) {
-    return failed("the server key differs from the saved one", "ssh_test_hostkey");
-  }
-  const last = stderr.trim().split(/\r?\n/).at(-1) ?? "";
-  return last === ""
-    ? failed(`ssh exited with code ${code}`, "ssh_test_exit", { code })
-    : failed(last.slice(0, 200));
 }
 
 /**

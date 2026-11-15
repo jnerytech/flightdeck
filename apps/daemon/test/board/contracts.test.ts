@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BoardColumn, type BoardColumn as Column } from "@flightdeck/protocol";
-import { manageCard } from "../../src/board/manage.ts";
+import { manageCard } from "../../src/board/domain/manage.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { PrWatch } from "../../src/watch/service.ts";
 import { item } from "../boardsync/contract.ts";
@@ -223,7 +223,7 @@ describe("board-contracts: what moves cards on its own is never refused", () => 
   test("a session managing its card moves it (manage.ts)", async () => {
     const { board, project, card, repo } = await withCard();
     board.updateProject(project.id, { contractByColumn: strictest() });
-    const moved = await manageCard({ board, cwdOf: () => null }, {
+    const moved = await manageCard({ board, cwdOf: () => null, now: () => new Date() }, {
       action: "move",
       column: "review",
       cardId: card.id,

@@ -1,12 +1,14 @@
 import type { CommandPayload } from "@flightdeck/protocol";
-import { FlightdeckError } from "../kernel/index.ts";
-import type { Board } from "./board.ts";
-import type { Card } from "./types.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
+import type { Board } from "../board.ts";
+import type { Card } from "../types.ts";
 
 export interface ManageDeps {
   board: Board;
   /** The folder a managed session runs in; `null` when the id is not one the manager knows. */
   cwdOf(sessionId: string): string | null;
+  /** The clock of a card note's stamp; the wiring passes the real one. */
+  now(): Date;
 }
 
 const refuse = (reason: string, message: string): FlightdeckError =>
@@ -16,7 +18,7 @@ const needs = (what: string): FlightdeckError =>
   refuse("card_manage_args", `this action needs ${what}`);
 
 /** `YYYY-MM-DD HH:MM`, UTC: the stamp of a note on a card. */
-const stamp = (): string => new Date().toISOString().slice(0, 16).replace("T", " ");
+const stamp = (at: Date): string => at.toISOString().slice(0, 16).replace("T", " ");
 
 type Payload = CommandPayload<"card.manage">;
 
@@ -47,7 +49,7 @@ function titleAndDescription(payload: Payload): { title?: string; description?: 
 }
 
 /** The change the call asks for, with what each action needs checked first. */
-async function applyAction(board: Board, card: Card, payload: Payload): Promise<Card> {
+async function applyAction(board: Board, card: Card, payload: Payload, at: Date): Promise<Card> {
   const cardId = card.id;
   switch (payload.action) {
     case "move":
@@ -61,7 +63,7 @@ async function applyAction(board: Board, card: Card, payload: Payload): Promise<
     case "comment":
       if (!payload.text) throw needs("a text");
       return board.updateCard(cardId, {
-        description: `${card.description}\n\n**Note ${stamp()}:** ${payload.text}`,
+        description: `${card.description}\n\n**Note ${stamp(at)}:** ${payload.text}`,
       });
     case "finish":
       if (!payload.outcome) throw needs("an outcome (done or discard)");
@@ -77,5 +79,5 @@ async function applyAction(board: Board, card: Card, payload: Payload): Promise<
  * is `card.move`, finishing is `card.complete` or `card.discard`.
  */
 export async function manageCard(deps: ManageDeps, payload: Payload): Promise<Card> {
-  return await applyAction(deps.board, scopedCard(deps, payload), payload);
+  return await applyAction(deps.board, scopedCard(deps, payload), payload, deps.now());
 }
