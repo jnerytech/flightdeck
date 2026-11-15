@@ -13,7 +13,7 @@ import {
   type TeamStatus,
   type TeamsUpdatedFrame,
 } from "@flightdeck/protocol";
-import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
+import { parseJsonOr, ulid } from "../kernel/index.ts";
 import { MANAGED_STATE } from "../messaging/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import type { NewTeam, TeamPatch } from "./domain/input.ts";
@@ -28,6 +28,22 @@ import {
   withCoordinatorBrief,
   workerInstructions,
 } from "./domain/instructions.ts";
+import {
+  memberUnknown,
+  personaUnknown,
+  refuseBlockedQuota,
+  refuseBypass,
+  refuseClosed,
+  refuseDeleteLive,
+  refuseDeleteOpen,
+  refuseDroppingCoordinator,
+  refuseForeign,
+  refuseFull,
+  refuseNotCoordinator,
+  refusePaused,
+  refuseUnconfirmedClose,
+  teamNotFound,
+} from "./domain/refusals.ts";
 import { PerKeyQueue } from "./domain/serial.ts";
 import { STORED_CHECKS, STORED_MEMBERS, type StoredMember, type TeamRow } from "./domain/stored.ts";
 import { toInfo, toMember, toStatus } from "./domain/team-view.ts";
@@ -43,13 +59,6 @@ import type { TeamsOptions } from "./options.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
-
-const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
-  new FlightdeckError("bad_request", message, reason, params);
-const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
-  new FlightdeckError("invalid_state", message, reason, params);
-const notFound = (message: string, reason?: string, params?: Record<string, string | number>) =>
-  new FlightdeckError("not_found", message, reason, params);
 
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
@@ -85,7 +94,7 @@ export class Teams {
 
   private row(id: string): TeamRow {
     const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as TeamRow | null;
-    if (!row) throw notFound(`team ${id} does not exist`, "team_not_found", { id });
+    if (!row) throw teamNotFound(id);
     return row;
   }
 
@@ -94,12 +103,7 @@ export class Teams {
    * anything starts: the coordinator would otherwise be up when the first worker is turned away.
    */
   private checkPermissions(modes: ReadonlyArray<PermissionMode | null | undefined>): void {
-    if (!modes.includes("bypassPermissions") || this.opts.bypassAllowed?.() === true) return;
-    throw new FlightdeckError(
-      "invalid_permission_update",
-      "this host does not allow sessions without permission prompts",
-      "bypass_not_allowed",
-    );
+    refuseBypass(modes, () => this.opts.bypassAllowed?.() === true);
   }
 
   private stored(row: TeamRow): StoredMember[] {
@@ -159,13 +163,7 @@ export class Teams {
   report(id: string, asker: string, text: string, done: boolean): TeamStatus {
     const row = this.open(id);
     const coordinator = this.info(row).members.find((m) => m.role === "coordinator")?.sessionId;
-    if (!coordinator || asker !== coordinator) {
-      throw invalid(
-        `only the coordinator of team ${row.name} reports its outcome`,
-        "team_report_not_coordinator",
-        { team: row.name },
-      );
-    }
+    refuseNotCoordinator(row, coordinator, asker, "report");
     this.opts.db
       .query("UPDATE teams SET report_text = ?, report_at = ?, report_done = ? WHERE id = ?")
       .run(text, this.now(), done ? 1 : 0, id);
@@ -178,42 +176,17 @@ export class Teams {
   /** Only the team's coordinator may manage its members: the host checks, not the prompt (#2090). */
   private coordinatorOnly(row: TeamRow, asker: string): void {
     const coordinator = this.info(row).members.find((m) => m.role === "coordinator")?.sessionId;
-    if (!coordinator || asker !== coordinator) {
-      throw invalid(
-        `only the coordinator of team ${row.name} adds or removes its members`,
-        "team_manage_not_coordinator",
-        { team: row.name },
-      );
-    }
+    refuseNotCoordinator(row, coordinator, asker, "manage");
   }
 
-  private refusePaused(row: TeamRow): void {
-    if (row.state === "paused") {
-      throw invalid(`team ${row.name} is paused: resume it before adding`, "team_paused", {
-        name: row.name,
-      });
-    }
-  }
-
-  /** Refuses, never queues, while the plan quota is over its limit. */
   private refuseOverQuota(later: string): void {
-    const blocked = this.opts.quota?.blocked();
-    if (!blocked) return;
-    const until = blocked.until ? new Date(blocked.until).toISOString() : "the next reset";
-    const message = `the plan quota is over the limit until ${until}: ${later}`;
-    throw blocked.until
-      ? invalid(message, "team_quota_until", { until })
-      : invalid(message, "team_quota_over");
+    refuseBlockedQuota(this.opts.quota?.blocked(), later);
   }
 
   /** The state of a team; with `asker`, only a member of the team may read it. */
   status(id: string, asker?: string): TeamStatus {
     const team = this.get(id);
-    if (asker !== undefined && !team.members.some((m) => m.sessionId === asker)) {
-      throw invalid(`this session is not in team ${team.name}`, "team_session_foreign", {
-        team: team.name,
-      });
-    }
+    refuseForeign(team, asker);
     const listed = this.opts.messaging.list({ team: id, days: 365, limit: 1000 });
     return toStatus(team, this.row(id), listed);
   }
@@ -223,7 +196,7 @@ export class Teams {
   private async checkPersona(id: string | null | undefined): Promise<string | null> {
     if (id === null || id === undefined) return null;
     const found = await this.opts.personas?.resolve(id);
-    if (!found) throw bad(`persona ${id} does not exist`, "persona_unknown", { persona: id });
+    if (!found) throw personaUnknown(id);
     return found.id;
   }
 
@@ -404,9 +377,7 @@ export class Teams {
 
   private open(id: string): TeamRow {
     const row = this.row(id);
-    if (row.state === "closed") {
-      throw invalid(`team ${row.name} is closed`, "team_closed", { name: row.name });
-    }
+    refuseClosed(row);
     return row;
   }
 
@@ -475,11 +446,7 @@ export class Teams {
   close(id: string, confirm: boolean): TeamInfo {
     const row = this.row(id);
     if (row.state === "closed") return this.get(id);
-    if (!confirm) {
-      throw invalid(`closing team ${row.name} needs confirm: true`, "team_close_confirm", {
-        name: row.name,
-      });
-    }
+    refuseUnconfirmedClose(row, confirm);
     const before = this.get(id);
     this.save(id, { state: "closed", paused_by: null });
     this.notify(before, `O time "${row.name}" foi encerrado: não há mais tarefas para este time.`);
@@ -493,21 +460,9 @@ export class Teams {
    */
   delete(id: string): TeamInfo {
     const row = this.row(id);
-    if (row.state !== "closed") {
-      throw invalid(`team ${row.name} is still open: close it first`, "team_delete_open", {
-        name: row.name,
-      });
-    }
+    refuseDeleteOpen(row);
     const info = this.get(id);
-    const working = info.members.filter(
-      (m) => m.sessionState === "running" || m.sessionState === "waiting",
-    );
-    if (working.length > 0) {
-      throw invalid(`team ${row.name} has members at work`, "team_delete_live", {
-        name: row.name,
-        members: working.length,
-      });
-    }
+    refuseDeleteLive(row, info);
     this.opts.db.query("DELETE FROM teams WHERE id = ?").run(id);
     for (const member of info.members) {
       if (member.sessionId) this.opts.names?.clearTeam?.(member.sessionId);
@@ -529,8 +484,7 @@ export class Teams {
     const found = info.members.find(
       (m) => m.address === who || m.sessionId === who || m.cardId === who || m.name === who,
     );
-    if (!found)
-      throw notFound(`the team has no member ${who}`, "team_member_unknown", { member: who });
+    if (!found) throw memberUnknown(who);
     return found;
   }
 
@@ -610,12 +564,7 @@ export class Teams {
   /** Stops a worker, takes it out of the team and tells it so; the coordinator stays. */
   private async dropMember(row: TeamRow, who: string, tellCoordinator: (text: string) => void) {
     const target = this.find(this.get(row.id), who);
-    if (target.role === "coordinator") {
-      throw invalid(
-        "the coordinator does not leave the team: close the team",
-        "team_coordinator_stays",
-      );
-    }
+    if (target.role === "coordinator") refuseDroppingCoordinator();
     // Its turn is interrupted; the card stays on the board.
     if (target.cardId) await this.opts.board.stopCard(target.cardId);
     const members = this.stored(this.row(row.id)).filter((m) => m.name !== target.name);
@@ -652,15 +601,10 @@ export class Teams {
     this.coordinatorOnly(row, asker);
     // The quota first: it pauses every active team, so a paused team in that window is the quota's.
     this.refuseOverQuota("add the member later");
-    this.refusePaused(row);
+    refusePaused(row);
     const persona = await this.checkPersona(spec.persona);
     const workers = this.stored(row).filter((m) => m.role === "worker").length;
-    if (workers >= MAX_WORKERS) {
-      throw invalid(`team ${row.name} already has ${workers} workers`, "team_full", {
-        name: row.name,
-        workers,
-      });
-    }
+    refuseFull(row, workers, MAX_WORKERS);
     const [added] = await this.addWorkers(
       row,
       1,
@@ -711,7 +655,7 @@ export class Teams {
     }
     if (patch.persona) await this.changePersona(row, info, patch.persona);
     if (patch.addWorkers || patch.addMember) {
-      this.refusePaused(row);
+      refusePaused(row);
     }
     if (patch.addWorkers)
       await this.addWorkers(row, patch.addWorkers, coordinator, tellCoordinator);
