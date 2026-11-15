@@ -15,8 +15,8 @@ import {
 } from "../board/branch-commit.ts";
 import { readInside } from "../board/index.ts";
 import { FlightdeckError, HEAD, refArg, samePath } from "../kernel/index.ts";
+import { plainName, unvetted } from "./domain/template-vetting.ts";
 import { MAX_FILE, SETTINGS } from "./preview.ts";
-import { plainName, unvetted } from "./templates-store.ts";
 
 export interface CommitDeps {
   /** The host's scanner (the vault's values among them): a commit is one push from public. */
