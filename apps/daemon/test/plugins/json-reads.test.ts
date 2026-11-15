@@ -2,8 +2,9 @@ import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { FlightdeckError } from "../../src/kernel/errors.ts";
+import { filePins } from "../../src/plugins/adapters/pin-store.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
-import { filePins, Plugins } from "../../src/plugins/plugins.ts";
+import { Plugins } from "../../src/plugins/plugins.ts";
 import type { PluginCli } from "../../src/plugins/ports.ts";
 import { tempDir } from "../support/helpers.ts";
 
