@@ -204,6 +204,7 @@ test's baseline, with the issue that renames them.
 | `power` | keep awake | Keeps the computer awake while sessions run |
 | `pr` | PR provider | What every PR host has in common: the `PrProvider` port and its answers, the CLI runner for `gh` and `az`, the safe text of their arguments and the reading of what they answer (#1612) |
 | `projects` | project | The projects of a host: add, find and start from GitHub, the sidebar tree, the Projects and Project screens, the overview and the session tiles |
+| `publish` | publish | What takes a change from a repository to a pull request: a commit of a few files on a new branch through a temporary index, the push, the PR opened through the provider and the check that no secret goes public in its title or body (#1589) |
 | `quota` | quota | The plan's 5-hour and 7-day windows and the queue they hold |
 | `releases` | release | The product's GitHub releases, read and cached |
 | `resources` | resources | The host's CPU and memory, per process, and the memory gate |

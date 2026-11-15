@@ -6,9 +6,8 @@
 import type { Database } from "bun:sqlite";
 import type { ActionInfo, ActionList, RuleIssue } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
-import { git } from "../git/index.ts";
+import { git, must } from "../git/index.ts";
 import { FlightdeckError, refArg } from "../kernel/index.ts";
-import { must } from "../worktrees/index.ts";
 import { changes, type Fingerprint } from "./domain/fingerprint.ts";
 import { definitionOf, pinnedFilesOf } from "./domain/row-json.ts";
 import {

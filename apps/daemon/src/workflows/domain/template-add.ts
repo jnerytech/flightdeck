@@ -4,7 +4,7 @@
  */
 import { FlightdeckError } from "../../kernel/index.ts";
 
-/** What the shared branch commit (board/branch-commit.ts) reports; this command words each under its own reason. */
+/** What the shared branch commit (publish/branch-commit.ts) reports; this command words each under its own reason. */
 type TemplateFailure = "no_head" | "identity" | "branch_taken" | "git";
 
 export const refuse = (reason: string, message: string, params?: Record<string, string>) =>

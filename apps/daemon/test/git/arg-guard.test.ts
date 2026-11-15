@@ -1,13 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { cardDiff } from "../../src/board/diff.ts";
-import {
-  aheadBehind,
-  assertLocalBranch,
-  mergeIntoBase,
-  rebaseOnto,
-} from "../../src/board/merge.ts";
+import { cardDiff } from "../../src/git/diff.ts";
+import { aheadBehind, assertLocalBranch, mergeIntoBase, rebaseOnto } from "../../src/git/merge.ts";
 import { type Rev, refArg } from "../../src/kernel/index.ts";
 import { workflowSources } from "../../src/workflows/repo.ts";
 import { freshBase } from "../../src/worktrees/index.ts";

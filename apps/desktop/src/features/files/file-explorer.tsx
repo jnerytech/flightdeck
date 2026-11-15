@@ -1,5 +1,5 @@
 import type { DiffFile, FileEntry, FileListing } from "@flightdeck/protocol";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,7 @@ import { Inline, Stack, TreeBranch, TreeItem } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { affectedDirs } from "./domain/file-changes.ts";
 import { FileSearch } from "./file-search.tsx";
-
-// CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first open.
-const FileViewer = lazy(() => import("./file-viewer.tsx").then((m) => ({ default: m.FileViewer })));
+import { LazyFileViewer } from "./lazy-file-viewer.ts";
 
 /** A folder as the explorer has it: on its way, listed, or refused with the text to show. */
 type Folder = "loading" | FileListing | { refused: string };
@@ -202,7 +200,7 @@ export function FileExplorer(
         )}
         {viewing && (
           <Suspense fallback={null}>
-            <FileViewer
+            <LazyFileViewer
               key={viewing.path}
               store={store}
               hostId={hostId}
