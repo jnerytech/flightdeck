@@ -3,7 +3,6 @@ import type {
   Card,
   Project,
   RunResumeCheck,
-  RunStatus,
   WorkflowInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
@@ -12,9 +11,7 @@ import { git } from "../git/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import { noSpending } from "./domain/budget.ts";
-import * as col from "./domain/row-json.ts";
 import { parseWorkflow, type Workflow } from "./domain/schema.ts";
-import { type StepRow, toStep } from "./domain/step-row.ts";
 import {
   type EngineHost,
   now,
@@ -24,6 +21,7 @@ import {
 } from "./engine-types.ts";
 import { WorkflowRegistry } from "./registry.ts";
 import { hashOf } from "./repo.ts";
+import { RunStore } from "./run-store.ts";
 import { StepRunner } from "./step-runner.ts";
 
 /** #1266: the rows the engine names after a step: a parallel's items, a loop's check and do. */
@@ -41,8 +39,6 @@ async function gitHead(worktree: string): Promise<string | null> {
   return found.code === 0 ? found.stdout.trim() : null;
 }
 
-const ACTIVE: ReadonlySet<RunStatus> = new Set(["queued", "running", "waiting"]);
-
 /** Workflows of the projects: catalog read from the base branch, trust and runs. */
 export class WorkflowEngine {
   private readonly db: Database;
@@ -53,17 +49,19 @@ export class WorkflowEngine {
   private readonly resuming = new Set<string>();
   /** Open gates of this process, by `run/step/attempt`: wakes the run when answered. */
   private readonly gates = new Map<string, () => void>();
-  private readonly watchers = new Set<(run: WorkflowRun) => void>();
   /** Runs waiting for the plan quota before an agent turn: until when (ms), if known. */
   private readonly quotaWaits = new Map<string, number | null>();
   /** #1595: the steps of a run, executed with the engine's stores and state. */
   private readonly steps: StepRunner;
   /** The catalog and the trust of the workflows: a run starts only from a trusted hash. */
   private readonly registry: WorkflowRegistry;
+  /** The runs as rows and their watchers: the engine and the steps both go through it. */
+  private readonly store: RunStore;
 
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
     this.registry = new WorkflowRegistry(opts.db);
+    this.store = new RunStore(opts.db, this.quotaWaits);
     this.manager = opts.manager;
     this.host = opts.host;
     this.headOf = opts.headOf ?? gitHead;
@@ -76,13 +74,7 @@ export class WorkflowEngine {
       clock: opts.clock,
       gates: this.gates,
       quotaWaits: this.quotaWaits,
-      row: (id) => this.row(id),
-      stepRow: (runId, stepId, attempt) => this.stepRow(runId, stepId, attempt),
-      setStatus: (runId, status, why) => this.setStatus(runId, status, why),
-      end: (runId, status, why) => this.end(runId, status, why),
-      setReasonKey: (runId, key, params) => this.setReasonKey(runId, key, params),
-      emit: (runId) => this.emit(runId),
-      active: (runId) => this.active(runId),
+      store: this.store,
       trusted: (projectId, name, hash) => this.registry.trusted(projectId, name, hash),
       recordHead: (runId, worktree) => this.recordHead(runId, worktree),
     });
@@ -160,7 +152,7 @@ export class WorkflowEngine {
         JSON.stringify(inputs),
         now(),
       );
-    this.emit(runId);
+    this.store.emit(runId);
   }
 
   /** Whether `runId` (a card run) is a workflow run. */
@@ -170,7 +162,7 @@ export class WorkflowEngine {
 
   /** The card's worktree is ready and its slot taken: the run executes its steps. */
   begin(runId: string, worktree: string): void {
-    this.setStatus(runId, "running", null);
+    this.store.setStatus(runId, "running", null);
     void this.steps.execute(runId, worktree);
   }
 
@@ -186,8 +178,8 @@ export class WorkflowEngine {
       // A run whose card is gone fails alone: it never stops the daemon's start.
       const card = this.cardOrNull(run.card_id);
       if (!card?.worktreePath) {
-        this.end(run.id, "failed", "the run's card is gone");
-        this.setReasonKey(run.id, "run_card_gone", {});
+        this.store.end(run.id, "failed", "the run's card is gone");
+        this.store.setReasonKey(run.id, "run_card_gone", {});
         continue;
       }
       // At a gate the run holds no slot; it takes one again once the gate is approved.
@@ -220,9 +212,9 @@ export class WorkflowEngine {
       if (why || !card?.worktreePath || !run.head) {
         // The HEAD stays: asked again, the run gives the same reason, not that it has none.
         this.restoreHead(run.id, run.head);
-        this.end(run.id, "failed", "the resume cannot go on after the restart");
+        this.store.end(run.id, "failed", "the resume cannot go on after the restart");
         const key = why ?? "run_resume_card";
-        this.setReasonKey(
+        this.store.setReasonKey(
           run.id,
           key,
           key === "run_resume_workflow_changed" || key === "workflow_not_trusted"
@@ -255,18 +247,8 @@ export class WorkflowEngine {
     why: string,
     refusal: { reason: string; params?: Record<string, string | number> } | null = null,
   ): void {
-    this.end(runId, "failed", why);
-    if (refusal) this.setReasonKey(runId, refusal.reason, refusal.params ?? {});
-  }
-
-  /** The reason a run ended, as a key and params the app translates. */
-  private setReasonKey(runId: string, key: string, params: Record<string, string | number>): void {
-    this.db
-      .query(
-        "UPDATE workflow_runs SET status_reason_key = ?, status_reason_params = ? WHERE id = ?",
-      )
-      .run(key, JSON.stringify(params), runId);
-    this.emit(runId);
+    this.store.end(runId, "failed", why);
+    if (refusal) this.store.setReasonKey(runId, refusal.reason, refusal.params ?? {});
   }
 
   /**
@@ -289,7 +271,7 @@ export class WorkflowEngine {
       for (const key of [...this.gates.keys()]) // NOSONAR: the loop deletes from the map it walks; the copy keeps the walk stable
         if (key.startsWith(`${run.id}/`)) this.gates.delete(key);
       this.quotaWaits.delete(run.id);
-      this.end(run.id, "failed", why);
+      this.store.end(run.id, "failed", why);
       if (run.status === "running") this.host.release(cardId);
     }
   }
@@ -307,11 +289,11 @@ export class WorkflowEngine {
    * base branch changed or is no longer trusted, or the card's branch moved since it ended.
    */
   async resumeCheck(runId: string, project: Project): Promise<RunResumeCheck> {
-    const run = this.row(runId);
+    const run = this.store.row(runId);
     const workflow = parseWorkflow(run.definition).workflow as Workflow;
     const from =
-      workflow.steps.find((step) => this.stepRow(run.id, step.id, 1)?.status !== "completed")?.id ??
-      "";
+      workflow.steps.find((step) => this.store.stepRow(run.id, step.id, 1)?.status !== "completed")
+        ?.id ?? "";
     const no = (reason: string, params?: Record<string, string>): RunResumeCheck => ({
       from,
       ok: false,
@@ -363,7 +345,7 @@ export class WorkflowEngine {
     }
     // Nothing awaited from here to the writes: the run and its card are checked again as they are
     // now, so a second resume or a start that came in meanwhile cannot run beside this one.
-    const run = this.row(runId);
+    const run = this.store.row(runId);
     const card = this.host.card(run.card_id);
     if (run.status !== "failed" || this.resuming.has(run.id)) {
       throw new FlightdeckError(
@@ -389,7 +371,7 @@ export class WorkflowEngine {
       this.resuming.delete(run.id);
       throw error;
     }
-    this.emit(run.id);
+    this.store.emit(run.id);
     void this.afterSlot(run.id, run.card_id, worktree, head);
     return check;
   }
@@ -446,15 +428,15 @@ export class WorkflowEngine {
     try {
       await this.host.acquire(cardId);
       held = true;
-      if (this.row(runId).status !== "queued") {
+      if (this.store.row(runId).status !== "queued") {
         this.host.release(cardId);
         return;
       }
       if (head === null || (await this.headOf(worktree).catch(() => null)) !== head) {
         // The HEAD stays: asked again, the run says the branch moved, not that it has none.
         this.restoreHead(runId, head);
-        this.end(runId, "failed", "the card's branch moved while the run waited");
-        this.setReasonKey(runId, "run_resume_branch_moved", {});
+        this.store.end(runId, "failed", "the card's branch moved while the run waited");
+        this.store.setReasonKey(runId, "run_resume_branch_moved", {});
         this.host.place(cardId, { type: "workflow", state: "waiting" });
         this.host.release(cardId);
         return;
@@ -468,7 +450,7 @@ export class WorkflowEngine {
       if (held) this.host.release(cardId);
       try {
         this.restoreHead(runId, head);
-        this.end(runId, "failed", reason(error));
+        this.store.end(runId, "failed", reason(error));
         this.host.place(cardId, { type: "workflow", state: "waiting" });
       } catch {
         // Nothing left to end.
@@ -515,8 +497,8 @@ export class WorkflowEngine {
     decision: "approve" | "reject",
     note?: string,
   ): void {
-    this.row(runId);
-    const step = this.stepRow(runId, stepId, attempt);
+    this.store.row(runId);
+    const step = this.store.stepRow(runId, stepId, attempt);
     if (step?.type !== "gate" || step.status !== "waiting") {
       throw new FlightdeckError(
         "invalid_state",
@@ -531,7 +513,7 @@ export class WorkflowEngine {
         "UPDATE step_runs SET status = ?, note = ?, ended_at = ? WHERE run_id = ? AND step_id = ? AND attempt = ?",
       )
       .run(status, note ?? null, now(), runId, stepId, attempt);
-    this.emit(runId);
+    this.store.emit(runId);
     const key = `${runId}/${stepId}/${attempt}`;
     this.gates.get(key)?.();
     this.gates.delete(key);
@@ -539,18 +521,12 @@ export class WorkflowEngine {
 
   /** Gets every run after each change; returns the function that stops it. */
   watch(listener: (run: WorkflowRun) => void): () => void {
-    this.watchers.add(listener);
-    return () => this.watchers.delete(listener);
+    return this.store.watch(listener);
   }
 
   /** Runs still going, for a watcher that just arrived. */
   activeRuns(): WorkflowRun[] {
-    return this.db
-      .query<{ id: string }, []>(
-        "SELECT id FROM workflow_runs WHERE status IN ('queued', 'running', 'waiting') ORDER BY started_at",
-      )
-      .all()
-      .map(({ id }) => this.getRun(id));
+    return this.store.activeRuns();
   }
 
   /** The workflow as it is on the base branch, with its validation. */
@@ -560,7 +536,7 @@ export class WorkflowEngine {
 
   /** Whether the run is still going (queued, running or at a gate). */
   active(runId: string): boolean {
-    return ACTIVE.has(this.row(runId).status);
+    return this.store.active(runId);
   }
 
   /** A discarded card takes its runs along. */
@@ -574,69 +550,6 @@ export class WorkflowEngine {
   }
 
   getRun(id: string): WorkflowRun {
-    const row = this.row(id);
-    const steps = this.db
-      .query<StepRow, [string]>("SELECT * FROM step_runs WHERE run_id = ? ORDER BY rowid")
-      .all(id)
-      .map(toStep);
-    const quotaUntil = this.quotaWaits.get(id);
-    return {
-      id: row.id,
-      cardId: row.card_id,
-      workflowName: row.workflow_name,
-      workflowHash: row.workflow_hash,
-      status: row.status,
-      statusReason: row.status_reason,
-      reasonKey: row.status_reason_key,
-      ...col.shownOf(row),
-      startedAt: row.started_at,
-      endedAt: row.ended_at,
-      steps,
-      quotaUntil: quotaUntil ? new Date(quotaUntil).toISOString() : null,
-    };
-  }
-
-  // -- state ----------------------------------------------------------------
-
-  private row(id: string): RunRow {
-    const row = this.db.query<RunRow, [string]>("SELECT * FROM workflow_runs WHERE id = ?").get(id);
-    if (!row)
-      throw new FlightdeckError("not_found", `run ${id} does not exist`, "workflow_run_not_found", {
-        id,
-      });
-    return row;
-  }
-
-  private stepRow(runId: string, stepId: string, attempt: number): StepRow | null {
-    return this.db
-      .query<StepRow, [string, string, number]>(
-        "SELECT * FROM step_runs WHERE run_id = ? AND step_id = ? AND attempt = ?",
-      )
-      .get(runId, stepId, attempt);
-  }
-
-  private setStatus(runId: string, status: RunStatus, why: string | null): void {
-    this.db
-      .query("UPDATE workflow_runs SET status = ?, status_reason = ? WHERE id = ?")
-      .run(status, why, runId);
-    this.emit(runId);
-  }
-
-  private end(runId: string, status: RunStatus, why: string | null): void {
-    this.db.query("UPDATE workflow_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
-    this.setStatus(runId, status, why);
-  }
-
-  /** Sends the run as it is now to every watcher. */
-  private emit(runId: string): void {
-    if (this.watchers.size === 0) return;
-    const run = this.getRun(runId);
-    for (const watcher of this.watchers) {
-      try {
-        watcher(run);
-      } catch {
-        // A broken watcher must not break the run.
-      }
-    }
+    return this.store.getRun(id);
   }
 }
