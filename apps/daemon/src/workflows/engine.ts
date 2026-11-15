@@ -9,11 +9,11 @@ import type {
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../git/index.ts";
-import { FlightdeckError, refArg } from "../kernel/index.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import { noSpending } from "./domain/budget.ts";
 import * as col from "./domain/row-json.ts";
-import { checkCommands, parseWorkflow, type Workflow } from "./domain/schema.ts";
+import { parseWorkflow, type Workflow } from "./domain/schema.ts";
 import { type StepRow, toStep } from "./domain/step-row.ts";
 import {
   type EngineHost,
@@ -22,7 +22,8 @@ import {
   reason,
   type WorkflowEngineOptions,
 } from "./engine-types.ts";
-import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
+import { WorkflowRegistry } from "./registry.ts";
+import { hashOf } from "./repo.ts";
 import { StepRunner } from "./step-runner.ts";
 
 /** #1266: the rows the engine names after a step: a parallel's items, a loop's check and do. */
@@ -57,9 +58,12 @@ export class WorkflowEngine {
   private readonly quotaWaits = new Map<string, number | null>();
   /** #1595: the steps of a run, executed with the engine's stores and state. */
   private readonly steps: StepRunner;
+  /** The catalog and the trust of the workflows: a run starts only from a trusted hash. */
+  private readonly registry: WorkflowRegistry;
 
   constructor(opts: WorkflowEngineOptions) {
     this.db = opts.db;
+    this.registry = new WorkflowRegistry(opts.db);
     this.manager = opts.manager;
     this.host = opts.host;
     this.headOf = opts.headOf ?? gitHead;
@@ -79,43 +83,18 @@ export class WorkflowEngine {
       setReasonKey: (runId, key, params) => this.setReasonKey(runId, key, params),
       emit: (runId) => this.emit(runId),
       active: (runId) => this.active(runId),
-      trusted: (projectId, name, hash) => this.trusted(projectId, name, hash),
+      trusted: (projectId, name, hash) => this.registry.trusted(projectId, name, hash),
       recordHead: (runId, worktree) => this.recordHead(runId, worktree),
     });
   }
 
   async list(project: Project): Promise<WorkflowInfo[]> {
-    const sources = await workflowSources(project.path, refArg(project.baseBranch));
-    return sources.map((source) => this.info(project.id, source));
+    return this.registry.list(project);
   }
 
   /** Trusts the workflow's current content; `hash` is what the user reviewed. */
   async trust(project: Project, name: string, hash: string): Promise<WorkflowInfo> {
-    const source = await this.source(project, name);
-    if (source.hash !== hash) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `workflow ${name} changed; review the commands again before trusting it`,
-        "workflow_changed_review",
-        { name },
-      );
-    }
-    const { issues } = parseWorkflow(source.source);
-    if (issues.length > 0) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `workflow ${name} has validation errors`,
-        "workflow_invalid",
-        { name },
-        issues,
-      );
-    }
-    this.db
-      .query(
-        "INSERT OR IGNORE INTO trusted_workflows (project_id, name, hash, trusted_at) VALUES (?, ?, ?, ?)",
-      )
-      .run(project.id, name, hash, now());
-    return this.info(project.id, source);
+    return this.registry.trust(project, name, hash);
   }
 
   /**
@@ -130,7 +109,7 @@ export class WorkflowEngine {
     name: string,
     inputs: Record<string, string>,
   ): Promise<void> {
-    const source = await this.source(project, name);
+    const source = await this.registry.source(project, name);
     const { workflow, errors, issues } = parseWorkflow(source.source);
     if (!workflow) {
       throw new FlightdeckError(
@@ -141,7 +120,7 @@ export class WorkflowEngine {
         issues,
       );
     }
-    if (!this.trusted(project.id, name, source.hash)) {
+    if (!this.registry.trusted(project.id, name, source.hash)) {
       throw new FlightdeckError(
         "invalid_state",
         `workflow ${name} is not trusted; trust it on the workflows screen`,
@@ -233,7 +212,7 @@ export class WorkflowEngine {
           return "run_resume_card";
         }
         if (hashOf(run.definition) !== run.workflow_hash) return "run_resume_workflow_changed";
-        if (!this.trusted(card.projectId, run.workflow_name, run.workflow_hash)) {
+        if (!this.registry.trusted(card.projectId, run.workflow_name, run.workflow_hash)) {
           return "workflow_not_trusted";
         }
         return run.head ? null : "run_resume_no_head";
@@ -354,11 +333,11 @@ export class WorkflowEngine {
       return no("run_resume_card");
     }
     if (!run.head_at_end) return no("run_resume_no_head");
-    const source = await this.source(project, run.workflow_name).catch(() => null);
+    const source = await this.registry.source(project, run.workflow_name).catch(() => null);
     if (source?.hash !== run.workflow_hash) {
       return no("run_resume_workflow_changed", { name: run.workflow_name });
     }
-    if (!this.trusted(project.id, run.workflow_name, source.hash)) {
+    if (!this.registry.trusted(project.id, run.workflow_name, source.hash)) {
       return no("workflow_not_trusted", { name: run.workflow_name });
     }
     if ((await this.headOf(card.worktreePath).catch(() => null)) !== run.head_at_end) {
@@ -576,7 +555,7 @@ export class WorkflowEngine {
 
   /** The workflow as it is on the base branch, with its validation. */
   async validate(project: Project, name: string): Promise<WorkflowInfo> {
-    return this.info(project.id, await this.source(project, name));
+    return this.registry.validate(project, name);
   }
 
   /** Whether the run is still going (queued, running or at a gate). */
@@ -659,42 +638,5 @@ export class WorkflowEngine {
         // A broken watcher must not break the run.
       }
     }
-  }
-
-  // -- catalog --------------------------------------------------------------
-
-  private async source(project: Project, name: string): Promise<WorkflowSource> {
-    const sources = await workflowSources(project.path, refArg(project.baseBranch));
-    const source = sources.find((s) => s.name === name);
-    if (!source) {
-      throw new FlightdeckError(
-        "not_found",
-        `workflow ${name} does not exist on the branch ${project.baseBranch}`,
-        "workflow_not_on_branch",
-        { name, branch: project.baseBranch },
-      );
-    }
-    return source;
-  }
-
-  private trusted(projectId: string, name: string, hash: string): boolean {
-    return (
-      this.db
-        .query("SELECT 1 FROM trusted_workflows WHERE project_id = ? AND name = ? AND hash = ?")
-        .get(projectId, name, hash) !== null
-    );
-  }
-
-  private info(projectId: string, source: WorkflowSource): WorkflowInfo {
-    const { workflow, errors, issues } = parseWorkflow(source.source);
-    return {
-      name: source.name,
-      hash: source.hash,
-      trusted: this.trusted(projectId, source.name, source.hash),
-      checks: workflow ? checkCommands(workflow) : [],
-      errors,
-      issues,
-      inputs: workflow?.inputs ?? [],
-    };
   }
 }
