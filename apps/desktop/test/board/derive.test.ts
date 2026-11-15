@@ -16,7 +16,7 @@ import {
   startableWorkflows,
   stayingPicks,
   tabStops,
-} from "../../src/features/board/board-derive.ts";
+} from "../../src/features/board/domain/board-derive.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 /**
