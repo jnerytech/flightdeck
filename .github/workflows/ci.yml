@@ -168,9 +168,19 @@ jobs:
       # Outside the checkout: the repo guard fails a test run that leaves a file in it.
       # A PR or a push to main (a base): its selection, split the same way (#1761).
       - name: ${{ matrix.tier }} ${{ matrix.part }} (${{ matrix.kind }})
+        id: run
         env:
           BASE: ${{ needs.quick.outputs.base }}
         run: bun run scripts/shard-gate.ts run ${{ matrix.shard }}/4 ${{ matrix.kind }} "$RUNNER_TEMP/shard" ${BASE:+--base "$BASE"}
+
+      # #1003, #3295: a test over 5 s or a test file over 60 s fails the PR, from this shard's own times.
+      # It runs in the shard, so `gh run rerun --failed` re-runs it and measures again: in the merge job
+      # it re-read the first attempt's JUnit and a rerun could never clear runner noise.
+      - name: Testes lentos (#1003)
+        if: always() && matrix.kind == 'bun' && needs.quick.outputs.base != ''
+        env:
+          TESTS_OUTCOME: ${{ steps.run.outcome }}
+        run: bun run scripts/slow-tests.ts "$RUNNER_TEMP/shard/junit.xml"
 
       - name: Relatório do shard
         if: always()
@@ -232,18 +242,6 @@ jobs:
         env:
           BASE: ${{ needs.quick.outputs.base }}
         run: bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 4 coverage/lcov.info ${BASE:+--base "$BASE"}
-
-      # #1003: a test over 5 s or a test file over 60 s fails the PR, from each Bun shard's own times.
-      - name: Testes lentos (#1003)
-        if: always() && needs.quick.outputs.base != ''
-        env:
-          TESTS_OUTCOME: ${{ steps.merge.outcome }}
-        run: |
-          status=0
-          for report in "$RUNNER_TEMP"/shards/shard-*-bun/junit.xml; do
-            bun run scripts/slow-tests.ts "$report" || status=1
-          done
-          exit $status
 
       # The pyramid table of the run (#1854), also in the job summary: the trend is charted from it.
       - name: Test pyramid by tier
@@ -485,7 +483,7 @@ jobs:
   # of their own, so a skipped copy never stands in for the real check.
   test:
     name: test (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [quick, test-suite, sonar, fast-coverage, checks-linux]
+    needs: [quick, test-shard, test-suite, sonar, fast-coverage, checks-linux]
     if: "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -496,7 +494,9 @@ jobs:
           REF: ${{ github.ref }}
         run: |
           test "${{ needs.quick.result }}" = success
-          echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, fast coverage: ${{ needs.fast-coverage.result }}, checks: ${{ needs.checks-linux.result }}"
+          echo "shards: ${{ needs.test-shard.result }}, suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, fast coverage: ${{ needs.fast-coverage.result }}, checks: ${{ needs.checks-linux.result }}"
+          # A shard's own slow-test step (#3295) fails the shard, not the merge: read it here too.
+          test "${{ needs.test-shard.result }}" = success
           test "${{ needs.test-suite.result }}" = success
           test "${{ needs.fast-coverage.result }}" = success
           # SonarCloud skips on a main push and a branch's dispatch (#296); on a PR and a full run of

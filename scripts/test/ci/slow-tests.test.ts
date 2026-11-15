@@ -100,7 +100,7 @@ describe("slow-tests (#1003)", () => {
       "  5.0 s  apps/a.test.ts > at the top",
       '  0.5 s  apps/a.test.ts > board & cards > says "no" <fast>',
       "  0.0 s  apps/b.test.ts > quick",
-      "Make it faster, or delete it when a faster test checks the same thing (docs/TDD.md). A test fd-qa is still cutting goes in slow-tests-allowlist.json, with its issue. Within 10% of a limit it may be runner noise: rerun the job once before cutting it.",
+      "Make it faster, or delete it when a faster test checks the same thing (docs/TDD.md). A test fd-qa is still cutting goes in slow-tests-allowlist.json, with its issue. Within 10% of a limit it may be runner noise: rerun the failed shard once (gh run rerun <run id> --failed measures it again) before cutting it.",
     ]);
     const fine = slowReport(
       parseJunit('<testsuite name="x.test.ts" time="1"><testcase name="t" time="1" /></testsuite>'),

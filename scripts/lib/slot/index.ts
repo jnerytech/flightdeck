@@ -3,103 +3,19 @@
  * builds), so two sessions never run them at once. Every effect (files, clock, processes) comes
  * in through `SlotEnv`, so the tests run nothing real and wait for nothing.
  */
+import {
+  estimatedSeconds,
+  isBunTest,
+  SLOT_TEST_FILES,
+  SLOT_TEST_FILES_CAP,
+  SLOT_TEST_SECONDS,
+  testFileCount,
+} from "./estimate.ts";
 import { heavyReasonGiven } from "./heavy.ts";
+import type { Attempt, ProcReader, SlotArgs, SlotChild, SlotEnv, SlotHolder } from "./types.ts";
 
-/** Who holds the slot, as written in the lock file. */
-export interface SlotHolder {
-  pid: number;
-  label: string;
-  command: string;
-  startedAt: number;
-}
-
-interface SlotFs {
-  /** Creates the file with all its content in one atomic step; false when it already exists. */
-  create(path: string, data: string): boolean;
-  read(path: string): string | null;
-  remove(path: string): void;
-  /** Every existing file whose path starts with the prefix. */
-  list(prefix: string): string[];
-}
-
-export interface SlotChild {
-  wait(): Promise<number>;
-  kill(): void;
-}
-
-/** One process of the user, as the process list shows it. */
-export interface ProcessInfo {
-  pid: number;
-  ppid: number;
-  /** The niceness now: 0 is normal, 19 is the lowest priority. */
-  nice: number;
-  /** The command line, program first. */
-  command: string;
-}
-
-export interface SlotEnv {
-  fs: SlotFs;
-  path: string;
-  pid: number;
-  label: string;
-  alive(pid: number): boolean;
-  now(): number;
-  sleep(ms: number): Promise<void>;
-  log(line: string): void;
-  /**
-   * Starts the command. `asHolder` marks the child as running under this process's lock, so a slot
-   * call it makes itself runs at once (see `holder`).
-   */
-  spawn(command: string[], nice: boolean, asHolder?: boolean): SlotChild;
-  /** Makes this process, and so the command it starts, the OOM killer's first choice (#247). */
-  protect?(): void;
-  /** The pid named by `FLIGHTDECK_SLOT_HOLDER` in this process's environment, if any. */
-  holder?: number;
-  /** Asks a process to stop (SIGTERM). */
-  terminate(pid: number): void;
-  /** The user's processes; absent where the platform cannot list them (no renicing then). */
-  processes?(): Promise<ProcessInfo[]>;
-  /** Sets the niceness of a process; the caller only ever raises it. */
-  renice?(pid: number, nice: number): void;
-  /** Calls the handler with the exit code of SIGINT or SIGTERM; returns the way to stop listening. */
-  onSignal(handler: (code: number) => void): () => void;
-  /** Reads the process table (/proc on Linux); absent elsewhere, where ancestry and orphans are not checked. */
-  proc?: ProcReader;
-  /** Stops a whole process group (SIGTERM to -pgid), for `--reap`. */
-  terminateGroup?(pgid: number): void;
-  /**
-   * FLIGHTDECK_SLOT_DETACHED=1: the run was detached on purpose (nohup, setsid, a launcher that
-   * exits at once), so a gone parent does not make it give up its place (#236).
-   */
-  detached?: boolean;
-  /** FLIGHTDECK_SLOT_HEAVY in this process's environment: the reason a run over the file limit gives (#833). */
-  heavyReason?: string;
-  /** #1541: each test file's CI seconds (scripts/test-timings.json); the limit is then time, not files. */
-  timings?: Record<string, number>;
-  /** The checkout the timings' paths are relative to. */
-  root?: string;
-  /** Appends a refusal, a waiver or a long hold to the hook log, for harness:stats (#833). */
-  record?(
-    rule: "slot-files" | "long-hold",
-    decision: "allow" | "block" | "waived",
-    extra: { detail?: string; minutes?: number },
-  ): void;
-  /** Calls `fn` once after `ms`; returns the way to cancel it (#833: the holder's LONG line). */
-  after?(ms: number, fn: () => void): () => void;
-}
-
-export interface ProcReader {
-  /** The parent of a process, or null when it is gone. */
-  ppid(pid: number): number | null;
-  /** The process group of a process, or null when it is gone. */
-  pgid(pid: number): number | null;
-  /** The working folder of a process, or null when it cannot be read. */
-  cwd(pid: number): string | null;
-  /** The arguments of a process, program first; empty when they cannot be read. */
-  cmdline(pid: number): string[];
-  /** Every live process of a process group. */
-  group(pgid: number): number[];
-}
+export { estimatedSeconds, SLOT_TEST_FILES, testFileCount, timingsFrom } from "./estimate.ts";
+export type { ProcessInfo, ProcReader, SlotChild, SlotEnv, SlotHolder } from "./types.ts";
 
 /** A slot process: bun or node running scripts/slot.ts, not a program that only names the file. */
 function isSlotProcess(argv: string[]): boolean {
@@ -118,15 +34,6 @@ function oneLine(text: string): string {
   return text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ");
 }
 
-export type SlotArgs =
-  | { kind: "status"; maxAgeMs: number }
-  | { kind: "run"; nice: boolean; priority?: true; maxAgeMs: number; command: string[] }
-  | { kind: "cancel" }
-  | { kind: "reap" }
-  | { kind: "usage" };
-
-export type Attempt = { acquired: boolean; holder: SlotHolder | null };
-
 export const POLL_MS = 2000;
 /** How often a `--priority` run lowers the other test processes. */
 export const RENICE_MS = 5000;
@@ -136,15 +43,6 @@ const NICE_OTHERS = 15;
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 /** A hold past this is LONG: the holder, its waiters and `--status` say so, and the hook log keeps it (#833). */
 export const LONG_HOLD_MS = 20 * 60_000;
-/** The most test files a slot run may name without a reason (#833); `test:related` takes the slot above it. */
-export const SLOT_TEST_FILES = 60;
-/**
- * #1541: with the suite's CI timings known, the limit is this many seconds of estimated CI time:
- * a run over 60 unit files takes seconds, one of 40 slow files may hold the slot for minutes.
- */
-const SLOT_TEST_SECONDS = 60;
-/** Past this many files a run needs a reason whatever the timings say (stale or missing ones). */
-const SLOT_TEST_FILES_CAP = 3 * SLOT_TEST_FILES;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
@@ -631,53 +529,6 @@ export async function lowerOthers(env: SlotEnv): Promise<number[]> {
   return lowered;
 }
 
-const TEST_ARG = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
-
-/**
- * The CI timings table from its text (#1541): only finite, non-negative numbers; anything that is
- * not an object of them is no table, so the 60-file limit applies.
- */
-export function timingsFrom(text: string | null): Record<string, number> | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text ?? "");
-  } catch {
-    return undefined;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
-  const entries = Object.entries(parsed).filter(
-    (entry): entry is [string, number] =>
-      typeof entry[1] === "number" && Number.isFinite(entry[1]) && entry[1] >= 0,
-  );
-  return Object.fromEntries(entries);
-}
-
-/** How many test files a `bun ... test` command names; 0 for any other command (#833). */
-export function testFileCount(command: string[]): number {
-  if (!isBunTest(command.join(" "))) return 0;
-  return command.filter((arg) => TEST_ARG.test(arg)).length;
-}
-
-/** The CI seconds a run's test files take (#1541): a file with no timing counts at their mean. */
-export function estimatedSeconds(
-  command: string[],
-  timings: Record<string, number>,
-  root = "",
-): number {
-  const values = Object.values(timings);
-  const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 1;
-  // The table's keys are repo-relative with "/": a Windows-style or absolute path is read as one.
-  const base = `${root.replaceAll("\\", "/").replace(/\/$/, "")}/`;
-  const key = (arg: string) => {
-    const path = arg.replaceAll("\\", "/");
-    const inside = base !== "/" && path.startsWith(base) ? path.slice(base.length) : path;
-    return inside.replace(/^\.\//, "");
-  };
-  return command
-    .filter((arg) => TEST_ARG.test(arg))
-    .reduce((sum, arg) => sum + (timings[key(arg)] ?? mean), 0);
-}
-
 /**
  * #833: a run of more than `SLOT_TEST_FILES` test files holds the slot 20 minutes or more while
  * others wait, so it needs FLIGHTDECK_SLOT_HEAVY with a reason. #1541: with the CI timings known,
@@ -716,20 +567,6 @@ function recordLongHold(env: SlotEnv, heldAt: number, command: string): void {
     minutes: Math.floor(held / 60_000),
     detail: `${oneLine(env.label)}: ${clip(command)}`,
   });
-}
-
-/** `bun test ...`, `bun --config=x test ...` or a path to bun: its first plain argument is `test`. */
-function isBunTest(command: string): boolean {
-  const [program, ...args] = command.trim().split(/\s+/);
-  if (
-    !program ||
-    program
-      .split(/[\\/]/)
-      .pop()
-      ?.replace(/\.exe$/, "") !== "bun"
-  )
-    return false;
-  return args.find((arg) => !arg.startsWith("-")) === "test";
 }
 
 /** Lowers the others every `RENICE_MS` until the command is done; a failure only skips a pass. */
