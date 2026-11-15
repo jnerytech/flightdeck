@@ -123,15 +123,18 @@ export class Rewinder {
   private async snapshotDiff(target: SnapshotRow) {
     const current = await this.opts.snapshots.currentTree(target.repo);
     const names = (
-      await gitBytes(target.repo, ["diff", "--name-status", "--no-renames", target.tree, current])
-    ).stdout
-      .toString()
-      .trim();
+      await gitBytes(target.repo, [
+        "diff",
+        "-z",
+        "--name-status",
+        "--no-renames",
+        target.tree,
+        current,
+      ])
+    ).stdout.toString();
     const numstat = (
-      await gitBytes(target.repo, ["diff", "--numstat", "--no-renames", target.tree, current])
-    ).stdout
-      .toString()
-      .trim();
+      await gitBytes(target.repo, ["diff", "-z", "--numstat", "--no-renames", target.tree, current])
+    ).stdout.toString();
     return { preview: { via: "snapshot" as const, ...previewOf(names, numstat) } };
   }
 
