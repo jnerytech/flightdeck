@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { keepNewest } from "../../src/features/backup/backup-target.ts";
+import { keepNewest } from "../../src/features/backup/domain/backup-target.ts";
 import { DriveError, driveTarget } from "../../src/features/backup/drive-target.ts";
 import { fakeDrive } from "../fake-google.ts";
 

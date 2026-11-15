@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { readStored } from "@/shared/lib/index.ts";
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
-import { type BackupFolder, type BackupTarget, folderTarget, keepNewest } from "./backup-target.ts";
+import { type BackupFolder, folderTarget } from "./backup-target.ts";
+import { type BackupTarget, keepNewest } from "./domain/backup-target.ts";
 import { DriveError } from "./drive-target.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
