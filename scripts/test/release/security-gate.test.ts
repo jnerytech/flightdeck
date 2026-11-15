@@ -275,6 +275,19 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("the file that asks the app for a secret is risky by path, so a change to its approval or audit order needs a review (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/actions/secret-requests.ts",
+        "apps/daemon/src/actions/catalog.ts",
+        "apps/daemon/src/actions/deeper/secret-requests.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/actions/secret-requests.ts", "secret requests"],
+    ]);
+  });
+
   test("every file of the pr folder is a guard, so the merge and check logic stays under review wherever it lives (#3344)", () => {
     const added = new Map(
       [
