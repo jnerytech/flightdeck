@@ -19,8 +19,6 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { insideFolder, resolvePath } from "./domain/terminal-paths.ts";
-import { MENU_ITEM, moveInMenu } from "./menu-keys.ts";
-import { TerminalSession, type TerminalState } from "./terminal-session.ts";
 import {
   type FindFlags,
   findPatternProblem,
@@ -28,7 +26,9 @@ import {
   pasteLines,
   TERMINAL_FONT_FAMILY,
   terminalTheme,
-} from "./terminal-view.ts";
+} from "./domain/terminal-view.ts";
+import { MENU_ITEM, moveInMenu } from "./menu-keys.ts";
+import { TerminalSession, type TerminalState } from "./terminal-session.ts";
 import {
   createXtermScreen,
   type FindResults,

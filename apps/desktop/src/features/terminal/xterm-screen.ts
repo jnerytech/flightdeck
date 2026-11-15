@@ -10,7 +10,7 @@ import {
   type TerminalZoom,
   terminalKeyAction,
   terminalWheelAction,
-} from "./terminal-view.ts";
+} from "./domain/terminal-view.ts";
 
 /** The slice of xterm's Terminal the app uses; a fake stands in for it in the tests. */
 export interface XtermTerminal {
