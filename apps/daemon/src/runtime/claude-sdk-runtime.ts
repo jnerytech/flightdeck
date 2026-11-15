@@ -11,8 +11,13 @@ import {
   query as sdkQuery,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { EffortLevel, PermissionMode } from "@flightdeck/protocol";
-import type { UsageTokens } from "../costs/usage-indexer.ts";
-import { AsyncQueue, buildChildEnv, FlightdeckError, whichOnPath } from "../kernel/index.ts";
+import {
+  AsyncQueue,
+  buildChildEnv,
+  FlightdeckError,
+  type UsageTokens,
+  whichOnPath,
+} from "../kernel/index.ts";
 import { describeCommands, type SdkSlashCommand } from "./domain/commands.ts";
 import type { FlightdeckMcpServer } from "./domain/flightdeck-mcp.ts";
 import { normalizeSdkMessage } from "./domain/sdk-events.ts";

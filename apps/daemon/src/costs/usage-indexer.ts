@@ -4,11 +4,9 @@ import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { normalizeCwd } from "../history/index.ts";
-import { parseJsonOr, ulid } from "../kernel/index.ts";
-// Not ../quota/index.ts: the entry pulls quota.ts, whose runtime types import this file (a cycle).
-import { localDay } from "../quota/usage.ts";
+import { parseJsonOr, type UsageTokens, ulid } from "../kernel/index.ts";
+import { localDay } from "../quota/index.ts";
 import { type FileEdit, readLine } from "./domain/transcript-line.ts";
-import type { UsageTokens } from "./domain/usage-tokens.ts";
 
 /** Where the usage of a message came from. */
 export type UsageOrigin =
@@ -19,8 +17,6 @@ export type UsageOrigin =
   | "subagent"
   | "auto-approve"
   | "assistant";
-
-export type { UsageTokens };
 
 export interface UsageIndexerOptions {
   db: Database;

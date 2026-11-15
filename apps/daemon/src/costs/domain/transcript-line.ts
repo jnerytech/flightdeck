@@ -1,5 +1,5 @@
+import type { UsageTokens } from "../../kernel/index.ts";
 import { parseJsonText } from "../../kernel/index.ts";
-import type { UsageTokens } from "./usage-tokens.ts";
 
 interface Usage {
   messageId: string;
