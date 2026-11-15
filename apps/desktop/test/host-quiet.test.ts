@@ -1,54 +1,53 @@
 import { describe, expect, test } from "bun:test";
-import { hostQuiet, stays, WaitTimeout } from "./wait.ts";
+import { registerDom } from "./dom.ts";
+import { hostQuiet, WaitTimeout } from "./wait.ts";
 
-/** A host whose open requests and last question the test drives. */
-function fakeHost(open: number) {
-  const state = { open, asked: [] as number[], release: () => {} };
-  const held = new Promise<void>((done) => {
-    state.release = done;
-  });
+registerDom();
+
+/**
+ * A host whose in-flight count follows `counts` one poll at a time (the last one stays), and whose
+ * `host.info` answers after a real delay, so an early return shows as an answer not yet given.
+ */
+function fakeHost(counts: number[]) {
+  const polls: number[] = [];
+  const state = { asked: [] as number[], answered: 0 };
   const host = {
-    hostInFlight: () => state.open,
+    hostInFlight: () => {
+      const next = counts.length > 1 ? (counts.shift() as number) : (counts[0] as number);
+      polls.push(next);
+      return next;
+    },
     hostRequest: async (_hostId: string, _type: "host.info", _payload: Record<string, never>) => {
-      state.asked.push(state.open);
-      await held;
+      state.asked.push(polls.length);
+      await Bun.sleep(30);
+      state.answered++;
       return {};
     },
   };
-  return { host, state };
+  return { host, state, polls };
 }
 
 describe("hostQuiet: the host has nothing left on its way back", () => {
-  test("it does not return, nor ask, while a request is still in flight", async () => {
-    const { host, state } = fakeHost(2);
-    let done = false;
-    const quiet = hostQuiet(host, "h1").then(() => {
-      done = true;
-    });
-    await stays(() => !done && state.asked.length === 0, 100, "waiting for 2 requests in flight");
-    state.open = 1;
-    await stays(() => !done && state.asked.length === 0, 100, "waiting for 1 request in flight");
-    state.open = 0;
-    state.release();
-    await quiet;
-    expect(state.asked).toEqual([0]);
+  test("it asks nothing while requests are in flight, and asks once they are all answered", async () => {
+    const { host, state, polls } = fakeHost([2, 2, 1, 0]);
+    await hostQuiet(host, "h1");
+    expect([polls.slice(0, state.asked[0]), state.asked.length]).toEqual([[2, 2, 1, 0], 1]);
   });
 
   test("it returns only after the last question was answered, not when it was sent", async () => {
-    const { host, state } = fakeHost(0);
-    let done = false;
-    const quiet = hostQuiet(host, "h1").then(() => {
-      done = true;
-    });
-    await stays(() => !done, 100, "waiting for the answer of the last question");
-    expect(state.asked).toEqual([0]);
-    state.release();
-    await quiet;
-    expect(done).toBe(true);
+    const { host, state } = fakeHost([0]);
+    await hostQuiet(host, "h1");
+    expect(state.answered).toBe(1);
+  });
+
+  test("a request that the last question left in flight is waited for and asked after", async () => {
+    const { host, state } = fakeHost([0, 1, 0]);
+    await hostQuiet(host, "h1");
+    expect([state.asked.length, state.answered]).toEqual([2, 2]);
   });
 
   test("a host that never goes quiet throws, with what it waited for", async () => {
-    const { host } = fakeHost(1);
+    const { host } = fakeHost([1]);
     const error = await hostQuiet(host, "h1", 60).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(WaitTimeout);
     expect((error as Error).message).toContain("requests in flight");
