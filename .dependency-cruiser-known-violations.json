@@ -34,31 +34,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/hosts/host-tabs.ts",
-    "to": "apps/desktop/src/features/tabs/tabs.ts",
-    "unresolvedTo": "../tabs/tabs.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/desktop/src/features/shell/domain/nav-active.ts",
     "to": "apps/desktop/src/features/tabs/domain/tab-badge.ts",
     "unresolvedTo": "../../tabs/domain/tab-badge.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/desktop/src/features/shell/domain/workspace.ts",
-    "to": "apps/desktop/src/features/tabs/tabs.ts",
-    "unresolvedTo": "../../tabs/tabs.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
