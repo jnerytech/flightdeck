@@ -5,7 +5,7 @@
 import type { AssistantService } from "../../assistant/index.ts";
 import { featureOff } from "../../kernel/index.ts";
 import type { ServerContext } from "../context.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 /** The assistant, or the `feature_off` refusal when this host has none. */
 function assistant(server: ServerContext): AssistantService {
