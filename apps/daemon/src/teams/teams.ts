@@ -14,6 +14,7 @@ import {
 } from "@flightdeck/protocol";
 import { parseJsonOr, ulid } from "../kernel/index.ts";
 import { MANAGED_STATE } from "../messaging/index.ts";
+import { TeamStore } from "./adapters/team-store.ts";
 import type { NewTeam, TeamPatch } from "./domain/input.ts";
 import {
   checksChanged,
@@ -62,10 +63,12 @@ export class Teams {
   /** A team's member changes run one at a time (#2090). */
   private readonly changes = new PerKeyQueue();
   private readonly launch: Launch;
+  private readonly store: TeamStore;
   private blocked: boolean;
 
   constructor(private readonly opts: TeamsOptions) {
     this.launch = new Launch(opts);
+    this.store = new TeamStore(opts.db);
     this.blocked = opts.quota?.blocked() != null;
     if (opts.quota) this.unsubscribe.push(opts.quota.watch(() => this.onQuota()));
   }
@@ -87,7 +90,7 @@ export class Teams {
   // --- reading ---
 
   private row(id: string): TeamRow {
-    const row = this.opts.db.query("SELECT * FROM teams WHERE id = ?").get(id) as TeamRow | null;
+    const row = this.store.get(id);
     if (!row) throw teamNotFound(id);
     return row;
   }
@@ -127,12 +130,7 @@ export class Teams {
   }
 
   list(projectId?: string): TeamInfo[] {
-    const rows = this.opts.db
-      .query(
-        "SELECT * FROM teams WHERE (?1 IS NULL OR project_id = ?1) ORDER BY created_at DESC, rowid DESC",
-      )
-      .all(projectId ?? null) as TeamRow[];
-    return rows.map((row) => this.info(row));
+    return this.store.list(projectId ?? null).map((row) => this.info(row));
   }
 
   get(id: string): TeamInfo {
@@ -141,10 +139,7 @@ export class Teams {
 
   /** The team a session belongs to (as coordinator or worker), if it is still running. */
   teamOf(sessionId: string): string | null {
-    const rows = this.opts.db
-      .query("SELECT * FROM teams WHERE state <> 'closed'")
-      .all() as TeamRow[];
-    for (const row of rows) {
+    for (const row of this.store.notClosed()) {
       if (this.info(row).members.some((m) => m.sessionId === sessionId)) return row.id;
     }
     return null;
@@ -158,9 +153,7 @@ export class Teams {
     const row = this.open(id);
     const coordinator = this.info(row).members.find((m) => m.role === "coordinator")?.sessionId;
     refuseNotCoordinator(row, coordinator, asker, "report");
-    this.opts.db
-      .query("UPDATE teams SET report_text = ?, report_at = ?, report_done = ? WHERE id = ?")
-      .run(text, this.now(), done ? 1 : 0, id);
+    this.store.report(id, text, this.now(), done);
     // Told once: a final report repeated (a retry, a second word) does not notify again.
     const news = done && row.report_done !== 1;
     this.changed(id, null, news ? "report_done" : undefined);
@@ -202,8 +195,7 @@ export class Teams {
   teamOfCard(cardId: string): SessionTeam | null {
     const known = this.launch.cardTeam(cardId);
     if (known) return known;
-    const rows = this.opts.db.query("SELECT * FROM teams").all() as TeamRow[];
-    for (const row of rows) {
+    for (const row of this.store.all()) {
       const member = this.stored(row).find((m) => m.cardId === cardId);
       if (member) return { name: label(row.name), role: member.role, number: numberOf(member) };
     }
@@ -243,23 +235,17 @@ export class Teams {
       { name, checks, projectId: project.id, projectPath: project.path },
       { coordinator: coordinatorPersona, workers: workerPersonas },
     );
-    this.opts.db
-      .query(
-        `INSERT INTO teams (id, name, project_id, goal, coordinator, members, checks, state,
-                            paused_by, instructions_version, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?)`,
-      )
-      .run(
-        id,
-        name,
-        project.id,
-        input.goal,
-        sessionId,
-        JSON.stringify(members),
-        JSON.stringify(checks),
-        INSTRUCTIONS_VERSION,
-        this.now(),
-      );
+    this.store.insert({
+      id,
+      name,
+      projectId: project.id,
+      goal: input.goal,
+      coordinator: sessionId,
+      members: JSON.stringify(members),
+      checks: JSON.stringify(checks),
+      instructionsVersion: INSTRUCTIONS_VERSION,
+      createdAt: this.now(),
+    });
     return this.changed(id);
   }
 
@@ -287,12 +273,6 @@ export class Teams {
     return info;
   }
 
-  private save(id: string, patch: Partial<Record<string, string | null>>): void {
-    for (const [column, value] of Object.entries(patch)) {
-      this.opts.db.query(`UPDATE teams SET ${column} = ? WHERE id = ?`).run(value ?? null, id);
-    }
-  }
-
   /** A notice from Flightdeck to every member that has a session. */
   private notify(
     info: TeamInfo,
@@ -313,7 +293,7 @@ export class Teams {
   pause(id: string, by: "user" | "quota" = "user"): TeamInfo {
     const row = this.open(id);
     if (row.state === "paused") return this.get(id);
-    this.save(id, { state: "paused", paused_by: by });
+    this.store.update(id, { state: "paused", paused_by: by });
     const info = this.get(id);
     this.notify(info, by === "quota" ? STOP_QUOTA : STOP_USER);
     return this.changed(id, by === "quota" ? PAUSED_BY_QUOTA : null);
@@ -322,7 +302,7 @@ export class Teams {
   resume(id: string, by: "user" | "quota" = "user"): TeamInfo {
     const row = this.open(id);
     if (row.state === "active") return this.get(id);
-    this.save(id, { state: "active", paused_by: null });
+    this.store.update(id, { state: "active", paused_by: null });
     this.notify(this.get(id), by === "quota" ? RESUME_QUOTA : RESUME_USER);
     return this.changed(id, by === "quota" ? RESUMED_BY_QUOTA : null);
   }
@@ -332,7 +312,7 @@ export class Teams {
     if (row.state === "closed") return this.get(id);
     refuseUnconfirmedClose(row, confirm);
     const before = this.get(id);
-    this.save(id, { state: "closed", paused_by: null });
+    this.store.update(id, { state: "closed", paused_by: null });
     this.notify(before, teamClosed(row.name));
     return this.changed(id);
   }
@@ -347,7 +327,7 @@ export class Teams {
     refuseDeleteOpen(row);
     const info = this.get(id);
     refuseDeleteLive(row, info);
-    this.opts.db.query("DELETE FROM teams WHERE id = ?").run(id);
+    this.store.delete(id);
     for (const member of info.members) {
       if (member.sessionId) this.opts.names?.clearTeam?.(member.sessionId);
       if (member.cardId) this.launch.forgetCardTeam(member.cardId);
@@ -383,7 +363,7 @@ export class Teams {
     const members = this.stored(this.row(row.id)).map((m) =>
       m.name === target.name ? { ...m, persona } : m,
     );
-    this.save(row.id, { members: JSON.stringify(members) });
+    this.store.update(row.id, { members: JSON.stringify(members) });
     if (!target.sessionId) return;
     this.opts.applyPersona?.(target.sessionId, persona);
     // A worker's name may still be waiting for its folder's project key: it is born with the
@@ -426,7 +406,7 @@ export class Teams {
         );
       members.push(added);
       started.push(added);
-      this.save(row.id, { members: JSON.stringify(members) });
+      this.store.update(row.id, { members: JSON.stringify(members) });
       tellCoordinator(workerJoined(added.name, added.cardId, spec));
     }
     return started;
@@ -439,7 +419,7 @@ export class Teams {
     // Its turn is interrupted; the card stays on the board.
     if (target.cardId) await this.opts.board.stopCard(target.cardId);
     const members = this.stored(this.row(row.id)).filter((m) => m.name !== target.name);
-    this.save(row.id, { members: JSON.stringify(members) });
+    this.store.update(row.id, { members: JSON.stringify(members) });
     if (target.sessionId) {
       this.opts.messaging.notice(target.sessionId, "system", youLeft(row.name), row.id);
     }
@@ -508,11 +488,11 @@ export class Teams {
     // Before anything changes: a refused worker leaves the team as it was.
     if (patch.addMember) this.checkPermissions([patch.addMember.permission]);
     if (patch.goal !== undefined) {
-      this.save(row.id, { goal: patch.goal });
+      this.store.update(row.id, { goal: patch.goal });
       tellCoordinator(goalChanged(patch.goal));
     }
     if (patch.checks !== undefined) {
-      this.save(row.id, { checks: JSON.stringify(patch.checks) });
+      this.store.update(row.id, { checks: JSON.stringify(patch.checks) });
       tellCoordinator(checksChanged(patch.checks));
     }
     if (patch.persona) await this.changePersona(row, info, patch.persona);
@@ -541,10 +521,7 @@ export class Teams {
     const blocked = this.opts.quota?.blocked() != null;
     if (blocked === this.blocked) return;
     this.blocked = blocked;
-    const rows = this.opts.db.query("SELECT id, state, paused_by FROM teams").all() as Array<
-      Pick<TeamRow, "id" | "state" | "paused_by">
-    >;
-    for (const row of rows) {
+    for (const row of this.store.states()) {
       if (blocked && row.state === "active") this.pause(row.id, "quota");
       if (!blocked && row.state === "paused" && row.paused_by === "quota") {
         this.resume(row.id, "quota");
