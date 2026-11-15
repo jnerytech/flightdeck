@@ -18,7 +18,7 @@ import {
   type FileSearchResult,
   inSequence,
 } from "@flightdeck/protocol";
-import { must } from "../board/worktree.ts";
+import { must } from "../board/index.ts";
 import { git } from "../git/index.ts";
 import {
   FlightdeckError,

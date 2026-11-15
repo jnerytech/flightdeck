@@ -16,7 +16,7 @@ import type {
   SessionSummary,
   ToolInput,
 } from "@flightdeck/protocol";
-import { plainInfo } from "@flightdeck/protocol";
+import { clampPermissionMode, plainInfo } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { API_KEY_VARS, buildChildEnv, isInside, resolveAllowedCwd, ulid } from "../kernel/index.ts";
 import {
@@ -28,7 +28,6 @@ import {
   RiskClassifier,
   writeTarget,
 } from "../permissions/index.ts";
-import { clampPermissionMode } from "../personas/domain/model.ts";
 import type { PreparedPersonas } from "../personas/domain/prepare.ts";
 import { snapshotOf } from "../personas/domain/snapshot.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
