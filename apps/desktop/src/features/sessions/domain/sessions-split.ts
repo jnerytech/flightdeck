@@ -1,6 +1,6 @@
 import type { AppState } from "../../../lib/app-store.ts";
 import type { Route } from "../../../lib/router.ts";
-import type { HubRow } from "../hub.ts";
+import type { HubRow } from "./hub.ts";
 
 /** The session open on the right of Sessões, if any (its daemon id or its Claude id). */
 export function openedSession(

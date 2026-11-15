@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { activeWorktreeFilter } from "@/features/projects/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { type HubFilter, hubRows } from "./domain/hub.ts";
 import { worktreesOf } from "./domain/hub-derive.ts";
 import { hubGroups } from "./domain/hub-groups.ts";
 import { hubProjectKeys, projectChoices, rowsInScope } from "./domain/hub-scope.ts";
@@ -12,7 +13,6 @@ import {
   hubView,
   isSearching,
 } from "./domain/hub-view.ts";
-import { type HubFilter, hubRows } from "./hub.ts";
 import type { HubProject } from "./use-hub-scope.ts";
 
 /**

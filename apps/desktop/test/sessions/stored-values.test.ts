@@ -1,10 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { unanswered } from "../../src/features/sessions/domain/resume-offer.ts";
-import {
-  loadAutoResume,
-  loadHandled,
-  markHandled,
-} from "../../src/features/sessions/domain/resume-store.ts";
 import {
   DEFAULT_HUB_FILTER,
   HUB_FILTER_KEY,
@@ -12,7 +6,13 @@ import {
   loadHubFilter,
   loadHubOpen,
   takeHubHost,
-} from "../../src/features/sessions/hub.ts";
+} from "../../src/features/sessions/domain/hub.ts";
+import { unanswered } from "../../src/features/sessions/domain/resume-offer.ts";
+import {
+  loadAutoResume,
+  loadHandled,
+  markHandled,
+} from "../../src/features/sessions/domain/resume-store.ts";
 
 /** A storage that holds text as it is, so a test can plant a value the app never wrote. */
 const planted = (items: Record<string, string>) => {
