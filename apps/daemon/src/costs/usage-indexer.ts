@@ -344,11 +344,15 @@ export class UsageIndexer {
       offset,
       Math.min(size - offset, this.opts.sliceBytes ?? SLICE_BYTES),
     );
-    const folders = new Set<string>([row?.cwd ?? "", owner.projectPath ?? ""]);
+    const cwds = new Set<string>([row?.cwd ?? ""]);
     for (const [, escaped] of chunk.toString("utf8").matchAll(/"cwd":"((?:[^"\\]|\\.)*)"/g)) {
-      folders.add(parseJsonOr(z.string(), `"${escaped}"`, ""));
+      cwds.add(parseJsonOr(z.string(), `"${escaped}"`, ""));
     }
-    folders.delete("");
+    // An excluded folder never reaches the project-key lookup (it would be a git call on it).
+    const folders = new Set(
+      [...cwds].filter((cwd) => cwd !== "" && !isExcludedCwd(cwd, this.excludes)),
+    );
+    if (owner.projectPath) folders.add(owner.projectPath);
     await this.opts.warmKeys([...folders]);
   }
 
@@ -392,11 +396,21 @@ export class UsageIndexer {
        VALUES ($id, $session, $at, $day, $key, $model, $origin, $speed, $input, $output,
          $cacheRead, $cache5m, $cache1h, $cost)`,
     );
+    const reads = chunk
+      .subarray(0, end)
+      .toString("utf8")
+      .split("\n")
+      .map((line) => readLine(line));
+    // The folder of the lines that come before the first `cwd` is the first one the file names (a
+    // session that changed folders before that line is judged by it: an accepted approximation).
+    const folder = cwd ?? reads.find((read) => read.cwd)?.cwd ?? null;
+    // With excluded folders, a slice that does not say its folder yet waits, offset unmoved (#3273:
+    // a file whose first slice has no `cwd` at all stays unindexed, an accepted trade-off).
+    if (folder === null && this.excludes.length > 0) return done;
     this.db.transaction(() => {
-      for (const line of chunk.subarray(0, end).toString("utf8").split("\n")) {
-        const read = readLine(line);
+      for (const read of reads) {
         cwd = read.cwd ?? cwd;
-        if (isExcludedCwd(cwd, this.excludes)) continue;
+        if (isExcludedCwd(cwd ?? folder, this.excludes)) continue;
         for (const edit of read.at ? read.edits : []) {
           this.recordEdit(file.claudeSessionId, edit, read.at as string);
         }
