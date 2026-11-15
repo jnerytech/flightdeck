@@ -26,7 +26,6 @@ import { commandItemsOf, slashFill } from "./domain/command-menu.ts";
 import { composerModeMenu, offersModelPicker } from "./domain/composer-pickers.ts";
 import { interruptOnEscape, queueStep, submitAction } from "./domain/composer-queue.ts";
 import { nextMode } from "./domain/mode-menu.ts";
-import { missedAfter, rememberPosition, type ScrollPosition } from "./domain/scroll-memory.ts";
 import { activityOf } from "./domain/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "./domain/session-images.ts";
 import type { SessionState } from "./domain/session-state.ts";
@@ -48,16 +47,8 @@ import type { SessionActions } from "./session-actions.ts";
 import { StatusBadge } from "./status-badge.tsx";
 import { SessionStatusLine } from "./status-line";
 import { TimelineItem } from "./timeline-item.tsx";
+import { useConversationScroll } from "./use-conversation-scroll.ts";
 import { WorkingRow } from "./working-row";
-
-/** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
-const positions = new Map<string, ScrollPosition>();
-const MAX_POSITIONS = 200;
-
-/** How far from the end still counts as being at the end, in pixels. */
-const END_SLACK = 24;
-/** How long after the wheel, a key, a touch or a press on the scrollbar a scroll is the person's. */
-const PERSON_SCROLL_MS = 600;
 
 interface SessionViewProps {
   title: string;
@@ -213,101 +204,12 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
-  const timeline = useRef<HTMLDivElement>(null);
   const cards = props.session.items.length;
-  // Whether the reader is at the end: only then does a new message, or the layout settling, pull the view down.
-  const following = useRef(!focusRequestId);
-  // The last message the reader had seen when they left the end: what came after is "new".
-  const [awaySeq, setAwaySeq] = useState<number | null>(null);
-  const away = awaySeq !== null;
-  const streaming = props.session.streaming;
-  const lastSeq = props.session.items.at(-1)?.seq ?? 0;
-  const firstSeq = props.session.items[0]?.seq ?? 0;
-  const lastHeight = useRef(0);
-  // Where the view itself last put the scroll: the scroll event of that move says nothing about the
-  // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
-  const pinnedTop = useRef<number | null>(null);
-  /** The place a returning reader asked for, until the layout has the height to hold it (issue #515). */
-  const restoring = useRef<number | null>(null);
-  // Until when a scroll is the person's: their wheel, keys, touch or a press on the scrollbar. The
-  // browser also scrolls by itself (it pulls the position back when the content shrinks), and the
-  // event for that can reach the handler after a panel changed the layout: read then, the view
-  // would look away from the end and stop following it (issue #315).
-  const personUntil = useRef(0);
-  const person = () => {
-    personUntil.current = Date.now() + PERSON_SCROLL_MS;
-  };
-  const pin = (box: HTMLElement) => {
-    box.scrollTop = box.scrollHeight;
-    // Issue #456: the end, but never past a pending request's top. When the conversation is about
-    // as tall as the card (a short window, a long header), the card's question comes first.
-    const card = box.querySelector("[data-request-id]");
-    const cut = card ? box.getBoundingClientRect().top - card.getBoundingClientRect().top : 0;
-    if (cut > 0) box.scrollTop -= cut;
-    pinnedTop.current = box.scrollTop;
-  };
-  const lastFirst = useRef(firstSeq);
-  const scrollKey = props.scrollKey;
-  const lastSeqRef = useRef(lastSeq);
-  lastSeqRef.current = lastSeq;
-  // Coming back to a conversation: a reader who was up in it gets their place back, one who was at
-  // the end gets the end (which the observer below keeps while the layout settles).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only on the first render of this conversation
-  useLayoutEffect(() => {
-    const box = timeline.current;
-    const saved = scrollKey ? positions.get(scrollKey) : undefined;
-    if (!box || !saved || saved.atEnd) return;
-    following.current = false;
-    restoring.current = saved.top;
-    box.scrollTop = saved.top;
-    setAwaySeq(saved.seq);
-  }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new message or token is when the end moves
-  useLayoutEffect(() => {
-    const box = timeline.current;
-    if (!box) return;
-    if (following.current) pin(box);
-    else if (firstSeq < lastFirst.current) {
-      // Older messages came in above what is being read: the view stays on the same message.
-      box.scrollTop += box.scrollHeight - lastHeight.current;
-    }
-    lastFirst.current = firstSeq;
-    lastHeight.current = box.scrollHeight;
-  }, [cards, streaming]);
-  // Images, code blocks and panels settle after the first paint and push the end down: while the
-  // reader is at the end, the view follows it.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: new messages add elements to observe
-  useLayoutEffect(() => {
-    const box = timeline.current;
-    if (!box || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
-      // The content got taller: the place a returning reader asked for may fit now.
-      if (restoring.current !== null) {
-        box.scrollTop = restoring.current;
-        if (box.scrollTop === restoring.current) restoring.current = null;
-      } else if (following.current) pin(box);
-      lastHeight.current = box.scrollHeight;
-    });
-    observer.observe(box);
-    for (const child of Array.from(box.children)) observer.observe(child);
-    return () => observer.disconnect();
-  }, [cards]);
-  // The request the screen was opened for: in view, and once found, focused, so A and N answer it
-  // with no click first (#187). Only once: a card arriving later never takes the focus from the box.
-  const focusedFor = useRef<string | null>(null);
-  useEffect(() => {
-    if (!focusRequestId || cards === 0) return;
-    const card = timeline.current?.querySelector<HTMLElement>(
-      `[data-request-id="${focusRequestId}"]`,
-    );
-    // The whole card, as little scroll as needed: centered, a tall card near the end was cut.
-    card?.scrollIntoView?.({ block: "nearest" });
-    if (card && focusedFor.current !== focusRequestId) {
-      focusedFor.current = focusRequestId;
-      card.focus({ preventScroll: true });
-    }
-  }, [focusRequestId, cards]);
-  const missed = missedAfter(props.session.items, awaySeq);
+  const { timeline, away, missed, handlers, jumpToEnd } = useConversationScroll({
+    session: props.session,
+    focusRequestId,
+    scrollKey: props.scrollKey,
+  });
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
@@ -566,42 +468,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
       {/* The summary lines up with the header and the conversation (issue #177). */}
       {!opencode && props.recap && <RecapSlot>{props.recap}</RecapSlot>}
       <div className="pane-fill">
-        <Timeline
-          ref={timeline}
-          onWheel={person}
-          onTouchStart={person}
-          onTouchMove={person}
-          onKeyDown={person}
-          onPointerDown={person}
-          onScroll={(e) => {
-            const box = e.currentTarget;
-            const own = pinnedTop.current === box.scrollTop;
-            pinnedTop.current = null;
-            if (own && following.current) return;
-            // A restore the layout has not held yet: the browser's clamp is not the reader going to
-            // the end, and the place kept stays as it was. The person's own scroll ends the restore.
-            if (restoring.current !== null) {
-              if (Date.now() < personUntil.current || box.scrollTop === restoring.current)
-                restoring.current = null;
-              else return;
-            }
-            const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
-            // Following and not at the end, with no hand on it: the layout moved, not the person.
-            // The observer pins the end again.
-            if (following.current && !atEnd && Date.now() >= personUntil.current) return;
-            following.current = atEnd;
-            lastHeight.current = box.scrollHeight;
-            // Leaving the end remembers the last message seen; returning to it forgets that.
-            setAwaySeq((seen) => (atEnd ? null : (seen ?? lastSeqRef.current)));
-            if (scrollKey)
-              rememberPosition(
-                positions,
-                scrollKey,
-                { top: box.scrollTop, atEnd, seq: lastSeqRef.current },
-                MAX_POSITIONS,
-              );
-          }}
-        >
+        <Timeline ref={timeline} {...handlers}>
           {props.earlier}
           {session.pruned && session.items.length === 0 && (
             <p className="text-muted-foreground text-sm">{t("session.pruned")}</p>
@@ -636,17 +503,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           )}
         </Timeline>
         {away && (
-          <Button
-            size="sm"
-            className="float-end shadow-md"
-            onClick={() => {
-              const box = timeline.current;
-              if (box) box.scrollTop = box.scrollHeight;
-              following.current = true;
-              setAwaySeq(null);
-              if (scrollKey) positions.delete(scrollKey);
-            }}
-          >
+          <Button size="sm" className="float-end shadow-md" onClick={jumpToEnd}>
             <ArrowDown aria-hidden="true" />
             {missed === 0 ? t("session.jumpLatest") : t(jumpKey, { n: missed })}
           </Button>

@@ -8,7 +8,8 @@ import { loadConfig } from "../config.ts";
 import type { Logger } from "../kernel/index.ts";
 import { Maintenance, restoreBackup } from "../maintenance/index.ts";
 import { EventStore } from "../store/index.ts";
-import { type CliArgs, configPath } from "./args.ts";
+import { configPath } from "./config-path.ts";
+import type { CliArgs } from "./domain/args.ts";
 
 /** What the maintenance commands need of the command line's deps (main.ts's `CliDeps`). */
 export interface MaintenanceCommandDeps {

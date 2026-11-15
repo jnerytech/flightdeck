@@ -1,10 +1,10 @@
-import { loopbackOnly } from "../pairing/index.ts";
+import { loopbackOnly } from "../../pairing/index.ts";
 import {
   findingText,
   type OpenCodeState,
   type ScopeFinding,
   VERIFIED_OPENCODE_VERSION,
-} from "../runtime/index.ts";
+} from "../../runtime/index.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
 

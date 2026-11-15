@@ -31,8 +31,9 @@ import {
   waitHealthy,
 } from "../service/index.ts";
 import { detectWsl, readProcVersion } from "../wsl/index.ts";
-import { type CliArgs, configPath } from "./args.ts";
 import { type ClaudeSettingsCommandDeps, runHooks } from "./claude-settings.ts";
+import { configPath } from "./config-path.ts";
+import type { CliArgs } from "./domain/args.ts";
 import { type HostCommandDeps, healthUrl, runService, stopInstalledDaemon } from "./host.ts";
 
 /**
