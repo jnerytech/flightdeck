@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { linkSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { templateRootOf } from "../../src/board/spec-template.ts";
+import { templateRootOf } from "../../src/board/domain/spec-template.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";
 
