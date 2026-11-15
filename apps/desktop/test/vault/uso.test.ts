@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { VaultUsed } from "@flightdeck/protocol";
-import type { VaultOutcome } from "../../src/features/vault/vault-requests.ts";
+import type { VaultOutcome } from "../../src/features/vault/domain/vault-requests.ts";
 import { VaultUsageLog } from "../../src/features/vault/vault-usage.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

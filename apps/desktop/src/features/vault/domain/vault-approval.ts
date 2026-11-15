@@ -1,4 +1,4 @@
-import type { VaultPolicy, VaultRequestContext } from "../vault-requests.ts";
+import type { VaultPolicy, VaultRequestContext } from "./vault-requests.ts";
 
 /** How the user approved a request: for this use or the session, from the app or the tray. */
 export interface VaultAnswer {

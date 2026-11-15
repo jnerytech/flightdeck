@@ -1,37 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { describe, expect, test } from "bun:test";
+import { existsSync, mkdirSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import * as protocol from "@flightdeck/protocol";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { gitRunner } from "../../src/projects/adapters/git-clone.ts";
-import { cloneRepo, type GitRunner, scanRepos } from "../../src/projects/project-find.ts";
-import { type RunningServer, startServer } from "../../src/server.ts";
-import { BASELINE_FEATURES, newManager, poll, reasonOf, tempDir } from "../support/helpers.ts";
-
-/** A root with repos at several depths, plus things a scan must not enter or follow. */
-function tree() {
-  const base = realpathSync.native(tempDir("fd-find-"));
-  const root = join(base, "code");
-  for (const dir of [
-    "app/.git",
-    "group/lib/.git",
-    "group/deep/er/too/.git",
-    "plain/notes",
-    "node_modules/pkg/.git",
-    ".hidden/repo/.git",
-    "app/packages/inner/.git",
-  ]) {
-    mkdirSync(join(root, dir), { recursive: true });
-  }
-  // A worktree keeps `.git` as a file.
-  mkdirSync(join(root, "wt"));
-  writeFileSync(join(root, "wt", ".git"), "gitdir: /elsewhere");
-  const outside = join(base, "outside");
-  mkdirSync(join(outside, "stolen/.git"), { recursive: true });
-  symlinkSync(join(outside, "stolen"), join(root, "link"));
-  return { base, root, outside };
-}
+import { cloneRepo, scanRepos } from "../../src/projects/project-find.ts";
+import { reasonOf, tempDir } from "../support/helpers.ts";
+import { fakeGit, tree } from "../support/projects-find.ts";
 
 const names = (result: { repos: Array<{ name: string }> }) => result.repos.map((r) => r.name);
 
@@ -73,17 +48,6 @@ describe("projetos-busca: scanning the allowed roots", () => {
     expect(names(twice)).toEqual(["app", "lib", "wt"]);
   });
 });
-
-/** A git that creates the folder it was asked to clone into, and remembers its arguments. */
-function fakeGit(code = 0, stderr = "") {
-  const calls: string[][] = [];
-  const git: GitRunner = async (args) => {
-    calls.push(args);
-    if (code === 0) mkdirSync(args[args.length - 1] as string, { recursive: true });
-    return { code, stderr };
-  };
-  return { git, calls };
-}
 
 const refusal = async (promise: Promise<unknown>) => {
   const error = await promise.then(
@@ -162,85 +126,6 @@ describe("projetos-busca: cloning into a root", () => {
     expect(error.reason).toBe("clone_failed");
     expect(error.params?.detail).toBe("fatal: repository 'https://example.com/n.git' not found");
     expect(existsSync(join(root, "n"))).toBe(false);
-  });
-});
-
-const TOKEN = "projects-find-token-0123456789";
-const stops: Array<() => Promise<void>> = [];
-afterEach(async () => {
-  for (const stop of stops.splice(0)) await stop();
-});
-
-async function ask(server: RunningServer, type: string, payload: object) {
-  const ws = new WebSocket(server.url);
-  const acks: protocol.Ack[] = [];
-  ws.addEventListener("message", (m) => {
-    const msg = protocol.parseServerMessage(String(m.data));
-    if (msg.type === "ack") acks.push(msg);
-  });
-  await new Promise((r) => ws.addEventListener("open", r));
-  ws.send(JSON.stringify({ id: "1", type: "hello", payload: { token: TOKEN, client: "t" } }));
-  ws.send(JSON.stringify({ id: "2", type, payload }));
-  const ack = await poll(() => acks.find((a) => a.id === "2"), 2000);
-  ws.close();
-  return ack;
-}
-
-function server(root: string, extra: Partial<Parameters<typeof startServer>[0]> = {}) {
-  const started = startServer({
-    manager: newManager().manager,
-    hostName: "h",
-    bind: "127.0.0.1",
-    port: 0,
-    token: TOKEN,
-    allowedRoots: [root],
-    ...extra,
-  });
-  stops.push(() => started.stop());
-  return started;
-}
-
-describe("projetos-busca: the commands", () => {
-  test("payloads: scan takes a bounded depth, clone takes a URL, a root and a name", () => {
-    const parse = (type: string, payload: object) =>
-      protocol.Command.safeParse({ id: "1", type, payload }).success;
-    expect(parse("projects.scan", {})).toBe(true);
-    expect(parse("projects.scan", { depth: 3 })).toBe(true);
-    expect(parse("projects.scan", { depth: 4 })).toBe(false);
-    expect(parse("projects.clone", { url: "https://a/b.git", root: "/r", name: "n" })).toBe(true);
-    expect(parse("projects.clone", { url: "", root: "/r" })).toBe(false);
-    expect(parse("projects.clone", { url: "https://a/b.git" })).toBe(false);
-  });
-
-  test("scan and clone answer for the allowed roots; host.info announces them", async () => {
-    const { root } = tree();
-    const { git, calls } = fakeGit();
-    const running = server(root, { projects: { find: true }, git });
-    const scan = await ask(running, "projects.scan", {});
-    expect(scan?.ok && (scan.data as protocol.ProjectsScanResult).repos).toHaveLength(3);
-    const url = "https://example.com/acme/new.git";
-    const clone = await ask(running, "projects.clone", { url, root });
-    expect(clone?.ok && clone.data).toEqual({ path: join(root, "new") });
-    expect(calls).toHaveLength(1);
-    const refused = await ask(running, "projects.clone", { url: "file:///x", root });
-    expect(refused && !refused.ok && refused.error.reason).toBe("clone_url_scheme");
-    const info = await ask(running, "host.info", {});
-    expect(info?.ok && (info.data as { features: string[] }).features).toEqual(
-      expect.arrayContaining(["projects.scan", "projects.clone"]),
-    );
-  });
-
-  test("a daemon without the feature refuses both and announces nothing", async () => {
-    const { root } = tree();
-    const bare = server(root);
-    const scan = await ask(bare, "projects.scan", {});
-    expect(scan && !scan.ok && scan.error.reason).toBe("feature_off");
-    const clone = await ask(bare, "projects.clone", { url: "https://a/b.git", root });
-    expect(clone && !clone.ok && clone.error.reason).toBe("feature_off");
-    const info = await ask(bare, "host.info", {});
-    expect(info?.ok && (info.data as { features: string[] }).features).toEqual([
-      ...BASELINE_FEATURES,
-    ]);
   });
 });
 
