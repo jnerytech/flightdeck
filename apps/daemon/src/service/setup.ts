@@ -5,7 +5,8 @@ import { z } from "zod";
 import { loadConfig, updateConfigFile } from "../config.ts";
 import { type Logger, parseJsonWith } from "../kernel/index.ts";
 import { WSL_PORT_OFFSET } from "../wsl/index.ts";
-import { compareVersions, swapBinary } from "./update.ts";
+import { compareVersions } from "./domain/version.ts";
+import { swapBinary } from "./update.ts";
 
 export interface SetupDeps {
   /** Free-text question; an empty answer means "nothing". */

@@ -2,126 +2,25 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Config } from "../config.ts";
 import { layoutLike, parseJsonText, writeFileAtomic } from "../kernel/index.ts";
+import {
+  type HookSettings,
+  type HooksStatus,
+  type HookTarget,
+  hooksStatusOf,
+  withFlightdeck,
+  withoutFlightdeck,
+} from "./domain/hook-entries.ts";
 
-/** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
-export const HTTP_HOOK_EVENTS = [
-  "UserPromptSubmit",
-  "Notification",
-  "PermissionRequest",
-  "PostToolUse",
-  "PostToolUseFailure",
-  "PermissionDenied",
-  "Stop",
-  "SessionEnd",
-] as const;
-
-/** Every hook but the held permission request answers within this. */
-const HOOK_TIMEOUT_S = 5;
-
-export interface HookTarget {
-  /** This daemon's own executable (`[binary]` or `[bun, "run", bin.ts]`), absolute. */
-  command: string[];
-  /** Receptor base URL, with the port the daemon really listens on. */
-  url: string;
-  token: string;
-  permissionTimeoutS: number;
-  /** Where Claude Code runs (decides how paths are written); this process's when absent. */
-  platform?: NodeJS.Platform;
-}
-
-export interface HookEntry {
-  type: "command" | "http";
-  command?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  timeout?: number;
-}
-
-export interface HookGroup {
-  matcher?: string;
-  hooks: HookEntry[];
-}
-
-export type HooksStatus = "installed" | "absent" | "outdated";
-
-type Settings = Record<string, unknown> & { hooks?: Record<string, HookGroup[]> };
-
-/** Quotes only what needs it, so the line reads the same in sh, bash, cmd and PowerShell. */
-const quote = (arg: string) => (/\s/.test(arg) ? `"${arg}"` : arg);
-
-/**
- * Claude Code runs command hooks through Git Bash on Windows, where `\` is an escape: paths go
- * with forward slashes, which Windows accepts as well.
- */
-const forShell = (arg: string, platform: NodeJS.Platform) =>
-  platform === "win32" ? arg.replaceAll("\\", "/") : arg;
-
-/** The entries `install` writes, by event. */
-export function hookEntries(target: HookTarget): Record<string, HookGroup[]> {
-  const sessionStart = [
-    ...target.command.map((arg) => quote(forShell(arg, target.platform ?? process.platform))),
-    "hook",
-    "session-start",
-    "--url",
-    target.url,
-    "--token",
-    target.token,
-  ].join(" ");
-  const entries: Record<string, HookGroup[]> = {
-    SessionStart: [
-      { hooks: [{ type: "command", command: sessionStart, timeout: HOOK_TIMEOUT_S }] },
-    ],
-  };
-  for (const event of HTTP_HOOK_EVENTS) {
-    const timeout = event === "PermissionRequest" ? target.permissionTimeoutS : HOOK_TIMEOUT_S;
-    entries[event] = [
-      {
-        hooks: [
-          {
-            type: "http",
-            url: `${target.url}/hooks/${event}`,
-            headers: { Authorization: `Bearer ${target.token}` },
-            timeout,
-          },
-        ],
-      },
-    ];
-  }
-  return entries;
-}
-
-/** Flightdeck's entries: the receptor URL or the `hook session-start` command. */
-export const isFlightdeckHook = (hook: HookEntry) =>
-  /^http:\/\/127\.0\.0\.1:\d+\/hooks\//.test(hook.url ?? "") ||
-  (hook.command ?? "").includes(" hook session-start ");
-
-async function readSettings(file: string): Promise<Settings | null> {
+async function readSettings(file: string): Promise<HookSettings | null> {
   const text = await readFile(file, "utf8").catch(() => null);
-  return text === null ? null : (parseJsonText(text) as Settings);
+  return text === null ? null : (parseJsonText(text) as HookSettings);
 }
 
 /** Written in the layout the file has (its BOM, indent and line endings): only the hooks change. */
-async function writeSettings(file: string, settings: Settings): Promise<void> {
+async function writeSettings(file: string, settings: HookSettings): Promise<void> {
   await mkdir(dirname(file), { recursive: true });
   const before = await readFile(file, "utf8").catch(() => null);
   await writeFileAtomic(file, layoutLike(before, settings));
-}
-
-/** Drops Flightdeck's hooks; groups, events and `hooks` emptied by that go too. */
-function withoutFlightdeck(settings: Settings): { settings: Settings; changed: boolean } {
-  let changed = false;
-  const hooks: Record<string, HookGroup[]> = {};
-  for (const [event, groups] of Object.entries(settings.hooks ?? {})) {
-    const kept = groups.flatMap((group) => {
-      const others = group.hooks.filter((hook) => !isFlightdeckHook(hook));
-      if (others.length === group.hooks.length) return [group];
-      changed = true;
-      return others.length > 0 ? [{ ...group, hooks: others }] : [];
-    });
-    if (kept.length > 0) hooks[event] = kept;
-  }
-  const { hooks: _hooks, ...rest } = settings;
-  return { settings: Object.keys(hooks).length > 0 ? { ...rest, hooks } : rest, changed };
 }
 
 /**
@@ -131,12 +30,7 @@ function withoutFlightdeck(settings: Settings): { settings: Settings; changed: b
 export async function installHooks(file: string, target: HookTarget): Promise<void> {
   const current = await readSettings(file);
   if (current) await writeFile(`${file}.flightdeck-backup`, await readFile(file));
-  const { settings } = withoutFlightdeck(current ?? {});
-  const hooks = { ...settings.hooks };
-  for (const [event, groups] of Object.entries(hookEntries(target))) {
-    hooks[event] = [...(hooks[event] ?? []), ...groups];
-  }
-  await writeSettings(file, { ...settings, hooks });
+  await writeSettings(file, withFlightdeck(current ?? {}, target));
 }
 
 /** Removes only Flightdeck's entries; false when there were none. */
@@ -150,25 +44,8 @@ export async function uninstallHooks(file: string): Promise<boolean> {
 
 /** Installed as `install` would write it now, absent, or different (outdated). */
 export async function hooksStatus(file: string, target: HookTarget): Promise<HooksStatus> {
-  const found: Record<string, HookEntry[]> = {};
-  for (const [event, groups] of Object.entries((await readSettings(file))?.hooks ?? {})) {
-    const ours = groups.flatMap((group) => group.hooks.filter(isFlightdeckHook));
-    if (ours.length > 0) found[event] = ours;
-  }
-  if (Object.keys(found).length === 0) return "absent";
-  const expected = Object.fromEntries(
-    Object.entries(hookEntries(target)).map(([event, groups]) => [
-      event,
-      groups.flatMap((g) => g.hooks),
-    ]),
-  );
-  return JSON.stringify(sortKeys(found)) === JSON.stringify(sortKeys(expected))
-    ? "installed"
-    : "outdated";
+  return hooksStatusOf(await readSettings(file), target);
 }
-
-const sortKeys = (value: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
 
 /** What `hooks install` writes for this config: this executable, the receptor and its token. */
 export function hookTarget(
