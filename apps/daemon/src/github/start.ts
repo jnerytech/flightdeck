@@ -6,7 +6,7 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Issue } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import { git } from "../git/index.ts";
 import { FlightdeckError, samePath, UNTRUSTED_MARK } from "../kernel/index.ts";
 import { allowedRoot, cloneRepo, type GitRunner } from "../projects/index.ts";

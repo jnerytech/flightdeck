@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { z } from "zod";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import { prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { TRUSTED_ASSOCIATIONS } from "../github/index.ts";

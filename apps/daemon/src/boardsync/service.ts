@@ -3,7 +3,7 @@
  * to one, its map, the push switch, the status, an immediate sync, and a card's conflict log.
  */
 import type { BoardColumn, BoardSyncStatus } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { BoardSyncLoop } from "./domain/loop.ts";
 import { type ColumnMap, checkMap, defaultMapFor } from "./domain/map.ts";

@@ -4,7 +4,7 @@
  * local moves when the board allows it.
  */
 import { inSequence } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import type { Card } from "../board/types.ts";
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { BoardLink } from "./domain/links.ts";
