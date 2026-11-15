@@ -100,39 +100,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/workflows/check-runner.ts",
-    "unresolvedTo": "../workflows/check-runner.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/workflows/engine.ts",
-    "unresolvedTo": "../workflows/engine.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/workflows/template-add.ts",
-    "unresolvedTo": "../workflows/template-add.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/card-pr-flow.ts",
     "to": "apps/daemon/src/issues/providers.ts",
     "unresolvedTo": "../issues/providers.ts",
@@ -155,17 +122,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/check-loop-host.ts",
-    "to": "apps/daemon/src/workflows/engine.ts",
-    "unresolvedTo": "../workflows/engine.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/check-loop.ts",
     "to": "apps/daemon/src/watch/settings.ts",
     "unresolvedTo": "../watch/settings.ts",
@@ -181,17 +137,6 @@
     "to": "apps/daemon/src/watch/domain/check-run.ts",
     "unresolvedTo": "../../watch/domain/check-run.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/launch.ts",
-    "to": "apps/daemon/src/workflows/engine.ts",
-    "unresolvedTo": "../workflows/engine.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
