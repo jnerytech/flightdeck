@@ -26,6 +26,7 @@ export {
   SessionViews,
   VIEW_LABEL,
 } from "./domain/session-views.ts";
+export { elsewhereNotice, waitingCards } from "./domain/start-elsewhere.ts";
 export { inputSummary } from "./domain/tool-input.ts";
 export { messageParts } from "./domain/tool-line.ts";
 export { type Turn, turnsOf } from "./domain/turns.ts";
@@ -61,7 +62,6 @@ export { NewSessionPrefs } from "./new-session-prefs.ts";
 export { pendingText, pendingWhere } from "./pending-text.ts";
 export { rowRoute } from "./row-route.ts";
 export type { SessionActions } from "./session-view.tsx";
-export { elsewhereNotice, waitingCards } from "./start-elsewhere.ts";
 export {
   initialSessionsState,
   type ResumeOffer,

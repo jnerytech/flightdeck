@@ -6,7 +6,7 @@ import {
   offeredHosts,
   startElsewhere,
   waitingCards,
-} from "../../src/features/sessions/start-elsewhere.ts";
+} from "../../src/features/sessions/domain/start-elsewhere.ts";
 import { translator } from "../../src/i18n/index.ts";
 
 /**
