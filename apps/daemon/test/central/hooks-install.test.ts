@@ -6,10 +6,8 @@ import {
   type HookTarget,
   HTTP_HOOK_EVENTS,
   hookEntries,
-  hooksStatus,
-  installHooks,
-  uninstallHooks,
-} from "../../src/central/hooks-install.ts";
+} from "../../src/central/domain/hook-entries.ts";
+import { hooksStatus, installHooks, uninstallHooks } from "../../src/central/hooks-install.ts";
 import { ProjectKeys } from "../../src/central/project-key.ts";
 import { expandHome, loadConfig } from "../../src/config.ts";
 import { parseArgs, runCli } from "../../src/main.ts";

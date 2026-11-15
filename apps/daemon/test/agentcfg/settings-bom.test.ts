@@ -3,12 +3,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { McpConfig } from "../../src/agentcfg/mcp.ts";
 import { addRules, readRules } from "../../src/board/project-rules.ts";
-import {
-  type HookTarget,
-  hooksStatus,
-  installHooks,
-  uninstallHooks,
-} from "../../src/central/hooks-install.ts";
+import type { HookTarget } from "../../src/central/domain/hook-entries.ts";
+import { hooksStatus, installHooks, uninstallHooks } from "../../src/central/hooks-install.ts";
 import { layoutLike, parseJsonText } from "../../src/kernel/json-text.ts";
 import type { TelemetryTarget } from "../../src/telemetry/domain/env.ts";
 import {
