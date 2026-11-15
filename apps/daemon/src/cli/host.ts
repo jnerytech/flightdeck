@@ -28,7 +28,8 @@ import {
   uninstallService,
   waitHealthy,
 } from "../service/index.ts";
-import { type CliArgs, configPath } from "./args.ts";
+import { configPath } from "./config-path.ts";
+import type { CliArgs } from "./domain/args.ts";
 
 /** What the service and update commands need of the command line's deps (main.ts's `CliDeps`). */
 export interface HostCommandDeps {

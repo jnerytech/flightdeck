@@ -295,7 +295,7 @@ describe("refusal-english: teams, service, names, messaging policy, board and wr
  */
 const MSGS4_FILES = [
   "main.ts",
-  "cli/args.ts",
+  "cli/domain/args.ts",
   "cli/claude-settings.ts",
   "cli/commands.ts",
   "cli/history.ts",

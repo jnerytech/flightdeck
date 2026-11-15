@@ -16,8 +16,8 @@ import {
 } from "../service/index.ts";
 import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
 import { probeVersion } from "./adapters/version-probe.ts";
-import { runDoctor } from "./doctor.ts";
 import { checkDeps, type DepsEnv } from "./domain/deps.ts";
+import { runDoctor } from "./domain/doctor.ts";
 
 /** What the host's checks read: the daemon's config and what it found at start. */
 export interface HostChecksDeps {
