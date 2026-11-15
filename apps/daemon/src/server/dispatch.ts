@@ -1,10 +1,4 @@
-/**
- * Issue #248: a command's handler and how its reply becomes the ack. A handler gets the command's
- * payload and the call (the socket, a bound `send`, the server's context); what it returns is the
- * ack's data. `afterAck` is for the streams that answer, then replay, then go live (`*.subscribe`,
- * `*.watch`): the dispatcher sends the ack and runs the rest in the same synchronous step, so no
- * frame can fall between them.
- */
+/** Issue #248: runs a command's handler and sends its ack. The handler's shape is in `domain/handler.ts`. */
 import type { Command, CommandPayload, CommandType } from "@flightdeck/protocol";
 import { AfterAck, type Call, type Handler } from "./domain/handler.ts";
 
