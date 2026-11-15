@@ -62,7 +62,7 @@ export type {
   SidebarSession,
 } from "./app-state.ts";
 export { HISTORY_PAGE, needsYou } from "./app-state.ts";
-export type { HostCommandType, HostResult } from "./kernel.ts";
+export type { HostResult } from "./kernel.ts";
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
