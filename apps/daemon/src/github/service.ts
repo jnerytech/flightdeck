@@ -3,7 +3,7 @@
  * when it has one. The token stays with `gh`: nothing here reads, keeps or logs it.
  */
 import type { Issue } from "@flightdeck/protocol";
-import type { Board } from "../board/board.ts";
+import type { Board } from "../board/index.ts";
 import { type GitRunner, spawnGit } from "../projects/index.ts";
 import { runGh } from "./adapters/gh.ts";
 import { type DeviceCode, GithubLogin } from "./adapters/login.ts";
