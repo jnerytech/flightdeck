@@ -1,12 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { VaultRequestFrame } from "@flightdeck/protocol";
+import { checkDelivery, transportAllowed } from "../../src/features/vault/domain/vault-delivery.ts";
 import type { SecretMeta } from "../../src/features/vault/vault.ts";
-import {
-  type AnswerDeps,
-  answerVaultRequest,
-  checkDelivery,
-  transportAllowed,
-} from "../../src/features/vault/vault-requests.ts";
+import { type AnswerDeps, answerVaultRequest } from "../../src/features/vault/vault-requests.ts";
 
 const SECRET: SecretMeta = {
   id: "s1",
