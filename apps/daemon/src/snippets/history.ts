@@ -1,9 +1,17 @@
-import { createHash } from "node:crypto";
 import { open, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Snippet, SnippetHistoryCandidate } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { hasControl, type SecretScanner } from "./domain/model.ts";
+import {
+  type Entry,
+  eligible,
+  freeName,
+  idOf,
+  parseHistory,
+  type Shell,
+  slug,
+} from "./domain/history-lines.ts";
+import type { SecretScanner } from "./domain/model.ts";
 import type { Snippets } from "./store.ts";
 
 export interface HistorySources {
@@ -42,8 +50,6 @@ export function defaultHistorySources(opts: {
   };
 }
 
-type Shell = "bash" | "zsh" | "powershell";
-
 const SOURCES: Array<{ key: keyof HistorySources; shell: Shell }> = [
   { key: "bash", shell: "bash" },
   { key: "zsh", shell: "zsh" },
@@ -53,20 +59,6 @@ const SOURCES: Array<{ key: keyof HistorySources; shell: Shell }> = [
 /** Only the end of a huge history is read. */
 const MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_LIMIT = 50;
-const MAX_COMMAND = 4000;
-const TRIVIAL = new Set([
-  "ls",
-  "ll",
-  "la",
-  "cd",
-  "pwd",
-  "clear",
-  "cls",
-  "exit",
-  "history",
-  "true",
-  "false",
-]);
 const IMPORT_TAG = "histórico";
 
 /** The text of a history file, from its end if it is large; `null` when there is no such file. */
@@ -92,67 +84,6 @@ async function readHistory(path: string): Promise<string | null> {
     text = text.slice(text.indexOf("\n") + 1);
   }
   return text.replace(/^﻿/, "");
-}
-
-/** The character that ends a line that goes on in the next one, by shell. */
-const CONTINUATION: Partial<Record<Shell, string>> = { zsh: "\\", powershell: "`" };
-
-/**
- * The commands of a history, one entry each. `continuation` is the character that ends a line
- * that goes on in the next one: such an entry is more than one line and is left out.
- */
-function parseHistory(shell: Shell, text: string): string[] {
-  const continuation = CONTINUATION[shell] ?? null;
-  const commands: string[] = [];
-  let skipping = false;
-  for (const raw of text.split(/\r?\n/)) {
-    let line = raw;
-    if (shell === "bash" && /^#\d+$/.test(line)) continue;
-    if (shell === "zsh" && !skipping) line = line.replace(/^: \d+:\d+;/, "");
-    const goesOn = continuation !== null && line.endsWith(continuation);
-    if (skipping || goesOn) {
-      skipping = goesOn;
-      continue;
-    }
-    const command = line.trim();
-    if (command !== "") commands.push(command);
-  }
-  return commands;
-}
-
-/** Worth offering as a snippet: one line, plain, and not just `ls` or `cd ..`. */
-function eligible(command: string): boolean {
-  if (command.length > MAX_COMMAND || hasControl(command, "\t")) return false;
-  const tokens = command.split(/\s+/);
-  if (TRIVIAL.has(tokens[0] as string) && tokens.length <= 2) return false;
-  return tokens.length >= 2 || command.length >= 8;
-}
-
-const idOf = (command: string) => createHash("sha256").update(command).digest("hex").slice(0, 16);
-
-/** A name for the snippet: the first words of the command, as plain text. */
-function slug(command: string): string {
-  const words = command
-    .split(/\s+/)
-    .slice(0, 3)
-    .map((word) => word.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) // NOSONAR: the replace before made every run of other characters one "-", so at most one at each end
-    .filter((word) => word !== "");
-  return words.join("-").slice(0, 64) || "comando";
-}
-
-interface Entry {
-  command: string;
-  count: number;
-  shells: Shell[];
-}
-
-/** A name for a snippet that none of `taken` has: `base`, else `base-2`, `base-3`... */
-function freeName(taken: Snippet[], base: string): string {
-  const names = new Set(taken.map((s) => s.name));
-  let name = base;
-  let n = 2;
-  while (names.has(name)) name = `${base.slice(0, 60)}-${n++}`;
-  return name;
 }
 
 /**
