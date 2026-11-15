@@ -126,7 +126,7 @@ export class Rewinder {
       gitBytes(target.repo, ["diff", "-z", flag, "--no-renames", target.tree, current]);
     const names = await diff("--name-status");
     // A failed file list must not read as "nothing changed": a rewind would restore nothing and say so.
-    if (names.code !== 0) throw new Error(`git diff falhou (${names.code})`);
+    if (names.code !== 0) throw new Error(`git diff failed (${names.code})`);
     // The line counts are for display only: git cannot count a blob that is gone, and the restore
     // then refuses that file by name (rewind_blob_unreadable).
     const numstat = await diff("--numstat");

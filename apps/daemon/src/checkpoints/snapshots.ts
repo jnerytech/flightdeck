@@ -172,7 +172,7 @@ export class Snapshots {
         start.tree,
         end.tree,
       ]);
-      if (result.code !== 0) throw new Error(`git diff-tree falhou (${result.code})`);
+      if (result.code !== 0) throw new Error(`git diff-tree failed (${result.code})`);
       return result.stdout.toString();
     };
     const { added, removed } = linesOf(await diff("--numstat"));
