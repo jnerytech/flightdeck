@@ -3,7 +3,17 @@
  * builds), so two sessions never run them at once. Every effect (files, clock, processes) comes
  * in through `SlotEnv`, so the tests run nothing real and wait for nothing.
  */
+import {
+  estimatedSeconds,
+  isBunTest,
+  SLOT_TEST_FILES,
+  SLOT_TEST_FILES_CAP,
+  SLOT_TEST_SECONDS,
+  testFileCount,
+} from "./estimate.ts";
 import { heavyReasonGiven } from "./heavy.ts";
+
+export { estimatedSeconds, SLOT_TEST_FILES, testFileCount, timingsFrom } from "./estimate.ts";
 
 /** Who holds the slot, as written in the lock file. */
 export interface SlotHolder {
@@ -136,15 +146,6 @@ const NICE_OTHERS = 15;
 export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 /** A hold past this is LONG: the holder, its waiters and `--status` say so, and the hook log keeps it (#833). */
 export const LONG_HOLD_MS = 20 * 60_000;
-/** The most test files a slot run may name without a reason (#833); `test:related` takes the slot above it. */
-export const SLOT_TEST_FILES = 60;
-/**
- * #1541: with the suite's CI timings known, the limit is this many seconds of estimated CI time:
- * a run over 60 unit files takes seconds, one of 40 slow files may hold the slot for minutes.
- */
-const SLOT_TEST_SECONDS = 60;
-/** Past this many files a run needs a reason whatever the timings say (stale or missing ones). */
-const SLOT_TEST_FILES_CAP = 3 * SLOT_TEST_FILES;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
@@ -631,53 +632,6 @@ export async function lowerOthers(env: SlotEnv): Promise<number[]> {
   return lowered;
 }
 
-const TEST_ARG = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
-
-/**
- * The CI timings table from its text (#1541): only finite, non-negative numbers; anything that is
- * not an object of them is no table, so the 60-file limit applies.
- */
-export function timingsFrom(text: string | null): Record<string, number> | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text ?? "");
-  } catch {
-    return undefined;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
-  const entries = Object.entries(parsed).filter(
-    (entry): entry is [string, number] =>
-      typeof entry[1] === "number" && Number.isFinite(entry[1]) && entry[1] >= 0,
-  );
-  return Object.fromEntries(entries);
-}
-
-/** How many test files a `bun ... test` command names; 0 for any other command (#833). */
-export function testFileCount(command: string[]): number {
-  if (!isBunTest(command.join(" "))) return 0;
-  return command.filter((arg) => TEST_ARG.test(arg)).length;
-}
-
-/** The CI seconds a run's test files take (#1541): a file with no timing counts at their mean. */
-export function estimatedSeconds(
-  command: string[],
-  timings: Record<string, number>,
-  root = "",
-): number {
-  const values = Object.values(timings);
-  const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 1;
-  // The table's keys are repo-relative with "/": a Windows-style or absolute path is read as one.
-  const base = `${root.replaceAll("\\", "/").replace(/\/$/, "")}/`;
-  const key = (arg: string) => {
-    const path = arg.replaceAll("\\", "/");
-    const inside = base !== "/" && path.startsWith(base) ? path.slice(base.length) : path;
-    return inside.replace(/^\.\//, "");
-  };
-  return command
-    .filter((arg) => TEST_ARG.test(arg))
-    .reduce((sum, arg) => sum + (timings[key(arg)] ?? mean), 0);
-}
-
 /**
  * #833: a run of more than `SLOT_TEST_FILES` test files holds the slot 20 minutes or more while
  * others wait, so it needs FLIGHTDECK_SLOT_HEAVY with a reason. #1541: with the CI timings known,
@@ -716,20 +670,6 @@ function recordLongHold(env: SlotEnv, heldAt: number, command: string): void {
     minutes: Math.floor(held / 60_000),
     detail: `${oneLine(env.label)}: ${clip(command)}`,
   });
-}
-
-/** `bun test ...`, `bun --config=x test ...` or a path to bun: its first plain argument is `test`. */
-function isBunTest(command: string): boolean {
-  const [program, ...args] = command.trim().split(/\s+/);
-  if (
-    !program ||
-    program
-      .split(/[\\/]/)
-      .pop()
-      ?.replace(/\.exe$/, "") !== "bun"
-  )
-    return false;
-  return args.find((arg) => !arg.startsWith("-")) === "test";
 }
 
 /** Lowers the others every `RENICE_MS` until the command is done; a failure only skips a pass. */
