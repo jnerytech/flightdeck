@@ -35,20 +35,19 @@ interface Draft {
   external: boolean;
 }
 
-/** The form's starting point: the saved automation, or a weekday morning schedule. */
-function draftOf(initial: Automation | null): Draft {
+/**
+ * The form's starting point: the saved automation, or a weekday morning schedule in `zone` (the
+ * caller's time zone: the draft reads no ambient state).
+ */
+function draftOf(initial: Automation | null, zone: string): Draft {
   const { trigger, action } = initial ?? {
-    trigger: {
-      type: "cron" as const,
-      expr: "0 9 * * 1-5",
-      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    },
+    trigger: { type: "cron" as const, expr: "0 9 * * 1-5", tz: zone },
     action: { type: "start_workflow" as const, workflow: "" },
   };
   return {
     trigger: trigger.type,
     expr: trigger.type === "cron" ? trigger.expr : "0 9 * * 1-5",
-    tz: trigger.type === "cron" ? trigger.tz : Intl.DateTimeFormat().resolvedOptions().timeZone,
+    tz: trigger.type === "cron" ? trigger.tz : zone,
     label: trigger.type === "issue_label" ? trigger.label : "",
     action: action.type,
     workflow: action.type === "start_workflow" ? action.workflow : "",
@@ -93,7 +92,9 @@ export function AutomationForm(
   const { store, initial } = props;
   const { t } = store.i18n;
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<Draft>(() => draftOf(initial));
+  const [draft, setDraft] = useState<Draft>(() =>
+    draftOf(initial, Intl.DateTimeFormat().resolvedOptions().timeZone),
+  );
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
 
   const usable = props.workflows.filter((w) => w.errors.length === 0);
