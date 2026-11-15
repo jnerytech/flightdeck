@@ -20,7 +20,7 @@ import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
-import { ALL_SCOPE, activeScope, awayKey, type DataScope, usd } from "../costs/index.ts";
+import { ALL_SCOPE, awayKey, usd } from "../costs/index.ts";
 import { typing } from "../shortcuts/index.ts";
 import { AsleepMark } from "./asleep-mark";
 import { CacheTimer } from "./cache-timer";
@@ -37,14 +37,7 @@ import {
   worktreesOf,
 } from "./domain/hub-derive.ts";
 import { hubGroups } from "./domain/hub-groups.ts";
-import {
-  awayHost,
-  hubProjectKeys,
-  projectChoices,
-  projectName,
-  rowsInScope,
-  scopeKeys,
-} from "./domain/hub-scope.ts";
+import { hubProjectKeys, projectChoices, projectName, rowsInScope } from "./domain/hub-scope.ts";
 import { rowStatus, sessionLineText, sharedMeta } from "./domain/hub-status.ts";
 import {
   activeCount,
@@ -62,6 +55,7 @@ import { newSessionHost } from "./new-session-host.ts";
 import { focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
+import { type HubProject, useHubScope } from "./use-hub-scope.ts";
 import { ViewToggle } from "./view-toggle.tsx";
 
 /** How often the hub asks the hosts about their background sessions. */
@@ -86,7 +80,7 @@ export function SessionsHub(
     isOpen(row: HubRow): boolean;
     density: Density;
     /** Only this project's sessions, with a chip that clears it (from the project page). */
-    project?: { hostId: string; projectKey: string; name: string };
+    project?: HubProject;
     /** Only this host's sessions (its name), set by the route: it applies the host filter once. */
     host?: string;
   }>,
@@ -95,40 +89,12 @@ export function SessionsHub(
   const { t } = store.i18n;
   const [filter, setFilter] = useState<HubFilter>(() => store.viewPrefs.hubFilter());
   const [view, setView] = useState<HubView>(() => store.viewPrefs.hubView());
-  // The project the route asked for. Clearing it here sticks while the hub stays mounted (opening
-  // a session changes the route but not the list); a different project from the route replaces it.
-  const [only, setOnly] = useState(props.project ?? null);
-  const askedKey = props.project ? `${props.project.hostId}/${props.project.projectKey}` : "";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a different project asked for by the route applies
-  useEffect(() => {
-    if (props.project) setOnly(props.project);
-  }, [askedKey]);
-  // The data scope (#126): the hub lists the sessions of its hosts. A host asked for by the route
-  // ("See all" on its page, a name) wins for this visit and never rewrites the scope (#207); any
-  // pick in the Data from menu ends the visit. Showing every host from a visit widens the visit.
-  const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
-  const [visit, setVisit] = useState(props.host);
-  const [visitAll, setVisitAll] = useState(false);
-  useEffect(() => {
-    if (props.host === undefined) return;
-    setVisit(props.host);
-    setVisitAll(false);
-  }, [props.host]);
-  useEffect(
-    () =>
-      store.dataScope.subscribe(() => {
-        setVisit(undefined);
-        setVisitAll(false);
-      }),
-    [store],
+  const { only, clearOnly, hostScope, scoped, scopedProject, away, showAllHosts } = useHubScope(
+    store,
+    state,
+    props.project,
+    props.host,
   );
-  const visiting = visit === undefined ? undefined : state.hosts.find((h) => h.name === visit);
-  let hostScope: DataScope = activeScope(kept, state.hosts, state.hostsLoaded);
-  if (visitAll) hostScope = ALL_SCOPE;
-  else if (visiting) hostScope = { kind: "host", hostId: visiting.id };
-  // A project scope (#126 slice 4) shows that project's sessions, on every host it is on.
-  const { host: scoped, project: scopedProject } = scopeKeys(hostScope);
-  const away = awayHost(state.hosts, hostScope);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   /** Issue #100: the session being moved to another host (the preview's dialog). */
   const [moving, setMoving] = useState<HubRow | null>(null);
@@ -360,11 +326,7 @@ export function SessionsHub(
         {away && (
           <InlineNotice tone="info">
             <span>{t(awayKey(away.status, "sessions"), { host: away.name })} </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => (visiting ? setVisitAll(true) : store.dataScope.set(ALL_SCOPE))}
-            >
+            <Button variant="outline" size="sm" onClick={showAllHosts}>
               {t("scope.showAll")}
             </Button>
           </InlineNotice>
@@ -408,7 +370,7 @@ export function SessionsHub(
               size="icon"
               className="size-5"
               aria-label={t("hub.clearProjectFilter")}
-              onClick={() => setOnly(null)}
+              onClick={clearOnly}
             >
               <X aria-hidden="true" />
             </Button>
