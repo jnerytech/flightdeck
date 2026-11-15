@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "./fake-cli.ts";
 import { realTempDir } from "./temp-dir.ts";
 
-export const CHECK_GUARD_ENV = "FLIGHTDECK_CHECK_GUARD";
+const CHECK_GUARD_ENV = "FLIGHTDECK_CHECK_GUARD";
 
 export interface CheckGuard {
   dir: string;

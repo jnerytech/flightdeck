@@ -8,13 +8,13 @@ import {
   useSyncExternalStore,
 } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/ui.ts";
+import { UpdateBanner, UpdateCard } from "@/features/appupdate/ui.ts";
 import { useStartAsk } from "@/features/board/ui.ts";
 import { SimpleApp } from "@/features/home/ui.ts";
 import { draftFromLink, pairingErrorText } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/ui.ts";
 import { activeWorktreeFilter } from "@/features/projects/index.ts";
-import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/ui.ts";
+import { useLiveElsewhereAsk } from "@/features/sessions/ui.ts";
 import {
   breadcrumb,
   firstTerminalTab,
@@ -25,29 +25,23 @@ import {
   AppShell,
   Breadcrumb,
   HistoryButtons,
-  Notices,
   Sidebar,
   StatusBarSlot,
   TopBarActions,
   TopBarHost,
 } from "@/features/shell/ui.ts";
-import { SnippetUse } from "@/features/snippets/ui.ts";
 import { TContext } from "@/i18n/context";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { preloadMarkdown } from "@/shared/markdown/index.ts";
 import { boardShortcut } from "../features/board/index.ts";
 import type { PaletteTarget } from "../features/palette/index.ts";
 import { GlobalSearch } from "../features/palette/ui.ts";
-import { isMac } from "../features/shortcuts/index.ts";
-import { ShortcutsSheet } from "../features/shortcuts/ui.ts";
-import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
-import { TabSwitcherHost } from "../features/tabs/ui.ts";
-import { TerminalCloseDialog } from "../features/terminal/ui.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
+import { AppOverlays } from "./app-overlays.tsx";
 import { runPaletteTarget } from "./run-palette-target.ts";
 import { useWindowKeys } from "./window-keys.ts";
 
@@ -384,63 +378,42 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               }}
             />
           </div>
-          <Notices store={store} />
-          {Object.entries(state.resumeOffers).map(([hostId, offer]) => {
-            const host = state.hosts.find((h) => h.id === hostId);
-            return offer.open && host ? (
-              <ResumeOfferDialog
-                key={hostId}
+          <AppOverlays
+            store={store}
+            state={state}
+            askDialogs={
+              <>
+                {startAsk.dialog}
+                {liveAsk.dialog}
+              </>
+            }
+            help={help}
+            whatsNew={whatsNew}
+            onCloseHelp={() => setHelp(false)}
+            onCloseWhatsNew={() => setWhatsNew(false)}
+          >
+            {state.searchOpen && (
+              <GlobalSearch
+                state={state}
                 store={store}
-                hostId={hostId}
-                hostName={host.name}
-                sessions={offer.sessions}
-                resumed={offer.resumed}
+                costs={true}
+                onGo={goTo}
+                onSearch={(query) => void store.history.search(query)}
+                onClose={() => store.history.closeSearch()}
+                onOpenHit={(hit) =>
+                  go({
+                    name: "reader",
+                    target: {
+                      hostId: hit.hostId,
+                      claudeSessionId: hit.claudeSessionId,
+                      cursor: hit.cursor,
+                      focusUuid: hit.uuid,
+                    },
+                  })
+                }
               />
-            ) : null;
-          })}
-          <TabSwitcherHost store={store} />
-          {state.closingTerminal && (
-            <TerminalCloseDialog onClose={(kill) => void store.terminals.finishClose(kill)} />
-          )}
-          <AskpassPrompt store={store} />
-          {startAsk.dialog}
-          {liveAsk.dialog}
-          {state.snippetChoice && (
-            <SnippetUse
-              store={store}
-              choice={state.snippetChoice}
-              onClose={() => store.snippets.choose(null)}
-            />
-          )}
-          {whatsNew && <WhatsNewDialog store={store} onClose={() => setWhatsNew(false)} />}
-          {help && (
-            <ShortcutsSheet
-              store={store}
-              mac={isMac(typeof navigator === "undefined" ? undefined : navigator)}
-              onClose={() => setHelp(false)}
-            />
-          )}
-          {state.searchOpen && (
-            <GlobalSearch
-              state={state}
-              store={store}
-              costs={true}
-              onGo={goTo}
-              onSearch={(query) => void store.history.search(query)}
-              onClose={() => store.history.closeSearch()}
-              onOpenHit={(hit) =>
-                go({
-                  name: "reader",
-                  target: {
-                    hostId: hit.hostId,
-                    claudeSessionId: hit.claudeSessionId,
-                    cursor: hit.cursor,
-                    focusUuid: hit.uuid,
-                  },
-                })
-              }
-            />
-          )}
+            )}
+          </AppOverlays>
         </AppShell>
       </TooltipProvider>
     </TContext.Provider>

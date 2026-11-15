@@ -987,7 +987,7 @@ const FAILED_CHECK = new Set([
 ]);
 
 /** How young a green PR run must be for a push to wait for it (#741). */
-export const PUSH_WAIT_MINUTES = 20;
+const PUSH_WAIT_MINUTES = 20;
 
 /**
  * Why a push would cancel a PR run that is still green (#741), or null. A new push cancels the
