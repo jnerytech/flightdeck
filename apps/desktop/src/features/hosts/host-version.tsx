@@ -3,17 +3,6 @@ import { type ReactElement, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { T } from "@/i18n/index";
 
-/** "flightdeckd 0.36.0", and the mismatch in words when it is not the app's; null before it is known. */
-export function hostVersionText(
-  t: T,
-  daemon: string | null | undefined,
-  app: string,
-): string | null {
-  if (!daemon) return null;
-  const line = t("hostPage.daemon", { version: daemon });
-  return daemon === app ? line : `${line} · ${t("hostPage.differs")}`;
-}
-
 /**
  * A host's row in the sidebar says its daemon's version in a real tooltip (issue #281), on hover and
  * on keyboard focus; never a native title. The same words are on the host page and in the switcher.

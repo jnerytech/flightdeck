@@ -11,6 +11,6 @@ export { FolderPicker } from "./folder-picker.tsx";
 export { HostDot } from "./host-dot.tsx";
 export { HostForm } from "./host-form.tsx";
 export { HostOfflineBanner } from "./host-offline-banner.tsx";
-export { HostVersionTip, hostVersionText } from "./host-version.tsx";
+export { HostVersionTip } from "./host-version.tsx";
 export { HostsBanner } from "./hosts-banner.tsx";
 export { RenameHostDialog } from "./rename-host-dialog.tsx";
