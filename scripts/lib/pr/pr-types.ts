@@ -1,7 +1,7 @@
 /**
  * What every `bun run pr` command shares (#1589): the dependencies a command is given (`gh`, `git`,
  * the clock, the log), the PR it works on, and the repository path and branch name the GitHub calls
- * use. No logic, so each command's module and `pr-flow.ts` can import it without a cycle.
+ * use, and the usage line. No logic, so each command's module and `pr-flow.ts` can import it without a cycle.
  */
 
 interface GhResult {
@@ -35,3 +35,12 @@ export interface Pr {
 
 export const REPO = "repos/{owner}/{repo}";
 export const MAIN = "main";
+
+const USAGE =
+  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n[,n...]> | --refs <n>] [--title <text>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
+
+/** Prints the usage line; the exit code of a command line that names none of them. */
+export function usage(deps: PrFlowDeps): number {
+  deps.log(USAGE);
+  return 2;
+}

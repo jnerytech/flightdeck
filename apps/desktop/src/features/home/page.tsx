@@ -1,21 +1,14 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { Button } from "@/components/ui/button";
 import { knownProjectKeys } from "@/features/projects/index.ts";
-import { ScopeMenu } from "@/features/shell/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
-import type { T } from "@/i18n/index";
-import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Grid, Page, Stack } from "@/shared/layout/index.ts";
-import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
 import {
   ALL_HOSTS,
-  ALL_SCOPE,
   activeScope,
-  awayKey,
-  type DataScope,
   daysBetween,
   periodRange,
   projectLabel,
@@ -25,75 +18,10 @@ import {
 import { homeKey } from "./domain/home-cache.ts";
 import { type HomeKpis, homeKpis } from "./domain/home-kpis.ts";
 import { homeMessage, rangeSubtitle } from "./domain/home-view-model.ts";
+import { AwayNotice, HomeScopeMenu, ReadNotices } from "./home-notices.tsx";
 import { KpiCard } from "./kpi-card.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 import { PERIOD, useHomeRead } from "./use-home-read.ts";
-
-/** The scope menu, when there is more than one host or a project to choose from. */
-function HomeScopeMenu(
-  props: Readonly<{
-    store: AppStore;
-    hosts: HostView[];
-    loaded: boolean;
-    projects: Array<{ key: string; label: string }>;
-    scope: DataScope;
-  }>,
-) {
-  if (!props.loaded || (props.hosts.length <= 1 && props.projects.length === 0)) return null;
-  return (
-    <ScopeMenu
-      store={props.store}
-      hosts={props.hosts}
-      projects={props.projects}
-      scope={props.scope}
-    />
-  );
-}
-
-/** The scoped host is away: without numbers the line above says it; with older numbers, this one. */
-function AwayNotice(
-  props: Readonly<{ store: AppStore; away: HostView | undefined; withNumbers: boolean }>,
-) {
-  const { store, away } = props;
-  const { t } = store.i18n;
-  if (!away) return null;
-  return (
-    <InlineNotice tone="info">
-      {props.withNumbers && <span>{t(awayKey(away.status, "numbers"), { host: away.name })} </span>}
-      <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
-        {t("scope.showAll")}
-      </Button>
-    </InlineNotice>
-  );
-}
-
-/** What is not whole about the numbers on screen: old ones, missing ones, an older host. */
-function ReadNotices(
-  props: Readonly<{
-    t: T;
-    stale: HostView[];
-    silent: HostView[];
-    ago: string;
-    olderDaemon: boolean;
-  }>,
-) {
-  const { t, stale, silent, ago } = props;
-  return (
-    <>
-      {stale.length > 0 && (
-        <InlineNotice tone="info">
-          {t("home.stale", { hosts: stale.map((h) => h.name).join(", "), ago })}
-        </InlineNotice>
-      )}
-      {silent.length > 0 && (
-        <InlineNotice>
-          {t("home.partial", { hosts: silent.map((h) => h.name).join(", ") })}
-        </InlineNotice>
-      )}
-      {props.olderDaemon && <InlineNotice tone="info">{t("home.olderDaemon")}</InlineNotice>}
-    </>
-  );
-}
 
 /** What Home is about (#126): the scope it adds up, the hosts in it, the projects to pick, and the subtitle. */
 function useHomeScope(store: AppStore, state: Pick<AppState, "hosts" | "hostsLoaded">) {
