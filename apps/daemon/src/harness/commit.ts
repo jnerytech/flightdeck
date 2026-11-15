@@ -15,7 +15,8 @@ import {
 } from "../board/branch-commit.ts";
 import { readInside } from "../board/index.ts";
 import { FlightdeckError, HEAD, refArg, samePath } from "../kernel/index.ts";
-import { MAX_FILE, SETTINGS } from "./preview.ts";
+import { SETTINGS } from "./domain/settings-proposal.ts";
+import { MAX_FILE } from "./preview.ts";
 import { plainName, unvetted } from "./templates-store.ts";
 
 export interface CommitDeps {

@@ -9,18 +9,9 @@ import { type FileHandle, open, realpath } from "node:fs/promises";
 import type { HarnessApplied, HarnessPreview } from "@flightdeck/protocol";
 import { createInside } from "../board/index.ts";
 import { FlightdeckError, layoutLike, samePath } from "../kernel/index.ts";
+import { type Current, type Look, type PreviewPart, SETTINGS } from "./domain/settings-proposal.ts";
 import type { HarnessDrafts } from "./draft.ts";
-import {
-  type Current,
-  fileLook,
-  type Look,
-  MAX_FILE,
-  orNull,
-  type PreviewPart,
-  planHarness,
-  SETTINGS,
-  walk,
-} from "./preview.ts";
+import { fileLook, MAX_FILE, orNull, planHarness, walk } from "./preview.ts";
 import type { TemplateMarkdown } from "./templates-store.ts";
 
 type Settings = NonNullable<HarnessPreview["settings"]>;
