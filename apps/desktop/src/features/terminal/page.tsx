@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, useSyncExternalStor
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SnippetPicker } from "@/features/snippets/ui.ts";
-import { useT } from "@/i18n/context";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
