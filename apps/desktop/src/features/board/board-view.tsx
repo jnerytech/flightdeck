@@ -60,6 +60,7 @@ import {
 import { cardStartBlock } from "./domain/card-start-block.ts";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
+import { useCardDrag } from "./use-card-drag.ts";
 import { useCardSelection } from "./use-card-selection.ts";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
 import { type MoveAsk, useSelectionActions } from "./use-selection-actions.tsx";
@@ -105,11 +106,6 @@ export const BoardView = memo(function BoardView(props: {
   const [filter, setFilter] = useState("");
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
-  /**
-   * Card being dragged. A ref, not state: the drop may come before a re-render. Not in
-   * DataTransfer either, which some webviews leave empty.
-   */
-  const dragging = useRef<string | null>(null);
   const loading = useMinLoading(project === null && !loadFailed);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(props.newCard === true);
@@ -127,10 +123,6 @@ export const BoardView = memo(function BoardView(props: {
   const [deleting, setDeleting] = useState<Card | null>(null);
   /** The column a new card goes to: the one whose + was pressed. */
   const [createIn, setCreateIn] = useState<BoardColumn>("backlog");
-  /** The column a dragged card is over. */
-  const [over, setOver] = useState<string | null>(null);
-  /** The cards being dragged: the columns that ask for something say what, until they let go. */
-  const [dragCards, setDragCards] = useState<Card[]>([]);
   /** A move waiting on the person's answer: the cards lack something its column asks (issue #78). */
   const [ask, setAsk] = useState<MoveAsk | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
@@ -149,8 +141,6 @@ export const BoardView = memo(function BoardView(props: {
   const moveFrom = useRef<string | null>(null);
   // A batch of moves or discards is running: nothing else may start.
   const [busy, setBusy] = useState(false);
-  /** The cards dragged together when the dragged one is part of a selection. */
-  const draggingMany = useRef<string[] | null>(null);
   const chosenWidth = useSyncExternalStore(
     store.boardWidth.subscribe,
     () => store.boardWidth.value,
@@ -291,19 +281,7 @@ export const BoardView = memo(function BoardView(props: {
     if (card && lacking.length > 0) setAsk({ column, targetId, cards: [card], lacking });
     else runMove(cardId, column, targetId);
   };
-  const drop = (column: BoardColumn, targetId?: string) => {
-    const cardId = dragging.current;
-    if (!cardId || busy) return;
-    dragging.current = null;
-    setDragCards([]);
-    // A card dragged out of a selection takes the whole selection with it.
-    if (draggingMany.current) {
-      draggingMany.current = null;
-      void moveSelected(column, targetId);
-      return;
-    }
-    move(cardId, column, targetId);
-  };
+  const drag = useCardDrag({ busy, acting, actingCards, move, moveSelected });
   /** The menu's moves for a card: to each other column, and up or down within its own. */
   const movesOf = (card: Card) => {
     const { index, moves } = cardMoves(columnOf(card.column), card);
@@ -518,7 +496,7 @@ export const BoardView = memo(function BoardView(props: {
           >
             {COLUMNS.map(({ id }) => {
               /** What the dragged cards would lack here: said by the column until they let go. */
-              const asking = dragNeeds(id, dragCards, contracts);
+              const asking = dragNeeds(id, drag.dragCards, contracts);
               return (
                 <ColumnLane
                   key={id}
@@ -526,7 +504,7 @@ export const BoardView = memo(function BoardView(props: {
                   id={id}
                   hidden={switcher && id !== showing}
                   asking={asking}
-                  over={over === id}
+                  over={drag.over === id}
                   {...counts(
                     shown.filter((card) => card.column === id).length,
                     all.filter((card) => card.column === id).length,
@@ -541,12 +519,9 @@ export const BoardView = memo(function BoardView(props: {
                     setCreateIn(id);
                     setCreating(true);
                   }}
-                  onDragEnter={() => setOver(id)}
-                  onDragLeave={() => setOver(null)}
-                  onDrop={() => {
-                    setOver(null);
-                    drop(id);
-                  }}
+                  onDragEnter={() => drag.enter(id)}
+                  onDragLeave={drag.leave}
+                  onDrop={() => drag.drop(id)}
                   handle={
                     switcher
                       ? undefined
@@ -606,17 +581,9 @@ export const BoardView = memo(function BoardView(props: {
                         hintId={hintId}
                         onFocus={() => setFocusedCard(card.id)}
                         onKey={keyOn(card.id)}
-                        onDragStart={() => {
-                          dragging.current = card.id;
-                          draggingMany.current =
-                            acting.includes(card.id) && acting.length > 1 ? acting : null;
-                          setDragCards(draggingMany.current ? actingCards : [card]);
-                        }}
-                        onDragEnd={() => setDragCards([])}
-                        onDropOn={() => {
-                          setOver(null);
-                          drop(id, card.id);
-                        }}
+                        onDragStart={() => drag.start(card)}
+                        onDragEnd={drag.end}
+                        onDropOn={() => drag.drop(id, card.id)}
                       />
                     ))}
                 </ColumnLane>
