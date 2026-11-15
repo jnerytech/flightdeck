@@ -1,4 +1,4 @@
-import type { BackupTarget } from "./backup-target.ts";
+import type { BackupTarget } from "./domain/backup-target.ts";
 
 /** What the Drive target needs from the sign-in: an access token, a fresh one when `refresh` is set. */
 export interface DriveAuth {

@@ -10,9 +10,9 @@ import { hasFeature } from "../../lib/version.ts";
 import { bulkSplit, updateMany, updateSummary } from "./board-bulk.ts";
 import { CardMergePr } from "./card-merge-pr.tsx";
 import { answerOf } from "./domain/board-select.ts";
+import { openPullRequests } from "./domain/pull-requests-model.ts";
 import { PrRefusal } from "./pr-refusal.tsx";
 import { PrRow } from "./pr-row.tsx";
-import { openPullRequests } from "./pull-requests-model.ts";
 
 const SLICE = ["hosts", "projects", "cards", "watches"] as const;
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { positionsBefore } from "../../src/features/board/board-model.ts";
 import { BoardWidth, COLUMN_WIDTH_KEY } from "../../src/features/board/board-select.ts";
+import { positionsBefore } from "../../src/features/board/domain/board.ts";
 import {
   COLUMN_WIDTH,
   clampWidth,

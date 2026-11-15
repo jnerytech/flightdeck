@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { missingFor } from "@flightdeck/protocol";
+import { toSlashes } from "../../src/board/domain/spec-template.ts";
 import { readSpec } from "../../src/board/spec.ts";
-import { toSlashes } from "../../src/board/spec-template.ts";
 import { newBoard } from "../support/board-helpers.ts";
 import { tempDir, waitFor } from "../support/helpers.ts";
 

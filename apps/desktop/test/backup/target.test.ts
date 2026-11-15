@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  type BackupFolder,
-  type BackupTarget,
-  folderTarget,
-  keepNewest,
-} from "../../src/features/backup/backup-target.ts";
+import { type BackupFolder, folderTarget } from "../../src/features/backup/backup-target.ts";
+import { type BackupTarget, keepNewest } from "../../src/features/backup/domain/backup-target.ts";
 
 /**
  * Issue #1444: a backup target puts, lists, gets and removes backups by name. The folder of #1264

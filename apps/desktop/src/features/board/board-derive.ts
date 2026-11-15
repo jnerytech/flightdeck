@@ -3,7 +3,7 @@ import { cardInFilter, type WorktreeFilter } from "@/features/projects/index.ts"
 import { reasonText } from "../../i18n/errors.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { COLUMNS, filterCards, positionsBefore } from "./board-model.ts";
+import { COLUMNS, filterCards, positionsBefore } from "./domain/board.ts";
 import type { BulkRefusal } from "./domain/board-select.ts";
 
 /** The cards the board shows: the text filter, "only blocked" and the branch picked in the sidebar tree. */

@@ -2,7 +2,7 @@ import type { ConflictChoice } from "@/features/vault/index.ts";
 import { PICKED_FILE_MAX_BYTES } from "../../platform/pick-file.ts";
 import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
-import { BACKUP_NAME } from "./backup-target.ts";
+import { BACKUP_NAME } from "./domain/backup-target.ts";
 import { DriveError } from "./drive-target.ts";
 
 /** What the restore reads at most: the picker's limit, so a backup saved here can always be picked again (#1241). */

@@ -11,15 +11,13 @@ import { withoutPersonas } from "../personas/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import { pinnedPrompt } from "./domain/pins.ts";
+import { renderSpec, specFirstLine, wantsSpec } from "./domain/spec-template.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
 import {
   hasTddSkill,
-  renderSpec,
-  specFirstLine,
   type TemplateIgnored,
   type TemplateName,
-  wantsSpec,
   writeSpec,
 } from "./spec-template.ts";
 import {
