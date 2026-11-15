@@ -4,6 +4,7 @@
  * composition file that imports it does not reach the screens.
  */
 
-export { TerminalCloseDialog, TerminalPage } from "./page.tsx";
+export { TerminalPage } from "./page.tsx";
 export { SessionTerminal } from "./session-terminal.tsx";
 export { TerminalButton } from "./terminal-button.tsx";
+export { TerminalCloseDialog } from "./terminal-dialogs.tsx";
