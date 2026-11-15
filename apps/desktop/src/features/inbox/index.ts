@@ -5,5 +5,11 @@
  */
 
 export type { InboxEntry } from "./domain/inbox.ts";
+export {
+  type AboutNotification,
+  externalRequestNotification,
+  externalWaitNotification,
+  summaryNotifications,
+} from "./domain/notify.ts";
 export { type InboxCore, InboxSlice } from "./store.ts";
 export { wireInbox } from "./wire.ts";
