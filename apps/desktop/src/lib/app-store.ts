@@ -7,7 +7,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { WORKSPACE_KEY, Workspace } from "@/features/tabs/index.ts";
+import { WORKSPACE_KEY, type Workspace } from "@/features/tabs/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { Clock } from "../app/clock.ts";
 import {
@@ -20,6 +20,7 @@ import { composeLifecycle, type Lifecycle } from "../app/compose/lifecycle.ts";
 import { composeShell, type ShellSlices } from "../app/compose/shell.ts";
 import { composeVault, type VaultSlices } from "../app/compose/vault.ts";
 import { describeError, Notices } from "../app/notices.ts";
+import { TabWindow } from "../app/tab-window.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BudgetsSlice, wireBudgets } from "../features/costs/index.ts";
 import { HostLink, HostTabs, loadHosts, RequestError, saveHosts } from "../features/hosts/index.ts";
@@ -164,7 +165,7 @@ export class AppStore {
         notify: (...args) => this.inbox.notify(...args),
         copyText: (text) => this.system.copyText(text),
         projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
-        shown: () => this.shownSessions(),
+        shown: () => this.tabWindow.shownSessions(),
         later: (fn, ms) => this.later(fn, ms),
         respondTo: (hostId, requestId, decision) =>
           void this.respondTo(hostId, requestId, decision),
@@ -237,19 +238,18 @@ export class AppStore {
       options.startRoute,
     );
     this.router = this.hostTabs.router;
-    // A navigation took the window to another host's tabs (#932): say so, with the way back.
-    this.hostTabs.onSwitch((left, to) => {
-      // With no tabs' host yet (after a reload), the switcher named the window's host: the same
-      // host is no switch. With no host at all (a first page, a deep link), nothing was left.
-      const from = left ?? this.uiModes.hostId();
-      if (!from || from === to) return;
-      const { t } = this.i18n;
-      const name = (id: string) => this.state.hosts.find((host) => host.id === id)?.name ?? id;
-      this.success(t("toast.switchedHost", { host: name(to) }), {
-        label: t("toast.backTo", { host: name(from) }),
-        run: () => this.hostTabs.returnAcross(left),
-      });
+    this.tabWindow = new TabWindow({
+      hostTabs: this.hostTabs,
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      sessionViews: this.sessionViews,
+      closeShell: (hostId, terminalId) =>
+        void this.hostCommand(hostId, "terminal.close", { terminalId, kill: true }),
+      uiHostId: () => this.uiModes.hostId(),
+      translate: () => this.i18n.t,
+      success: (text, link) => this.success(text, link),
     });
+    this.hostTabs.onSwitch((left, to) => this.tabWindow.announceSwitch(left, to));
     // A set kept for a host that is not configured any more (removed before, or gone from the list).
     const configured = new Set(loadHosts(platform.storage).map((host) => host.id));
     for (const id of Object.keys(this.hostTabs.snapshot().hosts)) {
@@ -257,7 +257,7 @@ export class AppStore {
     }
     this.hostTabs.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
-      this.clearShownUnread();
+      this.tabWindow.clearShownUnread();
     });
     this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
@@ -341,19 +341,17 @@ export class AppStore {
   readonly router: Navigation;
   /** Each host's own tabs and the shared screens (issue #644). */
   readonly hostTabs: HostTabs;
-  /** What the window shows while there is no host and no shared tab: never kept. */
-  private readonly noHost = new Workspace({ name: "start" });
+  /** What the window shows and what a tab change touches (#1589). */
+  private readonly tabWindow: TabWindow;
 
   /** The current host's window (its tabs and split); an empty one with no host. */
   get workspace(): Workspace {
-    return this.hostTabs.workspace ?? this.noHost;
+    return this.tabWindow.workspace;
   }
 
   /** The tabs in use: the shared ones while a shared tab is active or with no host, else the host's focused area. */
   get tabs(): Tabs {
-    return this.hostTabs.onShared || !this.hostTabs.workspace
-      ? this.hostTabs.shared
-      : this.workspace.tabs;
+    return this.tabWindow.tabs;
   }
 
   getState = (): AppState => this.state;
@@ -444,12 +442,12 @@ export class AppStore {
 
   /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
   activeHostId(): string | null {
-    return this.hostTabs.hostId;
+    return this.tabWindow.activeHostId();
   }
 
   /** A new tab; the host tabs choose where (`HostTabs.openNew`). */
   openNewTab(): void {
-    this.hostTabs.openNew(this.state.hosts);
+    this.tabWindow.openNewTab();
   }
 
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
@@ -459,22 +457,7 @@ export class AppStore {
 
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
   closeTab(area: Tabs, tabId: string): void {
-    const tab = area.tabs.find((candidate) => candidate.id === tabId);
-    const route = tab?.router.current;
-    if (route?.name === "terminal") {
-      this.update({ closingTerminal: { areaId: area.id, tabId } });
-      return;
-    }
-    // Issue #107: the shell a session page opened lives as long as its tab.
-    if (route?.name === "session") {
-      const key = sessionKey(route.host, route.id);
-      const terminalId = this.sessionViews.terminalOf(key);
-      if (terminalId) {
-        this.sessionViews.setTerminal(key, null);
-        void this.hostCommand(route.host, "terminal.close", { terminalId, kill: true });
-      }
-    }
-    area.close(tabId);
+    this.tabWindow.closeTab(area, tabId);
   }
 
   /**
@@ -654,26 +637,6 @@ export class AppStore {
       ? (this.state.projects[hostId] ?? []).find((p) => isInside(cwd, p.path))
       : undefined;
     return project ? `${hostId}/${project.id}` : undefined;
-  }
-
-  /** The sessions an area shows right now (the active tab of each area), by session key. */
-  private shownSessions(): Set<string> {
-    const shown = new Set<string>();
-    if (this.hostTabs.onShared) return shown;
-    for (const area of this.workspace.areas) {
-      const route = area.router.current;
-      if (route.name === "session") shown.add(sessionKey(route.host, route.id));
-    }
-    return shown;
-  }
-
-  /** A session on screen is read. */
-  private clearShownUnread(): void {
-    const shown = [...this.shownSessions()].filter((key) => this.state.unread[key]);
-    if (shown.length === 0) return;
-    const unread = { ...this.state.unread };
-    for (const key of shown) delete unread[key];
-    this.update({ unread });
   }
 
   /** A secret of the vault for a use the app itself starts (ssh); see `VaultApprovalsSlice.secretFor`. */
