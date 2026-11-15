@@ -1,18 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { osTempDir, realTempDir } from "../../../../scripts/test/temp-dir.ts";
 import { createResources } from "../../src/resources/wiring.ts";
+import { OLD_SESSION } from "../support/resources-wiring.ts";
 
 const MB = 1024 * 1024;
-
-/** A session of /gone that is over, alive for the whole of this century so far. */
-const OLD_SESSION = {
-  id: "old",
-  name: null,
-  cwd: "/gone",
-  status: "ended",
-  createdAt: "2020-01-01T00:00:00Z",
-  updatedAt: "2100-01-01T00:00:00Z",
-};
 
 const deps = (over: Partial<Parameters<typeof createResources>[0]> = {}) => ({
   platform: "linux" as NodeJS.Platform,
