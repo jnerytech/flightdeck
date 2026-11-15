@@ -1,5 +1,4 @@
 import type { Card } from "@flightdeck/protocol";
-import type { WorktreeFilter } from "@/features/projects/index.ts";
 import { hasFeature } from "../../../lib/version.ts";
 
 /**
@@ -12,9 +11,17 @@ export type BoardFiles =
   | { kind: "tree"; target: string; branch: string; search: boolean }
   | { kind: "primary"; branch: string };
 
+/** The checkout the person picked in the project tree: the fields the files panel reads from it. */
+interface PickedCheckout {
+  kind: "primary" | "worktree";
+  projectId: string;
+  path: string;
+  branch: string;
+}
+
 /** The panel for the picked checkout of this board; `null` with none picked or a host without `file.list`. */
 export function boardFiles(
-  filter: WorktreeFilter | null,
+  filter: PickedCheckout | null,
   cards: readonly Pick<Card, "id" | "worktreePath">[],
   features: readonly string[] | undefined,
 ): BoardFiles | null {
@@ -37,7 +44,7 @@ export function boardFiles(
 export function filesPanelOpen(
   files: BoardFiles | null,
   choice: { path: string; open: boolean } | null,
-  worktree: Pick<WorktreeFilter, "path"> | null,
+  worktree: { path: string } | null,
   narrow: boolean,
 ): boolean {
   if (files === null) return false;
