@@ -9,11 +9,12 @@ import type { Automation, AutomationRun, Issue } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/index.ts";
 import type { Issues } from "../issues/index.ts";
-import { FlightdeckError, UNTRUSTED_MARK, ulid } from "../kernel/index.ts";
+import { FlightdeckError, ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/index.ts";
 import { localDay } from "../quota/index.ts";
+import { act } from "./act.ts";
 import { type CronSpec, parseCron } from "./domain/cron.ts";
-import { type AutomationEvent, causeOf, contentOf, isExternal, keyOf } from "./domain/event.ts";
+import { type AutomationEvent, causeOf, keyOf } from "./domain/event.ts";
 import { actionOf, triggerOf } from "./domain/row-json.ts";
 import { refusal, ruleProblem } from "./domain/rule-check.ts";
 import { Scheduler } from "./scheduler.ts";
@@ -94,8 +95,6 @@ const toRun = (row: RunRow): AutomationRun => ({
   status: row.status,
   detail: row.detail,
 });
-
-type Outcome = { status: "ok" | "skipped"; detail: string };
 
 export class Automations {
   private readonly db: Database;
@@ -304,71 +303,11 @@ export class Automations {
       return;
     }
     try {
-      const outcome = await this.act(auto, event);
+      const outcome = await act(this.opts, auto, event);
       this.record(auto, at, cause, outcome.status, outcome.detail);
     } catch (error) {
       this.record(auto, at, cause, "failed", (error as Error).message);
     }
-  }
-
-  private async act(auto: Automation, event: AutomationEvent): Promise<Outcome> {
-    const { board } = this.opts;
-    const { action } = auto;
-    if (action.type === "create_card") {
-      // Saved only with an issue_label trigger (see `check`), so this event always has an issue.
-      const { issue } = event as Extract<AutomationEvent, { type: "issue_label" }>;
-      return this.cardFromIssue(auto, issue, (card) => Promise.resolve(`card ${card}`));
-    }
-    if (action.type === "start_workflow") {
-      const inputs = action.inputs;
-      const start = async (cardId: string) => {
-        await board.startCard(cardId, { workflow: action.workflow, ...(inputs ? { inputs } : {}) });
-        return `card ${cardId}`;
-      };
-      if (event.type === "issue_label") return this.cardFromIssue(auto, event.issue, start);
-      const external = isExternal(event);
-      const content = contentOf(event);
-      const description = [action.description ?? "", external ? UNTRUSTED_MARK : "", content]
-        .filter((part) => part.trim() !== "")
-        .join("\n\n");
-      const projectId = auto.projectId;
-      const card = board.createCard(projectId, { title: action.title ?? auto.name, description });
-      if (external) this.suspend(card.id);
-      try {
-        return { status: "ok", detail: await start(card.id) };
-      } catch (error) {
-        // A card that never started has nothing to keep: no orphan in the Backlog.
-        await board.discardCard(card.id, true);
-        throw error;
-      }
-    }
-    if (!("cardId" in event)) return { status: "skipped", detail: "the event is not about a card" };
-    // The watch fixes a watched PR (#77): a second fix of the same failure would race it.
-    const claimed = this.opts.prWatch?.claims(event.cardId) ?? null;
-    if (claimed) return { status: "skipped", detail: claimed };
-    const external = isExternal(event);
-    const text = external ? `${UNTRUSTED_MARK}\n\n${contentOf(event)}` : contentOf(event);
-    board.message(event.cardId, text);
-    if (external) this.suspend(event.cardId);
-    return { status: "ok", detail: `sent to card ${event.cardId}` };
-  }
-
-  /** The card of an issue, made now; an issue that already has one is skipped. */
-  private async cardFromIssue(
-    auto: Automation,
-    issue: Issue,
-    then: (cardId: string) => Promise<string>,
-  ): Promise<Outcome> {
-    const existing = this.opts.board.cardForIssue(auto.projectId, issue.ref);
-    if (existing)
-      return { status: "skipped", detail: `issue ${issue.ref} already has card ${existing}` };
-    const card = await this.opts.issues.createCard(auto.projectId, issue.ref);
-    return { status: "ok", detail: await then(card.id) };
-  }
-
-  /** Content from a third party reached the card: nothing there is approved automatically. */
-  private suspend(cardId: string): void {
-    this.opts.autoApprove?.suspend(`card:${cardId}`, "third-party content sent by an automation");
   }
 
   /** Runs that count against the daily limit: those that acted, or tried to. */
