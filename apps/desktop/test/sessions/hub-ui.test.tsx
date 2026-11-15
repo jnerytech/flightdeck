@@ -6,13 +6,13 @@ import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { poll } from "../../../daemon/test/support/helpers.ts";
 import { userLine, writeTranscript } from "../../../daemon/test/support/history-helpers.ts";
 import { hubGroups } from "../../src/features/sessions/domain/hub-groups.ts";
+import { sharedMeta } from "../../src/features/sessions/domain/hub-status.ts";
 import {
   DEFAULT_HUB_FILTER,
   HUB_FILTER_KEY,
   type HubRow,
   loadHubFilter,
   saveHubFilter,
-  sharedMeta,
 } from "../../src/features/sessions/hub.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
