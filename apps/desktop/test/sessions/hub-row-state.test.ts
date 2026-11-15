@@ -1,11 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { rowStatus } from "../../src/features/sessions/domain/hub-status.ts";
+import { activeCount, hubView } from "../../src/features/sessions/domain/hub-view.ts";
 import {
-  activeCount,
   type HubGroup,
   type HubRow,
   hubRows,
-  hubView,
   loadHubFilter,
 } from "../../src/features/sessions/hub.ts";
 import { translator } from "../../src/i18n/index.ts";
