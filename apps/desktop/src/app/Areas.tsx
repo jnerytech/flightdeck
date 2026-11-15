@@ -12,7 +12,7 @@ import type { Route } from "../lib/router.ts";
 import { Screen } from "./Screens.tsx";
 
 /** Below this height the one area's tabs share the top bar's row (issue #488). */
-export const SHORT_WINDOW = "(max-height: 599px)";
+const SHORT_WINDOW = "(max-height: 599px)";
 
 const STEP = 0.05;
 

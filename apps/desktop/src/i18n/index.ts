@@ -11,7 +11,7 @@ export const LANGS: readonly Lang[] = ["pt-BR", "en"];
 /** Where the choice is kept; the system's language when absent. */
 export const LANG_KEY = "flightdeck.lang";
 
-export type Vars = Record<string, string | number>;
+type Vars = Record<string, string | number>;
 /** `lang` is the language the translator speaks, for the formats that are not in a dictionary. */
 export type T = ((key: Key, vars?: Vars) => string) & { readonly lang: Lang };
 
