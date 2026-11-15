@@ -45,17 +45,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/types.ts",
-    "to": "apps/daemon/src/workflows/check-runner.ts",
-    "unresolvedTo": "../workflows/check-runner.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/costs/usage-indexer.ts",
     "to": "apps/daemon/src/quota/usage.ts",
     "unresolvedTo": "../quota/usage.ts",
