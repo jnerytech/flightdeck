@@ -1,6 +1,6 @@
 import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { isInside, trimTrailingSeparators } from "@/shared/lib/index.ts";
-import { CLAUDE_MODELS, type RememberedFolder } from "./domain/new-session-choices.ts";
+import { CLAUDE_MODELS, type RememberedFolder } from "./new-session-choices.ts";
 
 const MODES: PermissionMode[] = [
   "default",
