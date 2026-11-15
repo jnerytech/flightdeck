@@ -1,4 +1,5 @@
 import type { SessionEventOf, TeamInfo } from "@flightdeck/protocol";
+import type { SidebarSession } from "@/features/hosts/index.ts";
 import { parseRequestLink, requestLink } from "@/features/permissions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
@@ -6,7 +7,6 @@ import type { InboxSlice } from "../inbox/index.ts";
 import { type AboutNotification, summaryNotifications } from "../inbox/index.ts";
 import { decide, type NotifyPreferences, type NotifySource } from "../notifications/index.ts";
 import { sessionKey } from "./domain/session-key.ts";
-import type { SidebarSession } from "./domain/sidebar-session.ts";
 
 /** How long workers of one team finishing are gathered into one message. */
 const FOLD_MS = 10_000;
