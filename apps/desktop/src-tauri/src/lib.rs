@@ -81,9 +81,14 @@ async fn vault_get(id: String) -> Result<Option<String>, String> {
     .await
 }
 
+/// Whether `value` is more than the Windows credential store keeps per entry (UTF-16 bytes).
+fn over_credential_limit(value: &str) -> bool {
+    value.encode_utf16().count() * 2 > WINDOWS_CREDENTIAL_MAX_BYTES
+}
+
 #[tauri::command]
 async fn vault_set(id: String, value: String) -> Result<(), String> {
-    if cfg!(windows) && value.encode_utf16().count() * 2 > WINDOWS_CREDENTIAL_MAX_BYTES {
+    if cfg!(windows) && over_credential_limit(&value) {
         return Err(format!(
             "the value is over {WINDOWS_CREDENTIAL_MAX_BYTES} bytes, the limit of the Windows credential store"
         ));
@@ -113,15 +118,23 @@ struct GeneratedKey {
     public_key: String,
 }
 
+/// The `ssh-keygen` arguments for one `ed25519` pair with no passphrase, written to `key`.
+fn keygen_args(comment: &str, key: &std::path::Path) -> Vec<std::ffi::OsString> {
+    let mut args: Vec<std::ffi::OsString> = ["-q", "-t", "ed25519", "-N", "", "-C"]
+        .into_iter()
+        .map(Into::into)
+        .collect();
+    args.push(comment.into());
+    args.push("-f".into());
+    args.push(key.into());
+    args
+}
+
 /// Runs `ssh-keygen` inside `dir` (a folder only this user can read) and reads both files back.
 fn run_keygen(dir: &std::path::Path, comment: &str) -> Result<GeneratedKey, String> {
     let key = dir.join("key");
     let mut command = std::process::Command::new("ssh-keygen");
-    command
-        .args(["-q", "-t", "ed25519", "-N", "", "-C"])
-        .arg(comment)
-        .arg("-f")
-        .arg(&key);
+    command.args(keygen_args(comment, &key));
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -159,6 +172,17 @@ async fn vault_generate_key(comment: String) -> Result<GeneratedKey, String> {
         .map_err(|e| e.to_string())?
 }
 
+/// Makes `dir` (it must not exist yet) readable by this user only, where the platform allows it.
+fn make_private_dir(dir: &std::path::Path) -> Result<(), String> {
+    let mut builder = std::fs::DirBuilder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(dir).map_err(|e| e.to_string())
+}
+
 fn generate_key(comment: &str) -> Result<GeneratedKey, String> {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -168,13 +192,7 @@ fn generate_key(comment: &str) -> Result<GeneratedKey, String> {
         "flightdeck-keygen-{}-{nanos}",
         std::process::id()
     ));
-    let mut builder = std::fs::DirBuilder::new();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::DirBuilderExt;
-        builder.mode(0o700);
-    }
-    builder.create(&dir).map_err(|e| e.to_string())?;
+    make_private_dir(&dir)?;
     let result = run_keygen(&dir, comment);
     let _ = std::fs::remove_dir_all(&dir);
     result
@@ -194,6 +212,21 @@ struct PickedFileInfo {
 /// A key file is a few KiB; anything bigger is not one.
 const PICKED_FILE_MAX_BYTES: u64 = 1024 * 1024;
 
+/// Reads `reader` as text, no further than the cap, so a file that grows (or a device) cannot get
+/// past it.
+fn read_picked(reader: impl std::io::Read) -> Result<String, String> {
+    use std::io::Read;
+    let mut text = String::new();
+    reader
+        .take(PICKED_FILE_MAX_BYTES + 1)
+        .read_to_string(&mut text)
+        .map_err(|e| e.to_string())?;
+    if text.len() as u64 > PICKED_FILE_MAX_BYTES {
+        return Err("the file is too big to be a key".to_string());
+    }
+    Ok(text)
+}
+
 /// Opens the system file dialog and reads the chosen file as text; `None` when it is cancelled.
 /// The dialog wait and the read both run on the blocking pool.
 #[tauri::command]
@@ -201,7 +234,6 @@ async fn vault_pick_file(
     app: tauri::AppHandle,
     state: State<'_, PickedFile>,
 ) -> Result<Option<PickedFileInfo>, String> {
-    use std::io::Read;
     use tauri_plugin_dialog::DialogExt;
     // A new pick forgets the last one, even when this one fails or is cancelled.
     *state.0.lock().map_err(|e| e.to_string())? = None;
@@ -210,16 +242,10 @@ async fn vault_pick_file(
             return Ok(None);
         };
         let path = picked.into_path().map_err(|e| e.to_string())?;
-        // Bounded while reading, so a file that grows (or a device) cannot get past the cap.
-        let mut text = String::new();
-        std::fs::File::open(&path) // NOSONAR: runs inside spawn_blocking_result, on the blocking pool
-            .map_err(|e| e.to_string())?
-            .take(PICKED_FILE_MAX_BYTES + 1)
-            .read_to_string(&mut text)
-            .map_err(|e| e.to_string())?;
-        if text.len() as u64 > PICKED_FILE_MAX_BYTES {
-            return Err("the file is too big to be a key".to_string());
-        }
+        let text = read_picked(
+            std::fs::File::open(&path) // NOSONAR: runs inside spawn_blocking_result, on the blocking pool
+                .map_err(|e| e.to_string())?,
+        )?;
         Ok(Some((path, text)))
     })
     .await?;
@@ -417,18 +443,24 @@ async fn oauth_loopback_cancel(app: tauri::AppHandle, id: u64) -> Result<(), Str
     .await
 }
 
+/// Takes the file picked last out of `picked` when `path` names it; any other path is refused.
+fn take_picked(
+    picked: &std::sync::Mutex<Option<std::path::PathBuf>>,
+    path: &str,
+) -> Result<Option<std::path::PathBuf>, String> {
+    let mut picked = picked.lock().map_err(|e| e.to_string())?;
+    if picked.as_deref() != Some(std::path::Path::new(path)) {
+        return Err("only the file picked last can be deleted".to_string());
+    }
+    // Delete the path the dialog gave, not the string the frontend sent.
+    Ok(picked.take())
+}
+
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
 #[tauri::command]
 async fn vault_remove_file(path: String, state: State<'_, PickedFile>) -> Result<(), String> {
     // The lock is released before the deletion waits on the blocking pool.
-    let stored = {
-        let mut picked = state.0.lock().map_err(|e| e.to_string())?;
-        if picked.as_deref() != Some(std::path::Path::new(&path)) {
-            return Err("only the file picked last can be deleted".to_string());
-        }
-        // Delete the path the dialog gave, not the string the frontend sent.
-        picked.take()
-    };
+    let stored = take_picked(&state.0, &path)?;
     if let Some(stored) = stored {
         spawn_blocking_result(move || {
             std::fs::remove_file(&stored) // NOSONAR: inside spawn_blocking_result, on the blocking pool
