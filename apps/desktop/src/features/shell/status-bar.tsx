@@ -1,6 +1,5 @@
 import {
   ArrowUpCircle,
-  CircleAlert,
   CirclePause,
   Coffee,
   Ellipsis,
@@ -18,13 +17,12 @@ import type { AppState, AppStore } from "@/lib/app-store";
 import type { Route } from "@/lib/router";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
-import { Meter } from "@/shared/status/index.ts";
 import {
   hostsRoute,
   type StatusBarSummary,
   statusBarSummary,
 } from "./domain/status-bar-summary.ts";
-import { QuotaDetail } from "./quota-detail.tsx";
+import { QuotaGlanceButton, quotaDetailFor } from "./quota-glance-button.tsx";
 
 /** One button of the bar: its words are the name, the tooltip repeats them, never colour alone. */
 function Item(
@@ -53,73 +51,6 @@ function MoreRow(
       {props.children}
       <span>{props.name}</span>
     </button>
-  );
-}
-
-/**
- * The plan quota at a glance (issue #118): the window under most pressure across the online hosts,
- * as a small meter, its percent and the time left. Its name says the state in words, the host and
- * when it resets; near or at the limit a mark shows too. Pressing it opens that host.
- */
-export function QuotaGlanceButton(
-  props: Readonly<{
-    t: T;
-    glance: QuotaGlance | null;
-    hostName: string;
-    onOpen(hostId: string): void;
-    /** What pressing it opens (issue #1218): without it, the button opens the host. */
-    detail?: (close: () => void) => ReactNode;
-  }>,
-) {
-  const { t, glance } = props;
-  const [open, setOpen] = useState(false);
-  if (!glance) return null;
-  const window = t(`account.windows.${glance.window}` as Key);
-  const vars = {
-    state: t(`shell.quotaLevels.${glance.level}` as Key),
-    window,
-    percent: String(glance.percent),
-    host: props.hostName,
-    remaining: glance.remaining,
-  };
-  const name = glance.remaining ? t("shell.quotaLabel", vars) : t("shell.quotaLabelNoReset", vars);
-  const button = (
-    <button
-      type="button"
-      aria-label={name}
-      data-level={glance.level}
-      className="status-item status-quota"
-      {...(props.detail ? {} : { onClick: () => props.onOpen(glance.hostId) })}
-    >
-      {glance.level !== "ok" && <CircleAlert aria-hidden="true" data-mark="" />}
-      <span className="status-quota-window">{window}</span>
-      <Meter
-        label={window}
-        value={Math.min(glance.percent, 100)}
-        max={100}
-        hot={glance.level === "reached"}
-        className="status-meter"
-      />
-      <span>{glance.percent}%</span>
-      {glance.remaining && <span className="status-quota-reset">{glance.remaining}</span>}
-    </button>
-  );
-  if (!props.detail) return <IconTip label={name}>{button}</IconTip>;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <IconTip label={name}>
-        <PopoverTrigger asChild>{button}</PopoverTrigger>
-      </IconTip>
-      <PopoverContent
-        side="top"
-        align="start"
-        collisionPadding={8}
-        aria-label={t("quota.popover.label")}
-        className="max-h-[70vh] w-[min(24rem,calc(100vw-1rem))] overflow-y-auto"
-      >
-        {props.detail(() => setOpen(false))}
-      </PopoverContent>
-    </Popover>
   );
 }
 
@@ -304,11 +235,6 @@ export function StatusBar(
     </section>
   );
 }
-
-/** The quota's windows and guard, shown in the popover that the quota item opens. */
-const quotaDetailFor = (store: AppStore) => (close: () => void) => (
-  <QuotaDetail store={store} onClose={close} />
-);
 
 /** One host's sessions as `id:status` pairs, so a change in any of them changes the text. */
 const sessionStates = (sessions: ReadonlyArray<{ id: string; status: string }>) =>
