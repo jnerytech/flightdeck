@@ -5,7 +5,7 @@
  */
 import { FlightdeckError, featureOff } from "../../kernel/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
-import { afterAck, type Handlers } from "../dispatch.ts";
+import { afterAck, type Handlers } from "../domain/handler.ts";
 import { hostInfo } from "../host-info.ts";
 
 export const hostHandlers = {

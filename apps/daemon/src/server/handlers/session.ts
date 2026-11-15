@@ -24,7 +24,7 @@ import {
 import { preparePersonas } from "../../personas/index.ts";
 import type { ServerContext } from "../context.ts";
 import { coalesceDeltas } from "../delta-coalescer.ts";
-import { afterAck, type Call, type Handlers } from "../dispatch.ts";
+import { afterAck, type Call, type Handlers } from "../domain/handler.ts";
 
 /** Phase 8: the state of a session's line, from its live status. */
 const MANAGED_LINE: Record<SessionStatus, SessionLine["state"]> = {

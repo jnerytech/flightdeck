@@ -6,7 +6,7 @@ import { withTurnUuids } from "../../checkpoints/index.ts";
 import { FlightdeckError } from "../../kernel/index.ts";
 import { preparePersonas } from "../../personas/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const reviewHandlers = {
   "snapshots.list": (payload, { server }) => {

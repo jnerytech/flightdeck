@@ -2,7 +2,7 @@
  * Issue #248: the costs domain: costs, budgets, the plan quota, the account, usage and telemetry.
  */
 import { featureOff } from "../../kernel/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const costsHandlers = {
   "costs.status": (_payload, { server }) => {

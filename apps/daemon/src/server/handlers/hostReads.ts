@@ -7,7 +7,7 @@ import { FlightdeckError } from "../../kernel/index.ts";
 import { tailForOrigin } from "../../logs/index.ts";
 import { localDay } from "../../quota/index.ts";
 import { roiPeriod } from "../../roi/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const hostReadsHandlers = {
   "logs.tail": async (payload, { ws, server }) => {

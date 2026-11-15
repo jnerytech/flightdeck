@@ -10,7 +10,7 @@ import { cloneRepo, scanRepos, spawnGit } from "../../projects/index.ts";
 import { diskTrustRootFs, trustsManyProjects } from "../../trust/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
 import type { ServerContext } from "../context.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 /** A host template's Markdown for a harness preview or apply, read now; null without one (#75, T1b). */
 async function markdownOf(

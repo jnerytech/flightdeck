@@ -3,7 +3,7 @@
  * away" in Needs you. Read-only, and every list is capped.
  */
 import { DEFAULT_ACTIVITY_LIMIT } from "../../activity/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const activityHandlers = {
   "activity.since": (payload, { server }) => {

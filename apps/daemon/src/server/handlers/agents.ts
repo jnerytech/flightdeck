@@ -3,7 +3,7 @@
  * snippets.
  */
 import { FlightdeckError } from "../../kernel/index.ts";
-import type { Handlers } from "../dispatch.ts";
+import type { Handlers } from "../domain/handler.ts";
 
 export const agentsHandlers = {
   "mcp.list": async (payload, { server }) => {
