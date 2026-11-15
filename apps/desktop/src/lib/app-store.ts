@@ -25,7 +25,14 @@ import { describeError, Notices } from "../app/notices.ts";
 import { TabWindow } from "../app/tab-window.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BudgetsSlice, wireBudgets } from "../features/costs/index.ts";
-import { HostLink, HostTabs, loadHosts, RequestError, saveHosts } from "../features/hosts/index.ts";
+import {
+  HostCommands,
+  HostLink,
+  HostTabs,
+  loadHosts,
+  RequestError,
+  saveHosts,
+} from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import type { Answer } from "../features/needs-you/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
@@ -115,6 +122,11 @@ export class AppStore {
     state: () => this.state,
     update: (patch) => this.update(patch),
     log: (level, source, message) => this.appLog.log(level, source, message),
+  });
+  /** What a command to a host comes to: a banner with a retry, or a refusal handed back (#1589). */
+  private readonly hostCommands = new HostCommands({
+    dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
+    fail: (error, text, retry, answersCommand) => this.fail(error, text, retry, answersCommand),
   });
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
 
@@ -449,28 +461,13 @@ export class AppStore {
    * Sends a project, board or card command to a host. Cards in the answer go to `cards`; errors
    * go to the banner and give `null`.
    */
-  async hostCommand<T extends HostCommandType>(
+  hostCommand<T extends HostCommandType>(
     hostId: string,
     type: T,
     payload: CommandPayload<T>,
     options: HostCommandOptions = {},
   ): Promise<CommandResults[T] | null> {
-    try {
-      return await this.dispatch(hostId, type, payload);
-    } catch (error) {
-      this.fail(
-        error,
-        undefined,
-        options.retry === false
-          ? undefined
-          : () =>
-              void this.hostCommand(hostId, type, payload, {
-                focusRefusal: options.focusRefusal === true,
-              }),
-        options.focusRefusal === true,
-      );
-      return null;
-    }
+    return this.hostCommands.command(hostId, type, payload, options);
   }
 
   /** How many requests to the host were sent and not answered yet (0 for an unknown host). */
@@ -482,24 +479,12 @@ export class AppStore {
    * Like `hostCommand`, but a refusal comes back with its code and message instead of going to
    * the banner: for screens that explain it themselves (a file that changed, a merge conflict).
    */
-  async hostRequest<T extends HostCommandType>(
+  hostRequest<T extends HostCommandType>(
     hostId: string,
     type: T,
     payload: CommandPayload<T>,
   ): Promise<HostResult<CommandResults[T]>> {
-    try {
-      return { ok: true, data: await this.dispatch(hostId, type, payload) };
-    } catch (error) {
-      // A connection only ever rejects with a RequestError (even a host it does not know).
-      const { code, message, reason, params, items } = error as RequestError;
-      return {
-        ok: false,
-        code,
-        message,
-        ...(reason ? { reason, params: params ?? {} } : {}),
-        ...(items ? { items } : {}),
-      };
-    }
+    return this.hostCommands.request(hostId, type, payload);
   }
 
   private async dispatch<T extends HostCommandType>(
