@@ -14,35 +14,20 @@ import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
 import { BudgetsSection } from "@/features/costs/ui.ts";
 import { NotificationPrefs } from "@/features/notifications/ui.ts";
-import type { CacheTtl } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { Field, Form, FormActions, NativeSelect, Page, Panel } from "@/shared/layout/index.ts";
-import { LANGS, type Lang, type T } from "../../i18n/index.ts";
+import { Field, Form, FormActions, Page, Panel } from "@/shared/layout/index.ts";
+import type { Lang, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hostsWith } from "../../lib/version.ts";
 import type { AppUpdateState } from "../appupdate/index.ts";
 import { MessagingRulesSection } from "../messaging/rules-section.tsx";
-import type { TabOrder } from "../tabs/index.ts";
-import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../terminal/index.ts";
 import { WebhooksSection } from "../webhook/ui.ts";
+import { AppearanceSection, check } from "./appearance-section.tsx";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
-import { TerminalFontInput } from "./terminal-font-input.tsx";
-
-/** A setting: its label on the left and its control on the right; the label focuses the control. */
-function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
-  const id = useId();
-  return (
-    // One label column for every row, so the controls start on one line whatever the label (#588).
-    <div className="setting-row">
-      <label htmlFor={id}>{props.label}</label>
-      {props.children(id)}
-    </div>
-  );
-}
 
 /** One block of the screen: its name on the rail, the words it answers to in the search, and its content. */
 interface SettingsSection {
@@ -84,40 +69,16 @@ export const Settings = memo(function Settings(props: {
   const { store } = props;
   const state = useStoreSlice(store, SETTINGS_KEYS);
   const { t } = props;
-  const terminalFont = useSyncExternalStore(
-    props.store.terminalFont.subscribe,
-    () => props.store.terminalFont.value,
-  );
-  const terminalReader = useSyncExternalStore(
-    props.store.terminalReader.subscribe,
-    () => props.store.terminalReader.value,
-  );
-  const readerHint = useId();
   const autostartHint = useId();
-  const fontHint = useId();
   const setupHidden = useSyncExternalStore(
     props.store.setup.subscribe,
     () => props.store.setup.hidden,
-  );
-  const cacheOn = useSyncExternalStore(
-    props.store.cacheTimer.subscribe,
-    () => props.store.cacheTimer.enabled,
-  );
-  const cacheTtl = useSyncExternalStore(
-    props.store.cacheTimer.subscribe,
-    () => props.store.cacheTimer.ttl,
-  );
-  const tabOrder = useSyncExternalStore(
-    props.store.tabOrder.subscribe,
-    () => props.store.tabOrder.value,
   );
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
   const [query, setQuery] = useState("");
   const [current, setCurrent] = useState<string | null>(null);
-  /** A checkbox with its sentence on its right. */
-  const check = "flex items-center gap-2 text-sm";
   // Budgets came with the costs (phase 8).
   const budgetHosts = hostsWith(state.hosts, "costs");
   const watchHosts = hostsWith(state.hosts, "watch");
@@ -128,110 +89,16 @@ export const Settings = memo(function Settings(props: {
       label: t("prefs.appearance"),
       words: t("settingsRail.words.appearance"),
       node: (
-        <Panel title={t("prefs.appearance")}>
-          <SettingRow label={t("settings.theme")}>
-            {(id) => (
-              <NativeSelect
-                id={id}
-                className="setting-select"
-                value={props.theme}
-                onChange={(e) => props.onTheme(e.target.value as ThemeMode)}
-              >
-                <option value="system">{t("settings.themes.system")}</option>
-                <option value="light">{t("settings.themes.light")}</option>
-                <option value="dark">{t("settings.themes.dark")}</option>
-              </NativeSelect>
-            )}
-          </SettingRow>
-          <SettingRow label={t("settings.density")}>
-            {(id) => (
-              <NativeSelect
-                id={id}
-                className="setting-select"
-                value={props.density}
-                onChange={(e) => props.onDensity(e.target.value as Density)}
-              >
-                <option value="compact">{t("settings.densities.compact")}</option>
-                <option value="comfortable">{t("settings.densities.comfortable")}</option>
-              </NativeSelect>
-            )}
-          </SettingRow>
-          <label className={check}>
-            <input
-              type="checkbox"
-              checked={cacheOn}
-              onChange={(e) => props.store.cacheTimer.setEnabled(e.target.checked)}
-            />
-            {t("settings.cacheTimer")}
-          </label>
-          <SettingRow label={t("settings.cacheTtl")}>
-            {(id) => (
-              <NativeSelect
-                id={id}
-                className="setting-select"
-                value={String(cacheTtl)}
-                onChange={(e) => props.store.cacheTimer.setTtl(Number(e.target.value) as CacheTtl)}
-              >
-                <option value="300000">{t("settings.cacheTtls.fiveMinutes")}</option>
-                <option value="3600000">{t("settings.cacheTtls.oneHour")}</option>
-              </NativeSelect>
-            )}
-          </SettingRow>
-          <SettingRow label={t("settings.tabOrder")}>
-            {(id) => (
-              <NativeSelect
-                id={id}
-                className="setting-select"
-                value={tabOrder}
-                onChange={(e) => props.store.tabOrder.set(e.target.value as TabOrder)}
-              >
-                <option value="mru">{t("settings.tabOrders.mru")}</option>
-                <option value="sequential">{t("settings.tabOrders.sequential")}</option>
-              </NativeSelect>
-            )}
-          </SettingRow>
-          <SettingRow label={t("settings.terminalFont")}>
-            {(id) => (
-              <TerminalFontInput
-                id={id}
-                describedBy={fontHint}
-                size={terminalFont}
-                onCommit={(size) => props.store.terminalFont.set(size)}
-              />
-            )}
-          </SettingRow>
-          <small id={fontHint} className="setting-hint">
-            {t("settings.terminalFontRange", { min: TERMINAL_FONT_MIN, max: TERMINAL_FONT_MAX })}
-          </small>
-          <label className={check}>
-            <input
-              type="checkbox"
-              checked={terminalReader}
-              aria-describedby={readerHint}
-              onChange={(e) => props.store.terminalReader.set(e.target.checked)}
-            />
-            {t("settings.terminalReader")}
-          </label>
-          <small id={readerHint} className="setting-hint">
-            {t("settings.terminalReaderHint")}
-          </small>
-          <SettingRow label={t("settings.language")}>
-            {(id) => (
-              <NativeSelect
-                id={id}
-                className="setting-select"
-                value={props.lang}
-                onChange={(e) => props.onLang(e.target.value as Lang)}
-              >
-                {LANGS.map((lang) => (
-                  <option key={lang} value={lang}>
-                    {t(`languages.${lang}`)}
-                  </option>
-                ))}
-              </NativeSelect>
-            )}
-          </SettingRow>
-        </Panel>
+        <AppearanceSection
+          store={props.store}
+          t={t}
+          theme={props.theme}
+          onTheme={props.onTheme}
+          density={props.density}
+          onDensity={props.onDensity}
+          lang={props.lang}
+          onLang={props.onLang}
+        />
       ),
     },
     {
