@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { withoutCredentials } from "../../src/board/domain/pr-secrets.ts";
+import { withoutCredentials } from "../../src/publish/domain/pr-secrets.ts";
 
 /** #363 (Sonar S8786): the address scrub gives the same text for the same input, edge cases included. */
 describe("sonar363-credentials: withoutCredentials", () => {

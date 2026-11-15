@@ -240,27 +240,5 @@
       "severity": "error",
       "name": "no-deep-cross-domain"
     }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/template-add.ts",
-    "to": "apps/daemon/src/board/branch-commit.ts",
-    "unresolvedTo": "../board/branch-commit.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/workflows/template-add.ts",
-    "to": "apps/daemon/src/board/publish-pr.ts",
-    "unresolvedTo": "../board/publish-pr.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
   }
 ]
