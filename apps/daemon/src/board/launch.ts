@@ -5,7 +5,7 @@ import {
   PersonaRef,
   specExpectedPath,
 } from "@flightdeck/protocol";
-import { git } from "../git/index.ts";
+import { git, must } from "../git/index.ts";
 import { FlightdeckError, parseJsonWith, refArg, refusalOf } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
 import {
@@ -13,7 +13,6 @@ import {
   excludeLocalSettingsAsync,
   folderRemoving,
   freshBase,
-  must,
   WORKTREE_INCLUDE_LIMIT,
 } from "../worktrees/index.ts";
 import type { BoardEvent } from "./domain/columns.ts";

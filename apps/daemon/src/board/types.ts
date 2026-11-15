@@ -26,8 +26,6 @@ export type {
   CardDiff,
   CardRun,
   DiffFile,
-  DiffHunk,
-  DiffLine,
   MayConflict,
   Project,
   PrProviderKind,
