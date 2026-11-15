@@ -16,6 +16,7 @@ import type {
 import { z } from "zod";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { slug } from "../names/index.ts";
+import { Delivery } from "./delivery.ts";
 import { formatSessionMessage, formatSystemMessage } from "./domain/header.ts";
 import { type ListingExtra, listedSession } from "./domain/listing.ts";
 import { blankParty, relayAnswer, sharedTeam } from "./domain/parties.ts";
@@ -84,12 +85,8 @@ const notFound = (message: string, reason: string, params?: Params) =>
 export class Messaging {
   private readonly listeners = new Set<(frame: MessagingFrame) => void>();
   private readonly peers = new Map<string, PeerSession[]>();
-  /** Managed messages waiting for their turn: the text that will reach the session, by message. */
-  private readonly waiting = new Map<string, { to: string; formatted: string }>();
-  /** Messages held for a terminal session that is waiting for a permission. */
-  private readonly held = new Map<string, Array<{ id: string; formatted: string }>>();
   private policy: Policy;
-  private readonly unsubscribe: Array<() => void> = [];
+  private readonly delivery: Delivery;
   private readonly store: MessageStore;
 
   constructor(private readonly opts: MessagingOptions) {
@@ -108,12 +105,10 @@ export class Messaging {
         at: this.ms(),
       });
     }
-    this.unsubscribe.push(
-      opts.endpoints.onUserMessage((id, text) => this.userMessage(id, text)),
-      opts.endpoints.onState((id, state) => {
-        if (state !== "waiting") this.release(id);
-      }),
-    );
+    this.delivery = new Delivery({
+      endpoints: opts.endpoints,
+      settle: (id, patch) => this.update(id, { ...patch, at: this.ms() }),
+    });
   }
 
   private ms(): number {
@@ -363,7 +358,7 @@ export class Messaging {
       return { id, status: "queued", reason: null };
     }
     const formatted = formatSessionMessage(sender, input.text, untrusted);
-    const outcome = this.handOver(target.local, id, formatted);
+    const outcome = this.delivery.handOver(target.local, id, formatted);
     if ("refusal" in outcome) {
       return this.refused(
         sender,
@@ -375,7 +370,7 @@ export class Messaging {
       );
     }
     record(outcome.status, formatted);
-    if (untrusted) this.suspend(target.party.id);
+    if (untrusted) this.delivery.suspend(target.party.id);
     return { id, status: outcome.status, reason: null };
   }
 
@@ -421,73 +416,6 @@ export class Messaging {
     return this.store.pausedPairs();
   }
 
-  /**
-   * Gives the text to a session of this host. A terminal waiting for a permission is not written to
-   * (a message must never end up answering the prompt): it is held until it leaves that state.
-   */
-  private handOver(
-    info: EndpointInfo,
-    id: string,
-    formatted: string,
-  ): { status: "delivered" | "queued" } | { refusal: string } {
-    const current = this.opts.endpoints.list().find((e) => e.id === info.id) ?? info;
-    if (current.kind === "terminal" && current.state === "waiting") {
-      const list = this.held.get(info.id) ?? [];
-      list.push({ id, formatted });
-      this.held.set(info.id, list);
-      return { status: "queued" };
-    }
-    try {
-      const status = this.opts.endpoints.send(info.id, formatted);
-      if (status === "queued") this.waiting.set(id, { to: info.id, formatted });
-      return { status };
-    } catch (error) {
-      if (error instanceof FlightdeckError) return { refusal: error.message };
-      throw error;
-    }
-  }
-
-  /** A terminal left `waiting`: what was held for it goes now. */
-  private release(sessionId: string): void {
-    const list = this.held.get(sessionId);
-    if (!list) return;
-    this.held.delete(sessionId);
-    for (const item of list) {
-      try {
-        const status = this.opts.endpoints.send(sessionId, item.formatted);
-        if (status === "queued") {
-          this.waiting.set(item.id, { to: sessionId, formatted: item.formatted });
-        } else {
-          this.update(item.id, { status: "delivered", at: this.ms() });
-        }
-      } catch (error) {
-        this.update(item.id, {
-          status: "refused",
-          reason: (error as Error).message,
-          at: this.ms(),
-        });
-      }
-    }
-  }
-
-  /** A user message reached a managed session: the queued message with that text was delivered. */
-  private userMessage(sessionId: string, text: string): void {
-    for (const [id, pending] of this.waiting) {
-      if (pending.to === sessionId && pending.formatted === text) {
-        this.waiting.delete(id);
-        this.update(id, { status: "delivered", at: this.ms() });
-        return;
-      }
-    }
-  }
-
-  private suspend(sessionId: string): void {
-    this.opts.endpoints.suspend(
-      sessionId,
-      "message from a session that received third-party content",
-    );
-  }
-
   // --- across hosts ---
 
   /** A message from another host, handed over by the app; idempotent by id. */
@@ -527,7 +455,7 @@ export class Messaging {
     const verdict = this.check(from, target, message.text);
     if (verdict) return refuse(verdict, to);
     const formatted = formatSessionMessage(from, message.text, message.untrusted);
-    const outcome = this.handOver(info, message.id, formatted);
+    const outcome = this.delivery.handOver(info, message.id, formatted);
     if ("refusal" in outcome) return refuse(outcome.refusal, to);
     this.insert({
       id: message.id,
@@ -542,7 +470,7 @@ export class Messaging {
       formatted,
       createdAt: message.createdAt,
     });
-    if (message.untrusted) this.suspend(to.id);
+    if (message.untrusted) this.delivery.suspend(to.id);
     return { id: message.id, status: outcome.status, reason: null };
   }
 
@@ -602,7 +530,7 @@ export class Messaging {
       return { id, status: "refused", reason };
     }
     const formatted = formatSystemMessage(kind, text);
-    const outcome = this.handOver(info, id, formatted);
+    const outcome = this.delivery.handOver(info, id, formatted);
     if ("refusal" in outcome) {
       record("refused", outcome.refusal, null);
       return { id, status: "refused", reason: outcome.refusal };
@@ -666,7 +594,7 @@ export class Messaging {
   }
 
   stop(): void {
-    for (const off of this.unsubscribe.splice(0)) off();
+    this.delivery.stop();
     this.listeners.clear();
   }
 
