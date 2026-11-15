@@ -14,6 +14,7 @@ export { hostDownReason } from "./domain/host-down-reason.ts";
 export type { HostNameError } from "./domain/host-name.ts";
 export type { RetryState } from "./domain/host-offline.ts";
 export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
+export { hostDotView, hostStatusView } from "./domain/host-status.ts";
 export { holdAwake } from "./domain/keep-awake.ts";
 export { pairingErrorText } from "./domain/pairing-text.ts";
 export {
@@ -30,7 +31,6 @@ export {
   statusLine,
 } from "./host-connection.ts";
 export type { HostDraft } from "./host-form.tsx";
-export { hostDotView, hostStatusView } from "./host-status.ts";
 export { HostTabs } from "./host-tabs.ts";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 export { HostLink, type HostRoutes, type OnlineStep } from "./link.ts";

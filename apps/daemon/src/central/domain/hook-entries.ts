@@ -1,0 +1,144 @@
+/** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
+export const HTTP_HOOK_EVENTS = [
+  "UserPromptSubmit",
+  "Notification",
+  "PermissionRequest",
+  "PostToolUse",
+  "PostToolUseFailure",
+  "PermissionDenied",
+  "Stop",
+  "SessionEnd",
+] as const;
+
+/** Every hook but the held permission request answers within this. */
+const HOOK_TIMEOUT_S = 5;
+
+export interface HookTarget {
+  /** This daemon's own executable (`[binary]` or `[bun, "run", bin.ts]`), absolute. */
+  command: string[];
+  /** Receptor base URL, with the port the daemon really listens on. */
+  url: string;
+  token: string;
+  permissionTimeoutS: number;
+  /** Where Claude Code runs (decides how paths are written); this process's when absent. */
+  platform?: NodeJS.Platform;
+}
+
+export interface HookEntry {
+  type: "command" | "http";
+  command?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  timeout?: number;
+}
+
+export interface HookGroup {
+  matcher?: string;
+  hooks: HookEntry[];
+}
+
+export type HooksStatus = "installed" | "absent" | "outdated";
+
+/** A Claude Code `settings.json`, as far as the hooks go. */
+export type HookSettings = Record<string, unknown> & { hooks?: Record<string, HookGroup[]> };
+
+/** Quotes only what needs it, so the line reads the same in sh, bash, cmd and PowerShell. */
+const quote = (arg: string) => (/\s/.test(arg) ? `"${arg}"` : arg);
+
+/**
+ * Claude Code runs command hooks through Git Bash on Windows, where `\` is an escape: paths go
+ * with forward slashes, which Windows accepts as well.
+ */
+const forShell = (arg: string, platform: NodeJS.Platform) =>
+  platform === "win32" ? arg.replaceAll("\\", "/") : arg;
+
+/** The entries `install` writes, by event. */
+export function hookEntries(target: HookTarget): Record<string, HookGroup[]> {
+  const sessionStart = [
+    ...target.command.map((arg) => quote(forShell(arg, target.platform ?? process.platform))),
+    "hook",
+    "session-start",
+    "--url",
+    target.url,
+    "--token",
+    target.token,
+  ].join(" ");
+  const entries: Record<string, HookGroup[]> = {
+    SessionStart: [
+      { hooks: [{ type: "command", command: sessionStart, timeout: HOOK_TIMEOUT_S }] },
+    ],
+  };
+  for (const event of HTTP_HOOK_EVENTS) {
+    const timeout = event === "PermissionRequest" ? target.permissionTimeoutS : HOOK_TIMEOUT_S;
+    entries[event] = [
+      {
+        hooks: [
+          {
+            type: "http",
+            url: `${target.url}/hooks/${event}`,
+            headers: { Authorization: `Bearer ${target.token}` },
+            timeout,
+          },
+        ],
+      },
+    ];
+  }
+  return entries;
+}
+
+/** Flightdeck's entries: the receptor URL or the `hook session-start` command. */
+const isFlightdeckHook = (hook: HookEntry) =>
+  /^http:\/\/127\.0\.0\.1:\d+\/hooks\//.test(hook.url ?? "") ||
+  (hook.command ?? "").includes(" hook session-start ");
+
+/** Drops Flightdeck's hooks; groups, events and `hooks` emptied by that go too. */
+export function withoutFlightdeck(settings: HookSettings): {
+  settings: HookSettings;
+  changed: boolean;
+} {
+  let changed = false;
+  const hooks: Record<string, HookGroup[]> = {};
+  for (const [event, groups] of Object.entries(settings.hooks ?? {})) {
+    const kept = groups.flatMap((group) => {
+      const others = group.hooks.filter((hook) => !isFlightdeckHook(hook));
+      if (others.length === group.hooks.length) return [group];
+      changed = true;
+      return others.length > 0 ? [{ ...group, hooks: others }] : [];
+    });
+    if (kept.length > 0) hooks[event] = kept;
+  }
+  const { hooks: _hooks, ...rest } = settings;
+  return { settings: Object.keys(hooks).length > 0 ? { ...rest, hooks } : rest, changed };
+}
+
+/** The settings with Flightdeck's current entries in place of any old ones, every other hook kept. */
+export function withFlightdeck(current: HookSettings, target: HookTarget): HookSettings {
+  const { settings } = withoutFlightdeck(current);
+  const hooks = { ...settings.hooks };
+  for (const [event, groups] of Object.entries(hookEntries(target))) {
+    hooks[event] = [...(hooks[event] ?? []), ...groups];
+  }
+  return { ...settings, hooks };
+}
+
+/** Installed as `install` would write it now, absent, or different (outdated). */
+export function hooksStatusOf(settings: HookSettings | null, target: HookTarget): HooksStatus {
+  const found: Record<string, HookEntry[]> = {};
+  for (const [event, groups] of Object.entries(settings?.hooks ?? {})) {
+    const ours = groups.flatMap((group) => group.hooks.filter(isFlightdeckHook));
+    if (ours.length > 0) found[event] = ours;
+  }
+  if (Object.keys(found).length === 0) return "absent";
+  const expected = Object.fromEntries(
+    Object.entries(hookEntries(target)).map(([event, groups]) => [
+      event,
+      groups.flatMap((g) => g.hooks),
+    ]),
+  );
+  return JSON.stringify(sortKeys(found)) === JSON.stringify(sortKeys(expected))
+    ? "installed"
+    : "outdated";
+}
+
+const sortKeys = (value: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));

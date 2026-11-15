@@ -13,7 +13,8 @@ import {
   assertBinaryUntouched,
   installBinaryGuard,
 } from "../../../../scripts/test/binary-guard.ts";
-import { hookEntries, installHooks } from "../../src/central/hooks-install.ts";
+import { hookEntries } from "../../src/central/domain/hook-entries.ts";
+import { installHooks } from "../../src/central/hooks-install.ts";
 import { Config } from "../../src/config.ts";
 import { acquireLock, readLockPid } from "../../src/kernel/lock.ts";
 import { runCli } from "../../src/main.ts";
@@ -24,12 +25,11 @@ import {
   systemdUnit,
   windowsTaskXml,
 } from "../../src/service/domain/install.ts";
+import { compareVersions, stableBinPath } from "../../src/service/domain/version.ts";
 import { killProcess, processPath } from "../../src/service/os.ts";
 import {
-  compareVersions,
   requestShutdown,
   runUpdate,
-  stableBinPath,
   swapBinary,
   type UpdateDeps,
   waitHealthy,
