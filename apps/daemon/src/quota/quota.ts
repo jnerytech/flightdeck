@@ -22,38 +22,6 @@ export interface QuotaOptions {
 /** The longest delay a timer takes (2³¹ − 1 ms, about 24.8 days); longer ones fire at once. */
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
-const STATUSES: ReadonlySet<string> = new Set(["allowed", "allowed_warning", "rejected"]);
-
-/** One window of a `rate_limit_info` (or the info itself); `null` when it makes no sense. */
-function reading(window: string, raw: unknown): QuotaReading | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const { status, utilization, resetsAt } = raw as Record<string, unknown>;
-  if (typeof status !== "string" || !STATUSES.has(status)) return null;
-  return {
-    window,
-    utilization: typeof utilization === "number" ? utilization : null,
-    status: status as QuotaReading["status"],
-    // Seconds since the epoch on the wire.
-    resetsAt: typeof resetsAt === "number" ? resetsAt * 1000 : null,
-  };
-}
-
-/**
- * The windows of an SDK `rate_limit_info`, read defensively: `unifiedWindows` (not in the SDK
- * types, but sent by the CLI) when present, else the single window at the top.
- */
-export function quotaReadings(info: unknown): QuotaReading[] {
-  if (typeof info !== "object" || info === null) return [];
-  const { unifiedWindows, rateLimitType } = info as Record<string, unknown>;
-  let entries: Array<[string, unknown]> = [];
-  if (typeof unifiedWindows === "object" && unifiedWindows !== null) {
-    entries = Object.entries(unifiedWindows);
-  } else if (typeof rateLimitType === "string") {
-    entries = [[rateLimitType, info]];
-  }
-  return entries.flatMap(([window, raw]) => reading(window, raw) ?? []);
-}
-
 /** The plan quota of the host: the last reading of each window, from any managed session. */
 export class Quota {
   private readonly readings = new Map<string, { reading: QuotaReading; readAt: number }>();
