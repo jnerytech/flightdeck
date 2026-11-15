@@ -17,7 +17,7 @@ const tauriSrc = join(root, "apps/desktop/src-tauri/src");
  * assistant.rs, backup_folder.rs and oauth_loopback.rs are not audited yet: their commands need an
  * allowlist decision of their own.
  */
-const AUDITED_SOURCES = ["lib.rs", "log.rs"];
+const AUDITED_SOURCES = ["lib.rs", "log.rs", "open_result.rs"];
 
 function tauriSources(): string {
   return AUDITED_SOURCES.map((file) => readFileSync(join(tauriSrc, file), "utf8")).join("\n");
