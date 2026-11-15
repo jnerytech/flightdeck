@@ -1,4 +1,4 @@
-import { memo, type ReactNode, useEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
@@ -19,6 +19,7 @@ import { WebhooksSection } from "../webhook/ui.ts";
 import { AppearanceSection, check } from "./appearance-section.tsx";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
+import { useSettingsRail } from "./settings-rail.ts";
 import { WindowSection } from "./window-section.tsx";
 
 /** One block of the screen: its name on the rail, the words it answers to in the search, and its content. */
@@ -65,7 +66,6 @@ export const Settings = memo(function Settings(props: {
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
   const [query, setQuery] = useState("");
-  const [current, setCurrent] = useState<string | null>(null);
   // Budgets came with the costs (phase 8).
   const budgetHosts = hostsWith(state.hosts, "costs");
   const watchHosts = hostsWith(state.hosts, "watch");
@@ -326,55 +326,7 @@ export const Settings = memo(function Settings(props: {
       shown.length === 1
         ? t("settingsRail.matchesOne")
         : t("settingsRail.matches", { n: shown.length });
-  // A click's mark holds while the page scrolls to the section (a short last one never reaches the
-  // observer's band); the next wheel, touch or key hands the mark back to the scroll.
-  const pinned = useRef(false);
-  const go = (id: string) => {
-    pinned.current = true;
-    setCurrent(id);
-    const target = document.getElementById(`settings-${id}`);
-    target?.scrollIntoView?.({ block: "start" });
-    target?.focus({ preventScroll: true });
-  };
-  // The rail marks the section on screen: the upper one when several are. Without the observer
-  // (tests, old webviews) the mark is the last one a click went to.
-  const shownIds = shown.map((section) => section.id).join(",");
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const ids = shownIds ? shownIds.split(",") : [];
-    const onScreen = new Set<string>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.id.replace(/^settings-/, "");
-          if (entry.isIntersecting) onScreen.add(id);
-          else onScreen.delete(id);
-        }
-        const first = ids.find((id) => onScreen.has(id));
-        if (first && !pinned.current) setCurrent(first);
-      },
-      { rootMargin: "0px 0px -60% 0px" },
-    );
-    for (const id of ids) {
-      const el = document.getElementById(`settings-${id}`);
-      if (el) observer.observe(el);
-    }
-    const release = () => {
-      pinned.current = false;
-    };
-    const handBack = ["wheel", "touchstart", "keydown"] as const;
-    for (const type of handBack) window.addEventListener(type, release, { passive: true });
-    return () => {
-      observer.disconnect();
-      for (const type of handBack) window.removeEventListener(type, release);
-    };
-  }, [shownIds]);
-  // Opened on a part (a budget alert): scroll to it and focus it.
-  const wanted = props.section;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request moves the view
-  useEffect(() => {
-    if (wanted) go(wanted);
-  }, [wanted]);
+  const { current, go } = useSettingsRail(shown, props.section);
 
   return (
     <Page title={t("prefs.title")}>
