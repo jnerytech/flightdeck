@@ -1,18 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { osTempDir, realTempDir } from "../../../../scripts/test/temp-dir.ts";
 import { createResources } from "../../src/resources/wiring.ts";
+import { OLD_SESSION } from "../support/resources-wiring.ts";
 
 const MB = 1024 * 1024;
-
-/** A session of /gone that is over, alive for the whole of this century so far. */
-const OLD_SESSION = {
-  id: "old",
-  name: null,
-  cwd: "/gone",
-  status: "ended",
-  createdAt: "2020-01-01T00:00:00Z",
-  updatedAt: "2100-01-01T00:00:00Z",
-};
 
 const deps = (over: Partial<Parameters<typeof createResources>[0]> = {}) => ({
   platform: "linux" as NodeJS.Platform,
@@ -161,44 +152,6 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
     ).endOrphan(9, 1);
     expect(signals).toEqual([[9, "SIGTERM"]]);
   });
-});
-
-describe("resources-wiring: the machine's own defaults (issue #154)", () => {
-  test.skipIf(process.platform === "win32")(
-    "with nothing given it reads the OS memory and the data disk, and ends an orphan with a real SIGTERM",
-    async () => {
-      // Windows has no `sleep`, no load average and no SIGTERM to read back.
-      const child = Bun.spawn(["sleep", "30"]);
-      const pid = child.pid;
-      const proc = {
-        pageSize: 4096,
-        ticksPerSecond: 100,
-        pids: async () => [42, pid],
-        stat: async (p: number) =>
-          p === 1
-            ? { pid: 42, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
-            : { pid: p, ppid: 42, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
-        cwd: async () => "/gone",
-        uptimeSec: async () => 10_000,
-      };
-      const resources = await createResources({
-        dataDir: osTempDir(),
-        sessions: () => [OLD_SESSION],
-        terminals: () => [],
-        pidOf: () => null,
-        ownPid: 42,
-        platform: "linux",
-        proc,
-      });
-      const snap = await resources.snapshot();
-      expect(snap.memory.totalBytes).toBeGreaterThan(0);
-      expect(snap.disk?.totalBytes).toBeGreaterThan(0);
-      expect(snap.loadPercent).not.toBeNull();
-      await resources.endOrphan(pid, 1);
-      await child.exited;
-      expect(child.signalCode).toBe("SIGTERM");
-    },
-  );
 });
 
 describe("resources-wiring: the machine's own page size and clock (F8)", () => {
