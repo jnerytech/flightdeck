@@ -9,9 +9,10 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { gitWith } from "../git/index.ts";
+import { gitBytes, gitWith } from "../git/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
-import { CHANGES, type SnapshotInput, type TurnFiles } from "./domain/snapshot-hook.ts";
+import { filesOf, linesOf } from "./domain/diff-records.ts";
+import type { SnapshotInput, TurnFiles } from "./domain/snapshot-hook.ts";
 import type { SnapshotRow } from "./domain/snapshot-row.ts";
 
 export type { SnapshotRow };
@@ -161,33 +162,20 @@ export class Snapshots {
       );
     const end = rows.find((row) => row.n > n && row.kind !== "safety");
     if (end?.kind !== "after") return { files: [], insertions: 0, deletions: 0 };
-    const diff = (flag: string) =>
-      must(start.repo, [
-        "-c",
-        "core.quotepath=false",
-        "diff-tree",
-        "-r",
-        "--no-renames",
-        flag,
-        start.tree,
-        end.tree,
-      ]);
-    const names = await diff("--name-status");
-    const files = names
-      ? names.split("\n").map((line) => {
-          const [status, path] = line.split("\t") as [string, string];
-          return { path, change: CHANGES[status] ?? "modified" };
-        })
-      : [];
-    const counts = await diff("--numstat");
-    let insertions = 0;
-    let deletions = 0;
-    for (const line of counts ? counts.split("\n") : []) {
-      const [added, removed] = line.split("\t");
-      insertions += Number(added) || 0;
-      deletions += Number(removed) || 0;
-    }
-    return { files, insertions, deletions };
+    const diff = async (flag: string) =>
+      (
+        await gitBytes(start.repo, [
+          "diff-tree",
+          "-r",
+          "-z",
+          "--no-renames",
+          flag,
+          start.tree,
+          end.tree,
+        ])
+      ).stdout.toString();
+    const { added, removed } = linesOf(await diff("--numstat"));
+    return { files: filesOf(await diff("--name-status")), insertions: added, deletions: removed };
   }
 
   /** Resolves once everything queued so far is done. */
