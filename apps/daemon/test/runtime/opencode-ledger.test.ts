@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseStat } from "../../src/runtime/domain/process-ledger.ts";
 import {
   ProcessLedger,
   type ProcIdentity,
   type ProcSource,
-  parseStat,
   procSource,
 } from "../../src/runtime/process-ledger.ts";
 import { poll, tempDir } from "../support/helpers.ts";

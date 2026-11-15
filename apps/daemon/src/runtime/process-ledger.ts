@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { parseJsonOr } from "../kernel/index.ts";
+import { isEntry, type LedgerEntry, parseStat } from "./domain/process-ledger.ts";
 
 /**
  * A ledger of the process groups the daemon starts for OpenCode (issue #250). After a SIGKILL of
@@ -33,14 +34,6 @@ export interface ProcSource {
   bootId(): Awaitable<string | null>;
 }
 
-export interface LedgerEntry {
-  pid: number;
-  startTicks: number;
-  cmdline: string;
-  /** The boot it was written in: after a reboot the start ticks begin again at zero. */
-  bootId: string;
-}
-
 export interface LedgerOptions {
   /** The file the entries are kept in. */
   file: string;
@@ -54,39 +47,6 @@ export interface ReapResult {
   /** The entries whose group was already gone or whose pid someone else holds now. */
   stale: number[];
 }
-
-/**
- * The fields of /proc/<pid>/stat that matter. The command is in parentheses and may hold spaces
- * and parentheses of its own, so the fields are counted from the last `)`: group is the 3rd after
- * it, the start time the 20th.
- */
-export function parseStat(text: string): { pgrp: number; startTicks: number } | null {
-  const rest = text.slice(text.lastIndexOf(")") + 1).trim();
-  if (!rest || !text.includes(")")) return null;
-  const fields = rest.split(/\s+/);
-  const pgrp = Number(fields[2]);
-  const startTicks = Number(fields[19]);
-  return Number.isInteger(pgrp) && Number.isInteger(startTicks) ? { pgrp, startTicks } : null;
-}
-
-/**
- * Only what `add` writes: a group id above 1 (0 is the caller's own group, 1 or below reaches
- * every process in `kill(-pid)`), a start that is a tick count, and the boot. The file is the
- * user's to edit, so anything else is dropped unread.
- */
-const isEntry = (value: unknown): value is LedgerEntry => {
-  if (typeof value !== "object" || value === null) return false;
-  const e = value as Record<string, unknown>;
-  return (
-    Number.isSafeInteger(e.pid) &&
-    (e.pid as number) > 1 &&
-    Number.isSafeInteger(e.startTicks) &&
-    (e.startTicks as number) >= 0 &&
-    typeof e.cmdline === "string" &&
-    typeof e.bootId === "string" &&
-    e.bootId !== ""
-  );
-};
 
 /**
  * Linux guarantees that a pid is not reused while a process group of that id has members. The
