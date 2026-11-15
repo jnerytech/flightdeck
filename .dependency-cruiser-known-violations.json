@@ -56,28 +56,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/actions/catalog.ts",
-    "to": "apps/daemon/src/board/worktree.ts",
-    "unresolvedTo": "../board/worktree.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/assistant/context.ts",
-    "to": "apps/daemon/src/board/diff.ts",
-    "unresolvedTo": "../board/diff.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/card-pr-flow.ts",
     "to": "apps/daemon/src/issues/providers.ts",
     "unresolvedTo": "../issues/providers.ts",
@@ -144,17 +122,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/harness/commit.ts",
-    "to": "apps/daemon/src/board/branch-commit.ts",
-    "unresolvedTo": "../board/branch-commit.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/assistant/domain/paths.ts",
     "unresolvedTo": "../assistant/domain/paths.ts",
@@ -202,17 +169,6 @@
     "from": "apps/daemon/src/review/card-review.ts",
     "to": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
     "unresolvedTo": "../runtime/claude-sdk-runtime.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/runenv/config.ts",
-    "to": "apps/daemon/src/board/worktree.ts",
-    "unresolvedTo": "../board/worktree.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
