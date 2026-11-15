@@ -2,22 +2,15 @@ import { readFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
-import type { FlightdeckError } from "../kernel/index.ts";
-import { applies, splitDirective, unquote } from "./domain/ssh-config.ts";
+import { type Skip, skipOf } from "./domain/skip-reason.ts";
+import {
+  applies,
+  type Block,
+  type Directive,
+  splitDirective,
+  unquote,
+} from "./domain/ssh-config.ts";
 import type { SshTargets } from "./targets.ts";
-
-/** Why one alias was not imported: the English text, and a key with values for the app. */
-type Skip = Omit<SshImportResult["skipped"][number], "alias">;
-
-/** The skip a refused `targets.save` turns into: its message and, when it has them, reason and params. */
-function skipOf(error: unknown): Skip {
-  const refusal = error as Partial<FlightdeckError> & Error;
-  return {
-    reason: refusal.message,
-    ...(refusal.reason ? { why: refusal.reason } : {}),
-    ...(refusal.params ? { params: refusal.params } : {}),
-  };
-}
 
 export interface SshImporterOptions {
   targets: SshTargets;
@@ -27,17 +20,6 @@ export interface SshImporterOptions {
   home: string;
   /** The user ssh would use when the file names none. */
   defaultUser: string;
-}
-
-type Directive =
-  | { kind: "host"; patterns: string[] }
-  | { kind: "match" }
-  | { kind: "param"; key: string; value: string };
-
-interface Block {
-  /** `null`: a Match block, which is never applied. */
-  patterns: string[] | null;
-  params: Map<string, string>;
 }
 
 const MAX_INCLUDE_DEPTH = 8;
