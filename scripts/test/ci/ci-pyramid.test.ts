@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 const ROOT = resolve(import.meta.dir, "../../..");
 
 interface Step {
+  id?: string;
   name?: string;
   run?: string;
   if?: string;
@@ -20,15 +21,21 @@ const step = (name: string) => steps.find((s) => s.name === name);
 const merge = () => step("Testes (cobertura 80%, 4 shards)");
 
 describe("ci-pyramid (#309)", () => {
-  test("#1003: after the merge, the slow-test check reads each shard's JUnit times, and fails if any file does", () => {
-    const check = step("Testes lentos (#1003)");
-    expect(check?.if).toBe("always() && needs.quick.outputs.base != ''");
-    // A report missing after a passing merge is a failure, not a pass (#1022 review).
-    expect(check?.env).toEqual({ TESTS_OUTCOME: "${{ steps.merge.outcome }}" });
-    expect(check?.run).toContain("for report in");
-    expect(check?.run).toContain('"$RUNNER_TEMP"/shards/shard-*-bun/junit.xml');
-    expect(check?.run).toContain('bun run scripts/slow-tests.ts "$report" || status=1');
-    expect(check?.run).toContain("exit $status");
+  test("#3295: each bun shard checks its own JUnit times, so a rerun of a failed shard measures again", () => {
+    const shardSteps = ci.jobs["test-shard"]?.steps ?? [];
+    const check = shardSteps.find((s) => s.name === "Testes lentos (#1003)");
+    expect(check?.if).toBe("always() && matrix.kind == 'bun' && needs.quick.outputs.base != ''");
+    // A report missing after a passing shard run is a failure, not a pass (#1022 review).
+    expect(check?.env).toEqual({ TESTS_OUTCOME: "${{ steps.run.outcome }}" });
+    expect(check?.run).toBe('bun run scripts/slow-tests.ts "$RUNNER_TEMP/shard/junit.xml"');
+    const run = shardSteps.find((s) => s.id === "run");
+    expect(run?.run).toContain("scripts/shard-gate.ts run");
+    // Before the upload: the merge job no longer re-reads the times of an old attempt.
+    const names = shardSteps.map((s) => s.name);
+    expect(names.indexOf("Testes lentos (#1003)")).toBeLessThan(
+      names.indexOf("Relatório do shard"),
+    );
+    expect(step("Testes lentos (#1003)")).toBeUndefined();
     expect((merge() as { id?: string } | undefined)?.id).toBe("merge");
   });
 
