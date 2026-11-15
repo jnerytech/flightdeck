@@ -11,7 +11,8 @@ const { App } = await import("../../src/app/App.tsx");
 const { applyEnvelope, emptySession } = await import(
   "../../src/features/sessions/domain/session-state.ts"
 );
-const { errorText, SessionView } = await import("../../src/features/sessions/session-view.tsx");
+const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
+const { errorText } = await import("../../src/features/sessions/timeline-item.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 
 setDefaultTimeout(30_000);

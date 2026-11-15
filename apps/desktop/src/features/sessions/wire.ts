@@ -3,7 +3,7 @@ import { type SessionCommandsCore, SessionCommandsSlice } from "./commands.ts";
 import { type ExternalSessionsCore, ExternalSessionsSlice } from "./external.ts";
 import { type FinishedCore, FinishedSlice } from "./finished.ts";
 import { type SessionListsCore, SessionListsSlice } from "./lists.ts";
-import type { SessionActions } from "./session-view.tsx";
+import type { SessionActions } from "./session-actions.ts";
 import { type SessionsCore, SessionsSlice, type SessionsSliceState } from "./store.ts";
 import { type SessionStreamCore, SessionStreamSlice } from "./stream.ts";
 import { type OpenSession, SessionSubscriptions } from "./subscriptions.ts";
