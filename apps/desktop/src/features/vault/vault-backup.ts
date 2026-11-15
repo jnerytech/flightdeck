@@ -3,7 +3,8 @@ import { armor, Decrypter, Encrypter } from "age-encryption";
 import { z } from "zod";
 import { parseJsonText } from "@/shared/lib/index.ts";
 import { BackupError } from "../backup/index.ts";
-import { type SecretMeta, SecretMetaSchema, type Vault } from "./vault.ts";
+import { type SecretMeta, SecretMetaSchema } from "./domain/vault-types.ts";
+import type { Vault } from "./vault.ts";
 
 export const MIN_PASSPHRASE = 12;
 
