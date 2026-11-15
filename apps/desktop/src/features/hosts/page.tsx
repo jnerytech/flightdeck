@@ -11,7 +11,7 @@ import type { AppStore, HostView } from "../../lib/app-store.ts";
 import type { HostSection } from "../../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../../lib/version.ts";
 import type { UsageHistoryTarget } from "../costs/index.ts";
-import { UsagePanel } from "../costs/usage-panel.tsx";
+import { UsagePanel } from "../costs/ui.ts";
 import type { HostNameError } from "./domain/host-name.ts";
 import { HostAccount } from "./host-account.tsx";
 import { HostCompare } from "./host-compare.tsx";

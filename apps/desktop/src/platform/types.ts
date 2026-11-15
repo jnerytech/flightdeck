@@ -14,7 +14,7 @@ export interface Notification {
 }
 
 /** One open request in the tray's "Precisa de você" submenu (phase 8). */
-export interface TrayMenuEntry {
+interface TrayMenuEntry {
   /** `hostId/requestId`, sent back with the action. */
   key: string;
   /** `host · sessão · ferramenta: resumo da entrada`. */
@@ -26,7 +26,7 @@ export interface TrayMenuEntry {
 export type TrayActionKind = "approve" | "deny" | "open";
 
 /** The submenu's own texts, already translated (phase 10). */
-export interface TrayLabels {
+interface TrayLabels {
   approve: string;
   deny: string;
   open: string;

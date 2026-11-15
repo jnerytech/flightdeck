@@ -16,7 +16,7 @@ export const ACP_TIMEOUT = -32001;
 /** The agent's process went away with the request pending. */
 export const ACP_CLOSED = -32002;
 
-export const ACP_DEFAULT_TIMEOUT_MS = 30_000;
+const ACP_DEFAULT_TIMEOUT_MS = 30_000;
 
 export class AcpError extends Error {
   constructor(

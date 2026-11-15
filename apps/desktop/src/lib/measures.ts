@@ -17,7 +17,7 @@ export const MEASURES_FLAG = "flightdeck.debug.measures";
 
 const startMark = (action: MeasuredAction) => `${MEASURE_NAMES[action]}:start`;
 
-export function measuresOn(): boolean {
+function measuresOn(): boolean {
   try {
     return localStorage.getItem(MEASURES_FLAG) === "1";
   } catch {

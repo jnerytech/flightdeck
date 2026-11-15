@@ -12,12 +12,12 @@ import { hasFeature } from "../../lib/version.ts";
 import { MemoryGuard } from "./memory-guard.tsx";
 
 /** How often a panel on screen reads the host again. */
-export const RESOURCES_EVERY_MS = 5000;
+const RESOURCES_EVERY_MS = 5000;
 
 type Level = "ok" | "high" | "critical";
 
 /** 80% is high and 90% critical; they are said in words as well as drawn. */
-export function levelOf(percent: number): Level {
+function levelOf(percent: number): Level {
   if (percent >= 90) return "critical";
   return percent >= 80 ? "high" : "ok";
 }

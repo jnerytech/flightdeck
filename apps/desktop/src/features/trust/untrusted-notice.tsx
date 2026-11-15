@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useTight } from "@/features/sessions/parts.tsx";
+import { useTight } from "@/features/sessions/ui.ts";
 import type { AppStore } from "@/lib/app-store";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 

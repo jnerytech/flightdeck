@@ -361,6 +361,7 @@ const MSGS5_FILES = [
   "vault/domain/requests.ts",
   "ssh/askpass.ts",
   "sessions/session-manager.ts",
+  "sessions/domain/refusals.ts",
   "sessions/session-runs.ts",
   "runtime/claude-sdk-runtime.ts",
   "plugins/plugins.ts",

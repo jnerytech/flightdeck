@@ -9,7 +9,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 
-export type ScopeFindingKind =
+type ScopeFindingKind =
   | "plugins_entry"
   | "plugin_file"
   | "mcp_server"

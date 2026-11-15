@@ -47,7 +47,6 @@ import type {
   RunRow,
 } from "./types.ts";
 
-export { DEFAULT_PR_POLL_MS } from "./pr-poll.ts";
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 export type { FixResult } from "./session-follow.ts";
 export type { BoardOptions } from "./types.ts";

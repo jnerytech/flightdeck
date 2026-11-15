@@ -7,7 +7,7 @@ import { CONTINUATION, offerKey, unanswered } from "./domain/resume-offer.ts";
 import { loadAutoResume, loadHandled, markHandled, saveAutoResume } from "./resume-offer.ts";
 
 /** The offer to resume a host's interrupted sessions: shown (open) or put off for the host page. */
-export interface ResumeOffer {
+interface ResumeOffer {
   sessions: InterruptedSession[];
   open: boolean;
   /** The ones already resumed from this offer: they stay listed, as "Resumed", while it is open. */

@@ -18,14 +18,7 @@ import type {
 } from "@flightdeck/protocol";
 import { plainInfo } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
-import {
-  API_KEY_VARS,
-  buildChildEnv,
-  FlightdeckError,
-  isInside,
-  resolveAllowedCwd,
-  ulid,
-} from "../kernel/index.ts";
+import { API_KEY_VARS, buildChildEnv, isInside, resolveAllowedCwd, ulid } from "../kernel/index.ts";
 import {
   type AutoApproveRequest,
   type AutoApprover,
@@ -43,6 +36,14 @@ import { type EventStore, personaBadge } from "../store/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
 import { ActivityClock, type ToolNote } from "./domain/activity-clock.ts";
 import { interruptedSessions, RESTART_REASON } from "./domain/interrupted.ts";
+import { LiveSettings } from "./domain/live-settings.ts";
+import {
+  bypassNotAllowed,
+  personasUnavailable,
+  sessionEnded,
+  sessionNotEnded,
+  sessionNotFound,
+} from "./domain/refusals.ts";
 import type { QuietInfo } from "./domain/stall.ts";
 import { pendingView, summaryEvent, withQuiet, withSleep } from "./domain/summary-view.ts";
 import type { SessionManagerOptions } from "./session-options.ts";
@@ -81,6 +82,8 @@ export class SessionManager {
   >();
   /** #1595: the sessions' agent runs, driven with the manager's stores and state. */
   private readonly runs: SessionRuns;
+  /** What a person changes in a live session: mode, model, effort and MCP servers. */
+  private readonly settings: LiveSettings;
 
   constructor(private readonly opts: SessionManagerOptions) {
     this.store = opts.store;
@@ -117,6 +120,14 @@ export class SessionManager {
       emit: (sessionId, event) => this.emit(sessionId, event),
       setStatus: (sessionId, status, reason) => this.setStatus(sessionId, status, reason),
       bypassAllowed: () => this.bypassAllowed(),
+    });
+    this.settings = new LiveSettings({
+      runOf: (sessionId) => this.live.get(sessionId)?.run,
+      runtimeOf: (sessionId) => this.store.getSession(sessionId)?.runtime,
+      startMode: (sessionId) => this.get(sessionId).permissionMode,
+      bypassAllowed: () => this.bypassAllowed(),
+      emit: (sessionId, event) => this.emit(sessionId, event),
+      efforts: this.efforts,
     });
     this.recover();
   }
@@ -224,13 +235,7 @@ export class SessionManager {
 
   get(sessionId: string): SessionSummary {
     const session = this.store.getSession(sessionId);
-    if (!session)
-      throw new FlightdeckError(
-        "not_found",
-        `session ${sessionId} does not exist`,
-        "session_not_found",
-        { id: sessionId },
-      );
+    if (!session) throw sessionNotFound(sessionId);
     return withSleep(session, this.live.has(session.id));
   }
 
@@ -250,21 +255,9 @@ export class SessionManager {
     // Resolved by the caller before anything is created, so a missing, untrusted or invalid
     // persona leaves no session. The manager reads no persona file itself.
     const resolved = extra.prepared?.persona ?? null;
-    if (payload.persona && !resolved) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "personas unavailable on this host",
-        "personas_off",
-      );
-    }
+    if (payload.persona && !resolved) throw personasUnavailable();
     const asked = payload.permissionMode ?? this.opts.defaultPermissionMode;
-    if (asked === "bypassPermissions" && !this.bypassAllowed()) {
-      throw new FlightdeckError(
-        "invalid_permission_update",
-        "this host does not allow sessions without permission prompts",
-        "bypass_not_allowed",
-      );
-    }
+    if (asked === "bypassPermissions" && !this.bypassAllowed()) throw bypassNotAllowed();
     // A persona only suggests: it counts when it is less permissive than what was asked for.
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
     const persona = resolved ? snapshotOf(resolved.persona, resolved.hash) : null;
@@ -346,11 +339,7 @@ export class SessionManager {
   send(sessionId: string, text: string, images?: SessionImage[]): { queued: boolean } {
     const session = this.get(sessionId);
     if (session.status === "ended" || session.status === "error") {
-      throw new FlightdeckError(
-        "invalid_state",
-        `session is ${session.status}; use session.resume`,
-        "session_ended",
-      );
+      throw sessionEnded(session.status);
     }
     let live = this.live.get(sessionId);
     // Idle session left by a previous daemon process: reattach lazily.
@@ -422,11 +411,7 @@ export class SessionManager {
     // The refusal is thrown at once (callers and tests read it without awaiting), the rest waits
     // for the folder's git boundaries.
     if (session.status !== "ended" && session.status !== "error") {
-      throw new FlightdeckError(
-        "invalid_state",
-        `session is ${session.status}; nothing to resume`,
-        "session_not_ended",
-      );
+      throw sessionNotEnded(session.status);
     }
     // Not in a folder a removal is working on.
     if (this.opts.folderLocks?.isHeld(session.cwd)) throw folderRemoving(session.cwd);
@@ -576,18 +561,6 @@ export class SessionManager {
 
   // -- internals ------------------------------------------------------------
 
-  /** Phase 39: refuses a Claude-only feature for an OpenCode session. */
-  private claudeOnly(sessionId: string, feature: string): void {
-    // An unknown session keeps its own refusal (the feature is not live).
-    if (this.store.getSession(sessionId)?.runtime !== "opencode") return;
-    throw new FlightdeckError(
-      "invalid_state",
-      `an OpenCode session does not offer ${feature}`,
-      "runtime_unsupported",
-      { feature },
-    );
-  }
-
   /** The persona applied to the open session, if any. */
   appliedPersona(sessionId: string): SessionPersona | null {
     this.get(sessionId);
@@ -604,94 +577,33 @@ export class SessionManager {
     this.emitSummary(sessionId);
   }
 
-  /** Phase 12: turns an MCP server of a live managed session on or off right away. */
-  async toggleMcpServer(sessionId: string, name: string, enabled: boolean): Promise<void> {
-    this.claudeOnly(sessionId, "mcp");
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.toggleMcpServer) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the session is not alive to change its MCP servers",
-        "mcp_set_not_live",
-      );
-    }
-    await run.toggleMcpServer(name, enabled);
-  }
-
   private bypassAllowed(): boolean {
     return this.opts.allowBypass?.() === true;
   }
 
   /** Changes the permission mode of a live managed session, for its next tool requests. */
-  async setPermissionMode(sessionId: string, mode: PermissionMode): Promise<void> {
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.setPermissionMode) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the session is not alive to change its permission mode",
-        "mode_set_not_live",
-      );
-    }
-    // Never looser than the mode the session started with (which a persona may have narrowed),
-    // unless the person turned the host's switch on: then any mode is theirs to pick.
-    if (
-      !this.bypassAllowed() &&
-      clampPermissionMode(mode, this.get(sessionId).permissionMode) !== mode
-    ) {
-      throw new FlightdeckError(
-        "invalid_permission_update",
-        "a session cannot be made more permissive than the mode it started with",
-        "mode_looser_than_start",
-      );
-    }
-    await run.setPermissionMode(mode);
-    // Told to every app, and kept for a reload (#935); the start mode stays the session's limit.
-    // A run that ended during the change reports nothing after its last status.
-    if (this.live.get(sessionId)?.run !== run) return;
-    this.emit(sessionId, { type: "session.mode", permissionMode: mode });
+  setPermissionMode(sessionId: string, mode: PermissionMode): Promise<void> {
+    return this.settings.setPermissionMode(sessionId, mode);
   }
 
   /** Changes the model of a live managed session, for its next turn; null is the default. */
-  async setModel(sessionId: string, model: string | null): Promise<void> {
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.setModel) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the session is not alive to change its model",
-        "model_set_not_live",
-      );
-    }
-    await run.setModel(model ?? undefined);
+  setModel(sessionId: string, model: string | null): Promise<void> {
+    return this.settings.setModel(sessionId, model);
   }
 
   /** Changes the effort of a live managed session, for its next turn; null is the model's default. */
-  async setEffort(sessionId: string, effort: EffortLevel | null): Promise<void> {
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.setEffort) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the session is not alive to change its effort",
-        "effort_set_not_live",
-      );
-    }
-    await run.setEffort(effort ?? undefined);
-    // A session resumed later starts with the effort it was left at (not kept across restarts).
-    if (effort) this.efforts.set(sessionId, effort);
-    else this.efforts.delete(sessionId);
+  setEffort(sessionId: string, effort: EffortLevel | null): Promise<void> {
+    return this.settings.setEffort(sessionId, effort);
+  }
+
+  /** Phase 12: turns an MCP server of a live managed session on or off right away. */
+  toggleMcpServer(sessionId: string, name: string, enabled: boolean): Promise<void> {
+    return this.settings.toggleMcpServer(sessionId, name, enabled);
   }
 
   /** Phase 12: the live status of a managed session's MCP servers, as its runtime reports it. */
-  async mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {
-    this.claudeOnly(sessionId, "mcp");
-    const run = this.live.get(sessionId)?.run;
-    if (!run?.mcpServerStatus) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the session is not alive to query its MCP servers",
-        "mcp_query_not_live",
-      );
-    }
-    return run.mcpServerStatus();
+  mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {
+    return this.settings.mcpStatus(sessionId);
   }
 
   /** Phase 12: a turn is running (or waiting for a permission) in this Claude session. */
