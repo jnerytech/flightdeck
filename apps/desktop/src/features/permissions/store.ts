@@ -1,9 +1,10 @@
 import type { RiskLevel } from "@flightdeck/protocol";
 import type { VaultAnswer } from "@/features/vault/index.ts";
 import type { T } from "../../i18n/index.ts";
-import type { Answer, AppState, PendingItem } from "../../lib/app-store.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
 import type { TrayAction } from "../../platform/types.ts";
+import type { Answer, PendingItem } from "../needs-you/index.ts";
+import type { SessionState } from "../sessions/index.ts";
 import { parseRequestLink } from "./domain/request-link.ts";
 
 /** The `permission.respond` request of an answer: only what the person gave goes in, and `held` rides on an allow only. */
@@ -25,7 +26,7 @@ type PermissionResponse = ReturnType<typeof permissionResponse>;
 export interface PermissionsCore {
   /** The requests waiting for an answer, worded in the current language. */
   needsYou(): PendingItem[];
-  sessions(): AppState["sessions"];
+  sessions(): Record<string, SessionState>;
   /** The host of the session open in the window, if any. */
   selectedHostId(): string | undefined;
   /** A request of the vault is answered in its own queue: true when it was one. */

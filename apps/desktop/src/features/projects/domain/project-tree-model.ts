@@ -1,7 +1,7 @@
 import type { Card, Project } from "@flightdeck/protocol";
 import { basename, isInside, statusTone } from "@/shared/lib/index.ts";
 import type { StateTone } from "@/shared/status/index.ts";
-import type { AppState } from "../../../lib/app-store.ts";
+import type { HostView } from "../../hosts/index.ts";
 import type { HubRow } from "../../sessions/index.ts";
 
 /** One line under a project in the sidebar: its main checkout or one card's worktree. */
@@ -66,12 +66,20 @@ function lastActivity(rows: HubRow[], hostId: string, path: string): number {
     .reduce((newest, row) => Math.max(newest, Date.parse(row.lastActivity) || 0), 0);
 }
 
+/** The part of the app's state the tree reads: the hosts, their projects and cards, and the stored filter. */
+interface TreeState {
+  hosts: HostView[];
+  projects: Record<string, Project[]>;
+  cards: Record<string, Card>;
+  worktreeFilter: WorktreeFilter | null;
+}
+
 /**
  * The projects of the online hosts with their checkouts: the main one first (the base branch, the
  * tone of the live sessions in the project's folder), then one per card that has a worktree.
  */
 export function projectTree(
-  state: Pick<AppState, "hosts" | "projects" | "cards">,
+  state: Pick<TreeState, "hosts" | "projects" | "cards">,
   rows: HubRow[],
 ): TreeProject[] {
   return state.hosts
@@ -138,9 +146,7 @@ export function rowInFilter(
 }
 
 /** The stored filter when it still points at a checkout that is there; else none. */
-export function activeWorktreeFilter(
-  state: Pick<AppState, "hosts" | "projects" | "cards" | "worktreeFilter">,
-): WorktreeFilter | null {
+export function activeWorktreeFilter(state: TreeState): WorktreeFilter | null {
   const picked = state.worktreeFilter;
   if (!picked) return null;
   const host = state.hosts.find((h) => h.id === picked.hostId);

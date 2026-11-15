@@ -1,8 +1,9 @@
-import type { Card } from "@flightdeck/protocol";
+import type { Card, Project } from "@flightdeck/protocol";
 import { useCallback, useRef, useState } from "react";
 import type { T } from "../../i18n/index.ts";
-import type { AppState, AppStore } from "../../lib/app-store.ts";
+import type { AppKernel } from "../../lib/kernel.ts";
 import { cardStartBlock } from "../board/index.ts";
+import type { HostView } from "../hosts/index.ts";
 import {
   type Elsewhere,
   type ElsewhereAsk,
@@ -11,6 +12,13 @@ import {
   offeredHosts,
   startElsewhere,
 } from "./domain/start-elsewhere.ts";
+
+/** What the hook asks of the store: the host commands, the live hosts, a project's key and a board's load. */
+interface ElsewhereStore extends Pick<AppKernel<object>, "hostCommand" | "hostRequest"> {
+  getState(): { hosts: HostView[] };
+  projectList: { keyOf(hostId: string, project: Project): string };
+  boardCards: { load(hostId: string, projectId: string): Promise<void> };
+}
 
 /** What another host said when the Start N confirm opened: its projects and its limit. */
 interface Listed {
@@ -25,12 +33,12 @@ interface Listed {
  * wait; `run` hands them to one host. A reply to an earlier `load` is dropped.
  */
 export function useStartElsewhere(options: {
-  store: AppStore;
+  store: ElsewhereStore;
   hostId: string;
   /** The project's key; null while it is not known. */
   sourceKey: string | null;
-  hosts: AppState["hosts"];
-  cards: AppState["cards"];
+  hosts: HostView[];
+  cards: Record<string, Card>;
   t: T;
 }): {
   load(): void;

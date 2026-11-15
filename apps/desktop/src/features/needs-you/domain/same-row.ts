@@ -2,7 +2,7 @@ import type { ClientColor } from "@/features/clients/index.ts";
 import type { LoopAlert } from "@/features/messaging";
 import type { Finish } from "@/features/sessions/index.ts";
 import type { WatchAlert } from "@/features/watch/index.ts";
-import type { PendingItem } from "@/lib/app-store";
+import type { PendingItem } from "./pending-item.ts";
 import type { QuietAlert } from "./quiet.ts";
 
 /** A line of the list: a budget alert (opens Settings), a paused loop or a request (shows its card). */
