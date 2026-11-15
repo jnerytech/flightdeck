@@ -5,16 +5,20 @@ import type {
   ProjectDetectResult,
 } from "@flightdeck/protocol";
 import type { Key, T } from "../../i18n/index.ts";
-import type { AppState, HostCommandType, HostResult } from "../../lib/app-store.ts";
+import type { HostCommandType, HostResult } from "../../lib/kernel.ts";
 
-type ProjectsState = Pick<AppState, "hosts" | "projects">;
+/** The parts of the app state the projects read: each host's name and the projects they hold. */
+interface ProjectsState {
+  hosts: readonly { id: string; name: string }[];
+  projects: Record<string, Project[]>;
+}
 
 /** What the projects read and ask through the app's store. */
 export interface ProjectsCore {
   /** What the app holds about hosts and their projects. */
   state(): ProjectsState;
   /** Replaces the projects the app holds, as one change. */
-  setProjects(projects: AppState["projects"]): void;
+  setProjects(projects: ProjectsState["projects"]): void;
   /** A command to a host that gives null instead of an error (a host without it, or offline). */
   quietly<C extends HostCommandType>(
     hostId: string,

@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
-import type { AppStore } from "../../lib/app-store.ts";
+
+/** What the hook reads of the app store: whether a host embeds terminals, and the terminals it lists. */
+interface LaunchStore {
+  terminals: {
+    embedded(hostId: string): boolean;
+    host(hostId: string): {
+      list(): Promise<{ launchId?: string | null; exitCode: number | null; terminalId: string }[]>;
+    };
+  };
+}
 
 /** The live terminal of the host that launched this session ("Claude aqui"), if there is one. */
-export function useLaunchTerminal(store: AppStore, hostId: string, launchId: string | null) {
+export function useLaunchTerminal(store: LaunchStore, hostId: string, launchId: string | null) {
   const [terminalId, setTerminalId] = useState<string | null>(null);
   // Asked only for a session with a launch: a page without one needs nothing of the host's terminal.
   const embedded = launchId ? store.terminals.embedded(hostId) : false;
