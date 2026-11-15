@@ -1,6 +1,5 @@
 import type { RiskLevel } from "@flightdeck/protocol";
 import { parseRequestLink } from "@/features/inbox/index.ts";
-import type { VaultAnswer } from "@/features/vault/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
 import type { TrayAction } from "../../platform/types.ts";
@@ -29,8 +28,8 @@ export interface PermissionsCore {
   sessions(): Record<string, SessionState>;
   /** The host of the session open in the window, if any. */
   selectedHostId(): string | undefined;
-  /** A request of the vault is answered in its own queue: true when it was one. */
-  settleVault(requestId: string, answer: VaultAnswer | null): boolean;
+  /** A request of the vault is answered in its own queue: true when it was one. The only approval given here is once, from the app. */
+  settleVault(requestId: string, answer: { scope: "once"; via: "app" } | null): boolean;
   /** Sends the answer on a host's connection; nothing when the host is not connected. */
   sendOn(hostId: string, response: PermissionResponse): Promise<unknown> | undefined;
   /** Sends the answer on the open session's host; a refusal goes to the banner. */
