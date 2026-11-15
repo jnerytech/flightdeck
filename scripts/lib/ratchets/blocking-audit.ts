@@ -24,13 +24,13 @@ export function syncTauriCommands(rust: string): string[] {
 /** Async commands that may do their blocking work inline: none, the dialogs wait on the blocking pool too. */
 export const ASYNC_INLINE_ALLOWED: string[] = [];
 
+/** An async `#[tauri::command]` with its body, up to the closing brace at the start of a line. */
+const ASYNC_COMMAND =
+  /#\[tauri::command[^\]]*\]\s*(?:pub(?:\([^)]*\))?\s+)?async\s+fn\s+(\w+)[\s\S]*?\n\}\n/g; // NOSONAR: the Rust sources of the repo, read by a ratchet
+
 /** The async commands whose body never calls `spawn_blocking`: they still block a runtime worker. */
 export function asyncCommandsInline(rust: string): string[] {
-  return [
-    ...rust.matchAll(
-      /#\[tauri::command[^\]]*\]\s*(?:pub(?:\([^)]*\))?\s+)?async\s+fn\s+(\w+)[\s\S]*?\n\}\n/g,
-    ),
-  ] // NOSONAR: the Rust sources of the repo, read by a ratchet
+  return [...rust.matchAll(ASYNC_COMMAND)]
     .filter((match) => !match[0].includes("spawn_blocking"))
     .map((match) => match[1] as string);
 }
