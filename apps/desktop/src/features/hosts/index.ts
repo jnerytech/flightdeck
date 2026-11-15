@@ -12,6 +12,7 @@ export { hostNeedsAttention } from "./domain/host-attention.ts";
 export { hostColorVar } from "./domain/host-color.ts";
 export { hostDownReason } from "./domain/host-down-reason.ts";
 export { draftFromLink, draftUrl } from "./domain/host-draft.ts";
+export { statusLine } from "./domain/host-link-line.ts";
 export type { HostNameError } from "./domain/host-name.ts";
 export type { RetryState } from "./domain/host-offline.ts";
 export { hostInitial, hostRailLabel } from "./domain/host-rail.ts";
@@ -25,12 +26,7 @@ export {
   type HealthSliceState,
   initialHealthState,
 } from "./health-store.ts";
-export {
-  type ConnectionStatus,
-  HostConnection,
-  RequestError,
-  statusLine,
-} from "./host-connection.ts";
+export { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 export type { HostDraft } from "./host-form.tsx";
 export { HostTabs } from "./host-tabs.ts";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
