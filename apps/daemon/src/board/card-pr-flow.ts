@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { git } from "../git/index.ts";
-import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
+import { closingLine, parseIssueRef, providerOfRef } from "../issues/index.ts";
 import { assertBranchName, FlightdeckError, refArg } from "../kernel/index.ts";
 import { type PrComment, prMessage } from "../pr/index.ts";
 import { cardDiff } from "./diff.ts";

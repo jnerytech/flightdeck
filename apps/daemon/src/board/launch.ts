@@ -8,6 +8,7 @@ import {
 import { git } from "../git/index.ts";
 import { FlightdeckError, parseJsonWith, refArg, refusalOf } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/index.ts";
+import type { WorkflowEngine } from "../workflows/index.ts";
 import {
   addWorktree,
   excludeLocalSettingsAsync,
@@ -16,9 +17,11 @@ import {
   must,
   WORKTREE_INCLUDE_LIMIT,
 } from "../worktrees/index.ts";
+import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import { pinnedPrompt } from "./domain/pins.ts";
 import { renderSpec, specFirstLine, wantsSpec } from "./domain/spec-template.ts";
+import type { FixResult } from "./session-follow.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
 import {
@@ -27,12 +30,6 @@ import {
   type TemplateName,
   writeSpec,
 } from "./spec-template.ts";
-
-export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
-
-import type { WorkflowEngine } from "../workflows/index.ts";
-import type { CheckLoopEngine } from "./domain/check-loop-engine.ts";
-import type { FixResult } from "./session-follow.ts";
 import type { BoardOptions, Card, Project, RunRow } from "./types.ts";
 
 const now = () => new Date().toISOString();
