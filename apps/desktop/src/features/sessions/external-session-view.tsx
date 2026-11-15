@@ -13,7 +13,7 @@ import { Stack } from "@/shared/layout/index.ts";
 import { isBusy } from "@/shared/lib/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { BgPanel } from "../background/bg-panel.tsx";
+import { BgPanel } from "../background/ui.ts";
 import { CheckpointsButton } from "../checkpoints/ui.ts";
 import { useLaunchTerminal } from "../terminal/index.ts";
 import { TerminalButton } from "../terminal/ui.ts";
