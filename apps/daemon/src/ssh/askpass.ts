@@ -5,7 +5,7 @@ import { readConfig } from "../costs/index.ts";
 import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
-import type { AskpassHook } from "./connect.ts";
+import type { AskpassHook } from "./domain/ssh-argv.ts";
 
 export interface AskpassBrokerOptions {
   timers?: Timers;
