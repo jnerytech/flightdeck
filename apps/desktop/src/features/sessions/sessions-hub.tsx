@@ -1,7 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
-import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
+import { MoreHorizontal, Radio, Server, X } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
@@ -24,7 +22,7 @@ import { TeleportMove } from "@/features/teleport/ui.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { useKeyed } from "@/shared/hooks/index.ts";
-import { CardGrid, EmptyState, NativeSelect, Page, Toolbar } from "@/shared/layout/index.ts";
+import { CardGrid, EmptyState, Page, Toolbar } from "@/shared/layout/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
@@ -67,6 +65,7 @@ import {
 } from "./domain/hub-view.ts";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
 import { type HubFilter, type HubRow, type HubView, hubRows } from "./hub.ts";
+import { HubFilterMenu } from "./hub-filter-menu.tsx";
 import { newSessionHost } from "./new-session-host.ts";
 import { focusRenameField, focusRowActions, RenameForm } from "./rename-form";
 import { RuntimeBadge } from "./runtime-badge";
@@ -421,77 +420,7 @@ export function SessionsHub(
         onChange={(e) => set({ text: e.target.value })}
         className="toolbar-field h-8 min-w-32 text-xs"
       />
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1">
-            <ListFilter aria-hidden="true" />
-            {t("hub.filters")}
-            {active > 0 && (
-              <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
-                {active}
-              </Badge>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="flex w-64 flex-col gap-2">
-          <NativeSelect
-            compact
-            aria-label={t("hub.origin")}
-            value={filter.origin}
-            onChange={(e) => set({ origin: e.target.value as HubFilter["origin"] })}
-          >
-            <option value="">{t("hub.allOrigins")}</option>
-            <option value="flightdeck">{t("hub.origins.flightdeck")}</option>
-            <option value="terminal">{t("hub.origins.terminal")}</option>
-            <option value="history">{t("hub.origins.history")}</option>
-            <option value="background">{t("hub.origins.background")}</option>
-          </NativeSelect>
-          <NativeSelect
-            compact
-            aria-label={t("hub.state")}
-            value={filter.state}
-            onChange={(e) => set({ state: e.target.value as HubFilter["state"] })}
-          >
-            <option value="">{t("hub.allStates")}</option>
-            <option value="running">{t("hub.states.running")}</option>
-            <option value="needs_you">{t("hub.states.needs_you")}</option>
-            <option value="idle">{t("hub.states.idle")}</option>
-            <option value="ended">{t("hub.states.ended")}</option>
-            <option value="failed">{t("hub.states.failed")}</option>
-          </NativeSelect>
-          {personas.length > 0 && (
-            <NativeSelect
-              compact
-              aria-label={t("hub.persona")}
-              value={filter.persona}
-              onChange={(e) => set({ persona: e.target.value })}
-            >
-              <option value="">{t("hub.allPersonas")}</option>
-              {personas.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={filter.pinnedOnly}
-            onClick={() => set({ pinnedOnly: !filter.pinnedOnly })}
-          >
-            {t("hub.pinnedOnly")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={filter.showArchived}
-            onClick={() => set({ showArchived: !filter.showArchived })}
-          >
-            {t("hub.showArchived")}
-          </Button>
-        </PopoverContent>
-      </Popover>
+      <HubFilterMenu t={t} filter={filter} active={active} personas={personas} set={set} />
     </Toolbar>
   );
 
