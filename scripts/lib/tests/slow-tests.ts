@@ -174,7 +174,7 @@ export function slowReport(
     ...problems.map((problem) => `  - ${problem}`),
     "The slowest tests of this run:",
     ...slowest.map((t) => `  ${t.seconds.toFixed(1)} s  ${t.id}`),
-    "Make it faster, or delete it when a faster test checks the same thing (docs/TDD.md). A test fd-qa is still cutting goes in slow-tests-allowlist.json, with its issue. Within 10% of a limit it may be runner noise: rerun the job once before cutting it.",
+    "Make it faster, or delete it when a faster test checks the same thing (docs/TDD.md). A test fd-qa is still cutting goes in slow-tests-allowlist.json, with its issue. Within 10% of a limit it may be runner noise: rerun the failed shard once (gh run rerun <run id> --failed measures it again) before cutting it.",
   );
   return { code: 1, lines };
 }
