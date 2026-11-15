@@ -11,7 +11,7 @@ import {
   runScheduledBackup,
   saveSchedule,
 } from "../../src/features/backup/backup-schedule.ts";
-import type { BackupTarget } from "../../src/features/backup/backup-target.ts";
+import type { BackupTarget } from "../../src/features/backup/domain/backup-target.ts";
 import { DriveError } from "../../src/features/backup/drive-target.ts";
 
 /**
