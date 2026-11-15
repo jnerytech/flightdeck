@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { HostDot } from "@/features/hosts/ui.ts";
-import { CacheTimer } from "@/features/sessions/cache-timer";
+import { CacheTimer } from "@/features/sessions/ui.ts";
 import { cn } from "@/lib/utils";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
