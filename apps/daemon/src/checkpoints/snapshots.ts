@@ -162,18 +162,19 @@ export class Snapshots {
       );
     const end = rows.find((row) => row.n > n && row.kind !== "safety");
     if (end?.kind !== "after") return { files: [], insertions: 0, deletions: 0 };
-    const diff = async (flag: string) =>
-      (
-        await gitBytes(start.repo, [
-          "diff-tree",
-          "-r",
-          "-z",
-          "--no-renames",
-          flag,
-          start.tree,
-          end.tree,
-        ])
-      ).stdout.toString();
+    const diff = async (flag: string) => {
+      const result = await gitBytes(start.repo, [
+        "diff-tree",
+        "-r",
+        "-z",
+        "--no-renames",
+        flag,
+        start.tree,
+        end.tree,
+      ]);
+      if (result.code !== 0) throw new Error(`git diff-tree falhou (${result.code})`);
+      return result.stdout.toString();
+    };
     const { added, removed } = linesOf(await diff("--numstat"));
     return { files: filesOf(await diff("--name-status")), insertions: added, deletions: removed };
   }
