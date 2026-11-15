@@ -22,7 +22,7 @@ export interface EvalCommit {
 }
 
 /** One Bash call of the session and what it printed, in order. */
-export interface EvalStep {
+interface EvalStep {
   command: string;
   output: string;
 }
@@ -352,7 +352,7 @@ export function childEnv(env: Record<string, string | undefined>): Record<string
 }
 
 /** A command's exit code and stdout. */
-export interface EvalRun {
+interface EvalRun {
   code: number;
   out: string;
 }
