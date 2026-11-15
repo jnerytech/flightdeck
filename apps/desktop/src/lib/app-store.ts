@@ -10,6 +10,7 @@ import { z } from "zod";
 import { type ReleaseNotesResult, releaseNotes } from "@/features/appupdate/index.ts";
 import { sessionRecap } from "@/features/summary/index.ts";
 import { WORKSPACE_KEY, type Workspace } from "@/features/tabs/index.ts";
+import { relayWebhook } from "@/features/webhook/index.ts";
 import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
 import { Clock } from "../app/clock.ts";
 import {
@@ -49,11 +50,10 @@ import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import type { DeliveryRefusal } from "../features/vault/index.ts";
 import { I18n } from "../i18n/index.ts";
-import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
+import type { Platform } from "../platform/types.ts";
 import type { AppState, AppStoreOptions, GateRef, HostView } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
-import { hasFeature } from "./version.ts";
 
 export type { ReleaseNotesResult } from "@/features/appupdate/index.ts";
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
@@ -228,7 +228,7 @@ export class AppStore {
         copyText: (text) => this.system.copyText(text),
         today: () => this.today(),
         keyOf: (hostId, project) => this.projectList.keyOf(hostId, project),
-        relay: (request) => this.relayWebhook(request),
+        relay: (request) => relayWebhook(this.kernel, request),
         recap: (hostId, claudeSessionId, extra) =>
           this.sessionRecap(hostId, claudeSessionId, extra),
         roiChanged: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
@@ -625,26 +625,6 @@ export class AppStore {
 
   private keepUsage(): void {
     this.update({ vaultUsage: this.usage.list() });
-  }
-
-  /**
-   * Phase 30: posts a webhook through an online host that can (the URL goes there for this one use,
-   * over the vault's transport). A request the host refuses counts as a permanent 400.
-   */
-  private async relayWebhook(request: WebhookRequest): Promise<WebhookResponse> {
-    const host = this.state.hosts.find(
-      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "webhook", false),
-    );
-    if (!host) return { status: null, retryAfterMs: null };
-    try {
-      const result = await this.dispatch(host.id, "webhook.send", request);
-      return {
-        status: result.refused === null ? result.status : 400,
-        retryAfterMs: result.retryAfterMs,
-      };
-    } catch {
-      return { status: null, retryAfterMs: null };
-    }
   }
 
   /** Phase 30: the summary of a session of a host; null when the host cannot give one. */
