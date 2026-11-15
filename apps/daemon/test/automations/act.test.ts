@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import type { Automation } from "@flightdeck/protocol";
+import type { Automation, Issue } from "@flightdeck/protocol";
 import { type ActDeps, act } from "../../src/automations/act.ts";
 import type { AutomationEvent } from "../../src/automations/domain/event.ts";
 import { UNTRUSTED_MARK } from "../../src/kernel/index.ts";
 
 /** Records what `act` asks of the board, the auto-approver and the PR watch, in order. */
-function rig(opts: { claim?: string | null; startFails?: boolean } = {}) {
+function rig(opts: { claim?: string | null; startFails?: boolean; cardOfIssue?: string } = {}) {
   const calls: string[] = [];
   const messages: Array<{ cardId: string; text: string }> = [];
   const descriptions: string[] = [];
@@ -27,7 +27,7 @@ function rig(opts: { claim?: string | null; startFails?: boolean } = {}) {
         calls.push(`message ${cardId}`);
         messages.push({ cardId, text });
       },
-      cardForIssue: () => null,
+      cardForIssue: () => opts.cardOfIssue ?? null,
     },
     issues: { createCard: async () => ({ id: "from-issue" }) },
     autoApprove: {
@@ -67,9 +67,7 @@ describe("automations act: third-party content", () => {
     const sent = await act(outside.deps, auto({ type: "send_to_card" }), comment(true));
     expect(sent).toEqual({ status: "ok", detail: "sent to card c1" });
     expect(outside.messages[0]?.text.startsWith(`${UNTRUSTED_MARK}\n\n`)).toBe(true);
-    expect(outside.calls.at(-1)).toBe(
-      "suspend card:c1 third-party content sent by an automation",
-    );
+    expect(outside.calls.at(-1)).toBe("suspend card:c1 third-party content sent by an automation");
 
     const own = rig();
     await act(own.deps, auto({ type: "send_to_card" }), comment(false));
@@ -104,5 +102,18 @@ describe("automations act: third-party content", () => {
     const result = await act(deps, auto({ type: "send_to_card" }), comment(true));
     expect(result).toEqual({ status: "skipped", detail: "the PR watch is fixing it" });
     expect(calls).toEqual([]);
+  });
+
+  test("create_card makes the card of an issue once: an issue that already has one is skipped", async () => {
+    const issue = { ref: "#7", labels: ["bug"], external: true } as unknown as Issue;
+    const event: AutomationEvent = { type: "issue_label", projectId: "p1", issue };
+    const fresh = rig();
+    const made = await act(fresh.deps, auto({ type: "create_card" }), event);
+    expect(made).toEqual({ status: "ok", detail: "card from-issue" });
+
+    const taken = rig({ cardOfIssue: "c9" });
+    const skipped = await act(taken.deps, auto({ type: "create_card" }), event);
+    expect(skipped).toEqual({ status: "skipped", detail: "issue #7 already has card c9" });
+    expect(taken.calls).toEqual([]);
   });
 });
