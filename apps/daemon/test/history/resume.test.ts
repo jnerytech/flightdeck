@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Command } from "@flightdeck/protocol";
-import { HistoryIndexer, MAYBE_ACTIVE_MS } from "../../src/history/indexer.ts";
+import { HistoryIndexer } from "../../src/history/indexer.ts";
+import { MAYBE_ACTIVE_MS } from "../../src/history/queries.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, poll } from "../support/helpers.ts";
 import {

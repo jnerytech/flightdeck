@@ -12,17 +12,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/desktop/src/features/hosts/host-tabs.ts",
-    "to": "apps/desktop/src/features/shell/domain/workspace.ts",
-    "unresolvedTo": "@/features/shell/domain/workspace.ts",
-    "dependencyTypes": ["undetermined", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "desktop-no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/assistant/domain/paths.ts",
     "unresolvedTo": "../assistant/domain/paths.ts",
