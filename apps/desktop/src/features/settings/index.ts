@@ -3,6 +3,7 @@
  * (tray, autostart, global shortcut, update and preview switches). Another domain imports from
  * here, never a file inside.
  */
+
 export {
   AUTO_UPDATE_KEY,
   CLOSE_TO_TRAY_KEY,

@@ -6,16 +6,16 @@ import { ExternalView } from "@/features/sessions/external-session-view.tsx";
 import { rowRoute } from "@/features/sessions/index.ts";
 import type { Density, ThemeMode } from "@/features/shell/index.ts";
 import { useT } from "@/i18n/context";
-import type { Lang } from "@/i18n/index";
 import { LoadingState, Page } from "@/shared/layout/index.ts";
 import { lazyScreen } from "../app/lazy-screen.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
-import type { TopSession } from "../features/costs/page.tsx";
+import { costsOpener } from "../features/costs/ui.ts";
 import { NeedsYou } from "../features/needs-you/page.tsx";
 import { ManagedSession } from "../features/sessions/managed-session.tsx";
 import { NewSession } from "../features/sessions/new-session.tsx";
 import { SessionTabs } from "../features/sessions/session-tabs.tsx";
 import { StartScreen } from "../features/sessions/start-screen.tsx";
+import { settingsActions } from "../features/settings/ui.ts";
 import { SetupPage } from "../features/setup/page.tsx";
 import { TerminalPage } from "../features/terminal/ui.ts";
 import type { AppState, AppStore, PendingItem } from "../lib/app-store.ts";
@@ -106,48 +106,6 @@ export interface ScreenProps {
   go(route: Route): void;
   /** A request from the Precisa de você screen: its session, card or terminal view. */
   onOpenRequest(item: PendingItem): void;
-}
-
-/**
- * Props that are functions keep their identity between renders, so the `memo` of the page they go
- * to holds: one set per store, one opener per `go`.
- */
-const SETTINGS_ACTIONS = new WeakMap<AppStore, ReturnType<typeof makeSettingsActions>>();
-function makeSettingsActions(store: AppStore) {
-  return {
-    onCloseToTray: (enabled: boolean) => void store.settings.setCloseToTray(enabled),
-    onAutostart: (enabled: boolean) => void store.settings.setAutostart(enabled),
-    onGlobalShortcut: (text: string) => void store.settings.setGlobalShortcut(text),
-    onCheckUpdate: () => store.appUpdates.check(),
-    onNotifyUpdates: (enabled: boolean) => store.settings.setNotifyUpdates(enabled),
-    onAutoUpdate: (enabled: boolean) => store.settings.setAutoUpdate(enabled),
-    onTheme: (mode: ThemeMode) => store.theme.setMode(mode),
-    onDensity: (density: Density) => store.density.set(density),
-    onLang: (next: Lang) => store.i18n.setLang(next),
-  };
-}
-function settingsActions(store: AppStore) {
-  const known = SETTINGS_ACTIONS.get(store);
-  if (known) return known;
-  const actions = makeSettingsActions(store);
-  SETTINGS_ACTIONS.set(store, actions);
-  return actions;
-}
-
-type OpenCostSession = (hostId: string, session: TopSession) => void;
-const COSTS_OPENERS = new WeakMap<(route: Route) => void, OpenCostSession>();
-function costsOpener(go: (route: Route) => void): OpenCostSession {
-  let opener = COSTS_OPENERS.get(go);
-  if (!opener) {
-    opener = (hostId, session) =>
-      go(
-        session.sessionId
-          ? { name: "session", host: hostId, id: session.sessionId }
-          : { name: "reader", target: { hostId, claudeSessionId: session.claudeSessionId } },
-      );
-    COSTS_OPENERS.set(go, opener);
-  }
-  return opener;
 }
 
 /** What a screen shows instead of itself while it cannot open: the wait, or why it cannot. */
