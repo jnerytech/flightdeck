@@ -1,12 +1,4 @@
-import {
-  memo,
-  type ReactNode,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/ui.ts";
@@ -28,6 +20,7 @@ import { WebhooksSection } from "../webhook/ui.ts";
 import { AppearanceSection, check } from "./appearance-section.tsx";
 import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
+import { WindowSection } from "./window-section.tsx";
 
 /** One block of the screen: its name on the rail, the words it answers to in the search, and its content. */
 interface SettingsSection {
@@ -69,11 +62,6 @@ export const Settings = memo(function Settings(props: {
   const { store } = props;
   const state = useStoreSlice(store, SETTINGS_KEYS);
   const { t } = props;
-  const autostartHint = useId();
-  const setupHidden = useSyncExternalStore(
-    props.store.setup.subscribe,
-    () => props.store.setup.hidden,
-  );
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
@@ -121,47 +109,13 @@ export const Settings = memo(function Settings(props: {
       label: t("prefs.window"),
       words: t("settingsRail.words.window"),
       node: (
-        <Panel title={t("prefs.window")}>
-          <label className={check}>
-            <input
-              type="checkbox"
-              checked={settings.closeToTray}
-              onChange={(e) => props.onCloseToTray(e.target.checked)}
-            />
-            {t("prefs.closeToTray")}
-          </label>
-          <label className={check}>
-            <input
-              type="checkbox"
-              checked={settings.autostart}
-              disabled={!settings.autostartSupported}
-              aria-describedby={settings.autostartSupported ? undefined : autostartHint}
-              onChange={(e) => props.onAutostart(e.target.checked)}
-            />
-            {t("prefs.autostart")}
-          </label>
-          {!settings.autostartSupported && (
-            <small id={autostartHint} className="setting-hint">
-              {t("prefs.unavailable")}
-            </small>
-          )}
-          <label className={check}>
-            <input
-              type="checkbox"
-              checked={!setupHidden}
-              onChange={(e) => props.store.setup.setHidden(!e.target.checked)}
-            />
-            {t("setup.restore")}
-          </label>
-          <label className={check}>
-            <input
-              type="checkbox"
-              checked={settings.teleportPreview}
-              onChange={(e) => props.store.settings.setTeleportPreview(e.target.checked)}
-            />
-            {t("teleportUi.preview")}
-          </label>
-        </Panel>
+        <WindowSection
+          store={props.store}
+          settings={settings}
+          t={t}
+          onCloseToTray={props.onCloseToTray}
+          onAutostart={props.onAutostart}
+        />
       ),
     },
     {
