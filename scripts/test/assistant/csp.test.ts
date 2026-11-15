@@ -33,7 +33,7 @@ const COMMANDS = [
   "oauth_loopback_listen",
   "oauth_loopback_wait",
   "oauth_loopback_cancel",
-  "open_result",
+  "open_result::open_result",
   "append_log",
   "read_log_tail",
   "open_logs_dir",
