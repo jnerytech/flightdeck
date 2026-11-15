@@ -1,6 +1,6 @@
 import type { TeamInfo, TeamStatus } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +13,7 @@ import { Input } from "@/components/ui/input";
 import type { PermissionChoice } from "@/features/personas/index.ts";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Form, FormActions } from "@/shared/layout/index.ts";
-import { refusalText } from "../../i18n/errors.ts";
-import type { AppStore, HostResult } from "../../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 import {
   confirmCopy,
   type EffortChoice,
@@ -25,27 +24,7 @@ import { NewMember } from "./new-member.tsx";
 import { TeamMemberRow } from "./team-member-row.tsx";
 import { TeamOutcome } from "./team-outcome.tsx";
 import { useModes } from "./use-modes.ts";
-
-/** Where the focus goes once an action's answer is on screen, as the control pressed may be gone (#2650). */
-type AfterFocus = "pause" | "resume" | "row" | "add" | { gone: string; next: string | null };
-
-/** The element the focus goes to, or null while the answer has not reached the row yet. */
-function focusTarget(
-  row: HTMLElement | null,
-  focus: AfterFocus,
-  team: TeamInfo,
-): HTMLElement | null {
-  if (!row) return null;
-  const control = (action: string) => row.querySelector<HTMLElement>(`[data-action="${action}"]`);
-  if (focus === "row") return row;
-  if (typeof focus === "string") return control(focus);
-  // A removed worker's row is gone once the host's answer is in the list.
-  if (team.members.some((m) => m.name === focus.gone)) return null;
-  const next = Array.from(row.querySelectorAll<HTMLElement>("[data-member]")).find(
-    (el) => el.dataset.member === focus.next,
-  );
-  return next ?? control("add");
-}
+import { useTeamActions } from "./use-team-actions.ts";
 
 /** One team with its members and its controls. */
 export function Team(
@@ -63,11 +42,13 @@ export function Team(
 ) {
   const { store, hostId, team } = props;
   const { t } = store.i18n;
-  const [text, setText] = useState("");
-  /** What the last action did, or why the host refused it: a polite line, not silence (#2650). */
-  const [notice, setNotice] = useState<{ text: string; refused: boolean } | null>(null);
-  const [focus, setFocus] = useState<AfterFocus | null>(null);
-  const rowRef = useRef<HTMLLIElement>(null);
+  const { rowRef, text, setText, notice, act, sendAll, runConfirmed } = useTeamActions({
+    store,
+    hostId,
+    team,
+    onChanged: props.onChanged,
+    onDeleted: props.onDeleted,
+  });
   const [adding, setAdding] = useState(false);
   /** A worker set to Bypass waits here for the person's yes. */
   const [bypassing, setBypassing] = useState<{
@@ -95,74 +76,7 @@ export function Team(
       { text: t("teamsUi.done.added", { name: team.name }), focus: "add" },
     );
   };
-  /** A text a worker took is sent; one every worker refused stays, to be sent again. */
-  const sending = useRef(false);
-  const sendAll = async () => {
-    if (!text.trim() || sending.current) return;
-    sending.current = true;
-    try {
-      const result = await store.hostCommand(hostId, "teams.message", { team: team.id, text });
-      if (!result) return;
-      setNotice({ text: t("teamsUi.sentAll", result), refused: result.delivered === 0 });
-      if (result.delivered >= 1) setText("");
-    } finally {
-      sending.current = false;
-    }
-  };
-  /** Runs a team command and says what came of it; `focus` is where the focus goes after it. */
-  const act = async (
-    command: Promise<HostResult<TeamInfo>>,
-    done: { text: string; focus?: AfterFocus; gone?: boolean },
-  ) => {
-    setNotice(null);
-    const result = await command;
-    if (!result.ok) {
-      const reason = refusalText(result.code, result.message, t, result);
-      setNotice({ text: t("teamsUi.refused", { reason }), refused: true });
-      return false;
-    }
-    props.onChanged(result.data);
-    if (done.gone) props.onDeleted(done.text);
-    else setNotice({ text: done.text, refused: false });
-    if (done.focus) setFocus(done.focus);
-    return true;
-  };
-  // The closing dialog hands the focus back in a timeout of its own: this one comes after it.
-  useEffect(() => {
-    if (!focus) return;
-    const target = focusTarget(rowRef.current, focus, team);
-    if (!target) return;
-    const timer = setTimeout(() => {
-      target.focus();
-      setFocus(null);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [focus, team]);
   const copy = confirm ? confirmCopy(confirm, team.name, t) : null;
-  const runConfirmed = (c: TeamConfirm) => {
-    const name = { name: team.name };
-    if (c.kind === "close") {
-      return act(store.hostRequest(hostId, "teams.close", { team: team.id, confirm: true }), {
-        text: t("teamsUi.done.closed", name),
-        focus: "row",
-      });
-    }
-    if (c.kind === "delete") {
-      return act(store.hostRequest(hostId, "teams.delete", { team: team.id }), {
-        text: t("teamsUi.done.deleted", name),
-        gone: true,
-      });
-    }
-    const workers = team.members.filter((m) => m.role === "worker");
-    const next = workers[workers.findIndex((m) => m.name === c.member) + 1]?.name ?? null;
-    return act(
-      store.hostRequest(hostId, "teams.update", { team: team.id, removeMember: c.member }),
-      {
-        text: t("teamsUi.done.removed", { name: c.label ?? c.member }),
-        focus: { gone: c.member, next },
-      },
-    );
-  };
   const reportOf = (name: string) =>
     props.status?.members.find((m) => m.name === name)?.lastReport ?? null;
   const rowClass = `flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring${props.focused ? " ring-2 ring-ring" : ""}`;
