@@ -9,7 +9,8 @@ import {
   telemetryEnv,
   wrapperTelemetryEnv,
 } from "../../src/telemetry/domain/env.ts";
-import { type OtlpEvent, startOtlpReceiver } from "../../src/telemetry/otlp.ts";
+import type { OtlpEvent } from "../../src/telemetry/domain/otlp-decode.ts";
+import { startOtlpReceiver } from "../../src/telemetry/otlp.ts";
 import {
   installTelemetry,
   telemetryConflicts,

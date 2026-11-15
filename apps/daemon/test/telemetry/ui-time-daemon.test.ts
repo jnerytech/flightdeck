@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import type { OtlpEvent } from "../../src/telemetry/otlp.ts";
+import type { OtlpEvent } from "../../src/telemetry/domain/otlp-decode.ts";
 import { TelemetryStore } from "../../src/telemetry/store.ts";
 import { BASELINE_FEATURES, newManager } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";

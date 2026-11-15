@@ -4,7 +4,8 @@ import { z } from "zod";
 import { TELEMETRY_FILE } from "../central/index.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { type Logger, parseJsonOr, writeFileAtomic } from "../kernel/index.ts";
-import { type OtlpEvent, startOtlpReceiver } from "./otlp.ts";
+import type { OtlpEvent } from "./domain/otlp-decode.ts";
+import { startOtlpReceiver } from "./otlp.ts";
 
 export interface TelemetryOptions {
   config: Config;
