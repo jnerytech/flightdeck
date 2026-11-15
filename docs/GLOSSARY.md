@@ -203,6 +203,7 @@ test's baseline, with the issue that renames them.
 | `plugins` | plugin | Claude Code plugins of the host, through the `claude plugin` CLI |
 | `power` | keep awake | Keeps the computer awake while sessions run |
 | `pr` | PR provider | What every PR host has in common: the `PrProvider` port and its answers, the CLI runner for `gh` and `az`, the safe text of their arguments and the reading of what they answer (#1612) |
+| `pr-hosts` | PR hosts | The providers a project's PR host setting names: GitHub through `gh` and Azure DevOps through `az` (its JSON read and its PR URL checked before they reach `az`), and the detection of the host from the project's `origin` remote (#1589) |
 | `projects` | project | The projects of a host: add, find and start from GitHub, the sidebar tree, the Projects and Project screens, the overview and the session tiles |
 | `publish` | publish | What takes a change from a repository to a pull request: a commit of a few files on a new branch through a temporary index, the push, the PR opened through the provider and the check that no secret goes public in its title or body (#1589) |
 | `quota` | quota | The plan's 5-hour and 7-day windows and the queue they hold |

@@ -5,6 +5,5 @@
  */
 
 export { closingLine, parseIssueRef } from "./domain/issue-ref.ts";
-export { azureCoords } from "./domain/remote.ts";
 export { Issues } from "./issues.ts";
 export { providerOfRef } from "./providers.ts";
