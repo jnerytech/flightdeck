@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
+import { runCardCli } from "../../src/board/card-cli.ts";
 import {
   type CardCliArgs,
   type CardCliResult,
   isLoopbackHost,
-  runCardCli,
-} from "../../src/board/card-cli.ts";
+} from "../../src/board/domain/card-cli-view.ts";
 import { poll } from "../support/helpers.ts";
 import {
   CLOSE,

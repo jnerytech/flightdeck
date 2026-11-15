@@ -18,7 +18,7 @@ import {
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import type { WebhookKind, WebhookType } from "./webhook-format.ts";
+import type { WebhookKind, WebhookType } from "./domain/webhook-format.ts";
 import { type WebhookTarget, WebhookTargetError } from "./webhook-targets.ts";
 
 const HOSTS = ["hosts"] as const;
