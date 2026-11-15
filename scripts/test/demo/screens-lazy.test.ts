@@ -33,7 +33,7 @@ const LAZY_SCREENS = [
 ];
 
 /**
- * Where route-screens.tsx loads a lazy screen from (#1597): a screen that moved into its feature folder
+ * Where the route files load a lazy screen from (#1597): a screen that moved into its feature folder
  * is `features/<name without "Page", lowercased>/page.tsx`, or in the plural folder (`HostPage` is
  * in `features/hosts`); a screen that is a file of its domain, not its `page.tsx`, is named in
  * `FILE_OF`; the rest are still `app/<name>.tsx`. Looking at the disk means a move into a
@@ -80,6 +80,9 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
       "route-screens.tsx",
       "host-screens.tsx",
       "filtered-screen.tsx",
+      "board-routes.tsx",
+      "page-routes.tsx",
+      "session-routes.tsx",
       "App.tsx",
       "../features/shell/sidebar.tsx",
     ].map((file) => resolve(APP, file));
@@ -92,9 +95,17 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
     expect(eager).toEqual([]);
   });
 
-  test("route-screens.tsx, host-screens.tsx and filtered-screen.tsx load each of them with import() inside React.lazy", () => {
-    const source =
-      read("route-screens.tsx") + read("host-screens.tsx") + read("filtered-screen.tsx");
+  test("the route files load each of them with import() inside React.lazy", () => {
+    const source = [
+      "route-screens.tsx",
+      "host-screens.tsx",
+      "filtered-screen.tsx",
+      "board-routes.tsx",
+      "page-routes.tsx",
+      "session-routes.tsx",
+    ]
+      .map(read)
+      .join("");
     for (const name of LAZY_SCREENS) {
       expect(source).toContain(`import("${specifierOf(name)}")`);
     }
