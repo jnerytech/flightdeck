@@ -10,8 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { T } from "../../i18n/index.ts";
-import type { Lacking } from "./domain/board-contracts.ts";
-import { needsText } from "./needs-badge.tsx";
+import { type Lacking, needsText } from "./domain/board-contracts.ts";
 
 /**
  * The one question before a person's move to a column that asks for something (issue #78): who
