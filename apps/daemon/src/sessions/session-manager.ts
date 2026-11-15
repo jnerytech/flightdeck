@@ -33,7 +33,6 @@ import {
   PermissionBroker,
   type Risk,
   RiskClassifier,
-  summarizeInput,
   writeTarget,
 } from "../permissions/index.ts";
 import { clampPermissionMode } from "../personas/domain/model.ts";
@@ -45,6 +44,7 @@ import { folderRemoving } from "../worktrees/index.ts";
 import { ActivityClock, type ToolNote } from "./domain/activity-clock.ts";
 import { interruptedSessions, RESTART_REASON } from "./domain/interrupted.ts";
 import type { QuietInfo } from "./domain/stall.ts";
+import { pendingView, summaryEvent, withQuiet, withSleep } from "./domain/summary-view.ts";
 import type { SessionManagerOptions } from "./session-options.ts";
 import { type LiveSession, SessionRuns } from "./session-runs.ts";
 
@@ -177,12 +177,9 @@ export class SessionManager {
   }
 
   list(): SessionSummary[] {
-    return this.store.listSessions().map((s) => this.withQuiet(this.withSleep(s)));
-  }
-
-  private withQuiet(session: SessionSummary): SessionSummary {
-    const quiet = this.quiet.get(session.id);
-    return quiet ? { ...session, quietSince: quiet.since, quietTool: quiet.tool } : session;
+    return this.store
+      .listSessions()
+      .map((s) => withQuiet(withSleep(s, this.live.has(s.id)), this.quiet.get(s.id)));
   }
 
   /** Issue #1478: when the session last did anything and the tool it has open. */
@@ -200,30 +197,15 @@ export class SessionManager {
     this.emitSummary(sessionId);
   }
 
-  /** Idle with no process is asleep: the daemon put it to sleep, or a restart left it so. */
-  private withSleep(session: SessionSummary): SessionSummary {
-    return { ...session, asleep: session.status === "idle" && !this.live.has(session.id) };
-  }
-
   /** Open permission requests of a session, oldest first, as its summaries list them. */
   pendingPermissions(sessionId: string): PendingPermission[] {
     // A request the host is still wording (phase 33) is not announced yet, so it is not listed yet.
     return this.store
       .pendingPermissions(sessionId)
       .filter((p) => this.broker.isAnnounced(p.id))
-      .map((p) => {
-        const risk = this.classify(sessionId, p.toolName, p.input);
-        const plain = this.broker.plainOf(p.id);
-        return {
-          requestId: p.id,
-          toolName: p.toolName,
-          createdAt: p.createdAt,
-          input: summarizeInput(p.input),
-          risk: risk.level,
-          riskReason: risk.reason,
-          ...(plain ? { plain } : {}),
-        };
-      });
+      .map((p) =>
+        pendingView(p, this.classify(sessionId, p.toolName, p.input), this.broker.plainOf(p.id)),
+      );
   }
 
   /** A request's risk, against the session's cwd. */
@@ -249,7 +231,7 @@ export class SessionManager {
         "session_not_found",
         { id: sessionId },
       );
-    return this.withSleep(session);
+    return withSleep(session, this.live.has(session.id));
   }
 
   /**
@@ -558,19 +540,13 @@ export class SessionManager {
   /** Ephemeral: the store does not persist it and stamps it with the last persisted seq. */
   private summaryEnvelope(sessionId: string): EventEnvelope {
     const session = this.get(sessionId);
-    const quiet = this.quiet.get(sessionId);
-    return this.store.appendEvent(sessionId, {
-      type: "session.summary",
+    return this.store.appendEvent(
       sessionId,
-      name: session.name,
-      cwd: session.cwd,
-      status: session.status,
-      pendingPermissions: this.pendingPermissions(sessionId),
-      updatedAt: session.updatedAt,
-      ...(session.runtime === "opencode" ? { runtime: "opencode" as const } : {}),
-      ...(this.isStale(sessionId) ? { trustStale: true as const } : {}),
-      ...(quiet ? { quietSince: quiet.since, quietTool: quiet.tool } : {}),
-    });
+      summaryEvent(session, this.pendingPermissions(sessionId), {
+        stale: this.isStale(sessionId),
+        quiet: this.quiet.get(sessionId),
+      }),
+    );
   }
 
   private isStale(sessionId: string): boolean {
