@@ -23,7 +23,7 @@ const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 export function ProjectsOverview(
   props: Readonly<{
     store: AppStore;
-    state: Pick<AppState, "projects" | "cards"> & HubRowState;
+    state: Pick<AppState, "projects" | "cards" | "hosts"> & Omit<HubRowState, "hosts">;
     onOpen(card: ProjectCard): void;
     /** A project was added from here (issue #931): the screen goes to it. */
     onAdded?(hostId: string, project: Project): void;

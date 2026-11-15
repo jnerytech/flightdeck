@@ -19,6 +19,7 @@ import {
   whichOnPath,
 } from "../kernel/index.ts";
 import { describeCommands, type SdkSlashCommand } from "./domain/commands.ts";
+import { CompleteCutShort } from "./domain/complete-cut-short.ts";
 import type { FlightdeckMcpServer } from "./domain/flightdeck-mcp.ts";
 import { normalizeSdkMessage } from "./domain/sdk-events.ts";
 import type {
@@ -133,16 +134,6 @@ async function readAnswer(
     }
   }
   return null;
-}
-
-/** Issue #1439: a one-shot call cut short (turns or budget), with what it used, so the cost counts. */
-export class CompleteCutShort extends FlightdeckError {
-  constructor(
-    subtype: string,
-    readonly tokens: UsageTokens,
-  ) {
-    super("invalid_state", `cut short: ${subtype}`, "assistant_truncated");
-  }
 }
 
 /** What a failed one-shot stands for: our own refusals pass, a cancel is a cancel, the rest is the host. */

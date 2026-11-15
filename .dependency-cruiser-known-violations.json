@@ -34,31 +34,9 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/board/types.ts",
-    "to": "apps/daemon/src/workflows/check-runner.ts",
-    "unresolvedTo": "../workflows/check-runner.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/assistant/domain/paths.ts",
     "unresolvedTo": "../assistant/domain/paths.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/card-review.ts",
-    "to": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
-    "unresolvedTo": "../runtime/claude-sdk-runtime.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
