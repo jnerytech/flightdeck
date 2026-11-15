@@ -2,6 +2,8 @@
  * The app's own update, public entry in the app (#1589, #1596): the check, the download in the
  * background, the install and the one on quit. Another domain imports from here, never a file inside.
  */
+
+export { type ReleaseNotesResult, releaseNotes } from "./release-notes.ts";
 export {
   AppUpdateSlice,
   type AppUpdateState,
