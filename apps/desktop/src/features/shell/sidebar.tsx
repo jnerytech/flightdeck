@@ -26,8 +26,9 @@ import { activeNav } from "./domain/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "./domain/nav-badges.ts";
 import { pendingCount } from "./domain/pending-count.ts";
 import { SidebarFoot } from "./sidebar-foot.tsx";
+import { SidebarGroups } from "./sidebar-groups.tsx";
 import { HostsList, ITEM } from "./sidebar-hosts.tsx";
-import { NavButton, NavGroup, NavIcon } from "./sidebar-nav.tsx";
+import { NAV_ICON, NavButton, NavGroup, NavIcon } from "./sidebar-nav.tsx";
 
 /** A section title that folds its list. */
 function SectionTitle(
@@ -181,10 +182,6 @@ export function Sidebar(
   /** The host whose removal is being confirmed. */
   const [removing, setRemoving] = useState<HostView | null>(null);
   const [renaming, setRenaming] = useState<HostView | null>(null);
-  const icon = "size-4 shrink-0";
-  const needHost = (build: (hostId: string) => Route) => () => {
-    if (navHost) go(build(navHost.id));
-  };
 
   /** The host whose page is open. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
@@ -259,14 +256,14 @@ export function Sidebar(
             )}
             <NavButton
               collapsed={collapsed}
-              icon={<NavIcon name="overview" aria-hidden="true" className={icon} />}
+              icon={<NavIcon name="overview" aria-hidden="true" className={NAV_ICON} />}
               active={here === "overview"}
               label={t("nav.overview")}
               onClick={() => go({ name: "overview" })}
             />
             <NavButton
               collapsed={collapsed}
-              icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
+              icon={<NavIcon name="sessions" aria-hidden="true" className={NAV_ICON} />}
               active={here === "sessions"}
               label={t("sidebar.sessions")}
               name={t("sidebar.openSessions")}
@@ -274,7 +271,7 @@ export function Sidebar(
             />
             <NavButton
               collapsed={collapsed}
-              icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
+              icon={<NavIcon name="needs-you" aria-hidden="true" className={NAV_ICON} />}
               active={here === "needs-you"}
               strong={pending > 0}
               attention={pending > 0}
@@ -298,7 +295,7 @@ export function Sidebar(
                 trigger={
                   <NavButton
                     collapsed={collapsed}
-                    icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
+                    icon={<NavIcon name="projects" aria-hidden="true" className={NAV_ICON} />}
                     active={here === "projects"}
                     label={t("sidebar.projects")}
                     opens={{ expanded: projectsOpen }}
@@ -323,7 +320,7 @@ export function Sidebar(
             ) : (
               <NavButton
                 collapsed={collapsed}
-                icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
+                icon={<NavIcon name="projects" aria-hidden="true" className={NAV_ICON} />}
                 active={here === "projects"}
                 label={t("sidebar.projects")}
                 onClick={() => go({ name: "all-projects" })}
@@ -341,7 +338,7 @@ export function Sidebar(
             )}
             <NavButton
               collapsed={collapsed}
-              icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
+              icon={<NavIcon name="board" aria-hidden="true" className={NAV_ICON} />}
               active={here === "board"}
               label={t("sidebar.board")}
               disabled={!navHost}
@@ -349,125 +346,24 @@ export function Sidebar(
             />
             <NavButton
               collapsed={collapsed}
-              icon={<NavIcon name="pull-requests" aria-hidden="true" className={icon} />}
+              icon={<NavIcon name="pull-requests" aria-hidden="true" className={NAV_ICON} />}
               active={here === "pull-requests"}
               label={t("sidebar.pullRequests")}
               onClick={() => go({ name: "pull-requests" })}
             />
           </NavGroup>
-          <NavGroup
-            label={t("sidebarGroups.automation")}
+          <SidebarGroups
+            hosts={state.hosts}
+            navHostId={navHost?.id}
+            here={here}
+            t={t}
             collapsed={collapsed}
-            folded={folded.includes("automation")}
-            onToggle={() => toggle("automation")}
-          >
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="workflows" aria-hidden="true" className={icon} />}
-              active={here === "workflows"}
-              label={t("sidebar.workflows")}
-              disabled={!navHost}
-              onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
-            />
-            {anyHostHas(state.hosts, "teams") && (
-              <NavButton
-                collapsed={collapsed}
-                icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
-                active={here === "teams"}
-                label={t("sidebar.teams")}
-                badge={badgeOf("teams")}
-                onClick={() => go({ name: "teams" })}
-              />
-            )}
-            {/* Hosts from phase 21 carry messages between sessions. */}
-            {anyHostHas(state.hosts, "messaging") && (
-              <NavButton
-                collapsed={collapsed}
-                icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
-                active={here === "conversations"}
-                label={t("sidebar.conversations")}
-                badge={badgeOf("conversations")}
-                onClick={() => go({ name: "conversations" })}
-              />
-            )}
-          </NavGroup>
-          <NavGroup
-            label={t("sidebarGroups.observability")}
-            collapsed={collapsed}
-            folded={folded.includes("observability")}
-            onToggle={() => toggle("observability")}
-          >
-            {/* Hosts from phase 8 on read their costs from the transcripts. */}
-            {anyHostHas(state.hosts, "costs") && (
-              <NavButton
-                collapsed={collapsed}
-                icon={<NavIcon name="costs" aria-hidden="true" className={icon} />}
-                active={here === "costs"}
-                label={t("sidebar.costs")}
-                onClick={() => go({ name: "costs" })}
-              />
-            )}
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="activity" aria-hidden="true" className={icon} />}
-              active={here === "activity"}
-              label={t("sidebar.activity")}
-              onClick={() => go({ name: "activity" })}
-            />
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
-              active={here === "history"}
-              label={t("sidebar.history")}
-              disabled={!navHost}
-              onClick={needHost((host) => ({ name: "history", host }))}
-            />
-          </NavGroup>
-          <NavGroup
-            label={t("sidebarGroups.library")}
-            collapsed={collapsed}
-            folded={folded.includes("library")}
-            onToggle={() => toggle("library")}
-          >
-            {/* Hosts from phase 20 keep engineering personas. */}
-            {anyHostHas(state.hosts, "personas") && (
-              <NavButton
-                collapsed={collapsed}
-                icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
-                active={here === "personas"}
-                label={t("sidebar.personas")}
-                onClick={() => go({ name: "personas" })}
-              />
-            )}
-            {/* Hosts from phase 18 keep saved commands and prompts. */}
-            {anyHostHas(state.hosts, "snippets") && (
-              <NavButton
-                collapsed={collapsed}
-                icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
-                active={here === "snippets"}
-                label={t("sidebar.snippets")}
-                onClick={() => go({ name: "snippets" })}
-              />
-            )}
-            {/* Hosts from phase 26 keep Claude Code's plugins. */}
-            {anyHostHas(state.hosts, "plugins") && (
-              <NavButton
-                collapsed={collapsed}
-                icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
-                active={here === "plugins"}
-                label={t("sidebar.plugins")}
-                onClick={() => go({ name: "plugins" })}
-              />
-            )}
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
-              active={here === "vault"}
-              label={t("sidebar.vault")}
-              chevron
-              onClick={() => go({ name: "vault" })}
-            />
-          </NavGroup>
+            folded={folded}
+            onToggle={toggle}
+            go={go}
+            onOpenProjectScreen={props.onOpenProjectScreen}
+            badgeOf={badgeOf}
+          />
         </nav>
 
         <div data-slot="sidebar-hosts" className="sidebar-hosts">
@@ -498,7 +394,7 @@ export function Sidebar(
             {anyHostHas(state.hosts, "ssh") && (
               <NavButton
                 collapsed={collapsed}
-                icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}
+                icon={<NavIcon name="connections" aria-hidden="true" className={NAV_ICON} />}
                 active={here === "connections"}
                 label={t("sidebar.connections")}
                 onClick={() => go({ name: "connections" })}
