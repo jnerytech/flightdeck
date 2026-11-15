@@ -10,7 +10,8 @@ registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { UntrustedNotice } = await import("../../src/features/trust/untrusted-notice.tsx");
-const { ShortArea, SessionPane } = await import("../../src/features/sessions/parts.tsx");
+const { ShortArea } = await import("../../src/shared/layout/index.ts");
+const { SessionPane } = await import("../../src/features/sessions/parts.tsx");
 
 afterEach(() => cleanup());
 
