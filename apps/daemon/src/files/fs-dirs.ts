@@ -4,7 +4,7 @@ import { basename, dirname, join, sep } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { isInside, resolveAllowedCwd } from "../kernel/index.ts";
 
-export interface DirEntry {
+interface DirEntry {
   name: string;
   /** The real path: what `fs.dirs` takes again and what a session or project is created in. */
   path: string;
