@@ -23,6 +23,7 @@ import { type AssistantController, wireAssistant } from "../features/assistant/i
 import { type BudgetsSlice, localDay, wireBudgets } from "../features/costs/index.ts";
 import { HostLink, HostTabs, loadHosts, RequestError, saveHosts } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
+import type { Answer } from "../features/needs-you/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
 import { SessionViews, sessionKey } from "../features/sessions/index.ts";
@@ -36,7 +37,6 @@ import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import type {
-  Answer,
   AppState,
   AppStoreOptions,
   GateRef,
@@ -50,7 +50,6 @@ import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
 export type {
-  Answer,
   AppState,
   HistoryFilter,
   HostView,

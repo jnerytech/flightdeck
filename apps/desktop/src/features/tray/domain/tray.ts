@@ -1,7 +1,7 @@
 import type { PendingPermission } from "@flightdeck/protocol";
 import { type T, translator } from "../../../i18n/index.ts";
-import type { PendingItem } from "../../../lib/app-store.ts";
 import type { TrayMenu, TrayStatus } from "../../../platform/types.ts";
+import type { PendingItem } from "../../needs-you/index.ts";
 import { pendingText, pendingWhere } from "../../sessions/index.ts";
 
 /** Requests listed in the tray submenu; the rest become "e mais N…". */
