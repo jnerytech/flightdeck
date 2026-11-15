@@ -202,8 +202,11 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
   [
     "spawn arguments",
     [
-      /^apps\/daemon\/src\/actions\/domain\/free-command\.ts$/,
+      /^apps\/daemon\/src\/actions\/domain\/(?:free-command|ssh-command)\.ts$/,
+      /^apps\/daemon\/src\/central\/domain\/(?:claude-launch-args|hook-entries)\.ts$/,
       /^apps\/daemon\/src\/ssh\/domain\/ssh-argv\.ts$/,
+      /^apps\/daemon\/src\/teleport\/domain\/git-args\.ts$/,
+      /^apps\/daemon\/src\/terminal\/domain\/(?:launch-spec|shell)\.ts$/,
       /^apps\/daemon\/src\/watch\/domain\/check-command\.ts$/,
     ],
   ],
@@ -211,14 +214,17 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
   [
     "address or signature check",
     [
+      /^apps\/daemon\/src\/actions\/domain\/fingerprint\.ts$/,
+      /^apps\/daemon\/src\/projects\/domain\/clone-url\.ts$/,
       /^apps\/daemon\/src\/webhook\/domain\/(?:address|webhook-guard)\.ts$/,
       /^apps\/daemon\/src\/updates\/domain\/(?:signature|public-key)\.ts$/,
-      /^apps\/daemon\/src\/ssh\/domain\/known-hosts\.ts$/,
+      /^apps\/daemon\/src\/ssh\/domain\/(?:known-hosts|ssh-config)\.ts$/,
     ],
   ],
   [
     "path guard",
     [
+      /^apps\/daemon\/src\/history\/domain\/folder\.ts$/,
       /^apps\/daemon\/src\/projects\/domain\/system-folders\.ts$/,
       /^apps\/daemon\/src\/worktrees\/domain\/cleanup-rules\.ts$/,
     ],
