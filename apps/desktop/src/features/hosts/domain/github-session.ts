@@ -1,5 +1,5 @@
 import type { GithubStatusResult } from "@flightdeck/protocol";
-import { hostsWith } from "../../lib/version.ts";
+import { hostsWith } from "../../../lib/version.ts";
 
 /** What the sign-out list reads of the app's store and hosts, as plain shapes: the store and `HostView` satisfy them. */
 interface GithubStatusAsker {
