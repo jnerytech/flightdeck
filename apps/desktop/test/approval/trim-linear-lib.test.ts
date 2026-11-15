@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { projectCwd, projectLabel } from "../../src/features/costs/domain/usage-rows.ts";
-import { defaultRule } from "../../src/features/permissions/always-allow.tsx";
+import { defaultRule } from "../../src/features/permissions/domain/always-allow-rule.ts";
 import { modelName } from "../../src/features/sessions/domain/model-menu.ts";
 
 /**
