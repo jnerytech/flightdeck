@@ -70,8 +70,19 @@ const xmlEscape = (text: string) =>
  * One argument as the Windows C runtime reads it back: inside quotes, the backslashes before a `"`
  * and at the end are doubled and a `"` is escaped, so neither ends the argument early (#2895).
  */
-const windowsQuote = (arg: string) =>
-  `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
+function windowsQuote(arg: string): string {
+  let out = '"';
+  let slashes = 0;
+  for (const char of arg) {
+    if (char === "\\") {
+      slashes++;
+      continue;
+    }
+    out += char === '"' ? "\\".repeat(slashes * 2) + '\\"' : "\\".repeat(slashes) + char;
+    slashes = 0;
+  }
+  return `${out}${"\\".repeat(slashes * 2)}"`;
+}
 
 /** Windows command line: the executable always quoted, others when empty or with a space or quote. */
 const windowsCommandLine = (command: string[]) =>
@@ -356,6 +367,18 @@ function backslashRun(line: string, start: number): { text: string; toggle: bool
   };
 }
 
+/** One step of a Windows command line: its text, whether it flips the quotes, where it ends. */
+function readPiece(
+  line: string,
+  i: number,
+  quoted: boolean,
+): { text: string; toggle: boolean; end: number; space: boolean } {
+  const char = line[i] as string;
+  if (char === "\\") return { ...backslashRun(line, i), space: false };
+  if (char === '"') return { text: "", toggle: true, end: i + 1, space: false };
+  return { text: char, toggle: false, end: i + 1, space: !quoted && /\s/.test(char) };
+}
+
 /** Arguments of a Windows command line, read as the C runtime reads them (#2895). */
 function splitWindowsArgs(line: string): string[] {
   const args: string[] = [];
@@ -363,22 +386,15 @@ function splitWindowsArgs(line: string): string[] {
   let quoted = false;
   let i = 0;
   while (i < line.length) {
-    const char = line[i] as string;
-    if (char === "\\") {
-      const run = backslashRun(line, i);
-      arg = (arg ?? "") + run.text;
-      quoted = run.toggle ? !quoted : quoted;
-      i = run.end;
-      continue;
-    }
-    if (char === '"') quoted = !quoted;
-    if (/\s/.test(char) && !quoted) {
+    const piece = readPiece(line, i, quoted);
+    if (piece.space) {
       if (arg !== null) args.push(arg);
       arg = null;
     } else {
-      arg = (arg ?? "") + (char === '"' ? "" : char);
+      arg = (arg ?? "") + piece.text;
     }
-    i++;
+    if (piece.toggle) quoted = !quoted;
+    i = piece.end;
   }
   if (arg !== null) args.push(arg);
   return args;

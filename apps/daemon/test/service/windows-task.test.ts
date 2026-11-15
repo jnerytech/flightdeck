@@ -147,4 +147,18 @@ describe("tarefa-windows", () => {
       config: null,
     });
   });
+
+  test("a run of backslashes before a quote or at the end survives the task and its read back (#2950)", async () => {
+    const exe = "C:\\Program Files\\fd\\flightdeckd.exe";
+    const options = { user: "PC\\dev", systemRoot: "C:\\Windows" };
+    const runs = ['a\\\\"b c', 'a\\\\\\"b c', "a b\\\\\\", 'a\\\\"\\"b c\\\\'];
+    for (const config of runs) {
+      expect(await readBack(windowsTaskXml([exe], { ...options, config }))).toEqual({
+        command: [exe],
+        config,
+      });
+    }
+    const two = windowsTaskXml([exe], { ...options, config: 'a\\\\"b c' });
+    expect(two).toContain('start --config "a\\\\\\\\\\"b c"</Arguments>');
+  });
 });
