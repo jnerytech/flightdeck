@@ -12,40 +12,13 @@ import { dirname, join } from "node:path";
 import { Rewinder } from "../../src/checkpoints/rewind.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
-import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { git, gitRepo } from "../support/board-helpers.ts";
+import { cleanups, runCleanups, turnInRepo } from "../support/checkpoints-rewind.ts";
 import { newManager, poll, tempDir } from "../support/helpers.ts";
-import { FrameClient } from "../support/history-helpers.ts";
 
-const TOKEN = "rewind-token-0123456789abcdef";
+afterEach(runCleanups);
 const read = (path: string) => readFileSync(path, "utf8");
-
-const cleanups: Array<() => unknown> = [];
-afterEach(async () => {
-  for (const fn of cleanups.splice(0).reverse()) await fn();
-});
-
-/** A repo where turn 1 edits README, deletes .gitignore's neighbour and creates a file. */
-async function turnInRepo(sessions = { busy: () => false, rewindFiles: async () => null }) {
-  const store = new EventStore(":memory:");
-  cleanups.push(() => store.close());
-  const snapshots = new Snapshots({ db: store.db });
-  const { repo } = gitRepo();
-  writeFileSync(join(repo, "apagar.txt"), "vai sumir\n");
-  git(repo, "add", "apagar.txt");
-  git(repo, "commit", "-q", "-m", "apagar");
-  mkdirSync(join(repo, "node_modules"));
-  writeFileSync(join(repo, "node_modules", "lixo.js"), "ignorado\n");
-  const before = await snapshots.take({ cwd: repo, claudeSessionId: "s1", kind: "before" });
-  writeFileSync(join(repo, "README.md"), "# repo\nlinha nova\n");
-  writeFileSync(join(repo, "novo.txt"), "criado no turno\n");
-  rmSync(join(repo, "apagar.txt"));
-  await snapshots.take({ cwd: repo, claudeSessionId: "s1", kind: "after" });
-  const turn = "row" in before ? before.row.n : -1;
-  return { store, snapshots, repo, turn, rewinder: new Rewinder({ snapshots, sessions }) };
-}
-
 /** A repo where `before` runs, the `before` snapshot is taken, and then `after` runs. */
 async function turnWith(before: (repo: string) => void, after: (repo: string) => void) {
   const store = new EventStore(":memory:");
@@ -194,37 +167,6 @@ describe("rewind", () => {
       undefined,
       undefined,
     ]);
-  });
-
-  test("protocolo: rewind.preview, rewind.apply (com confirm) e rewind.undo", async () => {
-    const { rewinder, repo, turn, snapshots } = await turnInRepo();
-    const { manager } = newManager();
-    const server = startServer({
-      manager,
-      checkpoints: { snapshots, rewinder },
-      hostName: "h",
-      bind: "127.0.0.1",
-      port: 0,
-      token: TOKEN,
-      allowedRoots: [],
-    });
-    cleanups.push(() => server.stop());
-    const client = new FrameClient(server.url);
-    cleanups.push(() => client.close());
-    await client.request("hello", { token: TOKEN, client: "t" });
-    const preview = await client.data<{ via: string }>("rewind.preview", {
-      claudeSessionId: "s1",
-      turn,
-    });
-    expect(preview?.via).toBe("snapshot");
-    expect(await client.request("rewind.apply", { claudeSessionId: "s1", turn })).toMatchObject({
-      ok: false,
-      error: { code: "invalid_state" },
-    });
-    await client.data("rewind.apply", { claudeSessionId: "s1", turn, confirm: true });
-    expect(existsSync(join(repo, "novo.txt"))).toBe(false);
-    await client.data("rewind.undo", { claudeSessionId: "s1", confirm: true });
-    expect(existsSync(join(repo, "novo.txt"))).toBe(true);
   });
 });
 
