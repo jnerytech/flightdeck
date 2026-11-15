@@ -497,6 +497,11 @@ export class HostConnection {
     this.setStatus("offline");
   }
 
+  /** How many requests were sent and not answered yet. */
+  get inFlight(): number {
+    return this.pending.size;
+  }
+
   private sendSubscribe(sessionId: string): void {
     this.send("session.subscribe", { sessionId, sinceSeq: this.opts.lastSeqFor(sessionId) }).then(
       (result) => this.opts.onSubscribed(sessionId, result),

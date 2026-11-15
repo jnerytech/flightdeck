@@ -59,6 +59,18 @@ describe("desktop: conexão com o host", () => {
     conn.unsubscribe(sessionId);
   });
 
+  test("inFlight counts the requests sent and not answered yet", async () => {
+    const { listen } = daemon();
+    const { conn } = connect(listen().url);
+    await waitFor(() => conn.status === "online", "online");
+    const idle = conn.inFlight;
+    const first = conn.request("session.list", {});
+    const second = conn.request("session.list", {});
+    const sent = conn.inFlight;
+    await Promise.all([first, second]);
+    expect([idle, sent, conn.inFlight]).toEqual([0, 2, 0]);
+  });
+
   test("ack de erro rejeita com RequestError e o código", async () => {
     const { listen } = daemon();
     const { conn } = connect(listen().url);

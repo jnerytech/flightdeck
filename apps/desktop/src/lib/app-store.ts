@@ -488,6 +488,11 @@ export class AppStore {
     }
   }
 
+  /** How many requests to the host were sent and not answered yet (0 for an unknown host). */
+  hostInFlight(hostId: string): number {
+    return this.link.connection(hostId)?.inFlight ?? 0;
+  }
+
   /**
    * Like `hostCommand`, but a refusal comes back with its code and message instead of going to
    * the banner: for screens that explain it themselves (a file that changed, a merge conflict).
