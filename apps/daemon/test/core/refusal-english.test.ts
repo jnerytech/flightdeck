@@ -367,6 +367,7 @@ const MSGS5_FILES = [
   "sessions/domain/refusals.ts",
   "sessions/session-runs.ts",
   "runtime/claude-sdk-runtime.ts",
+  "runtime/claude-one-shot.ts",
   "plugins/plugins.ts",
   "plugins/domain/plugin-json.ts",
   "actions/actions.ts",

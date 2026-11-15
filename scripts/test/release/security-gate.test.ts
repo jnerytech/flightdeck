@@ -287,6 +287,21 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("the files that build a claude process's env and options are risky by path, so a change to what a one-shot or a session is started with needs a review (#1589)", () => {
+    const added = new Map(
+      [
+        "apps/daemon/src/runtime/claude-sdk-runtime.ts",
+        "apps/daemon/src/runtime/claude-one-shot.ts",
+        "apps/daemon/src/runtime/types.ts",
+        "apps/daemon/src/runtime/deeper/claude-one-shot.ts",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/runtime/claude-one-shot.ts", "claude process options"],
+      ["apps/daemon/src/runtime/claude-sdk-runtime.ts", "claude process options"],
+    ]);
+  });
+
   test("every file of the pr folder is a guard, so the merge and check logic stays under review wherever it lives (#3344)", () => {
     const added = new Map(
       [
