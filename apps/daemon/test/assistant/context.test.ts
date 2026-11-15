@@ -1,28 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { copyFileSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { SecretScanner } from "@flightdeck/protocol";
-import { type ContextDeps, extractRules, repoContext } from "../../src/assistant/context.ts";
+import { extractRules, repoContext } from "../../src/assistant/context.ts";
 import { workingDiff } from "../../src/git/diff.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { credential, isCredentialPath } from "../../src/permissions/domain/risk.ts";
 import { REMOVED_LINE } from "../../src/watch/domain/check-run.ts";
+import { deps } from "../support/assistant-context.ts";
 import { git, gitRepo } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const POSIX = process.platform !== "win32";
-
-/** Deps over a real repository; a card is a branch of it against `main`. */
-function deps(repo: string): ContextDeps {
-  return {
-    card: (cardId) => {
-      if (cardId !== "c1") throw new FlightdeckError("not_found", "no card", "card_not_found");
-      return { worktree: repo, base: "main" };
-    },
-    allowed: async (cwd) => cwd,
-    scanner: new SecretScanner(),
-  };
-}
 
 async function reason(promise: Promise<unknown>): Promise<unknown> {
   try {
