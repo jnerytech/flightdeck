@@ -4,7 +4,7 @@ import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/te
 import { git } from "../../daemon/test/support/board-helpers.ts";
 import { daemon as makeDaemon } from "./fixtures.ts";
 
-export const GH_REMOTE = "git@github.com:Acme/App.git";
+const GH_REMOTE = "git@github.com:Acme/App.git";
 
 /** An issue as `gh issue list --json` prints it. */
 export const ghIssue = (n: number, over: Record<string, unknown> = {}) => ({

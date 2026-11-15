@@ -63,7 +63,7 @@ const SNIPPETS_KEY = `${PREFIX}snippets`;
  * cache or something of this machine only (a path): it is never written by a restore, whatever
  * the file says.
  */
-export const BACKUP_SETTING_KEYS = [
+const BACKUP_SETTING_KEYS = [
   "theme",
   "lang",
   "density",

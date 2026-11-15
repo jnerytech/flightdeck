@@ -6,7 +6,7 @@ import { type StateTone, StatusDot } from "@/shared/status/index.ts";
 import type { PaletteItem, PaletteSection } from "./domain/palette.ts";
 
 /** How many recent entries take Alt+1… */
-export const ALT_KEYS = 6;
+const ALT_KEYS = 6;
 
 const STATE_TONE: Record<NonNullable<PaletteItem["stateKey"]>, StateTone> = {
   running: "running",

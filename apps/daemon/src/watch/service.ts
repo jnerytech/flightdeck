@@ -5,9 +5,9 @@ import type {
   WatchSettings,
   WatchUpdatedFrame,
 } from "@flightdeck/protocol";
-import type { Board } from "../board/index.ts";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { PrFixer } from "./fix.ts";
+import type { WatchBoard } from "./ports.ts";
 import type { Traces } from "./trace.ts";
 import type { PrWatcher } from "./watch.ts";
 
@@ -18,7 +18,7 @@ export class PrWatch {
 
   constructor(
     private readonly opts: {
-      board: Pick<Board, "getCard" | "getProject" | "onPrRound" | "moveCard">;
+      board: Pick<WatchBoard, "getCard" | "getProject" | "onPrRound" | "moveCard">;
       watcher: PrWatcher;
       fixer: PrFixer;
       traces: Traces;

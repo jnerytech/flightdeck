@@ -1,4 +1,4 @@
-import { type Card, type ContractOverrides, parsePairingLink } from "@flightdeck/protocol";
+import { parsePairingLink } from "@flightdeck/protocol";
 import {
   type ComponentProps,
   useCallback,
@@ -9,7 +9,7 @@ import {
 } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/ui.ts";
-import { projectContracts, useStartAsk } from "@/features/board/ui.ts";
+import { useStartAsk } from "@/features/board/ui.ts";
 import { SimpleApp } from "@/features/home/ui.ts";
 import { draftFromLink, pairingErrorText } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/ui.ts";
@@ -36,18 +36,11 @@ import { TContext } from "@/i18n/context";
 import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { preloadMarkdown } from "@/shared/markdown/index.ts";
 import { boardShortcut } from "../features/board/index.ts";
-import { type PaletteTarget, paletteRoute } from "../features/palette/index.ts";
+import type { PaletteTarget } from "../features/palette/index.ts";
 import { GlobalSearch } from "../features/palette/ui.ts";
-import {
-  type ChordState,
-  chordStep,
-  isMac,
-  NO_CHORD,
-  typing,
-} from "../features/shortcuts/index.ts";
+import { isMac } from "../features/shortcuts/index.ts";
 import { ShortcutsSheet } from "../features/shortcuts/ui.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
-import { tabIntent } from "../features/tabs/index.ts";
 import { TabSwitcherHost } from "../features/tabs/ui.ts";
 import { TerminalCloseDialog } from "../features/terminal/ui.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
@@ -55,238 +48,8 @@ import type { Route } from "../lib/router.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
-
-/** A card from an issue the palette named: by its full reference, else by its number in the project. */
-async function createFromIssue(
-  store: AppStore,
-  target: Extract<PaletteTarget, { kind: "create-card-issue" }>,
-) {
-  const issueRef =
-    target.ref ??
-    (target.id
-      ? (
-          await store.hostCommand(target.hostId, "issues.get", {
-            projectId: target.projectId,
-            id: target.id,
-          })
-        )?.ref
-      : undefined);
-  return issueRef
-    ? store.hostCommand(target.hostId, "issues.createCard", {
-        projectId: target.projectId,
-        issueRef,
-      })
-    : null;
-}
-
-/**
- * The tab shortcuts (Ctrl+T/W/Shift+T, Ctrl+Tab, Ctrl+1…9, Ctrl+Shift+PageUp/Down): true when the
- * key was one of them and has been handled.
- */
-function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
-  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  const action = tabAction(store, key, e.shiftKey);
-  action?.();
-  return action !== null;
-}
-
-/** What a key does among the tab shortcuts; null when it is none of them. */
-function tabAction(store: AppStore, key: string, shift: boolean): (() => void) | null {
-  const { tabs } = store;
-  const intent = tabIntent(key, shift);
-  if (!intent) return null;
-  switch (intent.kind) {
-    case "toggle-split":
-      return () => store.workspace.toggleSplit();
-    case "reopen":
-      return () => tabs.reopen();
-    case "new":
-      return () => {
-        store.openNewTab();
-        store.history.openSearch();
-      };
-    case "close":
-      return () => store.closeTab(tabs, tabs.activeId);
-    case "next-host":
-      return () => store.hostTabs.next();
-    case "previous-host":
-      return () => store.hostTabs.previous();
-    case "goto-host":
-      return () => store.hostTabs.goto(intent.n);
-    case "move":
-      return () => {
-        const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
-        tabs.move(tabs.activeId, index + intent.step);
-      };
-  }
-}
-
-/** Where each go-to chord leads. */
-const CHORD_ROUTES: Record<string, Route> = {
-  "go-sessions": { name: "hub" },
-  "go-needs-you": { name: "needs-you" },
-  "go-projects": { name: "all-projects" },
-  "go-costs": { name: "costs" },
-  "go-activity": { name: "activity" },
-  "go-settings": { name: "settings" },
-};
-
-/** Ctrl+K, the tab shortcuts, Alt+Shift+C and Alt+←/→: what the whole app answers to. */
-function windowShortcut(e: KeyboardEvent, store: AppStore): void {
-  const mod = e.ctrlKey || e.metaKey;
-  const key = e.key.toLowerCase();
-  if (mod && key === "k") {
-    e.preventDefault();
-    store.history.openSearch();
-  } else if (mod && tabShortcut(store, e)) {
-    e.preventDefault();
-  } else if (e.altKey && e.shiftKey && key === "c") {
-    e.preventDefault();
-    store.clientScope.next();
-  } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-    e.preventDefault();
-    if (e.key === "ArrowLeft") store.router.back();
-    else store.router.forward();
-  }
-}
-
-/** A key pressed anywhere in the window: simple mode, the go-to chords and `?`, then the shortcuts. */
-function appKey(
-  e: KeyboardEvent,
-  store: AppStore,
-  chord: { current: ChordState },
-  showHelp: () => void,
-): void {
-  // Ctrl+Shift+M: simple mode and the full app, when the host lets the person choose.
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
-    if (store.uiModes.toggle()) e.preventDefault();
-    return;
-  }
-  // The go-to chords and `?` (never while typing in a field).
-  const step = chordStep(
-    chord.current,
-    {
-      key: e.key,
-      ctrlKey: e.ctrlKey,
-      metaKey: e.metaKey,
-      altKey: e.altKey,
-      typing: typing(e.target),
-    },
-    Date.now(),
-  );
-  chord.current = step.state;
-  if (step.consumed) e.preventDefault();
-  if (step.action === "help") showHelp();
-  else {
-    const route = step.action ? CHORD_ROUTES[step.action] : undefined;
-    if (route) store.router.push(route);
-  }
-  windowShortcut(e, store);
-}
-
-/** An action of the palette that is not a screen: done in place, else the target's route. */
-export function runPaletteTarget(
-  store: AppStore,
-  target: PaletteTarget,
-  ui: {
-    lang: string;
-    go(route: Route): void;
-    showHelp(): void;
-    askStart(card: Card, contracts: ContractOverrides, go: () => void): void;
-    /** Runs `go` at once, or after asking when another terminal holds the conversation (#1705). */
-    guardLive(hostId: string, claudeSessionId: string | null, go: () => void): void;
-  },
-): void {
-  switch (target.kind) {
-    case "terminal":
-      ui.guardLive(target.hostId, target.target.claudeSessionId, () => {
-        if (store.terminals.embedded(target.hostId)) {
-          void store.terminals.openClaude(target.hostId, target.target);
-        } else void store.terminals.openIn(target.hostId, target.target);
-      });
-      return;
-    case "new-terminal":
-      void store.terminals.open(target.hostId);
-      return;
-    case "session-view":
-      store.sessionViews.select(target.view);
-      return;
-    case "toggle-theme":
-      store.theme.toggle();
-      return;
-    case "toggle-ui-mode":
-      store.uiModes.toggle();
-      return;
-    case "switch-language":
-      store.i18n.setLang(ui.lang === "pt-BR" ? "en" : "pt-BR");
-      return;
-    case "switch-client":
-      store.clientScope.select(target.clientId);
-      return;
-    case "snippet":
-      store.snippets.choose({ hostId: target.hostId, snippetId: target.snippetId });
-      return;
-    case "pull-link":
-      void store.prWatch.openLink(target.url).then((route) => {
-        if (route) ui.go(route);
-      });
-      return;
-    case "create-card": {
-      // Issue #147: text that matches no card becomes one in the project, and its board opens.
-      const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
-      void store
-        .hostCommand(target.hostId, "card.create", {
-          projectId: target.projectId,
-          title: target.title,
-          description: "",
-        })
-        .then((card) => {
-          if (card) ui.go(board);
-        });
-      return;
-    }
-    case "start-session": {
-      // Issue #1135: the typed text is the task; the mode and model are the form's last ones, and
-      // the persona the client defaults to for that folder, as on the form.
-      const { mode, model } = store.newSessionPrefs.value;
-      const persona = store.personas.ref(
-        store.clientScope.get().defaultPersona(target.hostId, target.cwd),
-      );
-      void store.commands.create(target.hostId, {
-        cwd: target.cwd,
-        prompt: target.prompt,
-        permissionMode: mode,
-        ...(model ? { model } : {}),
-        ...(persona ? { persona } : {}),
-      });
-      return;
-    }
-    case "create-card-issue": {
-      const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
-      void createFromIssue(store, target).then((card) => {
-        if (card) ui.go(board);
-      });
-      return;
-    }
-    case "start-card": {
-      // The same question as the card's own Start (issue #78): only where In progress confirms.
-      const start = () =>
-        void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
-      const card = store.getState().cards[`${target.hostId}/${target.cardId}`];
-      if (card) ui.askStart(card, projectContracts(store, target.hostId, card.projectId), start);
-      else start();
-      return;
-    }
-    case "shortcuts":
-      ui.showHelp();
-      return;
-    case "decide-oldest":
-      store.permissions.decideOldest(target.decision, target.key);
-      return;
-    default:
-      ui.go(paletteRoute(target));
-  }
-}
+import { runPaletteTarget } from "./run-palette-target.ts";
+import { useWindowKeys } from "./window-keys.ts";
 
 /** The sidebar as the shell asks for it: a function of whether the rail is folded. */
 const sidebarSlot =
@@ -313,10 +76,10 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const startAsk = useStartAsk({ t });
   /** The palette's terminal asks before a second `claude` on a conversation another terminal holds (#1736). */
   const liveAsk = useLiveElsewhereAsk(store);
-  // The `?` sheet, and the first key of a go-to chord waiting for its second.
+  // The `?` sheet.
   const [help, setHelp] = useState(false);
+  const showHelp = useCallback(() => setHelp(true), []);
   const [whatsNew, setWhatsNew] = useState(false);
-  const chord = useRef<ChordState>(NO_CHORD);
   // The status bar (issue #491): the terminal tabs open, and the plan usage asked again.
   const terminalTabs = useSyncExternalStore(store.hostTabs.subscribe, () =>
     terminalTabCount(store.workspace),
@@ -414,35 +177,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
     if (shortcutProblem) router.push({ name: "settings" });
   }, [shortcutProblem, router]);
 
-  // Ctrl+K inside the app only (as a global shortcut it would clash with browsers and VS Code);
-  // Alt+←/→ and the mouse's back and forward buttons walk the history.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => appKey(e, store, chord, () => setHelp(true));
-    // Ctrl+click and the middle button open what was clicked in a new tab: the navigation of
-    // that event goes to a new tab (the middle button fires no click, so it clicks for itself).
-    const onNewTab = (e: MouseEvent) => {
-      const middle = e.type === "auxclick";
-      if (middle ? e.button !== 1 : !(e.ctrlKey || e.metaKey)) return;
-      store.hostTabs.openNextInNewTab();
-      if (!middle) return;
-      e.preventDefault();
-      (e.target as HTMLElement).closest<HTMLElement>("button, a, [role=button]")?.click();
-    };
-    const onMouse = (e: MouseEvent) => {
-      if (e.button === 3) router.back();
-      if (e.button === 4) router.forward();
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mouseup", onMouse);
-    window.addEventListener("click", onNewTab, true);
-    window.addEventListener("auxclick", onNewTab, true);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mouseup", onMouse);
-      window.removeEventListener("click", onNewTab, true);
-      window.removeEventListener("auxclick", onNewTab, true);
-    };
-  }, [store, router]);
+  useWindowKeys(store, showHelp);
 
   /** A request from the queue, the tray or a notification: its session, card or terminal view. */
   const openRequest = (item: PendingItem) => {

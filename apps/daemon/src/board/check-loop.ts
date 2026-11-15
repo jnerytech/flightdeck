@@ -6,7 +6,7 @@
  */
 import type { Card, PermissionMode } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { WatchSettings } from "../watch/settings.ts";
+import type { WatchSettings } from "../watch/index.ts";
 import { confirmationHash } from "./domain/check-loop-engine.ts";
 import { CHECK_LOOP_WHY, checkLoopRefusal } from "./domain/check-loop-refusal.ts";
 
