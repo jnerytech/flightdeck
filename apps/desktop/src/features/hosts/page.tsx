@@ -1,46 +1,30 @@
-import type { HooksStatusResult } from "@flightdeck/protocol";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HarnessTemplatesSection } from "@/features/harness/ui.ts";
 import type { ProjectCard } from "@/features/projects/index.ts";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { FieldRow, Page, Panel, Stack } from "@/shared/layout/index.ts";
-import type { Key } from "../../i18n/index.ts";
+import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import type { HostSection } from "../../lib/router.ts";
 import { APP_VERSION, hasFeature } from "../../lib/version.ts";
 import type { UsageHistoryTarget } from "../costs/index.ts";
 import { UsagePanel } from "../costs/ui.ts";
-import { MaintenanceSection } from "../maintenance/ui.ts";
-import { TelemetrySection } from "../telemetry/ui.ts";
-import { AllowedFolders } from "./allowed-folders.tsx";
-import { BypassSwitch } from "./bypass-switch.tsx";
-import { DaemonUpdate } from "./daemon-update.tsx";
-import { hostDownReason } from "./domain/host-down-reason.ts";
 import type { HostNameError } from "./domain/host-name.ts";
-import { GithubPanel } from "./github-panel.tsx";
 import { HostAccount } from "./host-account.tsx";
-import { HostAutoUpdate } from "./host-auto-update.tsx";
 import { HostCompare } from "./host-compare.tsx";
 import { HostHealth } from "./host-health.tsx";
+import { useHostHooks } from "./host-hooks.tsx";
 import { HostIncompatibleNotice, HostInfoPanel } from "./host-info-panel.tsx";
-import { HostLogs } from "./host-logs.tsx";
 import { HostOfflineBanner } from "./host-offline-banner.tsx";
 import { HostOverview } from "./host-overview.tsx";
-import { HostPausePanel } from "./host-pause-panel.tsx";
 import { HostResources } from "./host-resources.tsx";
-import { HostTerminal } from "./host-terminal.tsx";
+import { HostSettingsPanel } from "./host-settings-panel.tsx";
 import { HostVersionLine } from "./host-version.tsx";
-import { HostWorktrees } from "./host-worktrees.tsx";
-import { KeepAwakePanel } from "./keep-awake-panel.tsx";
 import { RenameHostDialog } from "./rename-host-dialog.tsx";
-import { ResumePanel } from "./resume-panel.tsx";
-import { SimpleModePanel } from "./simple-mode-panel.tsx";
-import { SleepSetting } from "./sleep-setting.tsx";
+import { useHostTab } from "./use-host-tab.ts";
 
 /** What the overview reads from the app: the sessions, the projects and the cards of the hosts. */
 const OVERVIEW_KEYS = [
@@ -65,31 +49,6 @@ const OVERVIEW_KEYS = [
 const PANEL = "data-[state=inactive]:hidden";
 /** A tab of forms and tables keeps a reading width; the Overview takes the whole area (#785). */
 const NARROW_PANEL = `${PANEL} max-w-3xl`;
-
-/** The tab a section ask opens (#1484, #2588): Health is on the Overview, the others on Settings. */
-const tabOf = (section: HostSection) => (section === "health" ? "overview" : "settings");
-/** The panel whose heading takes the focus. */
-const slotOf = (section: HostSection) => {
-  const slot = section === "health" ? "host-health" : `host-section-${section}`;
-  return `[data-slot="${slot}"]`;
-};
-
-const HOOK_LABELS = {
-  installed: "hostPage.hooksInstalled",
-  absent: "hostPage.hooksAbsent",
-  outdated: "hostPage.hooksOutdated",
-} as const satisfies Record<HooksStatusResult["status"], Key>;
-
-/** Whether the host says it has the panel a section ask opens: a panel shows only for a host that has its feature. */
-function hasSection(section: HostSection | undefined, info: HostView["hostInfo"]): boolean {
-  if (section === "pause") return info?.pause !== undefined;
-  if (section === "keep-awake") return info?.keepAwake !== undefined;
-  if (section !== "health") return false;
-  return (
-    hasFeature(info?.features, "depsCheck", false) ||
-    hasFeature(info?.features, "doctor.run", false)
-  );
-}
 
 /**
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
@@ -121,64 +80,14 @@ export function HostPage(
   const [renaming, setRenaming] = useState(false);
   const info = host.hostInfo;
   const { store } = props;
-  const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
-  const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
-  const [removing, setRemoving] = useState(false);
-  const [tab, setTab] = useState(props.section ? tabOf(props.section) : "overview");
+  const hostHooks = useHostHooks(store, host);
+  const { tab, tabsRef, pickTab, askFolder } = useHostTab(info, props.section, props.onSectionDone);
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
   useEffect(() => {
     if (host.status === "online") void store.health.ensure(host.id);
   }, [store, host.id, host.status]);
   const offline = host.status !== "online" && host.status !== "incompatible";
-  const hooksKey = hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking";
-  useEffect(() => {
-    if (host.status !== "online") return;
-    void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
-  }, [store, host.id, host.status]);
-  // The Health section can install the hooks too: the status shown in Settings is read again.
-  const refreshHooks = () => void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
-  // "Add folder" in the Health section opens Settings: once that panel shows, the field takes focus.
-  const [folderAsk, setFolderAsk] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new ask moves the focus
-  useEffect(() => {
-    if (folderAsk === 0 || tab !== "settings") return;
-    const field = document.querySelector<HTMLElement>("[data-folder-field]");
-    field?.focus();
-    field?.scrollIntoView?.({ block: "center" });
-  }, [folderAsk]);
-  // A status-bar item opens its section (#1484): Settings, the panel in view, the focus on its heading.
-  // The panel shows once the host says it has the feature, so the move waits for it.
-  const section = props.section;
-  const sectionShown = hasSection(section, info);
-  // The focus moves once the Settings panel is active (a browser does not focus into a hidden
-  // one), then the ask is used up, so it never pulls the person back later.
-  // It looks only inside this page (another page may show the same section), and moves the focus
-  // once per ask, even when the route keeps the ask.
-  const onSectionDone = props.onSectionDone;
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const handled = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (section) setTab(tabOf(section));
-    else handled.current = undefined;
-  }, [section]);
-  useEffect(() => {
-    if (!section || handled.current === section || tab !== tabOf(section) || !sectionShown) return;
-    const heading = tabsRef.current?.querySelector<HTMLElement>(`${slotOf(section)} h3`);
-    if (!heading) return;
-    handled.current = section;
-    heading.tabIndex = -1;
-    heading.scrollIntoView?.({ block: "center" });
-    heading.focus();
-    onSectionDone?.();
-  }, [section, tab, sectionShown, onSectionDone]);
-  // Another tab picked before the section showed drops the ask too.
-  const pickTab = (value: string) => {
-    setTab(value);
-    if (!section) return;
-    handled.current = section;
-    onSectionDone?.();
-  };
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
   const checkable = host.status === "online" && info?.update !== undefined;
@@ -187,20 +96,6 @@ export function HostPage(
   useEffect(() => {
     if (checkable) void store.hostUpdate.autoCheck(host.id);
   }, [store, host.id, checkable, daemonVersion]);
-  const settingsPath = hooks?.settingsPath ?? "~/.claude/settings.json";
-  // Hooks came with the central (phase 5): shown for older daemons, hidden when not announced.
-  const showHooks = host.status !== "incompatible" && hasFeature(info?.features, "central", true);
-  const apply = async () => {
-    const kind = confirming;
-    setConfirming(null);
-    const result =
-      kind === "install"
-        ? await store.hostCommand(host.id, "hooks.install", { confirm: true })
-        : await store.hostCommand(host.id, "hooks.uninstall", { confirm: true });
-    if (result) setHooks(result);
-    // The setup checklist reads the hooks too.
-    void store.refreshSetup(host.id);
-  };
   return (
     <Page
       title={host.name}
@@ -252,11 +147,8 @@ export function HostPage(
                       checkedAt={overviewState.healthAt[host.id] ?? null}
                       error={overviewState.healthError[host.id] ?? null}
                       onCheck={() => store.health.check(host.id)}
-                      onAddFolder={() => {
-                        setTab("settings");
-                        setFolderAsk((n) => n + 1);
-                      }}
-                      onHooksChanged={refreshHooks}
+                      onAddFolder={askFolder}
+                      onHooksChanged={hostHooks.refresh}
                     />
                   )}
                   <HostResources store={store} host={host} />
@@ -297,109 +189,17 @@ export function HostPage(
             </Stack>
           </TabsContent>
           <TabsContent value="settings" forceMount className={NARROW_PANEL}>
-            <Stack gap={4}>
-              <AllowedFolders store={store} host={host} />
-              <BypassSwitch store={store} host={host} />
-              <SleepSetting store={store} host={host} />
-              <SimpleModePanel store={store} host={host} />
-              <KeepAwakePanel store={store} host={host} />
-              <HostPausePanel store={store} host={host} />
-              <ResumePanel store={store} host={host} />
-              {host.status === "online" && hasFeature(info?.features, "github", false) && (
-                <GithubPanel store={store} host={host} />
-              )}
-              <HostWorktrees store={store} host={host} />
-              <HostAutoUpdate store={store} host={host} />
-              <DaemonUpdate store={store} host={host} />
-              {showHooks && (
-                <section aria-label={t("hostPage.hooks")}>
-                  <Panel title={t("hostPage.hooks")}>
-                    <p className="text-sm">{offline ? t("hostOffline.title") : t(hooksKey)}</p>
-                    {/* Issue #181: nothing to install on a host that does not answer; the row says why. */}
-                    <FieldRow>
-                      <ActionButton
-                        variant="outline"
-                        size="sm"
-                        disabled={offline}
-                        disabledReason={hostDownReason(host.status, host.name, t)}
-                        onClick={() => setConfirming("install")}
-                      >
-                        {t("hostPage.install")}
-                      </ActionButton>
-                      <ActionButton
-                        variant="outline"
-                        size="sm"
-                        disabled={offline}
-                        disabledReason={hostDownReason(host.status, host.name, t)}
-                        onClick={() => setConfirming("uninstall")}
-                      >
-                        {t("hostPage.uninstall")}
-                      </ActionButton>
-                    </FieldRow>
-                  </Panel>
-                </section>
-              )}
-              {host.status === "online" && hasFeature(info?.features, "telemetry", false) && (
-                <TelemetrySection store={store} hostId={host.id} />
-              )}
-              {host.status === "online" && hasFeature(info?.features, "autoapprove", false) && (
-                <Button
-                  variant="outline"
-                  className="self-start"
-                  onClick={props.onOpenAutoApprovals}
-                >
-                  {t("autoApprovalsUi.open")}
-                </Button>
-              )}
-              <HostTerminal store={store} host={host} />
-              {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
-                <MaintenanceSection store={store} hostId={host.id} />
-              )}
-              {host.status === "online" &&
-                hasFeature(info?.features, "harnessTemplates", false) && (
-                  <HarnessTemplatesSection store={store} hostId={host.id} />
-                )}
-              <HostLogs store={store} host={host} />
-              <Panel title={t("hostPage.host")}>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={props.onReconnect}>
-                    {t("hostPage.reconnect")}
-                  </Button>
-                  <Button variant="destructive" onClick={() => setRemoving(true)}>
-                    {t("hostPage.remove")}
-                  </Button>
-                </div>
-                {removing && (
-                  <ConfirmDialog
-                    message={t("sidebar.removeConfirm", { host: host.name })}
-                    confirmLabel={t("hostPage.remove")}
-                    destructive
-                    onConfirm={() => {
-                      setRemoving(false);
-                      props.onRemove();
-                    }}
-                    onCancel={() => setRemoving(false)}
-                  />
-                )}
-              </Panel>
-            </Stack>
+            <HostSettingsPanel
+              store={store}
+              host={host}
+              hooksSection={hostHooks.section}
+              onReconnect={props.onReconnect}
+              onRemove={props.onRemove}
+              onOpenAutoApprovals={props.onOpenAutoApprovals}
+            />
           </TabsContent>
         </Tabs>
-        {confirming && (
-          <ConfirmDialog
-            message={
-              confirming === "install"
-                ? t("hostPage.installMessage", { path: settingsPath })
-                : t("hostPage.uninstallMessage", { path: settingsPath })
-            }
-            confirmLabel={
-              confirming === "install" ? t("hostPage.install") : t("hostPage.uninstall")
-            }
-            destructive={confirming === "uninstall"}
-            onConfirm={() => void apply()}
-            onCancel={() => setConfirming(null)}
-          />
-        )}
+        {hostHooks.dialog}
         {renaming && (
           <RenameHostDialog
             name={host.name}

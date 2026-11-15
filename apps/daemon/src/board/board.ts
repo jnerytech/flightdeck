@@ -14,9 +14,7 @@ import type {
 import { FlightdeckError, UNTRUSTED_MARK } from "../kernel/index.ts";
 import type { PrComment } from "../pr/index.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/index.ts";
-import { shellCheckRunner } from "../workflows/check-runner.ts";
-import { WorkflowEngine } from "../workflows/engine.ts";
-import { addWorkflowTemplate } from "../workflows/template-add.ts";
+import { addWorkflowTemplate, shellCheckRunner, WorkflowEngine } from "../workflows/index.ts";
 import { Arenas } from "./arena.ts";
 import { Blockers } from "./blockers.ts";
 import { CardLifecycle } from "./card-lifecycle.ts";

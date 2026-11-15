@@ -7,9 +7,9 @@ import type {
   SessionStatus,
   SessionSummary,
 } from "@flightdeck/protocol";
+import { toolAllowed } from "@flightdeck/protocol";
 import { buildChildEnv, FlightdeckError } from "../kernel/index.ts";
 import { type PermissionBroker, parseSuggestions } from "../permissions/index.ts";
-import { toolAllowed } from "../personas/domain/model.ts";
 import type { PersonaSnapshot } from "../personas/domain/snapshot.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent } from "../runtime/index.ts";
 import type { EventStore } from "../store/index.ts";

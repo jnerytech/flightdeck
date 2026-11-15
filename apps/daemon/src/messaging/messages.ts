@@ -17,6 +17,7 @@ import { z } from "zod";
 import { FlightdeckError, parseJsonOr, ulid } from "../kernel/index.ts";
 import { slug } from "../names/index.ts";
 import { formatSessionMessage, formatSystemMessage } from "./domain/header.ts";
+import { type ListingExtra, listedSession } from "./domain/listing.ts";
 import { blankParty, relayAnswer, sharedTeam } from "./domain/parties.ts";
 import {
   DAY_MS,
@@ -255,22 +256,10 @@ export class Messaging {
   sessions(as: SessionIdentity): MessagingSession[] {
     const sender = this.resolve(as);
     const seen: MessagingSession[] = [];
-    const consider = (
-      party: Party,
-      extra: Pick<MessagingSession, "state" | "kind" | "receives" | "reason" | "alias" | "aliases">,
-    ) => {
+    const consider = (party: Party, extra: ListingExtra) => {
       if (addressOf(party) === addressOf(sender)) return;
       if (!access(sender, party, this.policy).ok) return;
-      seen.push({
-        address: addressOf(party),
-        id: party.id,
-        host: party.host,
-        name: party.name,
-        persona: party.persona,
-        projectKey: party.projectKey,
-        teamId: party.teamId,
-        ...extra,
-      });
+      seen.push(listedSession(party, extra));
     };
     for (const info of this.opts.endpoints.list()) {
       consider(this.partyOf(info), {

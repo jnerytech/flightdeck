@@ -31,7 +31,6 @@ import {
   decideRequest,
   evaluate,
   localTime,
-  type Purpose,
   type RequestDecision,
   type Risk,
   type RulesEnv,
@@ -42,8 +41,19 @@ import {
   type VaultRules,
 } from "../vault/index.ts";
 import { ActionCatalog, type ActionProject, type Found } from "./catalog.ts";
+import { FREE, freeAction, freeRemote, freeSecretIds } from "./domain/free-command.ts";
 import { resolveParams } from "./domain/run-params.ts";
-import { type ActionDef, approvalOf, secretsOf } from "./domain/schema.ts";
+import { type RunRow, runInfoOf } from "./domain/run-row.ts";
+import { approvalOf, secretsOf } from "./domain/schema.ts";
+import {
+  type Ask,
+  approverOf,
+  auditRowOf,
+  requestFrameOf,
+  type Waiting,
+  waitRefusal,
+  withSessionApproval,
+} from "./domain/secret-use.ts";
 import { type RunResult, runAction, type SshExecutor } from "./run.ts";
 import { shellLine } from "./shell.ts";
 
@@ -82,71 +92,9 @@ export type ActionsFrame = VaultRequestFrame | VaultUsed | VaultAlertFrame;
 /** A request nobody answers is denied after this long. */
 export const REQUEST_TTL_MS = 10 * 60_000;
 
-/** The name a free command is recorded under. */
-const FREE = "run_with_secret";
-const SECRET_ID = /^[A-Za-z0-9._-]+$/;
-
-const bad = (message: string, reason?: string, params?: Record<string, string | number>) =>
-  new FlightdeckError("bad_request", message, reason, params);
 const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", message, reason, params);
 const now = () => new Date().toISOString();
-
-interface RunRow {
-  id: string;
-  scope: string;
-  name: string;
-  requested_by: VaultRequester;
-  started_at: string;
-  duration_ms: number;
-  exit_code: number;
-  timed_out: number;
-  truncated: number;
-  output: string;
-}
-
-/** What goes into the `vault.request` frames of one run, besides the secret. */
-interface Ask {
-  requester: VaultRequester;
-  /** Before the request id, in the purpose the secret is delivered for. */
-  purposeBase: string;
-  frame: Partial<VaultRequestFrame>;
-  /** What the rules of phase 19 look at. */
-  use: {
-    purpose: Purpose;
-    action?: string;
-    tags: string[];
-    actionApproval?: "always" | "never" | "first-per-session";
-    /** The command line, for the risk classifier. */
-    command: string;
-    cwd: string;
-    project?: string;
-    session?: string;
-  };
-}
-
-/** The secret names of a free command without repeats; one that is not a valid name is refused. */
-function freeSecretIds(secrets: string[]): string[] {
-  const ids = [...new Set(secrets)];
-  for (const id of ids)
-    if (!SECRET_ID.test(id))
-      throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
-  return ids;
-}
-
-/** A request waiting for the app. */
-interface Waiting {
-  controller: AbortController;
-  denied: boolean;
-  expired: boolean;
-  /** Phase 19: what the rules decided; absent when the daemon runs without rules. */
-  decision?: "allow" | "ask";
-  needsHold: boolean;
-  /** The approval may be given for the whole session. */
-  once: boolean;
-  purpose: string;
-  approved?: { by: "app" | "tray"; scope: "once" | "session" };
-}
 
 const HOLD_MS = 2000;
 
@@ -366,19 +314,6 @@ export class Actions {
     return this.execute(found, params, secrets, input.requestedBy, ids, keyId);
   }
 
-  /** Another host is a phase 15 destino of that name: the command runs there with sh -c. */
-  private freeRemote(host: string | undefined): string | null {
-    const remote = host !== undefined && host !== "local" ? host : null;
-    if (remote && !this.opts.ssh) {
-      throw invalid(
-        `host ${remote} is an ssh destination, and this daemon runs no commands on destinations`,
-        "action_ssh_host_unsupported",
-        { host: remote },
-      );
-    }
-    return remote;
-  }
-
   /**
    * A command Claude wrote, with the secrets in its environment (`deploy-token` is
    * `DEPLOY_TOKEN`). It is never automatic: the request carries `always`, with the exact command,
@@ -392,21 +327,12 @@ export class Actions {
     session?: string;
   }): Promise<ActionResult> {
     const requester = this.permit(input.requestedBy);
-    const remote = this.freeRemote(input.host);
+    const remote = freeRemote(input.host, Boolean(this.opts.ssh));
     const ids = freeSecretIds(input.secrets);
     const line = remote ? null : await shellLine(input.command, process.platform);
     const keyId = remote ? (this.opts.sshKey?.(remote) ?? null) : null;
     try {
-      const action: ActionDef = {
-        name: FREE,
-        description: "free command with secrets in the environment",
-        run: line ? line.argv : ["sh", "-c", input.command],
-        env: Object.fromEntries(ids.map((id) => [envName(id), `{{secret.${id}}}`])),
-        params: {},
-        timeoutS: 120,
-        approval: "always",
-        ...(remote ? { ssh: remote } : {}),
-      };
+      const action = freeAction({ command: input.command, ids, argv: line?.argv ?? null, remote });
       const asked = keyId && !ids.includes(keyId) ? [...ids, keyId] : ids;
       const secrets = await this.collect(asked, {
         requester,
@@ -440,18 +366,7 @@ export class Actions {
          ORDER BY rowid DESC LIMIT ?3`,
       )
       .all(input.projectId ?? null, input.name ?? null, input.limit ?? 50) as RunRow[];
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      projectId: row.scope || null,
-      requestedBy: row.requested_by,
-      startedAt: row.started_at,
-      durationMs: row.duration_ms,
-      exitCode: row.exit_code,
-      timedOut: row.timed_out === 1,
-      truncated: row.truncated === 1,
-      output: row.output,
-    }));
+    return rows.map(runInfoOf);
   }
 
   // --- secrets ---
@@ -512,24 +427,7 @@ export class Actions {
       rules.rulesFor(secretId),
       this.env(),
     );
-    // "Approve and don't ask again in this session": the next use in the same session is let through.
-    const key =
-      verdict.granted && verdict.decision === "ask" && verdict.once && use.session
-        ? [secretId, verdict.ruleId ?? "", use.session].join("\u0000")
-        : null;
-    if (verdict.granted && key && this.approvedSessions.has(key)) {
-      return {
-        verdict: {
-          ...verdict,
-          decision: "allow",
-          once: false,
-          reason: `${verdict.reason}; already approved in this session`,
-        },
-        rememberedKey: key,
-        remembered: true,
-      };
-    }
-    return { verdict, rememberedKey: key, remembered: false };
+    return withSessionApproval(verdict, secretId, use.session, this.approvedSessions);
   }
 
   /** Writes the request to the audit log and raises the alerts; throws when the rules deny the use. */
@@ -541,23 +439,17 @@ export class Actions {
   ): void {
     const isNew = this.audit.isNew(secretId, ask.requester);
     const rule = this.opts.rules?.rulesFor(secretId).find((r) => r.id === verdict.ruleId);
-    this.audit.insert({
-      id: requestId,
-      atMs: this.ms(),
-      secretId,
-      requester: ask.requester,
-      purpose: ask.use.purpose,
-      action: ask.use.action ?? null,
-      host: this.opts.hostName ?? "",
-      project: ask.use.project ?? null,
-      session: ask.use.session ?? null,
-      ruleId: verdict.ruleId,
-      decision: verdict.decision,
-      outcome: verdict.granted ? "pending" : "refused",
-      approver: null,
-      window: rule?.window ? JSON.stringify(rule.window) : null,
-      reason: verdict.reason,
-    });
+    this.audit.insert(
+      auditRowOf({
+        requestId,
+        atMs: this.ms(),
+        secretId,
+        ask,
+        host: this.opts.hostName ?? "",
+        window: rule?.window,
+        verdict,
+      }),
+    );
     if (isNew) {
       this.alert(
         "new-requester",
@@ -578,9 +470,11 @@ export class Actions {
     waiting: Waiting,
     decided: { remembered: boolean; rememberedKey: string | null } | null,
   ): void {
-    let approver: "app" | "rule" | "session" | "tray" | null = waiting.approved?.by ?? null;
-    if (verdict.decision === "allow") approver = "rule";
-    if (decided?.remembered) approver = "session";
+    const approver = approverOf(
+      verdict.decision,
+      waiting.approved?.by,
+      decided?.remembered ?? false,
+    );
     this.audit.finish(requestId, verdict.decision === "allow" ? "allowed" : "approved", approver);
     if (waiting.approved?.scope === "session" && decided?.rememberedKey) {
       this.approvedSessions.add(decided.rememberedKey);
@@ -589,19 +483,10 @@ export class Actions {
 
   /** The error a failed wait becomes: a refusal, an expiry, or the error itself. Closes the audit row. */
   private failure(error: unknown, requestId: string, secretId: string, waiting: Waiting): unknown {
-    if (waiting.denied) {
-      this.audit.finish(requestId, "denied", null);
-      return invalid(`the app refused secret ${secretId}`, "action_secret_refused", {
-        secret: secretId,
-      });
-    }
-    if (waiting.expired) {
-      this.audit.finish(requestId, "expired", null);
-      return invalid(
-        `the request for secret ${secretId} expired unanswered and was denied`,
-        "action_secret_expired",
-        { secret: secretId },
-      );
+    const refusal = waitRefusal(waiting, secretId);
+    if (refusal) {
+      this.audit.finish(requestId, refusal.outcome, null);
+      return refusal.error;
     }
     this.audit.finish(requestId, "failed", null);
     return error;
@@ -647,25 +532,17 @@ export class Actions {
       timeoutMs + 1000,
       waiting.controller.signal,
     );
-    this.emit({
-      ...ask.frame,
-      type: "vault.request",
-      requestId,
-      secretId,
-      purpose,
-      requester: ask.requester,
-      ...(verdict?.granted
-        ? {
-            decision: verdict.decision,
-            ruleId: verdict.ruleId,
-            reason: verdict.reason,
-            once: verdict.once,
-            needsHold: verdict.needsHold,
-            tags: this.tagsOf(secretId, ask.use.tags),
-            expiresAt: this.ms() + timeoutMs,
-          }
-        : {}),
-    });
+    this.emit(
+      requestFrameOf({
+        ask,
+        requestId,
+        secretId,
+        purpose,
+        verdict,
+        tags: this.tagsOf(secretId, ask.use.tags),
+        expiresAt: this.ms() + timeoutMs,
+      }),
+    );
     try {
       const secret = await value;
       if (rules && verdict?.granted) this.recordDelivery(requestId, verdict, waiting, decided);
@@ -747,10 +624,4 @@ export class Actions {
     }
     return { runId, ...result };
   }
-}
-
-/** `deploy-token` → `DEPLOY_TOKEN`. */
-function envName(secretId: string): string {
-  const name = secretId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-  return /^\d/.test(name) ? `_${name}` : name;
 }

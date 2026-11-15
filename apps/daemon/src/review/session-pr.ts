@@ -4,9 +4,7 @@
  * See docs/decisions/2026-11-08-session-commit.md.
  */
 import type { ChangesPrOpened, PrProviderKind, SecretScanner } from "@flightdeck/protocol";
-import { assertNoSecretInPr, withoutCredentials } from "../board/index.ts";
-import { prProvider } from "../board/pr.ts";
-import { publishPr } from "../board/publish-pr.ts";
+import { assertNoSecretInPr, prProvider, publishPr, withoutCredentials } from "../board/index.ts";
 import { git } from "../git/index.ts";
 import { assertBranchName, FlightdeckError } from "../kernel/index.ts";
 import type { PrProvider } from "../pr/index.ts";

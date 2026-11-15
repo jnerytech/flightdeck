@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite";
+import type { PrProviderKind } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/index.ts";
 import { prProvider } from "../board/pr.ts";
-import type { PrProviderKind } from "../board/types.ts";
 import { git as realGit } from "../git/index.ts";
 import {
   assertBranchName,
