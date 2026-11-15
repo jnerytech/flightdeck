@@ -211,3 +211,14 @@ export function featureDiffTied(
     extra: [...own].filter((name) => !shared.has(name)).sort((a, b) => a.localeCompare(b)),
   };
 }
+
+/** The features a marked cell lacks or adds: against the majority, or against the others when tied. */
+export function featureDiffOf(row: CompareRow, value: string) {
+  if (row.field !== "features") return null;
+  return row.tied
+    ? featureDiffTied(
+        value,
+        row.cells.map((c) => c.value),
+      )
+    : featureDiff(value, row.majority);
+}
