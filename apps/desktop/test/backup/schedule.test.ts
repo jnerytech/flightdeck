@@ -3,14 +3,16 @@ import type { BackupPlatform } from "../../src/features/backup/backup-bundle.ts"
 import { previewRestore } from "../../src/features/backup/backup-bundle.ts";
 import {
   type BackupFolder,
-  type BackupSchedule,
-  backupFileName,
-  DEFAULT_KEEP,
-  isDue,
   loadSchedule,
   runScheduledBackup,
   saveSchedule,
 } from "../../src/features/backup/backup-schedule.ts";
+import {
+  type BackupSchedule,
+  backupFileName,
+  DEFAULT_KEEP,
+  isDue,
+} from "../../src/features/backup/domain/backup-schedule.ts";
 import type { BackupTarget } from "../../src/features/backup/domain/backup-target.ts";
 import { DriveError } from "../../src/features/backup/drive-target.ts";
 

@@ -1,14 +1,12 @@
 import type { Platform } from "../../platform/types.ts";
+import { loadSchedule, runScheduledBackup, saveSchedule } from "./backup-schedule.ts";
 import {
   type BackupSchedule,
   type Cadence,
   DEFAULT_KEEP,
-  loadSchedule,
   type RunReport,
-  runScheduledBackup,
   type ScheduleTarget,
-  saveSchedule,
-} from "./backup-schedule.ts";
+} from "./domain/backup-schedule.ts";
 import { DriveError, driveTarget } from "./drive-target.ts";
 import {
   type GoogleConfig,
