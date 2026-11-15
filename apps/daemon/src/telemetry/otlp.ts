@@ -23,7 +23,7 @@ export interface OtlpReceiver {
   stop(): Promise<void>;
 }
 
-export const DEFAULT_MAX_BYTES = 1024 * 1024;
+const DEFAULT_MAX_BYTES = 1024 * 1024;
 
 // ---- receiver ------------------------------------------------------------------------------
 
