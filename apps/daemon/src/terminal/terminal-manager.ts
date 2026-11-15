@@ -1,12 +1,5 @@
 import type { TerminalData, TerminalExited, TerminalResync } from "@flightdeck/protocol";
-import { TERMINAL_LAUNCH_VAR } from "../central/index.ts";
-import {
-  buildChildEnv,
-  FlightdeckError,
-  resolveAllowedCwd,
-  ulid,
-  whichOnPath,
-} from "../kernel/index.ts";
+import { FlightdeckError, resolveAllowedCwd, ulid, whichOnPath } from "../kernel/index.ts";
 import type { Timers } from "../quota/index.ts";
 import { folderRemoving } from "../worktrees/index.ts";
 import {
@@ -18,6 +11,7 @@ import {
   recordSent,
   takeBatch,
 } from "./domain/client-flow.ts";
+import { launchArgv, terminalEnv } from "./domain/launch-spec.ts";
 import { Ring } from "./domain/ring.ts";
 import { defaultShell } from "./domain/shell.ts";
 import type { Pty, PtyFactory } from "./pty.ts";
@@ -281,46 +275,18 @@ export class TerminalManager {
     }
     const env = (this.opts.env ?? (() => process.env))();
     const id = ulid(this.now());
-    let argv: string[];
-    let launchId: string | null = null;
-    let extraEnv: Record<string, string> = {};
-    if (req.claude) {
-      const claude = this.opts.claude;
-      if (!claude) {
-        throw new FlightdeckError(
-          "invalid_state",
-          "Claude here is not available on this host",
-          "claude_here_unavailable",
-        );
-      }
-      // The launch that `flightdeckd claude` will register: the session it opens is this one.
-      launchId = ulid(this.now());
-      argv = [
-        ...claude.self,
-        "claude",
-        ...(req.claude.resume ? ["--resume", req.claude.resume] : []),
-        // Phase 20: the wrapper asks the daemon for the persona and appends it to the system prompt.
-        ...(req.claude.persona ? ["--persona", req.claude.persona] : []),
-      ];
-      extraEnv = { FLIGHTDECK_CONFIG: claude.configFile, [TERMINAL_LAUNCH_VAR]: launchId };
-    } else {
-      argv =
-        req.command ??
+    const { argv, launchId, extraEnv } = launchArgv({
+      command: req.command,
+      claude: req.claude && { request: req.claude, daemon: this.opts.claude },
+      newLaunchId: () => ulid(this.now()),
+      shell: () =>
         defaultShell({
           platform: this.opts.platform ?? process.platform,
           env,
           which: this.opts.which ?? whichOnPath,
-        });
-    }
-    // Issue #486: in Claude Code's fullscreen mode each wheel notch reaches it as one report; 3
-    // lines a notch is how Windows Terminal and VS Code feel. A value the host's environment or
-    // the person's Claude Code settings (where /scroll-speed keeps it) already set is theirs, and
-    // one the request sets wins over all.
+        }),
+    });
     const kept = await (this.opts.claudeEnv?.() ?? Promise.resolve({} as Record<string, string>));
-    const scrollDefault: Record<string, string> =
-      env.CLAUDE_CODE_SCROLL_SPEED || kept.CLAUDE_CODE_SCROLL_SPEED
-        ? {}
-        : { CLAUDE_CODE_SCROLL_SPEED: "3" };
     // The stop may have run while this open waited on the folder or the settings.
     this.assertRunning();
     let pty: Pty;
@@ -328,16 +294,13 @@ export class TerminalManager {
       pty = this.opts.pty({
         argv,
         cwd,
-        env: {
-          ...scrollDefault,
-          ...buildChildEnv(env, this.opts.allowApiKey ?? false),
-          // What is attached is xterm.js. A service has no TERM (or "dumb"), and readline then
-          // scrolls a long line sideways instead of wrapping it.
-          TERM: "xterm-256color",
-          COLORTERM: "truecolor",
-          ...extraEnv,
-          ...req.env,
-        },
+        env: terminalEnv({
+          host: env,
+          kept,
+          allowApiKey: this.opts.allowApiKey ?? false,
+          extraEnv,
+          requested: req.env,
+        }),
         cols: req.cols,
         rows: req.rows,
         onData: (chunk) => this.onData(id, chunk),
