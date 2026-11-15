@@ -78,28 +78,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/actions/catalog.ts",
-    "to": "apps/daemon/src/board/worktree.ts",
-    "unresolvedTo": "../board/worktree.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/assistant/context.ts",
-    "to": "apps/daemon/src/board/diff.ts",
-    "unresolvedTo": "../board/diff.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/board/domain/check-loop-engine.ts",
     "to": "apps/daemon/src/watch/domain/check-run.ts",
     "unresolvedTo": "../../watch/domain/check-run.ts",
@@ -125,17 +103,6 @@
     "from": "apps/daemon/src/costs/usage-indexer.ts",
     "to": "apps/daemon/src/quota/usage.ts",
     "unresolvedTo": "../quota/usage.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/harness/commit.ts",
-    "to": "apps/daemon/src/board/branch-commit.ts",
-    "unresolvedTo": "../board/branch-commit.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
@@ -191,17 +158,6 @@
     "from": "apps/daemon/src/review/card-review.ts",
     "to": "apps/daemon/src/runtime/claude-sdk-runtime.ts",
     "unresolvedTo": "../runtime/claude-sdk-runtime.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/runenv/config.ts",
-    "to": "apps/daemon/src/board/worktree.ts",
-    "unresolvedTo": "../board/worktree.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
