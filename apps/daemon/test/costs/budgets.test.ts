@@ -4,47 +4,18 @@ import { basename, join } from "node:path";
 import type { Budget, BudgetInput } from "@flightdeck/protocol";
 import { Budgets, type BudgetUpdate } from "../../src/costs/budgets.ts";
 import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
-import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
-import { newManager, poll, tempDir } from "../support/helpers.ts";
-import { FrameClient } from "../support/history-helpers.ts";
-import { manualTime } from "../support/time-helpers.ts";
+import { cleanups, HOST_DAY, runCleanups, setup, utcDay } from "../support/costs-budgets.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 import { writeUsageTranscript } from "../support/usage-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.
 setDefaultTimeout(20_000);
 
-const TOKEN = "budgets-token-0123456789abcdef";
-const cleanups: Array<() => unknown> = [];
-afterEach(async () => {
-  for (const fn of cleanups.splice(0).reverse()) await fn();
-});
+afterEach(runCleanups);
 
 const DAY = 86_400_000;
-const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-
-/** Budgets on a manual clock (2026-10-15 12:00 UTC) over a store of their own. */
-function setup(db = new EventStore(":memory:").db) {
-  const time = manualTime(Date.UTC(2026, 9, 15, 12));
-  const budgets = new Budgets({ db, now: time.now, day: utcDay, timers: time.timers });
-  cleanups.push(() => budgets.stop());
-  budgets.start();
-  const frames: BudgetUpdate[] = [];
-  budgets.watch((update) => frames.push(update));
-  let n = 0;
-  /** An entry of `cost` in project `key` on `day` (today when absent). */
-  const spend = (cost: number, key = "kA", day = utcDay(time.now())) => {
-    db.query(
-      `INSERT INTO usage_entries (message_id, claude_session_id, at, day, project_key, model, origin,
-         speed, input, output, cache_read, cache_write_5m, cache_write_1h, cost_usd)
-       VALUES (?, 's', ?, ?, ?, 'claude-opus-5-5', 'terminal', 'standard', 0, 0, 0, 0, 0, ?)`,
-    ).run(`m${++n}`, `${day}T12:00:00.000Z`, day, key, cost);
-  };
-  return { db, time, budgets, frames, spend };
-}
-
-const HOST_DAY = { scope: "host", period: "day", limitUsd: 10, action: "notify" } as const;
 
 /** What `budget.set` takes to change `budget` to a new limit. */
 const raised = (budget: Budget, limitUsd: number) => ({
@@ -261,48 +232,5 @@ describe("orcamentos", () => {
       onPass: (added) => passes.push(added),
     }).pass();
     expect(passes).toEqual([5]);
-  });
-
-  test("budget.list, budget.set, budget.remove e budget.watch pelo protocolo", async () => {
-    const { budgets, spend } = setup();
-    spend(6);
-    const { manager, root } = newManager();
-    const server = startServer({
-      manager,
-      costs: { budgets },
-      hostName: "h",
-      bind: "127.0.0.1",
-      port: 0,
-      token: TOKEN,
-      allowedRoots: [root],
-    });
-    cleanups.push(() => server.stop());
-    const client = new FrameClient(server.url);
-    cleanups.push(() => client.close());
-    await client.request("hello", { token: TOKEN, client: "t" });
-    expect(await client.data("budget.watch", {})).toBeUndefined();
-    const made = await client.data<{ id: string; crossed: number[] }>("budget.set", HOST_DAY);
-    expect(made?.crossed).toEqual([0.5]);
-    expect(
-      (await client.data<{ budgets: Array<{ id: string }> }>("budget.list", {}))?.budgets.map(
-        (b) => b.id,
-      ),
-    ).toEqual([made?.id ?? ""]);
-    await client.request("budget.remove", { id: made?.id });
-    expect(await client.data("budget.list", {})).toEqual({ budgets: [] });
-    const updates = () => client.frames.filter((f) => f.type === "budget.updated");
-    await poll(() => updates().length === 2);
-    expect(updates().map((f) => [f.threshold, f.removed])).toEqual([
-      [0.5, false],
-      [null, true],
-    ]);
-    expect(await client.request("budget.set", { ...HOST_DAY, limitUsd: 0 })).toMatchObject({
-      ok: false,
-      error: { code: "bad_request" },
-    });
-    expect(await client.request("budget.set", { ...HOST_DAY, scope: "project" })).toMatchObject({
-      ok: false,
-      error: { code: "bad_request" },
-    });
   });
 });
