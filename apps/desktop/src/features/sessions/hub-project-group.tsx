@@ -32,7 +32,7 @@ const stateKey = (row: HubRow) => (row.asleep ? "asleep" : row.state);
 export function ProjectGroup(
   props: Readonly<{
     store: AppStore;
-    state: AppState;
+    state: Pick<AppState, "clientList" | "clientOverrides" | "clientSelection">;
     group: HubGroup;
     /** The group as the list shows it (live rows, earlier ones, folds); absent before the list is built. */
     groupView: HubGroupView | undefined;
