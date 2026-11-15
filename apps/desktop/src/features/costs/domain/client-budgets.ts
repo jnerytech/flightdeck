@@ -2,7 +2,7 @@
 export const CLIENT_BUDGET_ALERTS_KEY = "flightdeck.clientBudgetAlerts";
 
 /** An alert fires once per month at each of these fractions of the limit, like a host's budget. */
-export const CLIENT_BUDGET_THRESHOLDS = [0.5, 0.8, 1] as const;
+const CLIENT_BUDGET_THRESHOLDS = [0.5, 0.8, 1] as const;
 
 /** A client's month limit against what it has spent so far. */
 export interface ClientBudgetState {

@@ -3,11 +3,6 @@ import { type Key, type T, translator } from "../../../i18n/index.ts";
 import type { AppState } from "../../../lib/app-store.ts";
 import { usd } from "./costs.ts";
 
-export const ACTION_LABELS: Record<Budget["action"], string> = {
-  notify: "notificar",
-  queue: "segurar cards novos",
-};
-
 const PT = translator("pt-BR");
 
 /** The last folder of a project's key ("/srv/work/web" is "web"); a key that is no path stays. */
