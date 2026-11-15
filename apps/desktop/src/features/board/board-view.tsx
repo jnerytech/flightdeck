@@ -1,14 +1,6 @@
 import type { BoardColumn, Card, ContractOverrides } from "@flightdeck/protocol";
 import { Columns3 } from "lucide-react";
-import {
-  type KeyboardEvent,
-  memo,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { memo, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { BoardNotice } from "@/features/board/board-notice";
 import { BoardStatus } from "@/features/board/board-status";
@@ -38,26 +30,16 @@ import { useWidth } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { quietAlerts } from "../needs-you/index.ts";
-import { cardKey } from "./board-card-keys.ts";
-import { ColumnLane } from "./board-column.tsx";
 import { BoardDialogs } from "./board-dialogs.tsx";
 import { BoardFilters } from "./board-filters.tsx";
+import { BoardLanes } from "./board-lanes.tsx";
 import { BoardLoadError } from "./board-load-error.tsx";
-import { CardTile } from "./card-tile.tsx";
-import { boardTitle, COLUMNS, positionBefore, projectCards, startOffText } from "./domain/board.ts";
+import { boardTitle, COLUMNS, positionBefore, projectCards } from "./domain/board.ts";
 import { bulkSplit } from "./domain/board-bulk.ts";
-import { askAbout, dragNeeds } from "./domain/board-contracts.ts";
+import { askAbout } from "./domain/board-contracts.ts";
 import { boardFiles, filesPanelOpen } from "./domain/board-files.ts";
-import {
-  type BulkRefusal,
-  COLUMN_GAP,
-  columnCount,
-  countLabel,
-  filteredColumnCount,
-  filteredCountLabel,
-  fitColumnWidth,
-} from "./domain/board-select.ts";
-import { cardStartBlock } from "./domain/card-start-block.ts";
+import { type BulkRefusal, COLUMN_GAP, countLabel, fitColumnWidth } from "./domain/board-select.ts";
+import { useBoardFocus } from "./use-board-focus.ts";
 import { useBoardProject } from "./use-board-project.ts";
 import { useBulkRun } from "./use-bulk-run.tsx";
 import { useCardDrag } from "./use-card-drag.ts";
@@ -130,9 +112,6 @@ export const BoardView = memo(function BoardView(props: {
   /** #1198: the card the board's Tab stop is on, and the column a narrow board shows. */
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
   const [shownColumn, setShownColumn] = useState<BoardColumn | null>(null);
-  /** A card to focus once its column shows; the last key, to leave `g s` to the go-to chord. */
-  const pendingFocus = useRef<string | null>(null);
-  const lastKey = useRef({ key: "", at: 0 });
   const hintId = useId();
   const [notice, setNotice] = useState<string | null>(null);
   /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
@@ -178,13 +157,6 @@ export const BoardView = memo(function BoardView(props: {
   // Wide, a picked worktree shows its files at once; narrow, they wait for the Files button.
   const filesShown = filesPanelOpen(files, filesChoice, treeBranch, narrow);
   const filtering = filter.trim() !== "" || onlyBlocked;
-  const counts = (inColumn: number, ofColumn: number) =>
-    filtering
-      ? {
-          count: filteredColumnCount(inColumn, ofColumn),
-          label: filteredCountLabel(t, inColumn, ofColumn),
-        }
-      : { count: columnCount(inColumn), label: countLabel(t, inColumn) };
   const boardIds = boardOrder(shown);
   const {
     setPicked,
@@ -259,6 +231,10 @@ export const BoardView = memo(function BoardView(props: {
   const nowMs = store.now();
   const quietBySession = new Map(quietAlerts(state, nowMs, t).map((alert) => [alert.key, alert]));
   const quietOf = (card: Card) => quietBadge(card, hostId, quietBySession, nowMs, t);
+  const workflowOf = (card: Card) =>
+    card.workflowRunId
+      ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
+      : undefined;
   const titlesOf = (ids: string[]) =>
     ids.map((id) => all.find((card) => card.id === id)?.title ?? id).join(", ");
 
@@ -308,42 +284,14 @@ export const BoardView = memo(function BoardView(props: {
    * something the keyboard reaches (scrollable-region-focusable).
    */
   const stops = tabStops(shownIds, focusedCard);
-  const titleOf = (cardId: string) =>
-    boardRef.current?.querySelector<HTMLElement>(`li[data-card="${cardId}"] [data-card-open]`);
-  /** Focuses a card, showing its column first on a narrow board. */
-  const focusCard = (cardId: string) => {
-    const column = all.find((card) => card.id === cardId)?.column;
-    if (switcher && column && column !== showing) {
-      pendingFocus.current = cardId;
-      setShownColumn(column);
-      return;
-    }
-    titleOf(cardId)?.focus();
-  };
-  useEffect(() => {
-    const cardId = pendingFocus.current;
-    if (cardId === null) return;
-    pendingFocus.current = null;
-    titleOf(cardId)?.focus();
+  const { titleOf, keyOn } = useBoardFocus({
+    board: boardRef,
+    cards: all,
+    narrow: switcher,
+    showing,
+    onShow: setShownColumn,
+    keys: { rangeBase, anchor, shownIds, boardOrder: boardIds, selection, select, setPicked },
   });
-  /** A key on a card's title (see `cardKey`): the action comes back for what is the board's own. */
-  const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) =>
-    cardKey(
-      {
-        lastKey,
-        rangeBase,
-        anchor,
-        shownIds,
-        boardOrder: boardIds,
-        selection,
-        cards: all,
-        focusCard,
-        select,
-        setPicked,
-      },
-      cardId,
-      e,
-    );
   useMoveFocus(refocus, {
     cards: all,
     columnOf,
@@ -494,101 +442,42 @@ export const BoardView = memo(function BoardView(props: {
               clearSelection();
             }}
           >
-            {COLUMNS.map(({ id }) => {
-              /** What the dragged cards would lack here: said by the column until they let go. */
-              const asking = dragNeeds(id, drag.dragCards, contracts);
-              return (
-                <ColumnLane
-                  key={id}
-                  t={t}
-                  id={id}
-                  hidden={switcher && id !== showing}
-                  asking={asking}
-                  over={drag.over === id}
-                  {...counts(
-                    shown.filter((card) => card.column === id).length,
-                    all.filter((card) => card.column === id).length,
-                  )}
-                  empty={all.every((card) => card.column !== id)}
-                  noMatches={
-                    filtering &&
-                    all.some((card) => card.column === id) &&
-                    shown.every((card) => card.column !== id)
-                  }
-                  onAdd={() => {
-                    setCreateIn(id);
-                    setCreating(true);
-                  }}
-                  onDragEnter={() => drag.enter(id)}
-                  onDragLeave={drag.leave}
-                  onDrop={() => drag.drop(id)}
-                  handle={
-                    switcher
-                      ? undefined
-                      : {
-                          width,
-                          index: COLUMNS.findIndex((column) => column.id === id) + 1,
-                          last: id === COLUMNS.at(-1)?.id,
-                          onChange: (next) => store.boardWidth.set(next, false),
-                          onCommit: () => store.boardWidth.persist(),
-                        }
-                  }
-                >
-                  {shown
-                    .filter((card) => card.column === id)
-                    .map((card) => (
-                      <CardTile
-                        key={card.id}
-                        card={card}
-                        contracts={contracts}
-                        quiet={quietOf(card)}
-                        workflow={
-                          card.workflowRunId
-                            ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName
-                            : undefined
-                        }
-                        formatTime={(iso) => store.formatTime(iso)}
-                        labels={{
-                          actions: store.i18n.t("board.cardActions", { title: card.title }),
-                          start: store.i18n.t("board.startCard"),
-                          edit: store.i18n.t("board.edit"),
-                          delete: store.i18n.t("board.delete"),
-                          select: t("board.selectCard"),
-                          deselect: t("board.deselectCard"),
-                          selectNamed: t("board.selectCardNamed", { title: card.title }),
-                        }}
-                        startOff={startOffText(cardStartBlock(card), store.i18n.t)}
-                        deps={{
-                          waiting: titlesOf(card.waitingOn),
-                          holding: titlesOf(card.blocking),
-                        }}
-                        moves={movesOf(card)}
-                        onOpen={() => props.onOpenCard(card.id)}
-                        onEdit={() => props.onOpenCard(card.id, true)}
-                        onDelete={() => setDeleting(card)}
-                        onStart={() => startAsk.ask(card, contracts, () => setStarting(card))}
-                        locked={busy}
-                        selected={selection.includes(card.id)}
-                        selecting={selection.length > 0}
-                        onStartSelection={bulkRun.askStart}
-                        onMoveSelection={() => {
-                          moveFrom.current = card.id;
-                          setMoveMenuOpen(true);
-                        }}
-                        onToggleSelect={() => select(card)}
-                        onRangeSelect={() => selectRange(card)}
-                        tabbable={stops.has(card.id)}
-                        hintId={hintId}
-                        onFocus={() => setFocusedCard(card.id)}
-                        onKey={keyOn(card.id)}
-                        onDragStart={() => drag.start(card)}
-                        onDragEnd={drag.end}
-                        onDropOn={() => drag.drop(id, card.id)}
-                      />
-                    ))}
-                </ColumnLane>
-              );
-            })}
+            <BoardLanes
+              t={t}
+              store={store}
+              contracts={contracts}
+              hintId={hintId}
+              width={width}
+              switcher={switcher}
+              showing={showing}
+              all={all}
+              shown={shown}
+              filtering={filtering}
+              drag={drag}
+              tabStops={stops}
+              selection={selection}
+              busy={busy}
+              workflowOf={workflowOf}
+              quietOf={quietOf}
+              titlesOf={titlesOf}
+              movesOf={movesOf}
+              onOpenCard={props.onOpenCard}
+              onAdd={(column) => {
+                setCreateIn(column);
+                setCreating(true);
+              }}
+              onDelete={setDeleting}
+              onStart={(card) => startAsk.ask(card, contracts, () => setStarting(card))}
+              onStartSelection={bulkRun.askStart}
+              onMoveSelection={(card) => {
+                moveFrom.current = card.id;
+                setMoveMenuOpen(true);
+              }}
+              onToggleSelect={select}
+              onRangeSelect={selectRange}
+              onFocusCard={setFocusedCard}
+              keyOn={keyOn}
+            />
           </div>
           {files && filesShown && <BoardFilesPanel store={store} hostId={hostId} files={files} />}
         </div>

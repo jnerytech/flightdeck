@@ -12,12 +12,13 @@ import {
 } from "../kernel/index.ts";
 import { BUILD_LOG_BYTES, type PrProvider, tail } from "../pr/index.ts";
 import { prProvider } from "../pr-hosts/index.ts";
-import { type BoundedCheckRunner, MAX_VALUE } from "../workflows/index.ts";
-import { masked, runChecks } from "./domain/check-run.ts";
+import type { BoundedCheckRunner } from "../workflows/index.ts";
+import { checkFailure, masked, runChecks } from "./domain/check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./domain/drift.ts";
 import { buildPrompt, heldSummary } from "./domain/fix-prompt.ts";
 import { COMMIT_ID, type FixRound, type RoundRow, toRound } from "./domain/fix-round.ts";
-import { countedRounds, roundsUsedUp, spendLimit } from "./domain/round-limits.ts";
+import { heldMoved, resolvedRound } from "./domain/held-round.ts";
+import { countedRounds, failuresInARow, roundsUsedUp, spendLimit } from "./domain/round-limits.ts";
 import type { WatchBoard } from "./ports.ts";
 import type { WatchSettings } from "./settings.ts";
 import type { PrWatcher, WatchTrigger } from "./watch.ts";
@@ -133,8 +134,7 @@ export class PrFixer {
     const head = await this.git(worktree, ...SAFE_GIT, "rev-parse", "HEAD");
     // A drop goes back to where the round started: work committed before it stays.
     const base = last.base_sha ?? "";
-    const known = COMMIT_ID.test(sha) && (action === "push" || COMMIT_ID.test(base));
-    if (!known || head.stdout.trim() !== sha) {
+    if (heldMoved(action, { sha, base }, head.stdout.trim())) {
       throw new FlightdeckError(
         "invalid_state",
         "the branch has new commits since the round was held",
@@ -158,10 +158,7 @@ export class PrFixer {
         },
       );
     }
-    const [status, summary] =
-      action === "push"
-        ? ["pushed", `pushed by you after the hold: ${last.summary ?? ""}`]
-        : ["stopped", "dropped by you: the branch is back where the round started"];
+    const { status, summary } = resolvedRound(action, last.summary);
     db.query("UPDATE pr_watch_rounds SET status = ?, summary = ?, ended_at = ? WHERE id = ?").run(
       status,
       summary,
@@ -414,10 +411,7 @@ export class PrFixer {
     }
   }
 
-  /**
-   * Why the first local check did not pass (refused, timed out, too large, failed), or null when
-   * all passed. A refused command is not the round's to fix (#1361): it says so with `refused`.
-   */
+  /** Why the first local check did not pass, or null when all passed (see `checkFailure`). */
   private async failedCheck(
     settings: WatchSettings,
     worktree: string,
@@ -429,33 +423,7 @@ export class PrFixer {
       envNames: settings.checkEnv,
       runner: this.opts.checks,
     });
-    switch (outcome.kind) {
-      case "passed":
-        return null;
-      case "refused":
-        return {
-          text: `local check refused (${outcome.refusal}): ${outcome.command}`,
-          refused: true,
-        };
-      case "aborted":
-        return { text: `local check stopped: ${outcome.command}`, refused: false };
-      default:
-        if (outcome.timedOut) {
-          const text = `local check timed out: ${outcome.command} (after ${settings.checkTimeoutMin} min)`;
-          return { text, refused: false };
-        }
-        if (outcome.tooLarge) {
-          return {
-            text: `local check stopped: ${outcome.command} printed more than 4 MB`,
-            refused: false,
-          };
-        }
-        // Masked whole by runChecks, so the cut below cannot split a secret's line unmasked.
-        return {
-          text: `local check failed: ${outcome.command} (exit ${outcome.exitCode})\n${outcome.output.slice(-MAX_VALUE)}`,
-          refused: false,
-        };
-    }
+    return checkFailure(outcome, settings.checkTimeoutMin);
   }
 
   private async play(input: {
@@ -576,12 +544,7 @@ export class PrFixer {
     end("failed", summary, spent);
     const { watcher } = this.opts;
     const settings = watcher.settings(this.opts.board.getCard(cardId).projectId);
-    const rounds = this.counted(cardId);
-    let inARow = 0;
-    for (const round of [...rounds].reverse()) {
-      if (round.status !== "failed") break;
-      inARow++;
-    }
+    const inARow = failuresInARow(this.counted(cardId));
     if (inARow >= settings.maxFailures)
       this.needsYou(cardId, `${inARow} rounds in a row failed: ${summary.split("\n")[0]}`);
   }
