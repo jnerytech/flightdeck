@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { UsageTokens } from "./usage-tokens.ts";
 
 /** API prices of a model, in US$ per million tokens. */
-export const ModelPrice = z.object({
+const ModelPrice = z.object({
   input: z.number().min(0),
   output: z.number().min(0),
   cacheRead: z.number().min(0),

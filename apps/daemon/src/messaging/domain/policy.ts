@@ -27,7 +27,7 @@ export function addressParts(address: string): { host: string | null; id: string
 }
 
 /** Which sessions an exception names; every field given has to match. */
-export interface Selector {
+interface Selector {
   /** An address (`host/id`) or a bare id. */
   session?: string;
   project?: string;

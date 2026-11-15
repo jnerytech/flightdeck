@@ -85,7 +85,7 @@ const csvField = (value: string) =>
   /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 
 /** Every token of an entry, as one number. */
-export const TOKENS_SQL = "(input + output + cache_read + cache_write_5m + cache_write_1h)";
+const TOKENS_SQL = "(input + output + cache_read + cache_write_5m + cache_write_1h)";
 
 /**
  * The persona a usage entry belongs to: the one its session was opened with, else the one applied

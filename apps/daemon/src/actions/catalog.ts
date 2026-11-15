@@ -37,7 +37,7 @@ export interface CatalogOptions {
 }
 
 /** Versioned actions live here, read from the project's base branch only. */
-export const ACTIONS_FILE = ".flightdeck/actions.yaml";
+const ACTIONS_FILE = ".flightdeck/actions.yaml";
 
 const invalid = (message: string, reason?: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", message, reason, params);

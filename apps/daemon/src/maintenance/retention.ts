@@ -18,7 +18,7 @@ export type PruneCounts = {
 };
 
 /** Quota samples are history for charts: a month is enough. */
-export const QUOTA_SAMPLES_DAYS = 30;
+const QUOTA_SAMPLES_DAYS = 30;
 
 const DAY_MS = 86_400_000;
 

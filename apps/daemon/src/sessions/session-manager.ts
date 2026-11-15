@@ -52,7 +52,7 @@ import { type LiveSession, SessionRuns } from "./session-runs.ts";
 export type { SessionManagerOptions, TurnEdge } from "./session-options.ts";
 
 /** The reason of the `session.status` event a sleeping session logs. */
-export const SLEPT_REASON = "slept";
+const SLEPT_REASON = "slept";
 
 export type EventListener = (envelope: EventEnvelope) => void;
 

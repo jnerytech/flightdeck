@@ -63,7 +63,7 @@ export interface MessagingOptions {
 }
 
 /** What the messaging layer needs of the standard names. */
-export interface NameBook {
+interface NameBook {
   get(sessionId: string): { display: string; alias: string; aliases: string[] } | null;
   resolve(alias: string): string | null;
 }

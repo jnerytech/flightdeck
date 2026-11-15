@@ -12,7 +12,7 @@ type ActionIssue = RuleIssue;
 
 export type ApprovalMode = "always" | "never" | "first-per-session";
 
-export interface ActionParam {
+interface ActionParam {
   pattern: string;
   default?: string;
 }

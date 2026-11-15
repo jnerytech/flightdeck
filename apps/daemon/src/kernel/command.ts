@@ -111,7 +111,7 @@ export interface LimitedMore {
 }
 
 /** What `runLimited` asks of a started program. */
-export interface Spawned {
+interface Spawned {
   pid: number;
   stdout: ReadableStream<Uint8Array>;
   stderr: ReadableStream<Uint8Array>;
@@ -119,7 +119,7 @@ export interface Spawned {
   kill(): void;
 }
 
-export interface SpawnOptions {
+interface SpawnOptions {
   cwd: string;
   env: Record<string, string | undefined>;
   detached: boolean;

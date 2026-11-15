@@ -82,7 +82,7 @@ export interface CardReviewResult {
 /** The cap of one review call, in dollars (soft: the SDK checks it after the turn). */
 export const REVIEW_BUDGET_USD = 0.5;
 /** Reviews a card may ask for in 24 hours. */
-export const REVIEWS_PER_DAY = 3;
+const REVIEWS_PER_DAY = 3;
 
 interface Row {
   state: "running" | "done" | "failed" | "error";

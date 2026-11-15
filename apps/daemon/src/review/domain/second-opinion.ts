@@ -8,7 +8,7 @@ import type { DiffFile } from "@flightdeck/protocol";
 import { z } from "zod";
 import { parseJsonOr } from "../../kernel/index.ts";
 
-export type Severity = "blocker" | "high" | "medium" | "low";
+type Severity = "blocker" | "high" | "medium" | "low";
 
 export interface Finding {
   path: string;

@@ -7,7 +7,7 @@ import { REMOVED_LINE } from "./domain/check-run.ts";
 import type { FixRound, PrFixer } from "./fix.ts";
 
 /** One session that worked on a card, for the trail of its PR (phase 22). */
-export interface TraceSession {
+interface TraceSession {
   sessionId: string;
   claudeSessionId: string | null;
   name: string | null;
