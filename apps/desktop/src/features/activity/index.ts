@@ -8,7 +8,6 @@ export {
   type ActivityCore,
   ActivitySlice,
   type ActivitySliceState,
-  type AwayHost,
   type AwayState,
   initialActivityState,
 } from "./store.ts";
