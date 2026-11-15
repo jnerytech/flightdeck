@@ -10,14 +10,13 @@ import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import {
   type CompareCell,
-  type CompareField,
   type CompareRow,
   compareHosts,
-  featureDiff,
-  featureDiffTied,
+  featureDiffOf,
   hasFix,
   hostFacts,
 } from "./domain/host-compare-model.ts";
+import { shown } from "./domain/host-compare-words.ts";
 
 const COMPARE_KEYS = ["hosts", "doctor", "deps", "healthError"] as const;
 const DASH = "—";
@@ -28,54 +27,9 @@ const STICKY = " sticky left-0 z-1 bg-background";
 const CORNER = `py-1 pr-3${STICKY}`;
 const ROW_HEADER = `py-1 pr-3 align-top font-normal${STICKY}`;
 
-const HOOK_WORDS: Record<string, Key> = {
-  ok: "hostCompare.hooks.ok",
-  outdated: "hostCompare.hooks.outdated",
-  missing: "hostCompare.hooks.missing",
-};
-const SIGNIN_WORDS: Record<string, Key> = {
-  ok: "hostCompare.signin.ok",
-  outdated: "hostCompare.signin.outdated",
-  missing: "hostCompare.signin.missing",
-  na: "hostCompare.signin.na",
-};
-const TOOL_WORDS: Record<string, Key> = {
-  ok: "hostCompare.tool.ok",
-  outdated: "hostCompare.tool.outdated",
-  missing: "hostCompare.tool.missing",
-  na: "hostCompare.tool.na",
-};
-const BOOT_WORDS: Record<string, Key> = {
-  ok: "hostCompare.boot.ok",
-  outdated: "hostCompare.boot.outdated",
-  missing: "hostCompare.boot.missing",
-  na: "hostCompare.boot.na",
-};
-const OS_WORDS: Record<string, Key> = {
-  linux: "hostCompare.os.linux",
-  darwin: "hostCompare.os.darwin",
-  win32: "hostCompare.os.win32",
-};
-/** The words of the fields whose value is a status; an unknown one reads as not known. */
-const WORDS: Partial<Record<CompareField, Record<string, Key>>> = {
-  hooks: HOOK_WORDS,
-  signin: SIGNIN_WORDS,
-  gh: TOOL_WORDS,
-  az: TOOL_WORDS,
-  boot: BOOT_WORDS,
-};
-
 /** The reading list without one host: the updater for when its health read ends. */
 function without(hostId: string) {
   return (ids: readonly string[]) => ids.filter((id) => id !== hostId);
-}
-
-/** A value as the person reads it: the word for a status, the count of a feature set, a version as is. */
-function shown(field: CompareField, value: string, t: T): string {
-  if (field === "features") return String(value === "" ? 0 : value.split(",").length);
-  if (field === "os") return t(OS_WORDS[value] ?? "hostCompare.unknown");
-  const words = WORDS[field];
-  return words ? t(words[value] ?? "hostCompare.unknown") : value;
 }
 
 /**
@@ -109,17 +63,6 @@ function FeatureDiffList(props: Readonly<{ missing: string[]; extra: string[]; t
       )}
     </span>
   );
-}
-
-/** The features a marked cell lacks or adds: against the majority, or against the others when tied. */
-function featureDiffOf(row: CompareRow, value: string) {
-  if (row.field !== "features") return null;
-  return row.tied
-    ? featureDiffTied(
-        value,
-        row.cells.map((c) => c.value),
-      )
-    : featureDiff(value, row.majority);
 }
 
 function Cell(

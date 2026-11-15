@@ -3,5 +3,6 @@
  * that wake it, and the local day the usage ledger counts by. Another domain imports from here,
  * never a file inside.
  */
-export { Quota, quotaReadings, realTimers, type Timers } from "./quota.ts";
+export { quotaReadings } from "./domain/readings.ts";
+export { Quota, realTimers, type Timers } from "./quota.ts";
 export { localDay } from "./usage.ts";
