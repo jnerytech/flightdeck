@@ -279,19 +279,8 @@ export class AppStore {
     this.terminals = wireTerminals(this.kernel, {
       showTab: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
-      closingTab: (closing) => {
-        // The area is the current host's, or another host's first one (a tab of the all-hosts row).
-        const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
-          (candidate) => candidate.id === closing.areaId,
-        );
-        const route = area?.tabs.find((tab) => tab.id === closing.tabId)?.router.current;
-        if (!area || route?.name !== "terminal") return null;
-        return {
-          hostId: route.host,
-          terminalId: route.terminalId,
-          closeTab: () => area.close(closing.tabId),
-        };
-      },
+      // The current host's areas, or another host's first one (a tab of the all-hosts row).
+      areas: () => [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)],
       copyText: (text) => this.system.copyText(text),
       spawn: (program, args) => this.platform.terminal.open(program, args),
       describeError,
