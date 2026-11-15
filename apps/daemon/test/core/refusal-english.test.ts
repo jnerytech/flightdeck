@@ -192,6 +192,7 @@ const MSGS3_FILES = [
   "board/card-pr-flow.ts",
   "board/card-lifecycle.ts",
   "central/wrapper.ts",
+  "central/domain/claude-launch-args.ts",
 ];
 
 /** The Portuguese words of the earlier detector, plus the ones these files used. */

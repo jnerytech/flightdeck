@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildClaudeLaunch } from "../../src/central/domain/claude-launch-args.ts";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
-import { buildClaudeLaunch, RECEPTOR_FILE } from "../../src/central/wrapper.ts";
+import { RECEPTOR_FILE } from "../../src/central/wrapper.ts";
 import { runCli } from "../../src/main.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";
