@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { NotifyEvent } from "../../src/features/webhook/webhook-format.ts";
+import type { NotifyEvent } from "../../src/features/webhook/domain/webhook-format.ts";
 import { delay, type SendResult, WebhookQueue } from "../../src/features/webhook/webhook-queue.ts";
 
 const event = (id: string, over: Partial<NotifyEvent> = {}): NotifyEvent => ({
