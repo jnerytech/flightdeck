@@ -14,8 +14,7 @@ import {
   sameSecret,
   toFdvault,
 } from "../vault/domain/vault-backup.ts";
-import { Vault } from "../vault/index.ts";
-import { BackupError } from "./backup-error.ts";
+import { BackupError, Vault } from "../vault/index.ts";
 import {
   hostLabel,
   Item,

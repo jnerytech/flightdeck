@@ -8,6 +8,7 @@ export {
   type VaultApprovalsCore,
   VaultApprovalsSlice,
 } from "./approvals-store.ts";
+export { BackupError, type BackupErrorCode } from "./domain/backup-error.ts";
 export type { VaultAnswer } from "./domain/vault-approval.ts";
 // `vault-backup.ts` is left out on purpose: it imports `age`, and the app store loads this index at
 // start-up. `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file; only a type comes through here.
