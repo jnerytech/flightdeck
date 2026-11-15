@@ -26,4 +26,15 @@ describe("fake claude events()", () => {
   test("a file with no finished line yet returns nothing", () => {
     expect(eventsOf('{"type":"sta')).toEqual([]);
   });
+
+  test("blank lines, CRLF ones included, are skipped", () => {
+    expect(eventsOf('{"type":"start"}\r\n\r\n\n{"type":"hook"}\r\n')).toEqual([
+      { type: "start" },
+      { type: "hook" },
+    ]);
+  });
+
+  test("a fake that has written nothing yet has no events", () => {
+    expect(readFakeEvents(tempDir("fd-fake-events-"))).toEqual([]);
+  });
 });
