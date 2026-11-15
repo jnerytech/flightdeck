@@ -1,24 +1,6 @@
-import {
-  ArrowLeft,
-  ArrowLeftRight,
-  ArrowRight,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Pin,
-  PinOff,
-  Plus,
-  X,
-} from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { type CSSProperties, Fragment, type ReactNode, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { HostDot } from "@/features/hosts/ui.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
 import { cn } from "@/lib/utils";
@@ -28,6 +10,7 @@ import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { tabKind } from "./domain/tab-badge.ts";
 import { TabBadgeGlyph } from "./tab-badge-glyph.tsx";
 import { TAB_ICONS, tabFacts, tabTitle } from "./tab-facts.ts";
+import { ActiveMenu } from "./tab-menu.tsx";
 import { TabOverflow } from "./tab-overflow.tsx";
 import type { Tab, Tabs } from "./tabs.ts";
 import { useStripScroll } from "./use-strip-scroll.ts";
@@ -161,44 +144,8 @@ export function TabBar(
       <Plus />
     </Button>
   );
-  /** The current tab's menu: move, pin and the rest, at the end of the strip and of the narrow row. */
   const activeMenu = active && (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mb-0.5 size-7"
-          aria-label={t("tabs.actions", { title: activeLabel })}
-        >
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          disabled={!tabs.canShift(active.id, -1)}
-          onSelect={() => shift(active.id, -1)}
-        >
-          <ArrowLeft aria-hidden="true" />
-          {t("tabs.moveLeft", { title: activeLabel })}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={!tabs.canShift(active.id, 1)}
-          onSelect={() => shift(active.id, 1)}
-        >
-          <ArrowRight aria-hidden="true" />
-          {t("tabs.moveRight", { title: activeLabel })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => store.workspace.moveToOtherArea(active.id)}>
-          <ArrowLeftRight aria-hidden="true" />
-          {t("tabs.moveToOther", { title: activeLabel })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => tabs.pin(active.id, !active.pinned)}>
-          {active.pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
-          {t(active.pinned ? "tabs.unpin" : "tabs.pin", { title: activeLabel })}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ActiveMenu store={store} tabs={tabs} active={active} label={activeLabel} shift={shift} />
   );
   if (narrow) {
     // One button: the current tab (icon, title, its host's dot) and how many there are; it opens
