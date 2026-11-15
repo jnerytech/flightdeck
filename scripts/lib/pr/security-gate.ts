@@ -213,6 +213,9 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
     ],
   ],
   ["secret masking", [/^apps\/daemon\/src\/actions\/domain\/mask\.ts$/]],
+  // The files that choose a claude process's env, settings, tools and executable, for a session
+  // and for the one-shot calls that judge a permission or answer the assistant (#1589).
+  ["claude process options", [/^apps\/daemon\/src\/runtime\/claude-(?:sdk-runtime|one-shot)\.ts$/]],
   [
     "address or signature check",
     [
