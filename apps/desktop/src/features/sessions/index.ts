@@ -11,6 +11,7 @@
 
 export { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer-model.ts";
 export { SessionCommandsSlice } from "./commands.ts";
+export { fillComposer, takeComposerFill } from "./composer-fill.ts";
 export { awaitingApproval } from "./domain/awaiting-approval.ts";
 export type { CacheTtl } from "./domain/cache-timer.ts";
 export { type Finish, sinceLastLook } from "./domain/finished-list.ts";

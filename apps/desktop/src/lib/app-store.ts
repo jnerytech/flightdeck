@@ -30,7 +30,12 @@ import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import type { Answer } from "../features/needs-you/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import { ProjectKeys, type WorktreeFilter } from "../features/projects/index.ts";
-import { SessionViews, sessionKey } from "../features/sessions/index.ts";
+import {
+  fillComposer,
+  SessionViews,
+  sessionKey,
+  takeComposerFill,
+} from "../features/sessions/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
@@ -397,18 +402,12 @@ export class AppStore {
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
   fillComposer(key: string, text: string): void {
-    const waiting = this.state.composerFill[key];
-    this.update({
-      composerFill: { ...this.state.composerFill, [key]: waiting ? `${waiting}\n\n${text}` : text },
-    });
+    fillComposer(this.kernel, key, text);
   }
 
   /** The text waiting for the session's box, which is now taken; `null` when there is none. */
   takeComposerFill(key: string): string | null {
-    const { [key]: text, ...rest } = this.state.composerFill;
-    if (text === undefined) return null;
-    this.update({ composerFill: rest });
-    return text;
+    return takeComposerFill(this.kernel, key);
   }
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
