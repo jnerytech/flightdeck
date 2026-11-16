@@ -82,6 +82,25 @@ describe("conversation-rows: a turn's end says why and what it cost", () => {
     expect(rows[2] ?? "").not.toContain("0,5267");
   });
 
+  test("a result with no cost leaves the total it follows as it was, and a smaller total subtracts nothing", () => {
+    const noCost = {
+      ...turn(2, 0, false, "success"),
+      event: { type: "turn.result", subtype: "success", isError: false, durationMs: 1000 },
+    } as EventEnvelope;
+    const state = [turn(1, 0.4, false, "success"), noCost, turn(3, 0.5, false, "success")].reduce(
+      applyEnvelope,
+      emptySession(),
+    );
+    const rows = rowsOf(state);
+    expect(rows[2] ?? "").toContain("0,1000");
+    const lower = [turn(1, 0.4, false, "success"), turn(2, 0.1, false, "success")].reduce(
+      applyEnvelope,
+      emptySession(),
+    );
+    cleanup();
+    expect(rowsOf(lower)[1] ?? "").not.toContain("US$");
+  });
+
   test("a failed turn names its reason", () => {
     const rows = rowsOf(total);
     expect(rows[0] ?? "").toContain("limite de turnos atingido");

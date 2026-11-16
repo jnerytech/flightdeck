@@ -193,14 +193,25 @@ export function ApprovalCard(
                 .join(" · ")}
         </summary>
         <dl className="mt-2 flex flex-col gap-1">
-          {questions.map((q) => (
-            <div key={q.question}>
-              <dt className="text-muted-foreground text-xs">{q.question}</dt>
-              {!unanswered && <dd>{given?.[q.question] ?? outcome}</dd>}
+          {unanswered ? (
+            // One outcome for every question: several terms share one description.
+            <div>
+              {questions.map((q) => (
+                <dt key={q.question} className="text-muted-foreground text-xs">
+                  {q.question}
+                </dt>
+              ))}
+              <dd>{outcome}</dd>
             </div>
-          ))}
+          ) : (
+            questions.map((q) => (
+              <div key={q.question}>
+                <dt className="text-muted-foreground text-xs">{q.question}</dt>
+                <dd>{given?.[q.question] ?? outcome}</dd>
+              </div>
+            ))
+          )}
         </dl>
-        {unanswered && <p className="text-sm">{outcome}</p>}
       </details>
     );
   }

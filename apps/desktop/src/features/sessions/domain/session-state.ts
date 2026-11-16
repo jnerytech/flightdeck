@@ -189,14 +189,14 @@ function sessionInit(
 
 /** The timeline item of a turn's end. */
 function resultItem(event: EventOf<"turn.result">, seq: number, before: ChatItem[]): ChatItem {
-  const previous = before.findLast((item) => item.kind === "result");
-  // The CLI reports the running total of the session; a total below the last one is a new process.
+  // The CLI reports the running total of the session: the turn's own cost is what it adds to the
+  // last total known, and a smaller total subtracts nothing (as the daemon's budget counts it).
+  const previous = before.findLast((item) => item.kind === "result" && item.costUsd !== undefined);
   const lastTotal = previous?.kind === "result" ? (previous.costUsd ?? 0) : 0;
   const turnCostUsd =
     event.costUsd === undefined
       ? undefined
-      : Math.round((event.costUsd >= lastTotal ? event.costUsd - lastTotal : event.costUsd) * 1e6) /
-        1e6;
+      : Math.round(Math.max(0, event.costUsd - lastTotal) * 1e6) / 1e6;
   return {
     kind: "result",
     seq,
