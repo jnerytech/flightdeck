@@ -183,12 +183,16 @@ export class WorkflowEngine {
     }
   }
 
-  /** Nothing reached an agent (worktree or setup failed); the board moves the card itself. */
+  /**
+   * Nothing reached an agent (worktree or setup failed); the board moves the card itself. A card
+   * run that is not a workflow run has nothing here to fail: the board ends it alone (#3404).
+   */
   fail(
     runId: string,
     why: string,
     refusal: { reason: string; params?: Record<string, string | number> } | null = null,
   ): void {
+    if (!this.has(runId)) return;
     this.store.end(runId, "failed", why);
     if (refusal) this.store.setReasonKey(runId, refusal.reason, refusal.params ?? {});
   }
