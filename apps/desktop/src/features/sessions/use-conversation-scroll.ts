@@ -55,8 +55,9 @@ export function useConversationScroll({
   const pin = (box: HTMLElement) => {
     box.scrollTop = box.scrollHeight;
     // Issue #456: the end, but never past a pending request's top. When the conversation is about
-    // as tall as the card (a short window, a long header), the card's question comes first.
-    const card = box.querySelector("[data-request-id]");
+    // as tall as the card (a short window, a long header), the card's question comes first. An
+    // answered card keeps its request id and says nothing of the end (#3407).
+    const card = box.querySelector('[data-request-id][data-state="waiting"]');
     const cut = card ? box.getBoundingClientRect().top - card.getBoundingClientRect().top : 0;
     if (cut > 0) box.scrollTop -= cut;
     pinnedTop.current = box.scrollTop;
