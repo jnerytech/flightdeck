@@ -292,6 +292,7 @@ export const sessions = {
       error_max_turns: "limite de turnos atingido",
       error_during_execution: "erro durante a execução",
       error_max_budget_usd: "limite de custo atingido",
+      other: "parou com erro",
     },
   },
   reader: {

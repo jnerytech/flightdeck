@@ -111,7 +111,7 @@ function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const known = TURN_REASONS.includes(item.subtype);
   let line = props.t("session.turnDone", { seconds });
   if (item.isError) {
-    const reason = known ? props.t(`session.turnReason.${item.subtype}` as Key) : item.subtype;
+    const reason = props.t(`session.turnReason.${known ? item.subtype : "other"}` as Key);
     line = props.t("session.turnFailedWhy", { reason, seconds });
   }
   return (

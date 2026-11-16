@@ -88,9 +88,10 @@ describe("conversation-rows: a turn's end says why and what it cost", () => {
     expect(rows[1] ?? "").toContain("erro durante a execução");
   });
 
-  test("a reason the app does not know is shown as the host sent it", () => {
+  test("a reason the app does not know is a plain sentence, never the host's code", () => {
     const rows = rowsOf(applyEnvelope(emptySession(), turn(1, 0.1, true, "error_strange")));
-    expect(rows[0] ?? "").toContain("error_strange");
+    expect(rows[0] ?? "").toContain("parou com erro");
+    expect(rows[0] ?? "").not.toContain("error_strange");
   });
 });
 
