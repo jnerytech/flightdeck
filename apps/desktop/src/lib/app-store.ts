@@ -6,12 +6,11 @@ import type {
   SessionRecap,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { z } from "zod";
 import { type ReleaseNotesResult, releaseNotes } from "@/features/appupdate/index.ts";
 import { sessionRecap } from "@/features/summary/index.ts";
-import { WORKSPACE_KEY, type Workspace } from "@/features/tabs/index.ts";
+import type { Workspace } from "@/features/tabs/index.ts";
 import { relayWebhook } from "@/features/webhook/index.ts";
-import { isInside, nullOnError, readStored } from "@/shared/lib/index.ts";
+import { isInside, nullOnError } from "@/shared/lib/index.ts";
 import { Clock } from "../app/clock.ts";
 import {
   composeHosts,
@@ -29,9 +28,9 @@ import { type BudgetsSlice, wireBudgets } from "../features/costs/index.ts";
 import {
   HostCommands,
   HostLink,
-  HostTabs,
-  loadHosts,
+  type HostTabs,
   RequestError,
+  restoreKeptTabs,
   saveHosts,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
@@ -71,12 +70,6 @@ export type { HostResult } from "./kernel.ts";
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
-
-/** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
-function storedWorkspace(storage: Platform["storage"]): unknown {
-  // `Workspace.restore` checks the shape area by area, so anything that is JSON passes here.
-  return readStored(storage, WORKSPACE_KEY, z.unknown(), null);
-}
 
 export { PALETTE_RECENTS_KEY } from "@/features/palette/palette-store.ts";
 
@@ -244,11 +237,7 @@ export class AppStore {
       notify: (notification, route, source) =>
         this.inbox.notify(notification, route, undefined, source),
     });
-    this.hostTabs = HostTabs.restore(
-      storedWorkspace(platform.storage),
-      undefined,
-      options.startRoute,
-    );
+    this.hostTabs = restoreKeptTabs(platform.storage, options.startRoute);
     this.router = this.hostTabs.router;
     this.tabWindow = new TabWindow({
       hostTabs: this.hostTabs,
@@ -262,15 +251,7 @@ export class AppStore {
       success: (text, link) => this.success(text, link),
     });
     this.hostTabs.onSwitch((left, to) => this.tabWindow.announceSwitch(left, to));
-    // A set kept for a host that is not configured any more (removed before, or gone from the list).
-    const configured = new Set(loadHosts(platform.storage).map((host) => host.id));
-    for (const id of Object.keys(this.hostTabs.snapshot().hosts)) {
-      if (!configured.has(id)) this.hostTabs.removeHost(id);
-    }
-    this.hostTabs.subscribe(() => {
-      platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
-      this.tabWindow.clearShownUnread();
-    });
+    this.hostTabs.subscribe(() => this.tabWindow.clearShownUnread());
     this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
@@ -279,19 +260,8 @@ export class AppStore {
     this.terminals = wireTerminals(this.kernel, {
       showTab: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
-      closingTab: (closing) => {
-        // The area is the current host's, or another host's first one (a tab of the all-hosts row).
-        const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
-          (candidate) => candidate.id === closing.areaId,
-        );
-        const route = area?.tabs.find((tab) => tab.id === closing.tabId)?.router.current;
-        if (!area || route?.name !== "terminal") return null;
-        return {
-          hostId: route.host,
-          terminalId: route.terminalId,
-          closeTab: () => area.close(closing.tabId),
-        };
-      },
+      // The current host's areas, or another host's first one (a tab of the all-hosts row).
+      areas: () => [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)],
       copyText: (text) => this.system.copyText(text),
       spawn: (program, args) => this.platform.terminal.open(program, args),
       describeError,

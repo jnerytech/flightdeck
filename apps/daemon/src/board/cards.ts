@@ -11,6 +11,7 @@ import {
 } from "@flightdeck/protocol";
 import { FlightdeckError, ulid } from "../kernel/index.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/index.ts";
+import { CardRows } from "./adapters/card-rows.ts";
 import { parseCardTemplates } from "./domain/card-templates.ts";
 import type { BoardEvent } from "./domain/columns.ts";
 import type { TemplateIgnored, TemplateName } from "./spec-template.ts";
@@ -94,7 +95,11 @@ export interface CardsPort {
  * editing them, finding the card of an issue, and starting a card's run through its gates.
  */
 export class Cards {
-  constructor(private readonly port: CardsPort) {}
+  private readonly rows: CardRows;
+
+  constructor(private readonly port: CardsPort) {
+    this.rows = new CardRows(port.db);
+  }
 
   /**
    * Issue #79: raises the findings of a workflow's agent step as Backlog cards, skipping those a
@@ -110,24 +115,12 @@ export class Cards {
     const at = (this.port.opts.clock ?? Date.now)();
     // A key is covered by any card that has it, except one done longer ago than the window.
     const covered = new Set<string>();
-    for (const row of this.port.db
-      .query<{ source_key: string; board_column: string; updated_at: string }, [string]>(
-        `SELECT source_key, board_column, updated_at FROM cards
-         WHERE project_id = ? AND source_key IS NOT NULL`,
-      )
-      .all(projectId)) {
+    for (const row of this.rows.sourceKeys(projectId)) {
       if (row.board_column !== "done" || at - Date.parse(row.updated_at) < DONE_COVERS_MS) {
         covered.add(row.source_key);
       }
     }
-    const titles = new Set(
-      this.port.db
-        .query<{ title: string }, [string]>(
-          "SELECT title FROM cards WHERE project_id = ? AND board_column <> 'done'",
-        )
-        .all(projectId)
-        .map((row) => sameTitle(row.title)),
-    );
+    const titles = new Set(this.rows.openTitles(projectId).map(sameTitle));
     const raised: CardsRaised = { created: [], duplicates: 0, overCap: 0 };
     for (const finding of findings) {
       if (covered.has(finding.key) || titles.has(sameTitle(finding.title))) {
@@ -244,41 +237,28 @@ export class Cards {
     const blockedBy = input.blockedBy ?? [];
     this.port.blockers.checkBlockers(null, projectId, blockedBy);
     const column = input.column ?? "backlog";
-    const { last } = this.port.db
-      .query<{ last: number | null }, [string, string]>(
-        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = ?",
-      )
-      .get(projectId, column) ?? { last: null };
+    const last = this.rows.lastPosition(projectId, column);
     const id = ulid();
-    const at = now();
-    this.port.db
-      .query(
-        `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
-           issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at,
-           source_key, spec_path, pinned_docs, start_workflow, start_persona)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        id,
-        projectId,
-        input.title,
-        input.description,
-        column,
-        (last ?? 0) + 1,
-        input.issueRef ?? null,
-        input.issueExternal ? 1 : 0,
-        input.arenaOf ?? null,
-        input.variant ? JSON.stringify(input.variant) : null,
-        input.unblockWhen ?? "done",
-        autoStartOf(input.autoStart),
-        at,
-        at,
-        input.sourceKey ?? null,
-        input.specPath ?? null,
-        pins.length > 0 ? JSON.stringify(pins) : null,
-        input.startWorkflow ?? null,
-        input.startPersona ?? null,
-      );
+    this.rows.insert({
+      id,
+      projectId,
+      title: input.title,
+      description: input.description,
+      column,
+      position: (last ?? 0) + 1,
+      issueRef: input.issueRef ?? null,
+      issueExternal: input.issueExternal ?? false,
+      arenaOf: input.arenaOf ?? null,
+      variant: input.variant ? JSON.stringify(input.variant) : null,
+      unblockWhen: input.unblockWhen ?? "done",
+      autoStart: autoStartOf(input.autoStart),
+      at: now(),
+      sourceKey: input.sourceKey ?? null,
+      specPath: input.specPath ?? null,
+      pinnedDocs: pins.length > 0 ? JSON.stringify(pins) : null,
+      startWorkflow: input.startWorkflow ?? null,
+      startPersona: input.startPersona ?? null,
+    });
     this.port.blockers.storeBlockers(id, blockedBy);
     this.port.blockers.noteWaiting(id);
     for (const blocker of blockedBy) this.port.changed(blocker);
@@ -287,12 +267,7 @@ export class Cards {
 
   /** The card already made from an issue of the project, if any. */
   cardForIssue(projectId: string, issueRef: string): string | null {
-    const row = this.port.db
-      .query<{ id: string }, [string, string]>(
-        "SELECT id FROM cards WHERE project_id = ? AND lower(issue_ref) = lower(?)",
-      )
-      .get(projectId, issueRef);
-    return row?.id ?? null;
+    return this.rows.idForIssue(projectId, issueRef);
   }
 
   /** Edits the title or the description. */
@@ -323,33 +298,22 @@ export class Cards {
       patch.pinnedDocs === undefined ? card.pinnedDocs : [...new Set(patch.pinnedDocs)];
     // Only pins that come in the patch are judged: ones stored earlier do not block an edit.
     if (patch.pinnedDocs !== undefined) judgePins(pinned);
-    this.port.db
-      .query(
-        `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, validation_note = ?,
-           spec_path = ?, pinned_docs = ?, unblock_when = ?, auto_start = ?, updated_at = ? WHERE id = ?`,
-      )
-      .run(
-        patch.title ?? card.title,
-        patch.description ?? card.description,
-        patch.estimateHours === undefined ? card.estimateHours : patch.estimateHours,
+    this.rows.edit(id, {
+      title: patch.title ?? card.title,
+      description: patch.description ?? card.description,
+      estimateHours: patch.estimateHours === undefined ? card.estimateHours : patch.estimateHours,
+      validationNote:
         patch.validationNote === undefined
           ? card.validationNote
           : patch.validationNote?.trim() || null,
-        specPath,
-        pinned.length === 0 ? null : JSON.stringify(pinned),
-        patch.unblockWhen ?? card.unblockWhen,
-        autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
-        now(),
-        id,
-      );
+      specPath,
+      pinnedDocs: pinned.length === 0 ? null : JSON.stringify(pinned),
+      unblockWhen: patch.unblockWhen ?? card.unblockWhen,
+      autoStart: autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
+      at: now(),
+    });
     // What was found belongs to the path it was found at.
-    if (specPath !== card.specPath) {
-      this.port.db
-        .query(
-          "UPDATE cards SET spec_checked_path = NULL, spec_found = 0, spec_heading = NULL, spec_draft = 0 WHERE id = ?",
-        )
-        .run(id);
-    }
+    if (specPath !== card.specPath) this.rows.forgetSpecFound(id);
     if (patch.blockedBy) {
       const changed = new Set([...card.blockedBy, ...patch.blockedBy]);
       this.port.blockers.storeBlockers(id, patch.blockedBy);
@@ -401,17 +365,14 @@ export class Cards {
     // because the session only opens when the run leaves the queue.
     const standard = this.port.project(card.projectId).personaByColumn[card.column];
     const persona = options.persona ?? (standard ? { id: standard } : null);
-    this.port.db
-      .query(
-        "INSERT INTO card_runs (id, card_id, queued_at, persona, fix_prompt) VALUES (?, ?, ?, ?, ?)",
-      )
-      .run(runId, id, now(), persona ? JSON.stringify(persona) : null, options.fix?.prompt ?? null);
-    // A new run has a new session, whose events start again: the loop's mark of the last one goes.
-    this.port.db
-      .query(
-        "UPDATE cards SET notice = NULL, unblocked_at = NULL, check_loop_turn_seq = NULL WHERE id = ?",
-      )
-      .run(id);
+    this.rows.insertRun({
+      id: runId,
+      cardId: id,
+      at: now(),
+      persona: persona ? JSON.stringify(persona) : null,
+      fixPrompt: options.fix?.prompt ?? null,
+    });
+    this.rows.resetForRun(id);
     this.port.place(id, { type: "started" });
     this.port.pump();
     return this.port.changed(id);
