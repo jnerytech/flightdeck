@@ -2,7 +2,7 @@ import { memo } from "react";
 import { ApprovalCard } from "@/features/permissions/ui.ts";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/shared/markdown/index.ts";
-import type { T } from "../../i18n/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
 import type { ChatItem, SessionState } from "./domain/session-state.ts";
 import { errorText } from "./domain/session-text.ts";
@@ -99,18 +99,30 @@ function PermissionItem(
   );
 }
 
+/** The failed-turn subtypes the CLI reports that have a sentence of their own. */
+const TURN_REASONS = ["error_max_turns", "error_during_execution", "error_max_budget_usd"];
+
 function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
-  const cost = item.costUsd !== undefined ? ` · ${usd(item.costUsd, props.t.lang, 4)}` : "";
-  const key = item.isError ? "session.turnFailed" : "session.turnDone";
+  // The turn's own cost; a turn that cost nothing says nothing (the total repeats it, #3408).
+  const spent = item.turnCostUsd ?? item.costUsd;
+  const cost = spent ? ` · ${usd(spent, props.t.lang, 4)}` : "";
+  const seconds = (item.durationMs / 1000).toFixed(1);
+  const known = TURN_REASONS.includes(item.subtype);
+  let line = props.t("session.turnDone", { seconds });
+  if (item.isError) {
+    const reason = props.t(`session.turnReason.${known ? item.subtype : "other"}` as Key);
+    line = props.t("session.turnFailedWhy", { reason, seconds });
+  }
   return (
     <div
+      data-slot="turn-result"
       className={cn(
         "text-muted-foreground text-xs tabular-nums",
         item.isError && "text-status-error",
       )}
     >
-      {props.t(key, { seconds: (item.durationMs / 1000).toFixed(1) }) + cost}
+      {line + cost}
     </div>
   );
 }
