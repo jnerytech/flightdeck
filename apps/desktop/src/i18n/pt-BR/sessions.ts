@@ -287,7 +287,12 @@ export const sessions = {
     turnDone: "turno concluído · {seconds} s",
     personaApplied: "Persona aplicada: {name}",
     personaCleared: "Fora do papel: {name}",
-    turnFailed: "turno com erro · {seconds} s",
+    turnFailedWhy: "turno com erro: {reason} · {seconds} s",
+    turnReason: {
+      error_max_turns: "limite de turnos atingido",
+      error_during_execution: "erro durante a execução",
+      error_max_budget_usd: "limite de custo atingido",
+    },
   },
   reader: {
     outside:

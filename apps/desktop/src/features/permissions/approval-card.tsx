@@ -171,7 +171,9 @@ export function ApprovalCard(
 
   if (questions && resolution) {
     const given = resolution.answers ?? answers ?? savedAnswers(request.input);
-    const outcome = t(`approval.resolved.${resolution.decision}` as Key);
+    const outcome = resolutionLine(resolution, t);
+    // Nobody answered (denied, expired, cancelled): the outcome is said once, after the questions.
+    const unanswered = questions.every((q) => given?.[q.question] === undefined);
     return (
       <details
         ref={(el) => {
@@ -184,18 +186,21 @@ export function ApprovalCard(
         className="rounded-lg border border-border bg-card px-4 py-2 text-card-foreground text-sm"
       >
         <summary className="cursor-pointer">
-          {questions
-            .map((q) => `${q.header || q.question}: ${given?.[q.question] ?? outcome}`)
-            .join(" · ")}
+          {unanswered
+            ? `${questions.map((q) => q.header || q.question).join(" · ")}: ${outcome}`
+            : questions
+                .map((q) => `${q.header || q.question}: ${given?.[q.question] ?? outcome}`)
+                .join(" · ")}
         </summary>
         <dl className="mt-2 flex flex-col gap-1">
           {questions.map((q) => (
             <div key={q.question}>
               <dt className="text-muted-foreground text-xs">{q.question}</dt>
-              <dd>{given?.[q.question] ?? outcome}</dd>
+              {!unanswered && <dd>{given?.[q.question] ?? outcome}</dd>}
             </div>
           ))}
         </dl>
+        {unanswered && <p className="mt-2">{outcome}</p>}
       </details>
     );
   }

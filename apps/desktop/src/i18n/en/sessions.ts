@@ -288,7 +288,12 @@ export const sessions = {
     turnDone: "turn finished · {seconds} s",
     personaApplied: "Persona applied: {name}",
     personaCleared: "Out of the role: {name}",
-    turnFailed: "turn failed · {seconds} s",
+    turnFailedWhy: "turn failed: {reason} · {seconds} s",
+    turnReason: {
+      error_max_turns: "turn limit reached",
+      error_during_execution: "error while running",
+      error_max_budget_usd: "cost limit reached",
+    },
   },
   reader: {
     outside: "The folder {folder} is outside this host's allowed folders: add it to continue here.",

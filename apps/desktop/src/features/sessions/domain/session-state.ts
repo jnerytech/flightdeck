@@ -46,7 +46,10 @@ export type ChatItem =
       subtype: string;
       isError: boolean;
       durationMs: number;
+      /** The session's running total the CLI reported with this result. */
       costUsd?: number;
+      /** What this turn cost: the total less the one the turn before reported (#3408). */
+      turnCostUsd?: number;
     }
   /** Phase 39: what went with an OpenCode session's first message (its AGENTS.md), or was left out. */
   | { kind: "context"; seq: number; sent: boolean }
@@ -185,7 +188,15 @@ function sessionInit(
 }
 
 /** The timeline item of a turn's end. */
-function resultItem(event: EventOf<"turn.result">, seq: number): ChatItem {
+function resultItem(event: EventOf<"turn.result">, seq: number, before: ChatItem[]): ChatItem {
+  const previous = before.findLast((item) => item.kind === "result");
+  // The CLI reports the running total of the session; a total below the last one is a new process.
+  const lastTotal = previous?.kind === "result" ? (previous.costUsd ?? 0) : 0;
+  const turnCostUsd =
+    event.costUsd === undefined
+      ? undefined
+      : Math.round((event.costUsd >= lastTotal ? event.costUsd - lastTotal : event.costUsd) * 1e6) /
+        1e6;
   return {
     kind: "result",
     seq,
@@ -193,6 +204,7 @@ function resultItem(event: EventOf<"turn.result">, seq: number): ChatItem {
     isError: event.isError,
     durationMs: event.durationMs,
     ...(event.costUsd !== undefined ? { costUsd: event.costUsd } : {}),
+    ...(turnCostUsd !== undefined ? { turnCostUsd } : {}),
   };
 }
 
@@ -273,7 +285,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ),
       };
     case "turn.result":
-      return { ...push(resultItem(event, seq)), streaming: "" };
+      return { ...push(resultItem(event, seq, state.items)), streaming: "" };
     // Applying or leaving a persona is marked on the timeline, next to the role message.
     case "persona.applied":
     case "persona.cleared": {
