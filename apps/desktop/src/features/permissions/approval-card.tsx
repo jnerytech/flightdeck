@@ -199,8 +199,12 @@ export function ApprovalCard(
               {!unanswered && <dd>{given?.[q.question] ?? outcome}</dd>}
             </div>
           ))}
+          {unanswered && (
+            <div>
+              <dd>{outcome}</dd>
+            </div>
+          )}
         </dl>
-        {unanswered && <p className="mt-2">{outcome}</p>}
       </details>
     );
   }
