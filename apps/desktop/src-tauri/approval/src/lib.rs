@@ -13,7 +13,6 @@ use sha2::{Digest, Sha256};
 pub enum Kind {
     Approve,
     EnrollFirst,
-    EnrollAdd,
     Revoke,
 }
 
@@ -45,8 +44,14 @@ pub struct PublicInfo {
 
 const TAG_APPROVAL: &str = "flightdeck/approval/v1";
 const TAG_ENROLL_FIRST: &str = "flightdeck/enroll-first/v1";
-const TAG_ENROLL_ADD: &str = "flightdeck/enroll-add/v1";
 const TAG_REVOKE: &str = "flightdeck/revoke/v1";
+
+/// The longest text the protocol builds is about 600 bytes; anything past this is not one of them.
+const MAX_TEXT: usize = 2048;
+
+fn sha256_hex(text: &str) -> String {
+    Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
+}
 
 /// A new key: the base64 of its 32-byte scalar.
 pub fn generate() -> String {
@@ -82,6 +87,9 @@ pub fn sign(secret: &str, message: &str) -> Result<String, String> {
 /// another host (`daemon_id`), a message made for another key, or an enrollment of another key
 /// than this one. The text is the canonical JSON array of strings the protocol builds.
 pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask, String> {
+    if message.len() > MAX_TEXT {
+        return Err("the text to sign is too long".into());
+    }
     let parts: Vec<String> = serde_json::from_str::<Vec<serde_json::Value>>(message)
         .map_err(|_| "the text to sign is not a list".to_string())?
         .into_iter()
@@ -113,10 +121,6 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             }
             (Kind::EnrollFirst, part(1), None, part(3))
         }
-        TAG_ENROLL_ADD => {
-            shape(5)?;
-            (Kind::EnrollAdd, part(2), Some(part(1)), part(4))
-        }
         TAG_REVOKE => {
             shape(5)?;
             (Kind::Revoke, part(2), Some(part(1)), part(4))
@@ -129,7 +133,21 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     if key.is_some_and(|k| k != own.key_id) {
         return Err("the text is made for another key".into());
     }
-    Ok(Ask { kind, subject: subject.to_string(), also: Also::default() })
+    // The subject goes into the dialog: only the characters of an id, so it cannot pad or fake a line.
+    let plain = !subject.is_empty()
+        && subject.len() <= 64
+        && subject.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+    if kind != Kind::EnrollFirst && !plain {
+        return Err("the text to sign names an id that is not one".into());
+    }
+    // What the allow carries besides the allow: the hashes of nothing say it carries nothing.
+    let none = |index: usize, empty: &str| part(index) != sha256_hex(empty);
+    let also = if kind == Kind::Approve {
+        Also { rules: none(6, "[]"), input: none(7, "null"), message: none(8, "") }
+    } else {
+        Also::default()
+    };
+    Ok(Ask { kind, subject: subject.to_string(), also })
 }
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
@@ -142,13 +160,28 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
         let der = STANDARD.decode(public_key).unwrap_or_default();
         short(&Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect::<String>())
     };
+    let mut saves = Vec::new();
+    if ask.also.rules {
+        saves.push(if pt { "salva regras de permissão" } else { "saves permission rules" });
+    }
+    if ask.also.input {
+        saves.push(if pt { "altera a entrada da ferramenta" } else { "changes the tool's input" });
+    }
+    if ask.also.message {
+        saves.push(if pt { "adiciona uma mensagem" } else { "adds a message" });
+    }
+    let also = match (saves.is_empty(), pt) {
+        (true, _) => String::new(),
+        (false, false) => format!(" It also {}.", saves.join(", ")),
+        (false, true) => format!(" Também {}.", saves.join(", ")),
+    };
     let body = match (ask.kind, pt) {
         (Kind::Approve, false) => format!(
-            "Allow request {}? Continue only if you just pressed Approve in Flightdeck.",
+            "Allow request {}?{also} Continue only if you just pressed Approve in Flightdeck.",
             ask.subject
         ),
         (Kind::Approve, true) => format!(
-            "Permitir o pedido {}? Continue só se você acabou de apertar Aprovar no Flightdeck.",
+            "Permitir o pedido {}?{also} Continue só se você acabou de apertar Aprovar no Flightdeck.",
             ask.subject
         ),
         (Kind::EnrollFirst, false) => format!(
@@ -157,14 +190,6 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
         ),
         (Kind::EnrollFirst, true) => format!(
             "Cadastrar este dispositivo (chave {}) como aprovador deste host? Continue só se você acabou de iniciar isso no Flightdeck.",
-            print(&ask.subject)
-        ),
-        (Kind::EnrollAdd, false) => format!(
-            "Add the device with key {} as an approver of this host? Continue only if you just asked for it in Flightdeck.",
-            print(&ask.subject)
-        ),
-        (Kind::EnrollAdd, true) => format!(
-            "Adicionar o dispositivo com a chave {} como aprovador deste host? Continue só se você acabou de pedir isso no Flightdeck.",
             print(&ask.subject)
         ),
         (Kind::Revoke, false) => format!(
@@ -236,15 +261,11 @@ mod tests {
         Also { rules: true, input: true, message: true }
     }
 
-    fn hex(text: &str) -> String {
-        Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
-    }
-
     /// An approval text for `id`, carrying the hashes of the saved rules, the input and the message.
     fn approval(me: &PublicInfo, id: &str, rules: &str, input: &str, message: &str) -> String {
         serde_json::to_string(&[
-            "flightdeck/approval/v1", &me.key_id, DAEMON, id, "n", "allow", &hex(rules), &hex(input),
-            &hex(message),
+            "flightdeck/approval/v1", &me.key_id, DAEMON, id, "n", "allow", &sha256_hex(rules), &sha256_hex(input),
+            &sha256_hex(message),
         ])
         .unwrap()
     }
@@ -334,8 +355,6 @@ mod tests {
         let body = confirm_text(&first, "en").1;
         assert!(body.contains(&info.key_id[..8]));
         assert!(!body.contains(&info.public_key));
-        let add = Ask { kind: Kind::EnrollAdd, subject: info.public_key.clone(), also: Also::default() };
-        assert!(confirm_text(&add, "pt-BR").1.contains(&info.key_id[..8]));
     }
 
     #[test]

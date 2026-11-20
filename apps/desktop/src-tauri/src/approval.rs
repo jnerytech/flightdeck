@@ -2,15 +2,37 @@
 //! which the webview can use but never read. Signing asks the person through a system dialog the
 //! webview cannot click, and the dialog's words are built here from the text being signed, so a
 //! script in the webview cannot make the key sign something the person did not see. This is a
-//! reduction, not a proof: a script that can call this command can only ever get the person's yes.
+//! reduction, not a proof: a script that can call this command can only ever get the person's yes,
+//! and the dialog names what the allow also saves, never the tool or its command.
 
 use crate::spawn_blocking_result;
 use flightdeck_approval as key;
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::AppHandle;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 const APPROVAL_SERVICE: &str = "flightdeck-approval";
+
+/// One confirmation at a time: a script cannot stack dialogs to wear the person down.
+static ASKING: AtomicBool = AtomicBool::new(false);
+
+struct Asking;
+
+impl Asking {
+    fn begin() -> Result<Self, String> {
+        if ASKING.swap(true, Ordering::AcqRel) {
+            return Err("busy".into());
+        }
+        Ok(Self)
+    }
+}
+
+impl Drop for Asking {
+    fn drop(&mut self) {
+        ASKING.store(false, Ordering::Release);
+    }
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,10 +73,14 @@ pub async fn approval_key_get(daemon_id: String) -> Result<Option<DeviceKey>, St
     .await
 }
 
-/// Makes a new key for a host, replacing any it had. The caller enrolls it or deletes it.
+/// Makes a new key for a host. It refuses when the host already has one, so a script cannot swap
+/// the key an enrolled host trusts; the caller deletes the old key first on purpose.
 #[tauri::command]
 pub async fn approval_key_create(daemon_id: String) -> Result<DeviceKey, String> {
     spawn_blocking_result(move || {
+        if stored(&daemon_id)?.is_some() {
+            return Err("this device already has a key for this host".into());
+        }
         let secret = key::generate();
         let info = key::public_info(&secret)?;
         entry(&daemon_id)?
@@ -93,6 +119,7 @@ pub async fn approval_sign(
         } else {
             ("Allow", "Cancel")
         };
+        let _only_one = Asking::begin()?;
         let said_yes = app
             .dialog()
             .message(body)
