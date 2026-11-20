@@ -65,4 +65,26 @@ describe("host index sync: the CLI's names and addresses follow the host list (#
     store.dispose();
     expect({ error, syncs: sent.length }).toEqual({ error: null, syncs: 2 });
   });
+
+  test("a sync starts only after the one before it has finished, so an older list never lands last", async () => {
+    const finish: Array<() => void> = [];
+    const started: string[] = [];
+    const { store } = start((hosts) => {
+      started.push(hosts.map((host) => host.name).join(","));
+      return new Promise<void>((resolve) => finish.push(resolve));
+    });
+    await store.init();
+    store.roster.rename(PI, "Orange Pi");
+    const startedBeforeFirstFinished = [...started];
+    for (let turn = 0; turn < 3; turn++) {
+      finish.shift()?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+    store.dispose();
+    expect({ startedBeforeFirstFinished, started }).toEqual({
+      startedBeforeFirstFinished: ["Pi,Desk"],
+      started: ["Pi,Desk", "Orange Pi,Desk"],
+    });
+  });
 });
