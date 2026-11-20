@@ -27,6 +27,8 @@ pub enum Kind {
 pub enum CommandAsk {
     /// `card.pr.merge`: this pull request, at this head commit, by this method.
     PrMerge { url: String, head: String, method: String },
+    /// `project.trust.set` with `trusted: true`: this folder's own hooks and servers run with no prompt.
+    TrustProject { path: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -266,8 +268,54 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
         }
+        "project.trust.set" => {
+            if fields.len() != 2 {
+                return Err("the trust payload has the wrong fields".into());
+            }
+            let path = fields
+                .get("path")
+                .and_then(serde_json::Value::as_str)
+                .ok_or("the trust payload has no text for path")?;
+            // Revoking trust lowers risk and takes no proof: only the grant is signed.
+            if fields.get("trusted") != Some(&serde_json::Value::Bool(true)) {
+                return Err("only trusting a folder is signed".into());
+            }
+            if !is_shown_path(path) {
+                return Err("the folder is not a path the dialog can show".into());
+            }
+            let canonical = format!(
+                "{{\"path\":{},\"trusted\":true}}",
+                serde_json::to_string(path).unwrap_or_default()
+            );
+            Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
+        }
         _ => Err("this command is not one this key signs".into()),
     }
+}
+
+/// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
+/// control, no blank or invisible character, no space but the plain one and never two in a row or at an end,
+/// so it cannot pad the text, continue its sentences or reorder it.
+fn is_shown_path(path: &str) -> bool {
+    let absolute = path.starts_with('/')
+        || path.starts_with("\\\\")
+        || matches!(path.as_bytes(), [d, b':', b'\\' | b'/', ..] if d.is_ascii_alphabetic());
+    absolute
+        && path.len() <= 512
+        && !path.starts_with(' ')
+        && !path.ends_with(' ')
+        && !path.contains("  ")
+        && !path.chars().any(|c| {
+            c.is_control()
+                || (c.is_whitespace() && c != ' ')
+                || matches!(
+                    c,
+                    '\u{00ad}' | '\u{034f}' | '\u{061c}' | '\u{115f}' | '\u{1160}' | '\u{180e}'
+                        | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{206f}'
+                        | '\u{2800}' | '\u{3164}' | '\u{fe00}'..='\u{fe0f}' | '\u{feff}' | '\u{ffa0}'
+                        | '\u{fff9}'..='\u{fffc}' | '\u{e0000}'..='\u{e007f}'
+                )
+        })
 }
 
 /// `https://<host>/<owner>/<repo>/pull/<number>` in the characters of a path: nothing that can pad a line or
@@ -371,6 +419,12 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
                 short(head)
             ),
+            Some(CommandAsk::TrustProject { path }) if pt => format!(
+                "Confiar em uma pasta de projeto? Os hooks e os servidores dela, e os de tudo o que há dentro dela, vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck.\n\"{path}\""
+            ),
+            Some(CommandAsk::TrustProject { path }) => format!(
+                "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
+            ),
             None => String::new(),
         },
     };
@@ -380,8 +434,11 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
 
 /// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
 /// does not add a device.
-pub fn confirm_labels(kind: Kind, lang: &str) -> (String, String) {
-    let (yes, no) = match (kind, lang == "pt-BR") {
+pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
+    let (yes, no) = match (ask.kind, lang == "pt-BR") {
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
+            if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
         (Kind::Command, false) => ("Merge", "Cancel"),
@@ -649,10 +706,10 @@ mod tests {
         assert_eq!(ask.host, DAEMON);
         assert!(confirm_text(&ask, "en").1.contains("host daemon-0"), "{}", confirm_text(&ask, "en").1);
         assert!(confirm_text(&ask, "pt-BR").1.contains("host daemon-0"));
-        assert_eq!(confirm_labels(Kind::EnrollAdd, "en"), ("Add device".to_string(), "Cancel".to_string()));
-        assert_eq!(confirm_labels(Kind::EnrollAdd, "pt-BR").0, "Adicionar dispositivo");
-        assert_eq!(confirm_labels(Kind::Approve, "en").0, "Allow");
-        assert_eq!(confirm_labels(Kind::Revoke, "pt-BR").0, "Permitir");
+        assert_eq!(confirm_labels(&ask, "en"), ("Add device".to_string(), "Cancel".to_string()));
+        assert_eq!(confirm_labels(&ask, "pt-BR").0, "Adicionar dispositivo");
+        assert_eq!(confirm_labels(&of_kind(Kind::Approve), "en").0, "Allow");
+        assert_eq!(confirm_labels(&of_kind(Kind::Revoke), "pt-BR").0, "Permitir");
     }
 
     #[test]
@@ -716,12 +773,17 @@ mod tests {
         assert!(en.contains("secret") && en.contains("act-7") && en.contains("once"), "{en}");
         let (_, pt) = confirm_text(&session, "pt-BR");
         assert!(pt.contains("segredo") && pt.contains("act-7") && pt.contains("sessão"), "{pt}");
-        assert_eq!(confirm_labels(Kind::VaultApprove, "en").0, "Allow");
+        assert_eq!(confirm_labels(&of_kind(Kind::VaultApprove), "en").0, "Allow");
     }
 
     /// The payload a merge signs, in canonical form, and the hash both sides share (the protocol test asserts the same two literals).
     const MERGE_PAYLOAD: &str = "{\"cardId\":\"c1\",\"confirm\":true,\"headSha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"method\":\"squash\",\"prUrl\":\"https://github.com/acme/repo/pull/9\"}";
     const MERGE_HASH: &str = "ab4ff38dd49488370b26c6082bcce7b9c06e7126faaf113cc562ef156d7c1e8e";
+
+    /// An ask of `kind` that carries nothing: enough to read the labels of its dialog.
+    fn of_kind(kind: Kind) -> Ask {
+        Ask { kind, host: DAEMON.into(), subject: "s".into(), also: Also::default(), command: None }
+    }
 
     /// A command text (#3453): tag, key id, host, command, nonce, hash of the payload.
     fn command(me: &PublicInfo, host: &str, name: &str, payload: &str) -> String {
@@ -827,7 +889,90 @@ mod tests {
         assert!(!en.contains(&"a".repeat(40)), "the head is shown short: {en}");
         let (_, pt) = confirm_text(&merge_ask(), "pt-BR");
         assert!(pt.contains("pull/9") && pt.contains("squash") && pt.contains("Flightdeck"), "{pt}");
-        assert_eq!(confirm_labels(Kind::Command, "en").0, "Merge");
-        assert_eq!(confirm_labels(Kind::Command, "pt-BR").0, "Mesclar");
+        assert_eq!(confirm_labels(&merge_ask(), "en").0, "Merge");
+        assert_eq!(confirm_labels(&merge_ask(), "pt-BR").0, "Mesclar");
+    }
+
+    /// The payload that trusts a folder, in canonical form with a path of the characters a real one holds
+    /// (a backslash, accents), and the hash both sides share (the protocol test asserts the same two literals).
+    const TRUST_PAYLOAD: &str = "{\"path\":\"C:\\\\Users\\\\José\\\\código\",\"trusted\":true}";
+    const TRUST_HASH: &str = "3e9907a6f46d40d59cbc41b9cd51ddc6b2c11c1ca2195fedc491e9f0643ec51f";
+
+    fn trust_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "project.trust.set".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::TrustProject { path: "C:\\Users\\José\\código".into() }),
+        }
+    }
+
+    #[test]
+    fn the_trust_vector_hashes_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(TRUST_PAYLOAD), TRUST_HASH);
+    }
+
+    #[test]
+    fn trusting_a_folder_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "project.trust.set", TRUST_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(TRUST_PAYLOAD)), Ok(trust_ask()));
+        let shuffled = "{\"trusted\":true,\"path\":\"C:\\\\Users\\\\José\\\\código\"}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(trust_ask()));
+    }
+
+    #[test]
+    fn a_trust_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "project.trust.set", payload), DAEMON, &me, Some(payload))
+        };
+        let long = format!("{{\"path\":\"/{}\",\"trusted\":true}}", "a".repeat(900));
+        for bad in [
+            // Revoking is open and is never signed; a field the dialog does not say; no path; an empty path.
+            "{\"path\":\"/work/app\",\"trusted\":false}".to_string(),
+            "{\"path\":\"/work/app\",\"trusted\":true,\"confirm\":true}".to_string(),
+            "{\"trusted\":true}".to_string(),
+            "{\"path\":\"\",\"trusted\":true}".to_string(),
+            "{\"path\":7,\"trusted\":true}".to_string(),
+            // A line break or a text-direction mark could pad or reorder what the dialog says.
+            "{\"path\":\"/work/app\\nAllow everything\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u202eppa\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u2028app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u200bapp\",\"trusted\":true}".to_string(),
+            // Blank or invisible characters that are not controls, a run of spaces, text that is no absolute path.
+            "{\"path\":\"/work/\\u00a0app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u3000app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u2060app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\ufe0fapp\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/app  Nothing will run\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/app \",\"trusted\":true}".to_string(),
+            "{\"path\":\"work/app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"Nothing will run\",\"trusted\":true}".to_string(),
+            long,
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed("{\"path\":\"/work/app\",\"trusted\":true}").is_ok());
+        assert!(signed("{\"path\":\"/work/my app\",\"trusted\":true}").is_ok());
+        assert!(signed("{\"path\":\"\\\\\\\\host\\\\share\\\\app\",\"trusted\":true}").is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_trust_names_the_folder_and_what_trusting_lets_run_and_has_a_button_of_its_own() {
+        let (_, en) = confirm_text(&trust_ask(), "en");
+        assert!(en.contains("C:\\Users\\José\\código") && en.contains("hooks"), "{en}");
+        let (_, pt) = confirm_text(&trust_ask(), "pt-BR");
+        assert!(pt.contains("José") && pt.contains("hooks") && pt.contains("Flightdeck"), "{pt}");
+        // The fixed warning comes first and the folder last, on a line of its own and in quotes, so a path
+        // cannot pad or continue the sentences that say what trusting does.
+        assert!(en.starts_with("Trust a project folder?"), "{en}");
+        assert!(en.ends_with("\n\"C:\\Users\\José\\código\""), "{en}");
+        assert!(pt.starts_with("Confiar em uma pasta de projeto?"), "{pt}");
+        // Trusting a folder trusts what is inside it too: the dialog says so.
+        assert!(en.contains("everything inside it") && pt.contains("tudo o que há dentro dela"), "{en} {pt}");
+        assert_eq!(confirm_labels(&trust_ask(), "en").0, "Trust");
+        assert_eq!(confirm_labels(&trust_ask(), "pt-BR").0, "Confiar");
     }
 }

@@ -175,9 +175,16 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
         {t(status.protectionOff ? "approvalDevices.off" : "approvalDevices.on")}
       </p>
       {lost && <InlineNotice tone="warn">{t("approvalDevices.lost")}</InlineNotice>}
-      {!status.protectionOff && store.approval.commandsUnchecked(host.id) && (
-        <InlineNotice tone="warn">{t("approvalDevices.commandsUnchecked")}</InlineNotice>
-      )}
+      {!status.protectionOff &&
+        store.approval.uncheckedCommands(host.id).map((command) => (
+          <InlineNotice key={command} tone="warn">
+            {t(
+              command === "merge"
+                ? "approvalDevices.commandsUnchecked"
+                : "approvalDevices.trustUnchecked",
+            )}
+          </InlineNotice>
+        ))}
       {status.keys.length > 0 && (
         <Stack as="ul" gap={2} label={t("approvalDevices.listLabel")}>
           {status.keys.map((key) => (

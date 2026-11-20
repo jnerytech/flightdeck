@@ -13,6 +13,7 @@ import {
   enrollFirstMessage,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   needsApprovalProof,
   PermissionRespondPayload,
@@ -41,6 +42,27 @@ interface MergeBody {
   headSha?: string;
   proof?: { keyId: string; nonce: string; signature: string };
 }
+
+/** The payload of `project.trust.set`, or the person's no (#3453). */
+type TrustPayload =
+  | {
+      kind: "payload";
+      payload: {
+        path: string;
+        trusted: boolean;
+        proof?: { keyId: string; nonce: string; signature: string };
+      };
+    }
+  | { kind: "declined" };
+
+/** The feature a host announces for each command it guards (#3453). */
+const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
+  "card.pr.merge": FEATURE_APPROVAL_COMMAND,
+  "project.trust.set": FEATURE_APPROVAL_TRUST,
+};
+
+/** A command a host from before its proof does not guard: the devices panel says so for each. */
+export type UncheckedCommand = "merge" | "trust";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -225,13 +247,13 @@ export class ApprovalSlice {
    * The host checks the proof of an allow but not of a merge (#3453): it is from before the commands were
    * guarded, so its merges ask for no device. A host the app has no features for is not said to be one.
    */
-  commandsUnchecked(hostId: string): boolean {
+  uncheckedCommands(hostId: string): UncheckedCommand[] {
     const features = this.core.host(hostId)?.features;
-    return (
-      features !== undefined &&
-      hasFeature(features, FEATURE_APPROVAL_PROOF, false) &&
-      !hasFeature(features, FEATURE_APPROVAL_COMMAND, false)
-    );
+    if (features === undefined || !hasFeature(features, FEATURE_APPROVAL_PROOF, false)) return [];
+    const unchecked: UncheckedCommand[] = [];
+    if (!hasFeature(features, FEATURE_APPROVAL_COMMAND, false)) unchecked.push("merge");
+    if (!hasFeature(features, FEATURE_APPROVAL_TRUST, false)) unchecked.push("trust");
+    return unchecked;
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
@@ -489,7 +511,9 @@ export class ApprovalSlice {
     command: ProofCommand,
     payload: Record<string, unknown>,
   ): Promise<ProofResult> {
-    const signer = await this.signer(hostId, FEATURE_APPROVAL_COMMAND);
+    // A command no host guards yet (it has no feature) is never proved.
+    const feature = COMMAND_FEATURE[command];
+    const signer = feature === undefined ? null : await this.signer(hostId, feature);
     if (!signer) return { kind: "none" };
     const challenge = await this.ask(hostId, "approval.challenge", { purpose: "command", command });
     const digest = commandDigest(payload);
@@ -524,6 +548,21 @@ export class ApprovalSlice {
     return {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...bound, proof: proof.proof } : bound,
+    };
+  }
+
+  /**
+   * The payload that trusts `path`, signed by the device when the host checks it and a device is enrolled
+   * (#3453). `path` is the folder the host reports for the project, which is the folder it will trust.
+   * `declined`: the person said no in the system's dialog.
+   */
+  async trustPayload(hostId: string, path: string): Promise<TrustPayload> {
+    const plain = { path, trusted: true };
+    const proof = await this.proveCommand(hostId, "project.trust.set", plain);
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
     };
   }
 
