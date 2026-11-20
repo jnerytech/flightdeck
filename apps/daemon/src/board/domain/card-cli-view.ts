@@ -114,9 +114,21 @@ const NONE = "none";
 function hours(text: string): number | null {
   if (text === NONE) return null;
   const value = Number(text);
-  if (text.trim() === "" || !Number.isFinite(value) || value < 0 || value > 1000)
+  if (!/^\d+(\.\d+)?$/.test(text) || value > 1000)
     throw new Refusal(`--estimate: a number of hours from 0 to 1000, or "${NONE}" to clear it`);
   return value;
+}
+
+/** `--blocked-by a,b`: the ids, or `none` for no blocker; an empty list is a mistake, not a clear. */
+function blockers(text: string): string[] {
+  if (text === NONE) return [];
+  const ids = text
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (ids.length === 0)
+    throw new Refusal(`--blocked-by: a comma-separated list of card ids, or "${NONE}" to clear it`);
+  return ids;
 }
 
 /** What `card update` changes: only the flags given; `none` clears what the card lets be cleared. */
@@ -131,17 +143,7 @@ export function updateOf(args: CardCliArgs) {
     ...(args.specPath === undefined
       ? {}
       : { specPath: args.specPath === NONE ? null : args.specPath }),
-    ...(args.blockedBy === undefined
-      ? {}
-      : {
-          blockedBy:
-            args.blockedBy === NONE
-              ? []
-              : args.blockedBy
-                  .split(",")
-                  .map((id) => id.trim())
-                  .filter(Boolean),
-        }),
+    ...(args.blockedBy === undefined ? {} : { blockedBy: blockers(args.blockedBy) }),
   };
   if (Object.keys(patch).length === 0)
     throw new Refusal(

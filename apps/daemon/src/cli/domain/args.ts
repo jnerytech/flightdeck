@@ -83,6 +83,8 @@ export interface CliArgs {
   cardTitle?: string;
   /** `card move <card> <column> [--position n] [--force]`, `card complete|discard|delete --confirm`, `card update --estimate ... --blocked-by ...`. */
   column?: string;
+  /** `--title`, until the end of the arguments says whether the action takes it. */
+  titleFlag?: string;
   position?: number;
   force?: true;
   confirm?: true;
@@ -409,9 +411,8 @@ const HANDLERS: Record<string, Handler> = {
       "invalid card action",
     );
     args.action = action;
-    if (action === "show" || action === "start") args.cardId = operand(reader, "the card");
-    if (!["list", "show", "new", "start"].includes(action))
-      args.cardId = operand(reader, "the card");
+    // Every action but `list` and `new` names the card it works on.
+    if (action !== "list" && action !== "new") args.cardId = operand(reader, "the card");
     if (action === "move") args.column = operand(reader, "the column");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
@@ -449,7 +450,7 @@ const HANDLERS: Record<string, Handler> = {
     args.position = position;
   }),
   "--title": setValue((args, v) => {
-    args.cardTitle = v;
+    args.titleFlag = v;
   }),
   "--estimate": setValue((args, v) => {
     args.estimate = v;
@@ -577,19 +578,29 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests and message\n${USAGE}`,
     );
-  const cardOnly = [
-    args.cardTitle,
-    args.description,
-    args.workflow,
-    args.force,
-    args.confirm,
-    args.position,
-    args.estimate,
-    args.validationNote,
-    args.specPath,
-    args.blockedBy,
+  // `card new` takes its title as an operand: the flag is the title of an update.
+  if (args.titleFlag !== undefined && args.action === "update") args.cardTitle = args.titleFlag;
+  const flagged: Array<[string, unknown, readonly string[] | null]> = [
+    ["--title", args.titleFlag, ["update"]],
+    ["--description", args.description, ["new", "update"]],
+    ["--workflow", args.workflow, ["start"]],
+    ["--force", args.force, ["move"]],
+    ["--position", args.position, ["move"]],
+    ["--confirm", args.confirm, ["complete", "discard", "delete"]],
+    ["--estimate", args.estimate, ["update"]],
+    ["--validation-note", args.validationNote, ["update"]],
+    ["--spec-path", args.specPath, ["update"]],
+    ["--blocked-by", args.blockedBy, ["update"]],
   ];
-  if (args.command !== "card" && cardOnly.some((value) => value !== undefined))
-    throw new Error(`this flag only applies to flightdeckd card\n${USAGE}`);
+  for (const [flag, value, actions] of flagged) {
+    if (value === undefined) continue;
+    if (args.command !== "card")
+      throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
+    if (!actions?.includes(args.action as string))
+      throw new Error(
+        `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
+      );
+  }
+  delete args.titleFlag;
   return args;
 }
