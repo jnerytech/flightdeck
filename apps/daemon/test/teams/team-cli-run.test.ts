@@ -69,7 +69,7 @@ describe("team pause and resume (issue #3455)", () => {
     const result = await run({ action: "pause", id: "t9" }, daemon);
     expect({ code: result.code, out: result.out, sent: sent(daemon, "teams.pause") }).toEqual({
       code: 0,
-      out: ["paused t9  Fix the login  paused  1 workers"],
+      out: ["paused t9  Fix the login  paused by user  1 worker"],
       sent: { team: "t9" },
     });
   });
@@ -79,7 +79,7 @@ describe("team pause and resume (issue #3455)", () => {
     const result = await run({ action: "resume", id: "t9" }, daemon);
     expect({ code: result.code, out: result.out, sent: sent(daemon, "teams.resume") }).toEqual({
       code: 0,
-      out: ["resumed t9  Fix the login  active  1 workers"],
+      out: ["resumed t9  Fix the login  active  1 worker"],
       sent: { team: "t9" },
     });
   });
@@ -117,7 +117,7 @@ describe("team close (issue #3455)", () => {
     const result = await run({ action: "close", id: "t9", confirm: true }, daemon);
     expect({ code: result.code, out: result.out, sent: sent(daemon, "teams.close") }).toEqual({
       code: 0,
-      out: ["closed t9  Fix the login  closed  1 workers"],
+      out: ["closed t9  Fix the login  closed  1 worker"],
       sent: { team: "t9", confirm: true },
     });
   });

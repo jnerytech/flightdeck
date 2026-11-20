@@ -293,13 +293,26 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "team";
     const action = subAction(
       reader,
-      ["list", "show", "new", "update", "delete", "add-member", "remove-member"],
+      [
+        "list",
+        "show",
+        "new",
+        "update",
+        "delete",
+        "add-member",
+        "remove-member",
+        "pause",
+        "resume",
+        "close",
+        "message",
+      ],
       "invalid team action",
     );
     args.action = action;
     if (action !== "list" && action !== "new") args.teamId = operand(reader, "the team");
     if (action === "new") args.teamGoal = operand(reader, "the goal");
     if (action === "remove-member") args.teamMember = operand(reader, "the member");
+    if (action === "message") args.teamText = operand(reader, "the text");
     if (action === "add-member") {
       const next = reader.peek();
       if (next && !next.startsWith("--")) args.teamSpec = reader.next();
