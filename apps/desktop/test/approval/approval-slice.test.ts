@@ -11,6 +11,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_HARNESS,
+  FEATURE_APPROVAL_MARKETPLACE,
   FEATURE_APPROVAL_PLUGINS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
@@ -822,6 +823,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       "roots",
       "harness",
       "plugins",
+      "marketplace",
     ]);
     expect(unchecked(COMMAND_HOST)).toEqual([
       "trust",
@@ -830,6 +832,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       "roots",
       "harness",
       "plugins",
+      "marketplace",
     ]);
     expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual([
       "merge",
@@ -838,6 +841,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       "roots",
       "harness",
       "plugins",
+      "marketplace",
     ]);
     expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual([
       "bypass",
@@ -845,12 +849,14 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       "roots",
       "harness",
       "plugins",
+      "marketplace",
     ]);
     expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST, FEATURE_APPROVAL_BYPASS])).toEqual([
       "resume",
       "roots",
       "harness",
       "plugins",
+      "marketplace",
     ]);
     expect(
       unchecked([
@@ -860,7 +866,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
         FEATURE_APPROVAL_RESUME,
         FEATURE_APPROVAL_ROOTS,
       ]),
-    ).toEqual(["harness", "plugins"]);
+    ).toEqual(["harness", "plugins", "marketplace"]);
     expect(
       unchecked([
         ...COMMAND_HOST,
@@ -870,7 +876,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
         FEATURE_APPROVAL_ROOTS,
         FEATURE_APPROVAL_HARNESS,
       ]),
-    ).toEqual(["plugins"]);
+    ).toEqual(["plugins", "marketplace"]);
     expect(
       unchecked([
         ...COMMAND_HOST,
@@ -880,6 +886,18 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
         FEATURE_APPROVAL_ROOTS,
         FEATURE_APPROVAL_HARNESS,
         FEATURE_APPROVAL_PLUGINS,
+      ]),
+    ).toEqual(["marketplace"]);
+    expect(
+      unchecked([
+        ...COMMAND_HOST,
+        FEATURE_APPROVAL_TRUST,
+        FEATURE_APPROVAL_BYPASS,
+        FEATURE_APPROVAL_RESUME,
+        FEATURE_APPROVAL_ROOTS,
+        FEATURE_APPROVAL_HARNESS,
+        FEATURE_APPROVAL_PLUGINS,
+        FEATURE_APPROVAL_MARKETPLACE,
       ]),
     ).toEqual([]);
     expect(unchecked([])).toEqual([]);
@@ -1011,6 +1029,61 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
     await expect(keyless.slice.pluginInstallPayload("h", INSTALL)).rejects.toThrow(
       t("approvalDevices.noKeyHere"),
     );
+  });
+
+  const MARKET_HOST = [...PLUGINS_HOST, FEATURE_APPROVAL_MARKETPLACE];
+  const MARKET = { source: "acme/plugins", scope: "project", confirm: true } as const;
+
+  test("adding a marketplace carries the proof over the whole request, in the dialog of that command (#3516)", async () => {
+    const { slice, log, keyLog } = approval({ features: MARKET_HOST });
+    const made = await slice.marketplaceAddPayload("h", {
+      source: "acme/plugins",
+      scope: "project",
+    });
+    const signed = made.kind === "payload" ? made.payload : {};
+    const { proof, ...bound } = signed as Record<string, unknown>;
+    expect(bound).toEqual(MARKET);
+    expect(proof).toEqual({
+      keyId: "key-this",
+      nonce: "nonce-1",
+      signature: expect.stringContaining("sig:"),
+    });
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "plugins.marketplaceAdd" });
+    expect(keyLog.find((k) => k.op === "sign")?.args[3]).toBe(commandDigest(MARKET));
+    expect(
+      Command.safeParse({ id: "1", type: "plugins.marketplaceAdd", payload: signed }).success,
+    ).toBe(true);
+    // No scope is no scope: the digest the signer reads has none either.
+    await slice.marketplaceAddPayload("h", { source: "/work/marketplaces/acme" });
+    expect(keyLog.filter((k) => k.op === "sign").map((k) => k.args[3])[1]).toBe(
+      commandDigest({ source: "/work/marketplaces/acme", confirm: true }),
+    );
+  });
+
+  test("a host that does not announce the marketplace proof, or has no device enrolled, gets the plain payload and no challenge", async () => {
+    // A host with the plugins proof but not this one rejects a proof it does not know, so none is made.
+    const old = approval({ features: PLUGINS_HOST });
+    expect(await old.slice.marketplaceAddPayload("h", { source: "acme/plugins" })).toEqual({
+      kind: "payload",
+      payload: { source: "acme/plugins", confirm: true },
+    });
+    expect(old.log).toEqual([]);
+    const off = approval({ features: MARKET_HOST, list: { protectionOff: true, keys: [] } });
+    expect(await off.slice.marketplaceAddPayload("h", { source: "acme/plugins" })).toEqual({
+      kind: "payload",
+      payload: { source: "acme/plugins", confirm: true },
+    });
+  });
+
+  test("a no in the dialog of a marketplace sends nothing, and a device with no key for this host is told so", async () => {
+    const declined = approval({ features: MARKET_HOST, signFails: "declined" });
+    expect(await declined.slice.marketplaceAddPayload("h", { source: "acme/plugins" })).toEqual({
+      kind: "declined",
+    });
+    const keyless = approval({ features: MARKET_HOST, local: null });
+    await expect(
+      keyless.slice.marketplaceAddPayload("h", { source: "acme/plugins" }),
+    ).rejects.toThrow(t("approvalDevices.noKeyHere"));
   });
 
   const TRUST_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST];

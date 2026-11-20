@@ -40,7 +40,7 @@ async function open() {
     fireEvent.click(screen.queryByRole("button", { name: "Plugins" }) as HTMLElement);
   });
   await settle(() => screen.queryByRole("button", { name: "Atualizar deploy-tools" }) !== null);
-  return h;
+  return { store, ...h };
 }
 
 async function click(name: string | RegExp, role = "button") {
@@ -169,5 +169,66 @@ describe("plugins-ui: marketplaces", () => {
       "plugin marketplace remove acme --json",
       "plugin marketplace update acme --json",
     ]);
+  });
+
+  /** The page's add flow over a slice that answers the proof the way the test says (#3516). */
+  async function addWith(
+    answer: () => Promise<unknown>,
+    spy?: (type: string, payload: unknown) => void,
+  ) {
+    const h = await marketplaces();
+    const messages: string[] = [];
+    h.store.reportError = (message: string) => {
+      messages.push(message);
+    };
+    (h.store.approval as unknown as Record<string, unknown>).marketplaceAddPayload = answer;
+    if (spy) {
+      const real = h.store.hostCommand.bind(h.store);
+      (h.store as unknown as Record<string, unknown>).hostCommand = async (
+        ...args: Parameters<typeof real>
+      ) => {
+        spy(args[1], args[2]);
+        return await real(...args);
+      };
+    }
+    const field = screen.queryByLabelText("Fonte do marketplace") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "acme/novo" } });
+    });
+    await click("Adicionar marketplace");
+    await click("Adicionar", "button");
+    await uiIdle();
+    return { ...h, messages, field };
+  }
+
+  test("um não na confirmação do dispositivo não adiciona nada e deixa a fonte digitada", async () => {
+    const { fake, messages, field } = await addWith(async () => ({ kind: "declined" }));
+    expect([changes(fake), messages, field.value]).toEqual([[], [], "acme/novo"]);
+  });
+
+  test("uma fonte que o dispositivo não sabe mostrar é dita com as formas que ele mostra, e fica digitada", async () => {
+    const { fake, messages, field } = await addWith(async () => {
+      throw new Error("the marketplace source is not one the dialog can show");
+    });
+    expect(changes(fake)).toEqual([]);
+    expect(field.value).toBe("acme/novo");
+    expect(messages.length).toBe(1);
+    expect(messages[0]).toContain("the marketplace source is not one the dialog can show");
+    expect(messages[0]).toContain("dono/repo");
+  });
+
+  test("a fonte assinada vai ao host com a prova, e o campo é limpo", async () => {
+    const proof = { keyId: "k", nonce: "n", signature: "s" };
+    const sent: unknown[] = [];
+    const { field } = await addWith(
+      async () => ({
+        kind: "payload",
+        payload: { source: "acme/novo", confirm: true, proof },
+      }),
+      (type, payload) => {
+        if (type === "plugins.marketplaceAdd") sent.push(payload);
+      },
+    );
+    expect([sent, field.value]).toEqual([[{ source: "acme/novo", confirm: true, proof }], ""]);
   });
 });

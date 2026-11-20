@@ -39,6 +39,7 @@ import type {
   BypassPayload,
   HarnessBody,
   HarnessPayload,
+  MarketplacePayload,
   MergeBody,
   MergePayload,
   PluginBody,
@@ -68,7 +69,8 @@ export type UncheckedCommand =
   | "resume"
   | "roots"
   | "harness"
-  | "plugins";
+  | "plugins"
+  | "marketplace";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -615,6 +617,14 @@ export class ApprovalSlice {
    */
   async pluginInstallPayload(hostId: string, body: PluginBody): Promise<PluginPayload> {
     return await this.pluginPayload(hostId, "plugins.install", body);
+  }
+
+  /** The payload of `plugins.marketplaceAdd` (#3516). */
+  async marketplaceAddPayload(
+    _hostId: string,
+    body: { source: string; scope?: "user" | "project" | "local" },
+  ): Promise<MarketplacePayload> {
+    return { kind: "payload", payload: { ...body, confirm: true } };
   }
 
   /** The payload of `plugins.update` (#3516), as `pluginInstallPayload`. */

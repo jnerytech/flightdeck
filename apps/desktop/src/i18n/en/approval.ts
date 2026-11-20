@@ -36,6 +36,7 @@ export const approval = {
       "This host does not ask for a device to add an allowed folder: update it to protect the list of folders.",
     pluginsUnchecked:
       "This host does not ask for a device to confirm installing or updating a plugin: update it to protect the code its sessions run.",
+    marketplaceUnchecked: "marketplace unchecked",
     harnessUnchecked:
       "This host does not ask for a device to confirm writing a project's Claude Code setup: update it to protect what runs in its sessions.",
     scope:
