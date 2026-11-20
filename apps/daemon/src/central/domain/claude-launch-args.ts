@@ -79,6 +79,22 @@ export function personaArgs(
   return out;
 }
 
+/** The folder name a session is named after: the git toplevel's when there is one, else the launch folder's. */
+export function repoFolder(_cwd: string, _toplevel: string | null): string {
+  return "";
+}
+
+/** The `--name` a launch adds: `<repo>-<persona>`, or `<repo>`; none when the person named or resumes the session. */
+export function nameArgs(_opts: {
+  repo: string;
+  persona: string | null;
+  user: string[];
+  claude: string;
+  platform: NodeJS.Platform;
+}): string[] {
+  return ["--name", "?"];
+}
+
 /** A user name icacls can be given as one principal: no wildcard, SID marker, separator or list. */
 export const ACCOUNT = /^[^\p{Cc}\\/:*?"<>|;,=+[\]]+$/u;
 
