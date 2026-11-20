@@ -270,3 +270,85 @@ describe("approvers: later keys are added and revoked by a key already enrolled"
     expect(approvers.list()).toEqual({ daemonId: id, protectionOff: true, keys: [] });
   });
 });
+
+describe("approvers: a listener hears the devices enrolled and revoked (#3476)", () => {
+  test("Given a listener, When a device is enrolled and another revokes it, Then it hears both, in order, and nothing else", () => {
+    const { approvers, open, enrollFirst, enrollAdd, revokeOf } = setup();
+    const heard: unknown[] = [];
+    approvers.onChange((change) => heard.push(change));
+    const phone = device();
+    const laptop = device();
+    open("the-code");
+    approvers.enroll(enrollFirst(phone, "the-code"), ASKER);
+    approvers.enroll(enrollAdd(phone, laptop), ASKER);
+    approvers.revoke(revokeOf(laptop, phone.keyId));
+    expect(heard).toEqual([
+      {
+        type: "approval.enrolled",
+        keyId: phone.keyId,
+        name: "Ana's phone",
+        client: "flightdeck-app",
+        address: "100.64.0.7",
+        enrolledAt: "2026-11-20T12:00:00.000Z",
+      },
+      {
+        type: "approval.enrolled",
+        keyId: laptop.keyId,
+        name: "Laptop",
+        client: "flightdeck-app",
+        address: "100.64.0.7",
+        enrolledAt: "2026-11-20T12:00:00.000Z",
+      },
+      { type: "approval.revoked", keyId: phone.keyId },
+    ]);
+  });
+
+  test("Given a refused enroll, a refused revoke and a revoke of a key that is not there, Then the listener hears nothing", () => {
+    const { approvers, open, enrollFirst, enrollAdd, revokeOf } = setup();
+    const phone = device();
+    open("the-code");
+    approvers.enroll(enrollFirst(phone, "the-code"), ASKER);
+    const heard: unknown[] = [];
+    approvers.onChange((change) => heard.push(change));
+    expect(reasonOf(() => approvers.enroll(enrollAdd(device(), device()), ASKER))).toBe(
+      "approval_proof_required",
+    );
+    expect(reasonOf(() => approvers.revoke(revokeOf(phone, phone.keyId)))).toBe(
+      "approval_last_key",
+    );
+    expect(approvers.revoke(revokeOf(phone, "no-such-key"))).toEqual({ keyId: "no-such-key" });
+    expect(heard).toEqual([]);
+  });
+
+  test("Given a device that signs in a key that is enrolled already, Then the store keeps the old row and the listener hears nothing", () => {
+    const { approvers, open, enrollFirst, enrollAdd } = setup();
+    const phone = device();
+    const laptop = device();
+    open("the-code");
+    approvers.enroll(enrollFirst(phone, "the-code"), ASKER);
+    approvers.enroll(enrollAdd(phone, laptop), ASKER);
+    const heard: unknown[] = [];
+    approvers.onChange((change) => heard.push(change));
+    approvers.enroll(enrollAdd(phone, laptop), ASKER);
+    expect(approvers.keys().length).toBe(2);
+    expect(heard).toEqual([]);
+  });
+
+  test("Given a listener that stopped, Then it hears nothing; a listener that throws does not undo the enroll or silence the next", () => {
+    const { approvers, open, enrollFirst, enrollAdd } = setup();
+    const phone = device();
+    open("the-code");
+    approvers.enroll(enrollFirst(phone, "the-code"), ASKER);
+    const stopped: unknown[] = [];
+    const heard: unknown[] = [];
+    approvers.onChange((change) => stopped.push(change))();
+    approvers.onChange(() => {
+      throw new Error("socket closed");
+    });
+    approvers.onChange((change) => heard.push(change));
+    approvers.enroll(enrollAdd(phone, device()), ASKER);
+    expect(stopped).toEqual([]);
+    expect(heard.length).toBe(1);
+    expect(approvers.keys().length).toBe(2);
+  });
+});

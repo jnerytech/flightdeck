@@ -5,6 +5,7 @@
 
 export { runAnswerCli } from "./answer-cli.ts";
 export { Approvers } from "./approvers.ts";
+export { runApproversCli } from "./approvers-cli.ts";
 export { type AutoApproveRequest, type AutoApprover, historyExcludes } from "./auto-approve.ts";
 export type { ApprovalGate } from "./domain/approval-gate.ts";
 export { bindInput, summarizeInput } from "./domain/bind-input.ts";

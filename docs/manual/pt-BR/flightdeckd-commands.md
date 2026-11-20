@@ -139,6 +139,8 @@ olhe a sessão antes de enviar de novo.
 fd approvers enroll
 fd approvers enroll --json
 fd approvers reset
+fd approvers watch
+fd approvers watch --follow --json
 ```
 
 Um pedido de risco alto, ou uma permissão que salva uma regra, só é aprovado com a prova assinada de
@@ -156,8 +158,16 @@ cadastro nem remove uma chave.
   antes do primeiro dispositivo: uma permissão de risco alto exige só o botão Aprovar segurado. Imprime
   quantos dispositivos saíram; com `--json`, `removed`. O host mantém a sua identidade.
 
-Os dois leem a pasta de dados do arquivo de configuração e funcionam com o daemon rodando ou parado.
-Enquanto nenhum dispositivo estiver cadastrado, nada muda para você.
+- **`watch`:** pergunta ao daemon em execução quais dispositivos podem aprovar e imprime uma linha por
+  dispositivo: id da chave, nome, app, endereço e a hora do cadastro (ou `no device enrolled: protection
+  is off`). Com `--follow` fica aberto e imprime uma linha `enrolled ...` ou `revoked <id da chave>` a
+  cada dispositivo cadastrado ou revogado, até Ctrl-C (saída `0`); com `--follow --json` cada mudança é
+  um objeto JSON por linha. Precisa do daemon: saída `2` quando nenhum roda, e `--follow` sai com `1`
+  quando o host recusa o watch (versão mais antiga, ou sem dispositivos de aprovação). Nunca imprime uma chave, um nonce ou um código. Um `reset` no
+  terminal não envia linha: rode `watch` de novo para ver a lista vazia.
+
+`enroll` e `reset` leem a pasta de dados do arquivo de configuração e funcionam com o daemon rodando ou
+parado. Enquanto nenhum dispositivo estiver cadastrado, nada muda para você.
 
 ## fd board
 
