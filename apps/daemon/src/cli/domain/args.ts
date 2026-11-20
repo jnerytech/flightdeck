@@ -3,6 +3,7 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
+import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 
@@ -662,63 +663,6 @@ const HANDLERS: Record<string, Handler> = {
   }),
 };
 
-const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
-const PERMISSION_MODES = ["default", "acceptEdits", "bypassPermissions", "plan", "dontAsk", "auto"];
-
-/** The flags of `persona`, each with the verbs that take it (`--language` is checked by the daemon). */
-function personaFlags(args: CliArgs): Array<[string, unknown, readonly string[]]> {
-  return [
-    ["--scope", args.scope, ["list", "save", "remove"]],
-    ["--name", args.personaName, ["save"]],
-    ["--body", args.body, ["save"]],
-    ["--body-file", args.bodyFile, ["save"]],
-    ["--model", args.model, ["save"]],
-    ["--effort", args.effort, ["save"]],
-    ["--tools", args.tools, ["save"]],
-    ["--permission-mode", args.permissionMode, ["save"]],
-    ["--icon", args.icon, ["save"]],
-    ["--hash", args.hash, ["trust"]],
-    // `--description` and `--confirm` are the card's too: only `persona` is checked here.
-    ...(args.command === "persona"
-      ? ([
-          ["--description", args.description, ["save"]],
-          ["--confirm", args.confirm, ["publish-agent"]],
-        ] as Array<[string, unknown, readonly string[]]>)
-      : []),
-  ];
-}
-
-/** What `persona` verbs need before anything is sent: the flags of the verb, and the ones it cannot do without. */
-function checkPersona(args: CliArgs): void {
-  for (const [flag, value, verbs] of personaFlags(args)) {
-    if (value === undefined) continue;
-    if (args.command !== "persona" || !verbs.includes(args.action as string))
-      throw new Error(
-        `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}\n${USAGE}`,
-      );
-  }
-  if (args.command !== "persona") return;
-  const missing = (flag: string) => new Error(`missing ${flag}\n${USAGE}`);
-  if (args.action === "save" || args.action === "remove") {
-    if (args.scope === undefined) throw missing("--scope");
-    if (args.scope === "all") throw new Error(`--scope: host or project\n${USAGE}`);
-  }
-  if (args.action === "save") {
-    if (args.personaName === undefined) throw missing("--name");
-    if (args.description === undefined) throw missing("--description");
-    if (args.body === undefined && args.bodyFile === undefined)
-      throw missing("--body or --body-file");
-    if (args.body !== undefined && args.bodyFile !== undefined)
-      throw new Error(`--body or --body-file, not both\n${USAGE}`);
-  }
-  if (
-    (args.action === "publish-agent" || args.action === "trust") &&
-    args.projectPath === undefined
-  )
-    throw missing("--project-path");
-  if (args.action === "trust" && args.hash === undefined) throw missing("--hash");
-}
-
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
   const reader = new ArgReader(argv);
@@ -796,7 +740,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
-  checkPersona(args);
+  const personaFault = personaProblem(args);
+  if (personaFault !== undefined) throw new Error(`${personaFault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }
