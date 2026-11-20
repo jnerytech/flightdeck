@@ -220,13 +220,20 @@ function changesTrustedHostKeys(prog: string, args: string[]): boolean {
 }
 
 /**
- * Which destinations a host keeps is the person's call (#3537): `ssh remove` deletes one, and `ssh import
- * apply` turns `~/.ssh/config` hosts, key-file paths included, into destinations a later connect uses. The
+ * Which destinations a host keeps is the person's call (#3537): `ssh add` and `ssh edit` set one (its
+ * address, its jump, its key path, ForwardAgent), `ssh remove` deletes one, and `ssh import apply` turns
+ * `~/.ssh/config` hosts, key-file paths included, into destinations a later connect uses. The
  * reads (`ssh list`, `ssh import preview`) stay ordinary commands.
  */
 function changesSshDestinations(prog: string, args: string[]): boolean {
   return runsFlightdeckWords(prog, args, ([command, action, verb]) => {
-    return command === "ssh" && (action === "remove" || (action === "import" && verb === "apply"));
+    return (
+      command === "ssh" &&
+      (action === "add" ||
+        action === "edit" ||
+        action === "remove" ||
+        (action === "import" && verb === "apply"))
+    );
   });
 }
 
@@ -426,7 +433,7 @@ const DANGEROUS: Array<{
   {
     when: changesSshDestinations,
     reason: () =>
-      "removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh remove or import apply)",
+      "adds, changes or removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh add, edit, remove or import apply)",
   },
   {
     when: changesWhatGuards,
