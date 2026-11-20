@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { Panel } from "@/shared/layout/index.ts";
+import { Field, Form, FormActions, Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
 import type { ApprovalStatus } from "./store.ts";
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
@@ -57,11 +57,11 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
           {t(view.kind === "failed" ? "approvalDevices.loadFailed" : "approvalDevices.loading")}
         </p>
         {view.kind === "failed" && (
-          <div>
+          <Inline>
             <ActionButton variant="outline" onClick={reload}>
               {t("approvalDevices.retry")}
             </ActionButton>
-          </div>
+          </Inline>
         )}
       </Panel>
     );
@@ -77,84 +77,84 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       </p>
       {lost && <InlineNotice tone="warn">{t("approvalDevices.lost")}</InlineNotice>}
       {status.keys.length > 0 && (
-        <ul aria-label={t("approvalDevices.listLabel")} className="flex flex-col gap-2">
+        <Stack as="ul" gap={2} label={t("approvalDevices.listLabel")}>
           {status.keys.map((key) => (
-            <li key={key.keyId} className="flex items-center justify-between gap-2">
-              <span className="flex flex-col text-sm">
-                <span>
-                  {key.name} ·{" "}
-                  {t(
-                    key.keyId === status.thisKeyId
-                      ? "approvalDevices.thisDevice"
-                      : "approvalDevices.elsewhere",
-                  )}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {t("approvalDevices.detail", {
-                    client: key.client,
-                    address: key.address,
-                    date: store.formatDateTime(key.enrolledAt),
-                  })}
-                </span>
-              </span>
-              {status.thisKeyId !== null && (
-                <ActionButton
-                  variant="outline"
-                  aria-label={t("approvalDevices.revokeLabel", { name: key.name })}
-                  onClick={() =>
-                    change(
-                      () => store.approval.revoke(host.id, key.keyId),
-                      t("approvalDevices.revoked"),
-                    )
-                  }
-                >
-                  {t("approvalDevices.revoke")}
-                </ActionButton>
-              )}
+            <li key={key.keyId}>
+              <ListRow
+                boxed
+                title={`${key.name} · ${t(key.keyId === status.thisKeyId ? "approvalDevices.thisDevice" : "approvalDevices.elsewhere")}`}
+                meta={t("approvalDevices.detail", {
+                  client: key.client,
+                  address: key.address,
+                  date: store.formatDateTime(key.enrolledAt),
+                })}
+                trailing={
+                  status.thisKeyId !== null && (
+                    <ActionButton
+                      variant="outline"
+                      aria-label={t("approvalDevices.revokeLabel", { name: key.name })}
+                      onClick={() =>
+                        change(
+                          () => store.approval.revoke(host.id, key.keyId),
+                          t("approvalDevices.revoked"),
+                        )
+                      }
+                    >
+                      {t("approvalDevices.revoke")}
+                    </ActionButton>
+                  )
+                }
+              />
             </li>
           ))}
-        </ul>
+        </Stack>
       )}
       {enrolling && status.protectionOff && (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
+        <Form
+          variant="panel"
+          aria-label={t("approvalDevices.enrollTitle")}
+          onSubmit={() =>
             void change(
               () =>
                 store.approval.enroll(host.id, name.trim(), code.trim()).then(() => setCode("")),
               t("approvalDevices.enrolled"),
-            );
-          }}
+            )
+          }
         >
           <h4 className="font-medium text-sm">{t("approvalDevices.enrollTitle")}</h4>
-          <p className="text-muted-foreground text-xs">{t("approvalDevices.enrollHint")}</p>
-          <Input
-            aria-label={t("approvalDevices.nameLabel")}
-            value={name}
-            maxLength={64}
-            autoComplete="off"
-            onChange={(event) => setName(event.target.value)}
+          <Field label={t("approvalDevices.nameLabel")}>
+            {(control) => (
+              <Input
+                {...control}
+                value={name}
+                maxLength={64}
+                autoComplete="off"
+                onChange={(event) => setName(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field label={t("approvalDevices.codeLabel")} help={t("approvalDevices.enrollHint")}>
+            {(control) => (
+              <Input
+                {...control}
+                value={code}
+                maxLength={256}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setCode(event.target.value)}
+              />
+            )}
+          </Field>
+          <FormActions
+            submit={t("approvalDevices.enroll")}
+            disabled={name.trim() === "" || code.trim() === ""}
           />
-          <Input
-            aria-label={t("approvalDevices.codeLabel")}
-            value={code}
-            maxLength={256}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(event) => setCode(event.target.value)}
-          />
-          <div>
-            <ActionButton type="submit" disabled={name.trim() === "" || code.trim() === ""}>
-              {t("approvalDevices.enroll")}
-            </ActionButton>
-          </div>
-        </form>
+        </Form>
       )}
       {!enrolling && (
-        <div className="flex flex-col gap-1">
+        <Stack gap={1}>
           <p className="text-muted-foreground text-xs">{t("approvalDevices.removeLocalHint")}</p>
-          <div>
+          <Inline>
             <ActionButton
               variant="outline"
               onClick={() =>
@@ -166,8 +166,8 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
             >
               {t("approvalDevices.removeLocal")}
             </ActionButton>
-          </div>
-        </div>
+          </Inline>
+        </Stack>
       )}
       {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
