@@ -64,10 +64,9 @@ describe("persona shortcuts: one word opens claude with a persona (#3426)", () =
       }
       return "";
     })();
-    expect(
-      ["architect", "reviewer", "security", "coordinator", "new <persona>"].map((word) =>
-        usage.includes(`flightdeckd ${word.split("|")[0]}`),
-      ),
-    ).toEqual([true, true, true, true, true]);
+    expect([
+      usage.includes("flightdeckd architect|reviewer|security|coordinator "),
+      usage.includes("flightdeckd new <persona> "),
+    ]).toEqual([true, true]);
   });
 });
