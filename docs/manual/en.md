@@ -92,6 +92,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd ssh](en/flightdeckd-ssh-commands.md#fd-ssh)
 
+## flightdeckd commands: terminals
+
+[Read the chapter.](en/flightdeckd-terminal-commands.md) Its sections:
+
+- [fd terminal](en/flightdeckd-terminal-commands.md#fd-terminal)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)
