@@ -33,6 +33,7 @@ import {
   RequestError,
   restoreKeptTabs,
   saveHosts,
+  syncHostIndex,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import type { Answer } from "../features/needs-you/index.ts";
@@ -624,6 +625,7 @@ export class AppStore {
       this.platform.storage,
       this.state.hosts.map(({ id, name, url }) => ({ id, name, url })),
     );
+    syncHostIndex(this.platform.hostIndex, this.state.hosts);
   }
 
   private update(patch: Partial<AppState>): void {

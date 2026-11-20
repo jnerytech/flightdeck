@@ -84,6 +84,7 @@ export function tauriPlatform(
       vaultHits: (text, ids) => shell<string[]>(call, "vault_hits", { text, ids }),
     },
     storage: win.localStorage,
+    hostIndex: { sync: (hosts) => call("hosts_sync", { hosts }) },
     secrets: {
       get: (hostId) => call<string | null>("token_get", { hostId }),
       set: (hostId, token) => call("token_set", { hostId, token }),

@@ -17,7 +17,8 @@ use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager, State, WindowEvent, Wry};
 
-const KEYRING_SERVICE: &str = "dev.flightdeck.app";
+/// The host tokens' service name, shared with `flightdeck-cred`, the reader the `flightdeckd` CLI runs.
+const KEYRING_SERVICE: &str = flightdeck_cred::SERVICE;
 
 /// Runs blocking work (the credential store, a PATH walk, a process spawn) on the blocking pool:
 /// a plain `async fn` still holds one of the runtime's few workers while it waits.
@@ -55,9 +56,40 @@ async fn token_set(host_id: String, token: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn token_delete(host_id: String) -> Result<(), String> {
-    spawn_blocking_result(move || match entry(&host_id)?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(e.to_string()),
+    spawn_blocking_result(move || {
+        // Not while a sync writes the addresses: it would put this one back (issue #3429).
+        flightdeck_cred::index::exclusive(|| {
+            // The address kept beside the token goes with it.
+            let delete = |account: &str| match entry(account)?.delete_credential() {
+                Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+                Err(e) => Err(e.to_string()),
+            };
+            let token = delete(&host_id);
+            token.and(delete(&flightdeck_cred::url_account(&host_id)))
+        })
+    })
+    .await
+}
+
+/// One host as the app lists it.
+#[derive(serde::Deserialize)]
+struct HostListed {
+    id: String,
+    name: String,
+    url: String,
+}
+
+/// Keeps what `flightdeckd --host` reads in step with the host list (issue #3429): each host's address
+/// in the credential store beside its token, and the index of names in the app's config folder.
+#[tauri::command]
+async fn hosts_sync(app: tauri::AppHandle, hosts: Vec<HostListed>) -> Result<(), String> {
+    spawn_blocking_result(move || {
+        let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+        let listed: Vec<flightdeck_cred::index::HostRef> = hosts
+            .into_iter()
+            .map(|h| flightdeck_cred::index::HostRef { id: h.id, name: h.name, url: h.url })
+            .collect();
+        flightdeck_cred::index::sync(&dir, &flightdeck_cred::KeyringStore, &listed)
     })
     .await
 }
@@ -610,6 +642,7 @@ pub fn run() {
             approval::approval_key_create,
             approval::approval_key_delete,
             approval::approval_sign,
+            hosts_sync,
             vault::vault_get,
             vault::vault_set,
             vault::vault_delete,
