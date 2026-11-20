@@ -280,6 +280,51 @@ describe("the arguments of board watch (issue #3454)", () => {
     expect(parsed(["board", "watch", "--json"])).toMatchObject({ action: "watch", json: true });
   });
 
+  test("Ctrl-C before the daemon answered stops it with 0, not after the time limit", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => undefined }); // a daemon that never answers
+    const stop = new AbortController();
+    const running = runBoardCli({ action: "watch" }, config(daemon.port), {
+      timeoutMs: 30_000,
+      signal: stop.signal,
+      write: () => undefined,
+    });
+    await poll(() => daemon.calls.some((c) => c.type === "board.watch"));
+    stop.abort();
+    const result = await Promise.race([running, poll(() => false, 3000)]);
+    expect(result).toMatchObject({ code: 0 });
+  });
+
+  test("a terminal that cannot be written to ends the stream with 1 instead of crashing", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const running = runBoardCli({ action: "watch" }, config(daemon.port), {
+      timeoutMs: 2000,
+      signal: new AbortController().signal,
+      write: () => {
+        throw new Error("EPIPE: broken pipe");
+      },
+    });
+    await poll(() => daemon.calls.some((c) => c.type === "board.watch"));
+    daemon.push(updated());
+    const result = await Promise.race([running, poll(() => false, 3000)]);
+    expect(result).toMatchObject({ code: 1 });
+  });
+
+  test("a frame this version cannot read ends the stream with 1 and a plain message", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const lines: string[] = [];
+    const running = runBoardCli({ action: "watch" }, config(daemon.port), {
+      timeoutMs: 2000,
+      signal: new AbortController().signal,
+      write: (l) => lines.push(l),
+    });
+    await poll(() => daemon.calls.some((c) => c.type === "board.watch"));
+    daemon.push({ type: "card.updated", card: { id: "c1", column: "from_the_future" } });
+    const result = await Promise.race([running, poll(() => false, 3000)]);
+    expect(result).toMatchObject({ code: 1 });
+    expect(text(result as CliResult)).toContain("could not read");
+    expect(lines).toEqual([]);
+  });
+
   test("the limit flag belongs to settings only", () => {
     expect(parsed(["board", "watch", "--max-parallel-runs", "3"])).toMatchObject({
       refusedWith: expect.stringContaining("--max-parallel-runs"),
@@ -297,12 +342,14 @@ describe("flightdeckd board settings from the terminal (issue #3454)", () => {
     );
     const out: string[] = [];
     const exits: number[] = [];
+    const signals: string[] = [];
     await runCli(["board", "settings", "--max-parallel-runs", "4", "--json", "--config", file], {
       env: {},
       log: { log: (m) => out.push(m), error: (m) => out.push(m) },
       exit: (code) => exits.push(code),
-      onSignal: () => {},
+      onSignal: (signal) => signals.push(signal),
     });
+    expect(signals).toEqual([]); // only a stream listens for Ctrl-C: elsewhere it must keep its default
     expect(JSON.parse(out.join(""))).toEqual({ maxParallelRuns: 4 });
     expect(exits).toEqual([0]);
     expect(daemon.calls.filter((c) => c.type === "board.settings")).toEqual([
