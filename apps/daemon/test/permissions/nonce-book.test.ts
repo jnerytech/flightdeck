@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { NONCE_TTL_MS, NonceBook } from "../../src/permissions/domain/nonce-book.ts";
 
-function book(caps = { approve: 4, other: 2 }, perConnection = 3) {
+function book(
+  caps: { approve: number; other: number; command?: number } = { approve: 4, other: 2 },
+  perConnection = 3,
+) {
   const clock = { at: 1_000 };
   let n = 0;
   const nonces = new NonceBook({
