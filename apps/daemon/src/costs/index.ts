@@ -4,6 +4,7 @@
  */
 export type { Budgets } from "./budgets.ts";
 export type { Costs } from "./costs.ts";
+export { type CostsCliArgs, runCostsCli } from "./costs-cli.ts";
 export { statuslineData } from "./domain/statusline.ts";
 export { readConfig, runStatusline } from "./statusline.ts";
 export { runUsageCli, type UsageCliArgs } from "./usage-cli.ts";

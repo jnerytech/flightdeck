@@ -7,6 +7,7 @@ import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
+import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
@@ -309,6 +310,19 @@ const HANDLERS: Record<string, Handler> = {
     }
   },
   usage: setCommand("usage"),
+  costs: (args, reader) => {
+    args.command = "costs";
+    const action = subAction(
+      reader,
+      ["summary", "session", "card", "run", "status", "export"],
+      "invalid costs action",
+    );
+    args.action = action;
+    if (action === "session") args.costsId = operand(reader, "the session");
+    if (action === "card") args.costsId = operand(reader, "the card");
+    if (action === "run") args.costsId = operand(reader, "the run");
+  },
+  roi: setCommand("roi"),
   "--hours": setValue((args, v) => {
     args.hours = wholeFrom("--hours", v, 720);
   }),
@@ -632,6 +646,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "persona",
       "quota",
       "usage",
+      "costs",
+      "roi",
       "host",
       "sessions",
       "requests",
@@ -645,8 +661,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault
-${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -730,7 +745,8 @@ ${USAGE}`,
     vaultProblem(args) ??
     quotaProblem(args) ??
     rulesProblem(args) ??
-    approversProblem(args);
+    approversProblem(args) ??
+    costsProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
