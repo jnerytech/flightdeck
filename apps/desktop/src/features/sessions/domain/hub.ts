@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { readStored } from "@/shared/lib/index.ts";
-import type { HubFilter, HubGroup, HubOrigin, HubRow, HubState } from "./hub-row.ts";
+import type { HubFilter } from "./hub-row.ts";
 
+export type { HubFilter, HubGroup, HubRow, HubState } from "./hub-row.ts";
 export { isOver } from "./hub-row.ts";
 export { externalState, type HubRowState, hubRows } from "./hub-rows.ts";
-export type { HubFilter, HubGroup, HubRow, HubState };
 
 /** Where the hub's filters are kept (not the typed text: a stale one would hide rows). */
 export const HUB_FILTER_KEY = "flightdeck.hubFilter";
