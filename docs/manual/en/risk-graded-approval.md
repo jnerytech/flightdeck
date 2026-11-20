@@ -80,6 +80,12 @@ until then the hold of the Approve button is the only check, as before.
   with another layout. It does not list the hook commands: read them in the preview before you apply. Cancel it and
   nothing is written. If the setup changed on the host after you previewed it, the host refuses: preview again and
   confirm again. A host that does not yet ask for the device here shows a notice on its page: update it.
+- **Installing or updating a plugin.** With a device enrolled, **Install** and **Update** ask you once more in a
+  window of the system. The window names the plugin (or the folder it comes from), where it will be installed, and
+  says that a plugin runs code on this computer. It does not list what the plugin contains: read that in the preview
+  before you confirm. Cancel it and nothing is installed. If the plugin changed after you previewed it, the host
+  refuses: preview again. When the marketplace declares a command, the dialog opens a second time for the step that
+  accepts it. A host that does not yet ask for the device here shows a notice on its page: update it.
 - **Trusting a project.** With a device enrolled, **Trust this project** asks you once more in a window of the
   system. The window names the folder and says that its hooks and servers will then run with no prompt. Cancel it
   and nothing is sent. Revoking trust asks for nothing. A host that does not yet ask for the device when you
