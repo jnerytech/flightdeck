@@ -129,7 +129,7 @@ describe("session-runtime-gates", () => {
       forked++;
       return { sessionId: "x" };
     };
-    const forker = new Forker({ runtime, manager });
+    const forker = new Forker({ runtime, manager, allowedRoots: [project] });
     expect(
       await reasonOf(forker.fork({ claudeSessionId: "ses_oc", cwd: project, open: "flightdeck" })),
     ).toBe("runtime_unsupported");
