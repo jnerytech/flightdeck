@@ -39,5 +39,5 @@ verdade numa pasta descartável. Ele é manual, gasta cota e não faz parte dos 
 Outros scripts do `package.json`: `bun run coverage`, `bun run format` (Biome com `--write`),
 `bun run ui:lock` (grava `apps/desktop/components.lock.json`, o hash de cada componente shadcn/ui
 gerado pelo CLI), `bun run release:version`, `bun run release:assets`,
-`bun run release:tauri-config` e `bun run release:sign` (os quatro últimos são usados pela
-[release](releases.md#releases)).
+`bun run release:tauri-config`, `bun run release:cred` e `bun run release:sign` (os cinco últimos são usados pela
+[release](releases.md#releases)). Um `bun run tauri build` local gera um instalador sem o `flightdeck-cred`: só a config de release o inclui.

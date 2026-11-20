@@ -59,11 +59,11 @@ jobs:
         run: bun run release:sign
 
       # The CLI reads a paired host's token through this helper, found beside the app (#3429).
-      - name: Helper de credenciais (flightdeck-cred), como sidecar do app
+      - name: Credential helper (flightdeck-cred), built as the app's sidecar
         working-directory: apps/desktop/src-tauri
-        run: cargo build -p flightdeck-cred --release
+        run: cargo build -p flightdeck-cred --release --locked
 
-      - name: Pôr o helper onde o Tauri lê os sidecars
+      - name: Put the helper where Tauri reads sidecars
         run: bun run release:cred
 
       - name: Instaladores do app (NSIS e MSI), com o .sig do updater
