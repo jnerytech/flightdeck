@@ -211,6 +211,36 @@ A cota do plano deste host e o que as sessões dele custam, como a tela de Custo
 Um `pause-at` que fica sem resposta sai com `2` e diz que pode ou não ter mudado: rode `quota get` antes de
 tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
 
+## fd history
+
+```sh
+fd history list [--cwd <pasta>] [--project-key <chave>] [--from <hora>] [--to <hora>] [--origin flightdeck|external] [--hide-automated] [--limit 20] [--cursor <c>] [--json]
+fd history search "bug do login" [--cwd <pasta>] [--from <hora>] [--to <hora>] [--limit 10] [--json]
+fd history get <sessão> [--tail] [--limit 50] [--cursor <c>] [--json]
+fd history tool <sessão> <mensagem> <índice> [--json]
+fd history reindex
+```
+
+Estes leem as conversas que o Claude Code já gravou, como a tela de Histórico. Não mudam nada, e as
+pastas de `history.excludeCwds` ficam de fora, como no app.
+
+- **`list`:** uma linha por sessão: id, hora da última mensagem, pasta, título e número de mensagens, com
+  `[may be running]` quando outro processo ainda pode estar gravando. Uma lista mais longa termina com
+  `more: history list --cursor <c>`; passe esse cursor para ler a próxima página.
+- **`search <texto>`:** uma linha por resultado: sessão, mensagem, hora e papel, depois o trecho com cada
+  ocorrência entre `«` e `»`. Imprime `no session matches` quando não há nenhum.
+- **`get <sessão>`:** o transcript como texto, um bloco por mensagem (hora, papel, depois o texto). `--tail`
+  abre nas últimas mensagens. Uma página termina com `more:` e, num tail, `earlier:`, que dão o comando
+  que lê a próxima página ou a anterior.
+- **`tool <sessão> <mensagem> <índice>`:** a entrada e o resultado inteiros de uma chamada de ferramenta
+  de uma mensagem (o id da `<mensagem>` é a segunda coluna de `search`, e o `<índice>` conta a partir de
+  0). Diz quando o transcript tinha mais que os 64 KiB mostrados. Uma chamada que o transcript não tem
+  sai com `1`.
+- **`reindex`:** reconstrói o índice; pare o daemon antes (veja [Histórico](history.md)).
+
+`--limit` aceita de 1 a 200 (até 500 em `get`). Com `--json` os quatro primeiros imprimem a resposta do
+daemon. Os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
+
 ## fd persona
 
 ```sh
