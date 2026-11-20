@@ -85,6 +85,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd ssh](pt-BR/flightdeckd-ssh-commands.md#fd-ssh)
 
+## Comandos do flightdeckd: a vigia de PR de um card
+
+[Ler o capítulo.](pt-BR/flightdeckd-watch-commands.md) Suas seções:
+
+- [fd watch](pt-BR/flightdeckd-watch-commands.md#fd-watch)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)
