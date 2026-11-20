@@ -3,7 +3,13 @@
  * script. It asks `session.list` like the app does, with the token of the config. Exit codes: 0 done,
  * 1 refused, 2 no daemon.
  */
-import { type CliResult, json, runOnLocalDaemon, said } from "../daemon-client/index.ts";
+import {
+  type CliResult,
+  json,
+  type RemoteTarget,
+  runOnLocalDaemon,
+  said,
+} from "../daemon-client/index.ts";
 
 export interface SessionsCliArgs {
   /** `--json`: one array of small objects, for a script. */
@@ -13,6 +19,8 @@ export interface SessionsCliArgs {
 export interface SessionsCliOptions {
   /** How long the daemon has to answer before the command gives up (exit 2). */
   timeoutMs?: number;
+  /** A paired host to ask instead of this machine's daemon (`--host`, #3429); the config is not used then. */
+  remote?: RemoteTarget;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -26,6 +34,7 @@ export function runSessionsCli(
   return runOnLocalDaemon({
     config,
     clientName: "flightdeck-sessions",
+    ...(options.remote ? { remote: options.remote } : {}),
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     perform: async (daemon) => {
       const { sessions } = await daemon.call("session.list", {});

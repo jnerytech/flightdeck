@@ -144,8 +144,8 @@ export const USAGE = [
   "     fd card show <card> [--json] [--config <file>]",
   "     fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
   "     fd card start <card> [--workflow <name>] [--json] [--config <file>]",
-  "     fd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
-  "     fd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
+  "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
+  "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
   "     fd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (--hold: you mean to allow a high-risk request; it is your own assertion)",
   "     fd deny <request> [--message <text>] [--json] [--config <file>]",
@@ -514,6 +514,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve and deny\n${USAGE}`,
     );
+  if (args.host !== undefined && !["host", "sessions"].includes(args.command))
+    throw new Error(`--host: this flag only applies to flightdeckd host and sessions\n${USAGE}`);
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (args.answerMessage !== undefined && !["approve", "deny"].includes(args.command))
