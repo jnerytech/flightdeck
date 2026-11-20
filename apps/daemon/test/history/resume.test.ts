@@ -79,6 +79,18 @@ describe("retomada", () => {
     expect(runtime.starts).toEqual([]);
   });
 
+  test("a host that turned the bypass switch off refuses a resume that asks for bypass (#3461)", async () => {
+    const { client, manager, runtime } = await setup(0);
+    const ack = await client.request("history.resume", {
+      claudeSessionId: ID,
+      force: true,
+      permissionMode: "bypassPermissions",
+    });
+    expect(ack).toMatchObject({ ok: false, error: { reason: "bypass_not_allowed" } });
+    expect(manager.list()).toEqual([]);
+    expect(runtime.starts).toEqual([]);
+  });
+
   test("um transcript que o histórico não conhece é recusado com o motivo e o id", async () => {
     const { client } = await setup(0);
     const ack = await client.request("history.resume", { claudeSessionId: "desconhecido" });
