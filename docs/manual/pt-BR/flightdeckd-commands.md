@@ -247,8 +247,8 @@ nenhum muda nada: entregar um segredo e usá-lo continuam no app.
 - **`rules <segredo>`:** as tags do segredo e uma linha por regra, como o daemon a guarda.
 - **`rules preview <segredo>`:** o que um uso receberia, como ensaio: `allow`, `ask` ou `deny`, a regra ou o
   padrão que decidiu e o motivo, com `[once per session]`, `[approval must be held 2 s]` ou
-  `[limit reached]` quando valem. `--requester` e `--purpose` são obrigatórios; `--at` aceita data e hora
-  como `2026-11-20T03:00:00Z` (agora por padrão). Não grava nada na auditoria. Um segredo chamado
+  `[limit reached]` quando valem. `--requester` e `--purpose` são obrigatórios; `--at` aceita data e hora ISO
+  com fuso, como `2026-11-20T03:00:00Z` (agora por padrão). Não grava nada na auditoria. Um segredo chamado
   `preview` não pode ser lido com `rules <segredo>`.
 
 Os códigos de saída são os mesmos dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.

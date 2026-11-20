@@ -244,8 +244,8 @@ none changes anything: handing a secret over and using it stay in the app.
 - **`rules <secret>`:** the secret's tags, then one line per rule as the daemon holds it.
 - **`rules preview <secret>`:** what a use would get, asked as a dry run: `allow`, `ask` or `deny`, the
   rule or the default that decided, and the reason, with `[once per session]`, `[approval must be held 2 s]`
-  or `[limit reached]` when they apply. `--requester` and `--purpose` are needed; `--at` takes a date and
-  time such as `2026-11-20T03:00:00Z` (now by default). It writes nothing to the audit. A secret named
+  or `[limit reached]` when they apply. `--requester` and `--purpose` are needed; `--at` takes an ISO date and
+  time with a zone, such as `2026-11-20T03:00:00Z` (now by default). It writes nothing to the audit. A secret named
   `preview` cannot be read with `rules <secret>`.
 
 Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.

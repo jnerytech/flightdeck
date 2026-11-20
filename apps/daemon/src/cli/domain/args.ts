@@ -642,7 +642,10 @@ const HANDLERS: Record<string, Handler> = {
     args.approval = oneOf("--approval", v, ["always", "never", "first-per-session"]);
   }),
   "--at": setValue((args, v) => {
-    const at = Date.parse(v);
+    // An ISO time with a zone: `Date.parse` alone reads "5" as a year and a zone-less time as local.
+    const at = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(v)
+      ? Date.parse(v)
+      : Number.NaN;
     if (Number.isNaN(at))
       throw new Error(`--at: a date and time, like 2026-11-20T03:00:00Z, got ${v}\n${USAGE}`);
     args.at = at;
