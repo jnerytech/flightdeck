@@ -390,6 +390,15 @@ const changesAPersona = (prog: string, args: string[]) =>
  */
 const startsATeam = (prog: string, args: string[]) => runsCliVerb(prog, args, "team", TEAM_CHANGES);
 
+/**
+ * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
+ * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
+ * session that got third-party content. `--confirm` is only a flag the caller types.
+ */
+const changesWhatGuards = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "rules", ["remove"]) ||
+  runsCliVerb(prog, args, "autoapprove", ["resume"]);
+
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
@@ -429,6 +438,10 @@ const DANGEROUS: Array<{
     when: endsACard,
     reason: () =>
       "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)",
+  },
+  {
+    when: changesWhatGuards,
+    reason: () => "changes what guards the sessions (flightdeckd rules remove, autoapprove resume)",
   },
   {
     when: changesAPersona,

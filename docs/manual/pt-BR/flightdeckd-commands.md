@@ -283,9 +283,11 @@ fd rules list --project api
 fd rules list --json
 fd autoapprove list
 fd autoapprove list --project api --session <chave> --limit 20 --json
+fd rules remove 'Bash(bun test:*)' --project api --confirm
+fd autoapprove resume --session <chave> --confirm
 ```
 
-Eles leem o que protege as sessões de um projeto, como a tela de Segurança. Nenhum altera nada.
+`list` lê o que protege as sessões de um projeto, como a tela de Segurança; `remove` e `resume` o alteram.
 
 - **`rules list`:** as regras de permissão que o projeto libera (`permissions.allow` do
   `.claude/settings.local.json`), uma por linha, exatamente como o arquivo as guarda (não são censuradas: uma regra que contém um segredo o mostra). `--project` é o nome ou o id do
@@ -296,6 +298,18 @@ Eles leem o que protege as sessões de um projeto, como a tela de Segurança. Ne
   risco, a ferramenta, a chave da sessão, quem decidiu (`rule` ou `ai`) e por quê. `--project` deixa só as
   decisões de um projeto e `--session` as decisões e a suspensão de uma chave de sessão; `--limit` lê de 1 a 1000 decisões. Com `--json` imprime a
   resposta do daemon, `decisions` e `suspended`. Um segredo que o aprovador citou num motivo é cortado.
+- **`rules remove <regra> --confirm`:** remove uma regra do `permissions.allow` do projeto, mantendo o resto
+  do arquivo. Passe a regra exatamente como o `rules list` a imprimiu, entre aspas. Recusa com saída `1` e não
+  envia nada até você passar `--confirm`, e recusa uma regra que o projeto não tem. Imprime quantas regras
+  sobraram; com `--json`, as regras que sobraram.
+- **`autoapprove resume --session <chave> --confirm`:** liga de novo o aprovador automático de uma sessão
+  que foi suspensa depois de receber conteúdo de terceiros. Recusa com saída `1` uma sessão que não está
+  suspensa. Com `--json` imprime as sessões que continuam suspensas.
+
+Uma mudança que fica sem resposta sai com `2` e avisa que pode ou não ter sido feita: rode `rules list` ou
+`autoapprove list` antes de tentar de novo. Rodados no shell de uma sessão, `rules remove` e
+`autoapprove resume` são classificados como comandos de risco alto.
+
 
 ## Só no app
 
