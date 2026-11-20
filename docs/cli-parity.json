@@ -3,9 +3,13 @@
   "account.refresh": {},
   "account.unwatch": {},
   "account.watch": {},
-  "actions.list": {},
+  "actions.list": {
+    "cli": "action"
+  },
   "actions.remove": {},
-  "actions.run": {},
+  "actions.run": {
+    "cli": "action"
+  },
   "actions.runFree": {},
   "actions.runs": {},
   "actions.save": {},
@@ -67,13 +71,19 @@
   "card.arena": {},
   "card.checkLoop": {},
   "card.chooseVariant": {},
-  "card.complete": {},
+  "card.complete": {
+    "cli": "card"
+  },
   "card.create": {
     "cli": "card"
   },
-  "card.delete": {},
+  "card.delete": {
+    "cli": "card"
+  },
   "card.diff": {},
-  "card.discard": {},
+  "card.discard": {
+    "cli": "card"
+  },
   "card.dismissUnblocked": {},
   "card.get": {
     "cli": "card"
@@ -81,7 +91,9 @@
   "card.manage": {},
   "card.mergeLocal": {},
   "card.message": {},
-  "card.move": {},
+  "card.move": {
+    "cli": "card"
+  },
   "card.pr.create": {},
   "card.pr.merge": {},
   "card.review": {},
@@ -90,9 +102,13 @@
     "cli": "card"
   },
   "card.startArena": {},
-  "card.stop": {},
+  "card.stop": {
+    "cli": "card"
+  },
   "card.templates": {},
-  "card.update": {},
+  "card.update": {
+    "cli": "card"
+  },
   "card.updateFromBase": {},
   "card.validationTemplate": {},
   "changes.commit": {},
@@ -153,7 +169,9 @@
   "host.pause": {},
   "host.sleep": {},
   "host.updates.set": {},
-  "idle.subscribe": {},
+  "idle.subscribe": {
+    "cli": "message"
+  },
   "issues.createCard": {},
   "issues.get": {},
   "issues.list": {},
@@ -182,11 +200,17 @@
   "messages.directory": {},
   "messages.list": {},
   "messages.peers": {},
-  "messages.read": {},
+  "messages.read": {
+    "cli": "message"
+  },
   "messages.relay": {},
   "messages.relayed": {},
-  "messages.send": {},
-  "messages.sessions": {},
+  "messages.send": {
+    "cli": "message"
+  },
+  "messages.sessions": {
+    "cli": "message"
+  },
   "messages.watch": {},
   "messaging.rules.get": {},
   "messaging.rules.set": {},
@@ -292,9 +316,13 @@
   "snapshots.files": {},
   "snapshots.list": {},
   "snippets.favorite": {},
-  "snippets.get": {},
+  "snippets.get": {
+    "cli": "snippet"
+  },
   "snippets.importHistory": {},
-  "snippets.list": {},
+  "snippets.list": {
+    "cli": "snippet"
+  },
   "snippets.parse": {},
   "snippets.remove": {},
   "snippets.render": {},
@@ -311,7 +339,9 @@
   "ssh.remove": {},
   "ssh.save": {},
   "ssh.test": {},
-  "statusline.get": {},
+  "statusline.get": {
+    "cli": "statusline"
+  },
   "task.preview": {},
   "task.results": {},
   "teams.add_member": {},
@@ -324,7 +354,9 @@
   "teams.remove_member": {},
   "teams.report": {},
   "teams.resume": {},
-  "teams.status": {},
+  "teams.status": {
+    "cli": "message"
+  },
   "teams.update": {},
   "teams.watch": {},
   "telemetry.install": {},

@@ -11,6 +11,8 @@ export interface CliResult {
   code: 0 | 1 | 2;
   out: string[];
   err: string[];
+  /** A stable word for a refusal a script may branch on (`--json`, issue #3429); absent for the rest. */
+  reason?: string;
 }
 
 /** The address of this machine only: the token of the config is never sent anywhere else. */
@@ -46,10 +48,11 @@ export const said = (...out: string[]): CliResult => ({
   err: [],
 });
 
-export const failure = (code: 1 | 2, message: string): CliResult => ({
+export const failure = (code: 1 | 2, message: string, reason?: string): CliResult => ({
   code,
   out: [],
   err: [plain(message)],
+  ...(reason === undefined ? {} : { reason }),
 });
 
 /** Why this command will not talk to the address of the config, or null when it is the local daemon. */

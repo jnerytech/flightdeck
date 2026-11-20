@@ -209,6 +209,7 @@ test's baseline, with the issue that renames them.
 | `publish` | publish | What takes a change from a repository to a pull request: a commit of a few files on a new branch through a temporary index, the push, the PR opened through the provider and the check that no secret goes public in its title or body (#1589) |
 | `quota` | quota | The plan's 5-hour and 7-day windows and the queue they hold |
 | `releases` | release | The product's GitHub releases, read and cached |
+| `remote-hosts` | remote host | The hosts paired in the app, reached by name from the command line: the name index, the credential helper and the address rule |
 | `resources` | resources | The host's CPU and memory, per process, and the memory gate |
 | `review` | review | The changes of a session or card: files, diff, comments, commit and PR |
 | `roi` | return on cost | Delivered work, its estimated value and the return on cost |

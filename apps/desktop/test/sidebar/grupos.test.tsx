@@ -11,13 +11,15 @@ const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
+/** A version before every badge's `until`: a release bump never changes what these tests render (#3466). */
+const BEFORE_EVERY_BADGE = "0.1.0";
 const ALL = ["costs", "messaging", "teams", "plugins", "personas", "snippets", "ssh"];
 
 function setup(
   features: string[] = ALL,
   platform = memoryPlatform(false, "en").platform,
   route?: import("../../src/lib/router.ts").Route,
-  appVersion?: string,
+  appVersion: string = BEFORE_EVERY_BADGE,
 ) {
   const store = new AppStore(platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -43,7 +45,7 @@ function setup(
       t={store.i18n.t}
       go={go}
       {...(route ? { route } : {})}
-      {...(appVersion ? { appVersion } : {})}
+      appVersion={appVersion}
       onOpenProjectScreen={() => {}}
       onNewSession={() => {}}
       onRemoveHost={() => {}}

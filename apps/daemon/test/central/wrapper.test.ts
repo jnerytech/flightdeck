@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 /** Config with the hooks token; `receptor` publishes a live receptor's URL like the daemon. */
-function config(options: { receptor?: string; executablePath?: string } = {}) {
+function config(options: { receptor?: string; executablePath?: string; bypass?: boolean } = {}) {
   const dir = tempDir();
   const dataDir = join(dir, "data");
   mkdirSync(dataDir, { recursive: true });
@@ -28,6 +28,8 @@ function config(options: { receptor?: string; executablePath?: string } = {}) {
       token: "t".repeat(32),
       dataDir,
       hooks: { port: 0, token: HOOKS },
+      // These tests are about the channel: the bypass default (#3427) has its own test below.
+      allowBypassPermissions: options.bypass ?? false,
       ...(options.executablePath ? { claude: { executablePath: options.executablePath } } : {}),
     }),
   );
@@ -45,7 +47,7 @@ function receptor() {
   return server.url;
 }
 
-async function wrapper(args: string[], configFile: string) {
+async function wrapper(args: string[], configFile: string, root = false) {
   const out: string[] = [];
   let code = null as number | null;
   await runCli(["claude", ...args], {
@@ -56,6 +58,7 @@ async function wrapper(args: string[], configFile: string) {
     },
     onSignal: () => {},
     selfCommand: ["C:\\fd\\flightdeckd.exe"],
+    root,
   });
   return { code, out };
 }
@@ -206,5 +209,43 @@ describe("wrapper", () => {
       process.env.PATH = saved;
     }
     expect(existsSync(file)).toBe(true);
+  });
+
+  test("a host that allows bypass starts claude in it; a mode the person passed wins; root falls back and says so (#3427)", async () => {
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    const { file } = config({ bypass: true });
+    const off = config();
+    const said = [
+      await wrapper(["-c"], file),
+      await wrapper(["-c", "--permission-mode", "plan"], file),
+      await wrapper(["-c"], off.file),
+      await wrapper(["-c"], file, true),
+    ].map((result) => result.out.join("\n").includes("claude refuses it as root"));
+    expect(
+      fake
+        .events()
+        .filter((e) => e.type === "start")
+        .map((e) => e.args),
+    ).toEqual([
+      ["--permission-mode", "bypassPermissions", "-c"],
+      ["-c", "--permission-mode", "plan"],
+      ["-c"],
+      ["-c"],
+    ]);
+    expect(said).toEqual([false, false, false, true]);
+  });
+
+  test("a config file the launch had to create is not a host's choice: no bypass is added (#3427)", async () => {
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    // A terminal whose FLIGHTDECK_CONFIG points at nothing: the daemon's file (switch off) is elsewhere.
+    await wrapper(["-c"], join(tempDir(), "missing.json"));
+    expect(
+      fake
+        .events()
+        .filter((e) => e.type === "start")
+        .map((e) => e.args),
+    ).toEqual([["-c"]]);
   });
 });

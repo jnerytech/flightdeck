@@ -102,6 +102,10 @@ describe("bypass-ui: the New session form", () => {
   test("picking it asks every time, naming the host and the folder; only the confirm creates", async () => {
     const created: Array<{ permissionMode?: string }> = [];
     form(true, created);
+    // The form starts in bypass on this host (#3427): another mode first, then bypass picked by hand.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Permission mode"), { target: { value: "plan" } });
+    });
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Permission mode"), {
         target: { value: "bypassPermissions" },
@@ -127,10 +131,28 @@ describe("bypass-ui: the New session form", () => {
   test("another mode creates at once, with no dialog", async () => {
     const created: unknown[] = [];
     form(true, created);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Permission mode"), { target: { value: "plan" } });
+    });
     await fillPrompt();
     await press("Create session");
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(created).toHaveLength(1);
+  });
+
+  test("a host that allows bypass starts the form in it and creates at once; one that does not starts in Default (#3427)", async () => {
+    const created: Array<{ permissionMode?: string }> = [];
+    form(true, created);
+    expect((screen.getByLabelText("Permission mode") as HTMLSelectElement).value).toBe(
+      "bypassPermissions",
+    );
+    await fillPrompt();
+    await press("Create session");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(created.map((c) => c.permissionMode)).toEqual(["bypassPermissions"]);
+    cleanup();
+    form(false, created);
+    expect((screen.getByLabelText("Permission mode") as HTMLSelectElement).value).toBe("default");
   });
 });
 

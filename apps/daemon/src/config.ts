@@ -58,14 +58,18 @@ export const Config = z.object({
       executablePath: z.string().min(1).optional(),
     })
     .default(() => ({ enabled: false })),
-  defaultPermissionMode: PermissionMode.default("default"),
+  /**
+   * The mode a session starts in when nothing asks for another (#3427: the highest privilege is the
+   * default, reversing the opt-in of #1711). A host with the bypass switch off starts in `default`.
+   */
+  defaultPermissionMode: PermissionMode.default("bypassPermissions"),
   allowApiKey: z.boolean().default(false),
   /** Keep the computer awake while a session runs or waits (issue #163); on unless the person turns it off. */
   keepAwake: z.boolean().default(true),
   /** Issue #1404: new card runs wait on this host (before a restart or an update); off by default. */
   pauseNewRuns: z.boolean().default(false),
-  /** A session may start in `bypassPermissions`; off until the person turns it on for the host. */
-  allowBypassPermissions: z.boolean().default(false),
+  /** A session may start in `bypassPermissions`; on unless the person turns it off for the host (#3427). */
+  allowBypassPermissions: z.boolean().default(true),
   /** Cards running at the same time; the rest wait in start order (protects the quota). */
   maxParallelRuns: z.number().int().min(1).default(2),
   /** Legacy (phase 1) path to the `claude` executable; `claude.executablePath` wins. */
