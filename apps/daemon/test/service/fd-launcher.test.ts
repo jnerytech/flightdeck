@@ -157,6 +157,18 @@ describe("fd launcher: what setup tells the person (#3433)", () => {
     expect(text).toContain(`export PATH='${join(stable, "..")}':"$PATH"`);
   });
 
+  test("a PATH lookup that throws is a note, never a failed setup", async () => {
+    const { stable } = home();
+    const lines = await setupFdLauncher({
+      stable,
+      platform,
+      which: () => {
+        throw new Error("EACCES: a folder on the PATH cannot be read");
+      },
+    }).catch((error: Error) => [`setup threw: ${error.message}`]);
+    expect(lines.join("\n")).toContain("(written)");
+  });
+
   test("a folder with a dollar sign or a quote cannot run anything from the line to paste", () => {
     const lines = fdPathNotes({
       launcher: "/home/a$(touch x)'b/.flightdeck/bin/fd",
