@@ -11,6 +11,11 @@ const PI = "0b6a3f6e-5f0e-4a39-9c43-5d1d1c2b7a11";
 const DESK = "5c1d9a0e-1b2c-4d3e-8f40-aabbccddeeff";
 type Listed = Array<{ id: string; name: string; url: string }>;
 
+/** The queued syncs start on the microtask queue: let it run, with no timer. */
+const settle = async () => {
+  for (let turn = 0; turn < 6; turn++) await Promise.resolve();
+};
+
 function start(sync?: (hosts: Listed) => Promise<void>) {
   const mem = memoryPlatform(false, "en");
   seedDemoHosts(mem.win.localStorage, mem.tokens, [
@@ -46,6 +51,7 @@ describe("host index sync: the CLI's names and addresses follow the host list (#
     const { store, sent } = start();
     await store.init();
     store.roster.rename(PI, "Orange Pi");
+    await settle();
     store.dispose();
     expect(sent.at(-1)?.map((host) => host.name)).toEqual(["Orange Pi", "Desk"]);
   });
@@ -54,6 +60,7 @@ describe("host index sync: the CLI's names and addresses follow the host list (#
     const { store, sent } = start();
     await store.init();
     await store.roster.remove(PI);
+    await settle();
     store.dispose();
     expect(sent.at(-1)?.map((host) => host.id)).toEqual([DESK]);
   });
@@ -62,6 +69,7 @@ describe("host index sync: the CLI's names and addresses follow the host list (#
     const { store, sent } = start(() => Promise.reject(new Error("the store is locked")));
     await store.init();
     const error = store.roster.rename(PI, "Orange Pi");
+    await settle();
     store.dispose();
     expect({ error, syncs: sent.length }).toEqual({ error: null, syncs: 2 });
   });
