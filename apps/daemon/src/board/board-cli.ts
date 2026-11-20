@@ -11,7 +11,13 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 export async function runBoardCli(
   args: BoardCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: {
+    timeoutMs?: number;
+    /** `watch` stops when this aborts (Ctrl-C). */
+    signal?: AbortSignal;
+    /** `watch` writes each line here as it comes. */
+    write?: (line: string) => void;
+  } = {},
 ): Promise<CliResult> {
   const { maxParallelRuns } = args;
   return runOnLocalDaemon({

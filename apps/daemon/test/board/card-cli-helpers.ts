@@ -5,9 +5,13 @@ export const TOKEN = "card-cli-token-0123456789abcdef";
 
 /** What the daemon says for a command: data, or `{ error }` for a refusal. */
 type Answer = unknown | { error: { code: string; message: string } };
+/** What a handler can do besides answer: push a frame of its own to the client that asked (a stream). */
+export interface Push {
+  push(frame: unknown): void;
+}
 export type Handlers = Record<
   string,
-  (payload: Record<string, unknown>) => Answer | Promise<Answer>
+  (payload: Record<string, unknown>, ctx: Push) => Answer | Promise<Answer>
 >;
 
 export const stops: Array<() => unknown> = [];
@@ -29,12 +33,17 @@ export function fakeDaemon(
 ) {
   const calls: Array<{ type: string; payload: Record<string, unknown> }> = [];
   let closes = 0;
+  const sockets = new Set<{ send(data: string): void; close(): void }>();
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
     fetch: (req, srv) => (srv.upgrade(req) ? undefined : new Response("ws only", { status: 400 })),
     websocket: {
-      close() {
+      open(ws) {
+        sockets.add(ws);
+      },
+      close(ws) {
+        sockets.delete(ws);
         closes += 1;
       },
       async message(ws, raw) {
@@ -51,7 +60,7 @@ export function fakeDaemon(
             ? payload.token === token
               ? {}
               : { error: { code: "unauthorized", message: `bad token ${String(payload.token)}` } }
-            : await handlers[type]?.(payload);
+            : await handlers[type]?.(payload, { push: (frame) => ws.send(JSON.stringify(frame)) });
         if (answer === CLOSE) return void ws.close();
         if (answer === REVOKE) return void ws.close(4401);
         if (answer === undefined && type !== "hello") return; // a daemon that never answers
@@ -67,7 +76,19 @@ export function fakeDaemon(
     },
   });
   stops.push(() => server.stop(true));
-  return { port: server.port as number, calls, closed: () => closes };
+  return {
+    port: server.port as number,
+    calls,
+    closed: () => closes,
+    /** A frame to every client that is connected: the daemon telling them something unasked. */
+    push: (frame: unknown) => {
+      for (const ws of sockets) ws.send(JSON.stringify(frame));
+    },
+    /** The daemon goes away under its clients. */
+    dropAll: () => {
+      for (const ws of sockets) ws.close();
+    },
+  };
 }
 
 export const config = (port: number, bind = "127.0.0.1") => ({ bind, port, token: TOKEN });

@@ -107,3 +107,173 @@ describe("the arguments of board settings (issue #3454)", () => {
     });
   });
 });
+
+/** A card as the daemon pushes it: the protocol checks every frame, so it must be whole. */
+const card = (over: Record<string, unknown> = {}) => ({
+  id: "c1",
+  projectId: "p1",
+  slug: "c1",
+  title: "Fix the login",
+  description: "",
+  column: "in_progress",
+  columnLocked: false,
+  position: 0,
+  queued: false,
+  queueReason: null,
+  quotaUntil: null,
+  branch: null,
+  worktreePath: "/w/c1",
+  prUrl: null,
+  prState: null,
+  checksState: null,
+  sessionId: null,
+  sessionStatus: null,
+  notice: null,
+  waitingOn: [],
+  discarded: false,
+  runs: [],
+  createdAt: "2026-11-20T00:00:00Z",
+  updatedAt: "2026-11-20T00:00:00Z",
+  ...over,
+});
+const updated = (over: Record<string, unknown> = {}) => ({
+  type: "card.updated",
+  card: card(over),
+});
+
+/** Runs `board watch` until `until` says enough lines came, then presses Ctrl-C. */
+async function watched(
+  daemon: ReturnType<typeof fakeDaemon>,
+  options: { json?: boolean; timeoutMs?: number; lines?: number; after?: () => unknown } = {},
+) {
+  const lines: string[] = [];
+  const stop = new AbortController();
+  const running = runBoardCli(
+    { action: "watch", ...(options.json ? { json: true } : {}) },
+    config(daemon.port),
+    { timeoutMs: options.timeoutMs ?? 2000, signal: stop.signal, write: (l) => lines.push(l) },
+  );
+  const deadline = Date.now() + 5000;
+  await Bun.sleep(100);
+  await options.after?.();
+  while (lines.length < (options.lines ?? 1) && Date.now() < deadline) await Bun.sleep(20);
+  stop.abort();
+  return { result: await running, lines };
+}
+
+describe("flightdeckd board watch (issue #3454)", () => {
+  test("it writes a line for each card the daemon pushes, and Ctrl-C ends it with 0", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const { result, lines } = await watched(daemon, {
+      lines: 2,
+      after: () => {
+        daemon.push(updated());
+        daemon.push(updated({ id: "c2", title: "Add a test", column: "review" }));
+      },
+    });
+    expect(lines).toEqual(["c1  in_progress  Fix the login", "c2  review  Add a test"]);
+    expect(result.code).toBe(0);
+    expect(daemon.calls.filter((c) => c.type === "board.watch")).toHaveLength(1);
+  });
+
+  test("--json writes one card per line, for a script", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const { lines } = await watched(daemon, {
+      json: true,
+      after: () => daemon.push(updated()),
+    });
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0] ?? "")).toMatchObject({ id: "c1", title: "Fix the login" });
+  });
+
+  test("the time limit covers the connect and the ack, not the stream", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const { result, lines } = await watched(daemon, {
+      timeoutMs: 300,
+      after: async () => {
+        await Bun.sleep(600);
+        daemon.push(updated());
+      },
+    });
+    expect(lines).toEqual(["c1  in_progress  Fix the login"]);
+    expect(result.code).toBe(0);
+  });
+
+  test("a frame the daemon pushes before the ack is not lost", async () => {
+    const daemon = fakeDaemon({
+      "board.watch": (_payload, ctx) => {
+        ctx.push(updated());
+        return {};
+      },
+    });
+    const { lines } = await watched(daemon);
+    expect(lines).toEqual(["c1  in_progress  Fix the login"]);
+  });
+
+  test("a daemon that never acks the watch exits 2 in the time limit and writes nothing", async () => {
+    const silent = fakeDaemon({});
+    const lines: string[] = [];
+    const result = await runBoardCli({ action: "watch" }, config(silent.port), {
+      timeoutMs: 200,
+      signal: new AbortController().signal,
+      write: (l) => lines.push(l),
+    });
+    expect(result.code).toBe(2);
+    expect(text(result)).toContain("did not answer");
+    expect(text(result)).not.toContain("may or may not");
+    expect(lines).toEqual([]);
+  });
+
+  test("a refused watch exits 1 with the daemon's code", async () => {
+    const daemon = fakeDaemon({
+      "board.watch": () => ({ error: { code: "invalid", message: "nope" } }),
+    });
+    const { result } = await watched(daemon, { lines: 0 });
+    expect(result.code).toBe(1);
+    expect(text(result)).toContain("invalid: nope");
+  });
+
+  test("a daemon that goes away mid-stream exits 2, after what it had written", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const { result, lines } = await watched(daemon, {
+      lines: 1,
+      after: async () => {
+        daemon.push(updated());
+        await Bun.sleep(100);
+        daemon.dropAll();
+      },
+    });
+    expect(lines).toEqual(["c1  in_progress  Fix the login"]);
+    expect(result.code).toBe(2);
+    expect(text(result)).toContain("could not reach the daemon");
+  });
+
+  test("the token never reaches a streamed line", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const { lines } = await watched(daemon, {
+      after: () => daemon.push(updated({ title: `leak ${config(daemon.port).token} end` })),
+    });
+    expect(lines).toEqual(["c1  in_progress  leak [token] end"]);
+  });
+
+  test("a card's title cannot drive the terminal", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const { lines } = await watched(daemon, {
+      after: () => daemon.push(updated({ title: "a\u001b[2Jb" })),
+    });
+    expect(lines).toEqual(["c1  in_progress  a [2Jb"]);
+  });
+});
+
+describe("the arguments of board watch (issue #3454)", () => {
+  test("board watch takes --json", () => {
+    expect(parsed(["board", "watch"])).toMatchObject({ command: "board", action: "watch" });
+    expect(parsed(["board", "watch", "--json"])).toMatchObject({ action: "watch", json: true });
+  });
+
+  test("the limit flag belongs to settings only", () => {
+    expect(parsed(["board", "watch", "--max-parallel-runs", "3"])).toMatchObject({
+      refusedWith: expect.stringContaining("--max-parallel-runs"),
+    });
+  });
+});
