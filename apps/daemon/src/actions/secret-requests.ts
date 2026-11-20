@@ -131,8 +131,9 @@ export class SecretRequests {
   }
 
   /** Whether the request waits for an approval that needs a device's proof: it asks, needs the hold and is not approved yet (#3452). */
-  needsProof(_requestId: string): boolean {
-    return false;
+  needsProof(requestId: string): boolean {
+    const waiting = this.pending.get(requestId);
+    return waiting?.decision === "ask" && waiting.needsHold && !waiting.approved;
   }
 
   /** Throws unless a delivery for `purpose` may go through: a request that asks has to be approved. */
