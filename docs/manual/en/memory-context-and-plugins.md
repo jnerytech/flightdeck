@@ -46,3 +46,23 @@ skills, agents, commands and MCP servers, and a hash of the whole content. Hooks
   you saw, the plugin is uninstalled at once and the decision is recorded in
   `plugin-decisions.jsonl`.
 - **Marketplaces** adds and removes (each after a confirmation) and updates.
+
+### From a shell
+
+```sh
+fd plugins list
+fd plugins detail deploy-tools@acme
+fd plugins preview deploy-tools@acme --json
+fd plugins preview --dir ~/work/my-plugin
+fd plugins preview-update deploy-tools@acme --host pi
+```
+
+`fd plugins` reads the same plugins from a terminal. This first slice only reads: it installs, updates and removes nothing. `<plugin>` is `name@marketplace`, and `--host <name>` asks another host.
+
+- **`list`:** one line per plugin: `installed`, its version, scope, `enabled` or `disabled` and the version it is pinned to; then `available` for what the marketplaces offer, and the `marketplace` lines. A host with none says `no plugins`.
+- **`detail <plugin>`:** where an installed plugin is, whether it is pinned, its content `hash`, whether it needs your attention and how many hooks, monitors, skills, agents, commands and MCP servers it brings. An id that is not installed exits `1`.
+- **`preview <plugin>`:** what an install would bring, one line per hook (the ones that can decide for you are marked), monitor, skill, agent, command and MCP server, and the `hash` of that content. A plugin whose source is not on this host prints `not local` and no hash; it exits `0`.
+- **`preview --dir <folder>`:** the same for a local folder, plus the result of its validation. The folder must be inside the allowed folders of the host; outside it exits `1` with `forbidden_cwd`. Give a plugin or `--dir`, never both. A relative folder is read from your shell's folder; with `--host` it must be absolute.
+- **`preview-update <plugin>`:** the installed copy against the marketplace's (it first refreshes the marketplace's listing, so it reaches the network): both versions and hashes, and what was added or removed in each kind of content, or `unchanged`.
+
+With `--json` each verb prints the daemon's answer. A request that gets no answer exits `2`.
