@@ -66,6 +66,9 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 
+- **Pelo terminal:** `fd quota get` imprime as janelas e a trava, e `fd quota pause-at 0.8` (ou `off`) define
+  a trava, como **Cartões novos esperam a partir de** faz. Veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-quota-e-fd-usage).
+
 ## A barra de status
 
 Uma barra fina (24 px) corre pela base da janela. À esquerda, a cota do plano (acima) com a hora de
@@ -125,6 +128,8 @@ tokens e turnos.
   abre o Histórico filtrado pelo próprio projeto, então todas as pastas dele aparecem; uma ficha
   "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
+
+- **Pelo terminal:** `fd usage --days 30` imprime as mesmas linhas, uma por dia e projeto.
 
 ## Custos
 
@@ -238,6 +243,8 @@ de 5 minutos viram uma só.
 - **Tooltip:** as barras do topo da tela Sessões mostram a mesma projeção.
 - **Quem consumiu a janela:** a fatia de cada projeto no custo estimado desde o início da janela
   de 5 horas atual. É uma atribuição aproximada, porque o plano não diz quem usou a cota.
+
+- **Pelo terminal:** `fd quota history five_hour --hours 48` imprime as leituras, a projeção e quem usou a janela.
 
 ## Retorno sobre o custo
 
