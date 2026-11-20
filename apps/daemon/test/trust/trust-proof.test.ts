@@ -11,7 +11,7 @@ import {
 import { Approvers } from "../../src/permissions/approvers.ts";
 import { keyIdOf } from "../../src/permissions/domain/approval-gate.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, newStore } from "../support/helpers.ts";
+import { newManager } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(30_000);
@@ -67,7 +67,7 @@ async function host(options: { enrolled?: boolean } = {}) {
       trust: {
         refresh: async () => undefined,
         state: (paths) => paths.map((p) => state(p, false)),
-        inspect: async () => null,
+        inspect: async () => ({}) as never,
         set: (path, trusted) => {
           decided.push([path, trusted]);
           return state(path, trusted);
