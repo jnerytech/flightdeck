@@ -13,6 +13,7 @@ import {
   isCliProgram,
   program,
   RUNNERS,
+  runsFlightdeckWords,
   SHELLS,
   shellArguments,
   unquoted,
@@ -246,28 +247,6 @@ function enablesTerminals(prog: string, args: string[]): boolean {
   return runsFlightdeckWords(prog, args, ([command, action], own) => {
     return command === "terminal" && action === "settings" && own.includes("--enable");
   });
-}
-
-/**
- * Whether a command line runs the CLI with words that `matches` accepts, as the CLI itself, or under a
- * runtime or a shell (`bun bin.ts`, `bash -c`). Each CLI program in the text starts its own command: a
- * word of another command is no verb of it, so `fd send fd-qa "ssh remove"` is not one.
- */
-function runsFlightdeckWords(
-  prog: string,
-  args: string[],
-  matches: (words: string[], own: string[]) => boolean,
-): boolean {
-  if (isCliProgram(prog)) {
-    const own = shellArguments(args);
-    return matches(flightdeckWords(own), own);
-  }
-  if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  return words.some(
-    (w, i) =>
-      isCliProgram(program(w)) && matches(flightdeckWords(words.slice(i + 1)), words.slice(i + 1)),
-  );
 }
 
 /**
