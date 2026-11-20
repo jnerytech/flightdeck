@@ -415,6 +415,13 @@ const changesASpendLimit = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "budget", ["set", "set-quota", "remove"]);
 
 /**
+ * `costs reprice` rewrites the recorded cost of every message from the price table of the config (#3460),
+ * so the budgets and the quota guard read other spending than was measured. `--confirm` is only a flag the caller types.
+ */
+const repricesTheCosts = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "costs", ["reprice"]);
+
+/**
  * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
  * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
  * session that got third-party content. `--confirm` is only a flag the caller types.
@@ -491,6 +498,11 @@ const DANGEROUS: Array<{
     when: changesASpendLimit,
     reason: () =>
       "raises, moves or drops a cost limit that holds new cards back, so sessions can spend past what the person set (flightdeckd budget set, set-quota or remove)",
+  },
+  {
+    when: repricesTheCosts,
+    reason: () =>
+      "rewrites the recorded cost of every message, so the budgets and the quota guard read other spending than was measured (flightdeckd costs reprice)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

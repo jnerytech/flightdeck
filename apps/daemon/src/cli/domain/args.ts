@@ -355,7 +355,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "budget";
     const action = subAction(
       reader,
-      ["list", "set", "set-quota", "remove"],
+      ["list", "set", "set-quota", "remove", "watch"],
       "invalid budget action",
     );
     args.action = action;
@@ -371,7 +371,11 @@ const HANDLERS: Record<string, Handler> = {
   },
   quota: (args, reader) => {
     args.command = "quota";
-    const action = subAction(reader, ["get", "history", "pause-at"], "invalid quota action");
+    const action = subAction(
+      reader,
+      ["get", "history", "pause-at", "watch"],
+      "invalid quota action",
+    );
     args.action = action;
     if (action === "history") args.quotaWindow = operand(reader, "the window");
     if (action === "pause-at") {
@@ -386,7 +390,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "costs";
     const action = subAction(
       reader,
-      ["summary", "session", "card", "run", "status", "export"],
+      ["summary", "session", "card", "run", "status", "export", "reprice"],
       "invalid costs action",
     );
     args.action = action;
@@ -764,6 +768,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     if (flag === "--force" && args.command === "history") continue;
     // `--confirm` is also `team new`'s, which checks its own flags below.
     if (flag === "--confirm" && args.command === "team") continue;
+    // `costs reprice` confirms too; `costsProblem` checks it below.
+    if (flag === "--confirm" && args.command === "costs") continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))

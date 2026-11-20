@@ -44,7 +44,7 @@ describe("risk rules: a session changing a cost limit from its shell (#3460)", (
 
 describe("risk rules: a session repricing the costs from its shell (#3460)", () => {
   const REPRICE =
-    "rewrites the recorded cost of every message from the price table of the config, so the budgets and the quota queue see other spending than was measured (flightdeckd costs reprice)";
+    "rewrites the recorded cost of every message, so the budgets and the quota guard read other spending than was measured (flightdeckd costs reprice)";
 
   test("costs reprice is high, however the CLI is reached", () => {
     expect(
@@ -59,7 +59,11 @@ describe("risk rules: a session repricing the costs from its shell (#3460)", () 
 
   test("reading the costs stays an ordinary shell command", () => {
     expect(
-      notHigh(["fd costs summary --from 2026-11-01 --to 2026-11-20", "fd costs status", "echo costs reprice"]),
+      notHigh([
+        "fd costs summary --from 2026-11-01 --to 2026-11-20",
+        "fd costs status",
+        "echo costs reprice",
+      ]),
     ).toEqual([]);
   });
 });

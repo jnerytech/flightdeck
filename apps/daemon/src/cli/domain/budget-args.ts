@@ -99,7 +99,7 @@ export function budgetProblem(args: BudgetArgs): string | undefined {
     if (!budget || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd budget ${text}`;
   }
-  if (args.budgetId !== undefined && !(budget && args.action !== "list"))
+  if (args.budgetId !== undefined && !(budget && args.action !== "list" && args.action !== "watch"))
     return "--id: this flag only applies to flightdeckd budget set and set-quota";
   if (!budget || (args.action !== "set" && args.action !== "set-quota")) return undefined;
   if (args.scope === undefined) return "missing --scope";

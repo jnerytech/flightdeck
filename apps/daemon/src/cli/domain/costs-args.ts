@@ -13,6 +13,7 @@ export interface CostsArgs {
   project?: string;
   model?: string;
   origin?: string;
+  confirm?: boolean;
 }
 
 /** The sources a message's usage can come from, as `--origin` names them. */
@@ -38,6 +39,10 @@ export function costsProblem(args: CostsArgs): string | undefined {
   // `--to`, `--from` and `--origin` are `history`'s and `update`'s flags too: those commands are checked elsewhere.
   if (args.command !== "costs" && args.command !== "roi") return undefined;
   const costs = args.command === "costs";
+  if (args.confirm !== undefined && !(costs && args.action === "reprice"))
+    return "--confirm: this flag only applies to flightdeckd costs reprice";
+  if (costs && args.action === "reprice" && args.confirm === undefined)
+    return "costs reprice rewrites the cost of every entry: pass --confirm to do it";
   if (args.until !== undefined && !takesPeriod(args))
     return "--to: this flag only applies to flightdeckd costs summary, export and roi";
   if (costs && args.from !== undefined && !takesPeriod(args))

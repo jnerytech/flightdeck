@@ -2,7 +2,7 @@
 import type { CostsSession, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 
 export interface CostsCliArgs {
-  action: "summary" | "session" | "card" | "run" | "status" | "export";
+  action: "summary" | "session" | "card" | "run" | "status" | "export" | "reprice";
   /** `session`: the Claude session id; `card`: the card id; `run`: the run id. */
   id?: string;
   /** `summary` and `export`: the first and last day (`YYYY-MM-DD`), and the filters. */
@@ -13,6 +13,10 @@ export interface CostsCliArgs {
   origin?: UsageOrigin;
   json?: boolean;
 }
+
+/** What a `reprice` that got no answer may have done, as the text that follows the message. */
+export const UNSURE_REPRICE =
+  "; the costs may or may not have been priced again: check with `costs status` before trying again";
 
 export const usd = (amount: number) => `$${amount.toFixed(2)}`;
 
