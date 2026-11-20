@@ -311,6 +311,18 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
         {
           action: args.action as PersonaCliArgs["action"],
           ...(args.personaId === undefined ? {} : { id: args.personaId }),
+          ...(args.personaName === undefined ? {} : { name: args.personaName }),
+          ...(args.description === undefined ? {} : { description: args.description }),
+          ...(args.body === undefined ? {} : { body: args.body }),
+          ...(args.bodyFile === undefined ? {} : { bodyFile: args.bodyFile }),
+          ...(args.model === undefined ? {} : { model: args.model }),
+          ...(args.effort === undefined ? {} : { effort: args.effort }),
+          ...(args.tools === undefined ? {} : { tools: args.tools }),
+          ...(args.permissionMode === undefined
+            ? {}
+            : { permissionMode: args.permissionMode as PersonaCliArgs["permissionMode"] }),
+          ...(args.icon === undefined ? {} : { icon: args.icon }),
+          ...(args.confirm ? { confirm: true } : {}),
           ...(args.scope === undefined ? {} : { scope: args.scope }),
           ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),
           ...(args.language === undefined ? {} : { language: args.language }),

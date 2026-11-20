@@ -166,9 +166,14 @@ fd persona list
 fd persona list --scope project --project-path ~/work/api --language en
 fd persona show architect
 fd persona subagents --project-path ~/work/api --json
+fd persona save architect --scope host --name Architect --description "Desenha módulos" --body-file architect.md
+fd persona remove architect --scope host
+fd persona reset reviewer
+fd persona publish-agent architect --project-path ~/work/api --confirm
 ```
 
-Lê as personas deste host, como a tela Personas faz. Nada aqui altera uma persona.
+`list`, `show` e `subagents` leem as personas deste host, como a tela Personas faz. `save`, `remove`,
+`reset` e `publish-agent` as alteram.
 
 - **`list`:** uma linha por persona: o id, onde ela mora (`pack`, `host` ou `project`), o nome,
   `(edited)` para uma persona do pacote que este host alterou e, para uma persona de projeto, o começo do
@@ -179,6 +184,20 @@ Lê as personas deste host, como a tela Personas faz. Nada aqui altera uma perso
   com saída `1`.
 - **`subagents`:** os agentes que uma sessão do projeto recebe (`persona-<id>`) e as personas de projeto
   deixadas de fora porque ninguém confiou nelas ainda.
+- **`save <id>`:** cria ou edita uma persona. Exige `--scope host|project`, `--name`, `--description` e o
+  prompt, por `--body <texto>` ou `--body-file <caminho>` (um dos dois). Também aceita `--model`,
+  `--effort low|medium|high|xhigh|max`, `--tools Read,Grep` (só restringe), `--permission-mode` e
+  `--icon`. Salvar substitui a persona inteira: um campo omitido é apagado, então repita os que quiser
+  manter. Uma persona de projeto exige `--project-path`. O daemon recusa um prompt que contém um
+  segredo, com saída `1`.
+- **`remove <id> --scope host|project`:** apaga a persona desse escopo.
+- **`reset <id>`:** devolve uma persona do pacote ao que veio; a edição do host some.
+- **`publish-agent <id> --project-path <pasta>`:** grava a persona como o agente do projeto
+  `.claude/agents/persona-<id>.md`. Altera um arquivo do projeto, então recusa com saída `1` e não envia
+  nada até você passar `--confirm`.
+
+Uma alteração que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode
+`persona list` antes de tentar de novo.
 
 `--project-path` indica a pasta do projeto (relativa a onde você roda); sem ele só contam as personas do
 host. `--language en` ou `pt-BR` escolhe o idioma das personas do pacote. Com `--json` cada comando
