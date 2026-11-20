@@ -360,6 +360,11 @@ const HANDLERS: Record<string, Handler> = {
     );
     args.action = action;
     if (action === "remove") {
+      // An --id given before the verb names a second budget.
+      if (args.budgetId !== undefined)
+        throw new Error(
+          `--id: this flag only applies to flightdeckd budget set and set-quota\n${USAGE}`,
+        );
       args.budgetId = operand(reader, "the budget");
       if (args.budgetId.trim() === "") throw new Error(`missing the budget\n${USAGE}`);
     }
