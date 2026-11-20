@@ -63,11 +63,11 @@ describe("cred-sidecar: the release ships flightdeck-cred beside the app (#3429)
 
   test("the release workflow builds the helper and stages it before the installers are built", () => {
     const workflow = readFileSync(join(ROOT, ".github/workflows/release.yml"), "utf8");
-    const build = workflow.indexOf("cargo build");
-    const stage = workflow.indexOf("release:cred");
-    const installers = workflow.indexOf("tauri build");
+    // Anchored on the `run:` lines, so a comment or a step name that quotes a command cannot satisfy it.
+    const build = workflow.indexOf("run: cargo build -p flightdeck-cred --release --locked\n");
+    const stage = workflow.indexOf("run: bun run release:cred\n");
+    const installers = workflow.indexOf("run: bun run tauri build");
     expect(build).toBeGreaterThan(-1);
-    expect(workflow).toContain("-p flightdeck-cred --release");
     expect(stage).toBeGreaterThan(build);
     expect(installers).toBeGreaterThan(stage);
   });
