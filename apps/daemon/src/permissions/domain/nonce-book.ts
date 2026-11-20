@@ -39,7 +39,7 @@ export class NonceBook {
   issue(purpose: NoncePurpose, requestId: string | undefined, connection: number): string {
     const bucket = bucketOf(purpose);
     const cap = this.opts.caps?.[bucket] ?? DEFAULT_CAPS[bucket];
-    // At most half a bucket per connection, so a second connection always finds room.
+    // At most half a bucket per connection, so a second connection finds room in a bucket of two or more.
     const quota = Math.max(
       1,
       Math.min(this.opts.perConnection ?? DEFAULT_PER_CONNECTION, Math.floor(cap / 2)),
