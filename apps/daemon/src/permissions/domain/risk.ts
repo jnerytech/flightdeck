@@ -218,10 +218,13 @@ function endsACard(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
   if (["fd", "flightdeckd"].includes(prog)) {
-    const [command, action] = flightdeckWords(words);
-    return (
-      command === "card" &&
-      (CARD_ENDS.includes(action ?? "") || (action === "move" && words.includes("--force")))
+    // A flag's value can come before `card` (`fd --project p card discard c1`): look for the pair.
+    const named = flightdeckWords(words);
+    return named.some(
+      (word, i) =>
+        word === "card" &&
+        (CARD_ENDS.includes(named[i + 1] ?? "") ||
+          (named[i + 1] === "move" && words.includes("--force"))),
     );
   }
   if (!RUNNERS.includes(prog)) return false;
