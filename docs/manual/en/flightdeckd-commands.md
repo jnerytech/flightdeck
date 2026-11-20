@@ -49,6 +49,25 @@ Lists the sessions of the daemon, one line each: name, status and folder. With `
 array of objects with `id`, `name`, `cwd`, `status`, `permissionMode` and `updatedAt`. No sessions
 gives an empty array.
 
+## fd architect, fd reviewer, fd security, fd coordinator, fd new
+
+```sh
+fd architect
+fd new qa
+fd new qa --model opus
+```
+
+Opens `claude` with a persona, the same as `flightdeckd claude --persona <id>`. The four words are
+shortcuts for the architect, the code reviewer, the security reviewer and the team coordinator;
+`new <persona>` takes the id of any persona of the host, the project or the pack. Anything after
+the persona goes to `claude` as it is. An id that does not exist is refused with exit code `1`, and
+the message lists the ids that do.
+
+The session is named `<repo>-<persona>` (for example `flightdeck-qa`), or just the repo name when
+there is no persona. The repo is the top folder of the git repository you are in, else the
+folder's own name. A name you pass (`--name` or `-n`) wins, and a launch that resumes a session
+(`--resume`, `--continue`) or runs in print mode (`-p`) is not named.
+
 ## fd requests
 
 ```sh

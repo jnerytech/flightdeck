@@ -32,6 +32,7 @@ Para usar:
   as instruções vão depois do prompt do sistema, com o modelo, o esforço e as ferramentas sugeridos.
   Uma persona só tira: as ferramentas dela são parte das da sessão, e o modo dela só vale quando é
   menos permissivo.
+- No terminal, `flightdeckd architect|reviewer|security|coordinator` e `flightdeckd new <persona>` abrem o `claude` com uma persona ([comandos do flightdeckd](flightdeckd-commands.md)); a sessão se chama `<repo>-<persona>`.
 - **Claude aqui** tem o seu seletor e roda `flightdeckd claude --persona <id>` (as do host, do
   projeto e do pacote; as do app não têm id no host).
 - Numa sessão aberta (gerenciada, ou do terminal que você controla), **Aplicar persona** manda o

@@ -129,6 +129,8 @@ const USAGE = [
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
   "     flightdeckd channel --launch <id> --url <receiver> --token <token>   (the channel's MCP server)",
   "     flightdeckd claude [claude arguments]   (config in FLIGHTDECK_CONFIG)",
+  "     flightdeckd architect|reviewer|security|coordinator [claude arguments]   (claude with that persona)",
+  "     flightdeckd new <persona> [claude arguments]   (claude with any persona, by its id)",
   "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
   "     flightdeckd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
   "     flightdeckd statusline [--config <file>]   (one line for Claude Code's statusline)",
@@ -268,6 +270,26 @@ const withNamedAction =
     if (action === allowed[1]) keep(args, operand(reader, nameWhat));
   };
 
+/**
+ * The pack persona each shortcut word opens. The pack still carries the Portuguese ids until #3413
+ * renames them to the words themselves; then this table goes and the word is the id.
+ */
+const SHORTCUTS = {
+  architect: "arquiteto",
+  reviewer: "revisor",
+  security: "seguranca",
+  coordinator: "coordenador",
+} as const;
+
+/** `flightdeckd <word>` is `flightdeckd claude --persona <id> ...`: one launch path, the claude one. */
+const openWith =
+  (persona: (reader: ArgReader) => string): Handler =>
+  (args, reader) => {
+    args.command = "claude";
+    const id = persona(reader);
+    args.claudeArgs = ["--persona", id, ...reader.takeRest()];
+  };
+
 const HANDLERS: Record<string, Handler> = {
   db: (args, reader) => {
     args.command = "db";
@@ -298,6 +320,12 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "claude";
     args.claudeArgs = reader.takeRest();
   },
+  ...Object.fromEntries(Object.entries(SHORTCUTS).map(([word, id]) => [word, openWith(() => id)])),
+  new: openWith((reader) => {
+    const id = reader.next();
+    if (id === undefined || id.startsWith("-")) throw new Error(`missing persona id\n${USAGE}`);
+    return id;
+  }),
   askpass: (args, reader) => {
     args.command = "askpass";
     args.askpassPrompt = reader.takeRest().join(" ");
