@@ -409,8 +409,18 @@ describe("the arguments of vault (issue #3458)", () => {
   });
 
   test("the flags of vault are refused on the other commands", () => {
-    for (const flag of ["--days", "--requester", "--purpose", "--action", "--tag", "--risk"])
-      expect(parsed(["card", "list", flag, "x"])).toMatchObject({
+    const valid: Array<[string, string]> = [
+      ["--days", "7"],
+      ["--requester", "you"],
+      ["--purpose", "ssh"],
+      ["--action", "deploy"],
+      ["--tag", "prod"],
+      ["--risk", "low"],
+      ["--approval", "never"],
+      ["--at", "2026-11-20T03:00:00Z"],
+    ];
+    for (const [flag, value] of valid)
+      expect(parsed(["card", "list", flag, value])).toMatchObject({
         refusedWith: expect.stringContaining(
           `${flag}: this flag only applies to flightdeckd vault`,
         ),
