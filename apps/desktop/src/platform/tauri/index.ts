@@ -14,7 +14,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { parseRequestLink } from "@/features/inbox/index.ts";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
-import type { GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
+import type { DeviceKey, GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
 import { badgeRgba } from "./badge-icon.ts";
 
 export interface BrowserWindow extends FilePickerWindow {
@@ -96,6 +96,12 @@ export function tauriPlatform(
       generateKey: (comment) => call<GeneratedKey>("vault_generate_key", { comment }),
       pickFile: () => call<PickedFile | null>("vault_pick_file"),
       removeFile: (path) => call("vault_remove_file", { path }),
+    },
+    approvalKeys: {
+      get: (daemonId) => call<DeviceKey | null>("approval_key_get", { daemonId }),
+      create: (daemonId) => call<DeviceKey>("approval_key_create", { daemonId }),
+      delete: (daemonId) => call("approval_key_delete", { daemonId }),
+      sign: (daemonId, message, lang) => call<string>("approval_sign", { daemonId, message, lang }),
     },
     pickFolder: () => call<string | null>("pick_folder"),
     backupFolder: {
