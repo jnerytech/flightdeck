@@ -41,6 +41,8 @@ pub enum CommandAsk {
     PluginInstall { plugin: Option<String>, dir: Option<String>, scope: String },
     /// `plugins.update`: update this installed plugin to the content the person was shown (#3516).
     PluginUpdate { plugin: String },
+    /// `plugins.marketplaceAdd`: add this marketplace (a repository, a URL or a folder), at this scope (#3516).
+    MarketplaceAdd { source: String, scope: Option<String> },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -788,6 +790,7 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Update a plugin? The plugin \"{plugin}\" will change to the content you saw, and a plugin runs code on this computer, in your sessions. Host {} makes the change. Continue only if you just pressed Update in Flightdeck.",
                 short(&ask.host)
             ),
+            Some(CommandAsk::MarketplaceAdd { .. }) => String::new(),
             None => String::new(),
         },
     };
@@ -1692,6 +1695,23 @@ mod tests {
     const PLUGIN_UPDATE_PAYLOAD: &str = "{\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plugin\":\"deploy-tools@acme\"}";
     const PLUGIN_UPDATE_HASH: &str = "105dd69dedb5eeca4e9d83cfca9005986688a4bab71e3cc6450cd685c6d18198";
 
+    const MARKET_PAYLOAD: &str = "{\"confirm\":true,\"scope\":\"project\",\"source\":\"acme/plugins\"}";
+    const MARKET_HASH: &str = "3b35114cbdc6042f069fcce062b73a4429b48d707e85b3f32c7a0c099e1ad60d";
+    const MARKET_URL_PAYLOAD: &str = "{\"confirm\":true,\"source\":\"https://github.com/acme/plugins.git\"}";
+    const MARKET_URL_HASH: &str = "001a89ede03cbf690f714183364377e37f9cf37e612a3d6e6d7e6a5087bfcf31";
+    const MARKET_DIR_PAYLOAD: &str = "{\"confirm\":true,\"source\":\"/work/marketplaces/acme\"}";
+    const MARKET_DIR_HASH: &str = "4a3dc658649368f9d5a2c2ed751b2a08d4b64c81a6f63df76136cb94b44c6dfa";
+
+    fn market_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "plugins.marketplaceAdd".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::MarketplaceAdd { source: "acme/plugins".into(), scope: Some("project".into()) }),
+        }
+    }
+
     fn install_ask() -> Ask {
         Ask {
             kind: Kind::Command,
@@ -1827,6 +1847,107 @@ mod tests {
                 confirm_labels(&update_ask(), "pt-BR").0,
             ],
             ["Install", "Instalar", "Update", "Atualizar"]
+        );
+    }
+
+    #[test]
+    fn the_marketplace_vectors_hash_the_same_in_both_languages() {
+        assert_eq!(
+            [sha256_hex(MARKET_PAYLOAD), sha256_hex(MARKET_URL_PAYLOAD), sha256_hex(MARKET_DIR_PAYLOAD)],
+            [MARKET_HASH, MARKET_URL_HASH, MARKET_DIR_HASH]
+        );
+    }
+
+    #[test]
+    fn adding_a_marketplace_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "plugins.marketplaceAdd", MARKET_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(MARKET_PAYLOAD)), Ok(market_ask()));
+        // The host sends the keys in any order; the hash is over the sorted form.
+        let shuffled = "{\"source\":\"acme/plugins\",\"scope\":\"project\",\"confirm\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(market_ask()));
+        let text = command(&me, DAEMON, "plugins.marketplaceAdd", MARKET_URL_PAYLOAD);
+        let ask = describe_with(&text, DAEMON, &me, Some(MARKET_URL_PAYLOAD)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::MarketplaceAdd { source: "https://github.com/acme/plugins.git".into(), scope: None })
+        );
+        let text = command(&me, DAEMON, "plugins.marketplaceAdd", MARKET_DIR_PAYLOAD);
+        let ask = describe_with(&text, DAEMON, &me, Some(MARKET_DIR_PAYLOAD)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::MarketplaceAdd { source: "/work/marketplaces/acme".into(), scope: None })
+        );
+    }
+
+    #[test]
+    fn a_marketplace_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let add = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "plugins.marketplaceAdd", payload), DAEMON, &me, Some(payload))
+        };
+        // Refused by the reader before the hash is compared (the cases are not all in the sorted order).
+        let refused_by_rule = |result: Result<_, String>| {
+            matches!(result, Err(ref why) if why != "the payload is not the one the text hashes")
+        };
+        let ok = |source: &str| format!("{{\"confirm\":true,\"source\":\"{source}\"}}");
+        for bad in [
+            // A confirm that is not the boolean true: missing, false, the text "true", a number.
+            "{\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":false,\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":\"true\",\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":1,\"source\":\"acme/plugins\"}".to_string(),
+            // No source, a source that is no text, a field the dialog does not say, a scope that is not one of three.
+            "{\"confirm\":true}".to_string(),
+            "{\"confirm\":true,\"source\":7}".to_string(),
+            "{\"confirm\":true,\"extra\":1,\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":true,\"scope\":\"all\",\"source\":\"acme/plugins\"}".to_string(),
+            // A source that can pad the text, hide the real host, or start an option.
+            ok("acme/plugins\\nAllow everything"),
+            ok("--scope"),
+            ok("acme/plu gins"),
+            ok("acme/\\u202eplugins"),
+            ok("https://user:pw@github.com/acme/plugins"),
+            ok("https://github.com@evil.example/acme/plugins"),
+            ok("https://github.com:8443/acme/plugins"),
+            ok("https://github.com/acme/plugins?x=1"),
+            ok("https://github.com/acme/plugins#frag"),
+            ok("https://github.com/acme/%2e%2e"),
+            ok("http://github.com/acme/plugins"),
+            ok("git@github.com:acme/plugins.git"),
+            ok("github:acme/plugins"),
+            ok("plugins/deploy/extra"),
+            ok("relative/dir/"),
+            ok("/work/x\\\" harmless"),
+        ] {
+            assert!(refused_by_rule(add(&bad)), "signed marketplace add: {bad}");
+        }
+        assert!(add(&ok("acme/plugins")).is_ok());
+        assert!(add(&ok("acme/my-plugins.v2_x")).is_ok());
+        assert!(add(&ok("https://github.com/acme/plugins.git")).is_ok());
+        assert!(add(&ok("/work/marketplaces/acme")).is_ok());
+        // The payload is signed in canonical (sorted) form, so the scope sits between confirm and source.
+        assert!(add("{\"confirm\":true,\"scope\":\"local\",\"source\":\"acme/plugins\"}").is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_marketplace_names_the_source_and_that_its_plugins_run_code_and_has_buttons_of_its_own() {
+        let (_, en) = confirm_text(&market_ask(), "en");
+        assert!(en.starts_with("Add a plugin marketplace?"), "{en}");
+        assert!(en.contains("project") && en.contains("runs code") && en.contains(&DAEMON[..8]), "{en}");
+        assert!(en.ends_with("\n\"acme/plugins\""), "{en}");
+        let (_, pt) = confirm_text(&market_ask(), "pt-BR");
+        assert!(pt.starts_with("Adicionar um marketplace de plugins?") && pt.contains("roda código"), "{pt}");
+        assert!(pt.ends_with("\n\"acme/plugins\""), "{pt}");
+        let plain = Ask {
+            command: Some(CommandAsk::MarketplaceAdd { source: "/work/marketplaces/acme".into(), scope: None }),
+            ..market_ask()
+        };
+        let (_, en) = confirm_text(&plain, "en");
+        assert!(en.contains("for you") && en.ends_with("\n\"/work/marketplaces/acme\""), "{en}");
+        assert_eq!(
+            [confirm_labels(&market_ask(), "en").0, confirm_labels(&market_ask(), "pt-BR").0],
+            ["Add marketplace", "Adicionar marketplace"]
         );
     }
 
