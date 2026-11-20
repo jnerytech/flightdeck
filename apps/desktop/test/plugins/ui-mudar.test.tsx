@@ -201,12 +201,12 @@ describe("plugins-ui: marketplaces", () => {
     return { ...h, messages, field };
   }
 
-  test("um não na confirmação do dispositivo não adiciona nada e deixa a fonte digitada", async () => {
+  test("a no in the device dialog adds nothing and leaves the typed source", async () => {
     const { fake, messages, field } = await addWith(async () => ({ kind: "declined" }));
     expect([changes(fake), messages, field.value]).toEqual([[], [], "acme/novo"]);
   });
 
-  test("uma fonte que o dispositivo não sabe mostrar é dita com as formas que ele mostra, e fica digitada", async () => {
+  test("a source the device cannot show is reported with the forms it can show, and stays typed", async () => {
     const { fake, messages, field } = await addWith(async () => {
       throw new Error("the marketplace source is not one the dialog can show");
     });
@@ -217,7 +217,18 @@ describe("plugins-ui: marketplaces", () => {
     expect(messages[0]).toContain("dono/repo");
   });
 
-  test("a fonte assinada vai ao host com a prova, e o campo é limpo", async () => {
+  test("a failure that is not the source is reported as it came, without the source forms", async () => {
+    const { fake, messages, field } = await addWith(async () => {
+      throw new Error("the host did not answer the challenge");
+    });
+    expect([changes(fake), messages, field.value]).toEqual([
+      [],
+      ["the host did not answer the challenge"],
+      "acme/novo",
+    ]);
+  });
+
+  test("the signed source goes to the host with its proof, and the field is cleared", async () => {
     const proof = { keyId: "k", nonce: "n", signature: "s" };
     const sent: unknown[] = [];
     const { field } = await addWith(

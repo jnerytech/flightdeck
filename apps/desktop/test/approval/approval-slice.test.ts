@@ -1049,7 +1049,9 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       signature: expect.stringContaining("sig:"),
     });
     expect(log[1]?.payload).toEqual({ purpose: "command", command: "plugins.marketplaceAdd" });
-    expect(keyLog.find((k) => k.op === "sign")?.args[3]).toBe(commandDigest(MARKET));
+    expect(keyLog.find((k) => k.op === "sign")?.args[3]).toBe(
+      '{"confirm":true,"scope":"project","source":"acme/plugins"}',
+    );
     expect(
       Command.safeParse({ id: "1", type: "plugins.marketplaceAdd", payload: signed }).success,
     ).toBe(true);
