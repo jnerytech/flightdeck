@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { loadConfig } from "../config.ts";
 import type { CliResult } from "../daemon-client/index.ts";
@@ -131,7 +130,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { daemonCommand } = await import("../service/index.ts");
     // Its own arguments all go to claude, so the config comes from the environment.
     const file = configPath({ ...args, config: deps.env.FLIGHTDECK_CONFIG });
-    const configExisted = existsSync(file);
+    const configExisted = await Bun.file(file).exists();
     return runClaude({
       configExisted,
       args: args.claudeArgs ?? [],
