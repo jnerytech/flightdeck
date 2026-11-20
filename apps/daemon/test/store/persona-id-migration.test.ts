@@ -76,8 +76,40 @@ function olderDatabase(): { file: string; index: number } {
       applied,
     );
   session("opened", SNAPSHOT("revisor", null), BADGE("revisor"));
-  session("from-project", SNAPSHOT("revisor", "abc123"), null);
+  session("from-project", SNAPSHOT("revisor", "abc123"), BADGE("revisor"));
   session("untouched", SNAPSHOT("qa", null), BADGE("qa"));
+  // The person's own `security` exists: what names `seguranca` keeps naming the pack's row.
+  session("kept", SNAPSHOT("seguranca", null), BADGE("seguranca"));
+  run(
+    `INSERT INTO external_sessions (claude_session_id, status, started_at, last_event_at, persona_open, persona_applied)
+     VALUES ('ext-kept', 'idle', ?, ?, ?, ?)`,
+    AT,
+    AT,
+    BADGE("seguranca"),
+    BADGE("seguranca"),
+  );
+  const team = (id: string, members: unknown[]) =>
+    run(
+      `INSERT INTO teams (id, name, project_id, goal, members, checks, state, instructions_version, created_at)
+       VALUES (?, 'team', 'p', 'goal', ?, '[]', 'idle', 'v', ?)`,
+      id,
+      JSON.stringify(members),
+      AT,
+    );
+  team("team-a", [
+    { role: "coordinator", persona: "coordenador", name: "c" },
+    { role: "worker", persona: "revisor", name: "w1" },
+    { role: "worker", persona: "seguranca", name: "w2" },
+    { role: "worker", persona: null, name: "w3" },
+  ]);
+  const watch = (projectId: string, persona: string) =>
+    run(
+      "INSERT INTO pr_watch_project (project_id, settings) VALUES (?, ?)",
+      projectId,
+      JSON.stringify({ enabled: true, persona }),
+    );
+  watch("p", "revisor");
+  watch("q", "seguranca");
   run(
     `INSERT INTO external_sessions (claude_session_id, status, started_at, last_event_at, persona_open, persona_applied)
      VALUES ('ext', 'idle', ?, ?, ?, ?)`,
@@ -119,6 +151,12 @@ describe("persona ids that were Portuguese, in a database (#3413)", () => {
       column: rows(store, "SELECT persona_by_column FROM projects"),
       start: rows(store, "SELECT start_persona FROM cards"),
       runs: rows(store, "SELECT id, persona FROM card_runs ORDER BY id"),
+      teams: rows(store, "SELECT members FROM teams"),
+      watch: rows(store, "SELECT project_id, settings FROM pr_watch_project ORDER BY project_id"),
+      externalKept: rows(
+        store,
+        "SELECT persona_open, persona_applied FROM external_sessions WHERE claude_session_id = 'ext-kept'",
+      ),
     });
     const first = new EventStore(file);
     const after = snapshot(first);
@@ -128,13 +166,33 @@ describe("persona ids that were Portuguese, in a database (#3413)", () => {
     second.close();
     expect(again).toEqual(after);
     expect(after.sessions).toEqual([
-      { id: "from-project", persona: SNAPSHOT("revisor", "abc123"), applied_persona: null },
+      // A project's persona keeps its id, and so does the badge of the same session.
+      {
+        id: "from-project",
+        persona: SNAPSHOT("revisor", "abc123"),
+        applied_persona: BADGE("revisor"),
+      },
+      // The person's own `security` exists: the pack's `seguranca` sessions are left as they were.
+      { id: "kept", persona: SNAPSHOT("seguranca", null), applied_persona: BADGE("seguranca") },
       { id: "opened", persona: SNAPSHOT("reviewer", null), applied_persona: BADGE("reviewer") },
       { id: "untouched", persona: SNAPSHOT("qa", null), applied_persona: BADGE("qa") },
     ]);
     expect(after.external).toEqual([
       { persona_open: BADGE("architect"), persona_applied: BADGE("coordinator") },
+      { persona_open: BADGE("seguranca"), persona_applied: BADGE("seguranca") },
     ]);
+    expect(after.externalKept).toEqual([
+      { persona_open: BADGE("seguranca"), persona_applied: BADGE("seguranca") },
+    ]);
+    expect(JSON.parse((after.teams[0] as { members: string }).members)).toEqual([
+      { role: "coordinator", persona: "coordinator", name: "c" },
+      { role: "worker", persona: "reviewer", name: "w1" },
+      { role: "worker", persona: "seguranca", name: "w2" },
+      { role: "worker", persona: null, name: "w3" },
+    ]);
+    expect(
+      after.watch.map((row) => JSON.parse((row as { settings: string }).settings).persona),
+    ).toEqual(["reviewer", "seguranca"]);
     expect(after.start).toEqual([{ start_persona: "architect" }]);
     expect(after.runs).toEqual([
       // The person's own `security` exists beside the old row: a reference to `seguranca` keeps
