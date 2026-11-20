@@ -51,7 +51,9 @@ describe("roi-sem-dinheiro: no money reaches the daemon", () => {
 
   test("the daemon's roi code and its source never name a rate, a price, a billed amount or the clients store", () => {
     const roiDir = join(ROOT, "apps/daemon/src/roi");
-    for (const file of readdirSync(roiDir)) {
+    for (const file of readdirSync(roiDir, { recursive: true, encoding: "utf8" }).filter((f) =>
+      f.endsWith(".ts"),
+    )) {
       const text = readFileSync(join(roiDir, file), "utf8")
         .replace(
           /\bcostUsd\b|\bfixCostUsd\b|\boutsideCardsUsd\b|\bfix_cost_usd\b|\bcost_usd\b/g,

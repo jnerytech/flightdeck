@@ -32,6 +32,8 @@ export interface CliArgs {
     | "board"
     | "quota"
     | "usage"
+    | "costs"
+    | "roi"
     | "host"
     | "sessions"
     | "requests"
@@ -94,6 +96,12 @@ export interface CliArgs {
     | "remove-member"
     | "history"
     | "pause-at"
+    | "summary"
+    | "session"
+    | "card"
+    | "run"
+    | "status"
+    | "export"
     | "dismiss-unblocked"
     | "search"
     | "tool"
@@ -135,6 +143,8 @@ export interface CliArgs {
   quotaPauseAt?: number | null;
   hours?: number;
   days?: number;
+  /** `costs session|card|run <id>`: the Claude session, card or run id. */
+  costsId?: string;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
