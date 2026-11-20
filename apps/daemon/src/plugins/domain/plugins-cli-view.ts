@@ -17,7 +17,22 @@ export type PluginsCliArgs =
   | (Printed & { action: "list" })
   | (Printed & { action: "detail" | "preview-update"; plugin: string })
   | (Printed & { action: "preview"; plugin: string })
-  | (Printed & { action: "preview"; dir: string });
+  | (Printed & { action: "preview"; dir: string })
+  | (Printed & InstallArgs & { action: "install" })
+  | (Printed & { action: "update"; plugin: string; confirmHash: string; acceptCommand?: string })
+  | (Printed & { action: "uninstall"; plugin: string; scope?: PluginScope; confirm?: true })
+  | (Printed & { action: "pin" | "unpin"; plugin: string })
+  | (Printed & { action: "marketplace-add"; source: string; scope?: PluginScope; confirm?: true })
+  | (Printed & { action: "marketplace-remove"; name: string; confirm?: true })
+  | (Printed & { action: "marketplace-update"; name?: string });
+
+type PluginScope = "user" | "project" | "local";
+/** An install names an installed-from marketplace plugin or a folder, and repeats the hash of its preview. */
+type InstallArgs = ({ plugin: string } | { dir: string }) & {
+  confirmHash: string;
+  scope?: PluginScope;
+  acceptCommand?: string;
+};
 
 /** The plural line of a count: `hooks: 2`, and how many of them can decide for the person. */
 const count = (label: string, n: number, extra = "") => `${label}: ${n}${extra}`;

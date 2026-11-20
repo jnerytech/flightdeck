@@ -50,6 +50,7 @@ export function runPluginsCli(
         const answer = await daemon.call("plugins.previewUpdate", { plugin: args.plugin });
         return args.json ? json(answer) : said(...updateLines(answer));
       }
+      if (args.action !== "preview") return said();
       // A relative folder means the shell's, so it is made absolute here; the daemon's own folder is another one.
       const where =
         "dir" in args
