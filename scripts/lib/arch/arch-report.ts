@@ -98,6 +98,12 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
       baseline: sum(inputs.spawnBaseline),
       today: sum(inputs.spawnCounts),
     });
+  if (inputs.cliParityGaps)
+    rows.push({
+      ratchet: "cli-parity commands with no CLI command",
+      baseline: inputs.cliParityGaps.baseline,
+      today: inputs.cliParityGaps.today,
+    });
   rows.push(
     {
       ratchet: "src-size files over the limit",
