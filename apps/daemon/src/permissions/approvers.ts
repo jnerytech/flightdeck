@@ -11,6 +11,7 @@ import {
 import { FlightdeckError } from "../kernel/index.ts";
 import { ApprovalStore } from "./approval-store.ts";
 import {
+  ApprovalGate,
   type EnrolledKey,
   isDevicePublicKey,
   keyIdOf,
@@ -51,6 +52,8 @@ const proofRequired = () =>
 export class Approvers {
   readonly store: ApprovalStore;
   readonly nonces: NonceBook;
+  /** The guard of an allow: built on this service's keys, daemon id and nonces. */
+  readonly gate: ApprovalGate;
   private id: string | undefined;
 
   constructor(
@@ -59,6 +62,11 @@ export class Approvers {
   ) {
     this.store = new ApprovalStore(db, opts.random);
     this.nonces = new NonceBook({ mono: opts.mono, random: opts.random });
+    this.gate = new ApprovalGate({
+      keys: () => this.keys(),
+      daemonId: () => this.daemonId(),
+      nonces: this.nonces,
+    });
   }
 
   daemonId(): string {

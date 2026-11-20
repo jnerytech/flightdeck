@@ -9,6 +9,7 @@ import type {
 import { FlightdeckError, ulid } from "../kernel/index.ts";
 import type { EventStore, PermissionStatus } from "../store/index.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
+import type { ApprovalGate } from "./domain/approval-gate.ts";
 import { bindInput } from "./domain/bind-input.ts";
 import type { PermissionDecision } from "./domain/decision.ts";
 import { requireHold } from "./domain/hold.ts";
@@ -26,6 +27,8 @@ export interface BrokerHooks {
   autoDecide?(request: AutoApproveRequest): Promise<AutoDecision | null>;
   /** Phase 33: the request in plain words; the host looks at its files to word it. */
   plain?(sessionId: string, toolName: string, input: ToolInput, risk: Risk): Promise<PlainInfo>;
+  /** #3439: the signed proof an allow of a high-risk request needs once a device is enrolled; without it, the hold. */
+  approval?: ApprovalGate;
 }
 
 /** The `answers` of an answered AskUserQuestion: `bindInput` has already refused any that is not a string. */
