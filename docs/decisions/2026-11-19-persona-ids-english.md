@@ -9,13 +9,17 @@ in English (CLAUDE.md, Conventions).
 
 - The pack files carry the new ids. The display names stay as they are, per language.
 - An old id still works. `Personas.find` looks the exact id up first, in the project, then the
-  host; only on a miss does it try the renamed id. A persona the person made under an old id, or a
-  project file with one, is therefore never hidden by the alias. `save` does not apply the alias.
+  host. On a miss, an old id is looked up under its new id in the host's personas and the pack's
+  only, so a cloned repository's file with the new name is never what an old script reaches; and a
+  new id also finds a project file that kept the old one, so a project's own `revisor.md` keeps
+  answering after the stored ids moved. A persona the person made under an old id is therefore
+  never hidden. `save` does not apply the alias; `reset` refuses an old id that is the person's own.
 - A store migration renames the ids it holds: the host personas table (and the JSON id inside),
   the persona of managed and external sessions, the card runs, the cards' start persona and the
-  projects' persona per column. A host row moves only when the new id is free, so a persona the
-  person made under the new id is never merged into. A project persona's snapshot (it has a hash)
-  keeps its id.
+  projects' persona per column. A pair whose new id the person already made is left as it was,
+  references included. A project persona's snapshot (it has a hash) keeps its id. The migration
+  cannot read project files: a reference that names a project's own persona with an old id moves
+  to the new id, and the project's file still answers for it through the alias above.
 - Sessions numbering (`session_names`) and trust rows (`persona_trust`) are left alone: they are
   keys of their own, not references.
 

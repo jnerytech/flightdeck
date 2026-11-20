@@ -13,3 +13,8 @@ const RENAMED: Readonly<Record<string, string>> = {
 export function renamedPersonaId(id: string): string | null {
   return Object.hasOwn(RENAMED, id) ? (RENAMED[id] as string) : null;
 }
+
+/** The id a pack persona had before #3413; `null` for any other id. */
+export function previousPersonaId(id: string): string | null {
+  return Object.entries(RENAMED).find(([, current]) => current === id)?.[0] ?? null;
+}

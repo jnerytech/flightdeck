@@ -17,7 +17,7 @@ import {
   writePersonaFile,
 } from "./adapters/persona-files.ts";
 import { PersonaRows } from "./adapters/persona-rows.ts";
-import { renamedPersonaId } from "./domain/ids.ts";
+import { previousPersonaId, renamedPersonaId } from "./domain/ids.ts";
 import type { Language } from "./domain/language.ts";
 import {
   normalizePersona,
@@ -283,24 +283,35 @@ export class Personas {
   }
 
   /**
-   * The project's persona with that id, else the host's. An id that was renamed (#3413) is looked
-   * up again under its new id only when nothing has the old one: a persona a person made under
-   * the old id is never hidden by the alias.
+   * The project's persona with that id, else the host's. An id from before #3413 is looked up again
+   * under its new id, in the host's personas and the pack's only (a cloned repository's file with
+   * the new name is not what an old script meant); the new id also finds a project file that kept
+   * the old one. Neither alias hides a persona that has the id asked for.
    */
   private async find(id: string, ctx: PersonaContext): Promise<Persona | null> {
     const loaded = ctx.projectPath
       ? await this.loadProject(await this.project(ctx.projectPath))
       : null;
-    const hosts = this.hostViews(ctx.language);
-    const lookup = (wanted: string) =>
-      loaded?.views.find((view) => view.id === wanted) ?? hosts.find((view) => view.id === wanted);
+    const inProject = (wanted: string) => loaded?.views.find((view) => view.id === wanted);
+    const inHost = (wanted: string) =>
+      this.hostViews(ctx.language).find((view) => view.id === wanted);
     const renamed = renamedPersonaId(id);
-    return lookup(id) ?? (renamed === null ? undefined : lookup(renamed)) ?? null;
+    const before = previousPersonaId(id);
+    return (
+      inProject(id) ??
+      (before === null ? undefined : inProject(before)) ??
+      inHost(id) ??
+      (renamed === null ? undefined : inHost(renamed)) ??
+      null
+    );
   }
 
   /** The pack's id for what was asked (an old id included), or `null` when the pack has no such persona. */
   private packId(asked: string, language: Language | undefined): string | null {
     const pack = this.pack(language);
+    // An old id that names a persona of the person's own is that persona, not the pack's.
+    const own = this.hostViews(language).some((view) => view.id === asked);
+    if (own && !pack.some((persona) => persona.id === asked)) return null;
     const id = pack.some((persona) => persona.id === asked) ? asked : renamedPersonaId(asked);
     return id !== null && pack.some((persona) => persona.id === id) ? id : null;
   }
