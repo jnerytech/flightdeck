@@ -244,7 +244,7 @@ function runsFlightdeckWords(
   args: string[],
   matches: (words: string[]) => boolean,
 ): boolean {
-  if (isCliProgram(prog)) return matches(flightdeckWords(shellArguments(args)));
+  if (isCliProgram(prog)) return shellReadings(args).some((own) => matches(flightdeckWords(own)));
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   return words.some(
