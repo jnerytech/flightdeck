@@ -11,5 +11,6 @@ export { runBoardCli } from "./board-cli.ts";
 export { runCardCli } from "./card-cli.ts";
 export { createInside, readInside, type Walk, walkInside } from "./create-inside.ts";
 export type { CardCliArgs } from "./domain/card-cli-view.ts";
+export { pick as pickProject } from "./domain/card-cli-view.ts";
 export { manageCard } from "./domain/manage.ts";
 export { readSpecText } from "./spec.ts";
