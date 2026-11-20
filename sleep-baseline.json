@@ -30,7 +30,7 @@
   "apps/daemon/test/mcp/mcp.test.ts": 1,
   "apps/daemon/test/messaging/identity.test.ts": 1,
   "apps/daemon/test/messaging/protocol.test.ts": 1,
-  "apps/daemon/test/permissions/auto-approve.test.ts": 2,
+  "apps/daemon/test/permissions/auto-approve-wiring.test.ts": 2,
   "apps/daemon/test/permissions/order.test.ts": 1,
   "apps/daemon/test/plugins/stop.test.ts": 2,
   "apps/daemon/test/quota/history.test.ts": 1,

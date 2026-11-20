@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { cardWhen, newBoard } from "../support/board-helpers.ts";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { poll } from "../support/helpers.ts";
 
 // Real git and a setup script that runs in a shell: more than the default 5 s on a loaded machine.
 setDefaultTimeout(20_000);
@@ -33,5 +36,53 @@ describe("a card run that fails to launch (#3404)", () => {
     expect(failed?.notice ?? "").toContain("setup script failed (exit 3)");
     expect(failed?.column).toBe("waiting");
     expect(failed?.runs[0]?.endedAt).not.toBeNull();
+  });
+
+  test("when recording the failure throws too, the daemon logs it and goes on", async () => {
+    const logs: string[] = [];
+    const ctx = newBoard({ log: (line) => logs.push(line) });
+    boards.push(ctx.board);
+    const { board } = ctx;
+    const project = await board.addProject({ path: ctx.repo, setupScript: "exit 3" });
+    const card = board.createCard(project.id, { title: "Falha dupla", description: "d" });
+    board.workflows.fail = () => {
+      throw new Error("recording went wrong");
+    };
+    await board.startCard(card.id);
+    await poll(() => logs.length > 0 || null, 3000);
+    expect(logs).toEqual([expect.stringContaining("recording went wrong")]);
+  });
+
+  test("when recording the failure throws, the card's slot still goes to the next card", async () => {
+    const ctx = newBoard({ maxParallelRuns: 1, log: () => {} });
+    boards.push(ctx.board);
+    const { board } = ctx;
+    const project = await board.addProject({ path: ctx.repo, setupScript: "exit 3" });
+    const first = board.createCard(project.id, { title: "Primeiro", description: "d" });
+    const second = board.createCard(project.id, { title: "Segundo", description: "d" });
+    board.workflows.fail = () => {
+      throw new Error("recording went wrong");
+    };
+    await board.startCard(first.id);
+    await board.startCard(second.id);
+    const started = await cardWhen(board, second.id, (c) => c.queueReason === null);
+    expect(started?.queueReason).toBeNull();
+  });
+
+  test("a repository with no commit says so on the card, not git's own error", async () => {
+    const ctx = newBoard();
+    boards.push(ctx.board);
+    const { board } = ctx;
+    const empty = join(ctx.root, "empty");
+    mkdirSync(empty);
+    git(empty, "init", "-q", "-b", "main");
+    const project = await board.addProject({ path: empty, baseBranch: "main" });
+    const card = board.createCard(project.id, { title: "Sem commit", description: "d" });
+    await board.startCard(card.id);
+    const failed = await cardWhen(board, card.id, (c) => c.notice !== null);
+    expect(failed?.noticeReason).toBe("repo_has_no_commit");
+    expect(failed?.notice ?? "").toContain("no commit");
+    expect(failed?.column).toBe("waiting");
+    expect(failed?.worktreePath).toBeNull();
   });
 });

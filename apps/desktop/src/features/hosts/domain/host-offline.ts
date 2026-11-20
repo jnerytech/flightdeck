@@ -24,12 +24,16 @@ export function mayBeRefusedAddress(kind: OfflineKind, url: string): boolean {
   }
 }
 
-/** Which troubleshooting hint fits: the Linux/WSL one has the linger commands. */
+/**
+ * Which troubleshooting hint fits the host's OS: the Linux/WSL one has the linger commands, the
+ * Windows one the service commands. A loopback host that has not reported its OS yet keeps the
+ * Linux one; any other OS gets the generic text.
+ */
 export function offlineHint(
   kind: OfflineKind,
   url: string,
   os: string | null,
-): "linux" | "generic" | "none" {
+): "linux" | "windows" | "generic" | "none" {
   if (kind !== "refused") return "generic";
   let hostname = "";
   try {
@@ -38,5 +42,6 @@ export function offlineHint(
     // An address that does not parse falls back to the OS the host last reported.
   }
   const local = hostname === "localhost" || hostname === "[::1]" || hostname.startsWith("127.");
-  return local || os === "linux" ? "linux" : "generic";
+  if (os === "win32") return "windows";
+  return os === "linux" || (local && os === null) ? "linux" : "generic";
 }

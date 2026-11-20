@@ -146,6 +146,31 @@ describe("host-offline-ui", () => {
     expect(banner.textContent).not.toMatch(/Próxima tentativa/);
   });
 
+  test("a Windows host that refuses the connection gets the service commands, never the Linux ones (#3403)", async () => {
+    const { HostOfflineBanner } = await import("../../src/features/hosts/host-offline-banner.tsx");
+    render(
+      <HostOfflineBanner
+        host={
+          {
+            id: "h1",
+            name: "Windows",
+            url: "ws://127.0.0.1:7420/v1/ws",
+            status: "offline",
+            retry: { kind: "refused", lastTryAt: 1_000, nextRetryAt: 61_000 },
+            hostInfo: { os: "win32" },
+          } as never
+        }
+        onReconnect={() => {}}
+      />,
+    );
+    const banner = screen.getByRole("region", { name: "Estado da conexão" });
+    expect(banner.textContent).toContain("flightdeckd service status");
+    expect(banner.textContent).toContain("flightdeckd service start");
+    expect(banner.textContent).not.toContain("systemctl");
+    expect(banner.textContent).not.toContain("loginctl");
+    expect(banner.textContent).not.toContain("wsl.conf");
+  });
+
   test("a refused connection to a non-loopback address says the daemon may have refused this machine", async () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());

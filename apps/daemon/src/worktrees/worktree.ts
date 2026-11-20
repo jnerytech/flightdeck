@@ -207,6 +207,16 @@ async function create(
   base: string,
   includeLimit = WORKTREE_INCLUDE_LIMIT,
 ): Promise<{ slug: string; branch: string; path: string; skipped: string[] }> {
+  // A repository with no commit has nothing to branch from: say so instead of git's own message (#3404).
+  const commits = await git(repo, "rev-list", "-n", "1", "--all");
+  if (commits.code === 0 && commits.stdout.trim() === "") {
+    throw new FlightdeckError(
+      "invalid_state",
+      `${repo} has no commit yet: make one before starting a card`,
+      "repo_has_no_commit",
+      { path: repo },
+    );
+  }
   const slug = await freeSlug(repo, slugify(title));
   const branch = `fd/${slug}`;
   const path = worktreeDir(repo, slug);
