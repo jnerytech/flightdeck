@@ -43,7 +43,7 @@ const OPEN: Handlers = {
     const before = TARGETS.find((t) => t.id === payload.id);
     const kept = before?.host === payload.host && before?.port === payload.port;
     return target(String(payload.id ?? "t9"), String(payload.name), {
-      hostKey: kept ? before.hostKey : null,
+      hostKey: kept ? (before?.hostKey ?? null) : null,
     });
   },
 };
