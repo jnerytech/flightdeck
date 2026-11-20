@@ -1,8 +1,8 @@
 /**
- * Issue #3515: `flightdeckd project trust-state|stack|trust-inspect|harness-preview`, what a host knows of a
- * project's folder from a terminal or a script. It speaks to the daemon like `flightdeckd plugins` does (the
- * same `DaemonClient`, the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. Every verb here
- * reads: nothing is trusted, written or run.
+ * Issue #3515: `flightdeckd project trust-state|stack|trust-inspect|harness-preview|detect-provider|add|update|
+ * harness-draft|harness-export`, what a host knows of a project's folder and what a person changes in a project,
+ * from a terminal or a script. It speaks to the daemon like `flightdeckd plugins` does (the same `DaemonClient`,
+ * the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. `add`, `update` and `harness-export` write.
  */
 import { resolve } from "node:path";
 import {
@@ -27,7 +27,7 @@ import {
 
 /** What a write that got no answer may have done: the person checks the projects before repeating it. */
 const UNSURE =
-  "; the change may or may not have happened: run flightdeckd card list or the app's projects before repeating it";
+  "; the change may or may not have happened: look at the app's projects before repeating it";
 
 /** A preview reads the folder's files and a template's, which takes longer than a lookup. */
 const DEFAULT_TIMEOUT_MS = 30_000;

@@ -21,3 +21,10 @@ Slice 2 of the `project` noun: `project add`, `update`, `detect-provider`, `harn
   what is approved without asking, `harness-export` copies instructions into the host's shared store and
   `harness-draft` is a model call. `detect-provider` and the read verbs stay ordinary commands.
 - `add` and `update` are writes: a call that got no answer exits 2 and says it may or may not have happened.
+- `project.add` and `project.update` have no device-proof gate in the daemon (they are not in `PROOF_COMMANDS`), and
+  this slice adds none: the app's project form sends the same fields with the same absence of a proof. A setup script
+  or `--auto-approve on` therefore reaches the daemon unsigned from any caller of the CLI; the one guard is the risk
+  rule above on a session's shell. A proof for `setupScript` and `autoApprove.enabled`, as `trust.set` has (#3453), is
+  its own change.
+- `detect-provider` stays an ordinary command on purpose: it only fills `prProvider` from the origin remote when it is
+  `none`, and never replaces one that is set.
