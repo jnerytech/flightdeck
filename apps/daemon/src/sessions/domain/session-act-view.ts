@@ -3,9 +3,6 @@
  * daemon, this words the result.
  */
 
-/** What `session.sleep` answers: the session slept, was asleep already, or why it did not sleep. */
-export type SleepResult = "slept" | "already" | "not_idle" | "queued" | "kept_awake" | "subscribed";
-
 const NOT_ASLEEP: Record<string, string> = {
   not_idle: "it is not idle",
   queued: "a message waits for it",
@@ -13,11 +10,13 @@ const NOT_ASLEEP: Record<string, string> = {
   subscribed: "someone is watching it",
 };
 
-/** The reason a session was not put to sleep, or undefined when it is asleep. */
-export const sleepRefusal = (session: string, result: SleepResult): string | undefined =>
-  result in NOT_ASLEEP ? `${session} was not put to sleep: ${NOT_ASLEEP[result]}` : undefined;
+/** The reason a session was not put to sleep, or undefined when it is asleep: only `slept` and `already` are. */
+export const sleepRefusal = (session: string, result: string): string | undefined =>
+  result === "slept" || result === "already"
+    ? undefined
+    : `${session} was not put to sleep: ${Object.hasOwn(NOT_ASLEEP, result) ? NOT_ASLEEP[result] : `the daemon answered ${result}`}`;
 
-export const sleepLine = (session: string, result: SleepResult): string =>
+export const sleepLine = (session: string, result: string): string =>
   result === "already" ? `${session} was already asleep` : `${session} is asleep`;
 
 export const modelLine = (session: string, model: string | null): string =>
@@ -28,16 +27,16 @@ export const effortLine = (session: string, effort: string | null): string =>
     ? `${session} works at the default effort`
     : `${session} works at the effort ${effort}`;
 
-/** `s1 updated: name Review, pinned true`; a name that was cleared reads `name cleared`. */
+/** `s1 updated: name Review, pinned true`, for the fields that were asked, with what the daemon kept; a name cleared reads `name cleared`. */
 export const metaLine = (
   session: string,
-  fields: { name?: string | null; pinned?: boolean; archived?: boolean },
+  asked: string[],
+  kept: { name?: string | null; pinned?: boolean; archived?: boolean },
 ): string => {
   const parts: string[] = [];
-  if (fields.name !== undefined)
-    parts.push(fields.name === null ? "name cleared" : `name ${fields.name}`);
-  if (fields.pinned !== undefined) parts.push(`pinned ${fields.pinned}`);
-  if (fields.archived !== undefined) parts.push(`archived ${fields.archived}`);
+  if (asked.includes("name")) parts.push(kept.name == null ? "name cleared" : `name ${kept.name}`);
+  if (asked.includes("pinned")) parts.push(`pinned ${kept.pinned}`);
+  if (asked.includes("archived")) parts.push(`archived ${kept.archived}`);
   return `${session} updated: ${parts.join(", ")}`;
 };
 

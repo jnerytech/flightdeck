@@ -4,6 +4,7 @@
  * id or its name. Exit codes: 0 done, 1 refused, 2 no daemon (or no answer: the change may or may not
  * have gone in).
  */
+import type { EffortLevel } from "@flightdeck/protocol";
 import {
   type CliResult,
   type DaemonClient,
@@ -17,7 +18,6 @@ import {
   effortLine,
   metaLine,
   modelLine,
-  type SleepResult,
   sleepLine,
   sleepRefusal,
 } from "./domain/session-act-view.ts";
@@ -25,8 +25,6 @@ import type { SessionCliArgs } from "./domain/session-cli-args.ts";
 
 export const ACT_UNSURE =
   "; the change may or may not have gone into the session: look at the session before you do it again";
-
-type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
 /** `default` gives the model's own back: the daemon takes null for it. */
 const orDefault = (value: string | undefined): string | null =>
@@ -48,7 +46,7 @@ export async function performAct(
     if (!claudeSessionId) return failure(1, `${args.session} has no Claude session yet`);
     note.wrote = true;
     const meta = await daemon.call("session.meta.set", { claudeSessionId, ...args.meta });
-    return out(metaLine(sessionId, args.meta ?? {}), {
+    return out(metaLine(sessionId, Object.keys(args.meta ?? {}), meta), {
       claudeSessionId,
       name: meta.name,
       pinned: meta.pinned,
@@ -63,19 +61,21 @@ export async function performAct(
       return out(modelLine(sessionId, model), { model });
     }
     case "set-effort": {
-      const effort = orDefault(args.value) as Effort | null;
+      const effort = orDefault(args.value) as EffortLevel | null;
       await daemon.call("session.setEffort", { sessionId, effort });
       return out(effortLine(sessionId, effort), { effort });
     }
     case "sleep": {
-      const { result } = (await daemon.call("session.sleep", { sessionId })) as {
-        result: SleepResult;
-      };
+      const { result } = await daemon.call("session.sleep", { sessionId });
       const refusal = sleepRefusal(sessionId, result);
       return refusal ? failure(1, refusal) : out(sleepLine(sessionId, result), { result });
     }
-    default:
-      await daemon.call(`session.${args.action as "close"}`, { sessionId });
+    case "interrupt":
+    case "close":
+    case "resume":
+      await daemon.call(`session.${args.action}`, { sessionId });
       return out(doneLine(sessionId, args.action));
+    default:
+      return failure(1, `${args.action} is not a verb that acts on a session`);
   }
 }

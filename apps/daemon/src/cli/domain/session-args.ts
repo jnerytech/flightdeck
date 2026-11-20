@@ -2,6 +2,7 @@
  * Issue #3514: `flightdeckd session <verb>`, the verbs of one session. The parser in `args.ts` reads
  * the words after `session` here; the flags are checked there, with the usage text.
  */
+import { EffortLevel } from "@flightdeck/protocol";
 import { type ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { USAGE } from "./usage.ts";
@@ -19,8 +20,7 @@ const SESSION_ACTIONS = [
   "meta",
 ] as const;
 
-/** The levels of `set-effort`, and the word that gives the model's own back. */
-const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"];
+/** The levels of `set-effort` are the protocol's own; `default` gives the model's own back. */
 const DEFAULT_WORD = "default";
 
 /** `name=<text>`, `pinned=<true|false>` or `archived=<true|false>`: a field of `meta set`, a text without `=` is refused. */
@@ -70,7 +70,7 @@ export function readSession(args: CliArgs, reader: ArgReader): void {
   if (action === "set-model") args.sessionValue = operand(reader, "the model");
   if (action === "set-effort") {
     const level = operand(reader, "the effort");
-    if (level !== DEFAULT_WORD && !EFFORT_LEVELS.includes(level))
+    if (level !== DEFAULT_WORD && !EffortLevel.safeParse(level).success)
       throw invalid("invalid effort", level);
     args.sessionValue = level;
   }
