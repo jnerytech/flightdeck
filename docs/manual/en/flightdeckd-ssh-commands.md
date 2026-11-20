@@ -2,7 +2,7 @@
 
 [Back to the manual](../en.md) · [Português (Brasil)](../pt-BR/flightdeckd-ssh-commands.md)
 
-The verbs that read, test, pin the keys of, remove and import the ssh destinations of a host. They work as the other `flightdeckd` commands do: see
+The verbs that read, test, add, edit, pin the keys of, remove and import the ssh destinations of a host. They work as the other `flightdeckd` commands do: see
 [what they all share](flightdeckd-commands.md#what-they-all-share).
 
 ## fd ssh
@@ -15,6 +15,10 @@ fd ssh hostkey check prod
 fd ssh test prod
 fd ssh hostkey confirm prod --fingerprint SHA256:...
 fd ssh hostkey forget prod
+fd ssh add web --address web.internal --user deploy --port 2222 --jump prod
+fd ssh edit web --address web2.internal
+fd ssh edit web --no-jump --auth agent
+fd ssh edit web --forward-agent --confirm
 fd ssh remove prod --confirm
 fd ssh import apply --alias staging --alias prod
 ```
@@ -51,4 +55,14 @@ another one goes through as a jump host is refused by the daemon: remove the oth
 first and name only the ones you want, at least one and at most 500. It prints one line per name, `imported as <id>` or
 `skipped` with the reason, and exits `1` when any name was skipped (it already exists, it is not in the file, or its
 jump hosts loop). A host that names an `IdentityFile` becomes a key-file destination that uses that path. An agent that
-runs `remove` or `import apply` from its shell is asked to confirm.
+runs `add`, `edit`, `remove` or `import apply` from its shell is asked to confirm.
+
+`add <name> --address <host> --user <name>` creates a destination and prints `<name>: added as <id>`. Optional: `--port`
+(1 to 65535), `--auth agent|key-file|vault-key|password`, `--secret-ref <key path or vault item name>` (a name, never the secret itself; the agent has none) and `--jump <target>`,
+the destination it goes through (a name or an id). It refuses a name that already exists and points to `edit`.
+`edit <target>` changes the fields you name and keeps the rest; it needs at least one of `--address`, `--user`,
+`--port`, `--auth`, `--secret-ref`, `--jump`, `--no-jump`, `--forward-agent` and `--no-forward-agent`. A new `--auth`
+forgets the old key reference unless you give `--secret-ref` with it. Changing the address or the port clears the
+pinned host key; the command says so, and you run `hostkey check` and `hostkey confirm` again. `--forward-agent` lets
+the remote host use your ssh agent, so it needs `--confirm`. Tags, a host to go through, local forwards and renaming
+stay in the app.

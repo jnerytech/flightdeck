@@ -4,12 +4,12 @@
  */
 import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
-import { ArgReader, operand, subAction } from "./arg-reader.ts";
+import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
-import { FLAGS, type Handler, setFlag, setValue } from "./flag-handlers.ts";
+import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
