@@ -46,8 +46,8 @@ describe("release.yml: the daemons and the npm tarball are made on Linux (#3541)
   test("the smoke installs the tarball into a temporary prefix and runs both commands from it", () => {
     const smoke = runs(daemons).find((run) => run.includes("install -g")) ?? "";
     expect(smoke).toContain('--prefix "$RUNNER_TEMP/');
-    expect(smoke).toContain("flightdeckd --version");
-    expect(smoke).toContain("fd --version");
+    expect(smoke).toContain('/bin/flightdeckd" --version');
+    expect(smoke).toContain('/bin/fd" --version');
   });
 
   test("only the signing step holds the signing key", () => {
