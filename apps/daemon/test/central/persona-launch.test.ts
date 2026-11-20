@@ -7,6 +7,7 @@ import { Personas } from "../../src/personas/store.ts";
 import { startServer } from "../../src/server.ts";
 import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
+import { git } from "../support/board-helpers.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";
 import { newManager, tempDir, workspace } from "../support/helpers.ts";
 
@@ -55,8 +56,11 @@ function host() {
 }
 
 /** `flightdeckd <argv>` in the project folder: what it said, its exit code and what claude was started with. */
-async function run(argv: string[]) {
+async function run(argv: string[], folder = "", before: (project: string) => void = () => {}) {
   const where = host();
+  const cwd = join(where.project, folder);
+  mkdirSync(cwd, { recursive: true });
+  before(where.project);
   const fake = installFakeClaude([{ do: "exit", code: 0 }]);
   cleanups.push(fake.restore);
   const said: string[] = [];
@@ -69,7 +73,7 @@ async function run(argv: string[]) {
     },
     onSignal: () => {},
     selfCommand: [process.execPath, "run", join(import.meta.dir, "../../src/bin.ts")],
-    cwd: where.project,
+    cwd,
   });
   const started = fake.events().find((e) => e.type === "start");
   return {
@@ -90,5 +94,29 @@ describe("persona launch: `flightdeckd new <persona>` (#3426)", () => {
     expect({ code, claudeStarted: claudeArgs !== null }).toEqual({ code: 1, claudeStarted: false });
     expect(said).toContain("persona nope: ");
     for (const id of ["arquiteto", "qa", "revisor"]) expect(said, id).toContain(id);
+  });
+});
+
+/** The `--name` values claude was started with. */
+const names = (claudeArgs: string[] | null) =>
+  (claudeArgs ?? []).flatMap((arg, i, all) => (arg === "--name" ? [all[i + 1]] : []));
+
+describe("persona launch: the session is named after the repo and the persona (#3432)", () => {
+  test("a persona launched from a subfolder of a git repo names it <repo>-<persona>", async () => {
+    const { claudeArgs } = await run(["new", "qa"], "flightdeck/apps/daemon", (project) => {
+      git(join(project, "flightdeck"), "init", "-q");
+    });
+    expect(names(claudeArgs)).toEqual(["flightdeck-qa"]);
+  });
+
+  test("a launch with no persona, outside a git repo, is named after its folder", async () => {
+    const { claudeArgs } = await run(["claude"], "notes");
+    expect(names(claudeArgs)).toEqual(["notes"]);
+  });
+
+  test("a name the person passed is the only one claude gets", async () => {
+    const { claudeArgs } = await run(["new", "qa", "-n", "mine"], "flightdeck");
+    expect(names(claudeArgs)).toEqual([]);
+    expect(claudeArgs).toContain("-n");
   });
 });
