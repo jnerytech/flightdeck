@@ -328,8 +328,12 @@ export const hostCommands = [
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
   cmd("maintenance.prune", z.object({ dryRun: z.boolean().optional() })),
-  /** Phase 7: the daemon acks, then closes as on SIGTERM and exits with 0. */
-  cmd("daemon.shutdown", z.object({}).strict()),
+  /**
+   * Phase 7: the daemon acks, then closes as on SIGTERM and exits with 0. Only with `confirm: true`
+   * (#3507): a service restarts it, so an unasked shutdown is a restart on the person's host. The
+   * field is optional on the wire (an older caller still parses); the daemon refuses without it.
+   */
+  cmd("daemon.shutdown", z.object({ confirm: z.boolean().optional() }).strict()),
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   cmd("daemon.update.check", z.object({}).strict()),
