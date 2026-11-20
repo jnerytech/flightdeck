@@ -65,10 +65,12 @@ pub fn generate() -> String {
 
 /// Whether the text is the base64 SPKI of an ECDSA P-256 public key, the form the daemon enrolls.
 fn is_p256_public_key(public_key: &str) -> bool {
+    // 91 bytes is the uncompressed form the app and the host make; a compressed encoding of the same
+    // point (59 bytes) would pass for another key beside the one it repeats.
     STANDARD
         .decode(public_key)
         .ok()
-        .is_some_and(|der| VerifyingKey::from_public_key_der(&der).is_ok())
+        .is_some_and(|der| der.len() == 91 && VerifyingKey::from_public_key_der(&der).is_ok())
 }
 
 fn signing_key(secret: &str) -> Result<SigningKey, String> {
@@ -220,12 +222,14 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             print(&ask.subject)
         ),
         (Kind::EnrollAdd, false) => format!(
-            "Add the device with key {} as an approver of this host? Continue only if the same code is shown on the other device.",
-            fingerprint(&ask.subject)
+            "Add the device with key {} as an approver of host {}? Continue only if the same code is shown on the other device.",
+            fingerprint(&ask.subject),
+            short(&ask.host)
         ),
         (Kind::EnrollAdd, true) => format!(
-            "Adicionar o dispositivo com a chave {} como aprovador deste host? Continue só se o mesmo código aparece no outro dispositivo.",
-            fingerprint(&ask.subject)
+            "Adicionar o dispositivo com a chave {} como aprovador do host {}? Continue só se o mesmo código aparece no outro dispositivo.",
+            fingerprint(&ask.subject),
+            short(&ask.host)
         ),
         (Kind::Revoke, false) => format!(
             "Remove the device with key {} from the approvers of this host? Continue only if you just asked for it in Flightdeck.",
@@ -242,8 +246,14 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
 
 /// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
 /// does not add a device.
-pub fn confirm_labels(_kind: Kind, lang: &str) -> (String, String) {
-    if lang == "pt-BR" { ("Permitir".into(), "Cancelar".into()) } else { ("Allow".into(), "Cancel".into()) }
+pub fn confirm_labels(kind: Kind, lang: &str) -> (String, String) {
+    let (yes, no) = match (kind, lang == "pt-BR") {
+        (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
+        (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
+        (_, false) => ("Allow", "Cancel"),
+        (_, true) => ("Permitir", "Cancelar"),
+    };
+    (yes.to_string(), no.to_string())
 }
 
 #[cfg(test)]

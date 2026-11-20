@@ -114,18 +114,14 @@ pub async fn approval_sign(
         let own = key::public_info(&secret)?;
         let ask = key::describe(&message, &daemon_id, &own)?;
         let (title, body) = key::confirm_text(&ask, &lang);
-        let (yes, no) = if lang == "pt-BR" {
-            ("Permitir", "Cancelar")
-        } else {
-            ("Allow", "Cancel")
-        };
+        let (yes, no) = key::confirm_labels(ask.kind, &lang);
         let _only_one = Asking::begin()?;
         let said_yes = app
             .dialog()
             .message(body)
             .title(title)
             .kind(MessageDialogKind::Warning)
-            .buttons(MessageDialogButtons::OkCancelCustom(yes.into(), no.into()))
+            .buttons(MessageDialogButtons::OkCancelCustom(yes, no))
             .blocking_show();
         if !said_yes {
             return Err("declined".into());
