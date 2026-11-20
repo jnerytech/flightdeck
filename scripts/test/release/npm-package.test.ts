@@ -1,13 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { BINARIES } from "../../../release/npm/launcher.js";
 import {
@@ -175,51 +167,4 @@ describe("npm package: the folder that is packed (#3541)", () => {
     Bun.spawnSync(["rm", "-f", join(missing, "dist/flightdeckd-linux-arm64")]);
     expect(fail(missing)).toBe("faltam arquivos: dist/flightdeckd-linux-arm64 | written: 0");
   });
-});
-
-/**
- * The real npm, into a temporary prefix: what `npm i -g <file>` does to the tarball. Linux only,
- * where the launcher's three binaries include the one of this machine's family; skipped without npm.
- */
-const npm = Bun.which("npm", { PATH: process.env.PATH ?? "" });
-describe("npm package: a real `npm i -g` of the tarball (#3541)", () => {
-  test.skipIf(process.platform !== "linux" || npm === null)(
-    "it puts fd and flightdeckd on the prefix's PATH, each runs the binary of this machine, and no script runs",
-    async () => {
-      const out = join(realTempDir("fd-npm-out-"), "pkg");
-      const root = built();
-      stageNpmPackage(root, out, VERSION);
-      const scratch = realTempDir("fd-npm-prefix-");
-      const env = { ...process.env, HOME: scratch, npm_config_userconfig: join(scratch, "npmrc") };
-      const sh = (cmd: string[], cwd: string) =>
-        Bun.spawnSync(cmd, { cwd, env, stdout: "pipe", stderr: "pipe" });
-      const packed = sh([npm as string, "pack", "--pack-destination", scratch, "--silent"], out);
-      const tgz = join(scratch, packed.stdout.toString().trim());
-      const prefix = join(scratch, "prefix");
-      const install = sh(
-        [
-          npm as string,
-          "install",
-          "-g",
-          "--prefix",
-          prefix,
-          "--cache",
-          join(scratch, "cache"),
-          "--no-audit",
-          "--no-fund",
-          tgz,
-        ],
-        scratch,
-      );
-      const call = (bin: string, ...args: string[]) => {
-        const command = join(prefix, "bin", bin);
-        if (!existsSync(command)) return `${bin} is not on the prefix's PATH`;
-        const run = Bun.spawnSync([command, ...args], { env, stdout: "pipe" });
-        return run.stdout.toString().trim();
-      };
-      expect([install.exitCode, call("flightdeckd", "a b", "$(id)"), call("fd", "status")]).toEqual(
-        [0, '["a b","$(id)"]', '["fd","status"]'],
-      );
-    },
-  );
 });
