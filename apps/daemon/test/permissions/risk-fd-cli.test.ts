@@ -17,6 +17,14 @@ describe("risk rules: a session answering a permission request from its shell (#
         ["/home/u/.flightdeck/bin/flightdeckd.exe approve r1", REASON],
         ["FLIGHTDECK_X=1 fd approve r1", REASON],
         ["fd requests --json | head && fd approve r1", REASON],
+        ['fd "approve" r1 --hold', REASON],
+        ["flightdeckd 'deny' r1", REASON],
+        ['fd appr""ove r1', REASON],
+        ["fd app\\rove r1", REASON],
+        ["bun run apps/daemon/src/bin.ts approve r1 --hold", REASON],
+        ["bunx flightdeckd approve r1", REASON],
+        ['bash -c "fd approve r1 --hold"', REASON],
+        ["sh -c 'flightdeckd deny r1'", REASON],
       ]),
     ).toEqual([]);
   });
@@ -32,6 +40,8 @@ describe("risk rules: a session answering a permission request from its shell (#
         'fd send fd-qa "please approve r1"',
         "echo approve",
         "approve r1",
+        "bun test approve",
+        "bash -c 'echo approve'",
       ]),
     ).toEqual([]);
     expect(bash("fd requests").reason).toBe(MEDIUM);

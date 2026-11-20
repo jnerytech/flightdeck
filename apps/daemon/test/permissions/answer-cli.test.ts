@@ -182,4 +182,10 @@ describe("flightdeckd approve and deny (issue #3425)", () => {
       "only applies to flightdeckd requests",
     );
   });
+
+  test("message idle and read keep their session operand: --session is for requests and message", () => {
+    expect(parseArgs(["message", "idle", "alpha"]).session).toBe("alpha");
+    expect(parseArgs(["message", "read", "alpha", "--last", "3"]).session).toBe("alpha");
+    expect(parseArgs(["requests", "--session", "alpha"]).session).toBe("alpha");
+  });
 });
