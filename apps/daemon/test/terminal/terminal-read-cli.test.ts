@@ -69,7 +69,7 @@ describe("flightdeckd terminal list (issue #3538)", () => {
     const text = await flightdeckd(["terminal", "list"], daemon.port);
     expect(text.out.join("\n")).toContain("/tmp/ok [2Jgone x  80x24");
     const asJson = await flightdeckd(["terminal", "list", "--json"], daemon.port);
-    expect(asJson.out.join("\n")).not.toContain("\u001b");
+    expect(asJson.out.join("\n")).not.toContain("\u202e");
   });
 
   test("the daemon's refusal is one line on stderr, exit 1", async () => {
