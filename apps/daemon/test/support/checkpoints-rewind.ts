@@ -1,5 +1,5 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { Rewinder } from "../../src/checkpoints/rewind.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
 import { EventStore } from "../../src/store/event-store.ts";
@@ -27,5 +27,11 @@ export async function turnInRepo(sessions = { busy: () => false, rewindFiles: as
   rmSync(join(repo, "apagar.txt"));
   await snapshots.take({ cwd: repo, claudeSessionId: "s1", kind: "after" });
   const turn = "row" in before ? before.row.n : -1;
-  return { store, snapshots, repo, turn, rewinder: new Rewinder({ snapshots, sessions }) };
+  return {
+    store,
+    snapshots,
+    repo,
+    turn,
+    rewinder: new Rewinder({ snapshots, sessions, allowedRoots: [dirname(repo)] }),
+  };
 }

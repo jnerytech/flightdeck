@@ -289,7 +289,9 @@ export function daemon(
     baseEnv: options.baseEnv ?? {},
     ...(options.risk ? { risk: options.risk(root) } : {}),
   });
-  const rewinder = snapshots ? new Rewinder({ snapshots, sessions: manager }) : undefined;
+  const rewinder = snapshots
+    ? new Rewinder({ snapshots, sessions: manager, allowedRoots: roots })
+    : undefined;
   const forker = rewinder
     ? new Forker({ runtime, manager, rewinder, allowedRoots: roots })
     : undefined;

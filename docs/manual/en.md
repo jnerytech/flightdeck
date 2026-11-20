@@ -86,6 +86,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd session](en/flightdeckd-session-commands.md#fd-session)
 
+## flightdeckd commands: ssh destinations
+
+[Read the chapter.](en/flightdeckd-ssh-commands.md) Its sections:
+
+- [fd ssh](en/flightdeckd-ssh-commands.md#fd-ssh)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)

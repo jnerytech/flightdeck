@@ -9,6 +9,7 @@ import type { PersonaCliArgs } from "../personas/index.ts";
 import type { PluginsCliArgs } from "../plugins/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
+import type { SshCliArgs } from "../ssh/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import type { VaultCliArgs } from "../vault/index.ts";
 import { configPath } from "./config-path.ts";
@@ -128,7 +129,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `ssh`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -645,6 +646,20 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           ...(args.sessionMeta === undefined ? {} : { meta: args.sessionMeta }),
           ...(args.claudeSessionId === undefined ? {} : { claudeSessionId: args.claudeSessionId }),
           ...(args.sessionStart === undefined ? {} : { start: args.sessionStart }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+        remote ? { remote } : {},
+      ),
+    );
+  },
+  ssh: async (args, deps) => {
+    const { runSshCli } = await import("../ssh/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runSshCli(
+        {
+          action: args.action as SshCliArgs["action"],
+          ...(args.sshTarget === undefined ? {} : { target: args.sshTarget }),
           ...(args.json ? { json: true } : {}),
         },
         config,

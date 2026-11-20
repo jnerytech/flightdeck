@@ -37,6 +37,10 @@ pub enum CommandAsk {
     RootsAdd { path: String },
     /// `project.harness.apply`: write these parts of the Claude Code setup into this folder, from a template or not (#3507).
     HarnessApply { path: String, parts: Vec<String>, template: Option<String>, reformat: bool },
+    /// `plugins.install`: install this plugin (by id, or from this folder) at this scope; it runs code on the host (#3516).
+    PluginInstall { plugin: Option<String>, dir: Option<String>, scope: String },
+    /// `plugins.update`: update this installed plugin to the content the person was shown (#3516).
+    PluginUpdate { plugin: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -360,6 +364,12 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         // token the host makes, so nothing in them can pad the text. The hook commands are not in the payload: the
         // host reads them again, so the person's check of them is the preview in the app.
         "project.harness.apply" => read_harness_apply(fields),
+        // Every payload of both commands is signed. The dialog says the plugin (or the folder it comes from) and the
+        // scope; the hash of the content the person was shown and the command the host showed are signed but not
+        // shown, and each one is a plain token the host makes, so nothing in them can pad the text. What the plugin
+        // contains is the preview in the app; the hash ties the install to that preview.
+        "plugins.install" => read_plugin(fields, true),
+        "plugins.update" => read_plugin(fields, false),
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -458,6 +468,91 @@ fn read_harness_apply(
     }
     canonical.push('}');
     Ok((CommandAsk::HarnessApply { path: path.into(), parts, template, reformat }, canonical))
+}
+
+/// The payload of `plugins.install` (`install`) or `plugins.update`, read for the dialog and written in canonical form.
+fn read_plugin(
+    fields: &serde_json::Map<String, serde_json::Value>,
+    install: bool,
+) -> Result<(CommandAsk, String), String> {
+    let allowed: &[&str] = if install {
+        &["acceptCommand", "confirmHash", "dir", "plugin", "scope"]
+    } else {
+        &["acceptCommand", "confirmHash", "plugin"]
+    };
+    if fields.keys().any(|key| !allowed.contains(&key.as_str())) {
+        return Err("the plugin payload has the wrong fields".into());
+    }
+    let text = |key: &str| match fields.get(key) {
+        None => Ok(None),
+        Some(value) => value
+            .as_str()
+            .map(Some)
+            .ok_or_else(|| format!("the plugin payload has no text for {key}")),
+    };
+    // A token the host makes (a content hash, the hash of a command it showed): never shown, so only plain.
+    let token = |value: &str| {
+        !value.is_empty()
+            && value.len() <= 128
+            && value.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
+    };
+    let confirm = text("confirmHash")?.ok_or("the plugin payload has no content hash")?;
+    let accept = text("acceptCommand")?;
+    if !token(confirm) || accept.is_some_and(|value| !token(value)) {
+        return Err("a hash of a plugin payload is not a plain token".into());
+    }
+    let plugin = text("plugin")?;
+    let dir = text("dir")?;
+    let one_source = if install { plugin.is_some() != dir.is_some() } else { plugin.is_some() };
+    if !one_source {
+        return Err("a plugin payload names a plugin or a folder, one of the two".into());
+    }
+    // `name@marketplace`: letters, digits and a few marks, never a first `-` (the host takes it as an option).
+    if let Some(id) = plugin {
+        let plain = id.len() <= 128
+            && !id.starts_with('-')
+            && !id.is_empty()
+            && id.chars().all(|c| c.is_ascii_alphanumeric() || "._-@".contains(c));
+        if !plain {
+            return Err("the plugin is not a name the dialog can show".into());
+        }
+    }
+    if let Some(path) = dir {
+        if !is_shown_path(path) {
+            return Err("the folder is not a path the dialog can show".into());
+        }
+    }
+    let scope = text("scope")?;
+    if scope.is_some_and(|value| !["user", "project", "local"].contains(&value)) {
+        return Err("the scope of a plugin is user, project or local".into());
+    }
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let mut canonical = String::from("{");
+    for (key, value) in [
+        ("acceptCommand", accept),
+        ("confirmHash", Some(confirm)),
+        ("dir", dir),
+        ("plugin", plugin),
+        ("scope", scope),
+    ] {
+        if let Some(value) = value {
+            if canonical.len() > 1 {
+                canonical.push(',');
+            }
+            canonical.push_str(&format!("{}:{}", quoted(key), quoted(value)));
+        }
+    }
+    canonical.push('}');
+    let ask = if install {
+        CommandAsk::PluginInstall {
+            plugin: plugin.map(String::from),
+            dir: dir.map(String::from),
+            scope: scope.unwrap_or("user").to_string(),
+        }
+    } else {
+        CommandAsk::PluginUpdate { plugin: plugin.unwrap_or_default().to_string() }
+    };
+    Ok((ask, canonical))
 }
 
 /// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
@@ -654,6 +749,45 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                     )
                 }
             }
+            Some(CommandAsk::PluginInstall { plugin, dir, scope }) => {
+                let scope = match (scope.as_str(), pt) {
+                    ("user", true) => "para você",
+                    ("project", true) => "para o projeto",
+                    ("local", true) => "só para este projeto, neste computador",
+                    ("user", false) => "for you",
+                    ("project", false) => "for the project",
+                    (_, false) => "for this project on this computer only",
+                    (_, true) => "só para este projeto, neste computador",
+                };
+                match (plugin, dir, pt) {
+                    (Some(name), _, true) => format!(
+                        "Instalar um plugin? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar \"{name}\" {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.",
+                        short(&ask.host)
+                    ),
+                    (Some(name), _, false) => format!(
+                        "Install a plugin? A plugin runs code on this computer, in your sessions. Host {} will install \"{name}\" {scope}. Continue only if you just pressed Install in Flightdeck.",
+                        short(&ask.host)
+                    ),
+                    (None, path, true) => format!(
+                        "Instalar um plugin de uma pasta? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar o que está na pasta {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.\n\"{}\"",
+                        short(&ask.host),
+                        path.as_deref().unwrap_or_default()
+                    ),
+                    (None, path, false) => format!(
+                        "Install a plugin from a folder? A plugin runs code on this computer, in your sessions. Host {} will install what is in the folder {scope}. Continue only if you just pressed Install in Flightdeck.\n\"{}\"",
+                        short(&ask.host),
+                        path.as_deref().unwrap_or_default()
+                    ),
+                }
+            }
+            Some(CommandAsk::PluginUpdate { plugin }) if pt => format!(
+                "Atualizar um plugin? O plugin \"{plugin}\" vai passar para o conteúdo que você viu, e um plugin roda código neste computador, em suas sessões. O host {} faz a troca. Continue só se você acabou de apertar Atualizar no Flightdeck.",
+                short(&ask.host)
+            ),
+            Some(CommandAsk::PluginUpdate { plugin }) => format!(
+                "Update a plugin? The plugin \"{plugin}\" will change to the content you saw, and a plugin runs code on this computer, in your sessions. Host {} makes the change. Continue only if you just pressed Update in Flightdeck.",
+                short(&ask.host)
+            ),
             None => String::new(),
         },
     };
@@ -673,6 +807,12 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::HarnessApply { .. })) => {
             if pt { ("Gravar configuração", "Cancelar") } else { ("Write setup", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::PluginInstall { .. })) => {
+            if pt { ("Instalar", "Cancelar") } else { ("Install", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::PluginUpdate { .. })) => {
+            if pt { ("Atualizar", "Cancelar") } else { ("Update", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
             if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
@@ -1541,6 +1681,153 @@ mod tests {
         assert!(payload.len() > MAX_PAYLOAD, "the sample is longer than other commands may be");
         let text = command(&me, DAEMON, "project.harness.apply", &payload);
         assert!(describe_with(&text, DAEMON, &me, Some(&payload)).is_ok());
+    }
+
+    /// The payloads that install and update a plugin, in canonical form, and the hashes both sides share (the
+    /// protocol test asserts the same literals).
+    const PLUGIN_PAYLOAD: &str = "{\"acceptCommand\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plugin\":\"deploy-tools@acme\",\"scope\":\"project\"}";
+    const PLUGIN_HASH: &str = "9f63013ef3891d7e3a3c30dbdb4812172f4c3d17e9f3babab503feae8cb0a2ef";
+    const PLUGIN_DIR_PAYLOAD: &str = "{\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"dir\":\"/work/plugins/deploy\"}";
+    const PLUGIN_DIR_HASH: &str = "6e0874106473077fddaefcda0cb2963d24ecfac81bbaa0bf0e63577df0798713";
+    const PLUGIN_UPDATE_PAYLOAD: &str = "{\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plugin\":\"deploy-tools@acme\"}";
+    const PLUGIN_UPDATE_HASH: &str = "105dd69dedb5eeca4e9d83cfca9005986688a4bab71e3cc6450cd685c6d18198";
+
+    fn install_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "plugins.install".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::PluginInstall {
+                plugin: Some("deploy-tools@acme".into()),
+                dir: None,
+                scope: "project".into(),
+            }),
+        }
+    }
+
+    fn update_ask() -> Ask {
+        Ask {
+            subject: "plugins.update".into(),
+            command: Some(CommandAsk::PluginUpdate { plugin: "deploy-tools@acme".into() }),
+            ..install_ask()
+        }
+    }
+
+    #[test]
+    fn the_plugin_vectors_hash_the_same_in_both_languages() {
+        assert_eq!(
+            [sha256_hex(PLUGIN_PAYLOAD), sha256_hex(PLUGIN_DIR_PAYLOAD), sha256_hex(PLUGIN_UPDATE_PAYLOAD)],
+            [PLUGIN_HASH, PLUGIN_DIR_HASH, PLUGIN_UPDATE_HASH]
+        );
+    }
+
+    #[test]
+    fn installing_and_updating_a_plugin_are_read_from_their_payloads_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "plugins.install", PLUGIN_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(PLUGIN_PAYLOAD)), Ok(install_ask()));
+        let shuffled = "{\"scope\":\"project\",\"plugin\":\"deploy-tools@acme\",\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"acceptCommand\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(install_ask()));
+        let text = command(&me, DAEMON, "plugins.update", PLUGIN_UPDATE_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(PLUGIN_UPDATE_PAYLOAD)), Ok(update_ask()));
+        let text = command(&me, DAEMON, "plugins.install", PLUGIN_DIR_PAYLOAD);
+        let ask = describe_with(&text, DAEMON, &me, Some(PLUGIN_DIR_PAYLOAD)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::PluginInstall { plugin: None, dir: Some("/work/plugins/deploy".into()), scope: "user".into() })
+        );
+    }
+
+    #[test]
+    fn a_plugin_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let hash = "a".repeat(64);
+        let install = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "plugins.install", payload), DAEMON, &me, Some(payload))
+        };
+        let update = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "plugins.update", payload), DAEMON, &me, Some(payload))
+        };
+        // The reader refuses these before the hash is compared; a refusal by the hash would hide a missing rule,
+        // because the cases are not all written in the sorted order the canonical text has.
+        let refused_by_rule = |result: Result<_, String>| {
+            matches!(result, Err(ref why) if why != "the payload is not the one the text hashes")
+        };
+        let ok = |extra: &str| format!("{{\"confirmHash\":\"{hash}\",\"plugin\":\"deploy-tools@acme\"{extra}}}");
+        for bad in [
+            // A field the dialog does not say, no content hash, both a plugin and a folder, neither.
+            ok(",\"extra\":1"),
+            format!("{{\"plugin\":\"deploy-tools@acme\"}}"),
+            ok(",\"dir\":\"/work/p\""),
+            format!("{{\"confirmHash\":\"{hash}\"}}"),
+            // A scope that is not one of the three, a hash or an accepted command that is not a plain token.
+            ok(",\"scope\":\"all\""),
+            ok(",\"scope\":7"),
+            ok("").replace(&hash, "not a hash"),
+            ok("").replace(&hash, ""),
+            ok(",\"acceptCommand\":\"x y\""),
+            ok(",\"acceptCommand\":\"\""),
+            // A plugin name that can pad the text, start an option, or is no text.
+            ok("").replace("deploy-tools@acme", "deploy-tools@acme\nAllow everything"),
+            ok("").replace("deploy-tools@acme", "deploy tools"),
+            ok("").replace("deploy-tools@acme", "\\\"x"),
+            ok("").replace("deploy-tools@acme", "--scope"),
+            ok("").replace("deploy-tools@acme", "\\u202eevil"),
+            ok("").replace("\"deploy-tools@acme\"", "7"),
+            // A folder the dialog could not show whole.
+            format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"plugins/deploy\"}}"),
+            format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/\\u202eevil\"}}"),
+            format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/x\\\" harmless\"}}"),
+        ] {
+            assert!(refused_by_rule(install(&bad)), "signed install: {bad}");
+        }
+        assert!(install(&ok("")).is_ok());
+        assert!(install(&ok(",\"scope\":\"local\"")).is_ok());
+        assert!(install(&format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/plugins/deploy\"}}")).is_ok());
+        for bad in [
+            // An update takes no scope, no folder and no more than its three fields.
+            ok(",\"scope\":\"user\""),
+            ok(",\"dir\":\"/work/p\""),
+            format!("{{\"confirmHash\":\"{hash}\"}}"),
+            ok("").replace("deploy-tools@acme", "deploy tools"),
+            ok("").replace(&hash, "nope nope"),
+        ] {
+            assert!(refused_by_rule(update(&bad)), "signed update: {bad}");
+        }
+        assert!(update(&ok("")).is_ok());
+        // The payload is signed in canonical (sorted) form, so the accepted command comes first.
+        assert!(update(&ok("").replacen('{', "{\"acceptCommand\":\"cc\",", 1)).is_ok());
+    }
+
+    #[test]
+    fn the_dialogs_of_a_plugin_name_it_where_it_comes_from_and_that_it_runs_code_and_have_buttons_of_their_own() {
+        let (_, en) = confirm_text(&install_ask(), "en");
+        assert!(en.starts_with("Install a plugin?"), "{en}");
+        assert!(en.contains("deploy-tools@acme") && en.contains("project") && en.contains("runs code") && en.contains(&DAEMON[..8]), "{en}");
+        let (_, pt) = confirm_text(&install_ask(), "pt-BR");
+        assert!(pt.starts_with("Instalar um plugin?") && pt.contains("deploy-tools@acme") && pt.contains("roda código"), "{pt}");
+        let from = Ask {
+            command: Some(CommandAsk::PluginInstall { plugin: None, dir: Some("/work/plugins/deploy".into()), scope: "user".into() }),
+            ..install_ask()
+        };
+        let (_, en) = confirm_text(&from, "en");
+        assert!(en.starts_with("Install a plugin from a folder?") && en.ends_with("\n\"/work/plugins/deploy\""), "{en}");
+        let (_, pt) = confirm_text(&from, "pt-BR");
+        assert!(pt.starts_with("Instalar um plugin de uma pasta?") && pt.ends_with("\n\"/work/plugins/deploy\""), "{pt}");
+        let (_, en) = confirm_text(&update_ask(), "en");
+        assert!(en.starts_with("Update a plugin?") && en.contains("deploy-tools@acme") && en.contains("runs code"), "{en}");
+        let (_, pt) = confirm_text(&update_ask(), "pt-BR");
+        assert!(pt.starts_with("Atualizar um plugin?") && pt.contains("roda código"), "{pt}");
+        assert_eq!(
+            [
+                confirm_labels(&install_ask(), "en").0,
+                confirm_labels(&install_ask(), "pt-BR").0,
+                confirm_labels(&update_ask(), "en").0,
+                confirm_labels(&update_ask(), "pt-BR").0,
+            ],
+            ["Install", "Instalar", "Update", "Atualizar"]
+        );
     }
 
     #[test]

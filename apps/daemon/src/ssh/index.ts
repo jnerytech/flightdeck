@@ -3,3 +3,4 @@
  * domain imports from here, never a file inside.
  */
 export { runAskpass } from "./askpass.ts";
+export { runSshCli, type SshCliArgs } from "./ssh-cli.ts";

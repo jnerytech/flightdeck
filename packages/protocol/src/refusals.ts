@@ -299,6 +299,8 @@ export const DAEMON_REASONS = [
   "trust_path_differs",
   /** Issue #3507: the folder to write the setup into resolves elsewhere, so the device cannot sign what the host would write to. */
   "harness_path_differs",
+  /** Issue #3516: the plugin folder to install from resolves elsewhere, so the device cannot sign what the host would install. */
+  "plugin_path_differs",
   "harness_stale",
   "harness_confirm",
   "harness_reformat",

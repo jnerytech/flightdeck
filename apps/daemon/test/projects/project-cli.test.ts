@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { resolve } from "node:path";
+import { projectCliArgs } from "../../src/cli/domain/project-args.ts";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { runProjectCli } from "../../src/projects/index.ts";
@@ -353,5 +354,34 @@ describe("the project verbs on the command line (issue #3515)", () => {
       projectPaths: ["C:\\work\\app"],
       host: "winbox",
     });
+  });
+});
+
+describe("what the parsed project words become for the runner (issue #3515)", () => {
+  const runnerArgs = (argv: string[]) => projectCliArgs(parseArgs(argv));
+
+  test("trust-state keeps every folder, the others one, and --json is carried", () => {
+    expect(runnerArgs(["project", "trust-state", "/a", "/b", "--json"])).toEqual({
+      action: "trust-state",
+      paths: ["/a", "/b"],
+      json: true,
+    });
+    expect(runnerArgs(["project", "stack", "/a"])).toEqual({ action: "stack", path: "/a" });
+    expect(runnerArgs(["project", "trust-inspect", "/a", "--json"])).toEqual({
+      action: "trust-inspect",
+      path: "/a",
+      json: true,
+    });
+  });
+
+  test("harness-preview carries its parts, and the template only when one was named", () => {
+    expect(runnerArgs(["project", "harness-preview", "/a", "--parts", "hooks,agents"])).toEqual({
+      action: "harness-preview",
+      path: "/a",
+      parts: ["hooks", "agents"],
+    });
+    expect(
+      runnerArgs(["project", "harness-preview", "/a", "--parts", "claudeMd", "--template", "web"]),
+    ).toEqual({ action: "harness-preview", path: "/a", parts: ["claudeMd"], template: "web" });
   });
 });
