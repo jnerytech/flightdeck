@@ -30,9 +30,17 @@ import type { Platform } from "../../platform/types.ts";
 import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./add-text.ts";
 
 /** The payload of a guarded merge, or the person's no (#3453). */
-export type MergePayload =
-  | { kind: "payload"; payload: Record<string, unknown> }
-  | { kind: "declined" };
+export type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
+
+/** `card.pr.merge`'s payload: the head binding and the proof are there only for a host that checks them. */
+export interface MergeBody {
+  cardId: string;
+  method: "merge" | "squash";
+  confirm: boolean;
+  prUrl?: string;
+  headSha?: string;
+  proof?: { keyId: string; nonce: string; signature: string };
+}
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -211,6 +219,19 @@ export class ApprovalSlice {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * The host checks the proof of an allow but not of a merge (#3453): it is from before the commands were
+   * guarded, so its merges ask for no device. A host the app has no features for is not said to be one.
+   */
+  commandsUnchecked(hostId: string): boolean {
+    const features = this.core.host(hostId)?.features;
+    return (
+      features !== undefined &&
+      hasFeature(features, FEATURE_APPROVAL_PROOF, false) &&
+      !hasFeature(features, FEATURE_APPROVAL_COMMAND, false)
+    );
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
@@ -492,13 +513,13 @@ export class ApprovalSlice {
     cardId: string,
     method: "merge" | "squash",
   ): Promise<MergePayload> {
-    const plain = { cardId, method, confirm: true };
+    const plain: MergeBody = { cardId, method, confirm: true };
     if (!this.supported(hostId, FEATURE_APPROVAL_COMMAND))
       return { kind: "payload", payload: plain };
     const result = await this.core.request(hostId, "card.pr.head", { cardId });
     if (!result.ok) throw new Error(this.refused(result));
-    const bound: Record<string, unknown> = { ...plain, ...result.data };
-    const proof = await this.proveCommand(hostId, "card.pr.merge", bound);
+    const bound: MergeBody = { ...plain, ...result.data };
+    const proof = await this.proveCommand(hostId, "card.pr.merge", { ...bound });
     if (proof.kind === "declined") return proof;
     return {
       kind: "payload",
