@@ -11,6 +11,7 @@ import {
   commandMessage,
   enrollAddMessage,
   enrollFirstMessage,
+  FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_VAULT,
@@ -31,6 +32,16 @@ import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./ad
 
 /** The payload of a guarded merge, or the person's no (#3453). */
 type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
+
+/** The payload of `host.bypass` that turns bypass on, or the person's no (#3507). */
+type BypassPayload = { kind: "payload"; payload: BypassBody } | { kind: "declined" };
+
+/** `host.bypass` turning bypass on: the proof is there only for a host that checks it and has a device enrolled. */
+interface BypassBody {
+  allow: true;
+  confirm: true;
+  proof?: { keyId: string; nonce: string; signature: string };
+}
 
 /** `card.pr.merge`'s payload: the head binding and the proof are there only for a host that checks them. */
 interface MergeBody {
@@ -232,6 +243,16 @@ export class ApprovalSlice {
       hasFeature(features, FEATURE_APPROVAL_PROOF, false) &&
       !hasFeature(features, FEATURE_APPROVAL_COMMAND, false)
     );
+  }
+
+  /** Stub (#3507): the payload that turns bypass on. */
+  async bypassPayload(_hostId: string): Promise<BypassPayload> {
+    return { kind: "declined" };
+  }
+
+  /** Stub (#3507): a host that checks proofs but not the bypass switch. */
+  bypassUnchecked(_hostId: string): boolean {
+    return false;
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
