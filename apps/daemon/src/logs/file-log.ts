@@ -66,6 +66,9 @@ export class FileLog {
     this.queue = this.queue.then(() => this.append(line));
   }
 
+  /** One line written at once, for a process that is ending and cannot wait for the queue. */
+  writeAtExit(_level: "info" | "error", _message: string): void {}
+
   /** Secrets out, then the user's name out of the paths. */
   private clean(text: string): string {
     return scrubHome(this.opts.scanner.redact(text, false), this.opts.home);
