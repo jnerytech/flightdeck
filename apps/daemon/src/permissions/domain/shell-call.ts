@@ -226,6 +226,7 @@ const OPTIONS_WITH_VALUE = [
   "--blocked-by",
   "--session",
   "--host",
+  "--fingerprint",
   "--description",
   "--language",
   "--prompt",

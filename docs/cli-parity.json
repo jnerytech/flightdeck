@@ -411,8 +411,12 @@
   "ssh.hostkey.check": {
     "cli": "ssh"
   },
-  "ssh.hostkey.confirm": {},
-  "ssh.hostkey.forget": {},
+  "ssh.hostkey.confirm": {
+    "cli": "ssh"
+  },
+  "ssh.hostkey.forget": {
+    "cli": "ssh"
+  },
   "ssh.import.apply": {},
   "ssh.import.preview": {
     "cli": "ssh"

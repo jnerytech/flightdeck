@@ -16,7 +16,7 @@ import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
-import { readSsh } from "./ssh-args.ts";
+import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
@@ -585,6 +585,7 @@ const HANDLERS: Record<string, Handler> = {
   }),
   ...BUDGET_FLAGS,
   ...PLUGINS_FLAGS,
+  ...SSH_FLAGS,
   ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
@@ -776,6 +777,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     historyProblem(args) ??
     vaultProblem(args) ??
     pluginsProblem(args) ??
+    sshProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
