@@ -56,6 +56,8 @@ export interface CliArgs {
   text?: string;
   /** `message idle|read <session>`, with `--last N` for read; `requests --session`. */
   session?: string;
+  /** `send <session> <text>`: the session that gets the text, its name or its id. */
+  sendTo?: string;
   /** `approve|deny <request>`: the id of the permission request. */
   requestId?: string;
   /** `approve|deny --message`: what the answer tells Claude. */
@@ -233,11 +235,22 @@ const setValue =
     set(args, value());
   };
 
-const setFlag =
-  (set: (args: CliArgs) => void): Handler =>
-  (args) => {
+/** A flag that takes no value: `--hold=false` is an error, never a `--hold` (#3425). */
+const FLAGS = new WeakSet<Handler>();
+const setFlag = (set: (args: CliArgs) => void): Handler => {
+  const handler: Handler = (args) => {
     set(args);
   };
+  FLAGS.add(handler);
+  return handler;
+};
+
+/** The command word is the first one: a second would replace it and keep the first one's operands. */
+function startCommand(args: CliArgs, command: CliArgs["command"]): void {
+  if (args.command !== "start")
+    throw new Error(`one command at a time: ${args.command}, then ${command}\n${USAGE}`);
+  args.command = command;
+}
 
 /** `action list|run <name>`, `snippet list|get <name>`: the second word may take a name. */
 const withNamedAction =
@@ -338,18 +351,20 @@ const HANDLERS: Record<string, Handler> = {
   },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
-  requests: setCommand("requests"),
+  requests: (args) => {
+    startCommand(args, "requests");
+  },
   send: (args, reader) => {
-    args.command = "send";
-    args.session = operand(reader, "the session");
+    startCommand(args, "send");
+    args.sendTo = operand(reader, "the session");
     args.text = operand(reader, "the text");
   },
   approve: (args, reader) => {
-    args.command = "approve";
+    startCommand(args, "approve");
     args.requestId = operand(reader, "the request");
   },
   deny: (args, reader) => {
-    args.command = "deny";
+    startCommand(args, "deny");
     args.requestId = operand(reader, "the request");
   },
   "--message": setValue((args, v) => {
@@ -435,7 +450,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
   const reader = new ArgReader(argv);
   for (let arg = reader.current(); arg !== undefined; reader.advance(), arg = reader.current()) {
-    const [flag = "", inline] = arg.startsWith("--") ? arg.split("=", 2) : [arg, undefined];
+    const cut = arg.startsWith("--") ? arg.indexOf("=") : -1;
+    const flag = cut < 0 ? arg : arg.slice(0, cut);
+    const inline = cut < 0 ? undefined : arg.slice(cut + 1);
     const value = () => {
       const v = inline ?? reader.next();
       if (v === undefined || v.startsWith("--")) throw new Error(`${flag} needs a value\n${USAGE}`);
@@ -443,6 +460,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     };
     const handler = Object.hasOwn(HANDLERS, flag) ? HANDLERS[flag] : undefined;
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
+    if (inline !== undefined && FLAGS.has(handler))
+      throw new Error(`${flag} needs no value\n${USAGE}`);
     handler(args, reader, value);
   }
   if (
@@ -456,7 +475,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (args.answerMessage !== undefined && !["approve", "deny"].includes(args.command))
     throw new Error(`--message: this flag only applies to flightdeckd approve and deny\n${USAGE}`);
-  if (!["requests", "message", "send"].includes(args.command) && args.session !== undefined)
+  if (args.command !== "requests" && args.session !== undefined)
     throw new Error(`--session: this flag only applies to flightdeckd requests\n${USAGE}`);
   if (args.command !== "card" && (args.description !== undefined || args.workflow !== undefined))
     throw new Error(

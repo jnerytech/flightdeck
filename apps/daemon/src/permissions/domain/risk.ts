@@ -174,6 +174,20 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
   return { sub: args[i] ?? "", rest: args.slice(i + 1) };
 }
 
+/**
+ * The subcommand of `fd` or `flightdeckd`, past its options (`--config <file>`, `--json`). The people's
+ * answer to a permission request is theirs: a session that runs `fd approve --hold` from its own shell
+ * would answer for them, so those two are high risk (#3425).
+ */
+function flightdeckVerb(args: string[]): string {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i] as string;
+    if (arg === "--config") i++;
+    else if (!arg.startsWith("-")) return arg;
+  }
+  return "";
+}
+
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
@@ -200,6 +214,11 @@ const DANGEROUS: Array<{
     when: (prog, args) =>
       ["remove-item", "ri"].includes(prog) && args.some((a) => /^-r(ec\w*)?$/i.test(a)),
     reason: () => "Remove-Item -Recurse",
+  },
+  {
+    when: (prog, args) =>
+      ["fd", "flightdeckd"].includes(prog) && ["approve", "deny"].includes(flightdeckVerb(args)),
+    reason: () => "answers a permission request (flightdeckd approve or deny)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

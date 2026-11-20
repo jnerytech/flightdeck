@@ -259,7 +259,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       deps,
       await runSendCli(
         {
-          session: args.session ?? "",
+          session: args.sendTo ?? "",
           text: args.text ?? "",
           ...(args.json ? { json: true } : {}),
         },

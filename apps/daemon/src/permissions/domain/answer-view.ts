@@ -37,6 +37,6 @@ export function refusalLine(
   if (refusal.reason === "permission_request_closed")
     return `no such request: ${answer.request} (it is answered already, or it never was open): list the open ones with flightdeckd requests`;
   if (refusal.reason === "hold_required")
-    return `${refusal.detail}. Add --hold only if you mean to allow it: it is your own assertion, the daemon does not check it`;
+    return `${refusal.detail}. A high-risk request is for the person to allow: ask them. --hold is only for a person who read the request and means to allow it, and the daemon does not check it`;
   return null;
 }
