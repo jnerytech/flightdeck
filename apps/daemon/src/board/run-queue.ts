@@ -117,6 +117,8 @@ export class RunQueue {
               recording instanceof Error ? recording.message : String(recording)
             }`,
           );
+          // failRun frees the slot last: a throw before it must not keep the slot taken.
+          this.release(next.card_id);
         }
       });
     }
