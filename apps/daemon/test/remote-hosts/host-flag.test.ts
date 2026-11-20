@@ -65,7 +65,7 @@ describe("--host on the command line (#3429)", () => {
       ["card", "list", "--host", "server"],
     ])
       expect(() => parseArgs(argv)).toThrow(
-        "--host: this flag only applies to flightdeckd host, sessions, requests, send, approve and deny",
+        "--host: this flag only applies to flightdeckd host, sessions, requests, send, approve, deny and vault",
       );
     expect(() => parseArgs(["host", "--host"])).toThrow("--host needs a value");
   });
