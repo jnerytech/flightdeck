@@ -14,6 +14,48 @@ export const FEATURE_APPROVAL_WATCH = "approval-watch";
 /** The host checks a signed proof of the person's device before it approves a prod or high-risk secret use (#3452). */
 export const FEATURE_APPROVAL_VAULT = "approval-vault";
 
+/** The host checks a signed proof of the person's device before a command that moves code or trust (#3453). */
+export const FEATURE_APPROVAL_COMMAND = "approval-command";
+
+/** The commands whose payload an enrolled device signs (#3453); one list for the host and the app. */
+export const PROOF_COMMANDS = ["card.pr.merge", "project.trust.set", "autoapprove.resume"] as const;
+export type ProofCommand = (typeof PROOF_COMMANDS)[number];
+
+/**
+ * Whether `command` with this payload needs a device's proof when a key is enrolled. Fails closed:
+ * a trust set is open only for `trusted: false`, which lowers trust; a missing or odd value is gated.
+ */
+export function commandNeedsProof(command: string, payload: unknown): boolean {
+  if (!(PROOF_COMMANDS as readonly string[]).includes(command)) return false;
+  if (command !== "project.trust.set") return true;
+  const trusted = (payload as { trusted?: unknown } | null | undefined)?.trusted;
+  return trusted !== false;
+}
+
+/** The text a device hashes for a command: the payload without its `proof`, as canonical JSON. */
+export function commandDigest(payload: Record<string, unknown>): string {
+  const { proof: _proof, ...bound } = payload;
+  return canonicalJson(bound);
+}
+
+/** What an enrolled device signs to run `command` with the payload whose digest hashes to `payloadHash`. */
+export function commandMessage(parts: {
+  keyId: string;
+  daemonId: string;
+  command: string;
+  nonce: string;
+  payloadHash: string;
+}): string {
+  return canonicalJson([
+    "flightdeck/command/v1",
+    parts.keyId,
+    parts.daemonId,
+    parts.command,
+    parts.nonce,
+    parts.payloadHash,
+  ]);
+}
+
 /**
  * RFC 8785 canonical JSON: no spaces, object keys in UTF-16 code unit order (never a locale's), numbers and
  * strings as `JSON.stringify` writes them. A key whose value is `undefined` is left out; a number that is
@@ -182,6 +224,7 @@ export const approvalCommands = [
       z.object({ purpose: z.literal("approve"), requestId: z.string().min(1) }).strict(),
       z.object({ purpose: z.literal("enroll") }).strict(),
       z.object({ purpose: z.literal("revoke") }).strict(),
+      z.object({ purpose: z.literal("command"), command: z.enum(PROOF_COMMANDS) }).strict(),
     ]),
   ),
   /**

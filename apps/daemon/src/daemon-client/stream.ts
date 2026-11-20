@@ -9,19 +9,29 @@ import type { CliResult } from "./cli-view.ts";
 import { plain } from "./cli-view.ts";
 import type { DaemonClient } from "./client.ts";
 
-export async function streamFrames<T extends ServerMessage["type"]>(opts: {
-  daemon: DaemonClient;
-  flow: { started(): void; hide(text: string): string };
-  signal: AbortSignal;
-  write: (line: string) => void;
-  /** The request that opens the stream: it resolves when the daemon acks it. */
-  open: () => Promise<unknown>;
-  /** The frame type, or the types, this stream prints (an `approval.watch` pushes two). */
-  type: T | readonly T[];
-  /** The line a frame prints. */
-  line: (frame: Extract<ServerMessage, { type: T }>) => string;
-}): Promise<CliResult> {
-  const { daemon, flow, signal, write } = opts;
+/** What a command that streams takes from its caller; a stream with no stop and no sink runs until the daemon goes away. */
+export interface StreamOptions {
+  /** The stream stops when this aborts (Ctrl-C). */
+  signal?: AbortSignal;
+  /** Each line is written here as it comes. */
+  write?: (line: string) => void;
+}
+
+export async function streamFrames<T extends ServerMessage["type"]>(
+  opts: StreamOptions & {
+    daemon: DaemonClient;
+    flow: { started(): void; hide(text: string): string };
+    /** The request that opens the stream: it resolves when the daemon acks it. */
+    open: () => Promise<unknown>;
+    /** The frame type, or the types, this stream prints (an `approval.watch` pushes two). */
+    type: T | readonly T[];
+    /** The line a frame prints. */
+    line: (frame: Extract<ServerMessage, { type: T }>) => string;
+  },
+): Promise<CliResult> {
+  const { daemon, flow } = opts;
+  const signal = opts.signal ?? new AbortController().signal;
+  const write = opts.write ?? (() => undefined);
   const stopped = new Promise<void>((resolve) => {
     if (signal.aborted) resolve();
     signal.addEventListener("abort", () => resolve(), { once: true });

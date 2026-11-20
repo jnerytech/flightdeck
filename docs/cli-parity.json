@@ -68,7 +68,7 @@
   "budget.remove": { "cli": "budget" },
   "budget.set": { "cli": "budget" },
   "budget.setQuota": { "cli": "budget" },
-  "budget.watch": {},
+  "budget.watch": { "cli": "budget" },
   "card.arena": {
     "cli": "card"
   },
@@ -114,6 +114,9 @@
   "card.pr.create": {
     "cli": "card"
   },
+  "card.pr.head": {
+    "appOnly": "the app reads the head commit it then signs for a merge, which a terminal cannot sign (#3453)"
+  },
   "card.pr.merge": {
     "appOnly": "merging a pull request takes the person's proof, which a terminal cannot give (#3453)"
   },
@@ -153,7 +156,7 @@
   "changes.watch": {},
   "costs.card": { "cli": "costs" },
   "costs.export": { "cli": "costs" },
-  "costs.reprice": {},
+  "costs.reprice": { "cli": "costs" },
   "costs.run": { "cli": "costs" },
   "costs.session": { "cli": "costs" },
   "costs.sessions": {},
@@ -308,7 +311,7 @@
   "quota.get": { "cli": "quota" },
   "quota.history": { "cli": "quota" },
   "quota.setPauseAt": { "cli": "quota" },
-  "quota.watch": {},
+  "quota.watch": { "cli": "quota" },
   "releases.list": {},
   "resources.endOrphan": {},
   "resources.get": {},

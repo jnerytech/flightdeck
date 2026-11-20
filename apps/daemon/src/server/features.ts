@@ -3,6 +3,7 @@
  * its own, so the server context reads them without importing the `host.info` handler.
  */
 import {
+  FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_VAULT,
   FEATURE_APPROVAL_WATCH,
@@ -26,6 +27,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.approvers, FEATURE_APPROVAL_WATCH),
     // #3452: a prod or high-risk secret use is approved with the signed proof of an enrolled device.
     ...when(opts.approvers && opts.actions, FEATURE_APPROVAL_VAULT),
+    // #3453: a merge (and later a trust set and an approver resume) takes the proof of an enrolled device.
+    ...when(opts.approvers, FEATURE_APPROVAL_COMMAND),
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.

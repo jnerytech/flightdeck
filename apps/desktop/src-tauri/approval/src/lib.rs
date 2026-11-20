@@ -18,6 +18,15 @@ pub enum Kind {
     Revoke,
     /// The use of a secret of a prod or high-risk request (#3452).
     VaultApprove,
+    /// A command that moves code or trust, with the payload the dialog reads (#3453).
+    Command,
+}
+
+/// What a signed command does, read from its payload (never from text the webview sent).
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum CommandAsk {
+    /// `card.pr.merge`: this pull request, at this head commit, by this method.
+    PrMerge { url: String, head: String, method: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -29,6 +38,8 @@ pub struct Ask {
     pub subject: String,
     /// What an allow carries besides the allow itself; the hashes say it, the dialog must too.
     pub also: Also,
+    /// For a signed command: what its payload says, read here (#3453).
+    pub command: Option<CommandAsk>,
 }
 
 /// What a signed allow also does: saves permission rules, rewrites the tool's input, adds a message.
@@ -55,9 +66,12 @@ const TAG_ENROLL_FIRST: &str = "flightdeck/enroll-first/v1";
 const TAG_ENROLL_ADD: &str = "flightdeck/enroll-add/v1";
 const TAG_REVOKE: &str = "flightdeck/revoke/v1";
 const TAG_VAULT_APPROVE: &str = "flightdeck/vault-approve/v1";
+const TAG_COMMAND: &str = "flightdeck/command/v1";
 
 /// The longest text the protocol builds is about 600 bytes; anything past this is not one of them.
 const MAX_TEXT: usize = 2048;
+/// The payload a command signs is a few short fields; anything past this is not one of them.
+const MAX_PAYLOAD: usize = 1024;
 
 fn sha256_hex(text: &str) -> String {
     Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
@@ -107,6 +121,11 @@ pub fn sign(secret: &str, message: &str) -> Result<String, String> {
 /// another host (`daemon_id`), a message made for another key, or an enrollment of another key
 /// than this one. The text is the canonical JSON array of strings the protocol builds.
 pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask, String> {
+    describe_with(message, daemon_id, own, None)
+}
+
+/// `describe` for a text that hashes a payload (a command, #3453): `payload` is the text the hash is of.
+pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: Option<&str>) -> Result<Ask, String> {
     if message.len() > MAX_TEXT {
         return Err("the text to sign is too long".into());
     }
@@ -126,6 +145,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
         }
     };
     let part = |i: usize| parts.get(i).map(String::as_str).unwrap_or_default();
+    let mut command = None;
     let (kind, host, key, subject) = match part(0) {
         TAG_APPROVAL => {
             shape(9)?;
@@ -160,6 +180,16 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             }
             (Kind::VaultApprove, part(2), Some(part(1)), part(3))
         }
+        TAG_COMMAND => {
+            shape(6)?;
+            // The text carries a hash; the dialog is built from the payload whose hash it is, never from the text.
+            let (ask, canonical) = read_command(part(3), payload.ok_or("a command is signed with its payload")?)?;
+            if sha256_hex(&canonical) != part(5) {
+                return Err("the payload is not the one the text hashes".into());
+            }
+            command = Some(ask);
+            (Kind::Command, part(2), Some(part(1)), part(3))
+        }
         _ => return Err("this text is not one this key signs".into()),
     };
     if host != daemon_id {
@@ -174,7 +204,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             && text.len() <= 64
             && text.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
     };
-    if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove) && !plain(subject) {
+    if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove | Kind::Command) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
     }
     if kind == Kind::EnrollAdd && !plain(host) {
@@ -187,7 +217,73 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     } else {
         Also { session: kind == Kind::VaultApprove && part(5) == "session", ..Also::default() }
     };
-    Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also })
+    Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also, command })
+}
+
+/// Reads the payload of `command` and gives what the dialog says plus the payload in canonical form (keys
+/// sorted, no spaces: the text the protocol hashes, written here by hand so no crate feature changes it).
+/// Each command names its fields: one more, one less or one that is not plain is refused, so a field the
+/// dialog does not show can never be signed.
+fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), String> {
+    if payload.len() > MAX_PAYLOAD {
+        return Err("the payload to sign is too long".into());
+    }
+    let value: serde_json::Value =
+        serde_json::from_str(payload).map_err(|_| "the payload to sign is not JSON".to_string())?;
+    let fields = value.as_object().ok_or("the payload to sign is not an object")?;
+    match name {
+        "card.pr.merge" => {
+            if fields.len() != 5 {
+                return Err("the merge payload has the wrong fields".into());
+            }
+            let text = |key: &str| {
+                fields
+                    .get(key)
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| format!("the merge payload has no text for {key}"))
+            };
+            let (card, url, head, method) = (text("cardId")?, text("prUrl")?, text("headSha")?, text("method")?);
+            if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+                return Err("a merge is signed only once it is confirmed".into());
+            }
+            let id = !card.is_empty()
+                && card.len() <= 64
+                && card.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+            // The address of a pull request's page, plain: https://<host>/<owner>/<repo>/pull/<number>, with no
+            // userinfo, port, query or fragment, so the host the dialog shows is the one that is meant.
+            let address = url.len() <= 200 && is_pull_request_address(url);
+            let commit = matches!(head.len(), 40 | 64) && head.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f'));
+            if !id || !address || !commit || !matches!(method, "merge" | "squash") {
+                return Err("the merge payload names something that is not a card, an address, a commit or a method".into());
+            }
+            let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+            let canonical = format!(
+                "{{\"cardId\":{},\"confirm\":true,\"headSha\":{},\"method\":{},\"prUrl\":{}}}",
+                quoted(card),
+                quoted(head),
+                quoted(method),
+                quoted(url)
+            );
+            Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
+        }
+        _ => Err("this command is not one this key signs".into()),
+    }
+}
+
+/// `https://<host>/<owner>/<repo>/pull/<number>` in the characters of a path: nothing that can pad a line or
+/// hide the real host (`@`, `:`, `?`, `#`).
+fn is_pull_request_address(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("https://") else { return false };
+    let parts: Vec<&str> = rest.split('/').collect();
+    let plain = |part: &str, extra: &str| {
+        !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
+    };
+    matches!(parts.as_slice(), [host, owner, repo, "pull", number]
+        if plain(host, "-.")
+            && plain(owner, "-._")
+            && plain(repo, "-._")
+            && number.chars().all(|c| c.is_ascii_digit())
+            && !number.is_empty())
 }
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
@@ -266,6 +362,17 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             ask.subject,
             if ask.also.session { "durante toda a sessão" } else { "uma vez" }
         ),
+        (Kind::Command, _) => match &ask.command {
+            Some(CommandAsk::PrMerge { url, head, method }) if pt => format!(
+                "Mesclar o pull request {url} no commit {} pelo método {method}? Continue só se você acabou de apertar Mesclar no Flightdeck.",
+                short(head)
+            ),
+            Some(CommandAsk::PrMerge { url, head, method }) => format!(
+                "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
+                short(head)
+            ),
+            None => String::new(),
+        },
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
     (title.to_string(), body)
@@ -277,6 +384,8 @@ pub fn confirm_labels(kind: Kind, lang: &str) -> (String, String) {
     let (yes, no) = match (kind, lang == "pt-BR") {
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
+        (Kind::Command, false) => ("Merge", "Cancel"),
+        (Kind::Command, true) => ("Mesclar", "Cancelar"),
         (_, false) => ("Allow", "Cancel"),
         (_, true) => ("Permitir", "Cancelar"),
     };
@@ -357,7 +466,7 @@ mod tests {
         );
         assert_eq!(
             describe(&m, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: also_all() }
+            Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: also_all(), command: None }
         );
     }
 
@@ -382,7 +491,7 @@ mod tests {
         );
         assert_eq!(
             describe(&rv, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "abc123".into(), also: Also::default() }
+            Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "abc123".into(), also: Also::default(), command: None }
         );
     }
 
@@ -415,13 +524,13 @@ mod tests {
 
     #[test]
     fn the_confirmation_names_the_action_and_its_subject_in_both_languages() {
-        let approve = Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: Also::default() };
+        let approve = Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: Also::default(), command: None };
         let (title, body) = confirm_text(&approve, "en");
         assert!(title.contains("Flightdeck"));
         assert!(body.contains("ext-7") && body.contains("just pressed"));
         let (_, body_pt) = confirm_text(&approve, "pt-BR");
         assert!(body_pt.contains("ext-7") && body_pt.contains("acabou de apertar"));
-        let revoke = Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "0123456789abcdef".into(), also: Also::default() };
+        let revoke = Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "0123456789abcdef".into(), also: Also::default(), command: None };
         assert!(confirm_text(&revoke, "en").1.contains("01234567"));
         assert!(!confirm_text(&revoke, "en").1.contains("0123456789abcdef"));
     }
@@ -429,7 +538,7 @@ mod tests {
     #[test]
     fn an_enrollment_shows_the_fingerprint_of_the_key_not_its_text() {
         let info = public_info(&generate()).unwrap();
-        let first = Ask { kind: Kind::EnrollFirst, host: DAEMON.into(), subject: info.public_key.clone(), also: Also::default() };
+        let first = Ask { kind: Kind::EnrollFirst, host: DAEMON.into(), subject: info.public_key.clone(), also: Also::default(), command: None };
         let body = confirm_text(&first, "en").1;
         assert!(body.contains(&info.key_id[..8]));
         assert!(!body.contains(&info.public_key));
@@ -573,7 +682,7 @@ mod tests {
         let me = own();
         assert_eq!(
             describe(&vault(&me, DAEMON, "act-7", "once"), DAEMON, &me),
-            Ok(Ask { kind: Kind::VaultApprove, host: DAEMON.into(), subject: "act-7".into(), also: Also::default() })
+            Ok(Ask { kind: Kind::VaultApprove, host: DAEMON.into(), subject: "act-7".into(), also: Also::default(), command: None })
         );
         let session = describe(&vault(&me, DAEMON, "act-7", "session"), DAEMON, &me).unwrap();
         assert!(session.kind == Kind::VaultApprove && session.also.session);
@@ -608,5 +717,117 @@ mod tests {
         let (_, pt) = confirm_text(&session, "pt-BR");
         assert!(pt.contains("segredo") && pt.contains("act-7") && pt.contains("sessão"), "{pt}");
         assert_eq!(confirm_labels(Kind::VaultApprove, "en").0, "Allow");
+    }
+
+    /// The payload a merge signs, in canonical form, and the hash both sides share (the protocol test asserts the same two literals).
+    const MERGE_PAYLOAD: &str = "{\"cardId\":\"c1\",\"confirm\":true,\"headSha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"method\":\"squash\",\"prUrl\":\"https://github.com/acme/repo/pull/9\"}";
+    const MERGE_HASH: &str = "ab4ff38dd49488370b26c6082bcce7b9c06e7126faaf113cc562ef156d7c1e8e";
+
+    /// A command text (#3453): tag, key id, host, command, nonce, hash of the payload.
+    fn command(me: &PublicInfo, host: &str, name: &str, payload: &str) -> String {
+        serde_json::to_string(&["flightdeck/command/v1", &me.key_id, host, name, "n", &sha256_hex(payload)]).unwrap()
+    }
+
+    fn merge_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "card.pr.merge".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::PrMerge {
+                url: "https://github.com/acme/repo/pull/9".into(),
+                head: "a".repeat(40),
+                method: "squash".into(),
+            }),
+        }
+    }
+
+    #[test]
+    fn the_shared_vector_hashes_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(MERGE_PAYLOAD), MERGE_HASH);
+    }
+
+    #[test]
+    fn a_merge_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "card.pr.merge", MERGE_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(MERGE_PAYLOAD)), Ok(merge_ask()));
+    }
+
+    #[test]
+    fn a_merge_payload_in_another_key_order_is_read_in_canonical_order_and_still_matches() {
+        let me = own();
+        let shuffled = "{\"prUrl\":\"https://github.com/acme/repo/pull/9\",\"method\":\"squash\",\"headSha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"confirm\":true,\"cardId\":\"c1\"}";
+        let text = command(&me, DAEMON, "card.pr.merge", MERGE_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(merge_ask()));
+    }
+
+    #[test]
+    fn a_command_whose_payload_is_not_the_one_hashed_is_not_signed() {
+        let me = own();
+        let text = command(&me, DAEMON, "card.pr.merge", MERGE_PAYLOAD);
+        let moved = MERGE_PAYLOAD.replace(&"a".repeat(40), &"b".repeat(40));
+        assert!(describe_with(&text, DAEMON, &me, Some(&moved)).is_err());
+        assert!(describe_with(&text, DAEMON, &me, None).is_err());
+        assert!(describe(&text, DAEMON, &me).is_err());
+    }
+
+    #[test]
+    fn a_merge_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let good = |change: &dyn Fn(&str) -> String| {
+            let payload = change(MERGE_PAYLOAD);
+            describe_with(&command(&me, DAEMON, "card.pr.merge", &payload), DAEMON, &me, Some(&payload))
+        };
+        assert!(good(&|p| p.to_string()).is_ok());
+        let changes: Vec<Box<dyn Fn(&str) -> String>> = vec![
+            // A field the dialog does not say, a field gone, a method it does not know, no confirm.
+            Box::new(|p| p.replace("{", "{\"deleteBranch\":true,")),
+            Box::new(|p| p.replace("\"cardId\":\"c1\",", "")),
+            Box::new(|p| p.replace("squash", "rebase")),
+            Box::new(|p| p.replace("true", "false")),
+            // A head that is not a commit hash, an address that is not plain, a card id that is not an id.
+            Box::new(|p| p.replace(&"a".repeat(40), "--delete-branch")),
+            Box::new(|p| p.replace("pull/9", "pull/9 \\n Allow everything")),
+            Box::new(|p| p.replace("https://github.com", "javascript:alert(1)//")),
+            // An address whose real host is not the one it reads as, or that is not a pull request's page.
+            Box::new(|p| p.replace("https://github.com", "https://github.com:x@evil.example")),
+            Box::new(|p| p.replace("pull/9", "pull/9?x=1")),
+            Box::new(|p| p.replace("pull/9", "pull/9#top")),
+            Box::new(|p| p.replace("pull/9", "issues/9")),
+            Box::new(|p| p.replace("\"c1\"", "\"c1\\nAllow\"")),
+            Box::new(|p| format!("{}{}", &p[..p.len() - 1], ",\"proof\":{}}")),
+            Box::new(|p| format!("[{p}]")),
+        ];
+        for change in changes {
+            assert!(good(&*change).is_err(), "signed: {}", change(MERGE_PAYLOAD));
+        }
+    }
+
+    #[test]
+    fn a_command_for_another_host_key_or_a_command_it_does_not_know_is_not_signed() {
+        let me = own();
+        let other = own();
+        for text in [
+            command(&me, "another-host", "card.pr.merge", MERGE_PAYLOAD),
+            command(&other, DAEMON, "card.pr.merge", MERGE_PAYLOAD),
+            command(&me, DAEMON, "session.start", MERGE_PAYLOAD),
+        ] {
+            assert!(describe_with(&text, DAEMON, &me, Some(MERGE_PAYLOAD)).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn the_dialog_of_a_merge_names_the_pull_request_the_commit_and_the_method() {
+        let (_, en) = confirm_text(&merge_ask(), "en");
+        assert!(
+            en.contains("https://github.com/acme/repo/pull/9") && en.contains("aaaaaaaa") && en.contains("squash"),
+            "{en}"
+        );
+        assert!(!en.contains(&"a".repeat(40)), "the head is shown short: {en}");
+        let (_, pt) = confirm_text(&merge_ask(), "pt-BR");
+        assert!(pt.contains("pull/9") && pt.contains("squash") && pt.contains("Flightdeck"), "{pt}");
+        assert_eq!(confirm_labels(Kind::Command, "en").0, "Merge");
+        assert_eq!(confirm_labels(Kind::Command, "pt-BR").0, "Mesclar");
     }
 }

@@ -304,7 +304,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "budget";
     const action = subAction(
       reader,
-      ["list", "set", "set-quota", "remove"],
+      ["list", "set", "set-quota", "remove", "watch"],
       "invalid budget action",
     );
     args.action = action;
@@ -320,7 +320,8 @@ const HANDLERS: Record<string, Handler> = {
   },
   quota: (args, reader) => {
     args.command = "quota";
-    const action = subAction(reader, ["get", "history", "pause-at"], "invalid quota action");
+    const verbs = ["get", "history", "pause-at", "watch"] as const;
+    const action = subAction(reader, verbs, "invalid quota action");
     args.action = action;
     if (action === "history") args.quotaWindow = operand(reader, "the window");
     if (action === "pause-at") {
@@ -333,11 +334,8 @@ const HANDLERS: Record<string, Handler> = {
   usage: setCommand("usage"),
   costs: (args, reader) => {
     args.command = "costs";
-    const action = subAction(
-      reader,
-      ["summary", "session", "card", "run", "status", "export"],
-      "invalid costs action",
-    );
+    const verbs = ["summary", "session", "card", "run", "status", "export", "reprice"] as const;
+    const action = subAction(reader, verbs, "invalid costs action");
     args.action = action;
     if (action === "session") args.costsId = operand(reader, "the session");
     if (action === "card") args.costsId = operand(reader, "the card");
@@ -657,6 +655,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     };
     const handler = Object.hasOwn(HANDLERS, flag) ? HANDLERS[flag] : undefined;
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
+    // A second command word would re-target the parse, past the risk rating of the first (`fd` has its own refusal).
+    if (!flag.startsWith("--") && flag !== "fd" && args.command !== "start")
+      throw new Error(`one command at a time: ${args.command}, then ${flag}\n${USAGE}`);
     if (inline !== undefined && FLAGS.has(handler))
       throw new Error(`${flag} needs no value\n${USAGE}`);
     handler(args, reader, value);
@@ -749,12 +750,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
-    // `rules remove` and `autoapprove resume` confirm too; `rulesProblem` checks them below.
-    if (flag === "--confirm" && ["rules", "autoapprove"].includes(args.command)) continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `team new`'s, which checks its own flags below.
-    if (flag === "--confirm" && args.command === "team") continue;
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s and `costs reprice`'s, which check their own flags below.
+    if (flag === "--confirm" && ["rules", "autoapprove", "team", "costs"].includes(args.command))
+      continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))

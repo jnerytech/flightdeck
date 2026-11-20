@@ -29,7 +29,7 @@ be lowered.
 ## Approving devices
 
 A host can also ask for the **signed proof of one of your devices** before a high-risk request is
-approved, and before any approval that saves a rule ("always allow"). It is off until you enroll a device:
+approved, before any approval that saves a rule ("always allow") and before a pull request is merged from a card. It is off until you enroll a device:
 until then the hold of the Approve button is the only check, as before.
 
 - **Enroll.** Open the host's page and find **Approving devices**. On the host's terminal run
@@ -60,6 +60,11 @@ until then the hold of the Approve button is the only check, as before.
   host's page open the notice is shown there, with **Dismiss**; otherwise it is a toast. A terminal can
   see the same changes: `flightdeckd approvers watch --follow` prints a line each time. Hosts older than
   this announcement are only read when you open the page.
+- **Merging a pull request.** With a device enrolled, **Merge PR** on a card asks you once more in a window
+  of the system. The window names the pull request and the short head commit you are merging, and the way
+  (merge commit or squash). Cancel it and nothing is sent. If someone pushes to the pull request after the
+  app read it, the host refuses the merge and says the pull request changed: look at it again. A host that
+  does not yet ask for the device on a merge shows a notice on its page: update it.
 - **A warning.** If protection was on and the host now lists no device, the panel says so. If you did not
   reset it at the host, someone with access to it did.
 - **What it does not cover.** It guards approvals made from the app. Anyone with a terminal on the host

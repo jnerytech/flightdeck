@@ -108,6 +108,7 @@ export interface CliArgs {
     | "run"
     | "status"
     | "export"
+    | "reprice"
     | "dismiss-unblocked"
     | "search"
     | "tool"

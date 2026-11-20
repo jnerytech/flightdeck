@@ -34,14 +34,32 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
   const url = card.prUrl ?? "";
   const radar = radarMergeLine(card, t);
 
+  /**
+   * The merge as the host wants it: bound to the head the person sees and, with a device enrolled,
+   * signed (#3453). A payload that cannot be made is a refusal said in place with its own text;
+   * "declined" is a no in the system's dialog, which sends nothing.
+   */
+  const sendMerge = async () => {
+    try {
+      const made = await store.approval.mergePayload(hostId, card.id, method);
+      if (made.kind === "declined") return "declined" as const;
+      return await store.hostRequest(hostId, "card.pr.merge", made.payload);
+    } catch (error) {
+      return { failed: error instanceof Error ? error.message : String(error) };
+    }
+  };
+
   const merge = async () => {
     props.onOpenChange(false);
     setRefused(null);
     setMerged(false);
     setBusy(true);
-    const result = await store
-      .hostRequest(hostId, "card.pr.merge", { cardId: card.id, method, confirm: true })
-      .finally(() => setBusy(false));
+    const result = await sendMerge().finally(() => setBusy(false));
+    if (result === "declined") return;
+    if ("failed" in result) {
+      setRefused({ text: result.failed, url: url || null });
+      return;
+    }
     if (!result.ok) {
       setRefused({
         text: refusalText(result.code, result.message, t, result),

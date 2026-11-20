@@ -6,8 +6,10 @@ import {
   type ApprovalKeyInfo,
   type ApprovalRevoked,
   type CommandPayload,
+  commandNeedsProof,
   enrollAddMessage,
   enrollFirstMessage,
+  type ProofCommand,
   revokeMessage,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
@@ -146,6 +148,19 @@ export class Approvers {
   ): { nonce: string; daemonId: string; expiresInMs: number } {
     const nonce = this.nonces.issue(purpose, requestId, connection);
     return { nonce, daemonId: this.daemonId(), expiresInMs: NONCE_TTL_MS };
+  }
+
+  /**
+   * The guard of a command that moves code or trust (#3453). With no device enrolled, or for a payload that
+   * lowers trust, it is as before; with one, the payload must carry the signed proof of an enrolled device.
+   */
+  requireCommandProof(
+    command: ProofCommand,
+    payload: Record<string, unknown>,
+    mustCarry: readonly string[] = [],
+  ): void {
+    if (!this.gate.enrolled() || !commandNeedsProof(command, payload)) return;
+    this.gate.checkCommand(command, payload, mustCarry);
   }
 
   enroll(

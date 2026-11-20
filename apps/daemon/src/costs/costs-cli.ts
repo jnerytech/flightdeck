@@ -9,6 +9,7 @@ import {
   sessionLines,
   statusLines,
   summaryLines,
+  UNSURE_REPRICE,
   usd,
 } from "./domain/costs-cli-view.ts";
 
@@ -23,7 +24,8 @@ export async function runCostsCli(
     config,
     clientName: "flightdeck-costs",
     timeoutMs: options.timeoutMs ?? 15_000,
-    perform: async (daemon) => {
+    ...(args.action === "reprice" ? { unsure: UNSURE_REPRICE } : {}),
+    perform: async (daemon, note) => {
       const id = args.id ?? "";
       const filter = {
         from: args.from ?? "",
@@ -52,6 +54,15 @@ export async function runCostsCli(
         case "run": {
           const run = await daemon.call("costs.run", { runId: id });
           return args.json ? json(run) : said(`run ${id}: ${usd(run.costUsd)}`);
+        }
+        case "reprice": {
+          note.wrote = true;
+          const repriced = await daemon.call("costs.reprice", {});
+          return args.json
+            ? json(repriced)
+            : said(
+                `repriced ${repriced.entries} ${repriced.entries === 1 ? "entry" : "entries"} with the price table of the config`,
+              );
         }
         default: {
           const status = await daemon.call("costs.status", {});

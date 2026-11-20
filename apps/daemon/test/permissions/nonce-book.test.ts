@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { NONCE_TTL_MS, NonceBook } from "../../src/permissions/domain/nonce-book.ts";
 
-function book(caps = { approve: 4, other: 2 }, perConnection = 3) {
+function book(
+  caps: { approve: number; other: number; command?: number } = { approve: 4, other: 2 },
+  perConnection = 3,
+) {
   const clock = { at: 1_000 };
   let n = 0;
   const nonces = new NonceBook({
@@ -108,5 +111,26 @@ describe("nonce-book: no one connection can take a whole bucket (#3439)", () => 
     for (let i = 0; i < 40; i++) nonces.issue("enroll", undefined, 1);
     expect(busy(() => nonces.issue("enroll", undefined, 2))).toBeUndefined();
     expect(busy(() => nonces.issue("revoke", undefined, 3))).toBeUndefined();
+  });
+});
+
+describe("nonce-book: a command's challenges have a bucket of their own (#3453)", () => {
+  test("Given the enrollment bucket is full, Then a challenge for a command still gets a nonce", () => {
+    const { nonces } = book({ approve: 4, other: 2, command: 4 });
+    nonces.issue("enroll", undefined, 1);
+    nonces.issue("revoke", undefined, 2);
+    expect(busy(() => nonces.issue("enroll", undefined, 3))).toBe("approval_challenge_busy");
+    expect(busy(() => nonces.issue("command", undefined, 3))).toBeUndefined();
+  });
+
+  test("Given the default limits, Then one connection holds sixteen command nonces, twice what it holds of the others", () => {
+    let n = 0;
+    const nonces = new NonceBook({ mono: () => 1_000, random: () => `c${++n}` });
+    for (let i = 1; i <= 60; i++) nonces.issue("command", undefined, 1);
+    // The 45th is the sixteenth from the last: it is live; the 44th was dropped for the quota.
+    expect([nonces.take("c44", "command"), nonces.take("c45", "command")]).toEqual([
+      "unknown",
+      "ok",
+    ]);
   });
 });

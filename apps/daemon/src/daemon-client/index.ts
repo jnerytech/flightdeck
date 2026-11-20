@@ -9,4 +9,4 @@ export { type CliResult, failure, isLoopbackHost, json, said } from "./cli-view.
 export { DaemonClient, DaemonRefusal, daemonUrl } from "./client.ts";
 export { resolveProject } from "./project-ref.ts";
 export { resolveSession } from "./session-ref.ts";
-export { streamFrames } from "./stream.ts";
+export { type StreamOptions, streamFrames } from "./stream.ts";

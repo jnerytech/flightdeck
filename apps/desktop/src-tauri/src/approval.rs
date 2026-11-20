@@ -101,18 +101,21 @@ pub async fn approval_key_delete(daemon_id: String) -> Result<(), String> {
 }
 
 /// Signs `message` with the key of `daemon_id` after the person says yes in a system dialog. Only
-/// a text the protocol builds for this host and this key is signed (`key::describe`).
+/// a text the protocol builds for this host and this key is signed (`key::describe_with`). A command's
+/// text carries only a hash, so the page sends the payload it hashes too (#3453): the dialog is built
+/// from that payload once its hash matches, never from anything else the page says.
 #[tauri::command]
 pub async fn approval_sign(
     app: AppHandle,
     daemon_id: String,
     message: String,
     lang: String,
+    payload: Option<String>,
 ) -> Result<String, String> {
     spawn_blocking_result(move || {
         let secret = stored(&daemon_id)?.ok_or("this device has no key for this host")?;
         let own = key::public_info(&secret)?;
-        let ask = key::describe(&message, &daemon_id, &own)?;
+        let ask = key::describe_with(&message, &daemon_id, &own, payload.as_deref())?;
         let (title, body) = key::confirm_text(&ask, &lang);
         let (yes, no) = key::confirm_labels(ask.kind, &lang);
         let _only_one = Asking::begin()?;
