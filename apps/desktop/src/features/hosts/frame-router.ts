@@ -52,6 +52,10 @@ export function routeFrame(o: HostConnectionOptions, message: ServerMessage): bo
       o.onAccountUpdated?.(state);
       return true;
     }
+    case "approval.enrolled":
+    case "approval.revoked":
+      o.onApproval?.(message);
+      return true;
     case "budget.updated":
       o.onBudgetUpdated?.(message);
       return true;

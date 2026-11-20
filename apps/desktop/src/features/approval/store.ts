@@ -39,6 +39,22 @@ export interface ApprovalHeard {
   own: boolean;
 }
 
+/** The one line a change is told in, on the host's page and in a notice. */
+export function heardText(t: T, heard: ApprovalHeard, host: string): string {
+  if (heard.kind === "enrolled") {
+    return t("approvalDevices.heardEnrolled", { name: heard.name ?? "", host });
+  }
+  return t(heard.own ? "approvalDevices.heardRevokedOwn" : "approvalDevices.heardRevoked", {
+    host,
+  });
+}
+
+/** How loud a change is told: a device nobody here made is an alert. */
+export function heardTone(heard: ApprovalHeard): "error" | "warn" | "info" {
+  if (heard.kind === "enrolled") return "error";
+  return heard.own ? "warn" : "info";
+}
+
 /** What the proof path found: nothing to prove, a proof to send, or the person declined the system's dialog. */
 export type ProofResult =
   | { kind: "none" }
@@ -101,12 +117,52 @@ export class ApprovalSlice {
   constructor(private readonly core: ApprovalCore) {}
 
   /** Calls `listener` with each change a host announces (the host's page shows it); returns the way to stop. */
-  subscribe(_hostId: string, _listener: (heard: ApprovalHeard) => void): () => void {
-    return () => {};
+  subscribe(hostId: string, listener: (heard: ApprovalHeard) => void): () => void {
+    const watchers = this.listeners.get(hostId) ?? new Set();
+    this.listeners.set(hostId, watchers);
+    watchers.add(listener);
+    return () => {
+      watchers.delete(listener);
+      if (watchers.size === 0) this.listeners.delete(hostId);
+    };
   }
 
-  /** A host announced a device enrolled or revoked: tell the page that watches it, or raise a notice. */
-  async onChange(_hostId: string, _change: ApprovalEnrolled | ApprovalRevoked): Promise<void> {}
+  /**
+   * A host announced a device enrolled or revoked (#3477). This device's own enrollment, and a revoke
+   * this app is making, are the person's own doing and stay quiet. The rest goes to the page that
+   * watches the host, or, with none open, to a notice: an alert for a device nobody here made or for
+   * this device's own key revoked, a quiet one for another device's.
+   */
+  async onChange(hostId: string, change: ApprovalEnrolled | ApprovalRevoked): Promise<void> {
+    const host = this.core.host(hostId);
+    const own = (await this.localKeyId(host?.daemonId)) === change.keyId;
+    let heard: ApprovalHeard;
+    if (change.type === "approval.enrolled") {
+      if (own) return;
+      heard = { kind: "enrolled", name: change.name, own: false };
+    } else {
+      if (this.revoking.has(change.keyId)) return;
+      heard = { kind: "revoked", own };
+    }
+    const watchers = this.listeners.get(hostId);
+    if (watchers?.size) {
+      for (const listener of [...watchers]) listener(heard);
+      return;
+    }
+    const text = heardText(this.core.t(), heard, host?.name ?? hostId);
+    if (heard.kind === "revoked" && !heard.own) this.core.success(text);
+    else this.core.fail(text);
+  }
+
+  private async localKeyId(daemonId: string | undefined): Promise<string | null> {
+    const keys = this.core.keys();
+    if (!keys || !daemonId) return null;
+    try {
+      return (await keys.get(daemonId))?.keyId ?? null;
+    } catch {
+      return null;
+    }
+  }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
   supported(hostId: string): boolean {
@@ -189,12 +245,18 @@ export class ApprovalSlice {
       if (isDecline(error)) return "declined";
       throw error;
     }
-    await this.ask(hostId, "approval.revoke", {
-      targetKeyId,
-      signerKeyId: local.keyId,
-      nonce: challenge.nonce,
-      signature,
-    });
+    // The host announces the revoke before it answers: it is this app's own, so it is not news.
+    this.revoking.add(targetKeyId);
+    try {
+      await this.ask(hostId, "approval.revoke", {
+        targetKeyId,
+        signerKeyId: local.keyId,
+        nonce: challenge.nonce,
+        signature,
+      });
+    } finally {
+      this.revoking.delete(targetKeyId);
+    }
     return "done";
   }
 

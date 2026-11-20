@@ -408,8 +408,11 @@ export function composeLinkHandlers(
         slices().messaging.startPeersSync();
       },
     },
-    // #3477: the host says when a device is enrolled or revoked (stub: not asked yet).
-    { gate: FEATURE_APPROVAL_WATCH, run: () => {} },
+    // #3477: the host says when a device is enrolled or revoked; asked again at every connect.
+    {
+      gate: FEATURE_APPROVAL_WATCH,
+      run: ({ conn }) => void conn.request("approval.watch", {}).catch(() => null),
+    },
     // Phase 19: the daemon decides a request with the rules the app hands it.
     { gate: "actions", run: ({ hostId, conn }) => slices().vaultRules.onConnect(hostId, conn) },
     { run: ({ hostId }) => void slices().health.check(hostId) },

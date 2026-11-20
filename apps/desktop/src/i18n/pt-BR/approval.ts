@@ -32,5 +32,11 @@ export const approval = {
     noKeyHere:
       "Este dispositivo não tem chave de aprovação neste host. Aprove por um dispositivo que tenha uma, ou zere a proteção no terminal do host com flightdeckd approvers reset e cadastre este dispositivo de novo.",
     hasKeyHere: "Este dispositivo já tem uma chave para este host.",
+    heardEnrolled:
+      "Um dispositivo chamado {name} foi cadastrado em {host}. Se não foi você, revogue-o na página do host.",
+    heardRevoked: "Um dispositivo foi revogado em {host}.",
+    heardRevokedOwn:
+      "A chave deste dispositivo foi revogada em {host}. Ele não pode mais aprovar lá; cadastre-o de novo para aprovar daqui.",
+    dismiss: "Dispensar",
   },
 };

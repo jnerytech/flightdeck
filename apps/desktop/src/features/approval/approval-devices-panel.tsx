@@ -4,7 +4,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
-import type { ApprovalStatus } from "./store.ts";
+import { type ApprovalHeard, type ApprovalStatus, heardText, heardTone } from "./store.ts";
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
 
@@ -21,6 +21,8 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [done, setDone] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // A change the host announced that this device did not make (#3477), until the person dismisses it.
+  const [heard, setHeard] = useState<ApprovalHeard | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   // The most devices this panel saw: protection that drops to none after that was not turned off here.
@@ -40,8 +42,17 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     setView({ kind: "loading" });
     setDone(null);
     setProblem(null);
+    setHeard(null);
     void reload();
   }, [reload]);
+  useEffect(
+    () =>
+      store.approval.subscribe(host.id, (change) => {
+        setHeard(change);
+        void reload();
+      }),
+    [store, host.id, reload],
+  );
   /**
    * Runs one change, one at a time: its refusal is shown here, its success is said once (not when the
    * person declined the system's dialog), and the list is read again.
@@ -61,6 +72,16 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   };
   const notices = (
     <>
+      {heard && (
+        <Stack gap={1}>
+          <InlineNotice tone={heardTone(heard)}>{heardText(t, heard, host.name)}</InlineNotice>
+          <Inline>
+            <ActionButton variant="outline" onClick={() => setHeard(null)}>
+              {t("approvalDevices.dismiss")}
+            </ActionButton>
+          </Inline>
+        </Stack>
+      )}
       {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
     </>

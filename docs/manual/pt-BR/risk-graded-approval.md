@@ -44,8 +44,13 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   dispositivo (ou este, mas nunca o último: só `flightdeckd approvers reset` no host faz isso).
   **Remover a chave deste dispositivo** apaga a chave guardada aqui; o host segue listando o dispositivo até
   que outro o revogue.
-- **Um aviso de mudança.** Um terminal vê as mesmas mudanças: `flightdeckd approvers watch --follow`
-  imprime uma linha a cada dispositivo cadastrado ou revogado no host.
+- **Um aviso de mudança.** Quando um dispositivo é cadastrado ou revogado em um host, o app avisa. Um
+  dispositivo que você não cadastrou daqui vira um alerta com o nome dele: se não foi você, revogue-o na
+  página do host. O seu próprio cadastro, e uma revogação que você faz aqui, não são anunciados. Se outro
+  dispositivo revoga a chave deste, o aviso diz isso, e este dispositivo não aprova mais lá até ser
+  cadastrado de novo. Com a página do host aberta, o aviso aparece nela, com **Dispensar**; senão, é um
+  aviso temporário. Um terminal vê as mesmas mudanças: `flightdeckd approvers watch --follow` imprime uma
+  linha a cada uma. Hosts mais antigos que este anúncio só são lidos quando você abre a página.
 - **Um aviso.** Se a proteção estava ligada e o host agora não lista nenhum dispositivo, o painel avisa. Se
   você não zerou no host, alguém com acesso a ele zerou.
 - **O que não cobre.** Protege as aprovações feitas pelo app. Quem tem um terminal no host ainda consegue
