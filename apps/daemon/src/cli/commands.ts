@@ -311,6 +311,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     (await import("./claude-settings.ts")).runTelemetry(args, deps),
   ),
   history: done(async (args, deps) => (await import("./history.ts")).runReindex(args, deps)),
+  approvers: async (args, deps) => (await import("./approvers.ts")).runApprovers(args, deps),
   doctor: async (args, deps) => (await import("./setup.ts")).runDoctorCommand(args, deps),
   setup: done(async (args, deps) => (await import("./setup.ts")).runSetupCommand(args, deps)),
   pair: done(async (args, deps) => (await import("./setup.ts")).runPair(args, deps)),

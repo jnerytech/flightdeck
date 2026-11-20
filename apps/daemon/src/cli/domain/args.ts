@@ -14,6 +14,7 @@ export interface CliArgs {
     | "doctor"
     | "service"
     | "history"
+    | "approvers"
     | "hooks"
     | "telemetry"
     | "hook"
@@ -42,6 +43,8 @@ export interface CliArgs {
   action?:
     | ServiceAction
     | "reindex"
+    | "enroll"
+    | "reset"
     | "list"
     | "run"
     | "get"
@@ -125,6 +128,8 @@ export const USAGE = [
   "     fd pair [--rotate] [--config <file>]",
   "     fd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
   "     fd history reindex [--config <file>]",
+  "     fd approvers enroll [--json] [--config <file>]   (this host's terminal opens the window that enrolls the first device)",
+  "     fd approvers reset [--json] [--config <file>]   (removes every enrolled device)",
   "     fd hooks install|uninstall|status [--config <file>]",
   "     fd telemetry install|uninstall|status [--config <file>]",
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
@@ -347,6 +352,7 @@ const HANDLERS: Record<string, Handler> = {
     "invalid telemetry action",
   ),
   history: withAction("history", ["reindex"], "invalid history action"),
+  approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
   action: withNamedAction(
     "action",
     ["list", "run"],
@@ -504,10 +510,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (
     args.json &&
-    !["card", "host", "sessions", "requests", "send", "approve", "deny"].includes(args.command)
+    !["card", "host", "sessions", "requests", "send", "approve", "deny", "approvers"].includes(
+      args.command,
+    )
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve and deny\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
