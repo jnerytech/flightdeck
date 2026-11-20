@@ -966,7 +966,10 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       commandDigest({ ...INSTALL, acceptCommand: "b".repeat(64) }),
     );
     const update = await slice.pluginUpdatePayload("h", UPDATE);
-    expect(update.kind === "payload" && update.payload.proof?.nonce).toBe("nonce-2");
+    expect(keyLog.filter((k) => k.op === "sign").map((k) => k.args[3])).toEqual([
+      commandDigest({ ...INSTALL, acceptCommand: "b".repeat(64) }),
+      commandDigest(UPDATE),
+    ]);
     expect(log.filter((l) => l.type === "approval.challenge").map((l) => l.payload)).toEqual([
       { purpose: "command", command: "plugins.install" },
       { purpose: "command", command: "plugins.update" },

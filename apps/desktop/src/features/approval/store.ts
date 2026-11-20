@@ -113,8 +113,8 @@ export interface PluginBody {
 }
 
 /** The payload of `plugins.install` or `plugins.update`, or the person's no (#3516). */
-type PluginPayload =
-  | { kind: "payload"; payload: PluginBody & { proof?: ApprovalProof } }
+type PluginPayload<B extends PluginBody = PluginBody> =
+  | { kind: "payload"; payload: B & { proof?: ApprovalProof } }
   | { kind: "declined" };
 
 /** The feature a host announces for each command it guards (#3453). */
@@ -332,6 +332,7 @@ export class ApprovalSlice {
     if (!hasFeature(features, FEATURE_APPROVAL_RESUME, false)) unchecked.push("resume");
     if (!hasFeature(features, FEATURE_APPROVAL_ROOTS, false)) unchecked.push("roots");
     if (!hasFeature(features, FEATURE_APPROVAL_HARNESS, false)) unchecked.push("harness");
+    if (!hasFeature(features, FEATURE_APPROVAL_PLUGINS, false)) unchecked.push("plugins");
     return unchecked;
   }
 
@@ -675,14 +676,35 @@ export class ApprovalSlice {
     };
   }
 
-  /** The payload of `plugins.install` (#3516): signed over the whole request when the host checks it. */
+  /**
+   * The payload of `plugins.install` (#3516), with the device's proof over the whole request when the host
+   * checks it and has a device enrolled; a host from before the feature gets the plain payload. The host
+   * installs the folder `dir` resolves to and refuses a proof for another one. A re-send that carries
+   * `acceptCommand` is a request of its own, so it is signed again. `declined`: the person said no.
+   */
   async pluginInstallPayload(hostId: string, body: PluginBody): Promise<PluginPayload> {
-    return { kind: "declined" };
+    return await this.pluginPayload(hostId, "plugins.install", body);
   }
 
   /** The payload of `plugins.update` (#3516), as `pluginInstallPayload`. */
-  async pluginUpdatePayload(hostId: string, body: PluginBody): Promise<PluginPayload> {
-    return { kind: "declined" };
+  async pluginUpdatePayload(
+    hostId: string,
+    body: PluginBody & { plugin: string },
+  ): Promise<PluginPayload<PluginBody & { plugin: string }>> {
+    return await this.pluginPayload(hostId, "plugins.update", body);
+  }
+
+  private async pluginPayload<B extends PluginBody>(
+    hostId: string,
+    command: "plugins.install" | "plugins.update",
+    body: B,
+  ): Promise<PluginPayload<B>> {
+    const proof = await this.proveCommand(hostId, command, { ...(body as PluginBody) });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...body, proof: proof.proof } : body,
+    };
   }
 
   /**
