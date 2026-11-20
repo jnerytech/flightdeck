@@ -4,6 +4,7 @@
  */
 
 export { runAnswerCli } from "./answer-cli.ts";
+export { Approvers } from "./approvers.ts";
 export { type AutoApproveRequest, type AutoApprover, historyExcludes } from "./auto-approve.ts";
 export { bindInput, summarizeInput } from "./domain/bind-input.ts";
 export type { PermissionDecision } from "./domain/decision.ts";

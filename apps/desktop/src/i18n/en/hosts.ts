@@ -186,6 +186,7 @@ export const hosts = {
     cardReview: "the second-opinion review of a card",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
+    approvalProof: "approving with a signed proof of your device",
   },
   update: {
     cardTitle: "Update available",

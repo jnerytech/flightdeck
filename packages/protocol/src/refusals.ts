@@ -617,6 +617,7 @@ export const DAEMON_FEATURES = [
   "cardReview",
   "quotaBudgets",
   "autoUpdate",
+  "approvalProof",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 
