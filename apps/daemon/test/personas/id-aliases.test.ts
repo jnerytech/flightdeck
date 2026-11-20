@@ -85,9 +85,37 @@ describe("persona ids that were Portuguese (#3413)", () => {
       persona: input({ id: "reviewer", name: "Edited reviewer" }),
     });
     await personas.save({ scope: "host", persona: input({ id: "revisor", name: "Mine" }) });
-    expect(await codeOf(async () => personas.reset("revisor", { language: "en" }))).toBe(
-      "persona_pack_only",
-    );
+    const reasons: unknown[] = [];
+    try {
+      personas.reset("revisor", { language: "en" });
+    } catch (error) {
+      reasons.push((error as { reason?: string }).reason);
+    }
+    expect(reasons).toEqual(["persona_pack_only"]);
     expect((await personas.get("reviewer", { language: "en" })).modified).toBe(true);
+  });
+
+  test("a project file that kept the old id still answers for the new id after the stored ids moved", async () => {
+    const { personas, project } = setup();
+    const dir = join(project, ".flightdeck", "personas");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "revisor.md"),
+      "---\nid: revisor\nname: Mine\ndescription: Reviews changes the way this project wants them reviewed\n---\nThe project's own reviewer.\n",
+    );
+    const mine = await personas.get("reviewer", { projectPath: project, language: "en" });
+    expect([mine.scope, mine.id]).toEqual(["project", "revisor"]);
+  });
+
+  test("an old id reaches the pack's persona, never a project file that has the new name", async () => {
+    const { personas, project } = setup();
+    const dir = join(project, ".flightdeck", "personas");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "reviewer.md"),
+      "---\nid: reviewer\nname: Cloned\ndescription: A persona that came with a cloned repository\n---\nNot trusted yet.\n",
+    );
+    const got = await personas.get("revisor", { projectPath: project, language: "en" });
+    expect([got.scope, got.id]).toEqual(["pack", "reviewer"]);
   });
 });
