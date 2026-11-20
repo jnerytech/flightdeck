@@ -211,6 +211,26 @@ const OPTIONS_WITH_VALUE = [
   "--runtime",
 ];
 
+/** The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`), unquoted. */
+function shellArguments(args: string[]): string[] {
+  const out: string[] = [];
+  let open = "";
+  let current = "";
+  for (const arg of args) {
+    current = open ? `${current} ${arg}` : arg;
+    for (const ch of arg) {
+      if (ch === open) open = "";
+      else if (!open && (ch === '"' || ch === "'")) open = ch;
+    }
+    if (!open) {
+      out.push(unquoted(current));
+      current = "";
+    }
+  }
+  if (open) out.push(unquoted(current));
+  return out;
+}
+
 /** The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`). */
 function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
@@ -228,7 +248,8 @@ const RUNNERS = ["bun", "bunx", "npx", "node", "sh", "bash", "zsh", "dash", "pws
 /** Whether the command runs `fd`/`flightdeckd` with one of `verbs`, directly or through a runtime or a shell given the text. */
 function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  if (["fd", "flightdeckd"].includes(prog)) return verbs.includes(flightdeckWords(words)[0] ?? "");
+  if (["fd", "flightdeckd"].includes(prog))
+    return verbs.includes(flightdeckWords(shellArguments(args))[0] ?? "");
   if (!RUNNERS.includes(prog)) return false;
   const names = words.map((w) => program(w));
   const runsCli = names.some((n) => ["fd", "flightdeckd", "bin.ts"].includes(n));
@@ -262,11 +283,12 @@ function endsACard(prog: string, args: string[]): boolean {
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
   const loopOn = (all: string[]) => all.includes("check-loop") && all.includes("on");
   if (["fd", "flightdeckd"].includes(prog)) {
-    const [command, action, , switchTo] = flightdeckWords(words);
+    const own = shellArguments(args);
+    const [command, action, , switchTo] = flightdeckWords(own);
     return (
       command === "card" &&
       (CARD_ENDS.includes(action ?? "") ||
-        (action === "move" && words.includes("--force")) ||
+        (action === "move" && own.includes("--force")) ||
         (action === "check-loop" && switchTo === "on"))
     );
   }
