@@ -430,6 +430,38 @@ describe("command-approve: a device signs the command and a hash of what it carr
     }
   });
 
+  test("Given the plugins.marketplaceAdd payloads the Rust crate also reads, Then their digests and hashes are the shared literals, with confirm a boolean", () => {
+    const cases: Array<[Record<string, unknown>, string, string]> = [
+      [
+        { source: "acme/plugins", scope: "project", confirm: true },
+        '{"confirm":true,"scope":"project","source":"acme/plugins"}',
+        "3b35114cbdc6042f069fcce062b73a4429b48d707e85b3f32c7a0c099e1ad60d",
+      ],
+      [
+        { source: "https://github.com/acme/plugins.git", confirm: true },
+        '{"confirm":true,"source":"https://github.com/acme/plugins.git"}',
+        "001a89ede03cbf690f714183364377e37f9cf37e612a3d6e6d7e6a5087bfcf31",
+      ],
+      [
+        { source: "/work/marketplaces/acme", confirm: true },
+        '{"confirm":true,"source":"/work/marketplaces/acme"}',
+        "4a3dc658649368f9d5a2c2ed751b2a08d4b64c81a6f63df76136cb94b44c6dfa",
+      ],
+    ];
+    for (const [payload, digest, hash] of cases) {
+      expect(commandDigest(payload)).toBe(digest);
+      expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(hash);
+    }
+  });
+
+  test("Given plugins.marketplaceAdd, Then every payload needs the proof and a challenge for it is one of the gate's", () => {
+    expect([
+      commandNeedsProof("plugins.marketplaceAdd", { source: "acme/plugins", confirm: true }),
+      commandNeedsProof("plugins.marketplaceAdd", {}),
+      challenge({ purpose: "command", command: "plugins.marketplaceAdd" }),
+    ]).toEqual([true, true, true]);
+  });
+
   test("Given the plugin commands, Then every payload of install and update needs the proof, and a challenge for each is one of the gate's", () => {
     expect([
       commandNeedsProof("plugins.install", { plugin: "deploy-tools@acme", confirmHash: "x" }),

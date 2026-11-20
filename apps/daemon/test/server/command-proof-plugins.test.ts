@@ -34,7 +34,7 @@ afterEach(async () => {
  * would fetch; with no device nothing changes. The folder the person signs is the folder the host installs.
  */
 const TOKEN = "plugins-proof-token-0123456789abcdef";
-type Command = "plugins.install" | "plugins.update";
+type Command = "plugins.install" | "plugins.update" | "plugins.marketplaceAdd";
 
 async function host(options: { enrolled?: boolean } = {}) {
   const ctx = newManager();
@@ -43,6 +43,7 @@ async function host(options: { enrolled?: boolean } = {}) {
     (c) =>
       everything(c, [
         { args: ["marketplace", "update"], stdout: OK("marketplace-update") },
+        { args: ["marketplace", "add"], stdout: OK("marketplace-add") },
         { args: ["install"], stdout: OK("install") },
         { args: ["update"], stdout: OK("update") },
         { args: ["uninstall"], stdout: OK("uninstall") },
@@ -114,6 +115,8 @@ const failure = (ack: Record<string, unknown>) =>
   ack.ok === false ? JSON.stringify((ack as { error?: unknown }).error) : "";
 const installs = (t: { fake: Parameters<typeof calls>[0] }) =>
   changes(t.fake).filter((c) => /^plugin (install|update) /.test(c));
+const marketplaceAdds = (t: { fake: Parameters<typeof calls>[0] }) =>
+  changes(t.fake).filter((c) => /^plugin marketplace add /.test(c));
 
 describe("command-proof-plugins: installing and updating a plugin with a device enrolled takes its signed proof (#3516)", () => {
   test("with a device enrolled, an install without a proof is refused and nothing is installed", async () => {
@@ -253,5 +256,88 @@ describe("command-proof-plugins: installing and updating a plugin with a device 
     const t = await host();
     const info = await t.client.data<{ features: string[] }>("host.info", {});
     expect(info?.features.includes("approval-plugins")).toBe(true);
+  });
+});
+
+describe("command-proof-plugins: adding a marketplace with a device enrolled takes its signed proof (#3516)", () => {
+  const SOURCE = "acme/plugins";
+
+  test("with a device enrolled, an add without a proof is refused and nothing is added", async () => {
+    const t = await host();
+    const ack = await t.client.request("plugins.marketplaceAdd", { source: SOURCE, confirm: true });
+    expect([failure(ack).includes("approval_proof_required"), marketplaceAdds(t)]).toEqual([
+      true,
+      [],
+    ]);
+  });
+
+  test("with a device enrolled, an add signed for this request adds the marketplace", async () => {
+    const t = await host();
+    const signed = { source: SOURCE, scope: "project", confirm: true };
+    const proof = await t.prove("plugins.marketplaceAdd", signed);
+    const ack = await t.client.request("plugins.marketplaceAdd", { ...signed, proof });
+    expect([ack.ok, marketplaceAdds(t)]).toEqual([
+      true,
+      ["plugin marketplace add acme/plugins --scope project --json"],
+    ]);
+  });
+
+  test("a proof covers the whole request: one signed for another source or without a scope does not carry them", async () => {
+    const t = await host();
+    const signed = { source: SOURCE, confirm: true };
+    const other = await t.client.request("plugins.marketplaceAdd", {
+      source: "evil/plugins",
+      confirm: true,
+      proof: await t.prove("plugins.marketplaceAdd", signed),
+    });
+    const wider = await t.client.request("plugins.marketplaceAdd", {
+      ...signed,
+      scope: "user",
+      proof: await t.prove("plugins.marketplaceAdd", signed),
+    });
+    expect([
+      failure(other).includes("approval_proof_required"),
+      failure(wider).includes("approval_proof_required"),
+      marketplaceAdds(t),
+    ]).toEqual([true, true, []]);
+  });
+
+  test("a call that does not confirm is refused as before, with the challenge unspent", async () => {
+    const t = await host();
+    const signed = { source: SOURCE, confirm: true };
+    const proof = await t.prove("plugins.marketplaceAdd", signed);
+    const unconfirmed = await t.client.request("plugins.marketplaceAdd", {
+      source: SOURCE,
+      confirm: false,
+      proof,
+    });
+    expect([failure(unconfirmed).includes("marketplace_add_confirm"), marketplaceAdds(t)]).toEqual([
+      true,
+      [],
+    ]);
+    // The same proof, still unspent, adds it once the request confirms.
+    const ack = await t.client.request("plugins.marketplaceAdd", { ...signed, proof });
+    expect([ack.ok, marketplaceAdds(t).length]).toEqual([true, 1]);
+  });
+
+  test("a proof is spent once: the same signed add cannot run twice", async () => {
+    const t = await host();
+    const signed = { source: SOURCE, confirm: true };
+    const proof = await t.prove("plugins.marketplaceAdd", signed);
+    const first = await t.client.request("plugins.marketplaceAdd", { ...signed, proof });
+    const second = await t.client.request("plugins.marketplaceAdd", { ...signed, proof });
+    expect([first.ok, second.ok, marketplaceAdds(t).length]).toEqual([true, false, 1]);
+  });
+
+  test("with no device enrolled, adding a marketplace needs no proof", async () => {
+    const t = await host({ enrolled: false });
+    const ack = await t.client.request("plugins.marketplaceAdd", { source: SOURCE, confirm: true });
+    expect([ack.ok, marketplaceAdds(t).length]).toEqual([true, 1]);
+  });
+
+  test("the host announces that it checks the proof of adding a marketplace", async () => {
+    const t = await host();
+    const info = await t.client.data<{ features: string[] }>("host.info", {});
+    expect(info?.features.includes("approval-marketplace")).toBe(true);
   });
 });

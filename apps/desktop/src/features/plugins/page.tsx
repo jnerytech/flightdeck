@@ -98,10 +98,21 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
       });
       await done(t("pluginsUi.removed"), result?.outcome === "ok");
     } else if (asked.kind === "add") {
-      const result = await store.hostCommand(hostId, "plugins.marketplaceAdd", {
-        source: source.trim(),
-        confirm: true,
-      });
+      // With a device enrolled the add is signed in the system's dialog; a no, or a source that dialog cannot
+      // show, sends nothing and keeps what was typed (#3516).
+      let made: Awaited<ReturnType<typeof store.approval.marketplaceAddPayload>>;
+      try {
+        made = await store.approval.marketplaceAddPayload(hostId, { source: source.trim() });
+      } catch (error) {
+        const why = error instanceof Error ? error.message : String(error);
+        // The forms hint belongs to the signer's refusal of the source, not to a failed challenge or an offline host.
+        store.reportError(
+          why.includes("the dialog can show") ? `${why} ${t("pluginsUi.addSigningHint")}` : why,
+        );
+        return;
+      }
+      if (made.kind === "declined") return;
+      const result = await store.hostCommand(hostId, "plugins.marketplaceAdd", made.payload);
       setSource("");
       await done(t("pluginsUi.marketplaceAdded"), result?.outcome === "ok");
     } else {
