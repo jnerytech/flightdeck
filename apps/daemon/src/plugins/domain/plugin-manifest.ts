@@ -5,7 +5,7 @@
  */
 
 /** Hook events that can decide for the user; a plugin listening to them gets the attention mark. */
-const SENSITIVE_EVENTS = ["PreToolUse", "PermissionRequest"];
+const SENSITIVE_EVENTS = new Set(["PreToolUse", "PermissionRequest"]);
 
 export interface PluginHook {
   event: string;
@@ -52,7 +52,7 @@ export interface PluginInventory {
 export type Json = Record<string, unknown>;
 export const isObject = (value: unknown): value is Json =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-export const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+const text = (value: unknown) => (typeof value === "string" ? value : undefined);
 export const asList = <T>(value: T | T[] | undefined): T[] => {
   if (value === undefined) return [];
   return Array.isArray(value) ? value : [value];
@@ -91,7 +91,7 @@ export function hooksOfEvents(events: unknown): PluginHook[] {
           ...field("matcher", group.matcher),
           type: text(hook.type) ?? "command",
           ...(command ? { command } : {}),
-          sensitive: SENSITIVE_EVENTS.includes(event),
+          sensitive: SENSITIVE_EVENTS.has(event),
         });
       }
     }

@@ -20,7 +20,7 @@ export async function listTranscripts(roots: readonly string[]): Promise<string[
   return files;
 }
 
-export async function transcriptStat(path: string): Promise<{ size: number; mtime: Date }> {
+export function transcriptStat(path: string): Promise<{ size: number; mtime: Date }> {
   return fileStat(path);
 }
 

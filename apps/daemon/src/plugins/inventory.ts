@@ -24,7 +24,6 @@ import {
   type PluginMcpServer,
   type PluginMonitor,
   serversOfMap,
-  text,
 } from "./domain/plugin-manifest.ts";
 
 const MAX_FILES = 5000;
