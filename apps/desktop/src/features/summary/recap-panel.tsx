@@ -10,7 +10,7 @@ import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { usd } from "../costs/index.ts";
-import { recapPreview } from "./domain/recap-preview.ts";
+import { recapFull, recapPreview } from "./domain/recap-preview.ts";
 
 const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
@@ -100,6 +100,9 @@ export function RecapPanel(
   }, [seenKey]);
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];
+  const preview = recap ? recapPreview(recap) : t("recap.empty");
+  // The line is cut at a length, so the tooltip gives the rest; a line that is whole has none.
+  const whole = recap ? recapFull(recap) : "";
   return (
     <Panel
       // Folded in a short area it is one thin line, about 38 px (#232).
@@ -123,8 +126,9 @@ export function RecapPanel(
           <span
             data-slot="recap-preview"
             className="min-w-0 truncate text-muted-foreground text-sm"
+            {...(whole.length > preview.length ? { title: whole } : {})}
           >
-            {recap ? recapPreview(recap) : t("recap.empty")}
+            {preview}
           </span>
         )}
       </div>
