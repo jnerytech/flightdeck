@@ -54,7 +54,7 @@ describe("fd: the command a person types for flightdeckd (issue #3433)", () => {
   test("fd --help and fd -h print the usage lines and exit 0, as flightdeckd --help does", async () => {
     for (const argv of [["fd", "--help"], ["fd", "-h"], ["--help"]]) {
       const out: string[] = [];
-      let code: number | null = null;
+      let code = null as number | null;
       const handled = await runCommandCli(argv, {
         env: {},
         log: { log: (m) => out.push(m), error: (m) => out.push(m) },

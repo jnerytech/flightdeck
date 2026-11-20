@@ -3,7 +3,7 @@ import { loadConfig } from "../config.ts";
 import type { CliResult } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import { configPath } from "./config-path.ts";
-import type { CliArgs } from "./domain/args.ts";
+import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
@@ -93,6 +93,11 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       return 0;
     });
   },
+  help: async (_args, deps) =>
+    settled(() => {
+      deps.log.log(USAGE);
+      return 0;
+    }),
   hook: async (args, deps) => {
     const { sendSessionStart } = await import("../central/index.ts");
     await sendSessionStart({

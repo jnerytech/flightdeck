@@ -19,6 +19,7 @@ export interface CliArgs {
     | "hook"
     | "channel"
     | "claude"
+    | "help"
     | "askpass"
     | "mcp"
     | "statusline"
@@ -100,37 +101,38 @@ export interface CliArgs {
   askpassPrompt?: string;
 }
 
-const USAGE = [
+export const USAGE = [
   "usage: flightdeckd [start] [--config <file>] [--runtime fake|claude]",
-  "     flightdeckd --version",
-  "     flightdeckd db prune [--dry-run] [--config <file>]",
-  "     flightdeckd backup [--out <file>] [--config <file>]",
-  "     flightdeckd restore <file> [--config <file>]   (with the daemon stopped)",
-  "     flightdeckd update --from <binary> [--allow-downgrade] [--config <file>]",
-  "     flightdeckd setup [--yes --folders <a,b>] [--config <file>]   (guided first run)",
-  "     flightdeckd doctor [--config <file>]   (what is missing for it to work, and how to fix it)",
-  "     flightdeckd pair [--rotate] [--config <file>]",
-  "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
-  "     flightdeckd history reindex [--config <file>]",
-  "     flightdeckd hooks install|uninstall|status [--config <file>]",
-  "     flightdeckd telemetry install|uninstall|status [--config <file>]",
+  "     fd --version | --help",
+  "     fd db prune [--dry-run] [--config <file>]",
+  "     fd backup [--out <file>] [--config <file>]",
+  "     fd restore <file> [--config <file>]   (with the daemon stopped)",
+  "     fd update --from <binary> [--allow-downgrade] [--config <file>]",
+  "     fd setup [--yes --folders <a,b>] [--config <file>]   (guided first run)",
+  "     fd doctor [--config <file>]   (what is missing for it to work, and how to fix it)",
+  "     fd pair [--rotate] [--config <file>]",
+  "     fd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
+  "     fd history reindex [--config <file>]",
+  "     fd hooks install|uninstall|status [--config <file>]",
+  "     fd telemetry install|uninstall|status [--config <file>]",
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
   "     flightdeckd channel --launch <id> --url <receiver> --token <token>   (the channel's MCP server)",
-  "     flightdeckd claude [claude arguments]   (config in FLIGHTDECK_CONFIG)",
+  "     fd [claude arguments]   (a bare fd is flightdeckd claude: claude with the Flightdeck channel; config in FLIGHTDECK_CONFIG)",
+  "     flightdeckd claude [claude arguments]   (the same, by its full name)",
   "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
-  "     flightdeckd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
-  "     flightdeckd statusline [--config <file>]   (one line for Claude Code's statusline)",
-  "     flightdeckd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
-  "     flightdeckd card list [--project <name or id>] [--json] [--config <file>]",
-  "     flightdeckd card show <card> [--json] [--config <file>]",
-  "     flightdeckd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
-  "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
-  "     flightdeckd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
-  "     flightdeckd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
-  "     flightdeckd action list [--project <id>] [--config <file>]",
-  "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
-  "     flightdeckd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
-  "     flightdeckd snippet get <name> [--project-path <folder>] [--config <file>]",
+  "     fd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
+  "     fd statusline [--config <file>]   (one line for Claude Code's statusline)",
+  "     fd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
+  "     fd card list [--project <name or id>] [--json] [--config <file>]",
+  "     fd card show <card> [--json] [--config <file>]",
+  "     fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
+  "     fd card start <card> [--workflow <name>] [--json] [--config <file>]",
+  "     fd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
+  "     fd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
+  "     fd action list [--project <id>] [--config <file>]",
+  "     fd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
+  "     fd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
+  "     fd snippet get <name> [--project-path <folder>] [--config <file>]",
 ].join("\n");
 
 const SERVICE_ACTIONS: readonly ServiceAction[] = [
@@ -241,6 +243,9 @@ const withNamedAction =
     if (action === allowed[1]) keep(args, operand(reader, nameWhat));
   };
 
+/** The words of `fd` that are not subcommands but are still Flightdeck's own. */
+const FD_FLAGS = ["--version", "--help", "-h"];
+
 const HANDLERS: Record<string, Handler> = {
   db: (args, reader) => {
     args.command = "db";
@@ -271,10 +276,16 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "claude";
     args.claudeArgs = reader.takeRest();
   },
+  // `fd <subcommand>` is `flightdeckd <subcommand>`; anything else goes to claude, as the alias did (#3433).
   fd: (args, reader) => {
-    args.command = "start";
-    reader.takeRest();
+    const rest = reader.takeRest();
+    const word = rest[0] ?? "";
+    const own = word !== "fd" && Object.hasOwn(HANDLERS, word) && !word.startsWith("-");
+    if (own || FD_FLAGS.includes(word)) Object.assign(args, parseArgs(rest));
+    else Object.assign(args, { command: "claude", claudeArgs: rest });
   },
+  "--help": setCommand("help"),
+  "-h": setCommand("help"),
   askpass: (args, reader) => {
     args.command = "askpass";
     args.askpassPrompt = reader.takeRest().join(" ");
