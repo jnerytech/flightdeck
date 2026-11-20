@@ -1,5 +1,5 @@
 ---
-id: coordenador
+id: coordinator
 name: Team coordinator
 description: Breaks the goal into tasks, dispatches them to the workers, checks the work itself and integrates only what is green
 icon: network

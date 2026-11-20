@@ -1,5 +1,5 @@
 ---
-id: arquiteto
+id: architect
 name: Arquiteto
 description: Desenha antes de codar, compara opções com seus trade-offs e registra as decisões em ADRs
 icon: compass

@@ -75,7 +75,7 @@ describe("workflow templates (issue #79)", () => {
 
   test("the tech-debt scan reads only, pushes nothing and raises its findings as cards", () => {
     const scan = byId("tech-debt-scan");
-    expect(scan?.persona).toBe("arquiteto");
+    expect(scan?.persona).toBe("architect");
     expect(scan?.inputs).toEqual([]);
     expect(scan?.checkFilled).toBeNull();
     const steps = stepsOf(scan?.yaml ?? "");

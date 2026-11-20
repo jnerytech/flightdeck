@@ -74,8 +74,8 @@ describe("clients-defaults: the persona a new session opens in", () => {
   }
 
   test("a folder of a client with a default persona opens the form with it chosen, and it can be changed", async () => {
-    await open("host:seguranca");
-    expect(select("Persona")?.value).toBe("host:seguranca");
+    await open("host:security");
+    expect(select("Persona")?.value).toBe("host:security");
     await choose("Persona", "");
     expect(select("Persona")?.value).toBe("");
   });
@@ -86,12 +86,12 @@ describe("clients-defaults: the persona a new session opens in", () => {
   });
 
   test("a persona the route asked for wins over the client's", async () => {
-    await open("host:seguranca", { persona: "app:minha" });
+    await open("host:security", { persona: "app:minha" });
     expect(select("Persona")?.value).toBe("app:minha");
   });
 
   test("the session opens in the default persona", async () => {
-    const { d } = await open("host:seguranca");
+    const { d } = await open("host:security");
     const prompt = screen.queryByLabelText("Primeiro prompt");
     await act(async () => {
       fireEvent.change(prompt as HTMLElement, { target: { value: "revise" } });
@@ -100,7 +100,7 @@ describe("clients-defaults: the persona a new session opens in", () => {
       fireEvent.click(screen.queryByRole("button", { name: "Criar sessão" }) as HTMLElement);
     });
     await poll(() => d.manager.list().length === 1);
-    expect(d.manager.list()[0]?.persona).toMatchObject({ id: "seguranca" });
+    expect(d.manager.list()[0]?.persona).toMatchObject({ id: "security" });
   });
 });
 
