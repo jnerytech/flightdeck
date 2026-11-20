@@ -63,8 +63,8 @@ export const hostHandlers = {
   "daemon.shutdown": (payload, { server }) => {
     const { onShutdown } = server.opts;
     if (!onShutdown) throw featureOff("shutdown");
-    // A service restarts the daemon, so a stop nobody asked for is a restart on the person's host
-    // (#3507). The caller says it was asked: `flightdeckd host stop` and the app do.
+    // A service restarts the daemon, so a client that sends a stop by mistake restarts the person's
+    // host (#3507). The flag is the caller's own word, as for the other confirms, not a proof.
     if (payload.confirm !== true) {
       throw new FlightdeckError(
         "invalid_state",

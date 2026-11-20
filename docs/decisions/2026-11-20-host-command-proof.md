@@ -36,7 +36,7 @@ the daemon's own door. A command that only narrows, or that only moves a signed 
 | `daemon.update.apply { confirm }` | `confirm: true` (`update_confirm`), no transport check | downloads the manifest's asset, checks sha256 and the project's minisign signature, hands it to the update | no: the caller chooses nothing |
 | `service.install { confirm }` | `confirm: true` (`service_confirm`), no transport check | installs and enables the service for the next boot or login | no, see below |
 
-`daemon.shutdown` has no guard at all (no confirm, no transport check). It is separate from the seven and is
+`daemon.shutdown` had no guard at all (no confirm, no transport check) when this record was written; it now takes `confirm: true`. It is separate from the seven and is
 answered below because it is the door the config-edit path uses.
 
 ## Decision
@@ -126,7 +126,9 @@ What an older caller does: a `flightdeckd` older than this change sends `{}` to 
 with `shutdown_confirm`; a newer one sends `{ confirm: true }` to an older daemon, whose schema is strict and
 refuses the payload. In both cases `requestShutdown` answers false and the stop falls back to ending the
 service's task or unit and the lock, as it already does for a daemon that is not there, so no host is left
-unstoppable.
+unstoppable. What is lost in that window is the graceful stop: on Windows the fallback waits on the lock and
+then kills the process that runs the service's binary, so sessions and the database close less cleanly. It lasts
+only while the CLI and the running daemon are of different versions.
 
 ## What it does not stop
 
