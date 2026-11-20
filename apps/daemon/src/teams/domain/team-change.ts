@@ -60,7 +60,14 @@ export function changedLines(team: TeamInfo, action: TeamCliArgs["action"]): str
 }
 
 /** What a change that got no answer may have done. */
-export const UNSURE_CHANGE: Record<"update" | "delete" | "add-member" | "remove-member", string> = {
+export const UNSURE_CHANGE: Record<
+  Exclude<TeamCliArgs["action"], "list" | "show" | "new">,
+  string
+> = {
+  pause: "",
+  resume: "",
+  close: "",
+  message: "",
   update: "; the team may or may not have been applied: check with `team show` before trying again",
   delete: "; the team may or may not have been deleted: check with `team list` before trying again",
   "add-member":
