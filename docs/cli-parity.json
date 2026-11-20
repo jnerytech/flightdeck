@@ -408,7 +408,9 @@
   "snippets.trust": {},
   "snippets.use": {},
   "ssh.connect": {},
-  "ssh.hostkey.check": {},
+  "ssh.hostkey.check": {
+    "cli": "ssh"
+  },
   "ssh.hostkey.confirm": {},
   "ssh.hostkey.forget": {},
   "ssh.import.apply": {},
@@ -420,7 +422,9 @@
   },
   "ssh.remove": {},
   "ssh.save": {},
-  "ssh.test": {},
+  "ssh.test": {
+    "cli": "ssh"
+  },
   "statusline.get": {
     "cli": "statusline"
   },
