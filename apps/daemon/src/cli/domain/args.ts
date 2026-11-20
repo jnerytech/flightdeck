@@ -63,6 +63,9 @@ export interface CliArgs {
     | "delete"
     | "discard"
     | "subagents"
+    | "save"
+    | "remove"
+    | "publish-agent"
     | "diff"
     | "spec"
     | "review"
@@ -108,8 +111,17 @@ export interface CliArgs {
   /** `card review` and `persona list|show|subagents`: the language of the text. */
   language?: "en" | "pt-BR";
   json?: true;
-  /** `persona show <id>`. */
+  /** `persona show|save|remove|reset|publish-agent <id>`. */
   personaId?: string;
+  /** `persona save`: the persona's fields, as flags. */
+  personaName?: string;
+  body?: string;
+  bodyFile?: string;
+  model?: string;
+  effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  tools?: string[];
+  permissionMode?: string;
+  icon?: string;
   /** `persona list --scope <host|project|all>`. */
   scope?: "host" | "project" | "all";
   /** `action run <name>`. */
@@ -465,9 +477,14 @@ const HANDLERS: Record<string, Handler> = {
   },
   persona: (args, reader) => {
     args.command = "persona";
-    const action = subAction(reader, ["list", "show", "subagents"], "invalid persona action");
+    const action = subAction(
+      reader,
+      ["list", "show", "subagents", "save", "remove", "reset", "publish-agent"],
+      "invalid persona action",
+    );
     args.action = action;
-    if (action === "show") args.personaId = operand(reader, "the persona");
+    if (action !== "list" && action !== "subagents")
+      args.personaId = operand(reader, "the persona");
   },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
@@ -531,6 +548,28 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--description": setValue((args, v) => {
     args.description = v;
+  }),
+  "--name": setValue(() => {}),
+  "--body": setValue((args, v) => {
+    args.body = v;
+  }),
+  "--body-file": setValue((args, v) => {
+    args.bodyFile = v;
+  }),
+  "--model": setValue((args, v) => {
+    args.model = v;
+  }),
+  "--effort": setValue((args, v) => {
+    args.effort = v as NonNullable<CliArgs["effort"]>;
+  }),
+  "--tools": setValue((args, v) => {
+    args.tools = v.split(",");
+  }),
+  "--permission-mode": setValue((args, v) => {
+    args.permissionMode = v;
+  }),
+  "--icon": setValue((args, v) => {
+    args.icon = v;
   }),
   "--language": setValue((args, v) => {
     if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR\n${USAGE}`);
@@ -673,7 +712,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   for (const [flag, value, actions] of flagged) {
     if (value === undefined) continue;
     // `--language` also belongs to `persona`, which checks its own flags below.
-    if (flag === "--language" && args.command === "persona") continue;
+    if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
+      continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -681,8 +721,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
-  if (args.scope !== undefined && (args.command !== "persona" || args.action !== "list"))
-    throw new Error(`--scope: this flag only applies to flightdeckd persona list\n${USAGE}`);
+  if (
+    args.scope !== undefined &&
+    (args.command !== "persona" || !["list", "save", "remove"].includes(args.action as string))
+  )
+    throw new Error(
+      `--scope: this flag only applies to flightdeckd persona list, save, remove\n${USAGE}`,
+    );
   delete args.titleFlag;
   return args;
 }

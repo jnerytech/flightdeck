@@ -10,9 +10,21 @@ import type {
 } from "@flightdeck/protocol";
 
 export interface PersonaCliArgs {
-  action: "list" | "show" | "subagents";
-  /** `show`: the persona's id. */
+  action: "list" | "show" | "subagents" | "save" | "remove" | "reset" | "publish-agent";
+  /** `show`, `save`, `remove`, `reset`, `publish-agent`: the persona's id. */
   id?: string;
+  /** `save`: the persona's fields. */
+  name?: string;
+  description?: string;
+  body?: string;
+  bodyFile?: string;
+  model?: string;
+  effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  tools?: string[];
+  permissionMode?: string;
+  icon?: string;
+  /** `publish-agent --confirm`. */
+  confirm?: boolean;
   /** `list --scope`. */
   scope?: "host" | "project" | "all";
   /** The project whose personas count too (a path on this machine). */

@@ -48,6 +48,11 @@ export function runPersonaCli(
           const answer = await daemon.call("personas.subagents", { ...where, ...language });
           return args.json ? json(answer) : said(...subagentsLines(answer));
         }
+        case "save":
+        case "remove":
+        case "reset":
+        case "publish-agent":
+          return said();
       }
     },
   });
