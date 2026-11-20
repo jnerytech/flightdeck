@@ -72,7 +72,7 @@ const KEYWORDS = new Set([
 ]);
 
 /** A word as a program name: no quotes, no folder, no `\` alias escape, no `.exe`, `.cmd` or `.ps1`, lowercase. */
-export const program = (word: string) =>
+const program = (word: string) =>
   (word.replace(/["']/g, "").split(/[\\/]/).at(-1) as string)
     .toLowerCase()
     .replace(/\.(exe|cmd|ps1)$/, "");
