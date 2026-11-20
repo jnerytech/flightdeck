@@ -23,7 +23,7 @@ changes both.
    Writer and reader share one backend and one naming, so there is no per-OS drift (no PowerShell `CredRead`,
    no `secret-tool`, no `security -w`). The CLI finds the helper at a fixed place, never from a file and never
    by PATH: beside its own executable (`process.execPath`), else the OS install folder
-   (`%LOCALAPPDATA%\Programs\flightdeck`, `/Applications/Flightdeck.app/Contents/MacOS`). It spawns it only if
+   (where Tauri's installers put the app: `%ProgramFiles%\Flightdeck` per machine, `%LOCALAPPDATA%\Flightdeck` per user, `/Applications/Flightdeck.app/Contents/MacOS`; `flightdeckd setup` copies the CLI to `~/.flightdeck/bin`, so "beside" rarely matches). It spawns it only if
    the folder is not a symlink, is owned by the user or root, and is not group- or world-writable (POSIX; on
    Windows the folder is the user's own and nothing is enforced, see "Same user"). The CLI waits at most 15
    seconds for the helper and reads at most 8 KiB from it; a helper that is slower or louder is killed and
@@ -106,9 +106,11 @@ changes both.
   that. It is not a new capability: the same process can read the token from the same store. On macOS the item
   is the app's, so a write prompts. Storing address and token as one entry would not change this, so it is not
   done.
-- **The helper's place.** On Windows the install folder is the user's own and the helper file is not
+- **The helper's place.** On Windows the per-user install folder is the user's own and the helper file is not
   integrity-protected (no signature check while the signing certificate is undecided): a process of the user
-  can replace it, with the same reach as above. On POSIX the folder check in decision 1 covers the folder, not
+  can replace it, with the same reach as above. The per-machine folder (`%ProgramFiles%\Flightdeck`) is
+  admin-only and is tried first. The CLI must not be run elevated: a helper in a user-writable folder would
+  then run as administrator. On POSIX the folder check in decision 1 covers the folder, not
   a swap between the check and the spawn.
 - **No server identity.** The daemon does not prove itself to the client. A TLS pin is out of scope; `wss://` or
   a private path (decision 6) is what protects the token on the wire.

@@ -42,12 +42,18 @@ export function hostIndexPath(env: PathsEnv): string {
   );
 }
 
-/** The only places the helper may be, in the order they are tried. Never the PATH. */
+/**
+ * The only places the helper may be, in the order they are tried. Never the PATH. `flightdeckd setup` copies the
+ * CLI to the user's own folder, so "beside" rarely matches: the helper is also looked for where Tauri's installers
+ * put the app (per machine in Program Files, admin-only, first; per user in `%LOCALAPPDATA%\Flightdeck`).
+ */
 export function helperCandidates(env: PathsEnv): string[] {
   if (env.platform === "win32") {
-    const beside = win32.join(win32.dirname(env.execPath), `${HELPER}.exe`);
-    if (!env.localAppData) return [beside];
-    return [beside, win32.join(env.localAppData, "Programs", "flightdeck", `${HELPER}.exe`)];
+    return [
+      win32.join(win32.dirname(env.execPath), `${HELPER}.exe`),
+      ...(env.programFiles ? [win32.join(env.programFiles, "Flightdeck", `${HELPER}.exe`)] : []),
+      ...(env.localAppData ? [win32.join(env.localAppData, "Flightdeck", `${HELPER}.exe`)] : []),
+    ];
   }
   const beside = posix.join(posix.dirname(env.execPath), HELPER);
   if (env.platform === "darwin")
