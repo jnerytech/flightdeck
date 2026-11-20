@@ -14,7 +14,7 @@ const BINARIES = {
 
 function binaryFor(platform, arch) {
   const key = `${platform}-${arch}`;
-  return Object.hasOwn(BINARIES, key) ? BINARIES[key] : null;
+  return Object.prototype.hasOwnProperty.call(BINARIES, key) ? BINARIES[key] : null;
 }
 
 /** The binary's exit code, or 128 plus the number of the signal that ended it. */
