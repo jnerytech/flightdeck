@@ -11,6 +11,7 @@ import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession } from "./session-args.ts";
@@ -178,6 +179,7 @@ const HANDLERS: Record<string, Handler> = {
     }
   },
   vault: readVault,
+  plugins: readPlugins,
   approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
@@ -630,6 +632,9 @@ const HANDLERS: Record<string, Handler> = {
   "--at": setValue((args, v) => {
     args.at = atTime(v);
   }),
+  "--dir": setValue((args, v) => {
+    args.pluginDir = v;
+  }),
   "--config": setValue((args, v) => {
     args.config = v;
   }),
@@ -637,6 +642,19 @@ const HANDLERS: Record<string, Handler> = {
     args.runtime = RuntimeKind.parse(v);
   }),
 };
+
+/** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
+const JSON_COMMANDS =
+  "card board history team persona quota usage budget costs roi host sessions session requests send approve deny approvers rules autoapprove vault plugins".split(
+    " ",
+  );
+const HOST_COMMANDS = "host sessions session requests send approve deny vault plugins".split(" ");
+
+function refuseOutside(flag: string, commands: readonly string[], command: string): void {
+  if (commands.includes(command)) return;
+  const list = `${commands.slice(0, -1).join(", ")} and ${commands[commands.length - 1]}`;
+  throw new Error(`${flag}: this flag only applies to flightdeckd ${list}\n${USAGE}`);
+}
 
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
@@ -659,44 +677,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       throw new Error(`${flag} needs no value\n${USAGE}`);
     handler(args, reader, value);
   }
-  if (
-    args.json &&
-    ![
-      "card",
-      "board",
-      "history",
-      "team",
-      "persona",
-      "quota",
-      "usage",
-      "budget",
-      "costs",
-      "roi",
-      "host",
-      "sessions",
-      "session",
-      "requests",
-      "send",
-      "approve",
-      "deny",
-      "approvers",
-      "rules",
-      "autoapprove",
-      "vault",
-    ].includes(args.command)
-  )
-    throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, costs, roi, host, sessions, session, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
-    );
-  if (
-    args.host !== undefined &&
-    !["host", "sessions", "session", "requests", "send", "approve", "deny", "vault"].includes(
-      args.command,
-    )
-  )
-    throw new Error(
-      `--host: this flag only applies to flightdeckd host, sessions, session, requests, send, approve, deny and vault\n${USAGE}`,
-    );
+  if (args.json) refuseOutside("--json", JSON_COMMANDS, args.command);
+  if (args.host !== undefined) refuseOutside("--host", HOST_COMMANDS, args.command);
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (
@@ -770,6 +752,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     boardProblem(args) ??
     historyProblem(args) ??
     vaultProblem(args) ??
+    pluginsProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
     rulesProblem(args) ??
