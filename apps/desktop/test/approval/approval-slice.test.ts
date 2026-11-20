@@ -602,8 +602,10 @@ describe("approval: the proof of a prod or high-risk secret use (#3452)", () => 
   });
 
   test("when the person declines the system's dialog, nothing is sent and no error is raised", async () => {
-    const { slice } = approval({ features: VAULT_HOST, signFails: "declined" });
+    const { slice, keyLog } = approval({ features: VAULT_HOST, signFails: "declined" });
     expect(await slice.proveVault("h", "act-1", "once")).toEqual({ kind: "declined" });
+    // The dialog was shown (the decline is the person's, not a skipped step).
+    expect(keyLog.filter((k) => k.op === "sign")).toHaveLength(1);
   });
 
   test("a device with no key for this host is told so, in words", async () => {

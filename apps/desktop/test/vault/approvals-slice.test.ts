@@ -192,6 +192,25 @@ describe("vault approvals slice", () => {
     expect(recorded.map((o) => o.delivered)).toEqual([false]);
   });
 
+  test("when the device cannot sign, the person is told, the host is told no and nothing is delivered", async () => {
+    const { approvals, sent, recorded, notices } = slice({
+      prove: async () => {
+        throw new Error("this device has no key");
+      },
+    });
+    const done = approvals.onRequest(HOST, { ...ACTION, needsHold: true });
+    approvals.settle("r1", { scope: "once", via: "app" });
+    expect(
+      await done.then(
+        () => "resolved",
+        () => "rejected",
+      ),
+    ).toBe("resolved");
+    expect(sent.map((c) => c.type)).toEqual(["vault.deny"]);
+    expect(recorded.map((o) => o.delivered)).toEqual([false]);
+    expect(notices).toContain("vaultApproval.proofFailedTitle");
+  });
+
   test("a request that needs no hold asks for no proof", async () => {
     const asked: unknown[] = [];
     const { approvals, sent } = slice({

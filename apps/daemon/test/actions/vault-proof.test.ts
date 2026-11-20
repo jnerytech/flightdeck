@@ -181,6 +181,36 @@ describe("vault-proof: a prod or high-risk use is approved by a device's signatu
     await running.catch(() => {});
   });
 
+  test("Given a proof from a key the host does not list, or a signature of other text, Then both are refused and the request stays open", async () => {
+    const t = await host({ enrolled: true });
+    const running = t.run();
+    const frame = await t.frame();
+    const stranger = device();
+    const { nonce, daemonId } = t.approvers.challenge("approve", frame.requestId, 1);
+    const text = vaultApproveMessage({
+      keyId: stranger.keyId,
+      daemonId,
+      requestId: frame.requestId,
+      nonce,
+      scope: "once",
+    });
+    const unlisted = { keyId: stranger.keyId, nonce, signature: stranger.signText(text) };
+    expect(
+      reasonOf(() => t.actions.approve(frame.requestId, { via: "app", proof: unlisted })),
+    ).toBe("approval_proof_required");
+    const good = t.proofFor(frame.requestId);
+    const tampered = { ...good, signature: stranger.signText("something else") };
+    expect(
+      reasonOf(() => t.actions.approve(frame.requestId, { via: "app", proof: tampered })),
+    ).toBe("approval_proof_required");
+    // Neither refusal spent the good nonce: the real proof still approves.
+    expect(reasonOf(() => t.actions.approve(frame.requestId, { via: "app", proof: good }))).toBe(
+      "approved",
+    );
+    t.deliver(frame);
+    await running;
+  });
+
   test("Given a request that needs no hold, When an enrolled host gets via app and no proof, Then it is approved as before", async () => {
     const t = await host({ enrolled: true, tags: [], ask: true });
     const running = t.run();
