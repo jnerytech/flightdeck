@@ -4,8 +4,8 @@
 //! text to be signed so the native confirmation says what the key is about to do.
 
 use base64::{engine::general_purpose::STANDARD, Engine};
-use p256::ecdsa::{signature::Signer, Signature, SigningKey};
-use p256::pkcs8::EncodePublicKey;
+use p256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
+use p256::pkcs8::{DecodePublicKey, EncodePublicKey};
 use sha2::{Digest, Sha256};
 
 /// What a signed text asks for.
@@ -46,6 +46,7 @@ pub struct PublicInfo {
 
 const TAG_APPROVAL: &str = "flightdeck/approval/v1";
 const TAG_ENROLL_FIRST: &str = "flightdeck/enroll-first/v1";
+const TAG_ENROLL_ADD: &str = "flightdeck/enroll-add/v1";
 const TAG_REVOKE: &str = "flightdeck/revoke/v1";
 
 /// The longest text the protocol builds is about 600 bytes; anything past this is not one of them.
@@ -58,6 +59,14 @@ fn sha256_hex(text: &str) -> String {
 /// A new key: the base64 of its 32-byte scalar.
 pub fn generate() -> String {
     STANDARD.encode(SigningKey::random(&mut rand_core::OsRng).to_bytes())
+}
+
+/// Whether the text is the base64 SPKI of an ECDSA P-256 public key, the form the daemon enrolls.
+fn is_p256_public_key(public_key: &str) -> bool {
+    STANDARD
+        .decode(public_key)
+        .ok()
+        .is_some_and(|der| VerifyingKey::from_public_key_der(&der).is_ok())
 }
 
 fn signing_key(secret: &str) -> Result<SigningKey, String> {
@@ -123,6 +132,14 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             }
             (Kind::EnrollFirst, part(1), None, part(3))
         }
+        TAG_ENROLL_ADD => {
+            shape(5)?;
+            // Another key than this one, and one the daemon can verify: an add of anything else is no add.
+            if part(4) == own.public_key || !is_p256_public_key(part(4)) {
+                return Err("an add of this key, or of something that is not a device key, is not signed".into());
+            }
+            (Kind::EnrollAdd, part(2), Some(part(1)), part(4))
+        }
         TAG_REVOKE => {
             shape(5)?;
             (Kind::Revoke, part(2), Some(part(1)), part(4))
@@ -139,7 +156,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     let plain = !subject.is_empty()
         && subject.len() <= 64
         && subject.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
-    if kind != Kind::EnrollFirst && !plain {
+    if matches!(kind, Kind::Approve | Kind::Revoke) && !plain {
         return Err("the text to sign names an id that is not one".into());
     }
     // What the allow carries besides the allow: the hashes of nothing say it carries nothing.
@@ -157,6 +174,12 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
 pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
     let pt = lang == "pt-BR";
     let short = |id: &str| id.chars().take(8).collect::<String>();
+    // The fingerprint a person compares across two devices: 16 characters of the key id, in groups of four.
+    let fingerprint = |public_key: &str| {
+        let der = STANDARD.decode(public_key).unwrap_or_default();
+        let id: String = Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect();
+        id.chars().take(16).collect::<Vec<_>>().chunks(4).map(|c| c.iter().collect::<String>()).collect::<Vec<_>>().join("-")
+    };
     // A key is shown by the id the device list shows: the SHA-256 of its public form, 8 characters.
     let print = |public_key: &str| {
         let der = STANDARD.decode(public_key).unwrap_or_default();
@@ -194,7 +217,14 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             "Cadastrar este dispositivo (chave {}) como aprovador deste host? Continue só se você acabou de iniciar isso no Flightdeck.",
             print(&ask.subject)
         ),
-        (Kind::EnrollAdd, _) => String::new(),
+        (Kind::EnrollAdd, false) => format!(
+            "Add the device with key {} as an approver of this host? Continue only if the same code is shown on the other device.",
+            fingerprint(&ask.subject)
+        ),
+        (Kind::EnrollAdd, true) => format!(
+            "Adicionar o dispositivo com a chave {} como aprovador deste host? Continue só se o mesmo código aparece no outro dispositivo.",
+            fingerprint(&ask.subject)
+        ),
         (Kind::Revoke, false) => format!(
             "Remove the device with key {} from the approvers of this host? Continue only if you just asked for it in Flightdeck.",
             short(&ask.subject)
