@@ -174,7 +174,7 @@ describe("team list (issue #3455)", () => {
   });
 
   test("a name the team or the daemon wrote cannot drive the terminal", async () => {
-    const hostile = team("t9", { name: "Login\u001b[2J fix‮" });
+    const hostile = team("t9", { name: `Login\u001b[2J fix${String.fromCharCode(0x202e)}` });
     const result = await run(
       { action: "list" },
       fakeDaemon({ "teams.list": () => ({ teams: [hostile] }) }),
