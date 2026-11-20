@@ -7,6 +7,7 @@ import {
   approvalDigests,
   approvalMessage,
   type CommandPayload,
+  enrollAddMessage,
   enrollFirstMessage,
   FEATURE_APPROVAL_PROOF,
   needsApprovalProof,
@@ -20,6 +21,7 @@ import type { T } from "../../i18n/index.ts";
 import type { AppKernel } from "../../lib/kernel.ts";
 import { hasFeature } from "../../lib/version.ts";
 import type { Platform } from "../../platform/types.ts";
+import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./add-text.ts";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -28,6 +30,21 @@ export interface ApprovalStatus {
   keys: ApprovalKeyInfo[];
   /** This device's key id for this host, when it has made one. */
   thisKeyId: string | null;
+}
+
+/** What a new device shows for an enrolled one to add it. */
+export interface AddRequest {
+  text: string;
+  fingerprint: string;
+}
+
+/** What an enrolled device read from that text, to show the person before it signs. */
+export interface AddOffer {
+  name: string;
+  publicKey: string;
+  fingerprint: string;
+  /** The first 8 characters of the host's id, as the system's dialog names it. */
+  host: string;
 }
 
 /** A change a host announced about its devices that this app did not make (#3477). */
@@ -117,6 +134,8 @@ export class ApprovalSlice {
   private readonly listeners = new Map<string, Set<(heard: ApprovalHeard) => void>>();
   /** Keys (as `host/keyId`) this app is revoking right now: the host's announcement of them is its own doing. */
   private readonly revoking = new Set<string>();
+  /** The same for a device this app is adding with the person's agreement (#3478). */
+  private readonly adding = new Set<string>();
 
   constructor(private readonly core: ApprovalCore) {}
 
@@ -132,8 +151,8 @@ export class ApprovalSlice {
   }
 
   /**
-   * A host announced a device enrolled or revoked (#3477). This device's own enrollment, and a revoke
-   * this app is making, are the person's own doing and stay quiet. The rest goes to the page that
+   * A host announced a device enrolled or revoked (#3477). This device's own enrollment, a device this
+   * app is adding and a revoke this app is making are the person's own doing and stay quiet. The rest goes to the page that
    * watches the host, or, with none open, to a notice: an alert for a device nobody here made or for
    * this device's own key revoked, a quiet one for another device's.
    */
@@ -141,12 +160,18 @@ export class ApprovalSlice {
     // Before the first await: the revoke's answer may follow the announcement closely.
     if (change.type === "approval.revoked" && this.revoking.has(`${hostId}/${change.keyId}`))
       return;
+    const added =
+      change.type === "approval.enrolled" && this.adding.has(`${hostId}/${change.keyId}`);
     const host = this.core.host(hostId);
     const own = (await this.localKeyId(host?.daemonId)) === change.keyId;
     let heard: ApprovalHeard;
     if (change.type === "approval.enrolled") {
-      if (own) return;
-      heard = { kind: "enrolled", name: change.name, own: false };
+      // Made here, by this device or by the person's agreement: no news, but a watching page reads the list again.
+      heard = { kind: "enrolled", name: change.name, own: own || added };
+      if (heard.own) {
+        for (const listener of [...(this.listeners.get(hostId) ?? [])]) listener(heard);
+        return;
+      }
     } else {
       heard = { kind: "revoked", own };
     }
@@ -229,6 +254,86 @@ export class ApprovalSlice {
       if (declined) return "declined";
       throw error;
     }
+  }
+
+  /**
+   * A new device's side of adding it (#3478): its key for the host, and the text to carry to an enrolled
+   * device. A key the host does not list is the one waiting to be added, so it is reused.
+   */
+  async requestAdd(hostId: string, name: string): Promise<AddRequest> {
+    const t = this.core.t();
+    if (!isDeviceName(name)) throw new Error(t("approvalDevices.addBadName"));
+    const keys = this.keyStore();
+    const daemonId = this.daemonOf(hostId);
+    const listed = await this.ask(hostId, "approval.list", {});
+    const existing = await keys.get(daemonId);
+    if (existing && listed.keys.some((key) => key.keyId === existing.keyId)) {
+      throw new Error(t("approvalDevices.hasKeyHere"));
+    }
+    const key = existing ?? (await keys.create(daemonId));
+    return {
+      text: encodeAdd({ daemonId, publicKey: key.publicKey, name: name.trim() }),
+      fingerprint: await fingerprintOf(key.publicKey),
+    };
+  }
+
+  /** An enrolled device's side: reads the text, checks it is fit for this host, and says what it would add. */
+  async readAdd(hostId: string, text: string): Promise<AddOffer> {
+    const t = this.core.t();
+    const keys = this.keyStore();
+    const daemonId = this.daemonOf(hostId);
+    const read = decodeAdd(text);
+    if (!read) throw new Error(t("approvalDevices.addBadText"));
+    if (read.daemonId !== daemonId) throw new Error(t("approvalDevices.addOtherHost"));
+    const listed = await this.ask(hostId, "approval.list", {});
+    const local = await keys.get(daemonId);
+    if (!local || !listed.keys.some((key) => key.keyId === local.keyId)) {
+      throw new Error(t("approvalDevices.noKeyHere"));
+    }
+    if (read.publicKey === local.publicKey) throw new Error(t("approvalDevices.addAlready"));
+    const fingerprint = await fingerprintOf(read.publicKey);
+    // The list names keys by id, not by public key: the id is what the new key would be listed under.
+    const newId = await keyIdOf(read.publicKey);
+    if (listed.keys.some((key) => key.keyId === newId))
+      throw new Error(t("approvalDevices.addAlready"));
+    return { name: read.name, publicKey: read.publicKey, fingerprint, host: daemonId.slice(0, 8) };
+  }
+
+  /** Signs the add of what `readAdd` showed, after the system's dialog, and sends it. */
+  async confirmAdd(hostId: string, offer: AddOffer): Promise<"done" | "declined"> {
+    const keys = this.keyStore();
+    const daemonId = this.daemonOf(hostId);
+    const local = await keys.get(daemonId);
+    if (!local) throw new Error(this.core.t()("approvalDevices.noKeyHere"));
+    const challenge = await this.ask(hostId, "approval.challenge", { purpose: "enroll" });
+    const message = enrollAddMessage({
+      keyId: local.keyId,
+      daemonId: challenge.daemonId,
+      nonce: challenge.nonce,
+      newPublicKey: offer.publicKey,
+    });
+    let signature: string;
+    try {
+      signature = await keys.sign(daemonId, message, this.core.lang());
+    } catch (error) {
+      if (isDecline(error)) return "declined";
+      throw error;
+    }
+    // The host announces the add before it answers: the person just agreed to it, so it is not news.
+    const adding = `${hostId}/${await keyIdOf(offer.publicKey)}`;
+    this.adding.add(adding);
+    try {
+      await this.ask(hostId, "approval.enroll", {
+        publicKey: offer.publicKey,
+        name: offer.name,
+        nonce: challenge.nonce,
+        signature,
+        signerKeyId: local.keyId,
+      });
+    } finally {
+      this.adding.delete(adding);
+    }
+    return "done";
   }
 
   /** Removes `targetKeyId` from the host, signed by this device's key. "declined": the person said no. */
