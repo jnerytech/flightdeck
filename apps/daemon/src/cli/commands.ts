@@ -16,6 +16,7 @@ import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
+import { terminalCliArgs } from "./domain/terminal-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 
@@ -661,9 +662,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   terminal: async (args, deps) => {
     const { runTerminalCli } = await import("../terminal/index.ts");
-    const cli = { action: args.action as "list", json: args.json === true };
     return asking(args, deps, (config, remote) =>
-      runTerminalCli(cli, config, remote ? { remote } : {}),
+      runTerminalCli(terminalCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   requests: async (args, deps) => {

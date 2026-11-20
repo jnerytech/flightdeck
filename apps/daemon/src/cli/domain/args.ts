@@ -9,6 +9,7 @@ import { boardProblem } from "./board-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
+import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
@@ -18,7 +19,12 @@ import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
-import { readTerminal } from "./terminal-args.ts";
+import {
+  readTerminal,
+  TERMINAL_FLAGS,
+  takeTerminalFlags,
+  terminalProblem,
+} from "./terminal-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 
@@ -33,8 +39,6 @@ const SERVICE_ACTIONS: readonly ServiceAction[] = [
   "start",
 ];
 
-type Handler = (args: CliArgs, reader: ArgReader, value: () => string) => void;
-
 const setCommand =
   (command: CliArgs["command"]): Handler =>
   (args) => {
@@ -48,21 +52,6 @@ const withAction =
     args.command = command;
     args.action = subAction(reader, allowed, what) as never;
   };
-
-const setValue =
-  (set: (args: CliArgs, value: string) => void): Handler =>
-  (args, _reader, value) => {
-    set(args, value());
-  };
-
-/** A flag that takes no value: `--hold=false` is an error, never a `--hold` (#3425). */
-const setFlag = (set: (args: CliArgs) => void): Handler => {
-  const handler: Handler = (args) => {
-    set(args);
-  };
-  FLAGS.add(handler);
-  return handler;
-};
 
 /** The command word is the first one: a second would replace it and keep the first one's operands. */
 function startCommand(args: CliArgs, command: CliArgs["command"]): void {
@@ -587,6 +576,7 @@ const HANDLERS: Record<string, Handler> = {
   ...BUDGET_FLAGS,
   ...PLUGINS_FLAGS,
   ...SSH_FLAGS,
+  ...TERMINAL_FLAGS,
   ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
@@ -709,6 +699,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
     );
+  takeTerminalFlags(args);
   if (
     !["requests", "message", "autoapprove", "vault"].includes(args.command) &&
     args.session !== undefined
@@ -779,6 +770,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     vaultProblem(args) ??
     pluginsProblem(args) ??
     sshProblem(args) ??
+    terminalProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
@@ -794,6 +786,6 @@ export function parseArgs(argv: readonly string[]): CliArgs {
 export const VALUE_FLAGS = Object.keys(HANDLERS).filter(
   (name) =>
     name.startsWith("--") &&
-    !["--help", "--version"].includes(name) &&
+    !["--help", "--version", "--"].includes(name) &&
     !FLAGS.has(HANDLERS[name] as Handler),
 );
