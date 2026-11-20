@@ -21,4 +21,26 @@ cost and its state, from the transcript (no model call). `files <session>` lists
 number of edits and the last edit. The session is its name or its id; a name two sessions share is refused
 with the ids, and a session that has no Claude session yet has nothing to read. With `--json` each verb
 prints what the daemon returned: `{"sessions": [...]}`, the recap, or `{"files": [...]}`. `--host <name>`
-reads a paired host. These verbs only read; the ones that act on a session come in a later slice.
+reads a paired host. These verbs only read; the ones that act on a session follow.
+
+```sh
+fd session interrupt fd-qa
+fd session close fd-qa
+fd session resume fd-qa
+fd session sleep fd-qa
+fd session set-model fd-qa opus
+fd session set-effort fd-qa high
+fd session meta set fd-qa name=Review pinned=true
+```
+
+Acts on one session, as the buttons of the app do. `interrupt` stops the turn it is running, `close` ends it
+and `resume` starts an ended one again. `sleep` puts an idle session to sleep: it exits `0` when the session
+sleeps (or already did) and `1`, with the reason, when the daemon keeps it awake because it is busy, has a
+message waiting, has a reason to stay up or someone is watching it. `set-model <session> <model>` and
+`set-effort <session> <low|medium|high|xhigh|max>` change the model or the effort of the next turns; the word
+`default` gives the session's own back. `meta set <session>` takes `name=<text>`, `pinned=true|false` and
+`archived=true|false` (at least one); `name=` alone clears the name, and a session that has no Claude session
+yet is refused. A name two sessions share is refused with the ids. If the daemon does not answer, the command
+exits `2` and says the change may or may not have gone in: look at the session before you repeat it. With
+`--json` each prints `{"session": ..., "action": ...}` plus the new value. `--host <name>` reaches a paired
+host.
