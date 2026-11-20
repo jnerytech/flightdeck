@@ -26,9 +26,6 @@ no lugar dele em todo canto.
   daemon do host (um pedido já fechado, uma sessão desconhecida) é uma linha simples. Uma escrita (`fd send`,
   `fd approve`, `fd deny`) que não recebe resposta avisa que a mudança pode ter sido feita: olhe
   antes de repetir.
-- **Só no app:** `webhook.send` não tem comando. O payload é a URL do webhook, um segredo do cofre que só o app guarda e
-  entrega para um uso, então um terminal teria de recebê-la como argumento ou pela entrada padrão, onde o histórico do
-  shell ou a transcrição de uma sessão a guardaria.
 - **A config:** `--config <arquivo>`, senão o caminho padrão (não com `--host`).
 
 ## fd host
@@ -299,3 +296,8 @@ Eles leem o que protege as sessões de um projeto, como a tela de Segurança. Ne
   risco, a ferramenta, a chave da sessão, quem decidiu (`rule` ou `ai`) e por quê. `--project` deixa só as
   decisões de um projeto e `--session` as decisões e a suspensão de uma chave de sessão; `--limit` lê de 1 a 1000 decisões. Com `--json` imprime a
   resposta do daemon, `decisions` e `suspended`. Um segredo que o aprovador citou num motivo é cortado.
+
+## Só no app
+
+`webhook.send` não tem comando. O payload é a URL do webhook, um segredo do cofre que só o app guarda e
+entrega para um uso, então um verbo faria a pessoa colá-la e deixaria uma sessão postar um corpo à sua escolha.
