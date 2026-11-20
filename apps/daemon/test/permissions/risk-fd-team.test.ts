@@ -30,7 +30,7 @@ describe("risk rules: a session creating or changing a team from its shell (#345
         ["fd team delete t1 --confirm", REASON],
         ["fd team add-member t1 developer:::bypassPermissions --confirm", REASON],
         ["flightdeckd --config /x/y.json team add-member t1", REASON],
-        ["fd team remove-member t1 w1", REASON],
+        ["fd team remove-member t1 w1 --confirm", REASON],
         ["fd --json team remove-member t1 'worker 2'", REASON],
         ["bun run apps/daemon/src/bin.ts team delete t1 --confirm", REASON],
         ["fd team show t1 && fd team delete t1 --confirm", REASON],

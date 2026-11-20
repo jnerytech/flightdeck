@@ -321,7 +321,7 @@ describe("team add-member (issue #3455)", () => {
 });
 
 describe("team remove-member (issue #3455)", () => {
-  const args: TeamCliArgs = { action: "remove-member", id: "t9", member: "w1" };
+  const args: TeamCliArgs = { action: "remove-member", id: "t9", member: "w1", confirm: true };
 
   test("takes the member out and says the team as it is now", async () => {
     const daemon = fakeDaemon(HANDLERS);
@@ -329,6 +329,14 @@ describe("team remove-member (issue #3455)", () => {
     expect(result.code).toBe(0);
     expect(result.out).toEqual(["member removed from t9  Fix the login  active  2 workers"]);
     expect(sent(daemon, "teams.update")).toEqual({ team: "t9", removeMember: "w1" });
+  });
+
+  test("needs --confirm, as the app asks, and stops nothing without it", async () => {
+    const daemon = fakeDaemon(HANDLERS);
+    const result = await run({ action: "remove-member", id: "t9", member: "w1" }, daemon);
+    expect(result.code).toBe(1);
+    expect(text(result)).toContain("team remove-member needs --confirm");
+    expect(sent(daemon, "teams.update")).toBeUndefined();
   });
 
   test("the coordinator or an unknown member is exit 1 with the daemon's reason", async () => {
@@ -377,7 +385,7 @@ describe("flightdeckd team update, delete, add-member and remove-member, as the 
       team: "t9",
       addMember: { persona: "reviewer" },
     });
-    const removed = await terminal(["team", "remove-member", "t9", "w1"]);
+    const removed = await terminal(["team", "remove-member", "t9", "w1", "--confirm"]);
     expect(removed.code).toBe(0);
     expect(sent(removed.daemon, "teams.update")).toEqual({ team: "t9", removeMember: "w1" });
     const deleted = await terminal(["team", "delete", "t9", "--confirm"]);
@@ -417,10 +425,11 @@ describe("team update, delete, add-member and remove-member: the arguments (issu
       teamId: "t9",
       json: true,
     });
-    expect(parsed(["team", "remove-member", "t9", "w 1"])).toMatchObject({
+    expect(parsed(["team", "remove-member", "t9", "w 1", "--confirm"])).toMatchObject({
       action: "remove-member",
       teamId: "t9",
       teamMember: "w 1",
+      confirm: true,
     });
     expect(parsed(["team", "delete", "t9", "--confirm"])).toMatchObject({
       action: "delete",
@@ -458,7 +467,7 @@ describe("team update, delete, add-member and remove-member: the arguments (issu
 
   test("a flag belongs to its verbs only", () => {
     for (const [argv, word] of [
-      [["team", "update", "t9", "--confirm"], "team new, delete, add-member"],
+      [["team", "update", "t9", "--confirm"], "team new, delete, add-member, remove-member"],
       [["team", "delete", "t9", "--goal", "g"], "team update"],
       [["team", "show", "t9", "--clear-checks"], "team update"],
       [["team", "list", "--persona", "w1=x"], "team update"],
