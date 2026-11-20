@@ -156,6 +156,18 @@ describe("quota history (issue #3460)", () => {
     );
   });
 
+  test("a projection whose window has no known reset says when it runs out and not 'resets null'", async () => {
+    const daemon = fakeDaemon({
+      "quota.history": () => ({
+        ...HISTORY,
+        projection: { exhaustsAt: "2026-11-20T14:00:00Z", resetsAt: null, samples: 3 },
+      }),
+    });
+    expect((await quota({ action: "history", window: "five_hour" }, daemon)).out).toContain(
+      "reaches 100% at 2026-11-20T14:00:00Z",
+    );
+  });
+
   test("--json prints the daemon's answer", async () => {
     const result = await quota(
       { action: "history", window: "five_hour", json: true },
