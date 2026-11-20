@@ -304,14 +304,16 @@ async function bootDaemon(
     account,
     snapshots,
   });
-  await domains.add(createCheckpoints({
+  await domains.add(
+    createCheckpoints({
       snapshots,
       manager,
       runtime,
       prepare,
       allowedRoots: config.allowedRoots,
       folderLocks,
-    }));
+    }),
+  );
   await domains.add(createProjects({ keys, projectTrust, manager }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const { names } = await domains.add(createNames(store.db));
