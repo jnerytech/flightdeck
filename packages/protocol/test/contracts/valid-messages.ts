@@ -48,6 +48,7 @@ export const validCommands: Record<CommandType, unknown> = {
   "approval.enroll": { publicKey: "p", name: "phone", nonce: "n", signature: "s", code: "c" },
   "approval.revoke": { targetKeyId: "t", signerKeyId: "k", nonce: "n", signature: "s" },
   "approval.list": {},
+  "approval.watch": {},
   "sessions.watch": {},
   "host.info": {},
   "history.list": {

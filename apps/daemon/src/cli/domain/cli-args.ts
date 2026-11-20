@@ -144,6 +144,8 @@ export interface CliArgs {
   position?: number;
   force?: true;
   confirm?: true;
+  /** `approvers watch --follow`. */
+  follow?: true;
   squash?: true;
   /** `card start-arena --variant ...` (repeats); `card choose-variant <card> <variant>`; `card check-loop <card> on|off --rounds n`. */
   variants?: string[];

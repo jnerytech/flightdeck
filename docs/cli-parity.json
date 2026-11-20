@@ -31,6 +31,7 @@
   "approval.revoke": {
     "appOnly": "a device signs the removal with its own key; the host terminal clears all keys with flightdeckd approvers reset"
   },
+  "approval.watch": { "cli": "approvers" },
   "askpass.answer": {},
   "askpass.ask": {},
   "askpass.watch": {},

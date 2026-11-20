@@ -24,6 +24,7 @@ export const USAGE = [
   "     fd vault rules preview <secret> --requester you|claude|automation|workflow --purpose ssh|action|run_with_secret [--action <name>] [--host <h>] [--project <p>] [--session <s>] [--tag <t>]... [--risk low|medium|high] [--approval always|never|first-per-session] [--at <time>] [--json] [--config <file>]   (what a use would get; records nothing)",
   "     fd approvers enroll [--json] [--config <file>]   (this host's terminal opens the window that enrolls the first device)",
   "     fd approvers reset [--json] [--config <file>]   (removes every enrolled device)",
+  "     fd approvers watch [--follow] [--json] [--config <file>]   (the enrolled devices; --follow prints a line per device enrolled or revoked, until Ctrl-C)",
   "     fd hooks install|uninstall|status [--config <file>]",
   "     fd telemetry install|uninstall|status [--config <file>]",
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
