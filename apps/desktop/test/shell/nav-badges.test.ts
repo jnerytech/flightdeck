@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { NAV_BADGES, navBadge } from "../../src/features/shell/domain/nav-badges.ts";
+import { APP_VERSION, isNewer } from "../../src/lib/version.ts";
 
 describe("nav-badges: a badge belongs to a version range and expires on its own (issue #209)", () => {
   test("it shows before its version and is gone at it and after", () => {
@@ -27,6 +28,15 @@ describe("nav-badges: a badge belongs to a version range and expires on its own 
   });
 
   test("it defaults to the app's own version", () => {
-    expect(navBadge("teams")).toBe("beta");
+    // The rule written out on its own, over the real version: no badge once the version reaches `until`.
+    // Nothing here assumes which badges are still shown, so a release bump cannot turn this red.
+    const released = APP_VERSION.split("-")[0] ?? APP_VERSION;
+    for (const key of ["teams", "conversations"] as const) {
+      const rule = NAV_BADGES[key];
+      expect({ key, badge: navBadge(key) }).toEqual({
+        key,
+        badge: isNewer(rule.until, released) ? rule.kind : null,
+      });
+    }
   });
 });
