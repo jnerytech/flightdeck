@@ -14,6 +14,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_HARNESS,
+  FEATURE_APPROVAL_MARKETPLACE,
   FEATURE_APPROVAL_PLUGINS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
@@ -59,6 +60,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "project.harness.apply": FEATURE_APPROVAL_HARNESS,
   "plugins.install": FEATURE_APPROVAL_PLUGINS,
   "plugins.update": FEATURE_APPROVAL_PLUGINS,
+  "plugins.marketplaceAdd": FEATURE_APPROVAL_MARKETPLACE,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
@@ -266,6 +268,7 @@ export class ApprovalSlice {
     if (!hasFeature(features, FEATURE_APPROVAL_ROOTS, false)) unchecked.push("roots");
     if (!hasFeature(features, FEATURE_APPROVAL_HARNESS, false)) unchecked.push("harness");
     if (!hasFeature(features, FEATURE_APPROVAL_PLUGINS, false)) unchecked.push("plugins");
+    if (!hasFeature(features, FEATURE_APPROVAL_MARKETPLACE, false)) unchecked.push("marketplace");
     return unchecked;
   }
 
@@ -619,12 +622,23 @@ export class ApprovalSlice {
     return await this.pluginPayload(hostId, "plugins.install", body);
   }
 
-  /** The payload of `plugins.marketplaceAdd` (#3516). */
+  /**
+   * The payload of `plugins.marketplaceAdd` (#3516), with the device's proof over the whole request when the host
+   * checks it and has a device enrolled; a host from before the feature gets the plain payload. The signer shows
+   * the source and refuses one it cannot show whole, so that refusal reaches the caller as an error.
+   * `declined`: the person said no in the system's dialog.
+   */
   async marketplaceAddPayload(
-    _hostId: string,
+    hostId: string,
     body: { source: string; scope?: "user" | "project" | "local" },
   ): Promise<MarketplacePayload> {
-    return { kind: "payload", payload: { ...body, confirm: true } };
+    const plain = { ...body, confirm: true } as const;
+    const proof = await this.proveCommand(hostId, "plugins.marketplaceAdd", { ...plain });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
+    };
   }
 
   /** The payload of `plugins.update` (#3516), as `pluginInstallPayload`. */
