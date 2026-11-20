@@ -346,6 +346,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           ...(args.teamCoordinator === undefined ? {} : { coordinator: args.teamCoordinator }),
           ...(args.teamChecks === undefined ? {} : { checks: args.teamChecks }),
           ...(args.teamMember === undefined ? {} : { member: args.teamMember }),
+          ...(args.teamText === undefined ? {} : { text: args.teamText }),
           ...(args.teamSpec === undefined ? {} : { spec: args.teamSpec }),
           ...(args.teamPersona === undefined ? {} : { persona: args.teamPersona }),
           ...(args.teamClearChecks ? { clearChecks: true } : {}),

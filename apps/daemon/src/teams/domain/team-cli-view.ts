@@ -5,7 +5,18 @@
 import type { TeamInfo, TeamStatus } from "@flightdeck/protocol";
 
 export interface TeamCliArgs {
-  action: "list" | "show" | "new" | "update" | "delete" | "add-member" | "remove-member";
+  action:
+    | "list"
+    | "show"
+    | "new"
+    | "update"
+    | "delete"
+    | "add-member"
+    | "remove-member"
+    | "pause"
+    | "resume"
+    | "close"
+    | "message";
   /** `list --project`: a project's name or id; only its teams are listed. */
   project?: string;
   /** `show`: the team. */
@@ -29,6 +40,8 @@ export interface TeamCliArgs {
   spec?: string;
   /** `team remove-member <team> <member>`: the member's name, address, session or card. */
   member?: string;
+  /** `team message <team> <text>`: what every member is told. */
+  text?: string;
   /** `team update <team> --clear-checks`: no checks left. */
   clearChecks?: boolean;
   /** `team update <team> --persona <member>=<persona>`: an empty persona is the default. */
