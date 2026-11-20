@@ -154,6 +154,41 @@ describe("card diff (issue #3454)", () => {
     expect([diff.base, diff.files.length]).toEqual(["main", 5]);
   });
 
+  test("never prints lines of a file the daemon marked secret, too large or binary", async () => {
+    const lines = [{ header: "@@ -1 +1 @@", lines: [{ op: "+", text: "TOKEN=abc" }] }];
+    const { result } = await run(
+      { action: "diff", id: "marked" },
+      {
+        "card.diff": () => ({
+          base: "main",
+          files: [
+            file({ path: ".env", secret: true, hunks: lines }),
+            file({ path: "big.sql", tooLarge: true, bytes: 5, hunks: lines }),
+            file({ path: "img.png", binary: true, hunks: lines }),
+          ],
+        }),
+      },
+    );
+    expect(result.out.join("\n")).not.toContain("TOKEN=abc");
+    expect(result.out).toHaveLength(4);
+  });
+
+  test("invisible characters a file or a model wrote do not reach the reader", async () => {
+    const hidden = "\u{e0049}\u{e0067}\ufe0f\u034f\u180e";
+    const { result } = await run(
+      { action: "diff", id: "hidden" },
+      {
+        "card.diff": () => ({
+          base: "main",
+          files: [
+            file({ hunks: [{ header: "@@ -1 +1 @@", lines: [{ op: "+", text: `a${hidden}b` }] }] }),
+          ],
+        }),
+      },
+    );
+    expect(result.out.join("\n")).toContain("+a     b");
+  });
+
   test("an unknown card is exit 1 with the daemon's reason", async () => {
     const { result } = await run({ action: "diff", id: "nope" });
     expect(result.code).toBe(1);
@@ -196,6 +231,23 @@ describe("card review (issue #3454)", () => {
     expect(pt.calls[0]?.payload).toEqual({ cardId: "c1", language: "pt-BR" });
   });
 
+  test("a summary of several lines is printed line by line", async () => {
+    const { result } = await run(
+      { action: "review", id: "c1" },
+      {
+        "card.review": () => ({
+          state: "done",
+          summary: "First.\nSecond.",
+          anchored: 0,
+          loose: [],
+          cached: false,
+          moved: false,
+        }),
+      },
+    );
+    expect(result.out).toEqual(["review of c1: done", "First.", "Second."]);
+  });
+
   test("a review that failed is exit 1 with its summary; --json holds the result", async () => {
     const failed = await run({ action: "review", id: "broken" });
     expect(failed.result.code).toBe(1);
@@ -235,9 +287,11 @@ describe("card message (issue #3454)", () => {
   test("--json holds the daemon's answer; an empty text is refused before sending", async () => {
     const { result } = await run({ action: "message", id: "c1", text: "hi", json: true });
     expect(printed(result)).toEqual({ queued: false });
-    const empty = await run({ action: "message", id: "c1", text: "" });
-    expect(empty.result.code).toBe(1);
-    expect(empty.calls).toEqual([]);
+    for (const blank of ["", "  \n "]) {
+      const empty = await run({ action: "message", id: "c1", text: blank });
+      expect(empty.result.code).toBe(1);
+      expect(empty.calls).toEqual([]);
+    }
     expect((await run({ action: "message", id: "nope", text: "hi" })).result.code).toBe(1);
   });
 
