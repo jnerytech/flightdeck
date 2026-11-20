@@ -101,7 +101,7 @@ export function RecapPanel(
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];
   const preview = recap ? recapPreview(recap) : t("recap.empty");
-  // The line is cut at a length, so the tooltip gives the rest; a line that is whole has none.
+  // The line is cut at a length and clipped by width, so the tooltip gives the whole text.
   const whole = recap ? recapFull(recap) : "";
   return (
     <Panel
@@ -126,7 +126,7 @@ export function RecapPanel(
           <span
             data-slot="recap-preview"
             className="min-w-0 truncate text-muted-foreground text-sm"
-            {...(whole.length > preview.length ? { title: whole } : {})}
+            title={whole || undefined}
           >
             {preview}
           </span>
