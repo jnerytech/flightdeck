@@ -157,18 +157,38 @@ export function previewLines(answer: HarnessPreview): string[] {
   return lines.length > 0 ? lines : ["nothing to add"];
 }
 
-/** What `project add` and `project update` did: the project, and the fields a change set. */
+/** What `project add` and `project update` did: the project, and for an update the fields the person changed. */
 export const projectLines = (
   verb: "added" | "updated",
   project: Project,
   fields: ProjectFields,
-): string[] => [`${verb} ${project.name} (${project.id}) ${Object.keys(fields).length}`];
+): string[] => [
+  verb === "added"
+    ? `added ${project.name} (${project.id})  ${project.path}`
+    : `updated ${project.name} (${project.id})  changed ${Object.keys(fields).join(", ")}`,
+];
 
-/** What looking at the project's remote did. */
-export const detectLines = (answer: ProjectDetectResult): string[] => [answer.outcome];
+/** What looking at the project's remote did, in words. */
+export const detectLines = (name: string, answer: ProjectDetectResult): string[] => {
+  const said: Record<ProjectDetectResult["outcome"], string> = {
+    set: `the PR provider is now ${answer.project.prProvider}`,
+    kept: `the PR provider stays ${answer.project.prProvider}`,
+    no_remote: "the repository has no origin remote",
+    unsupported: `the origin is on ${answer.host ?? "another service"}, which is not GitHub or Azure DevOps`,
+    unreadable: "git could not read the repository",
+  };
+  return [`${name}: ${said[answer.outcome]}`];
+};
 
-/** The drafted CLAUDE.md: its digest, then its text. */
-export const draftLines = (draft: HarnessDraft): string[] => [draft.digest];
+/** The drafted CLAUDE.md: the digest an apply would repeat, then its text. */
+export const draftLines = (draft: HarnessDraft): string[] => [
+  `${draft.path}  digest ${draft.digest}`,
+  "",
+  ...draft.content.split("\n"),
+];
 
-/** The template an export made: its id and title, then its files. */
-export const exportLines = (info: HarnessTemplateInfo): string[] => [info.id];
+/** The template an export made: its id, title and size, then its files. */
+export const exportLines = (info: HarnessTemplateInfo): string[] => [
+  `exported ${info.id}  ${info.title}  ${info.files.length} ${info.files.length === 1 ? "file" : "files"}, ${info.bytes} bytes`,
+  ...info.files.map((file) => `  ${file}`),
+];

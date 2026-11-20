@@ -61,7 +61,7 @@ export function runProjectCli(
         note.wrote = true;
         if (args.action === "detect-provider") {
           const answer = await daemon.call("project.detectProvider", { projectId: found.id });
-          return args.json ? json(answer) : said(...detectLines(answer));
+          return args.json ? json(answer) : said(...detectLines(found.name, answer));
         }
         const answer = await daemon.call("project.update", { projectId: found.id, ...args.fields });
         return args.json ? json(answer) : said(...projectLines("updated", answer, args.fields));

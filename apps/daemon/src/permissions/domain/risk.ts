@@ -304,6 +304,15 @@ const endsASession = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "session", ["close"]);
 
 /**
+ * `project add` and `update` set a project's setup script (a shell command that runs in every card), its
+ * auto-approval and its prompt; `harness-export` copies its instructions into the host's shared store and
+ * `harness-draft` runs a model over the repository (#3515). The app has the person fill a form and press a
+ * button; from a shell, any session could widen what the next card runs or is allowed to do.
+ */
+const changesAProject = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "project", ["add", "update", "harness-draft", "harness-export"]);
+
+/**
  * `session create` and `fork` start a session with a folder, a prompt, a model and a permission mode of
  * their own (up to `bypassPermissions`), spending the plan; `set-mode` and `apply-persona` change what a
  * live session may do without asking (a persona carries its own permission mode and instructions). The app
@@ -398,6 +407,11 @@ const DANGEROUS: Array<{
     when: endsASession,
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
+  },
+  {
+    when: changesAProject,
+    reason: () =>
+      "sets what a project runs or allows without the person confirming it in the app: its setup script, its auto-approval, or the instructions it exports to the shared store, and a drafted CLAUDE.md is a model call (flightdeckd project add, update, harness-draft or harness-export)",
   },
   {
     when: startsOrReshapesASession,

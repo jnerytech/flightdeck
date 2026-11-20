@@ -207,3 +207,12 @@ harness parts would add (`harness-preview`, which writes nothing). A folder must
 `--host <name>` asks another host, and the folder must then be an absolute path on that host. `trust-inspect` shows
 hook commands and server arguments whole, so a host answers it only to a person at that host, and `harness-preview`
 with `--template` too.
+
+`fd project add <folder>` puts a folder on the board, and `fd project update <name or id>` changes only the fields you
+pass: `--name`, `--base-branch`, `--pr-provider github|azure-devops|none`, `--setup-script <command|none>`,
+`--prompt-template`, `--auto-approve on|off`, and for `update` also `--default-hours <0-1000|none>` and
+`--persona-subagents all|project|none`. An `update` with no field is refused. `fd project detect-provider <name or id>`
+reads the origin remote and sets the PR provider when it is GitHub or Azure DevOps. `fd project harness-draft <folder>`
+prints a drafted CLAUDE.md (a model call; it writes nothing), and `fd project harness-export <folder> <id> <title>`
+saves the folder's agent setup as a template on that host. A setup script runs in every card and `--auto-approve`
+changes what is approved without asking, so a session that runs these from its shell is stopped for your approval.

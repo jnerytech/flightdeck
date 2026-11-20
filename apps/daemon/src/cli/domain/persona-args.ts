@@ -66,8 +66,8 @@ function personaFlags(args: PersonaArgs): Array<[string, unknown, readonly strin
 export function personaProblem(args: PersonaArgs): string | undefined {
   for (const [flag, value, verbs] of personaFlags(args)) {
     if (value === undefined) continue;
-    // `team new --name` is the team's name, checked by `teamProblem`.
-    if (flag === "--name" && args.command === "team") continue;
+    // `team new --name` is the team's name, checked by `teamProblem`; `project add|update --name` is the project's, by `projectProblem`.
+    if (flag === "--name" && (args.command === "team" || args.command === "project")) continue;
     // `budget set` takes the scope too: `budgetProblem` checks it.
     if (flag === "--scope" && args.command === "budget") continue;
     // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
