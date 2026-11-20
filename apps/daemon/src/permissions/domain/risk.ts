@@ -177,12 +177,44 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
 /** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */
 const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCase();
 
-/** The words of `fd` or `flightdeckd` that are not options (`--config <file>`, `--json`, `--force`). */
+/**
+ * The options of `fd` that take a value, which can stand before the command (`fd --project p card
+ * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import.
+ */
+const OPTIONS_WITH_VALUE = [
+  "--message",
+  "--position",
+  "--title",
+  "--estimate",
+  "--validation-note",
+  "--spec-path",
+  "--blocked-by",
+  "--session",
+  "--host",
+  "--description",
+  "--language",
+  "--workflow",
+  "--out",
+  "--from",
+  "--folders",
+  "--launch",
+  "--url",
+  "--token",
+  "--last",
+  "--project",
+  "--project-path",
+  "--query",
+  "--param",
+  "--config",
+  "--runtime",
+];
+
+/** The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`). */
 function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
-    if (arg === "--config") i++;
+    if (OPTIONS_WITH_VALUE.includes(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
   }
   return words;
@@ -213,11 +245,12 @@ const answersARequest = (prog: string, args: string[]) =>
 const changesApprovers = (prog: string, args: string[]) =>
   runsFlightdeckVerb(prog, args, ["approvers"]);
 
-const CARD_ENDS = ["discard", "complete", "delete"];
+const CARD_ENDS = ["discard", "complete", "delete", "merge-local"];
 
 /**
  * What the app asks the person to confirm, done from a session's shell (#3454): `card discard`,
- * `complete` and `delete` end a card (a discard removes its worktree and branch), and `card move
+ * `complete`, `delete` and `merge-local` end a card (a discard removes its worktree and branch, a
+ * merge-local merges it into the base and removes them), and `card move
  * --force` skips a column's contract. `--confirm` is only a flag the caller types, so it proves nothing.
  */
 function endsACard(prog: string, args: string[]): boolean {
@@ -297,7 +330,7 @@ const DANGEROUS: Array<{
   {
     when: endsACard,
     reason: () =>
-      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete or move --force)",
+      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local or move --force)",
   },
   {
     when: changesAPersona,

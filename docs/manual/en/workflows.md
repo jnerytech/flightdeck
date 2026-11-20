@@ -239,6 +239,9 @@ flightdeckd card review <card> [--language en|pt-BR] [--json]
 flightdeckd card message <card> "<text>" [--json]
 flightdeckd card templates [--project <name or id>] [--json]
 flightdeckd card validation-template <card> [--json]
+flightdeckd card pr-create <card> [--title "<text>"] [--description "<text>"] [--json]
+flightdeckd card update-from-base <card> [--json]
+flightdeckd card merge-local <card> --confirm [--squash] [--message "<text>"] [--json]
 ```
 
 - `list` prints one line per card (project, id, column, title, and why a card waits). Without
@@ -266,6 +269,15 @@ flightdeckd card validation-template <card> [--json]
   working the text is queued and read after its turn.
 - `templates` lists the card templates of a project (`.flightdeck/templates/cards.json`), and
   `validation-template` prints the project's own shape for a validation note, or says why it was not used.
+- `pr-create` pushes the card's branch and opens its pull request with the card's title and text, or
+  with `--title` and `--description`; a text that looks like it holds a secret is refused. The link is
+  printed.
+- `update-from-base` rebases the card's branch on its base; on a conflict it stops and leaves the
+  worktree as it was (exit 1).
+- `merge-local` is for a card with no pull request: it merges the card into its base (a merge commit,
+  or one commit with `--squash`), removes its worktree and branch, and moves it to Done. It cannot be
+  undone, so it needs `--confirm`; `--message` is the commit message. A session's own shell that runs it
+  is held for the person's yes, like `discard`.
 - `--json` prints the answer for a script.
 - **Exit codes:** 0 done, 1 refused (the reason is on stderr, with the daemon's code), 2 no daemon
   (not running, or silent for 15 s; 5 minutes for `review`).

@@ -73,7 +73,10 @@ export interface CliArgs {
     | "review"
     | "message"
     | "templates"
-    | "validation-template";
+    | "validation-template"
+    | "pr-create"
+    | "update-from-base"
+    | "merge-local";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -104,6 +107,7 @@ export interface CliArgs {
   position?: number;
   force?: true;
   confirm?: true;
+  squash?: true;
   estimate?: string;
   validationNote?: string;
   specPath?: string;
@@ -210,6 +214,9 @@ export const USAGE = [
   "     fd card message <card> <text> [--json] [--config <file>]",
   "     fd card templates [--project <name or id>] [--json] [--config <file>]",
   "     fd card validation-template <card> [--json] [--config <file>]",
+  "     fd card pr-create <card> [--title <text>] [--description <text>] [--json] [--config <file>]",
+  "     fd card update-from-base <card> [--json] [--config <file>]",
+  "     fd card merge-local <card> --confirm [--squash] [--message <text>] [--json] [--config <file>]",
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
@@ -470,6 +477,9 @@ const HANDLERS: Record<string, Handler> = {
         "message",
         "templates",
         "validation-template",
+        "pr-create",
+        "update-from-base",
+        "merge-local",
       ],
       "invalid card action",
     );
@@ -511,6 +521,9 @@ const HANDLERS: Record<string, Handler> = {
   },
   "--message": setValue((args, v) => {
     args.answerMessage = v;
+  }),
+  "--squash": setFlag((args) => {
+    args.squash = true;
   }),
   "--force": setFlag((args) => {
     args.force = true;
@@ -710,21 +723,29 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
-  if (args.answerMessage !== undefined && !["approve", "deny"].includes(args.command))
-    throw new Error(`--message: this flag only applies to flightdeckd approve and deny\n${USAGE}`);
+  if (
+    args.answerMessage !== undefined &&
+    !["approve", "deny"].includes(args.command) &&
+    !(args.command === "card" && args.action === "merge-local")
+  )
+    throw new Error(
+      `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
+    );
   if (!["requests", "message"].includes(args.command) && args.session !== undefined)
     throw new Error(
       `--session: this flag only applies to flightdeckd requests and message\n${USAGE}`,
     );
   // `card new` takes its title as an operand: the flag is the title of an update.
-  if (args.titleFlag !== undefined && args.action === "update") args.cardTitle = args.titleFlag;
+  if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
+    args.cardTitle = args.titleFlag;
   const flagged: Array<[string, unknown, readonly string[] | null]> = [
-    ["--title", args.titleFlag, ["update"]],
-    ["--description", args.description, ["new", "update"]],
+    ["--title", args.titleFlag, ["update", "pr-create"]],
+    ["--description", args.description, ["new", "update", "pr-create"]],
     ["--workflow", args.workflow, ["start"]],
     ["--force", args.force, ["move"]],
     ["--position", args.position, ["move"]],
-    ["--confirm", args.confirm, ["complete", "discard", "delete"]],
+    ["--confirm", args.confirm, ["complete", "discard", "delete", "merge-local"]],
+    ["--squash", args.squash, ["merge-local"]],
     ["--estimate", args.estimate, ["update"]],
     ["--validation-note", args.validationNote, ["update"]],
     ["--spec-path", args.specPath, ["update"]],
@@ -748,3 +769,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   delete args.titleFlag;
   return args;
 }
+
+/** The options that take a value (`--project p`): a reader of the command text must skip that value. */
+export const VALUE_FLAGS = Object.keys(HANDLERS).filter(
+  (name) =>
+    name.startsWith("--") &&
+    !["--help", "--version"].includes(name) &&
+    !FLAGS.has(HANDLERS[name] as Handler),
+);
