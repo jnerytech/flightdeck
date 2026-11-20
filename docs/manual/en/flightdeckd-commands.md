@@ -161,8 +161,8 @@ remove a key.
   name, app, address and the time it enrolled (or `no device enrolled: protection is off`). With
   `--follow` it stays open and prints a line `enrolled ...` or `revoked <key id>` each time a device is
   enrolled or revoked, until Ctrl-C (exit `0`); with `--follow --json` each change is one JSON object per
-  line. It needs the daemon: exit `2` when none runs, `1` when the host does not offer the watch (an
-  older version). It never prints a key, a nonce or a code. A `reset` at the terminal sends no line: run
+  line. It needs the daemon: exit `2` when none runs, and `--follow` exits `1` when the host refuses the
+  watch (an older version, or one without approving devices). It never prints a key, a nonce or a code. A `reset` at the terminal sends no line: run
   `watch` again to see the empty list.
 
 `enroll` and `reset` read the data folder from the config file and work with the daemon running or

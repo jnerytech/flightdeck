@@ -162,8 +162,8 @@ cadastro nem remove uma chave.
   dispositivo: id da chave, nome, app, endereço e a hora do cadastro (ou `no device enrolled: protection
   is off`). Com `--follow` fica aberto e imprime uma linha `enrolled ...` ou `revoked <id da chave>` a
   cada dispositivo cadastrado ou revogado, até Ctrl-C (saída `0`); com `--follow --json` cada mudança é
-  um objeto JSON por linha. Precisa do daemon: saída `2` quando nenhum roda, `1` quando o host não
-  oferece o `watch` (versão mais antiga). Nunca imprime uma chave, um nonce ou um código. Um `reset` no
+  um objeto JSON por linha. Precisa do daemon: saída `2` quando nenhum roda, e `--follow` sai com `1`
+  quando o host recusa o watch (versão mais antiga, ou sem dispositivos de aprovação). Nunca imprime uma chave, um nonce ou um código. Um `reset` no
   terminal não envia linha: rode `watch` de novo para ver a lista vazia.
 
 `enroll` e `reset` leem a pasta de dados do arquivo de configuração e funcionam com o daemon rodando ou

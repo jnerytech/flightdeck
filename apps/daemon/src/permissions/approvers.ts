@@ -157,6 +157,8 @@ export class Approvers {
     else this.checkAdd(payload, keys);
     const keyId = keyIdOf(payload.publicKey);
     const enrolledAt = this.opts.now().toISOString();
+    // The store keeps the first row of a key; a second enroll of it is no new device to announce.
+    const known = keys.some((k) => k.keyId === keyId);
     this.store.add({
       keyId,
       publicKey: payload.publicKey,
@@ -166,14 +168,15 @@ export class Approvers {
       enrolledAt,
     });
     this.store.closeWindow();
-    this.announce({
-      type: "approval.enrolled",
-      keyId,
-      name: payload.name,
-      client: asker.client,
-      address: asker.address,
-      enrolledAt,
-    });
+    if (!known)
+      this.announce({
+        type: "approval.enrolled",
+        keyId,
+        name: payload.name,
+        client: asker.client,
+        address: asker.address,
+        enrolledAt,
+      });
     return { keyId, daemonId: this.daemonId() };
   }
 
