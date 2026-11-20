@@ -3,4 +3,6 @@
  * imports from here, never a file inside. Only main.ts reaches the wiring (./wiring.ts) directly:
  * re-exporting it here would close import cycles through the domains it wires.
  */
+
+export { runSessionsCli, type SessionsCliArgs } from "./cli.ts";
 export type { SessionManager } from "./session-manager.ts";
