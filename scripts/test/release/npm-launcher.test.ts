@@ -109,15 +109,16 @@ describe("npm launcher: what it runs (#3541)", () => {
     expect(r.spawned[0]?.options).toEqual({ stdio: "inherit" });
   });
 
-  test("Ctrl-C is left to the binary, which the terminal already told, and a stop is passed on to it", () => {
+  test("Ctrl-C is left to the binary, which the terminal already told, and a stop or a hang-up is passed on to it", () => {
     const r = run("flightdeckd", []);
     r.traps.get("SIGINT")?.();
     const afterInterrupt = [...r.killed];
     r.traps.get("SIGTERM")?.();
+    r.traps.get("SIGHUP")?.();
     expect([[...r.traps.keys()].sort(), afterInterrupt, r.killed, r.exits]).toEqual([
-      ["SIGINT", "SIGTERM"],
+      ["SIGHUP", "SIGINT", "SIGTERM"],
       [],
-      ["SIGTERM"],
+      ["SIGTERM", "SIGHUP"],
       [],
     ]);
   });
