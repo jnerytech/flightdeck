@@ -338,7 +338,7 @@ const HANDLERS: Record<string, Handler> = {
     args.variants = [...(args.variants ?? []), v];
   }),
   "--max-parallel-runs": setValue((args, v) => {
-    if (!/^\d+$/.test(v) || Number(v) < 1)
+    if (!/^\d+$/.test(v) || !Number.isSafeInteger(Number(v)) || Number(v) < 1)
       throw new Error(`--max-parallel-runs needs a whole number, 1 or more\n${USAGE}`);
     args.maxParallelRuns = Number(v);
   }),
