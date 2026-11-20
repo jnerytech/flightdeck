@@ -93,7 +93,7 @@ describe("persona launch: `flightdeckd new <persona>` (#3426)", () => {
     const { code, said, claudeArgs } = await run(["new", "nope"]);
     expect({ code, claudeStarted: claudeArgs !== null }).toEqual({ code: 1, claudeStarted: false });
     expect(said).toContain("persona nope: ");
-    for (const id of ["arquiteto", "qa", "revisor"]) expect(said, id).toContain(id);
+    for (const id of ["architect", "qa", "reviewer"]) expect(said, id).toContain(id);
   });
 });
 

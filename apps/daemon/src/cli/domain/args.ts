@@ -19,6 +19,7 @@ export interface CliArgs {
     | "hook"
     | "channel"
     | "claude"
+    | "help"
     | "askpass"
     | "mcp"
     | "statusline"
@@ -112,43 +113,45 @@ export interface CliArgs {
   askpassPrompt?: string;
 }
 
-const USAGE = [
+export const USAGE = [
   "usage: flightdeckd [start] [--config <file>] [--runtime fake|claude]",
-  "     flightdeckd --version",
-  "     flightdeckd db prune [--dry-run] [--config <file>]",
-  "     flightdeckd backup [--out <file>] [--config <file>]",
-  "     flightdeckd restore <file> [--config <file>]   (with the daemon stopped)",
-  "     flightdeckd update --from <binary> [--allow-downgrade] [--config <file>]",
-  "     flightdeckd setup [--yes --folders <a,b>] [--config <file>]   (guided first run)",
-  "     flightdeckd doctor [--config <file>]   (what is missing for it to work, and how to fix it)",
-  "     flightdeckd pair [--rotate] [--config <file>]",
-  "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
-  "     flightdeckd history reindex [--config <file>]",
-  "     flightdeckd hooks install|uninstall|status [--config <file>]",
-  "     flightdeckd telemetry install|uninstall|status [--config <file>]",
+  "     fd --version | --help",
+  "     fd db prune [--dry-run] [--config <file>]",
+  "     fd backup [--out <file>] [--config <file>]",
+  "     fd restore <file> [--config <file>]   (with the daemon stopped)",
+  "     fd update --from <binary> [--allow-downgrade] [--config <file>]",
+  "     fd setup [--yes --folders <a,b>] [--config <file>]   (guided first run)",
+  "     fd doctor [--config <file>]   (what is missing for it to work, and how to fix it)",
+  "     fd pair [--rotate] [--config <file>]",
+  "     fd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
+  "     fd history reindex [--config <file>]",
+  "     fd hooks install|uninstall|status [--config <file>]",
+  "     fd telemetry install|uninstall|status [--config <file>]",
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
   "     flightdeckd channel --launch <id> --url <receiver> --token <token>   (the channel's MCP server)",
-  "     flightdeckd claude [claude arguments]   (config in FLIGHTDECK_CONFIG)",
-  "     flightdeckd architect|reviewer|security|coordinator [claude arguments]   (claude with that persona)",
-  "     flightdeckd new <persona> [claude arguments]   (claude with any persona, by its id)",
+  "     fd [claude arguments]   (a bare fd is flightdeckd claude: claude with the Flightdeck channel; config in FLIGHTDECK_CONFIG)",
+  "     fd claude <prompt>      (a prompt or a claude command that starts with a word above, such as update or doctor)",
+  "     flightdeckd claude [claude arguments]   (the same, by its full name)",
+  "     fd architect|reviewer|security|coordinator [claude arguments]   (claude with that persona)",
+  "     fd new <persona> [claude arguments]   (claude with any persona, by its id)",
   "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
-  "     flightdeckd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
-  "     flightdeckd statusline [--config <file>]   (one line for Claude Code's statusline)",
-  "     flightdeckd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
-  "     flightdeckd card list [--project <name or id>] [--json] [--config <file>]",
-  "     flightdeckd card show <card> [--json] [--config <file>]",
-  "     flightdeckd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
-  "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
-  "     flightdeckd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
-  "     flightdeckd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
-  "     flightdeckd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
-  "     flightdeckd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (--hold: you mean to allow a high-risk request; it is your own assertion)",
-  "     flightdeckd deny <request> [--message <text>] [--json] [--config <file>]",
-  "     flightdeckd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
-  "     flightdeckd action list [--project <id>] [--config <file>]",
-  "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
-  "     flightdeckd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
-  "     flightdeckd snippet get <name> [--project-path <folder>] [--config <file>]",
+  "     fd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
+  "     fd statusline [--config <file>]   (one line for Claude Code's statusline)",
+  "     fd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
+  "     fd card list [--project <name or id>] [--json] [--config <file>]",
+  "     fd card show <card> [--json] [--config <file>]",
+  "     fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
+  "     fd card start <card> [--workflow <name>] [--json] [--config <file>]",
+  "     fd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
+  "     fd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
+  "     fd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
+  "     fd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (--hold: you mean to allow a high-risk request; it is your own assertion)",
+  "     fd deny <request> [--message <text>] [--json] [--config <file>]",
+  "     fd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
+  "     fd action list [--project <id>] [--config <file>]",
+  "     fd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
+  "     fd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
+  "     fd snippet get <name> [--project-path <folder>] [--config <file>]",
 ].join("\n");
 
 const SERVICE_ACTIONS: readonly ServiceAction[] = [
@@ -270,16 +273,11 @@ const withNamedAction =
     if (action === allowed[1]) keep(args, operand(reader, nameWhat));
   };
 
-/**
- * The pack persona each shortcut word opens. The pack still carries the Portuguese ids until #3413
- * renames them to the words themselves; then this table goes and the word is the id.
- */
-const SHORTCUTS = {
-  architect: "arquiteto",
-  reviewer: "revisor",
-  security: "seguranca",
-  coordinator: "coordenador",
-} as const;
+/** The words of `fd` that are not subcommands but are still Flightdeck's own. */
+const FD_FLAGS = ["--version", "--help", "-h"];
+
+/** The pack personas a shortcut word opens: the word is the persona's id (#3413, #3441). */
+const SHORTCUTS = ["architect", "reviewer", "security", "coordinator"] as const;
 
 /** `flightdeckd <word>` is `flightdeckd claude --persona <id> ...`: one launch path, the claude one. */
 const openWith =
@@ -320,12 +318,24 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "claude";
     args.claudeArgs = reader.takeRest();
   },
-  ...Object.fromEntries(Object.entries(SHORTCUTS).map(([word, id]) => [word, openWith(() => id)])),
+  ...Object.fromEntries(SHORTCUTS.map((word) => [word, openWith(() => word)])),
   new: openWith((reader) => {
     const id = reader.next();
     if (id === undefined || id.startsWith("-")) throw new Error(`missing persona id\n${USAGE}`);
     return id;
   }),
+  // `fd <subcommand>` is `flightdeckd <subcommand>`; anything else goes to claude, as the alias did (#3433).
+  fd: (args, reader) => {
+    // Only the first word: after another command, `fd` would silently turn it into claude.
+    if (args.command !== "start") throw new Error(`unknown argument: fd\n${USAGE}`);
+    const rest = reader.takeRest();
+    const word = rest[0] ?? "";
+    const own = word !== "fd" && Object.hasOwn(HANDLERS, word) && !word.startsWith("-");
+    if (own || FD_FLAGS.includes(word)) Object.assign(args, parseArgs(rest));
+    else Object.assign(args, { command: "claude", claudeArgs: rest });
+  },
+  "--help": setCommand("help"),
+  "-h": setCommand("help"),
   askpass: (args, reader) => {
     args.command = "askpass";
     args.askpassPrompt = reader.takeRest().join(" ");

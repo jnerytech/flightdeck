@@ -86,10 +86,10 @@ describe("card cli: flightdeckd card (issue #1507)", () => {
       usage = (error as Error).message;
     }
     for (const line of [
-      "flightdeckd card list [--project <name or id>] [--json] [--config <file>]",
-      "flightdeckd card show <card> [--json] [--config <file>]",
-      "flightdeckd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
-      "flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
+      "fd card list [--project <name or id>] [--json] [--config <file>]",
+      "fd card show <card> [--json] [--config <file>]",
+      "fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
+      "fd card start <card> [--workflow <name>] [--json] [--config <file>]",
     ])
       expect(usage).toContain(line);
   });
