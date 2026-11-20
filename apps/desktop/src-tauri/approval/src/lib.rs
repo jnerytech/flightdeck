@@ -364,6 +364,12 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         // token the host makes, so nothing in them can pad the text. The hook commands are not in the payload: the
         // host reads them again, so the person's check of them is the preview in the app.
         "project.harness.apply" => read_harness_apply(fields),
+        // Every payload of both commands is signed. The dialog says the plugin (or the folder it comes from) and the
+        // scope; the hash of the content the person was shown and the command the host showed are signed but not
+        // shown, and each one is a plain token the host makes, so nothing in them can pad the text. What the plugin
+        // contains is the preview in the app; the hash ties the install to that preview.
+        "plugins.install" => read_plugin(fields, true),
+        "plugins.update" => read_plugin(fields, false),
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -462,6 +468,91 @@ fn read_harness_apply(
     }
     canonical.push('}');
     Ok((CommandAsk::HarnessApply { path: path.into(), parts, template, reformat }, canonical))
+}
+
+/// The payload of `plugins.install` (`install`) or `plugins.update`, read for the dialog and written in canonical form.
+fn read_plugin(
+    fields: &serde_json::Map<String, serde_json::Value>,
+    install: bool,
+) -> Result<(CommandAsk, String), String> {
+    let allowed: &[&str] = if install {
+        &["acceptCommand", "confirmHash", "dir", "plugin", "scope"]
+    } else {
+        &["acceptCommand", "confirmHash", "plugin"]
+    };
+    if fields.keys().any(|key| !allowed.contains(&key.as_str())) {
+        return Err("the plugin payload has the wrong fields".into());
+    }
+    let text = |key: &str| match fields.get(key) {
+        None => Ok(None),
+        Some(value) => value
+            .as_str()
+            .map(Some)
+            .ok_or_else(|| format!("the plugin payload has no text for {key}")),
+    };
+    // A token the host makes (a content hash, the hash of a command it showed): never shown, so only plain.
+    let token = |value: &str| {
+        !value.is_empty()
+            && value.len() <= 128
+            && value.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
+    };
+    let confirm = text("confirmHash")?.ok_or("the plugin payload has no content hash")?;
+    let accept = text("acceptCommand")?;
+    if !token(confirm) || accept.is_some_and(|value| !token(value)) {
+        return Err("a hash of a plugin payload is not a plain token".into());
+    }
+    let plugin = text("plugin")?;
+    let dir = text("dir")?;
+    let one_source = if install { plugin.is_some() != dir.is_some() } else { plugin.is_some() };
+    if !one_source {
+        return Err("a plugin payload names a plugin or a folder, one of the two".into());
+    }
+    // `name@marketplace`: letters, digits and a few marks, never a first `-` (the host takes it as an option).
+    if let Some(id) = plugin {
+        let plain = id.len() <= 128
+            && !id.starts_with('-')
+            && !id.is_empty()
+            && id.chars().all(|c| c.is_ascii_alphanumeric() || "._-@".contains(c));
+        if !plain {
+            return Err("the plugin is not a name the dialog can show".into());
+        }
+    }
+    if let Some(path) = dir {
+        if !is_shown_path(path) {
+            return Err("the folder is not a path the dialog can show".into());
+        }
+    }
+    let scope = text("scope")?;
+    if scope.is_some_and(|value| !["user", "project", "local"].contains(&value)) {
+        return Err("the scope of a plugin is user, project or local".into());
+    }
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let mut canonical = String::from("{");
+    for (key, value) in [
+        ("acceptCommand", accept),
+        ("confirmHash", Some(confirm)),
+        ("dir", dir),
+        ("plugin", plugin),
+        ("scope", scope),
+    ] {
+        if let Some(value) = value {
+            if canonical.len() > 1 {
+                canonical.push(',');
+            }
+            canonical.push_str(&format!("{}:{}", quoted(key), quoted(value)));
+        }
+    }
+    canonical.push('}');
+    let ask = if install {
+        CommandAsk::PluginInstall {
+            plugin: plugin.map(String::from),
+            dir: dir.map(String::from),
+            scope: scope.unwrap_or("user").to_string(),
+        }
+    } else {
+        CommandAsk::PluginUpdate { plugin: plugin.unwrap_or_default().to_string() }
+    };
+    Ok((ask, canonical))
 }
 
 /// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
@@ -658,7 +749,45 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                     )
                 }
             }
-            Some(CommandAsk::PluginInstall { .. } | CommandAsk::PluginUpdate { .. }) => String::new(),
+            Some(CommandAsk::PluginInstall { plugin, dir, scope }) => {
+                let scope = match (scope.as_str(), pt) {
+                    ("user", true) => "para você",
+                    ("project", true) => "para o projeto",
+                    ("local", true) => "só para este projeto, neste computador",
+                    ("user", false) => "for you",
+                    ("project", false) => "for the project",
+                    (_, false) => "for this project on this computer only",
+                    (_, true) => "só para este projeto, neste computador",
+                };
+                match (plugin, dir, pt) {
+                    (Some(name), _, true) => format!(
+                        "Instalar um plugin? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar \"{name}\" {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.",
+                        short(&ask.host)
+                    ),
+                    (Some(name), _, false) => format!(
+                        "Install a plugin? A plugin runs code on this computer, in your sessions. Host {} will install \"{name}\" {scope}. Continue only if you just pressed Install in Flightdeck.",
+                        short(&ask.host)
+                    ),
+                    (None, path, true) => format!(
+                        "Instalar um plugin de uma pasta? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar o que está na pasta {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.\n\"{}\"",
+                        short(&ask.host),
+                        path.as_deref().unwrap_or_default()
+                    ),
+                    (None, path, false) => format!(
+                        "Install a plugin from a folder? A plugin runs code on this computer, in your sessions. Host {} will install what is in the folder {scope}. Continue only if you just pressed Install in Flightdeck.\n\"{}\"",
+                        short(&ask.host),
+                        path.as_deref().unwrap_or_default()
+                    ),
+                }
+            }
+            Some(CommandAsk::PluginUpdate { plugin }) if pt => format!(
+                "Atualizar um plugin? O plugin \"{plugin}\" vai passar para o conteúdo que você viu, e um plugin roda código neste computador, em suas sessões. O host {} faz a troca. Continue só se você acabou de apertar Atualizar no Flightdeck.",
+                short(&ask.host)
+            ),
+            Some(CommandAsk::PluginUpdate { plugin }) => format!(
+                "Update a plugin? The plugin \"{plugin}\" will change to the content you saw, and a plugin runs code on this computer, in your sessions. Host {} makes the change. Continue only if you just pressed Update in Flightdeck.",
+                short(&ask.host)
+            ),
             None => String::new(),
         },
     };
@@ -678,6 +807,12 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::HarnessApply { .. })) => {
             if pt { ("Gravar configuração", "Cancelar") } else { ("Write setup", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::PluginInstall { .. })) => {
+            if pt { ("Instalar", "Cancelar") } else { ("Install", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::PluginUpdate { .. })) => {
+            if pt { ("Atualizar", "Cancelar") } else { ("Update", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
             if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
@@ -1656,7 +1791,8 @@ mod tests {
             assert!(update(&bad).is_err(), "signed update: {bad}");
         }
         assert!(update(&ok("")).is_ok());
-        assert!(update(&ok(",\"acceptCommand\":\"cc\"")).is_ok());
+        // The payload is signed in canonical (sorted) form, so the accepted command comes first.
+        assert!(update(&ok("").replacen('{', "{\"acceptCommand\":\"cc\",", 1)).is_ok());
     }
 
     #[test]
