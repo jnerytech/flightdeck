@@ -239,13 +239,21 @@
   "personas.list": {
     "cli": "persona"
   },
-  "personas.publishAgent": {},
-  "personas.remove": {},
-  "personas.reset": {},
+  "personas.publishAgent": {
+    "cli": "persona"
+  },
+  "personas.remove": {
+    "cli": "persona"
+  },
+  "personas.reset": {
+    "cli": "persona"
+  },
   "personas.resolve": {
     "cli": "persona"
   },
-  "personas.save": {},
+  "personas.save": {
+    "cli": "persona"
+  },
   "personas.subagents": {
     "cli": "persona"
   },

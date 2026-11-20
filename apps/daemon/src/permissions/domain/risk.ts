@@ -272,6 +272,26 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
+const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
+
+/**
+ * What the app asks the person to confirm, done from a session's shell (#3456): `persona save` and
+ * `remove` rewrite or drop a persona (a saved one is a system prompt with its own permission mode),
+ * `reset` throws an edit away, `trust` lets a project's versioned persona into every session, and
+ * `publish-agent` writes a file into the project. `--confirm` is only a flag the caller types. The verb
+ * is read as the word after `persona`, since a value flag before it (`--language en`) shifts the words.
+ */
+function changesAPersona(prog: string, args: string[]): boolean {
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const runsCli = ["fd", "flightdeckd"].includes(prog)
+    ? true
+    : RUNNERS.includes(prog) &&
+      words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  return (
+    runsCli && words.some((w, i) => w === "persona" && PERSONA_CHANGES.includes(words[i + 1] ?? ""))
+  );
+}
+
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
@@ -311,6 +331,11 @@ const DANGEROUS: Array<{
     when: endsACard,
     reason: () =>
       "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local or move --force)",
+  },
+  {
+    when: changesAPersona,
+    reason: () =>
+      "changes what the app asks a person to confirm (flightdeckd persona save, remove, reset, trust or publish-agent)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

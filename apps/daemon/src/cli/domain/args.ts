@@ -64,6 +64,9 @@ export interface CliArgs {
     | "delete"
     | "discard"
     | "subagents"
+    | "save"
+    | "remove"
+    | "publish-agent"
     | "diff"
     | "spec"
     | "review"
@@ -115,8 +118,17 @@ export interface CliArgs {
   /** `card review` and `persona list|show|subagents`: the language of the text. */
   language?: "en" | "pt-BR";
   json?: true;
-  /** `persona show <id>`. */
+  /** `persona show|save|remove|reset|publish-agent <id>`. */
   personaId?: string;
+  /** `persona save`: the persona's fields, as flags. */
+  personaName?: string;
+  body?: string;
+  bodyFile?: string;
+  model?: string;
+  effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  tools?: string[];
+  permissionMode?: string;
+  icon?: string;
   /** `persona list --scope <host|project|all>`. */
   scope?: "host" | "project" | "all";
   /** `action run <name>`. */
@@ -486,9 +498,14 @@ const HANDLERS: Record<string, Handler> = {
   },
   persona: (args, reader) => {
     args.command = "persona";
-    const action = subAction(reader, ["list", "show", "subagents"], "invalid persona action");
+    const action = subAction(
+      reader,
+      ["list", "show", "subagents", "save", "remove", "reset", "publish-agent"],
+      "invalid persona action",
+    );
     args.action = action;
-    if (action === "show") args.personaId = operand(reader, "the persona");
+    if (action !== "list" && action !== "subagents")
+      args.personaId = operand(reader, "the persona");
   },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
@@ -555,6 +572,38 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--description": setValue((args, v) => {
     args.description = v;
+  }),
+  "--name": setValue((args, v) => {
+    args.personaName = v;
+  }),
+  "--body": setValue((args, v) => {
+    args.body = v;
+  }),
+  "--body-file": setValue((args, v) => {
+    args.bodyFile = v;
+  }),
+  "--model": setValue((args, v) => {
+    args.model = v;
+  }),
+  "--effort": setValue((args, v) => {
+    if (!EFFORTS.includes(v)) throw new Error(`--effort: ${EFFORTS.join(", ")}\n${USAGE}`);
+    args.effort = v as NonNullable<CliArgs["effort"]>;
+  }),
+  "--tools": setValue((args, v) => {
+    const tools = v
+      .split(",")
+      .map((tool) => tool.trim())
+      .filter((tool) => tool !== "");
+    if (tools.length === 0) throw new Error(`--tools: a comma-separated list of tools\n${USAGE}`);
+    args.tools = tools;
+  }),
+  "--permission-mode": setValue((args, v) => {
+    if (!PERMISSION_MODES.includes(v))
+      throw new Error(`--permission-mode: ${PERMISSION_MODES.join(", ")}\n${USAGE}`);
+    args.permissionMode = v;
+  }),
+  "--icon": setValue((args, v) => {
+    args.icon = v;
   }),
   "--language": setValue((args, v) => {
     if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR\n${USAGE}`);
@@ -628,6 +677,58 @@ const HANDLERS: Record<string, Handler> = {
     args.runtime = RuntimeKind.parse(v);
   }),
 };
+
+const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
+const PERMISSION_MODES = ["default", "acceptEdits", "bypassPermissions", "plan", "dontAsk", "auto"];
+
+/** The flags of `persona`, each with the verbs that take it (`--language` is checked by the daemon). */
+function personaFlags(args: CliArgs): Array<[string, unknown, readonly string[]]> {
+  return [
+    ["--scope", args.scope, ["list", "save", "remove"]],
+    ["--name", args.personaName, ["save"]],
+    ["--body", args.body, ["save"]],
+    ["--body-file", args.bodyFile, ["save"]],
+    ["--model", args.model, ["save"]],
+    ["--effort", args.effort, ["save"]],
+    ["--tools", args.tools, ["save"]],
+    ["--permission-mode", args.permissionMode, ["save"]],
+    ["--icon", args.icon, ["save"]],
+    // `--description` and `--confirm` are the card's too: only `persona` is checked here.
+    ...(args.command === "persona"
+      ? ([
+          ["--description", args.description, ["save"]],
+          ["--confirm", args.confirm, ["publish-agent"]],
+        ] as Array<[string, unknown, readonly string[]]>)
+      : []),
+  ];
+}
+
+/** What `persona` verbs need before anything is sent: the flags of the verb, and the ones it cannot do without. */
+function checkPersona(args: CliArgs): void {
+  for (const [flag, value, verbs] of personaFlags(args)) {
+    if (value === undefined) continue;
+    if (args.command !== "persona" || !verbs.includes(args.action as string))
+      throw new Error(
+        `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}\n${USAGE}`,
+      );
+  }
+  if (args.command !== "persona") return;
+  const missing = (flag: string) => new Error(`missing ${flag}\n${USAGE}`);
+  if (args.action === "save" || args.action === "remove") {
+    if (args.scope === undefined) throw missing("--scope");
+    if (args.scope === "all") throw new Error(`--scope: host or project\n${USAGE}`);
+  }
+  if (args.action === "save") {
+    if (args.personaName === undefined) throw missing("--name");
+    if (args.description === undefined) throw missing("--description");
+    if (args.body === undefined && args.bodyFile === undefined)
+      throw missing("--body or --body-file");
+    if (args.body !== undefined && args.bodyFile !== undefined)
+      throw new Error(`--body or --body-file, not both\n${USAGE}`);
+  }
+  if (args.action === "publish-agent" && args.projectPath === undefined)
+    throw missing("--project-path");
+}
 
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
@@ -706,7 +807,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   for (const [flag, value, actions] of flagged) {
     if (value === undefined) continue;
     // `--language` also belongs to `persona`, which checks its own flags below.
-    if (flag === "--language" && args.command === "persona") continue;
+    if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
+      continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -714,8 +816,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
-  if (args.scope !== undefined && (args.command !== "persona" || args.action !== "list"))
-    throw new Error(`--scope: this flag only applies to flightdeckd persona list\n${USAGE}`);
+  checkPersona(args);
   delete args.titleFlag;
   return args;
 }
