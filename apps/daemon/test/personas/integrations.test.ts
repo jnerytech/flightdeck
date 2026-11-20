@@ -55,15 +55,15 @@ describe("personas-integracoes: etapa de workflow", () => {
     "steps:",
     "  - id: revisar",
     "    parallel:",
-    "      - agent: { persona: seguranca, prompt: Revise a segurança }",
-    "      - agent: { persona: revisor, prompt: Revise o código }",
+    "      - agent: { persona: security, prompt: Revise a segurança }",
+    "      - agent: { persona: reviewer, prompt: Revise o código }",
     "",
   ].join("\n");
 
   test("a etapa agent aceita persona: o id é simples e ela não vale com continue", () => {
-    const ok = parseWorkflow("steps:\n  - id: a\n    agent: { persona: seguranca, prompt: x }\n");
+    const ok = parseWorkflow("steps:\n  - id: a\n    agent: { persona: security, prompt: x }\n");
     expect(ok.errors).toEqual([]);
-    expect(ok.workflow?.steps[0]).toMatchObject({ agent: { persona: "seguranca" } });
+    expect(ok.workflow?.steps[0]).toMatchObject({ agent: { persona: "security" } });
     expect(parseWorkflow(REVIEW).errors).toEqual([]);
     const invalid = parseWorkflow("steps:\n  - id: a\n    agent: { persona: '../x', prompt: x }\n");
     expect(invalid.errors.join("\n")).toMatch(/persona/);
@@ -96,7 +96,7 @@ describe("personas-integracoes: etapa de workflow", () => {
     const sessions = (done?.steps ?? [])
       .filter((step) => step.sessionId)
       .map((step) => manager.get(step.sessionId ?? ""));
-    expect(sessions.map((s) => s.persona?.id).sort()).toEqual(["revisor", "seguranca"]);
+    expect(sessions.map((s) => s.persona?.id).sort()).toEqual(["reviewer", "security"]);
     const bySecurity = runtime.starts.find((s) =>
       s.persona?.append.includes("revisor de segurança"),
     );
@@ -146,8 +146,8 @@ describe("personas-integracoes: no board", () => {
 
   test("a persona padrão da coluna vale quando o card recomeça, e a pedida na hora vence", async () => {
     const { board, card, project, manager, runtime } = await started();
-    const updated = board.updateProject(project.id, { personaByColumn: { review: "revisor" } });
-    expect(updated.personaByColumn).toEqual({ review: "revisor" });
+    const updated = board.updateProject(project.id, { personaByColumn: { review: "reviewer" } });
+    expect(updated.personaByColumn).toEqual({ review: "reviewer" });
     // From the backlog there is no default: a plain session.
     await board.startCard(card.id);
     const first = await cardWhen(
@@ -163,7 +163,7 @@ describe("personas-integracoes: no board", () => {
       card.id,
       (c) => c.sessionId !== null && c.sessionId !== first?.sessionId && c.column === "review",
     );
-    expect(manager.get(second?.sessionId ?? "").persona).toMatchObject({ id: "revisor" });
+    expect(manager.get(second?.sessionId ?? "").persona).toMatchObject({ id: "reviewer" });
     expect(runtime.starts.at(-1)?.persona?.append).toMatch(/revisor de código sênior/);
     // What was asked for in the start wins over the column's default.
     await board.startCard(card.id, { persona: { id: "docs" } });
@@ -187,13 +187,13 @@ describe("personas-integracoes: no board", () => {
     };
     expect(bad({ review: "../x" })).toBe("bad_request");
     expect(bad({ nao_existe: "qa" })).toBe("bad_request");
-    expect(bad({ review: "revisor", backlog: "arquiteto" })).toBe("ok");
+    expect(bad({ review: "reviewer", backlog: "architect" })).toBe("ok");
     expect(board.getProject(project.id).personaByColumn).toEqual({
-      review: "revisor",
-      backlog: "arquiteto",
+      review: "reviewer",
+      backlog: "architect",
     });
     expect(bad({ review: null })).toBe("ok");
-    expect(board.getProject(project.id).personaByColumn).toEqual({ backlog: "arquiteto" });
+    expect(board.getProject(project.id).personaByColumn).toEqual({ backlog: "architect" });
   });
 
   test("um padrão que não vale (a persona foi apagada, ou perdeu a confiança) falha a execução com o motivo, e o card espera", async () => {
@@ -235,7 +235,7 @@ describe("personas-integracoes: custo por persona", () => {
     const external = new ExternalSessions({ db: store.db, staleAfterS: 900 });
     external.apply("SessionStart", {
       session_id: "c-term",
-      persona: { id: "seguranca", name: "Seg", icon: null },
+      persona: { id: "security", name: "Seg", icon: null },
     });
     external.apply("SessionStart", { session_id: "c-term-2" });
     external.setPersona("c-term-2", { id: "sre", name: "SRE", icon: null });
@@ -260,7 +260,7 @@ describe("personas-integracoes: custo por persona", () => {
     expect(summary.byPersona).toEqual([
       { persona: null, costUsd: 68, tokens: 20 },
       { persona: "sre", costUsd: 32, tokens: 10 },
-      { persona: "seguranca", costUsd: 16, tokens: 10 },
+      { persona: "security", costUsd: 16, tokens: 10 },
       { persona: "docs", costUsd: 8, tokens: 10 },
       { persona: "qa", costUsd: 3, tokens: 20 },
     ]);
@@ -275,18 +275,18 @@ describe("personas-integracoes: arena", () => {
     const project = await board.addProject({ path: repo, promptTemplate: "" });
     const card = board.createCard(project.id, { title: "Tarefa", description: "faça" });
     const arena = await board.startArena(card.id, {
-      variants: [{ persona: { id: "seguranca" } }, { persona: { id: "qa" } }, {}],
+      variants: [{ persona: { id: "security" } }, { persona: { id: "qa" } }, {}],
     });
     const sessions = await Promise.all(
       arena.variants.map((v) => cardWhen(board, v.id, (c) => c.sessionId !== null)),
     );
     expect(sessions.map((c) => manager.get(c?.sessionId ?? "").persona?.id ?? null)).toEqual([
-      "seguranca",
+      "security",
       "qa",
       null,
     ]);
     expect((await board.arena(card.id)).variants.map((v) => v.persona)).toEqual([
-      "seguranca",
+      "security",
       "qa",
       null,
     ]);

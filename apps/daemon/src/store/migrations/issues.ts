@@ -1,4 +1,12 @@
 /** The migrations named after an issue rather than a phase (issue #196 onwards). In order: their place in `MIGRATIONS` is their version. */
+/** Old pack persona id, new one (#3413). */
+const PERSONA_ID_RENAMES = [
+  ["arquiteto", "architect"],
+  ["coordenador", "coordinator"],
+  ["revisor", "reviewer"],
+  ["seguranca", "security"],
+] as const;
+
 export const ISSUES: readonly string[] = [
   // Issue #196: the projects whose own hooks, MCP servers and settings may load in a managed session.
   `
@@ -190,4 +198,34 @@ export const ISSUES: readonly string[] = [
   );
   CREATE INDEX card_review_attempts_card ON card_review_attempts (card_id, at);
   `,
+  // Issue #3413: the Portuguese pack persona ids become English ones in what is stored. A column
+  // that holds JSON is changed only when it is valid JSON; a snapshot with a hash is a project's
+  // persona (a file of its own) and keeps its id; a host row goes only when the new id is free,
+  // so a persona the person made under it is never merged into.
+  `-- #3413`.concat(
+    PERSONA_ID_RENAMES.map(
+      ([old, next]) => `
+  UPDATE personas SET id = '${next}', data = json_set(data, '$.id', '${next}')
+    WHERE id = '${old}' AND json_valid(data)
+      AND NOT EXISTS (SELECT 1 FROM personas WHERE id = '${next}');
+  UPDATE sessions SET persona = json_set(persona, '$.id', '${next}')
+    WHERE json_valid(persona) AND json_extract(persona, '$.id') = '${old}'
+      AND json_extract(persona, '$.hash') IS NULL;
+  UPDATE sessions SET applied_persona = json_set(applied_persona, '$.id', '${next}')
+    WHERE json_valid(applied_persona) AND json_extract(applied_persona, '$.id') = '${old}';
+  UPDATE external_sessions SET persona_open = json_set(persona_open, '$.id', '${next}')
+    WHERE json_valid(persona_open) AND json_extract(persona_open, '$.id') = '${old}';
+  UPDATE external_sessions SET persona_applied = json_set(persona_applied, '$.id', '${next}')
+    WHERE json_valid(persona_applied) AND json_extract(persona_applied, '$.id') = '${old}';
+  UPDATE card_runs SET persona = json_set(persona, '$.id', '${next}')
+    WHERE json_valid(persona) AND json_extract(persona, '$.id') = '${old}';
+  UPDATE cards SET start_persona = '${next}' WHERE start_persona = '${old}';
+  UPDATE projects SET persona_by_column = (
+      SELECT json_group_object(key, CASE WHEN value = '${old}' THEN '${next}' ELSE value END)
+      FROM json_each(persona_by_column))
+    WHERE json_valid(persona_by_column)
+      AND EXISTS (SELECT 1 FROM json_each(persona_by_column) WHERE value = '${old}');
+  `,
+    ).join(""),
+  ),
 ];

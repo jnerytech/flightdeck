@@ -17,6 +17,7 @@ import {
   writePersonaFile,
 } from "./adapters/persona-files.ts";
 import { PersonaRows } from "./adapters/persona-rows.ts";
+import { renamedPersonaId } from "./domain/ids.ts";
 import type { Language } from "./domain/language.ts";
 import {
   normalizePersona,
@@ -186,8 +187,9 @@ export class Personas {
   }
 
   /** Puts a pack persona back as it came: the host's edit goes away. */
-  reset(id: string, ctx: PersonaContext): Persona {
-    if (!this.pack(ctx.language).some((persona) => persona.id === id)) {
+  reset(asked: string, ctx: PersonaContext): Persona {
+    const id = this.packId(asked, ctx.language);
+    if (id === null) {
       throw badRequest("only the pack's personas go back to the original", "persona_pack_only");
     }
     this.store.removeHost(id);
@@ -196,7 +198,14 @@ export class Personas {
 
   async remove(scope: "host" | "project", id: string, projectPath?: string): Promise<void> {
     if (scope === "host") {
-      if (this.store.removeHost(id) === 0) throw notFound();
+      // A person's own persona under an old id goes first; else the pack persona's edit that took its place.
+      const renamed = renamedPersonaId(id);
+      if (
+        this.store.removeHost(id) === 0 &&
+        (renamed === null || this.store.removeHost(renamed) === 0)
+      ) {
+        throw notFound();
+      }
       return;
     }
     const project = await this.requireProject(projectPath);
@@ -273,13 +282,27 @@ export class Personas {
     return await this.project(path);
   }
 
+  /**
+   * The project's persona with that id, else the host's. An id that was renamed (#3413) is looked
+   * up again under its new id only when nothing has the old one: a persona a person made under
+   * the old id is never hidden by the alias.
+   */
   private async find(id: string, ctx: PersonaContext): Promise<Persona | null> {
-    if (ctx.projectPath) {
-      const project = await this.project(ctx.projectPath);
-      const inProject = (await this.loadProject(project))?.views.find((view) => view.id === id);
-      if (inProject) return inProject;
-    }
-    return this.hostViews(ctx.language).find((view) => view.id === id) ?? null;
+    const loaded = ctx.projectPath
+      ? await this.loadProject(await this.project(ctx.projectPath))
+      : null;
+    const hosts = this.hostViews(ctx.language);
+    const lookup = (wanted: string) =>
+      loaded?.views.find((view) => view.id === wanted) ?? hosts.find((view) => view.id === wanted);
+    const renamed = renamedPersonaId(id);
+    return lookup(id) ?? (renamed === null ? undefined : lookup(renamed)) ?? null;
+  }
+
+  /** The pack's id for what was asked (an old id included), or `null` when the pack has no such persona. */
+  private packId(asked: string, language: Language | undefined): string | null {
+    const pack = this.pack(language);
+    const id = pack.some((persona) => persona.id === asked) ? asked : renamedPersonaId(asked);
+    return id !== null && pack.some((persona) => persona.id === id) ? id : null;
   }
 
   private pack(language: Language | undefined): PersonaDef[] {

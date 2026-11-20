@@ -38,8 +38,8 @@ describe("personas-pacote: no daemon", () => {
     expect(
       (await personas.list({ scope: "host", language: "en" })).personas.map((p) => p.name),
     ).toContain("Security reviewer");
-    expect((await personas.get("seguranca", {})).name).toBe("Revisor de segurança");
-    expect((await personas.get("seguranca", { language: "en" })).name).toBe("Security reviewer");
+    expect((await personas.get("security", {})).name).toBe("Revisor de segurança");
+    expect((await personas.get("security", { language: "en" })).name).toBe("Security reviewer");
     expect((await personas.resolve({ id: "qa" }, { language: "en" })).persona.body).toMatch(
       /You act as a senior QA engineer/,
     );
@@ -50,30 +50,30 @@ describe("personas-pacote: no daemon", () => {
     const { personas } = setup();
     const saved = await personas.save({
       scope: "host",
-      persona: edit("revisor", "Revise só o que mudou."),
+      persona: edit("reviewer", "Revise só o que mudou."),
     });
-    expect(saved).toMatchObject({ id: "revisor", scope: "host", modified: true });
+    expect(saved).toMatchObject({ id: "reviewer", scope: "host", modified: true });
     const revisor = async (language?: "pt-BR" | "en") =>
       (await personas.list({ scope: "host", ...(language ? { language } : {}) })).personas.filter(
-        (p) => p.id === "revisor",
+        (p) => p.id === "reviewer",
       );
     // One entry per id: the edited one stands in for the pack's, whatever the language.
     expect((await revisor()).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
     expect((await revisor("en")).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
     expect((await personas.list({ scope: "host" })).personas).toHaveLength(14);
-    expect((await personas.resolve({ id: "revisor" }, {})).persona.body).toBe(
+    expect((await personas.resolve({ id: "reviewer" }, {})).persona.body).toBe(
       "Revise só o que mudou.",
     );
-    const restored = personas.reset("revisor", {});
+    const restored = personas.reset("reviewer", {});
     expect(restored).toMatchObject({
-      id: "revisor",
+      id: "reviewer",
       scope: "pack",
       modified: false,
       name: "Revisor de código",
     });
-    expect((await personas.get("revisor", { language: "en" })).name).toBe("Code reviewer");
+    expect((await personas.get("reviewer", { language: "en" })).name).toBe("Code reviewer");
     // Resetting what is not edited is fine; what is not in the pack has nothing to go back to.
-    expect(personas.reset("revisor", {}).scope).toBe("pack");
+    expect(personas.reset("reviewer", {}).scope).toBe("pack");
     await personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
     expect(await codeOf(() => personas.reset("minha", {}))).toBe("bad_request");
     expect((await personas.get("minha", {})).scope).toBe("host");

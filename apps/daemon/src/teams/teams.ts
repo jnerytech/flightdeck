@@ -55,7 +55,7 @@ import { Launch } from "./launch.ts";
 import type { TeamsOptions } from "./options.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
-const COORDINATOR_PERSONA = "coordenador";
+const COORDINATOR_PERSONA = "coordinator";
 
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
@@ -210,7 +210,7 @@ export class Teams {
   async create(input: NewTeam): Promise<TeamInfo> {
     const project = this.opts.board.getProject(input.projectId);
     this.refuseOverQuota("create the team later, or it starts paused");
-    // The spec's coordinator is the pack's `coordenador` (phase 20) when none is asked for.
+    // The spec's coordinator is the pack's `coordinator` (phase 20) when none is asked for.
     const coordinatorPersona = await this.checkPersona(
       input.coordinatorPersona ??
         ((await this.opts.personas?.resolve(COORDINATOR_PERSONA))

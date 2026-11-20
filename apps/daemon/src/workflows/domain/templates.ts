@@ -32,7 +32,7 @@ const TECH_DEBT_SCAN: Draft = {
     "pt-BR":
       "Roda em modo de plano, então pergunta antes de rodar um comando; não muda arquivo e não envia nada. No máximo 10 cards novos por execução, em até 30 turnos e 20 minutos; o resto é contado, não criado. Os cards vêm marcados como texto do agente, e uma resposta que não seja uma lista válida não cria nada e falha a execução dizendo o motivo. Para rodar toda semana, crie uma automação que inicie este workflow por horário.",
   },
-  persona: "arquiteto",
+  persona: "architect",
   inputs: [],
   hasCheck: false,
   yaml: () => `name: Tech-debt scan
@@ -43,7 +43,7 @@ budget:
 steps:
   - id: scan
     agent:
-      persona: arquiteto
+      persona: architect
       permissionMode: plan
       prompt: |
         Scan this repository for technical debt: TODO and FIXME comments, uses of deprecated APIs,

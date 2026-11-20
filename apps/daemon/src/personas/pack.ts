@@ -71,19 +71,19 @@ const SOURCES: Record<Language, string[]> = {
 
 /** The ids of the personas that come ready: the spec's nine in its order, then phase 21's coordinator and the developer (issue #92), the ux and ui personas after frontend (issue #1936), and the specifier after docs (issue #1961). */
 export const PACK_IDS = [
-  "arquiteto",
-  "seguranca",
+  "architect",
+  "security",
   "qa",
   "sre",
   "performance",
-  "revisor",
+  "reviewer",
   "docs",
   "specifier",
   "frontend",
   "ux",
   "ui",
   "dba",
-  "coordenador",
+  "coordinator",
   "dev",
 ];
 

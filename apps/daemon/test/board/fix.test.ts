@@ -22,7 +22,7 @@ describe("consertar: a round of fixing", () => {
     const [round] = f.fixer.rounds(f.card.id);
     expect(round).toMatchObject({ n: 1, status: "pushed", turns: 1, costUsd: 0.5 });
     expect(round?.trigger).toEqual({ failed: ["CI"], conflicts: true, comments: ["1/1"] });
-    expect(f.store.sessionPersona(round?.sessionId ?? "")?.id).toBe("revisor");
+    expect(f.store.sessionPersona(round?.sessionId ?? "")?.id).toBe("reviewer");
     const prompt = f.promptOf(round?.sessionId ?? null);
     expect(prompt).toContain("CI");
     expect(prompt).toContain("ERRO: 3 testes falharam");

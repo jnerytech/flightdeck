@@ -6,12 +6,12 @@ import { workspace } from "../support/helpers.ts";
 
 export const scanner = new SecretScanner();
 export const SPEC_IDS = [
-  "arquiteto",
-  "seguranca",
+  "architect",
+  "security",
   "qa",
   "sre",
   "performance",
-  "revisor",
+  "reviewer",
   "docs",
   // Issue #1961: the one that turns a request into an issue, right after docs.
   "specifier",
@@ -21,7 +21,7 @@ export const SPEC_IDS = [
   "ui",
   "dba",
   // Phase 21 coordinates its teams with this one.
-  "coordenador",
+  "coordinator",
   // Issue #92: the one that writes the code, the default worker of a team.
   "dev",
 ];

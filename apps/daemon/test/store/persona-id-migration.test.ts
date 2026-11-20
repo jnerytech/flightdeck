@@ -27,6 +27,11 @@ const EDITED = (id: string) =>
     id,
     name: "Edited",
     description: "A host edit of a pack persona",
+    icon: null,
+    model: null,
+    effort: null,
+    tools: null,
+    permissionMode: null,
     body: "Edited text.",
   });
 

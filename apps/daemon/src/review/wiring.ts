@@ -98,7 +98,7 @@ function reviewGroup(deps: ReviewDeps) {
         complete,
         comments: reviewComments,
         redact: (text) => scanner.redact(text, false),
-        persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
+        persona: (language) => packPersonas(language).find((p) => p.id === "reviewer")?.body ?? "",
         model: DEFAULT_MODELS.host.careful,
         record: (cardId, worktree, tokens) =>
           usage.record({
