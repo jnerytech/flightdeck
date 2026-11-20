@@ -13,6 +13,14 @@ export const NPM_DIR = "release/npm";
 const BINARY_NAMES = DAEMONS.map((path) => basename(path));
 const SOURCES = ["fd.js", "flightdeckd.js", "launcher.js", "package.json"];
 const MANIFEST = `${NPM_DIR}/package.json`;
+const DEPENDENCY_FIELDS = [
+  "dependencies",
+  "peerDependencies",
+  "optionalDependencies",
+  "devDependencies",
+  "bundleDependencies",
+  "bundledDependencies",
+];
 
 const sameList = (a: unknown, b: string[]) =>
   Array.isArray(a) && a.length === b.length && b.every((name) => a.includes(name));
@@ -26,9 +34,10 @@ export function npmManifestProblems(manifest: unknown, version: string): string[
     problems.push(`${MANIFEST} is at ${m.version}, the release is ${version}`);
   if (m.scripts !== undefined)
     problems.push(`${MANIFEST} declares scripts: an install must run nothing`);
-  if (m.dependencies !== undefined)
+  // npm installs a peer dependency by itself, so every kind counts, not only `dependencies`.
+  if (DEPENDENCY_FIELDS.some((field) => m[field] !== undefined))
     problems.push(`${MANIFEST} declares dependencies: the tarball has none`);
-  if (m.name !== "flightdeckd" || !sameList(Object.keys(bin ?? {}), ["fd", "flightdeckd"]))
+  if (m.name !== "flightdeckd" || bin?.fd !== "fd.js" || bin?.flightdeckd !== "flightdeckd.js")
     problems.push(`${MANIFEST} bin must be fd and flightdeckd`);
   if (!sameList(m.files, [...SOURCES.filter((f) => f !== "package.json"), ...BINARY_NAMES]))
     problems.push(`${MANIFEST} files must be the launcher and the three binaries`);
