@@ -3,6 +3,9 @@ import {
   approvalDigests,
   approvalMessage,
   canonicalJson,
+  commandDigest,
+  commandMessage,
+  commandNeedsProof,
   enrollAddMessage,
   enrollFirstMessage,
   needsApprovalProof,
@@ -220,5 +223,57 @@ describe("vault-approve: a device signs the use of a secret for one request and 
     expect(
       parse({ requestId: "r1", via: "app", proof: { keyId: "k1", nonce: "n1" } }).success,
     ).toBe(false);
+  });
+});
+
+describe("command-approve: a device signs the command and a hash of what it carries (#3453)", () => {
+  const parts = {
+    keyId: "k1",
+    daemonId: "d1",
+    command: "card.pr.merge",
+    nonce: "n1",
+    payloadHash: "ab".repeat(32),
+  };
+  const challenge = (payload: unknown) =>
+    Command.safeParse({ id: "1", type: "approval.challenge", payload }).success;
+
+  test("Given the parts, Then the message is the canonical array with its own tag first", () => {
+    expect(commandMessage(parts)).toBe(
+      `["flightdeck/command/v1","k1","d1","card.pr.merge","n1","${"ab".repeat(32)}"]`,
+    );
+  });
+
+  test("Given any one part changed, Then the signed text changes", () => {
+    const base = commandMessage(parts);
+    for (const key of ["keyId", "daemonId", "command", "nonce", "payloadHash"] as const) {
+      expect(commandMessage({ ...parts, [key]: "other" })).not.toBe(base);
+    }
+  });
+
+  test("Given a payload with a proof, Then the digest leaves the proof out and sorts the keys", () => {
+    const proof = { keyId: "k", nonce: "n", signature: "s" };
+    expect(commandDigest({ method: "squash", cardId: "c", proof })).toBe(
+      '{"cardId":"c","method":"squash"}',
+    );
+  });
+
+  test("Given each command, Then only the three that move code or trust need a proof, and a trust set fails closed", () => {
+    expect([
+      commandNeedsProof("card.pr.merge", { cardId: "c" }),
+      commandNeedsProof("autoapprove.resume", {}),
+      commandNeedsProof("project.trust.set", { trusted: true }),
+      commandNeedsProof("project.trust.set", {}),
+      commandNeedsProof("project.trust.set", { trusted: false }),
+      commandNeedsProof("card.pr.create", { cardId: "c" }),
+    ]).toEqual([true, true, true, true, false, false]);
+  });
+
+  test("Given a challenge for a command, Then it names one of the three; any other is refused", () => {
+    expect([
+      challenge({ purpose: "command", command: "card.pr.merge" }),
+      challenge({ purpose: "command", command: "autoapprove.resume" }),
+      challenge({ purpose: "command", command: "session.start" }),
+      challenge({ purpose: "command" }),
+    ]).toEqual([true, true, false, false]);
   });
 });

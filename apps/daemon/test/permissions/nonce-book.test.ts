@@ -110,3 +110,24 @@ describe("nonce-book: no one connection can take a whole bucket (#3439)", () => 
     expect(busy(() => nonces.issue("revoke", undefined, 3))).toBeUndefined();
   });
 });
+
+describe("nonce-book: a command's challenges have a bucket of their own (#3453)", () => {
+  test("Given the enrollment bucket is full, Then a challenge for a command still gets a nonce", () => {
+    const { nonces } = book({ approve: 4, other: 2, command: 4 });
+    nonces.issue("enroll", undefined, 1);
+    nonces.issue("revoke", undefined, 2);
+    expect(busy(() => nonces.issue("enroll", undefined, 3))).toBe("approval_challenge_busy");
+    expect(busy(() => nonces.issue("command", undefined, 3))).toBeUndefined();
+  });
+
+  test("Given the default limits, Then one connection holds sixteen command nonces, twice what it holds of the others", () => {
+    let n = 0;
+    const nonces = new NonceBook({ mono: () => 1_000, random: () => `c${++n}` });
+    for (let i = 1; i <= 60; i++) nonces.issue("command", undefined, 1);
+    // The 45th is the sixteenth from the last: it is live; the 44th was dropped for the quota.
+    expect([nonces.take("c44", "command"), nonces.take("c45", "command")]).toEqual([
+      "unknown",
+      "ok",
+    ]);
+  });
+});

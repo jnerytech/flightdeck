@@ -5,6 +5,8 @@ import {
   type ApprovalProof,
   approvalDigests,
   approvalMessage,
+  commandDigest,
+  commandMessage,
   needsApprovalProof,
 } from "@flightdeck/protocol";
 import {
@@ -266,5 +268,105 @@ describe("approval-gate: with a key enrolled, an allow that needs a proof carrie
       expect(seen?.text.includes(phone.pub)).toBe(false);
       expect(seen?.text.includes(phone.keyId)).toBe(false);
     }
+  });
+});
+
+describe("approval-command: a command that moves code or trust takes the proof of a device (#3453)", () => {
+  const MERGE = {
+    cardId: "c1",
+    method: "squash",
+    confirm: true,
+    prUrl: "u",
+    headSha: "a".repeat(40),
+  };
+
+  function commandSetup() {
+    const t = setup();
+    const prove = (
+      command: string,
+      payload: Record<string, unknown>,
+      over: { signedFor?: string; signedPayload?: Record<string, unknown>; nonce?: string } = {},
+    ): ApprovalProof => {
+      const nonce = over.nonce ?? t.nonces.issue("command", undefined, 1);
+      const message = commandMessage({
+        keyId: t.phone.keyId,
+        daemonId: "daemon-1",
+        command: over.signedFor ?? command,
+        nonce,
+        payloadHash: sha256Hex(commandDigest(over.signedPayload ?? payload)),
+      });
+      return { keyId: t.phone.keyId, nonce, signature: t.phone.signText(message) };
+    };
+    return { ...t, prove };
+  }
+
+  test("Given a proof over this command and payload, Then it passes once; the same nonce again is refused", () => {
+    const { gate, prove } = commandSetup();
+    const proof = prove("card.pr.merge", MERGE);
+    expect(refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, proof }))).toBeUndefined();
+    expect(refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, proof }))?.reason).toBe(
+      "approval_proof_required",
+    );
+  });
+
+  test("Given a payload changed after it was signed, Then it is refused: the head and the method are signed", () => {
+    const { gate, prove } = commandSetup();
+    for (const change of [{ headSha: "b".repeat(40) }, { method: "merge" }, { prUrl: "other" }]) {
+      const proof = prove("card.pr.merge", MERGE);
+      expect(
+        refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, ...change, proof }))?.reason,
+      ).toBe("approval_proof_required");
+    }
+  });
+
+  test("Given a proof for another command, Then it is refused", () => {
+    const { gate, prove } = commandSetup();
+    const proof = prove("card.pr.merge", MERGE, { signedFor: "autoapprove.resume" });
+    expect(refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, proof }))?.reason).toBe(
+      "approval_proof_required",
+    );
+  });
+
+  test("Given no proof, an unknown key or a nonce made for an approval, Then each is refused the same way", () => {
+    const { gate, prove, nonces, keys } = commandSetup();
+    const stranger = { keyId: "nobody", nonce: "x", signature: "y" };
+    const approval = prove("card.pr.merge", MERGE, { nonce: nonces.issue("approve", "r1", 1) });
+    for (const proof of [undefined, stranger, approval]) {
+      expect(
+        refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, ...(proof ? { proof } : {}) }))
+          ?.reason,
+      ).toBe("approval_proof_required");
+    }
+    expect(keys.length).toBe(1);
+  });
+
+  test("Given a forged signature, Then the nonce is not burned: the real proof with it still passes", () => {
+    const { gate, prove, phone } = commandSetup();
+    const proof = prove("card.pr.merge", MERGE);
+    const forged = { ...proof, signature: phone.signText("other") };
+    expect(
+      refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, proof: forged })),
+    ).toBeDefined();
+    expect(refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, proof }))).toBeUndefined();
+  });
+
+  test("Given a proof past its sixty seconds, Then the refusal says the challenge expired", () => {
+    const { gate, prove, clock } = commandSetup();
+    const proof = prove("card.pr.merge", MERGE);
+    clock.at += 61_000;
+    expect(refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, proof }))?.reason).toBe(
+      "approval_challenge_expired",
+    );
+  });
+
+  test("Given a refusal, Then its text names no key, nonce or signature and says what is needed", () => {
+    const { gate, prove, phone } = commandSetup();
+    const proof = prove("card.pr.merge", MERGE);
+    const bad = { ...proof, signature: phone.signText("other") };
+    const seen = refusal(() => gate.checkCommand("card.pr.merge", { ...MERGE, proof: bad }));
+    expect(seen?.text.includes("confirmation of an enrolled device")).toBe(true);
+    expect(
+      [proof.nonce, bad.signature, phone.pub, phone.keyId].some((s) => seen?.text.includes(s)),
+    ).toBe(false);
   });
 });
