@@ -50,6 +50,27 @@ describe("release.yml: the daemons and the npm tarball are made on Linux (#3541)
     expect(smoke).toContain('/bin/fd" --version');
   });
 
+  test("the smoke hands npm a path it reads as a file: a bare dist/x.tgz is a GitHub user/repo shorthand", () => {
+    const smoke = runs(daemons).find((run) => run.includes("install -g")) ?? "";
+    const assigned = /^\s*tarball="([^"]+)"/m.exec(smoke)?.[1] ?? "";
+    expect(assigned).toMatch(/^(\.\/|\/|\$\{?GITHUB_WORKSPACE)/);
+  });
+
+  test("an install line in the docs names a URL or a path, never a bare file name", () => {
+    const root = join(import.meta.dir, "..", "..", "..");
+    const pages = [
+      "docs/manual/en/installation.md",
+      "docs/manual/pt-BR/installation.md",
+      "docs/decisions/2026-11-20-npm-tarball.md",
+    ];
+    const bare = pages.flatMap((page) =>
+      [...readFileSync(join(root, page), "utf8").matchAll(/npm (?:i|install)\b[^\n`]*?(\S+\.tgz)/g)]
+        .map((m) => m[1] ?? "")
+        .filter((target) => !/^(https?:\/\/|\.{1,2}\/|\/)/.test(target)),
+    );
+    expect(bare).toEqual([]);
+  });
+
   test("only the signing step holds the signing key", () => {
     const holders = (daemons?.steps ?? []).filter((step) =>
       Object.keys(step.env ?? {}).includes("TAURI_SIGNING_PRIVATE_KEY"),
