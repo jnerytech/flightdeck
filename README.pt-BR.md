@@ -57,8 +57,8 @@ sessões num lugar só, sem abrir cada máquina.
 - Mensagens entre sessões, em qualquer host: uma sessão lista as outras que pode ver, manda para
   uma (`send_to_session`), pede um aviso quando outra ficar ociosa e lê outra (ferramentas MCP ou o
   mod `flightdeck`). Entre hosts o app repassa, e a mensagem espera por ele até 24 horas. Toda
-  sessão ganha um nome padrão, `projeto · persona · número` (`flightdeck · revisor · 3`), e um
-  apelido que a endereça (`flightdeck-revisor-3`).
+  sessão ganha um nome padrão, `projeto · persona · número` (`flightdeck · reviewer · 3`), e um
+  apelido que a endereça (`flightdeck-reviewer-3`).
 - Times: uma sessão coordenadora quebra um objetivo em tarefas, despacha cada uma para uma
   executora num card próprio, confere o trabalho por conta própria e só aceita commit verde. O app
   tem Conversas, Times e a aba Mensagens de cada sessão; um time pausa sozinho quando a cota do

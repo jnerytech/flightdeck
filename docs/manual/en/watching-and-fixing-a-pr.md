@@ -12,7 +12,7 @@ the PR at every `board.prPollIntervalMs`:
 - only what **got worse** starts a round: a build that fails, a new conflict, a new comment. The
   first look counts everything as new.
 
-A **round** opens the card's session as the `revisor` persona, with the names of the failed checks,
+A **round** opens the card's session as the `reviewer` persona, with the names of the failed checks,
 the end of the build log (16 KB), the conflict and the comments. The log and the comments reach it
 as quoted data, never as instructions. The session fixes and commits, the **local checks** of the
 project run in the card's worktree, and only if they all pass does the host push, to the card's own
