@@ -96,7 +96,7 @@ describe("flightdeckd ssh list (issue #3537)", () => {
   });
 
   test("a name that carries terminal controls is printed without them, in the text and in --json", async () => {
-    const hostile = { ...TARGET, name: "ok\u001b[2Jgone‮x" };
+    const hostile = { ...TARGET, name: "ok\u001b[2Jgone" + String.fromCharCode(0x202e) + "x" };
     const daemon = fakeDaemon({ ...OPEN, "ssh.list": () => ({ targets: [hostile] }) });
     const text = await flightdeckd(["ssh", "list"], daemon.port);
     expect(text.out.join("\n")).toContain("ok [2Jgone x  t1");
