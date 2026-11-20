@@ -437,8 +437,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "persona";
     const action = subAction(reader, ["list", "show", "subagents"], "invalid persona action");
     args.action = action;
-    if (action === "show") args.personaId = "";
-    if (action === "show") operand(reader, "the persona");
+    if (action === "show") args.personaId = operand(reader, "the persona");
   },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
@@ -542,8 +541,15 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--last needs a positive integer\n${USAGE}`);
     args.last = last;
   }),
-  "--language": setValue(() => {}),
-  "--scope": setValue(() => {}),
+  "--language": setValue((args, v) => {
+    if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR, got ${v}\n${USAGE}`);
+    args.language = v;
+  }),
+  "--scope": setValue((args, v) => {
+    if (v !== "host" && v !== "project" && v !== "all")
+      throw new Error(`--scope: host, project or all, got ${v}\n${USAGE}`);
+    args.scope = v;
+  }),
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -642,6 +648,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
+  if (args.scope !== undefined && (args.command !== "persona" || args.action !== "list"))
+    throw new Error(`--scope: this flag only applies to flightdeckd persona list\n${USAGE}`);
+  if (args.language !== undefined && args.command !== "persona")
+    throw new Error(`--language: this flag only applies to flightdeckd persona\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

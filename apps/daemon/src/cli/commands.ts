@@ -303,7 +303,17 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const config = await localConfig(args);
     return reported(
       deps,
-      await runPersonaCli({ action: args.action as PersonaCliArgs["action"] }, config),
+      await runPersonaCli(
+        {
+          action: args.action as PersonaCliArgs["action"],
+          ...(args.personaId === undefined ? {} : { id: args.personaId }),
+          ...(args.scope === undefined ? {} : { scope: args.scope }),
+          ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),
+          ...(args.language === undefined ? {} : { language: args.language }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
       args.json,
     );
   },
