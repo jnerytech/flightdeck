@@ -8,7 +8,7 @@ import {
   needsApprovalProof,
   revokeMessage,
 } from "../../src/approval.ts";
-import { Command } from "../../src/index.ts";
+import { Command, ServerMessage } from "../../src/index.ts";
 
 describe("approval-canonical: one byte string for one value, on both sides of the wire", () => {
   test("Given keys in any order, Then they are written in UTF-16 code unit order, as RFC 8785 sorts them", () => {
@@ -149,5 +149,34 @@ describe("approval-trigger: when an allow needs the proof of a device, for the h
     expect(needsApprovalProof("low", [{}])).toBe(true);
     expect(needsApprovalProof("medium", [])).toBe(false);
     expect(needsApprovalProof("low", undefined)).toBe(false);
+  });
+});
+
+describe("approval-watch: a client that watches hears when a device is enrolled or revoked (#3476)", () => {
+  const parse = (type: string, payload: unknown) =>
+    Command.safeParse({ id: "1", type, payload }).success;
+  const enrolled = {
+    type: "approval.enrolled",
+    keyId: "k1",
+    name: "Ana's phone",
+    client: "flightdeck-app",
+    address: "100.64.0.7",
+    enrolledAt: "2026-11-20T12:00:00.000Z",
+  };
+
+  test("Given a watch, Then it takes no payload", () => {
+    expect(parse("approval.watch", {})).toBe(true);
+    expect(parse("approval.watch", { all: true })).toBe(false);
+  });
+
+  test("Given the two events, Then a server message carries each with its fields", () => {
+    expect(ServerMessage.safeParse(enrolled).success).toBe(true);
+    expect(ServerMessage.safeParse({ type: "approval.revoked", keyId: "k1" }).success).toBe(true);
+  });
+
+  test("Given an event that lacks the key id, Then it is not a server message", () => {
+    const { keyId: _keyId, ...noKey } = enrolled;
+    expect(ServerMessage.safeParse(noKey).success).toBe(false);
+    expect(ServerMessage.safeParse({ type: "approval.revoked" }).success).toBe(false);
   });
 });

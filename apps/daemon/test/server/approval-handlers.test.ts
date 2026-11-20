@@ -6,6 +6,7 @@ import {
   enrollAddMessage,
   enrollFirstMessage,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_WATCH,
   revokeMessage,
 } from "@flightdeck/protocol";
 import type { Central } from "../../src/central/central.ts";
@@ -139,6 +140,7 @@ describe("approval-handlers: a host without approvers", () => {
     for (const [type, payload] of [
       ["approval.list", {}],
       ["approval.challenge", { purpose: "enroll" }],
+      ["approval.watch", {}],
     ] as const) {
       const ack = await client.request(type, payload);
       expect(ack.ok).toBe(false);
@@ -146,6 +148,7 @@ describe("approval-handlers: a host without approvers", () => {
     }
     const info = await client.data<{ features?: string[]; daemonId?: string }>("host.info", {});
     expect(info?.features).not.toContain(FEATURE_APPROVAL_PROOF);
+    expect(info?.features).not.toContain(FEATURE_APPROVAL_WATCH);
     expect(info?.daemonId).toBeUndefined();
   });
 });
@@ -155,6 +158,7 @@ describe("approval-handlers: the commands over the wire", () => {
     const { client, approvers } = await setup();
     const info = await client.data<{ features?: string[]; daemonId?: string }>("host.info", {});
     expect(info?.features).toContain(FEATURE_APPROVAL_PROOF);
+    expect(info?.features).toContain(FEATURE_APPROVAL_WATCH);
     expect(info?.daemonId).toBe(approvers.daemonId());
     const list = await client.data<{ protectionOff: boolean; keys: unknown[] }>(
       "approval.list",
@@ -308,5 +312,99 @@ describe("approval-handlers: a high-risk allow of an external session, end to en
     });
     expect(ok.ok).toBe(true);
     expect(JSON.parse(await answer).hookSpecificOutput.decision.behavior).toBe("allow");
+  });
+});
+
+describe("approval-handlers: approval.watch announces the devices enrolled and revoked (#3476)", () => {
+  const approvalFrames = (client: { frames: Array<Record<string, unknown>> }) =>
+    client.frames.filter((f) => String(f.type).startsWith("approval."));
+
+  test("Given a watcher, When a device enrolls, Then it gets the key id, name, client, address and time, and no key, nonce or code", async () => {
+    const { client, enrollFirst } = await setup();
+    expect((await client.request("approval.watch", {})).ok).toBe(true);
+    const dev = device();
+    await enrollFirst(dev);
+    const frame = (await poll(() => approvalFrames(client)[0])) ?? {};
+    expect(Object.keys(frame).sort()).toEqual([
+      "address",
+      "client",
+      "enrolledAt",
+      "keyId",
+      "name",
+      "type",
+    ]);
+    expect(frame).toMatchObject({
+      type: "approval.enrolled",
+      keyId: dev.keyId,
+      name: "phone",
+      client: "flightdeck-app",
+    });
+    expect(JSON.stringify(frame)).not.toContain(dev.pub);
+    expect(JSON.stringify(frame)).not.toContain("the-code");
+  });
+
+  test("Given a watcher, When a key revokes another, Then it gets approval.revoked with the target key id", async () => {
+    const { client, enrollFirst, challenge } = await setup();
+    const phone = device();
+    const laptop = device();
+    await enrollFirst(phone);
+    const add = await challenge({ purpose: "enroll" });
+    await client.request("approval.enroll", {
+      publicKey: laptop.pub,
+      name: "laptop",
+      nonce: add.nonce,
+      signerKeyId: phone.keyId,
+      signature: phone.signText(
+        enrollAddMessage({
+          keyId: phone.keyId,
+          daemonId: add.daemonId,
+          nonce: add.nonce,
+          newPublicKey: laptop.pub,
+        }),
+      ),
+    });
+    await client.request("approval.watch", {});
+    const rv = await challenge({ purpose: "revoke" });
+    await client.request("approval.revoke", {
+      targetKeyId: phone.keyId,
+      signerKeyId: laptop.keyId,
+      nonce: rv.nonce,
+      signature: laptop.signText(
+        revokeMessage({
+          keyId: laptop.keyId,
+          daemonId: rv.daemonId,
+          nonce: rv.nonce,
+          targetKeyId: phone.keyId,
+        }),
+      ),
+    });
+    const frame = await poll(() => approvalFrames(client)[0]);
+    expect(frame).toEqual({ type: "approval.revoked", keyId: phone.keyId });
+  });
+
+  test("Given a watcher, When an enroll is refused, Then nothing is sent; and a client that did not watch hears nothing at all", async () => {
+    const { client, server, challenge, enrollFirst } = await setup();
+    await client.request("approval.watch", {});
+    const other = new FrameClient(server.url);
+    cleanups.push(() => other.close());
+    await other.request("hello", { token: TOKEN, client: "flightdeck-app" });
+    // No window is open: the enroll is refused.
+    const { nonce } = await challenge({ purpose: "enroll" });
+    const refused = await client.request("approval.enroll", {
+      publicKey: device().pub,
+      name: "x",
+      nonce,
+      signature: "AAAA",
+      code: "wrong",
+    });
+    expect(refused.ok).toBe(false);
+    await client.request("approval.list", {});
+    expect(approvalFrames(client)).toEqual([]);
+    // A device that does enroll reaches the watcher and not the client that never asked.
+    await enrollFirst(device());
+    await poll(() => approvalFrames(client)[0]);
+    expect(approvalFrames(client).length).toBe(1);
+    await other.request("approval.list", {});
+    expect(approvalFrames(other)).toEqual([]);
   });
 });

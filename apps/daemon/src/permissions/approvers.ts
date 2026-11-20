@@ -2,7 +2,9 @@
 import type { Database } from "bun:sqlite";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
+  type ApprovalEnrolled,
   type ApprovalKeyInfo,
+  type ApprovalRevoked,
   type CommandPayload,
   enrollAddMessage,
   enrollFirstMessage,
@@ -35,6 +37,11 @@ export interface Asker {
   client: string;
 }
 
+/** What a watcher hears: a device was enrolled or revoked. */
+export type ApprovalChange =
+  | (Omit<ApprovalEnrolled, "type"> & { type: "approval.enrolled" })
+  | ApprovalRevoked;
+
 /** How long the window of the first device stays open. */
 const ENROLL_WINDOW_MS = 10 * 60_000;
 
@@ -58,6 +65,7 @@ export class Approvers {
   /** The guard of an allow: built on this service's keys, daemon id and nonces. */
   readonly gate: ApprovalGate;
   private id: string | undefined;
+  private readonly listeners = new Set<(change: ApprovalChange) => void>();
 
   private readonly opts: ApproversOptions;
 
@@ -76,6 +84,23 @@ export class Approvers {
       daemonId: () => this.daemonId(),
       nonces: this.nonces,
     });
+  }
+
+  /** Calls `listener` for each device enrolled or revoked from now on; the returned function stops it. */
+  onChange(listener: (change: ApprovalChange) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** Tells each watcher; one that throws (a closed socket) neither undoes what happened nor silences the next. */
+  private announce(change: ApprovalChange): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(change);
+      } catch {
+        // The change is already stored: a watcher that cannot hear it is its own problem.
+      }
+    }
   }
 
   daemonId(): string {
@@ -131,15 +156,27 @@ export class Approvers {
     if (keys.length === 0) this.checkFirst(payload);
     else this.checkAdd(payload, keys);
     const keyId = keyIdOf(payload.publicKey);
+    const enrolledAt = this.opts.now().toISOString();
+    // The store keeps the first row of a key; a second enroll of it is no new device to announce.
+    const known = keys.some((k) => k.keyId === keyId);
     this.store.add({
       keyId,
       publicKey: payload.publicKey,
       name: payload.name,
       client: asker.client,
       address: asker.address,
-      enrolledAt: this.opts.now().toISOString(),
+      enrolledAt,
     });
     this.store.closeWindow();
+    if (!known)
+      this.announce({
+        type: "approval.enrolled",
+        keyId,
+        name: payload.name,
+        client: asker.client,
+        address: asker.address,
+        enrolledAt,
+      });
     return { keyId, daemonId: this.daemonId() };
   }
 
@@ -163,6 +200,7 @@ export class Approvers {
       );
     }
     this.store.remove(payload.targetKeyId);
+    this.announce({ type: "approval.revoked", keyId: payload.targetKeyId });
     return { keyId: payload.targetKeyId };
   }
 

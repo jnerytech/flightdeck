@@ -542,7 +542,25 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       args.json,
     );
   },
-  approvers: async (args, deps) => (await import("./approvers.ts")).runApprovers(args, deps),
+  approvers: async (args, deps) => {
+    // `enroll` and `reset` write the host's store from its terminal; `watch` asks the local daemon.
+    if (args.action !== "watch") return (await import("./approvers.ts")).runApprovers(args, deps);
+    const { runApproversCli } = await import("../permissions/index.ts");
+    const config = await localConfig(args);
+    const stop = new AbortController();
+    if (args.follow)
+      for (const signal of ["SIGINT", "SIGTERM"] as const)
+        deps.onSignal(signal, async () => stop.abort());
+    return reported(
+      deps,
+      await runApproversCli(
+        { ...(args.follow ? { follow: true } : {}), ...(args.json ? { json: true } : {}) },
+        config,
+        { signal: stop.signal, write: (line) => deps.log.log(line) },
+      ),
+      args.json,
+    );
+  },
   doctor: async (args, deps) => (await import("./setup.ts")).runDoctorCommand(args, deps),
   setup: done(async (args, deps) => (await import("./setup.ts")).runSetupCommand(args, deps)),
   pair: done(async (args, deps) => (await import("./setup.ts")).runPair(args, deps)),

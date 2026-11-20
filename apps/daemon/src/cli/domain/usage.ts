@@ -20,6 +20,7 @@ export const USAGE = [
   "     fd history watch [--json] [--config <file>]   (a line per transcript that grows, until Ctrl-C)",
   "     fd approvers enroll [--json] [--config <file>]   (this host's terminal opens the window that enrolls the first device)",
   "     fd approvers reset [--json] [--config <file>]   (removes every enrolled device)",
+  "     fd approvers watch [--follow] [--json] [--config <file>]   (the enrolled devices; --follow prints a line per device enrolled or revoked, until Ctrl-C)",
   "     fd hooks install|uninstall|status [--config <file>]",
   "     fd telemetry install|uninstall|status [--config <file>]",
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
