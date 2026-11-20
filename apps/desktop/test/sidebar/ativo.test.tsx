@@ -10,6 +10,8 @@ const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
+/** A version before every badge's `until`: a release bump never changes what these tests render (#3466). */
+const BEFORE_EVERY_BADGE = "0.1.0";
 const ALL = ["costs", "messaging", "teams", "plugins", "personas", "snippets", "ssh"];
 
 function setup(
@@ -36,6 +38,7 @@ function setup(
       store={store}
       state={state}
       collapsed={collapsed}
+      appVersion={BEFORE_EVERY_BADGE}
       t={store.i18n.t}
       go={() => {}}
       {...(route ? { route } : {})}
