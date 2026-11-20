@@ -13,6 +13,8 @@ export interface PathsEnv {
   home: string;
   /** `%APPDATA%` (Windows). */
   appData?: string;
+  /** `%ProgramFiles%` (Windows): where the per-machine installer puts the app. */
+  programFiles?: string;
   /** `%LOCALAPPDATA%` (Windows). */
   localAppData?: string;
   /** `$XDG_CONFIG_HOME` (Linux). */

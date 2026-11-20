@@ -56,17 +56,31 @@ describe("remote hosts: where the credential helper may be (#3429)", () => {
     ]);
   });
 
-  test("Windows: beside flightdeckd, then in the per-user install folder; the helper is an .exe", () => {
+  test("Windows: beside flightdeckd, then the per-machine and the per-user install folders Tauri's installers use; the helper is an .exe", () => {
     expect(
       helperCandidates({
         platform: "win32",
         home: "C:\\Users\\ana",
+        programFiles: "C:\\Program Files",
         localAppData: "C:\\Users\\ana\\AppData\\Local",
-        execPath: "C:\\fd\\flightdeckd.exe",
+        execPath: "C:\\Users\\ana\\.flightdeck\\bin\\flightdeckd.exe",
       }),
     ).toEqual([
+      "C:\\Users\\ana\\.flightdeck\\bin\\flightdeck-cred.exe",
+      "C:\\Program Files\\Flightdeck\\flightdeck-cred.exe",
+      "C:\\Users\\ana\\AppData\\Local\\Flightdeck\\flightdeck-cred.exe",
+    ]);
+  });
+
+  test("Windows with only one of the two folders in the environment tries that one", () => {
+    const base = { platform: "win32", home: "C:\\u", execPath: "C:\\fd\\flightdeckd.exe" };
+    expect(helperCandidates({ ...base, programFiles: "D:\\Apps" })).toEqual([
       "C:\\fd\\flightdeck-cred.exe",
-      "C:\\Users\\ana\\AppData\\Local\\Programs\\flightdeck\\flightdeck-cred.exe",
+      "D:\\Apps\\Flightdeck\\flightdeck-cred.exe",
+    ]);
+    expect(helperCandidates({ ...base, localAppData: "C:\\L" })).toEqual([
+      "C:\\fd\\flightdeck-cred.exe",
+      "C:\\L\\Flightdeck\\flightdeck-cred.exe",
     ]);
   });
 
