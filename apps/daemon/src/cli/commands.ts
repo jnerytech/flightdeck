@@ -323,6 +323,21 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const config = await localConfig(args);
     return reported(deps, await runCardCli(cardCliArgs(args), config));
   },
+  board: async (args, deps) => {
+    const { runBoardCli } = await import("../board/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runBoardCli(
+        {
+          action: "settings",
+          ...(args.maxParallelRuns === undefined ? {} : { maxParallelRuns: args.maxParallelRuns }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
   persona: async (args, deps) => {
     const { runPersonaCli } = await import("../personas/index.ts");
     const config = await localConfig(args);

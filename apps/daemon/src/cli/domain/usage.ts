@@ -35,6 +35,7 @@ export const USAGE = [
   "     fd card update <card> [--title <text>] [--description <text>] [--estimate <hours|none>] [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json] [--config <file>]",
   "     fd card stop <card> [--json] [--config <file>]",
   "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
+  "     fd board settings [--max-parallel-runs <n>] [--json] [--config <file>]",
   "     fd team list [--project <name or id>] [--json] [--config <file>]",
   "     fd team show <team> [--json] [--config <file>]",
   "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
