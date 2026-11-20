@@ -5,13 +5,26 @@
 import type { TeamInfo, TeamStatus } from "@flightdeck/protocol";
 
 export interface TeamCliArgs {
-  action: "list" | "show";
+  action: "list" | "show" | "new";
   /** `list --project`: a project's name or id; only its teams are listed. */
   project?: string;
   /** `show`: the team. */
   id?: string;
   /** `--json`: the daemon's own answer, for a script. */
   json?: boolean;
+  /** `new`: what the team is for, and the team's name (the daemon makes one from the goal when none). */
+  goal?: string;
+  name?: string;
+  /** `new --workers N`: N workers with the defaults. */
+  workers?: number;
+  /** `new --worker <spec>` (repeats): one worker each, as `persona[:model[:effort[:mode]]]`. */
+  workerSpecs?: string[];
+  /** `new --coordinator <spec>`: the coordinator, as one worker spec. */
+  coordinator?: string;
+  /** `new --check <command>` (repeats): what the coordinator runs to check a worker's work. */
+  checks?: string[];
+  /** `new --confirm`: a member runs in `bypassPermissions`, which the app asks the person to confirm. */
+  confirm?: boolean;
 }
 
 /** `active`, `closed`, or `paused by user` / `paused by quota` (a plain `paused` when the host did not say who). */
