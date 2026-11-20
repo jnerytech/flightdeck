@@ -177,12 +177,44 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
 /** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */
 const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCase();
 
-/** The words of `fd` or `flightdeckd` that are not options (`--config <file>`, `--json`, `--force`). */
+/**
+ * The options of `fd` that take a value, which can stand before the command (`fd --project p card
+ * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import.
+ */
+const OPTIONS_WITH_VALUE = [
+  "--message",
+  "--position",
+  "--title",
+  "--estimate",
+  "--validation-note",
+  "--spec-path",
+  "--blocked-by",
+  "--session",
+  "--host",
+  "--description",
+  "--language",
+  "--workflow",
+  "--out",
+  "--from",
+  "--folders",
+  "--launch",
+  "--url",
+  "--token",
+  "--last",
+  "--project",
+  "--project-path",
+  "--query",
+  "--param",
+  "--config",
+  "--runtime",
+];
+
+/** The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`). */
 function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
-    if (arg === "--config") i++;
+    if (OPTIONS_WITH_VALUE.includes(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
   }
   return words;
@@ -218,13 +250,10 @@ function endsACard(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
   if (["fd", "flightdeckd"].includes(prog)) {
-    // A flag's value can come before `card` (`fd --project p card discard c1`): look for the pair.
-    const named = flightdeckWords(words);
-    return named.some(
-      (word, i) =>
-        word === "card" &&
-        (CARD_ENDS.includes(named[i + 1] ?? "") ||
-          (named[i + 1] === "move" && words.includes("--force"))),
+    const [command, action] = flightdeckWords(words);
+    return (
+      command === "card" &&
+      (CARD_ENDS.includes(action ?? "") || (action === "move" && words.includes("--force")))
     );
   }
   if (!RUNNERS.includes(prog)) return false;

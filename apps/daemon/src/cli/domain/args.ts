@@ -661,3 +661,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   delete args.titleFlag;
   return args;
 }
+
+/** The options that take a value (`--project p`): a reader of the command text must skip that value. */
+export const VALUE_FLAGS = Object.keys(HANDLERS).filter(
+  (name) =>
+    name.startsWith("--") &&
+    !["--help", "--version"].includes(name) &&
+    !FLAGS.has(HANDLERS[name] as Handler),
+);
