@@ -715,7 +715,12 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
     const daemon = await startDaemon(args, deps.env, deps.log, { onShutdown: () => void stop() });
     // An error nobody caught, or an exit nobody asked for, leaves a line in the log (#3403).
     if (deps.onProcessEvent)
-      trace = traceProcessEnd(deps.onProcessEvent, deps.exit, { writeAtExit: daemon.logAtExit });
+      trace = traceProcessEnd(
+        deps.onProcessEvent,
+        deps.exit,
+        { writeAtExit: daemon.logAtExit },
+        (line) => deps.log.error(line),
+      );
     deps.onSignal("SIGINT", stop);
     deps.onSignal("SIGTERM", stop);
     return daemon;

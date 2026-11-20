@@ -25,6 +25,7 @@ export function traceProcessEnd(
   on: OnProcessEvent,
   exit: (code: number) => void,
   fileLog: Pick<FileLog, "writeAtExit">,
+  _report: (line: string) => void,
 ): ProcessTrace {
   let traced = false;
   const crash = (event: "uncaughtException" | "unhandledRejection") => (thrown: unknown) => {

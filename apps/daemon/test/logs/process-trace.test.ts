@@ -37,12 +37,18 @@ function traced() {
   });
   const proc = fakeProcess();
   const exits: number[] = [];
-  const trace = traceProcessEnd(proc.on, (code) => exits.push(code), fileLog);
+  const reports: string[] = [];
+  const trace = traceProcessEnd(
+    proc.on,
+    (code) => exits.push(code),
+    fileLog,
+    (line) => reports.push(line),
+  );
   const lines = () => {
     const file = join(dir, "flightdeckd.log");
     return existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean) : [];
   };
-  return { proc, exits, trace, lines, dir };
+  return { proc, exits, reports, trace, lines, dir };
 }
 
 describe("process-trace: the daemon's end leaves a line", () => {
@@ -75,6 +81,24 @@ describe("process-trace: the daemon's end leaves a line", () => {
     proc.fire("unhandledRejection", new Error(`bad header ${TOKEN}`));
     expect(lines()[0]).not.toContain(TOKEN);
     expect(lines()[0]).toContain("bad header [redacted]");
+  });
+
+  test("a crash is also said on the console: the handler replaces the runtime's own report, and the log file may not be writable", () => {
+    const { proc, reports } = traced();
+    proc.fire("unhandledRejection", new Error(`bad header ${TOKEN}`));
+    expect(reports).toHaveLength(1);
+    expect(reports[0]).toContain("unhandledRejection");
+    expect(reports[0]).toContain("bad header [redacted]");
+    expect(reports[0]).not.toContain(TOKEN);
+  });
+
+  test("an error that comes while the daemon is stopping is still traced", () => {
+    const { proc, trace, exits, lines } = traced();
+    trace.stopped();
+    proc.fire("uncaughtException", new Error("closing failed"));
+    expect(lines()).toHaveLength(1);
+    expect(lines()[0]).toContain("closing failed");
+    expect(exits).toEqual([1]);
   });
 
   test("an exit nobody logged is one line with its code", () => {
