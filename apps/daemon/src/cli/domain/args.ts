@@ -15,6 +15,7 @@ import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
+import { readSsh } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
@@ -360,6 +361,7 @@ const HANDLERS: Record<string, Handler> = {
   host: setCommand("host"),
   sessions: setCommand("sessions"),
   session: readSession,
+  ssh: readSsh,
   requests: (args) => {
     startCommand(args, "requests");
   },
@@ -657,10 +659,12 @@ const HANDLERS: Record<string, Handler> = {
 
 /** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
 const JSON_COMMANDS =
-  "card board history team persona quota usage budget costs roi host sessions session requests send approve deny approvers rules autoapprove vault plugins".split(
+  "card board history team persona quota usage budget costs roi host sessions session ssh requests send approve deny approvers rules autoapprove vault plugins".split(
     " ",
   );
-const HOST_COMMANDS = "host sessions session requests send approve deny vault plugins".split(" ");
+const HOST_COMMANDS = "host sessions session ssh requests send approve deny vault plugins".split(
+  " ",
+);
 
 function refuseOutside(flag: string, commands: readonly string[], command: string): void {
   if (commands.includes(command)) return;
