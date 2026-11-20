@@ -311,6 +311,8 @@ export class SessionManager {
     if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const id = ulid();
     const permissionMode = opts.permissionMode ?? this.defaultMode();
+    // The same host switch `create` honors: a resume may not start a bypass session it would refuse.
+    if (permissionMode === "bypassPermissions" && !this.bypassAllowed()) throw bypassNotAllowed();
     await this.opts.prepareTrust?.(cwd);
     if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     this.store.createSession({
