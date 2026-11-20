@@ -46,6 +46,7 @@ export function TrustPanel(
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<Loaded>(null);
   const [asking, setAsking] = useState(false);
+  const [signing, setSigning] = useState(false);
 
   const read = useCallback(async () => {
     const [states, load] = await Promise.all([
@@ -68,12 +69,15 @@ export function TrustPanel(
   // Trusting is signed by an enrolled device over the folder the host reports for the project, which is the
   // folder it will trust (#3453); a no in the device's dialog sends nothing.
   const trust = async (target: string) => {
+    setSigning(true);
     try {
       const made = await store.approval.trustPayload(hostId, target);
       if (made.kind === "payload")
         await store.hostCommand(hostId, "project.trust.set", made.payload);
     } catch (error) {
       store.reportError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSigning(false);
     }
     await read();
   };
@@ -181,7 +185,7 @@ export function TrustPanel(
           ) : (
             // Trusting is for a person who read what the project would load: no listing, no button.
             load && (
-              <ActionButton variant="outline" onClick={() => setAsking(true)}>
+              <ActionButton variant="outline" disabled={signing} onClick={() => setAsking(true)}>
                 {t("projectPage.trust.action")}
               </ActionButton>
             )

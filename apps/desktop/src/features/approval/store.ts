@@ -56,11 +56,9 @@ type TrustPayload =
   | { kind: "declined" };
 
 /** The feature a host announces for each command it guards (#3453). */
-const COMMAND_FEATURE: Record<ProofCommand, string> = {
+const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "card.pr.merge": FEATURE_APPROVAL_COMMAND,
   "project.trust.set": FEATURE_APPROVAL_TRUST,
-  // Announced by the change that guards it; until then no host has it.
-  "autoapprove.resume": "approval-resume",
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
@@ -513,7 +511,9 @@ export class ApprovalSlice {
     command: ProofCommand,
     payload: Record<string, unknown>,
   ): Promise<ProofResult> {
-    const signer = await this.signer(hostId, COMMAND_FEATURE[command]);
+    // A command no host guards yet (it has no feature) is never proved.
+    const feature = COMMAND_FEATURE[command];
+    const signer = feature === undefined ? null : await this.signer(hostId, feature);
     if (!signer) return { kind: "none" };
     const challenge = await this.ask(hostId, "approval.challenge", { purpose: "command", command });
     const digest = commandDigest(payload);

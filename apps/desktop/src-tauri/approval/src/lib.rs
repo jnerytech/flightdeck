@@ -420,10 +420,10 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 short(head)
             ),
             Some(CommandAsk::TrustProject { path }) if pt => format!(
-                "Confiar em uma pasta de projeto? Os hooks e os servidores dela vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck.\n\"{path}\""
+                "Confiar em uma pasta de projeto? Os hooks e os servidores dela, e os de tudo o que há dentro dela, vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck.\n\"{path}\""
             ),
             Some(CommandAsk::TrustProject { path }) => format!(
-                "Trust a project folder? Its hooks and servers will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
+                "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
             ),
             None => String::new(),
         },
