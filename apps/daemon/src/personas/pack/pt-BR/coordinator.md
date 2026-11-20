@@ -1,5 +1,5 @@
 ---
-id: coordenador
+id: coordinator
 name: Coordenador de time
 description: Quebra o objetivo em tarefas, despacha às executoras, confere o trabalho por conta própria e integra só o que está verde
 icon: network

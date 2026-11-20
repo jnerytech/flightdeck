@@ -68,8 +68,8 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     const value = start?.args[(start?.args.indexOf("--agents") ?? 0) + 1] ?? "";
     expect(value.startsWith("{")).toBe(true);
     expect(start?.agentsInline).toBe(true);
-    expect(Object.keys(start?.agents ?? {})).toContain("persona-revisor");
-    expect(start?.agents?.["persona-revisor"]?.description).toMatch(/Revisa legibilidade/);
+    expect(Object.keys(start?.agents ?? {})).toContain("persona-reviewer");
+    expect(start?.agents?.["persona-reviewer"]?.description).toMatch(/Revisa legibilidade/);
   });
 
   test("print mode keeps the file, which exists while claude runs and is gone after", async () => {
@@ -80,7 +80,7 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
     expect(await run(["-p", "oi"], host, project)).toBe(0);
     const [start] = startsOf(fake);
     expect(start?.agentsInline).toBe(false);
-    expect(Object.keys(start?.agents ?? {})).toContain("persona-revisor");
+    expect(Object.keys(start?.agents ?? {})).toContain("persona-reviewer");
     const { existsSync } = await import("node:fs");
     expect(existsSync(start?.agentsPath as string)).toBe(false);
   });

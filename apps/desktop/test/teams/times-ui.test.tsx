@@ -67,13 +67,13 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await change("Objetivo", "com personas");
     await change("Nome do time", "tp");
-    await pickWorkerPersonas("qa", "revisor");
+    await pickWorkerPersonas("qa", "reviewer");
     await click("Criar e iniciar");
     await settle(() => row("tp") !== null);
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
     expect(members.filter((m) => m.name.includes("executora")).map((m) => m.persona)).toEqual([
       "qa",
-      "revisor",
+      "reviewer",
     ]);
   });
 
@@ -263,13 +263,13 @@ describe("times-ui: the teams of a host", () => {
     await change("Objetivo", "no outro projeto");
     await change("Nome do time", "no-pi");
     await change("Projeto", other.second?.id ?? "");
-    await change("Persona da coordenadora (opcional)", "revisor");
+    await change("Persona da coordenadora (opcional)", "reviewer");
     // A choice among the host's personas, never text typed.
     expect(screen.queryByLabelText("Persona da coordenadora (opcional)")?.tagName).toBe("SELECT");
     await click("Criar e iniciar");
     await settle(() => row("no-pi") !== null);
     const made = await other.teams();
     expect(made.map((t) => t.name)).toEqual(["no-pi"]);
-    expect(made[0]?.members[0]?.persona).toBe("revisor");
+    expect(made[0]?.members[0]?.persona).toBe("reviewer");
   });
 });

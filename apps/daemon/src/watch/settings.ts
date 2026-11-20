@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS: WatchSettings = {
   checkTimeoutMin: 10,
   budgetUsd: 5,
   maxTurns: 30,
-  persona: "revisor",
+  persona: "reviewer",
   maxFailures: 2,
   dailyUsd: 20,
   checkRounds: 3,

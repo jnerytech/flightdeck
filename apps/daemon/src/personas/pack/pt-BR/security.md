@@ -1,5 +1,5 @@
 ---
-id: seguranca
+id: security
 name: Revisor de segurança
 description: Revisa mudanças procurando falhas de segurança e explica o risco de cada uma
 icon: shield
