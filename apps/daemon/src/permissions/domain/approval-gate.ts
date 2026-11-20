@@ -1,4 +1,12 @@
-import type { ApprovalAnswer, ApprovalProof } from "@flightdeck/protocol";
+import { createHash, createPublicKey, verify } from "node:crypto";
+import {
+  type ApprovalAnswer,
+  type ApprovalProof,
+  approvalDigests,
+  approvalMessage,
+} from "@flightdeck/protocol";
+import { FlightdeckError } from "../../kernel/index.ts";
+import { requireHold } from "./hold.ts";
 import type { NonceBook } from "./nonce-book.ts";
 import type { RiskLevel } from "./risk.ts";
 
@@ -16,24 +24,49 @@ export interface ApprovalGatePorts {
 }
 
 /** Lowercase hex SHA-256 of a text. */
-export function sha256Hex(_text: string): string {
-  return "";
+export function sha256Hex(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
 }
 
 /** The id of a public key: hex SHA-256 of its SPKI DER. */
-export function keyIdOf(_publicKey: string): string {
-  return "";
+export function keyIdOf(publicKey: string): string {
+  return createHash("sha256").update(Buffer.from(publicKey, "base64")).digest("hex");
 }
 
 /** ECDSA P-256 over SHA-256, the signature in IEEE P1363 form (base64); false for anything malformed. */
-export function verifySignature(_publicKey: string, _message: string, _signature: string): boolean {
-  return false;
+export function verifySignature(publicKey: string, message: string, signature: string): boolean {
+  try {
+    const key = createPublicKey({
+      key: Buffer.from(publicKey, "base64"),
+      format: "der",
+      type: "spki",
+    });
+    if (key.asymmetricKeyType !== "ec" || key.asymmetricKeyDetails?.namedCurve !== "prime256v1") {
+      return false;
+    }
+    return verify(
+      "sha256",
+      Buffer.from(message),
+      { key, dsaEncoding: "ieee-p1363" },
+      Buffer.from(signature, "base64"),
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** An allow needs the proof of a device when the request is high risk, or when it saves rules. */
-export function needsProof(_risk: RiskLevel, _updates: readonly unknown[]): boolean {
-  return false;
+export function needsProof(risk: RiskLevel, updates: readonly unknown[]): boolean {
+  return risk === "high" || updates.length > 0;
 }
+
+/** One refusal for a missing, unknown or bad proof: it never says which, and never echoes a nonce, key or signature. */
+const proofRequired = () =>
+  new FlightdeckError(
+    "invalid_state",
+    "this allow needs the signed proof of an enrolled device",
+    "approval_proof_required",
+  );
 
 export interface ApprovalCheck {
   requestId: string;
@@ -52,7 +85,36 @@ export interface ApprovalCheck {
 export class ApprovalGate {
   constructor(private readonly ports: ApprovalGatePorts) {}
 
-  check(_input: ApprovalCheck): void {
-    void this.ports;
+  check(input: ApprovalCheck): void {
+    const { requestId, risk, answer, held, proof } = input;
+    if (!needsProof(risk, answer.updatedPermissions ?? [])) return;
+    const keys = this.ports.keys();
+    if (keys.length === 0) {
+      requireHold(risk, held);
+      return;
+    }
+    const key = proof && keys.find((candidate) => candidate.keyId === proof.keyId);
+    if (!proof || !key) throw proofRequired();
+    const digests = approvalDigests(answer);
+    const message = approvalMessage({
+      keyId: key.keyId,
+      daemonId: this.ports.daemonId(),
+      requestId,
+      nonce: proof.nonce,
+      permissionsHash: sha256Hex(digests.permissions),
+      inputHash: sha256Hex(digests.input),
+      messageHash: sha256Hex(digests.message),
+    });
+    // A forged proof cannot burn a nonce: it is used up only by a signature of an enrolled key.
+    if (!verifySignature(key.publicKey, message, proof.signature)) throw proofRequired();
+    const taken = this.ports.nonces.take(proof.nonce, "approve", requestId);
+    if (taken === "unknown") throw proofRequired();
+    if (taken === "expired") {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the challenge expired: press Approve again",
+        "approval_challenge_expired",
+      );
+    }
   }
 }

@@ -243,10 +243,11 @@ describe("approval-gate: with a key enrolled, an allow that needs a proof carrie
     const { gate, keys, prove } = setup();
     const proof = prove("r1");
     const [phone] = keys.splice(0);
-    expect(
-      refusal(() => gate.check({ requestId: "r1", risk: "high", answer: {}, held: true }))?.reason,
-    ).toBe("hold_required");
+    const held = { requestId: "r1", risk: "high", answer: {}, held: true } as const;
+    expect(refusal(() => gate.check({ ...held, held: false }))?.reason).toBe("hold_required");
+    expect(refusal(() => gate.check(held))).toBeUndefined();
     if (phone) keys.push(phone);
+    expect(refusal(() => gate.check(held))?.reason).toBe("approval_proof_required");
     expect(
       refusal(() => gate.check({ requestId: "r1", risk: "high", answer: {}, proof })),
     ).toBeUndefined();
