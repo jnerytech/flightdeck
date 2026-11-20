@@ -65,6 +65,10 @@ until then the hold of the Approve button is the only check, as before.
   (merge commit or squash). Cancel it and nothing is sent. If someone pushes to the pull request after the
   app read it, the host refuses the merge and says the pull request changed: look at it again. A host that
   does not yet ask for the device on a merge shows a notice on its page: update it.
+- **Trusting a project.** With a device enrolled, **Trust this project** asks you once more in a window of the
+  system. The window names the folder and says that its hooks and servers will then run with no prompt. Cancel it
+  and nothing is sent. Revoking trust asks for nothing. A host that does not yet ask for the device when you
+  trust a project shows a notice on its page: update it.
 - **A warning.** If protection was on and the host now lists no device, the panel says so. If you did not
   reset it at the host, someone with access to it did.
 - **What it does not cover.** It guards approvals made from the app. Anyone with a terminal on the host
