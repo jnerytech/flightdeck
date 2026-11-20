@@ -28,6 +28,7 @@ export interface CliArgs {
     | "snippet"
     | "message"
     | "card"
+    | "team"
     | "host"
     | "sessions"
     | "requests"
@@ -83,6 +84,8 @@ export interface CliArgs {
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
   cardId?: string;
+  /** `team show <team>`. */
+  teamId?: string;
   cardTitle?: string;
   /** `card move <card> <column> [--position n] [--force]`, `card complete|discard|delete --confirm`, `card update --estimate ... --blocked-by ...`. */
   column?: string;
@@ -162,6 +165,8 @@ export const USAGE = [
   "     fd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
   "     fd statusline [--config <file>]   (one line for Claude Code's statusline)",
   "     fd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
+  "     fd team list [--project <name or id>] [--json] [--config <file>]",
+  "     fd team show <team> [--json] [--config <file>]",
   "     fd card list [--project <name or id>] [--json] [--config <file>]",
   "     fd card show <card> [--json] [--config <file>]",
   "     fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
@@ -422,6 +427,12 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "move") args.column = operand(reader, "the column");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  team: (args, reader) => {
+    args.command = "team";
+    const action = subAction(reader, ["list", "show"], "invalid team action");
+    args.action = action;
+    if (action === "show") args.teamId = operand(reader, "the team");
+  },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
   requests: (args) => {
@@ -569,12 +580,20 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (
     args.json &&
-    !["card", "host", "sessions", "requests", "send", "approve", "deny", "approvers"].includes(
-      args.command,
-    )
+    ![
+      "card",
+      "team",
+      "host",
+      "sessions",
+      "requests",
+      "send",
+      "approve",
+      "deny",
+      "approvers",
+    ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, team, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&

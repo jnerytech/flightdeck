@@ -93,11 +93,15 @@ const HANDLERS: Handlers = {
 };
 
 const text = (r: { out: string[]; err: string[] }) => [...r.out, ...r.err].join("\n");
-/** True when the text holds a control or bidi-override character: what could drive a terminal. */
+/** True when the text holds a control (but the line break) or bidi-override character: what could drive a terminal. */
 const drivesTerminal = (value: string) =>
   [...value].some((c) => {
     const code = c.charCodeAt(0);
-    return code < 0x20 || (code >= 0x7f && code <= 0x9f) || (code >= 0x202a && code <= 0x202e);
+    return (
+      (code < 0x20 && code !== 0x0a) ||
+      (code >= 0x7f && code <= 0x9f) ||
+      (code >= 0x202a && code <= 0x202e)
+    );
   });
 /** The JSON the command printed, or null, so an empty or broken output is an assertion and not a throw. */
 const printed = (lines: string[]) => {

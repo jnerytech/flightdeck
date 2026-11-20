@@ -124,3 +124,27 @@ Claude Code sessions can message each other through Flightdeck, on the same host
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window
   restarts, the team resumes and tells you.
+
+## The flightdeckd team command
+
+`flightdeckd team` reads the teams of this host from a terminal, a cron job or an agent. It talks to
+the daemon on the same host, with the token of the config file, as `flightdeckd card` does.
+
+```sh
+flightdeckd team list [--project <name or id>] [--json]
+flightdeckd team show <team> [--json]
+```
+
+- `list` prints one line per team: id, name, state (`active`, `paused by user`, `paused by quota` or
+  `closed`) and how many workers it has. `--project` takes a project's id or name and lists only its
+  teams.
+- `show` prints the team's goal and state, how many messages its members exchanged, the coordinator's
+  last report (its outcome, marked done or not done) and one line per member: role, persona, the
+  session's state, its card, how many messages it sent and received and, under it, its last report.
+  A worker whose card still waits in the run queue says "no session".
+- `--json` prints the daemon's own answer for a script. The text a session wrote (a report, a name)
+  is shown as plain text, without control characters.
+- **Exit codes:** 0 done, 1 refused (an unknown team or project; the reason is on stderr), 2 no daemon.
+- The token and the loopback rule are those of `flightdeckd card`: the token comes only from the
+  config file, it is never printed, and `--host` is not taken here. `flightdeckd message team <team>`
+  from a session still answers for the same team, as the session that asks.
