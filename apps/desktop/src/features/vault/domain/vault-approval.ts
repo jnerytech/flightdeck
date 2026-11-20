@@ -10,7 +10,10 @@ export interface VaultAnswer {
 export type VaultAsk = (context: VaultRequestContext) => Promise<boolean | VaultAnswer | null>;
 
 /** Phase 19: tells the daemon a request its rules made ask was approved, before the delivery. */
-export type VaultApprove = (context: VaultRequestContext, answer: VaultAnswer) => Promise<void>;
+export type VaultApprove = (
+  context: VaultRequestContext,
+  answer: VaultAnswer,
+) => Promise<void | "declined">;
 
 /**
  * How long after an approval the other secrets of the same run are delivered without a second
@@ -90,7 +93,10 @@ export function actionPolicy(deps: {
     const actionKey = `${hostId}|${request.requester}|${request.action ?? ""}`;
     const runKey = `${actionKey}|${JSON.stringify(request.params ?? {})}|${request.command ?? ""}`;
     const approved = async (answer: VaultAnswer) => {
-      if (ruled) await deps.approve?.(context, answer);
+      // The person said no to the device's own dialog (#3452): the host is told no, nothing is delivered.
+      if (ruled && (await deps.approve?.(context, answer)) === "declined") {
+        return { kind: "deny", reason: "you declined the confirmation on this device" } as const;
+      }
       return { kind: "deliver" } as const;
     };
 

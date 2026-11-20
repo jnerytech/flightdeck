@@ -10,11 +10,13 @@ import {
   enrollAddMessage,
   enrollFirstMessage,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_VAULT,
   needsApprovalProof,
   PermissionRespondPayload,
   type PermissionUpdate,
   type RiskLevel,
   revokeMessage,
+  vaultApproveMessage,
 } from "@flightdeck/protocol";
 import { refusalText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
@@ -74,6 +76,13 @@ export function heardText(t: T, heard: ApprovalHeard, host: string): string {
 /** How loud a change is told: a device nobody here made, or this device's own key gone, is an alert. */
 export function heardTone(heard: ApprovalHeard): "error" | "info" {
   return heard.kind === "enrolled" || heard.own ? "error" : "info";
+}
+
+/** This device's key for one host, as the proof paths use it. */
+interface Signer {
+  keys: NonNullable<Platform["approvalKeys"]>;
+  daemonId: string;
+  local: { keyId: string };
 }
 
 /** What the proof path found: nothing to prove, a proof to send, or the person declined the system's dialog. */
@@ -196,12 +205,12 @@ export class ApprovalSlice {
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
-  supported(hostId: string): boolean {
+  supported(hostId: string, feature: string = FEATURE_APPROVAL_PROOF): boolean {
     const host = this.core.host(hostId);
     return (
       this.core.keys() !== undefined &&
       !!host?.daemonId &&
-      hasFeature(host.features, FEATURE_APPROVAL_PROOF, false)
+      hasFeature(host.features, feature, false)
     );
   }
 
@@ -394,15 +403,8 @@ export class ApprovalSlice {
     ) {
       return { kind: "none" };
     }
-    const keys = this.core.keys();
-    if (!keys || !this.supported(hostId)) return { kind: "none" };
-    const list = await this.ask(hostId, "approval.list", {});
-    if (list.protectionOff) return { kind: "none" };
-    const daemonId = this.daemonOf(hostId);
-    const local = await keys.get(daemonId);
-    if (!local || !list.keys.some((key) => key.keyId === local.keyId)) {
-      throw new Error(this.core.t()("approvalDevices.noKeyHere"));
-    }
+    const signer = await this.signer(hostId, FEATURE_APPROVAL_PROOF);
+    if (!signer) return { kind: "none" };
     const challenge = await this.ask(hostId, "approval.challenge", {
       purpose: "approve",
       requestId: answer.requestId,
@@ -411,7 +413,7 @@ export class ApprovalSlice {
     const parsed = PermissionRespondPayload.parse(answer);
     const digests = approvalDigests(parsed);
     const message = approvalMessage({
-      keyId: local.keyId,
+      keyId: signer.local.keyId,
       daemonId: challenge.daemonId,
       requestId: answer.requestId,
       nonce: challenge.nonce,
@@ -419,22 +421,61 @@ export class ApprovalSlice {
       inputHash: await sha256Hex(digests.input),
       messageHash: await sha256Hex(digests.message),
     });
+    return await this.signed(signer, challenge.nonce, message);
+  }
+
+  /**
+   * The proof of a prod or high-risk secret use (#3452): the device's signature over this request and
+   * the scope approved. The same results as `prove`; none when the host takes the hold instead.
+   */
+  async proveVault(
+    hostId: string,
+    requestId: string,
+    scope: "once" | "session",
+  ): Promise<ProofResult> {
+    const signer = await this.signer(hostId, FEATURE_APPROVAL_VAULT);
+    if (!signer) return { kind: "none" };
+    const challenge = await this.ask(hostId, "approval.challenge", {
+      purpose: "approve",
+      requestId,
+    });
+    const message = vaultApproveMessage({
+      keyId: signer.local.keyId,
+      daemonId: challenge.daemonId,
+      requestId,
+      nonce: challenge.nonce,
+      scope,
+    });
+    return await this.signed(signer, challenge.nonce, message);
+  }
+
+  /**
+   * This device's key for a host that checks proofs for `feature` and has a device enrolled, or null
+   * when nothing needs proving (no key port, a host that does not check, protection off). It throws,
+   * with the person's text, when the host asks for a proof this device has no key for.
+   */
+  private async signer(hostId: string, feature: string): Promise<Signer | null> {
+    const keys = this.core.keys();
+    if (!keys || !this.supported(hostId, feature)) return null;
+    const list = await this.ask(hostId, "approval.list", {});
+    if (list.protectionOff) return null;
+    const daemonId = this.daemonOf(hostId);
+    const local = await keys.get(daemonId);
+    if (!local || !list.keys.some((key) => key.keyId === local.keyId)) {
+      throw new Error(this.core.t()("approvalDevices.noKeyHere"));
+    }
+    return { keys, daemonId, local };
+  }
+
+  /** The device signs `message` in its own dialog; a no from the person is `declined`, not an error. */
+  private async signed(signer: Signer, nonce: string, message: string): Promise<ProofResult> {
     try {
-      const signature = await keys.sign(daemonId, message, this.core.lang());
-      return { kind: "proof", proof: { keyId: local.keyId, nonce: challenge.nonce, signature } };
+      const signature = await signer.keys.sign(signer.daemonId, message, this.core.lang());
+      return { kind: "proof", proof: { keyId: signer.local.keyId, nonce, signature } };
     } catch (error) {
       if (isDecline(error)) return { kind: "declined" };
       throw error;
     }
-  }
-
-  /** The proof of a prod or high-risk secret use (#3452); the same results as `prove`. Not made yet. */
-  async proveVault(
-    _hostId: string,
-    _requestId: string,
-    _scope: "once" | "session",
-  ): Promise<ProofResult> {
-    return { kind: "declined" };
   }
 
   /** The host lists `keyId`, or its list cannot be read (then the key is kept, never guessed gone). */

@@ -164,11 +164,21 @@ export class VaultApprovalsSlice {
       now: () => this.core.now(),
       // Phase 19: a request the rules made ask is approved on the daemon before the delivery.
       approve: async ({ request, hostId }, answer) => {
+        // A prod or high-risk use is approved by the device's signature where the host checks one
+        // (#3452), otherwise by the hold, as before.
+        const proof = request.needsHold
+          ? await this.core.prove(hostId, request.requestId, answer.scope)
+          : ({ kind: "none" } as const);
+        if (proof.kind === "declined") return "declined";
         await this.core.dispatch(hostId, "vault.approve", {
           requestId: request.requestId,
           via: answer.via,
           scope: answer.scope,
-          ...(request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {}),
+          ...(proof.kind === "proof"
+            ? { proof: proof.proof }
+            : request.needsHold
+              ? { heldMs: HIGH_RISK_HOLD_MS }
+              : {}),
         });
       },
     });
