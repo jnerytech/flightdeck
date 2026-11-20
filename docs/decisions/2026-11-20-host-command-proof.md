@@ -256,9 +256,12 @@ issue, with `terminal.settings` and `mcp.save` first.
   preview in the app. The Rust signer therefore refuses a payload with any field it does not know.
 - The Rust signer allows a longer payload for this command only (`MAX_HARNESS_PAYLOAD`, 8192 bytes: a template
   holds up to 17 files and each digest is a path and a 64-character hash). It accepts only plain digests (a file
-  name of ASCII letters, digits and `._/-`, a token of ASCII letters, digits and `._:-`), unique parts from the five
+  name of ASCII letters, digits and `._/-@+`, the characters the host's template names allow, a token of ASCII letters, digits and `._:-`), unique parts from the five
   the harness has, and a template id in the form the host takes. The dialog's buttons say "Write setup" and "Cancel".
 - The app proves with `FEATURE_APPROVAL_HARNESS`: a host that does not check it gets the plain payload, and its
   page shows a notice (`approvalDevices.harnessUnchecked`). A no in the system's dialog sends nothing and shows no
   error; a signing that fails shows its message.
 - The gate guards the protocol path. The CLI verb for the apply, when one exists, follows the rule above.
+- The signer shows a folder only when it can show it whole, and a name with a double quote is not one: the quote would
+  close the one the dialog puts around the path. The rule is shared with trust and roots, so with a device enrolled a
+  folder named with a double quote cannot be trusted, added or set up from the app until that is solved.
