@@ -30,6 +30,15 @@ reverses the default of #1711 and keeps its guard rails.
   a session in bypass never makes that request, so the default would silently drop that guard for a run
   that reads text from outside (a pull request). A card whose own mode is bypass still gets it, as
   before.
+- **The terminal wrapper follows the same switch (`flightdeckd claude`).** It adds
+  `--permission-mode bypassPermissions` while the host config allows bypass and defaults to it. A
+  mode the person passed (`--permission-mode`, `--dangerously-skip-permissions`) or a stricter mode
+  of the persona (`plan`, `default`, `acceptEdits`, `dontAsk`) wins. Print mode (`-p`) gets it too:
+  nobody is there to approve. Under root, claude refuses bypass: the launch opens in claude's own
+  mode and says so, and `IS_SANDBOX` is never set. A config file the launch had to create (a terminal
+  whose `FLIGHTDECK_CONFIG` points at nothing) is not the host's choice, so nothing is added. A mode
+  set only in a `settings.json` (`permissions.defaultMode`) cannot be seen from the wrapper and is
+  overridden by the flag: the host switch is the way back.
 - **Slices of #3427.** This one is the daemon's config and managed sessions. The wrapper
   (`flightdeckd claude` adds `--permission-mode bypassPermissions` unless the person passed a mode) and
   the app and manuals follow in their own PRs. A card or a team that sets its own mode keeps it; one
