@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { VALUE_FLAGS } from "../../src/cli/domain/args.ts";
 import { bash, MEDIUM, notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
 const REASON =
@@ -17,7 +18,6 @@ describe("risk rules: a session ending or forcing a card from its shell (#3454)"
         ["flightdeckd card merge-local c1", REASON],
         ["bun run apps/daemon/src/bin.ts card merge-local c1 --confirm", REASON],
         ["fd --project p card merge-local c1 --confirm", REASON],
-        ["fd --message 'a card b' card discard c1", REASON],
         ["flightdeckd --host h1 card complete c1", REASON],
         ["fd card move c1 review --force", REASON],
         ["fd card move c1 done --position 2 --force --json", REASON],
@@ -52,11 +52,23 @@ describe("risk rules: a session ending or forcing a card from its shell (#3454)"
         "fd card diff c1",
         "fd card pr-create c1 --title 'merge-local notes'",
         "fd card update-from-base c1",
+        // What follows the verb is text, whatever it says (#3454).
+        "fd card new 'fix card delete flow'",
+        "fd card message c1 'remember to card complete it'",
+        "fd card pr-create c1 --title 'card merge-local notes'",
+        "fd send s1 'please card discard'",
         "echo card discard",
         "bun test card discard",
         "bash -c 'echo card delete'",
       ]),
     ).toEqual([]);
     expect(bash("fd card move c1 review").reason).toBe(MEDIUM);
+  });
+
+  test("a flag that takes a value can come before card, whichever flag it is", () => {
+    expect(VALUE_FLAGS).toContain("--project");
+    expect(
+      wrongReasons(VALUE_FLAGS.map((flag) => [`fd ${flag} x card discard c1`, REASON] as const)),
+    ).toEqual([]);
   });
 });
