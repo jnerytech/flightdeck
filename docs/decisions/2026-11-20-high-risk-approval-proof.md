@@ -132,6 +132,23 @@ longer a proof: the text of `refusalLine` (`answer-view.ts`) that says `--hold` 
 allow is removed (in `answer-view.ts`). Below high risk, `approve` works as today. `flightdeckd approve` sends no
 `updatedPermissions`.
 
+## The app (what shipped, #3439)
+
+- **Keys.** One P-256 key per host, kept in the OS credential store under the service
+  `flightdeck-approval` and named by the host's daemon id (`host.info.daemonId`). The webview can create,
+  delete and ask to sign with it, never read it (`approval_key_*`, `approval_sign` in `src-tauri`).
+- **Signing.** A Rust command shows a native dialog built from the text being signed; `Err("declined")` on
+  cancel, else it signs. A decline is silent in the app: the request stays open. This is a reduction, not a
+  proof: a compromised renderer can still ask for a dialog the person may approve by habit.
+- **When.** `needsApprovalProof(risk, updatedPermissions)` in the protocol is the one predicate the host and
+  the app read. A deny never needs a proof. The queue's allow and the card's allow both go through it.
+- **Panel.** The host page's **Approving devices** lists the keys (`approval.list`), enrolls this device
+  with the terminal's code (first enroll only), revokes a key and drops the local key. The panel is shown only
+  for a host that announces `approval-proof`, on an app that can hold a key.
+- **Deferred.** `approval.watch` and the enrolled/revoked notices: the app reads the list on connect and
+  flags a key it did not create. Adding a second device from the app alone (`enroll-add` needs a signer key
+  on another device) is not built.
+
 ## Order of work
 
 1. This record, with `security-reviewer` on the changes, before any code.

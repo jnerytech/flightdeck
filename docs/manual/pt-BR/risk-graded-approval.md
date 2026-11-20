@@ -24,3 +24,28 @@ podem ser rebaixados.
   sessões em que a aprovação automática parou porque chegou conteúdo de terceiro, com o motivo;
   **Reativar** pede confirmação antes de ligar de novo.
 - O texto da bandeja soma quantas aprovações automáticas o app viu.
+
+## Dispositivos que aprovam
+
+Um host também pode pedir a **prova assinada de um dos seus dispositivos** antes de aprovar um pedido de risco
+alto, e antes de qualquer aprovação que grave uma regra ("sempre permitir"). Fica desligado até você
+cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única conferência, como antes.
+
+- **Cadastrar.** Abra a página do host e procure **Dispositivos que aprovam**. No terminal do host rode
+  `flightdeckd approvers enroll`, digite o **nome** deste dispositivo e o **código de uso único** que ele
+  imprime, e aperte **Cadastrar**. O código vale uma vez, por dez minutos. O app cria uma chave que nunca sai
+  deste dispositivo e entrega ao host só a metade pública.
+- **Aprovar.** Com a proteção do host ligada, **Segurar para aprovar** (e a aprovação de uma regra salva)
+  pergunta mais uma vez numa janela do sistema, dizendo o que você está permitindo. Cancele e nada é enviado;
+  o pedido continua aberto. A janela é do sistema, não do app, então uma página mostrada dentro de uma sessão
+  não consegue apertá-la.
+- **Ver e revogar.** O painel lista cada dispositivo cadastrado com o nome, o app e o endereço de onde
+  se cadastrou e a data. **Este dispositivo** marca o que guarda a chave que você usa. **Revogar** tira outro
+  dispositivo (ou este, mas nunca o último: só `flightdeckd approvers reset` no host faz isso).
+  **Remover a chave deste dispositivo** apaga a chave guardada aqui; o host segue listando o dispositivo até
+  que outro o revogue.
+- **Um aviso.** Se a proteção estava ligada e o host agora não lista nenhum dispositivo, o painel avisa. Se
+  você não zerou no host, alguém com acesso a ele zerou.
+- **O que não cobre.** Protege as aprovações feitas pelo app. Quem tem um terminal no host ainda consegue
+  zerar, e um pedido de risco médio não pede prova. Um segundo dispositivo é cadastrado com uma chave já
+  cadastrada; o app ainda não faz isso, então por ora zere no host e cadastre de novo.
