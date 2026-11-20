@@ -1094,11 +1094,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "flightdeck-cred"
+version = "0.1.0"
+dependencies = [
+ "keyring",
+ "serde_json",
+]
+
+[[package]]
 name = "flightdeck-desktop"
 version = "0.1.0"
 dependencies = [
  "dunce",
  "flightdeck-assistant",
+ "flightdeck-cred",
  "keyring",
  "libc",
  "serde",
