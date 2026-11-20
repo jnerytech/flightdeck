@@ -327,6 +327,28 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
+/**
+ * A resume that skips what the app asks a person (#3461): `history resume --force` starts the session
+ * although the transcript may be running elsewhere, and `--permission-mode` picks the mode the new
+ * session runs in (`bypassPermissions` included). A plain resume takes the host's defaults.
+ */
+function resumesWithPower(prog: string, args: string[]): boolean {
+  const raised = (all: string[]) =>
+    all.some(
+      (w) => w === "--force" || w === "--permission-mode" || w.startsWith("--permission-mode="),
+    );
+  if (["fd", "flightdeckd"].includes(prog)) {
+    const own = shellArguments(args);
+    const [command, action] = flightdeckWords(own);
+    return command === "history" && action === "resume" && raised(own);
+  }
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const runsCli = words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  const resumes = words.some((w, i) => w === "history" && words[i + 1] === "resume");
+  return runsCli && resumes && raised(words);
+}
+
 const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
 const TEAM_CHANGES = [
   "new",
@@ -378,6 +400,15 @@ const startsATeam = (prog: string, args: string[]) => runsCliVerb(prog, args, "t
 const movesTheQuotaGuard = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "quota", ["pause-at"]);
 
+/**
+ * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
+ * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
+ * session that got third-party content. `--confirm` is only a flag the caller types.
+ */
+const changesWhatGuards = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "rules", ["remove"]) ||
+  runsCliVerb(prog, args, "autoapprove", ["resume"]);
+
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
@@ -419,9 +450,18 @@ const DANGEROUS: Array<{
       "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)",
   },
   {
+    when: changesWhatGuards,
+    reason: () => "changes what guards the sessions (flightdeckd rules remove, autoapprove resume)",
+  },
+  {
     when: changesAPersona,
     reason: () =>
       "changes what the app asks a person to confirm (flightdeckd persona save, remove, reset, trust or publish-agent)",
+  },
+  {
+    when: resumesWithPower,
+    reason: () =>
+      "does what the app asks a person to confirm (flightdeckd history resume --force, or with a permission mode)",
   },
   {
     when: startsATeam,

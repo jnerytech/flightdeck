@@ -6,55 +6,14 @@
  */
 import {
   type CliResult,
-  type DaemonClient,
   json,
-  plain,
   runOnLocalDaemon,
   said,
+  streamFrames,
 } from "../daemon-client/index.ts";
 import { type BoardCliArgs, settingsLine, UNSURE, watchLine } from "./domain/board-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
-
-/** The cards the daemon pushes, one line each, until `signal` aborts or the daemon goes away. */
-async function watch(
-  args: BoardCliArgs,
-  daemon: DaemonClient,
-  flow: { started(): void; hide(text: string): string },
-  signal: AbortSignal,
-  write: (line: string) => void,
-): Promise<CliResult> {
-  const stopped = new Promise<void>((resolve) => {
-    if (signal.aborted) resolve();
-    signal.addEventListener("abort", () => resolve(), { once: true });
-  });
-  // A terminal that cannot be written to (a closed pipe) ends the stream, it does not crash the socket handler.
-  let unwritable!: (error: unknown) => void;
-  const broken = new Promise<never>((_, reject) => {
-    unwritable = reject;
-  });
-  const off = daemon.onFrame("card.updated", ({ card }) => {
-    try {
-      write(plain(flow.hide(args.json ? JSON.stringify(card) : watchLine(card))));
-    } catch (error) {
-      unwritable(error);
-    }
-  });
-  try {
-    // Ctrl-C counts from the first moment, also while the daemon has not answered yet.
-    await Promise.race([daemon.call("board.watch", {}), stopped, broken, daemon.unreadable]);
-    if (!signal.aborted) {
-      flow.started();
-      const gone = daemon.closed.then(() => {
-        throw new Error("connection closed");
-      });
-      await Promise.race([stopped, gone, broken, daemon.unreadable]);
-    }
-    return { code: 0, out: [], err: [] };
-  } finally {
-    off();
-  }
-}
 
 export async function runBoardCli(
   args: BoardCliArgs,
@@ -76,13 +35,15 @@ export async function runBoardCli(
     unsure: maxParallelRuns === undefined ? "" : UNSURE,
     perform: async (daemon, note, flow) => {
       if (args.action === "watch")
-        return watch(
-          args,
+        return streamFrames({
           daemon,
           flow,
-          options.signal ?? new AbortController().signal,
-          options.write ?? (() => undefined),
-        );
+          signal: options.signal ?? new AbortController().signal,
+          write: options.write ?? (() => undefined),
+          open: () => daemon.call("board.watch", {}),
+          type: "card.updated",
+          line: ({ card }) => (args.json ? JSON.stringify(card) : watchLine(card)),
+        });
       note.wrote = maxParallelRuns !== undefined;
       const settings = await daemon.call(
         "board.settings",

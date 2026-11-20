@@ -245,11 +245,13 @@ fd history list [--cwd <folder>] [--project-key <key>] [--from <time>] [--to <ti
 fd history search "login bug" [--cwd <folder>] [--from <time>] [--to <time>] [--limit 10] [--json]
 fd history get <session> [--tail] [--limit 50] [--cursor <c>] [--json]
 fd history tool <session> <message> <index> [--json]
+fd history resume <session> [--name <text>] [--permission-mode <mode>] [--force] [--json]
+fd history watch [--json]
 fd history reindex
 ```
 
-These read the conversations Claude Code already recorded, as the History screen does. They change
-nothing, and the folders in `history.excludeCwds` stay out, as in the app.
+`list`, `search`, `get` and `tool` read the conversations Claude Code already recorded, as the History
+screen does. They change nothing, and the folders in `history.excludeCwds` stay out, as in the app.
 
 - **`list`:** one line per session: id, time of the last message, folder, title and message count, with
   `[may be running]` when another process may still be writing it. A longer list ends with
@@ -262,9 +264,19 @@ nothing, and the folders in `history.excludeCwds` stay out, as in the app.
 - **`tool <session> <message> <index>`:** the whole input and result of one tool call of a message (the
   `<message>` id is the second column of `search`, and `<index>` counts from 0). It says when the
   transcript held more than the 64 KiB shown. A call the transcript does not hold exits `1`.
+- **`resume <session>`:** starts a new session that continues the transcript, in its folder, and prints
+  `resumed as session <id>` (with `--json`, the daemon's answer). `--name` names it (the transcript's
+  title by default) and `--permission-mode` picks its mode (the host's default otherwise). A transcript
+  that may be running elsewhere is refused with `1` until you add `--force`. If the daemon does not
+  answer, the message says the session may or may not have been started: check `sessions` before trying again.
+- **`watch`:** keeps one connection open and prints a line for each transcript that grows: id, time of the
+  last message, folder and `[may be running]` (with `--json`, one object per line:
+  `claudeSessionId`, `cwd`, `lastTs`, `maybeActive`). It runs until Ctrl-C (exit `0`); if the daemon goes
+  away it exits `2`.
 - **`reindex`:** rebuilds the index; stop the daemon first (see [History](history.md)).
 
-`--limit` takes 1 to 200 (to 500 for `get`). With `--json` the first four print the daemon's answer.
+`--limit` takes 1 to 200 (to 500 for `get`). With `--json` all but `reindex` print the daemon's answer.
+From a session's shell, a resume with `--force` or `--permission-mode` is rated high: the person confirms it.
 Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
 ## fd persona
@@ -323,9 +335,11 @@ fd rules list --project api
 fd rules list --json
 fd autoapprove list
 fd autoapprove list --project api --session <key> --limit 20 --json
+fd rules remove 'Bash(bun test:*)' --project api --confirm
+fd autoapprove resume --session <key> --confirm
 ```
 
-These read what guards a project's sessions, as the Security screen does. Neither changes anything.
+`list` reads what guards a project's sessions, as the Security screen does; `remove` and `resume` change it.
 
 - **`rules list`:** the permission rules the project allows (`permissions.allow` of its
   `.claude/settings.local.json`), one per line, exactly as the file holds them (they are not redacted, so a rule that holds a secret shows it). `--project` is the name or the id
@@ -337,3 +351,14 @@ These read what guards a project's sessions, as the Security screen does. Neithe
   decisions of one project and `--session` those and the suspension of one session key; `--limit` reads 1 to 1000 decisions. With `--json` it
   prints the daemon's answer, `decisions` and `suspended`. A secret that the approver quoted in a reason
   is cut out.
+- **`rules remove <rule> --confirm`:** removes one rule from the project's `permissions.allow`, keeping the
+  rest of the file. Pass the rule exactly as `rules list` printed it, in quotes. It refuses with exit `1`
+  and sends nothing until you pass `--confirm`, and it refuses a rule the project does not have. It prints
+  how many rules are left; with `--json`, the rules that are left.
+- **`autoapprove resume --session <key> --confirm`:** turns the automatic approver back on for a session
+  that was suspended after it got third-party content. It refuses with exit `1` for a session that is not
+  suspended. With `--json` it prints the sessions that are still suspended.
+
+A change that gets no answer exits `2` and says it may or may not have gone in: run `rules list` or
+`autoapprove list` before trying again. Run from a session's own shell, `rules remove` and
+`autoapprove resume` are classified as high-risk commands.

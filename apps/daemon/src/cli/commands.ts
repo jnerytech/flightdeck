@@ -169,7 +169,9 @@ async function rulesCli(
     await runRulesCli(
       {
         noun,
-        action: "list",
+        action: args.action === "remove" || args.action === "resume" ? args.action : "list",
+        ...(args.rule === undefined ? {} : { rule: args.rule }),
+        ...(args.confirm ? { confirm: true } : {}),
         ...(args.project === undefined ? {} : { project: args.project }),
         ...(args.session === undefined ? {} : { session: args.session }),
         ...(args.limit === undefined ? {} : { limit: args.limit }),
@@ -211,7 +213,7 @@ function cardCliArgs(args: CliArgs): CardCliArgs {
   return { action: args.action, ...Object.fromEntries(present) } as CardCliArgs;
 }
 
-/** What the person typed for `history list|search|get|tool`, as `runHistoryCli` takes it: what they left out stays out. */
+/** What the person typed for `history list|search|get|tool|resume|watch`, as `runHistoryCli` takes it: what they left out stays out. */
 function historyCliArgs(args: CliArgs): HistoryCliArgs {
   const typed: Record<string, unknown> = {
     query: args.query,
@@ -227,6 +229,9 @@ function historyCliArgs(args: CliArgs): HistoryCliArgs {
     limit: args.limit,
     cursor: args.cursor,
     tail: args.tail,
+    name: args.personaName,
+    permissionMode: args.permissionMode,
+    force: args.force,
     json: args.json || undefined,
   };
   const present = Object.entries(typed).filter(([, value]) => value !== undefined);
@@ -591,7 +596,19 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     }
     const { runHistoryCli } = await import("../history/index.ts");
     const config = await localConfig(args);
-    return reported(deps, await runHistoryCli(historyCliArgs(args), config), args.json);
+    // `watch` runs until Ctrl-C and writes as the changes come; elsewhere Ctrl-C keeps its default.
+    const stop = new AbortController();
+    if (args.action === "watch")
+      for (const signal of ["SIGINT", "SIGTERM"] as const)
+        deps.onSignal(signal, async () => stop.abort());
+    return reported(
+      deps,
+      await runHistoryCli(historyCliArgs(args), config, {
+        signal: stop.signal,
+        write: (line) => deps.log.log(line),
+      }),
+      args.json,
+    );
   },
   approvers: async (args, deps) => (await import("./approvers.ts")).runApprovers(args, deps),
   doctor: async (args, deps) => (await import("./setup.ts")).runDoctorCommand(args, deps),

@@ -16,12 +16,17 @@ export interface HistoryArgs {
   limit?: number;
   cursor?: string;
   tail?: boolean;
+  /** `--name` is the persona's too: `personaName`. */
+  personaName?: string;
+  permissionMode?: string;
+  force?: boolean;
   json?: boolean;
 }
 
-const READS = ["list", "search", "get", "tool"];
+/** The verbs that print JSON for a script (`reindex` prints a sentence). */
+const JSON_VERBS = ["list", "search", "get", "tool", "resume", "watch"];
 
-/** The flags of `history`, each with the verbs that take it (`--from` is `update`'s and `--limit` `autoapprove`'s too: only `history` is checked). */
+/** The flags of `history`, each with the verbs that take it (`--from` is `update`'s, `--name` the persona's, `--force` the card's and `--limit` `autoapprove`'s too: only `history` is checked). */
 function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly string[]]> {
   return [
     ["--cwd", args.cwd, ["list", "search"]],
@@ -34,6 +39,9 @@ function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly strin
     ...(args.command === "history"
       ? ([
           ["--from", args.from, ["list", "search"]],
+          ["--name", args.personaName, ["resume"]],
+          ["--permission-mode", args.permissionMode, ["resume"]],
+          ["--force", args.force, ["resume"]],
           ["--limit", args.limit, ["list", "search", "get"]],
         ] as Array<[string, unknown, readonly string[]]>)
       : []),
@@ -54,8 +62,8 @@ export function historyProblem(args: HistoryArgs): string | undefined {
       return `${flag}: this flag only applies to flightdeckd history ${verbs.join(", ")}`;
   }
   if (args.command !== "history") return undefined;
-  if (args.json && !READS.includes(args.action as string))
-    return "--json: this flag only applies to flightdeckd history list, search, get and tool";
+  if (args.json && !JSON_VERBS.includes(args.action as string))
+    return "--json: this flag only applies to flightdeckd history list, search, get, tool, resume and watch";
   if (args.origin !== undefined && args.origin !== "flightdeck" && args.origin !== "external")
     return "--origin: flightdeck or external";
   if (args.tail && args.cursor !== undefined)

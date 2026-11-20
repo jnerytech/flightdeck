@@ -247,11 +247,13 @@ fd history list [--cwd <pasta>] [--project-key <chave>] [--from <hora>] [--to <h
 fd history search "bug do login" [--cwd <pasta>] [--from <hora>] [--to <hora>] [--limit 10] [--json]
 fd history get <sessão> [--tail] [--limit 50] [--cursor <c>] [--json]
 fd history tool <sessão> <mensagem> <índice> [--json]
+fd history resume <sessão> [--name <texto>] [--permission-mode <modo>] [--force] [--json]
+fd history watch [--json]
 fd history reindex
 ```
 
-Estes leem as conversas que o Claude Code já gravou, como a tela de Histórico. Não mudam nada, e as
-pastas de `history.excludeCwds` ficam de fora, como no app.
+`list`, `search`, `get` e `tool` leem as conversas que o Claude Code já gravou, como a tela de
+Histórico. Não mudam nada, e as pastas de `history.excludeCwds` ficam de fora, como no app.
 
 - **`list`:** uma linha por sessão: id, hora da última mensagem, pasta, título e número de mensagens, com
   `[may be running]` quando outro processo ainda pode estar gravando. Uma lista mais longa termina com
@@ -265,10 +267,20 @@ pastas de `history.excludeCwds` ficam de fora, como no app.
   de uma mensagem (o id da `<mensagem>` é a segunda coluna de `search`, e o `<índice>` conta a partir de
   0). Diz quando o transcript tinha mais que os 64 KiB mostrados. Uma chamada que o transcript não tem
   sai com `1`.
+- **`resume <sessão>`:** inicia uma sessão nova que continua o transcript, na pasta dele, e imprime
+  `resumed as session <id>` (com `--json`, a resposta do daemon). `--name` dá o nome (o título do
+  transcript por padrão) e `--permission-mode` escolhe o modo (o padrão do host, se omitido). Um
+  transcript que pode estar rodando em outro lugar é recusado com `1` até você somar `--force`. Se o
+  daemon não responder, a mensagem diz que a sessão pode ou não ter sido iniciada: veja `sessions` antes
+  de tentar de novo.
+- **`watch`:** mantém uma conexão aberta e imprime uma linha por transcript que cresce: id, hora da
+  última mensagem, pasta e `[may be running]` (com `--json`, um objeto por linha: `claudeSessionId`,
+  `cwd`, `lastTs`, `maybeActive`). Roda até Ctrl-C (saída `0`); se o daemon sumir, sai com `2`.
 - **`reindex`:** reconstrói o índice; pare o daemon antes (veja [Histórico](history.md)).
 
-`--limit` aceita de 1 a 200 (até 500 em `get`). Com `--json` os quatro primeiros imprimem a resposta do
-daemon. Os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
+`--limit` aceita de 1 a 200 (até 500 em `get`). Com `--json` tudo menos `reindex` imprime a resposta do
+daemon. Na shell de uma sessão, um resume com `--force` ou `--permission-mode` conta como alto risco: a
+pessoa confirma. Os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
 
 ## fd persona
 
@@ -326,9 +338,11 @@ fd rules list --project api
 fd rules list --json
 fd autoapprove list
 fd autoapprove list --project api --session <chave> --limit 20 --json
+fd rules remove 'Bash(bun test:*)' --project api --confirm
+fd autoapprove resume --session <chave> --confirm
 ```
 
-Eles leem o que protege as sessões de um projeto, como a tela de Segurança. Nenhum altera nada.
+`list` lê o que protege as sessões de um projeto, como a tela de Segurança; `remove` e `resume` o alteram.
 
 - **`rules list`:** as regras de permissão que o projeto libera (`permissions.allow` do
   `.claude/settings.local.json`), uma por linha, exatamente como o arquivo as guarda (não são censuradas: uma regra que contém um segredo o mostra). `--project` é o nome ou o id do
@@ -339,3 +353,14 @@ Eles leem o que protege as sessões de um projeto, como a tela de Segurança. Ne
   risco, a ferramenta, a chave da sessão, quem decidiu (`rule` ou `ai`) e por quê. `--project` deixa só as
   decisões de um projeto e `--session` as decisões e a suspensão de uma chave de sessão; `--limit` lê de 1 a 1000 decisões. Com `--json` imprime a
   resposta do daemon, `decisions` e `suspended`. Um segredo que o aprovador citou num motivo é cortado.
+- **`rules remove <regra> --confirm`:** remove uma regra do `permissions.allow` do projeto, mantendo o resto
+  do arquivo. Passe a regra exatamente como o `rules list` a imprimiu, entre aspas. Recusa com saída `1` e não
+  envia nada até você passar `--confirm`, e recusa uma regra que o projeto não tem. Imprime quantas regras
+  sobraram; com `--json`, as regras que sobraram.
+- **`autoapprove resume --session <chave> --confirm`:** liga de novo o aprovador automático de uma sessão
+  que foi suspensa depois de receber conteúdo de terceiros. Recusa com saída `1` uma sessão que não está
+  suspensa. Com `--json` imprime as sessões que continuam suspensas.
+
+Uma mudança que fica sem resposta sai com `2` e avisa que pode ou não ter sido feita: rode `rules list` ou
+`autoapprove list` antes de tentar de novo. Rodados no shell de uma sessão, `rules remove` e
+`autoapprove resume` são classificados como comandos de risco alto.
