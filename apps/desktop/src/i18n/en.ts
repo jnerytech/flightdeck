@@ -1,5 +1,6 @@
 import { account } from "./en/account.ts";
 import { agent } from "./en/agent.ts";
+import { approval } from "./en/approval.ts";
 import { assistant } from "./en/assistant.ts";
 import { automations } from "./en/automations.ts";
 import { backup } from "./en/backup.ts";
@@ -203,6 +204,7 @@ export const en: Dictionary = {
   ...automations,
   ...watch,
   ...refusals,
+  ...approval,
   ...assistant,
   common: {
     cancel: "Cancel",

@@ -12,7 +12,10 @@ export function wirePermissions(
     sessions: ReturnType<PermissionsCore["sessions"]>;
     selected: { hostId: string } | null;
   }>,
-  deps: Pick<PermissionsCore, "needsYou" | "settleVault" | "sendSelected" | "showWindow" | "act">,
+  deps: Pick<
+    PermissionsCore,
+    "needsYou" | "settleVault" | "sendSelected" | "showWindow" | "act" | "prove"
+  >,
 ): PermissionsSlice {
   return new PermissionsSlice({
     needsYou: deps.needsYou,
@@ -26,5 +29,6 @@ export function wirePermissions(
     t: () => kernel.t(),
     showWindow: deps.showWindow,
     act: deps.act,
+    prove: deps.prove,
   });
 }

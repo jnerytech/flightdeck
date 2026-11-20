@@ -35,6 +35,15 @@ export function canonicalJson(value: unknown): string {
   throw new TypeError(`canonicalJson: a ${typeof value} cannot be signed`);
 }
 
+/** An allow needs the proof of a device when the request is high risk, or when it saves rules. */
+export function needsApprovalProof(
+  // Written out, not `RiskLevel`: permissions.ts imports this file, and a type import back would be a cycle.
+  risk: "low" | "medium" | "high",
+  updatedPermissions: readonly unknown[] | undefined,
+): boolean {
+  return risk === "high" || (updatedPermissions?.length ?? 0) > 0;
+}
+
 /** The three texts of a `permission.respond` allow that a proof binds; each side hashes them with SHA-256. */
 export interface ApprovalAnswer {
   updatedPermissions?: unknown[] | undefined;

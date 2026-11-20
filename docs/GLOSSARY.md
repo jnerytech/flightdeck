@@ -164,6 +164,7 @@ test's baseline, with the issue that renames them.
 | `activity` | activity | What happened on the host since a time, read from what the daemon already keeps |
 | `agent-setup` | agent setup | The protocol's schemas of the agent-setup commands: knowledge, task templates, plugins and the harness (the rest stay in `agent-setup.ts`) |
 | `agentcfg` | agent | A project's Claude Code configuration: MCP servers, CLAUDE.md, agents and skills |
+| `approval` | approving device | The devices that sign a high-risk allow for the person: this device's key per host, the proof and the host page that enrolls and revokes (#3439) |
 | `appupdate` | app update | The app's own signed update: the check, the download in the background, the install, and the one on quit |
 | `assistant` | assistant | The host's assistant: checks a request, writes a commit message or a PR text |
 | `automations` | automation | Triggers (time, PR comment, failing checks, labeled issue) and the action each fires |

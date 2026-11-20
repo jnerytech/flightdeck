@@ -23,6 +23,7 @@ import { composeShell, type ShellSlices } from "../app/compose/shell.ts";
 import { composeVault, type VaultSlices } from "../app/compose/vault.ts";
 import { describeError, Notices } from "../app/notices.ts";
 import { TabWindow } from "../app/tab-window.ts";
+import { type ApprovalSlice, wireApproval } from "../features/approval/index.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BudgetsSlice, wireBudgets } from "../features/costs/index.ts";
 import {
@@ -130,6 +131,8 @@ export class AppStore {
   readonly personas: PersonasSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
+  /** This device's key per host and the proof of a high-risk allow (#3439). */
+  readonly approval: ApprovalSlice;
 
   /** What every domain's wire file builds its slice's port from (#1596). */
   private readonly kernel: AppKernel<AppState> = {
@@ -175,6 +178,7 @@ export class AppStore {
         later: (fn, ms) => this.later(fn, ms),
         respondTo: (hostId, requestId, decision) =>
           void this.respondTo(hostId, requestId, decision),
+        prove: (hostId, answer, risk) => this.approval.prove(hostId, answer, risk),
         palette: {
           loadProjects: (hostId) => this.projectList.load(hostId),
           loadBoard: (hostId, projectId) => this.boardCards.load(hostId, projectId),
@@ -233,6 +237,7 @@ export class AppStore {
       language: () => this.i18n.lang,
     });
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
+    this.approval = wireApproval(this.kernel, { platform, lang: () => this.i18n.lang });
     this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
       notify: (notification, route, source) =>

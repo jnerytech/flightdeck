@@ -5,6 +5,7 @@ import {
   canonicalJson,
   enrollAddMessage,
   enrollFirstMessage,
+  needsApprovalProof,
   revokeMessage,
 } from "../../src/approval.ts";
 import { Command } from "../../src/index.ts";
@@ -138,5 +139,15 @@ describe("approval-commands: the schemas of the approval commands and the proof 
     expect(parse("approval.revoke", revoke)).toBe(true);
     expect(parse("approval.list", {})).toBe(true);
     expect(parse("approval.list", { all: true })).toBe(false);
+  });
+});
+
+describe("approval-trigger: when an allow needs the proof of a device, for the host and the app alike", () => {
+  test("Given the three cases, Then only a high risk or a saved rule needs a proof", () => {
+    expect(needsApprovalProof("high", undefined)).toBe(true);
+    expect(needsApprovalProof("medium", [{}])).toBe(true);
+    expect(needsApprovalProof("low", [{}])).toBe(true);
+    expect(needsApprovalProof("medium", [])).toBe(false);
+    expect(needsApprovalProof("low", undefined)).toBe(false);
   });
 });
