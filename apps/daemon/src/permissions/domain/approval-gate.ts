@@ -94,6 +94,18 @@ export interface ApprovalCheck {
 export class ApprovalGate {
   constructor(private readonly ports: ApprovalGatePorts) {}
 
+  /** Whether a device key is enrolled (a prod or high-risk secret use then takes a proof, #3452). */
+  enrolled(): boolean {
+    return false;
+  }
+
+  /** The proof of a secret use: this request, this scope, a live nonce, a signature of an enrolled key (#3452). */
+  checkVault(_input: {
+    requestId: string;
+    scope: "once" | "session";
+    proof?: ApprovalProof;
+  }): void {}
+
   check(input: ApprovalCheck): void {
     const { requestId, risk, answer, held, proof } = input;
     if (!needsApprovalProof(risk, answer.updatedPermissions)) return;

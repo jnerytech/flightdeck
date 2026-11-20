@@ -31,7 +31,7 @@ import {
   type Vault,
   type VaultRules,
 } from "../vault/index.ts";
-import { type Approval, approvalRefusal } from "./domain/approval-check.ts";
+import { type Approval, approvalRefusal, type VaultProofGate } from "./domain/approval-check.ts";
 import {
   type Ask,
   approverOf,
@@ -56,6 +56,8 @@ export interface SecretRequestsOptions {
   clock?: () => number;
   /** The PC's time zone for the rules' windows (the system's when absent). */
   timeZone?: string;
+  /** #3452: the signed proof of an enrolled device, for a prod or high-risk request; absent, only the hold. */
+  approval?: VaultProofGate;
 }
 
 export type ActionsFrame = VaultRequestFrame | VaultUsed | VaultAlertFrame;

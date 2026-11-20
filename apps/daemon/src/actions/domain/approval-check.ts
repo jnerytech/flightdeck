@@ -1,13 +1,28 @@
+import type { ApprovalProof } from "@flightdeck/protocol";
 import type { Waiting } from "./secret-use.ts";
 
 /** How long the Approve button of a prod or high-risk request is held. */
 const HOLD_MS = 2000;
+
+/** What a proof of an enrolled device is checked against: the request, the scope approved and the proof sent. */
+export interface VaultProofGate {
+  /** Whether a device key is enrolled: then a hold-needing request takes a proof, not the hold. */
+  enrolled: () => boolean;
+  /** Throws (`approval_proof_required`, `approval_challenge_expired`) unless the proof signs this request and scope. */
+  checkVault: (input: {
+    requestId: string;
+    scope: "once" | "session";
+    proof?: ApprovalProof;
+  }) => void;
+}
 
 /** What the app or the tray sends when the person approves a request that asked. */
 export interface Approval {
   via: "app" | "tray";
   heldMs?: number;
   scope?: "once" | "session";
+  /** #3452: the signed proof of an enrolled device. */
+  proof?: ApprovalProof;
 }
 
 /** Why an approval is refused: the English message and the reason key the app translates. */
