@@ -133,6 +133,8 @@ the daemon on the same host, with the token of the config file, as `flightdeckd 
 ```sh
 flightdeckd team list [--project <name or id>] [--json]
 flightdeckd team show <team> [--json]
+flightdeckd team new <goal> (--workers <1-8> | --worker <spec>...) [--coordinator <spec>]
+  [--name <text>] [--check <command>...] [--project <name or id>] [--confirm] [--json]
 ```
 
 - `list` prints one line per team: id, name, state (`active`, `paused by user`, `paused by quota` or
@@ -142,6 +144,18 @@ flightdeckd team show <team> [--json]
   last report (its outcome, marked done or not done) and one line per member: role, persona, the
   session's state, its card, how many messages it sent and received and, under it, its last report.
   A worker whose card still waits in the run queue says "no session".
+- `new` creates a team, as the app's **New team** form does: the coordinator starts at once and each
+  worker's card starts or waits in the run queue (the answer lists the ones that wait). Name the
+  workers either as a count (`--workers 3`, all with the default persona) or one `--worker <spec>` each,
+  from 1 to 8. A spec is `persona[:model[:effort[:mode]]]`, and a part left empty keeps the default:
+  `--worker developer::high` is the developer persona at high effort. `--coordinator` takes a spec in
+  the same form. If you name a persona for one worker, name one for every worker. `--check` adds a
+  command the team runs to verify its work (up to 10), and `--name` names the team. With several
+  projects on the host, `--project` says which one. A member whose mode is `bypassPermissions` skips
+  every permission prompt, so the command refuses it unless you also pass `--confirm`, as the app asks
+  you again. A team over the plan quota is refused. If the command gets no answer it says so: the team
+  may or may not exist, so run `team list` before trying again. A session's own `team new` is rated high
+  risk, so its request goes to you.
 - `--json` prints the daemon's own answer for a script. The text a session wrote (a report, a name)
   is shown as plain text, without control characters.
 - **Exit codes:** 0 done, 1 refused (an unknown team or project; the reason is on stderr), 2 no daemon.

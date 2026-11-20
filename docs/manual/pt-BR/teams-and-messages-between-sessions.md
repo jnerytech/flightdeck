@@ -134,6 +134,8 @@ daemon do mesmo host, com o token do arquivo de config, como o `flightdeckd card
 ```sh
 flightdeckd team list [--project <nome ou id>] [--json]
 flightdeckd team show <time> [--json]
+flightdeckd team new <objetivo> (--workers <1-8> | --worker <spec>...) [--coordinator <spec>]
+  [--name <texto>] [--check <comando>...] [--project <nome ou id>] [--confirm] [--json]
 ```
 
 - `list` imprime uma linha por time: id, nome, estado (`active`, `paused by user`, `paused by quota`
@@ -143,6 +145,18 @@ flightdeckd team show <time> [--json]
   do coordenador (o resultado, marcado como feito ou não) e uma linha por membro: papel, persona,
   estado da sessão, card, quantas mensagens enviou e recebeu e, abaixo, o último relato dele. Um
   worker cujo card ainda espera na fila diz "no session".
+- `new` cria um time, como o formulário **Novo time** do app: o coordenador começa na hora e o card de
+  cada worker começa ou espera na fila de execução (a resposta lista os que esperam). Diga os workers
+  como uma contagem (`--workers 3`, todos com a persona padrão) ou um `--worker <spec>` para cada um,
+  de 1 a 8. Uma spec é `persona[:modelo[:esforço[:modo]]]`, e a parte deixada vazia mantém o padrão:
+  `--worker developer::high` é a persona developer com esforço alto. `--coordinator` recebe uma spec
+  no mesmo formato. Se você nomear a persona de um worker, nomeie a de todos. `--check` acrescenta um
+  comando que o time roda para conferir o trabalho (até 10), e `--name` dá nome ao time. Com vários
+  projetos no host, `--project` diz qual. Um membro com o modo `bypassPermissions` pula todo pedido de
+  permissão, então o comando recusa, a menos que você passe também `--confirm`, como o app pergunta de
+  novo. Um time acima da cota do plano é recusado. Se o comando não recebe resposta, ele diz isso: o time
+  pode ou não existir, então rode `team list` antes de tentar de novo. O `team new` de uma sessão conta
+  como risco alto, então o pedido dela vai para você.
 - `--json` imprime a resposta do próprio daemon, para um script. O texto que uma sessão escreveu (um
   relato, um nome) aparece como texto simples, sem caracteres de controle.
 - **Códigos de saída:** 0 feito, 1 recusado (um time ou projeto desconhecido; o motivo vai para o
