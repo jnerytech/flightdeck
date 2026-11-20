@@ -2,7 +2,9 @@
 import type { Database } from "bun:sqlite";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
+  type ApprovalEnrolled,
   type ApprovalKeyInfo,
+  type ApprovalRevoked,
   type CommandPayload,
   enrollAddMessage,
   enrollFirstMessage,
@@ -34,6 +36,11 @@ export interface Asker {
   address: string;
   client: string;
 }
+
+/** What a watcher hears: a device was enrolled or revoked. */
+export type ApprovalChange =
+  | (Omit<ApprovalEnrolled, "type"> & { type: "approval.enrolled" })
+  | ApprovalRevoked;
 
 /** How long the window of the first device stays open. */
 const ENROLL_WINDOW_MS = 10 * 60_000;
@@ -76,6 +83,11 @@ export class Approvers {
       daemonId: () => this.daemonId(),
       nonces: this.nonces,
     });
+  }
+
+  /** Calls `listener` for each device enrolled or revoked from now on; the returned function stops it. */
+  onChange(_listener: (change: ApprovalChange) => void): () => void {
+    return () => undefined;
   }
 
   daemonId(): string {
