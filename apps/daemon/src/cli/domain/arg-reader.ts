@@ -36,6 +36,9 @@ export class ArgReader {
   }
 }
 
+/** The handlers of flags that take no value (`--hold`), kept apart so `--hold=false` and the value-flag list know them (#3425). */
+export const FLAGS = new WeakSet<object>();
+
 export const invalid = (what: string, got: string | undefined, none = "(none)") =>
   new Error(`${what}: ${got ?? none}\n${USAGE}`);
 

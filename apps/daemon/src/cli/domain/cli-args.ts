@@ -2,6 +2,7 @@
 import type { VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
 import type { SessionStartOptions } from "../../sessions/index.ts";
+import type { SshSaveFields } from "../../ssh/index.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 
@@ -127,6 +128,8 @@ export interface CliArgs {
     | "hostkey-confirm"
     | "hostkey-forget"
     | "import-apply"
+    | "add"
+    | "edit"
     | "test"
     | "files"
     | "interrupt"
@@ -170,6 +173,8 @@ export interface CliArgs {
   sshFingerprint?: string;
   /** `ssh import apply --alias <name>...`: the `~/.ssh/config` names to turn into destinations. */
   sshAliases?: string[];
+  /** `ssh add|edit`: the flags that set a destination. */
+  sshSave?: SshSaveFields;
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */

@@ -26,6 +26,13 @@ import {
   removedLine,
   targetLines,
 } from "./domain/ssh-read-view.ts";
+import {
+  addedLine,
+  addPayload,
+  editPayload,
+  type SshSaveFields,
+  updatedLine,
+} from "./domain/ssh-save-view.ts";
 import { resolveSshTarget } from "./domain/target-ref.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -41,14 +48,18 @@ export interface SshCliArgs {
     | "hostkey-forget"
     | "test"
     | "remove"
-    | "import-apply";
-  /** The destination, its name or its id, for every action but `list` and the two imports. */
+    | "import-apply"
+    | "add"
+    | "edit";
+  /** The destination, its name or its id, for every action but `list` and the two imports; the new name for `add`. */
   target?: string;
   /** The fingerprint the person accepts, for `hostkey-confirm`. */
   fingerprint?: string;
   /** The `~/.ssh/config` names `import-apply` turns into destinations. */
   aliases?: string[];
-  /** The person's word that `remove` deletes the destination. */
+  /** The flags of `add` and `edit`. */
+  save?: SshSaveFields;
+  /** The person's word that `remove` deletes the destination, or that `add` or `edit` turns ForwardAgent on. */
   confirm?: boolean;
   json?: boolean;
 }
@@ -120,6 +131,39 @@ export function runSshCli(
         const shown = testLine(name, result);
         const base = args.json ? json(result) : said(shown.line);
         return { ...base, code: shown.code, ...(result.reason ? { reason: result.reason } : {}) };
+      }
+      if (args.action === "add" || args.action === "edit") {
+        const { targets } = await daemon.call("ssh.list", {});
+        const fields = args.save ?? {};
+        let jumpId: string | null | undefined = fields.noJump ? null : undefined;
+        if (fields.jump !== undefined) {
+          const jump = resolveSshTarget(targets, fields.jump);
+          if ("problem" in jump) return failure(1, jump.problem);
+          jumpId = jump.target.id;
+        }
+        const confirm = args.confirm === true;
+        const name = args.target ?? "";
+        if (args.action === "add") {
+          if (targets.some((t) => t.name === name)) {
+            return failure(
+              1,
+              `a destination is already named ${name}: use ssh edit ${name}`,
+              "ssh_name_taken",
+            );
+          }
+          const added = await daemon.call(
+            "ssh.save",
+            addPayload(name, fields, jumpId ?? undefined, confirm),
+          );
+          return args.json ? json(added) : said(addedLine(added.name, added.id));
+        }
+        const found = resolveSshTarget(targets, name);
+        if ("problem" in found) return failure(1, found.problem);
+        const saved = await daemon.call(
+          "ssh.save",
+          editPayload(found.target, fields, jumpId, confirm),
+        );
+        return args.json ? json(saved) : said(updatedLine(found.target, saved));
       }
       if (args.action === "list") {
         const result = await daemon.call("ssh.list", {});
