@@ -211,6 +211,19 @@ describe("vault approvals slice", () => {
     expect(notices).toContain("vaultApproval.proofFailedTitle");
   });
 
+  test("a declined device dialog does not leave a grant that delivers the run's next secret unasked", async () => {
+    const { approvals, pending, sent } = slice({ prove: async () => ({ kind: "declined" }) });
+    const first = approvals.onRequest(HOST, { ...ACTION, needsHold: true });
+    approvals.settle("r1", { scope: "once", via: "app" });
+    await first;
+    const second = approvals.onRequest(HOST, { ...ACTION, requestId: "r2", secretId: "s2" });
+    await Promise.resolve();
+    expect(pending().map((item) => item.requestId)).toEqual(["r2"]);
+    expect(sent.map((c) => c.type)).toEqual(["vault.deny"]);
+    approvals.settle("r2", null);
+    await second;
+  });
+
   test("a request that needs no hold asks for no proof", async () => {
     const asked: unknown[] = [];
     const { approvals, sent } = slice({
