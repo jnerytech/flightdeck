@@ -13,6 +13,7 @@ Cada versão sai na página de [Releases](https://github.com/jnerytech/flightdec
 | `flightdeckd-windows-x64.exe` | daemon para Windows |
 | `flightdeckd-linux-x64` | daemon para Linux e WSL (x64) |
 | `flightdeckd-linux-arm64` | daemon para Linux arm64 (Orange Pi, Raspberry Pi) |
+| `flightdeckd-<versão>.tgz` | a CLI como pacote npm: `fd` e `flightdeckd` com os três daemons dentro |
 | `SHA256SUMS` | o SHA-256 de cada arquivo |
 
 A release traz também as assinaturas (`.sig`) do instalador NSIS e dos daemons e os manifestos
@@ -33,6 +34,19 @@ A release traz também as assinaturas (`.sig`) do instalador NSIS e dos daemons 
      em um novo terminal): ele copia o binário para `~/.flightdeck/bin`, pergunta as pastas
      dos projetos, instala e **inicia** o serviço e imprime o link de pareamento (veja
      [Primeira execução: flightdeckd setup](service.md#primeira-execução-flightdeckd-setup)).
+4. **Instale a CLI com o npm** (opcional, exige Node e npm): isso põe `fd` e `flightdeckd` no seu
+   PATH, sem download na hora da instalação e sem nada do registro do npm:
+
+   ```sh
+   npm i -g https://github.com/jnerytech/flightdeck/releases/download/v<versão>/flightdeckd-<versão>.tgz
+   ```
+
+   Para conferir o arquivo antes, baixe-o junto com o `SHA256SUMS`, rode `sha256sum -c SHA256SUMS --ignore-missing`
+   e depois `npm i -g ./flightdeckd-<versão>.tgz`.
+
+   Ele instala só a CLI e o binário do daemon, então você ainda roda `flightdeckd setup` no host
+   (passo 3). O `flightdeckd update` troca a cópia do serviço em `~/.flightdeck/bin`, não a que o
+   npm instalou: para atualizar essa, instale o tarball da nova release do mesmo jeito.
 
 ## A partir do código-fonte
 

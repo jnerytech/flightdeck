@@ -10,6 +10,7 @@ import {
   enrollFirstMessage,
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
+  FEATURE_APPROVAL_HARNESS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
@@ -818,22 +819,26 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       "bypass",
       "resume",
       "roots",
+      "harness",
     ]);
-    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "bypass", "resume", "roots"]);
+    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "bypass", "resume", "roots", "harness"]);
     expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual([
       "merge",
       "bypass",
       "resume",
       "roots",
+      "harness",
     ]);
     expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual([
       "bypass",
       "resume",
       "roots",
+      "harness",
     ]);
     expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST, FEATURE_APPROVAL_BYPASS])).toEqual([
       "resume",
       "roots",
+      "harness",
     ]);
     expect(
       unchecked([
@@ -843,8 +848,71 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
         FEATURE_APPROVAL_RESUME,
         FEATURE_APPROVAL_ROOTS,
       ]),
+    ).toEqual(["harness"]);
+    expect(
+      unchecked([
+        ...COMMAND_HOST,
+        FEATURE_APPROVAL_TRUST,
+        FEATURE_APPROVAL_BYPASS,
+        FEATURE_APPROVAL_RESUME,
+        FEATURE_APPROVAL_ROOTS,
+        FEATURE_APPROVAL_HARNESS,
+      ]),
     ).toEqual([]);
     expect(unchecked([])).toEqual([]);
+  });
+
+  const HARNESS_HOST = [...ROOTS_HOST, FEATURE_APPROVAL_HARNESS];
+  const SETUP = {
+    path: "/work/api",
+    parts: ["claudeMd", "hooks"],
+    digests: { "CLAUDE.md": "d-claude", ".claude/settings.json": "d-settings" },
+    confirm: true,
+    reformat: true,
+    template: "shop",
+  } as const;
+  const setupBody = { ...SETUP, parts: [...SETUP.parts], digests: { ...SETUP.digests } };
+
+  test("writing a project's setup carries the proof over the whole request, signed with this device's key (#3507)", async () => {
+    const { slice, log, keyLog } = approval({ features: HARNESS_HOST });
+    const made = await slice.harnessPayload("h", setupBody);
+    const payload = made.kind === "payload" ? made.payload : {};
+    const { proof, ...bound } = payload as typeof SETUP & { proof: unknown };
+    expect(bound).toEqual(SETUP);
+    expect(proof).toEqual({
+      keyId: "key-this",
+      nonce: "nonce-1",
+      signature: expect.stringContaining("sig:"),
+    });
+    expect(log.map((l) => l.type)).toEqual(["approval.list", "approval.challenge"]);
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "project.harness.apply" });
+    expect(keyLog.find((k) => k.op === "sign")?.args[3]).toBe(commandDigest(SETUP));
+    expect(Command.safeParse({ id: "1", type: "project.harness.apply", payload }).success).toBe(
+      true,
+    );
+  });
+
+  test("a host that does not announce the harness proof gets the plain payload and no challenge; no device enrolled, the same", async () => {
+    const old = approval({ features: ROOTS_HOST });
+    expect(await old.slice.harnessPayload("h", setupBody)).toEqual({
+      kind: "payload",
+      payload: setupBody,
+    });
+    expect(old.log).toEqual([]);
+    const off = approval({ features: HARNESS_HOST, list: { protectionOff: true, keys: [] } });
+    expect(await off.slice.harnessPayload("h", setupBody)).toEqual({
+      kind: "payload",
+      payload: setupBody,
+    });
+  });
+
+  test("a no in the system's dialog stops writing a setup; a device with no key here is told so", async () => {
+    const declined = approval({ features: HARNESS_HOST, signFails: "declined" });
+    expect(await declined.slice.harnessPayload("h", setupBody)).toEqual({ kind: "declined" });
+    const keyless = approval({ features: HARNESS_HOST, local: null });
+    await expect(keyless.slice.harnessPayload("h", setupBody)).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
+    );
   });
 
   const TRUST_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST];

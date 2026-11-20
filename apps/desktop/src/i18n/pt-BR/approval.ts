@@ -31,6 +31,8 @@ export const approval = {
       "Este host não pede a confirmação de um dispositivo para ligar Ignorar permissões: atualize-o para proteger essa chave.",
     rootsUnchecked:
       "Este host não pede a confirmação de um dispositivo para adicionar uma pasta permitida: atualize-o para proteger a lista de pastas.",
+    harnessUnchecked:
+      "Este host não pede a confirmação de um dispositivo para gravar a configuração do Claude Code de um projeto: atualize-o para proteger o que roda nas sessões dele.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",
     resumeUnchecked:
       "Este host não pede a confirmação de um dispositivo ao reativar a aprovação automática: atualize-o para protegê-la.",

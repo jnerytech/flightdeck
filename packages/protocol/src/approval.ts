@@ -23,6 +23,9 @@ export const FEATURE_APPROVAL_BYPASS = "approval-bypass";
 /** The host checks a signed proof of the person's device before it adds an allowed folder with `roots.add` (#3507). */
 export const FEATURE_APPROVAL_ROOTS = "approval-roots";
 
+/** The host checks a signed proof of the person's device before it writes a project's Claude Code setup with `project.harness.apply` (#3507). */
+export const FEATURE_APPROVAL_HARNESS = "approval-harness";
+
 /** The host checks a signed proof of the person's device before it trusts a project folder (#3453). */
 export const FEATURE_APPROVAL_TRUST = "approval-trust";
 
@@ -36,6 +39,7 @@ export const PROOF_COMMANDS = [
   "autoapprove.resume",
   "host.bypass",
   "roots.add",
+  "project.harness.apply",
 ] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
 

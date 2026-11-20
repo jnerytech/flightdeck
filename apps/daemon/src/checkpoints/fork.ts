@@ -5,10 +5,11 @@
  * in the terminal. The files can be rewound to the turn first.
  */
 
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError, resolveAllowedCwd } from "../kernel/index.ts";
 import { type Prepare, withoutPersonas } from "../personas/index.ts";
 import type { AgentRuntime } from "../runtime/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
+import { folderRemoving } from "../worktrees/index.ts";
 import type { Rewinder } from "./rewind.ts";
 
 export interface ForkRequest {
@@ -37,6 +38,10 @@ export class Forker {
       rewinder?: Rewinder;
       /** Reads the personas for the forked session; none when absent. */
       preparePersonas?: Prepare;
+      /** The folders a fork may name, as for `create` (#3550). */
+      allowedRoots: readonly string[];
+      /** The folders being removed: a fork there is refused, as a start is (#3550). */
+      folderLocks?: { isHeld(cwd: string): boolean };
     },
   ) {}
 
@@ -60,6 +65,10 @@ export class Forker {
         { feature: "fork" },
       );
     }
+    // The folder is checked as `create` checks it, before the rewind writes files, the SDK writes a
+    // transcript for it or the personas are read from it, whichever way the fork opens (#3550).
+    const cwd = await resolveAllowedCwd(request.cwd, this.opts.allowedRoots);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     if (request.rewindTurn !== undefined) {
       await this.opts.rewinder?.apply(request.claudeSessionId, request.rewindTurn, true);
     }
@@ -68,15 +77,15 @@ export class Forker {
       request.claudeSessionId,
       {
         ...(request.upToMessageId ? { upToMessageId: request.upToMessageId } : {}),
-        dir: request.cwd,
+        dir: cwd,
       },
     );
     if (request.open === "terminal") {
       return { claudeSessionId, command: `flightdeckd claude --resume ${claudeSessionId}` };
     }
-    const { agents } = await (this.opts.preparePersonas ?? withoutPersonas)(undefined, request.cwd);
+    const { agents } = await (this.opts.preparePersonas ?? withoutPersonas)(undefined, cwd);
     const { sessionId } = await this.opts.manager.createResumed({
-      cwd: request.cwd,
+      cwd,
       claudeSessionId,
       name: null,
       agents,

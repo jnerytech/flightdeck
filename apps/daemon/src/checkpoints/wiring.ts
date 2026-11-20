@@ -10,15 +10,32 @@ export interface CheckpointsDeps {
   runtime: ConstructorParameters<typeof Forker>[0]["runtime"];
   /** Reads the personas for a forked session. */
   prepare: ConstructorParameters<typeof Forker>[0]["preparePersonas"];
+  /** The folders a fork may name, and the ones being removed (#3550). */
+  allowedRoots: ConstructorParameters<typeof Forker>[0]["allowedRoots"];
+  folderLocks?: ConstructorParameters<typeof Forker>[0]["folderLocks"];
 }
 
 /**
  * Phase 12 (issue #2094): the checkpoints' part of the server: the turns' git snapshots, going back
  * to a turn and forking a session from one.
  */
-export function createCheckpoints({ snapshots, manager, runtime, prepare }: CheckpointsDeps) {
+export function createCheckpoints({
+  snapshots,
+  manager,
+  runtime,
+  prepare,
+  allowedRoots,
+  folderLocks,
+}: CheckpointsDeps) {
   const rewinder = new Rewinder({ snapshots, sessions: manager });
-  const forker = new Forker({ runtime, manager, rewinder, preparePersonas: prepare });
+  const forker = new Forker({
+    runtime,
+    manager,
+    rewinder,
+    preparePersonas: prepare,
+    allowedRoots,
+    ...(folderLocks ? { folderLocks } : {}),
+  });
   const module: DomainModule<"checkpoints"> = {
     server: { checkpoints: serverGroup<"checkpoints">()({ snapshots, rewinder, forker }) },
   };

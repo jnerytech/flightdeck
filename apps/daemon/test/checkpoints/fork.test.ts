@@ -1,14 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Forker } from "../../src/checkpoints/fork.ts";
 import { Rewinder } from "../../src/checkpoints/rewind.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
+import { withoutPersonas } from "../../src/personas/domain/prepare.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { gitRepo } from "../support/board-helpers.ts";
-import { newManager, poll } from "../support/helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "fork-token-0123456789abcdef";
@@ -26,7 +27,7 @@ function setup() {
   const { manager } = newManager({ store, runtime, allowedRoots: [dirname(repo)] });
   const snapshots = new Snapshots({ db: store.db });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
-  const forker = new Forker({ runtime, manager, rewinder });
+  const forker = new Forker({ runtime, manager, rewinder, allowedRoots: [dirname(repo)] });
   return { store, runtime, manager, repo, snapshots, forker };
 }
 
@@ -68,7 +69,11 @@ describe("bifurcar", () => {
 
   test("runtime sem forkSession recusa", async () => {
     const { manager, repo } = setup();
-    const forker = new Forker({ runtime: { start: () => ({}) as never }, manager });
+    const forker = new Forker({
+      runtime: { start: () => ({}) as never },
+      manager,
+      allowedRoots: [dirname(repo)],
+    });
     let message = "";
     try {
       await forker.fork({ claudeSessionId: "x", cwd: repo, open: "terminal" });
@@ -101,5 +106,134 @@ describe("bifurcar", () => {
     expect(result?.sessionId).toBeString();
     await poll(() => manager.list().length === 1, 3000);
     expect(manager.list()[0]?.id).toBe(result?.sessionId);
+  });
+});
+
+/** What a refused fork leaves behind: the code and reason it was refused with, and everything it did before. */
+async function refusal(run: () => Promise<unknown>): Promise<string> {
+  try {
+    await run();
+    return "was not refused";
+  } catch (error) {
+    const { code, reason } = error as { code?: string; reason?: string };
+    return `${code} ${reason}`;
+  }
+}
+
+describe("fork checks the folder as create does (#3550)", () => {
+  /** A root with one folder in it, a folder outside it, and a Forker whose every step is recorded. */
+  function guarded(options: { lockInside?: boolean } = {}) {
+    const root = tempDir("fd-fork-root-");
+    const inside = join(root, "inside");
+    mkdirSync(inside);
+    const outside = tempDir("fd-fork-outside-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const runtime = new FakeRuntime({ delayMs: 1 });
+    const { manager } = newManager({ store, runtime, allowedRoots: [root] });
+    cleanups.push(() => manager.shutdown());
+    const steps: string[] = [];
+    const rewinder = {
+      apply: async () => {
+        steps.push("rewind");
+      },
+    } as unknown as Rewinder;
+    const forker = new Forker({
+      runtime,
+      manager,
+      rewinder,
+      allowedRoots: [root],
+      folderLocks: { isHeld: (cwd) => options.lockInside === true && cwd === inside },
+      preparePersonas: (persona, cwd) => {
+        steps.push(`personas ${cwd}`);
+        return withoutPersonas(persona, cwd);
+      },
+    });
+    return { root, inside, outside, runtime, manager, forker, steps };
+  }
+  const nothingDone = (g: ReturnType<typeof guarded>) => [g.runtime.forks, g.steps];
+
+  for (const open of ["terminal", "flightdeck"] as const) {
+    test(`a folder outside the roots is refused before anything is forked, rewound or read (open ${open})`, async () => {
+      const g = guarded();
+      const refused = await refusal(() =>
+        g.forker.fork({
+          claudeSessionId: "orig-1",
+          cwd: g.outside,
+          open,
+          rewindTurn: 1,
+        }),
+      );
+      expect([refused, ...nothingDone(g), g.manager.list()]).toEqual([
+        "forbidden_cwd cwd_outside_roots",
+        [],
+        [],
+        [],
+      ]);
+    });
+  }
+
+  test("a link inside the roots that leads outside is refused, for either open", async () => {
+    const g = guarded();
+    const link = join(g.root, "link");
+    symlinkSync(g.outside, link);
+    const refused = await Promise.all(
+      (["terminal", "flightdeck"] as const).map((open) =>
+        refusal(() => g.forker.fork({ claudeSessionId: "orig-1", cwd: link, open })),
+      ),
+    );
+    expect([refused, ...nothingDone(g)]).toEqual([
+      ["forbidden_cwd cwd_outside_roots", "forbidden_cwd cwd_outside_roots"],
+      [],
+      [],
+    ]);
+  });
+
+  test("a folder inside the roots that does not exist is refused as missing, before the fork", async () => {
+    const g = guarded();
+    const refused = await refusal(() =>
+      g.forker.fork({ claudeSessionId: "orig-1", cwd: join(g.root, "nope"), open: "terminal" }),
+    );
+    expect([refused, ...nothingDone(g)]).toEqual(["forbidden_cwd cwd_missing", [], []]);
+  });
+
+  test("a folder being removed is refused before the fork, for either open", async () => {
+    const g = guarded({ lockInside: true });
+    const refused = await Promise.all(
+      (["terminal", "flightdeck"] as const).map((open) =>
+        refusal(() => g.forker.fork({ claudeSessionId: "orig-1", cwd: g.inside, open })),
+      ),
+    );
+    expect([refused, ...nothingDone(g), g.manager.list()]).toEqual([
+      ["invalid_state folder_removing", "invalid_state folder_removing"],
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  test("a folder inside the roots forks with the real path as the SDK's dir, for the terminal", async () => {
+    const g = guarded();
+    const link = join(g.root, "alias");
+    symlinkSync(g.inside, link);
+    const result = await g.forker.fork({ claudeSessionId: "orig-1", cwd: link, open: "terminal" });
+    expect([g.runtime.forks.map((f) => f.dir), result.command === undefined]).toEqual([
+      [g.inside],
+      false,
+    ]);
+  });
+
+  test("a folder inside the roots is rewound, forked and read once the check passed", async () => {
+    const g = guarded();
+    await g.forker.fork({
+      claudeSessionId: "orig-1",
+      cwd: g.inside,
+      open: "flightdeck",
+      rewindTurn: 1,
+    });
+    expect([g.steps, g.runtime.forks.map((f) => f.dir)]).toEqual([
+      ["rewind", `personas ${g.inside}`],
+      [g.inside],
+    ]);
   });
 });

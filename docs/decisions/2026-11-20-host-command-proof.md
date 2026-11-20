@@ -237,3 +237,31 @@ issue, with `terminal.settings` and `mcp.save` first.
   more `realpath` of the existing roots runs between them); it can only make the add fail the cover check,
   never store a folder other than the signed one.
 - No CLI verb for `roots.add` exists; the parity row stays. A verb added later follows the rule above.
+
+## Built: `project.harness.apply` (#3507, step 3)
+
+- The host announces `approval-harness` (`FEATURE_APPROVAL_HARNESS`) when it has an approvers store and the
+  harness. With a key enrolled, `project.harness.apply` takes a proof over the whole request: `path`, `parts`,
+  `digests`, `confirm`, and `reformat` and `template` when sent. There is no value that lowers risk, so every
+  payload is gated. `proof` joins the command's strict schema.
+- The handler checks `confirm`, the allowed roots and the template first, so a refusal for any of them does not
+  use up the challenge. Then, as for trust and roots, a `path` that resolves to another folder is refused with
+  `harness_path_differs` naming the real one, and then the proof is checked. A stale digest is found only after the
+  proof, inside the apply, so a stale preview spends the challenge: the person previews again and signs again.
+- The dialog does not show the hook commands. They are not in the payload: the host reads the template and the
+  project again, and the digests that bind the preview are signed but not shown, since a person cannot read a
+  digest. What the dialog says is the folder, the parts, the template's id, that hooks run as commands in every
+  session of the project, and that the settings file is rewritten when `reformat` is on. This replaces the "first
+  line of each hook command" of the first design: it was not cheap to read, and the person has just read the
+  preview in the app. The Rust signer therefore refuses a payload with any field it does not know.
+- The Rust signer allows a longer payload for this command only (`MAX_HARNESS_PAYLOAD`, 8192 bytes: a template
+  holds up to 17 files and each digest is a path and a 64-character hash). It accepts only plain digests (a file
+  name of ASCII letters, digits and `._/-@+`, the characters the host's template names allow, a token of ASCII letters, digits and `._:-`), unique parts from the five
+  the harness has, and a template id in the form the host takes. The dialog's buttons say "Write setup" and "Cancel".
+- The app proves with `FEATURE_APPROVAL_HARNESS`: a host that does not check it gets the plain payload, and its
+  page shows a notice (`approvalDevices.harnessUnchecked`). A no in the system's dialog sends nothing and shows no
+  error; a signing that fails shows its message.
+- The gate guards the protocol path. The CLI verb for the apply, when one exists, follows the rule above.
+- The signer shows a folder only when it can show it whole, and a name with a double quote is not one: the quote would
+  close the one the dialog puts around the path. The rule is shared with trust and roots, so with a device enrolled a
+  folder named with a double quote cannot be trusted, added or set up from the app until that is solved.

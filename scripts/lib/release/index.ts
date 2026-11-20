@@ -11,18 +11,19 @@ import { basename, join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { parsePublicKey } from "../../../apps/daemon/src/updates/domain/signature.ts";
 import { SIDECAR_ENTRY } from "./cred-sidecar.ts";
+import { DAEMONS, npmTarball } from "./daemons.ts";
 
 export * from "./cred-sidecar.ts";
+export * from "./daemons.ts";
+export * from "./npm-package.ts";
 
-/** The packages that carry the product version (`tauri.conf.json` reads the desktop's). */
-export const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"] as const;
-
-/** `build:daemon` outputs. */
-export const DAEMONS = [
-  "dist/flightdeckd-windows-x64.exe",
-  "dist/flightdeckd-linux-x64",
-  "dist/flightdeckd-linux-arm64",
-];
+/** The packages that carry the product version (`tauri.conf.json` reads the desktop's; `release/npm` is the CLI's tarball, #3541). */
+export const PACKAGES = [
+  "packages/protocol",
+  "apps/daemon",
+  "apps/desktop",
+  "release/npm",
+] as const;
 
 /** Where `tauri build --bundles nsis,msi` leaves the installers. */
 const BUNDLE = "apps/desktop/src-tauri/target/release/bundle";
@@ -93,8 +94,8 @@ export interface ReleaseOptions {
 }
 
 /**
- * Copies the release files into `out`: the installers, the daemons, the signature of the NSIS
- * installer and of each daemon, and the two manifests (`latest.json` for the app's updater,
+ * Copies the release files into `out`: the installers, the daemons, the npm tarball of the CLI (no
+ * signature of its own, #3541), the signature of the NSIS installer and of each daemon, and the two manifests (`latest.json` for the app's updater,
  * `daemon-latest.json` for the daemons). Writes `SHA256SUMS` over all of them (`sha256sum -c`
  * format). Checks everything before copying anything: a missing file stops the release.
  */
@@ -104,7 +105,8 @@ export function collectReleaseAssets(
   out: string,
   opts: ReleaseOptions = {},
 ): ReleaseAsset[] {
-  const missing = DAEMONS.filter((path) => !existsSync(join(root, path)));
+  const tarball = npmTarball(version);
+  const missing = [...DAEMONS, tarball].filter((path) => !existsSync(join(root, path)));
   if (missing.length > 0) throw new Error(`faltam arquivos: ${missing.join(", ")}`);
   const nsis = installer(root, "nsis", ".exe", "instalador NSIS", version);
   const msi = installer(root, "msi", ".msi", ".msi", version);
@@ -134,14 +136,18 @@ export function collectReleaseAssets(
   };
 
   mkdirSync(out, { recursive: true });
-  const copied = [nsis, `${nsis}.sig`, msi, ...DAEMONS.flatMap((p) => [p, `${p}.sig`])].map(
-    (source) => {
-      const from = source.startsWith(root) ? source : join(root, source);
-      const path = join(out, basename(source));
-      copyFileSync(from, path);
-      return { name: basename(source), path };
-    },
-  );
+  const copied = [
+    nsis,
+    `${nsis}.sig`,
+    msi,
+    ...DAEMONS.flatMap((p) => [p, `${p}.sig`]),
+    tarball,
+  ].map((source) => {
+    const from = source.startsWith(root) ? source : join(root, source);
+    const path = join(out, basename(source));
+    copyFileSync(from, path);
+    return { name: basename(source), path };
+  });
   const manifests = [
     ["latest.json", app],
     ["daemon-latest.json", daemon],
