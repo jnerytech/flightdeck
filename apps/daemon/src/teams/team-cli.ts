@@ -11,6 +11,7 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
+import { UNSURE_CHANGE } from "./domain/team-change.ts";
 import { showLines, type TeamCliArgs, teamLine } from "./domain/team-cli-view.ts";
 import { bypassAsked, createdLines, newTeamPayload, UNSURE_NEW } from "./domain/team-new.ts";
 
@@ -54,6 +55,15 @@ async function newTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Pro
   return args.json ? json(team) : said(...createdLines(team));
 }
 
+/** Changes a team: its goal, checks or a member's persona, its members, or deletes it. */
+async function changeTeam(
+  _args: TeamCliArgs,
+  _daemon: DaemonClient,
+  _note: Note,
+): Promise<CliResult> {
+  return said();
+}
+
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */
 export function runTeamCli(
   args: TeamCliArgs,
@@ -69,7 +79,14 @@ export function runTeamCli(
         ? listTeams(args, daemon)
         : args.action === "new"
           ? newTeam(args, daemon, note)
-          : showTeam(args, daemon),
-    unsure: args.action === "new" ? UNSURE_NEW : undefined,
+          : args.action === "show"
+            ? showTeam(args, daemon)
+            : changeTeam(args, daemon, note),
+    unsure:
+      args.action === "new"
+        ? UNSURE_NEW
+        : args.action === "list" || args.action === "show"
+          ? undefined
+          : UNSURE_CHANGE[args.action],
   });
 }

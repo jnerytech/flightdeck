@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { bash, MEDIUM, notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
 const REASON =
-  "starts sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new)";
+  "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, delete, add-member or remove-member)";
 
-describe("risk rules: a session creating a team from its shell (#3455)", () => {
+describe("risk rules: a session creating or changing a team from its shell (#3455)", () => {
   test("team new is high, however the CLI is reached and wherever its value flags sit", () => {
     expect(
       wrongReasons([
@@ -20,6 +20,32 @@ describe("risk rules: a session creating a team from its shell (#3455)", () => {
         ["fd team list && fd team new goal --workers 2", REASON],
         ['bash -c "fd team new goal --workers 2"', REASON],
         ["bunx flightdeckd team new goal --workers 2", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("deleting a team and adding or removing a member is high too, with the value flags before it", () => {
+    expect(
+      wrongReasons([
+        ["fd team delete t1 --confirm", REASON],
+        ["fd team add-member t1 developer:::bypassPermissions --confirm", REASON],
+        ["flightdeckd --config /x/y.json team add-member t1", REASON],
+        ["fd team remove-member t1 w1", REASON],
+        ["fd --json team remove-member t1 'worker 2'", REASON],
+        ["bun run apps/daemon/src/bin.ts team delete t1 --confirm", REASON],
+        ["fd team show t1 && fd team delete t1 --confirm", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("updating a team's goal, checks or persona stays an ordinary shell command", () => {
+    expect(
+      notHigh([
+        "fd team update t1 --goal 'Ship it'",
+        "fd team update t1 --check 'bun test' --check 'bun run lint'",
+        "fd team update t1 --clear-checks --persona w1=reviewer",
+        "echo team delete",
+        "bun test team add-member",
       ]),
     ).toEqual([]);
   });
