@@ -275,6 +275,25 @@ describe("approval devices panel: a change the host announced (#3477)", () => {
     expect(reads()).toBeGreaterThan(before);
   });
 
+  test("a later change does not hide the alert about an earlier device", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear(FOREIGN);
+    await hear({ kind: "revoked", own: false });
+    await settleMaybe(() => screen.queryByText("A device was revoked on pi.") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain("Unknown tablet");
+  });
+
+  test("a name the host sent is quoted, cut at 64 characters and stripped of control characters", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear({ kind: "enrolled", name: `\u202Ea${"b".repeat(100)}`, own: false });
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    const text = screen.queryByRole("alert")?.textContent ?? "";
+    expect(text.includes(`“a${"b".repeat(63)}”`)).toBe(true);
+    expect(text.includes("\u202E")).toBe(false);
+  });
+
   test("the notice is dismissed with its own button, which a keyboard reaches", async () => {
     const { hear } = panel([HERE]);
     await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
@@ -287,13 +306,37 @@ describe("approval devices panel: a change the host announced (#3477)", () => {
     expect(screen.queryByRole("button", { name: "Dismiss" }) === null).toBe(true);
   });
 
-  test("this device's own key revoked elsewhere says so, calmly", async () => {
+  test("this device's own key revoked elsewhere is an alert too: it can no longer approve", async () => {
     const { hear } = panel([HERE]);
     await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
     await hear({ kind: "revoked", own: true });
-    await settleMaybe(() => screen.queryByText(/key was revoked/) !== null);
-    expect(screen.queryByText(/This device's key was revoked on pi/)).not.toBeNull();
-    expect(screen.queryByRole("alert") === null).toBe(true);
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain(
+      "This device's key was revoked on pi",
+    );
+  });
+
+  test("the notice comes before the list and the form, where the person is already looking", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear(FOREIGN);
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    const alert = screen.queryByRole("alert") as HTMLElement;
+    const list = screen.queryByRole("list", { name: "Enrolled devices" }) as HTMLElement;
+    expect(Boolean(alert.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
+      true,
+    );
+  });
+
+  test("dismissing leaves the keyboard's focus in the panel, not on the page body", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear(FOREIGN);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Dismiss" }) !== null);
+    const button = screen.queryByRole("button", { name: "Dismiss" }) as HTMLButtonElement;
+    button.focus();
+    await press("Dismiss");
+    expect(document.activeElement === document.body).toBe(false);
   });
 
   test("another device revoked is told in one quiet line", async () => {
