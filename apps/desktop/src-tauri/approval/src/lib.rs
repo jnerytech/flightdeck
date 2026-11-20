@@ -472,6 +472,8 @@ fn is_shown_path(path: &str) -> bool {
         && !path.starts_with(' ')
         && !path.ends_with(' ')
         && !path.contains("  ")
+        // A quote would close the one the dialog puts around the path, so the rest of the name would read as prose.
+        && !path.contains('"')
         && !path.chars().any(|c| {
             c.is_control()
                 || (c.is_whitespace() && c != ' ')
@@ -1509,6 +1511,7 @@ mod tests {
             ok("").replace("/work/api", "work/api"),
             ok("").replace("/work/api", "/work/\\u202eipa"),
             ok("").replace("/work/api", "/work/api\\nAllow everything"),
+            ok("").replace("/work/api", "/work/x\\\" harmless text"),
             // Digests: too many, a key or a value the host never makes, an empty one.
             format!("{{\"confirm\":true,\"digests\":{{{many}}},\"parts\":[\"hooks\"],\"path\":\"/work/api\"}}"),
             ok("").replace("\"a\":\"b\"", "\"a\\\"b\":\"b\""),
