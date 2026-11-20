@@ -67,6 +67,9 @@ window resets.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
 
+- **From a shell:** `fd quota get` prints the windows and the guard, and `fd quota pause-at 0.8` (or `off`)
+  sets the guard, as **New cards wait from** does. See [flightdeckd commands](flightdeckd-commands.md#fd-quota-and-fd-usage).
+
 ## The status bar
 
 A slim bar (24 px) runs along the bottom of the window. On the left, the plan quota (above) with its
@@ -124,6 +127,8 @@ estimated cost, tokens and turns.
   filtered by the project itself, so every one of its folders is listed; a "Project: name" chip
   above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
+
+- **From a shell:** `fd usage --days 30` prints the same rows, one line per day and project.
 
 ## Costs
 
@@ -241,6 +246,8 @@ Every quota reading from a managed session is kept for 30 days. Identical readin
 - **Who used the window:** each project's share of the estimated cost since the start of the
   current 5-hour window. It is an approximate attribution, because the plan does not say who used
   the quota.
+
+- **From a shell:** `fd quota history five_hour --hours 48` prints the readings, the projection and who used the window.
 
 ## Return on cost
 

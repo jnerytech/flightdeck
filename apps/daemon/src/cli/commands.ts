@@ -329,6 +329,37 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       ),
     );
   },
+  quota: async (args, deps) => {
+    const { runQuotaCli } = await import("../quota/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runQuotaCli(
+        {
+          action: args.action as "get" | "history" | "pause-at",
+          ...(args.quotaWindow === undefined ? {} : { window: args.quotaWindow }),
+          ...(args.hours === undefined ? {} : { hours: args.hours }),
+          ...(args.quotaPauseAt === undefined ? {} : { pauseAt: args.quotaPauseAt }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
+  usage: async (args, deps) => {
+    const { runUsageCli } = await import("../costs/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runUsageCli(
+        {
+          ...(args.days === undefined ? {} : { days: args.days }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
   card: async (args, deps) => {
     const { runCardCli } = await import("../board/index.ts");
     const config = await localConfig(args);

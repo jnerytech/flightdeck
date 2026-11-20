@@ -6,6 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 
@@ -305,6 +306,25 @@ const HANDLERS: Record<string, Handler> = {
       if (next && !next.startsWith("--")) args.teamSpec = reader.next();
     }
   },
+  quota: (args, reader) => {
+    args.command = "quota";
+    const action = subAction(reader, ["get", "history", "pause-at"], "invalid quota action");
+    args.action = action;
+    if (action === "history") args.quotaWindow = operand(reader, "the window");
+    if (action === "pause-at") {
+      const share = parseShare(operand(reader, "the share"));
+      if (share === undefined)
+        throw new Error(`quota pause-at: a share from 0 to 1, or off\n${USAGE}`);
+      args.quotaPauseAt = share;
+    }
+  },
+  usage: setCommand("usage"),
+  "--hours": setValue((args, v) => {
+    args.hours = wholeFrom("--hours", v, 720);
+  }),
+  "--days": setValue((args, v) => {
+    args.days = wholeFrom("--days", v, 90);
+  }),
   persona: (args, reader) => {
     args.command = "persona";
     const action = subAction(
@@ -557,6 +577,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "board",
       "team",
       "persona",
+      "quota",
+      "usage",
       "host",
       "sessions",
       "requests",
@@ -567,7 +589,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, team, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, team, persona, quota, usage, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -631,7 +653,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
   if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
-  const fault = personaProblem(args) ?? teamProblem(args) ?? boardProblem(args);
+  const fault =
+    personaProblem(args) ?? teamProblem(args) ?? boardProblem(args) ?? quotaProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;

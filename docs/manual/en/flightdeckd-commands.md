@@ -183,6 +183,32 @@ fd board watch --json
 A change that gets no answer exits `2` and says it may or may not have gone in: run `board settings`
 before trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
+## fd quota and fd usage
+
+```sh
+fd quota get
+fd quota history five_hour --hours 48
+fd quota pause-at 0.8
+fd quota pause-at off
+fd usage --days 30
+```
+
+The plan quota of this host and what its sessions cost, as the Costs screen shows them. Each takes `--json`
+for the daemon's answer.
+
+- **`quota get`:** one line per window (`five_hour  42%  allowed  resets <time>`), then the guard: `new cards
+  wait from 80%` or `the quota guard is off`. A window with no reading yet says `unknown`.
+- **`quota history <window>`:** the readings of the window over `--hours` (1 to 720, a day when absent): how
+  many there are, the projection (`reaches 100% at <time>`, `does not reach 100% before it resets`, or a note
+  that it needs 3 readings) and each project's share of the cost since the window began.
+- **`quota pause-at <share>`:** sets the guard, a share of the plan from 0 to 1 (`0.8` is 80%), or `off`.
+  Anything else exits `1` and sends nothing. It never stops a session that is already running.
+- **`usage`:** the usage of the last `--days` (1 to 90, the daemon's own default when absent), one line per
+  day and project: cost, tokens in and out, and turns.
+
+A `pause-at` that gets no answer exits `2` and says it may or may not have changed: run `quota get` before
+trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
+
 ## fd persona
 
 ```sh

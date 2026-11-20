@@ -185,6 +185,32 @@ Uma alteração que fica sem resposta sai com `2` e diz que pode ou não ter sid
 `board settings` antes de tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1`
 recusado, `2` sem daemon.
 
+## fd quota e fd usage
+
+```sh
+fd quota get
+fd quota history five_hour --hours 48
+fd quota pause-at 0.8
+fd quota pause-at off
+fd usage --days 30
+```
+
+A cota do plano deste host e o que as sessões dele custam, como a tela de Custos mostra. Todos aceitam
+`--json` para a resposta do daemon.
+
+- **`quota get`:** uma linha por janela (`five_hour  42%  allowed  resets <hora>`), depois a trava: `new
+  cards wait from 80%` ou `the quota guard is off`. Uma janela sem leitura diz `unknown`.
+- **`quota history <janela>`:** as leituras da janela nas últimas `--hours` (1 a 720, um dia se faltar):
+  quantas são, a projeção (`reaches 100% at <hora>`, `does not reach 100% before it resets`, ou um aviso de
+  que precisa de 3 leituras) e a parte de cada projeto no custo desde o início da janela.
+- **`quota pause-at <parte>`:** define a trava, uma parte do plano de 0 a 1 (`0.8` é 80%), ou `off`. Qualquer
+  outra coisa sai com `1` e não envia nada. Nunca para uma sessão que já está rodando.
+- **`usage`:** o uso dos últimos `--days` (1 a 90, o padrão do daemon se faltar), uma linha por dia e
+  projeto: custo, tokens de entrada e saída e turnos.
+
+Um `pause-at` que fica sem resposta sai com `2` e diz que pode ou não ter mudado: rode `quota get` antes de
+tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
+
 ## fd persona
 
 ```sh
