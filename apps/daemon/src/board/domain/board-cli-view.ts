@@ -13,9 +13,10 @@ export interface BoardCliArgs {
 }
 
 /** What a write that got no answer may have done, as text that follows the message. */
-export const UNSURE = "";
+export const UNSURE =
+  "; the setting may or may not have been changed: check with `board settings` before trying again";
 
 /** The line `settings` prints. */
-export function settingsLine(_settings: BoardSettings): string {
-  return "";
+export function settingsLine(settings: BoardSettings): string {
+  return `max parallel runs: ${settings.maxParallelRuns}`;
 }

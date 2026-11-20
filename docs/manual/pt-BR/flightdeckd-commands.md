@@ -159,6 +159,25 @@ cadastro nem remove uma chave.
 Os dois leem a pasta de dados do arquivo de configuração e funcionam com o daemon rodando ou parado.
 Enquanto nenhum dispositivo estiver cadastrado, nada muda para você.
 
+## fd board
+
+```sh
+fd board settings
+fd board settings --max-parallel-runs 4
+fd board settings --json
+```
+
+`settings` mostra os ajustes do quadro para o host todo, como a tela de Projetos.
+
+- **`settings`:** imprime `max parallel runs: <n>`, quantas execuções de cartão o quadro inicia ao mesmo
+  tempo neste host. Com `--json` imprime a resposta do daemon.
+- **`settings --max-parallel-runs <n>`:** muda esse limite (um número inteiro, 1 ou mais) e imprime o
+  novo. Um valor que não seja inteiro de 1 ou mais sai com `1` e não envia nada.
+
+Uma alteração que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode
+`board settings` antes de tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1`
+recusado, `2` sem daemon.
+
 ## fd persona
 
 ```sh

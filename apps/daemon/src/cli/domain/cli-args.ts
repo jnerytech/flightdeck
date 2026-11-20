@@ -26,6 +26,7 @@ export interface CliArgs {
     | "message"
     | "card"
     | "persona"
+    | "board"
     | "host"
     | "sessions"
     | "requests"
@@ -59,6 +60,7 @@ export interface CliArgs {
     | "complete"
     | "delete"
     | "discard"
+    | "settings"
     | "subagents"
     | "save"
     | "remove"
@@ -113,6 +115,8 @@ export interface CliArgs {
   variant?: string;
   loop?: "on" | "off";
   rounds?: number;
+  /** `board settings --max-parallel-runs`. */
+  maxParallelRuns?: number;
   estimate?: string;
   validationNote?: string;
   specPath?: string;

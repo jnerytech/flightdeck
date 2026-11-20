@@ -283,6 +283,10 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  board: (args, reader) => {
+    args.command = "board";
+    args.action = subAction(reader, ["settings"] as const, "invalid board action");
+  },
   persona: (args, reader) => {
     args.command = "persona";
     const action = subAction(
@@ -332,6 +336,11 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--variant": setValue((args, v) => {
     args.variants = [...(args.variants ?? []), v];
+  }),
+  "--max-parallel-runs": setValue((args, v) => {
+    if (!/^\d+$/.test(v) || Number(v) < 1)
+      throw new Error(`--max-parallel-runs needs a whole number, 1 or more\n${USAGE}`);
+    args.maxParallelRuns = Number(v);
   }),
   "--rounds": setValue((args, v) => {
     const rounds = Number(v);
@@ -548,6 +557,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     args.json &&
     ![
       "card",
+      "board",
       "persona",
       "host",
       "sessions",
@@ -559,7 +569,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -620,6 +630,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   if (args.rounds !== undefined && args.loop === "off")
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   checkPersona(args);
+  if (args.maxParallelRuns !== undefined && args.command !== "board")
+    throw new Error(
+      `--max-parallel-runs: this flag only applies to flightdeckd board settings\n${USAGE}`,
+    );
   delete args.titleFlag;
   return args;
 }

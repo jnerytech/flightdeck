@@ -158,6 +158,24 @@ remove a key.
 Both read the data folder from the config file and work with the daemon running or stopped. Until a
 device is enrolled, nothing changes for you.
 
+## fd board
+
+```sh
+fd board settings
+fd board settings --max-parallel-runs 4
+fd board settings --json
+```
+
+`settings` shows the host-wide board settings, as the Projects screen does.
+
+- **`settings`:** prints `max parallel runs: <n>`, how many card runs the board starts at once on this
+  host. With `--json` it prints the daemon's answer.
+- **`settings --max-parallel-runs <n>`:** sets that limit (a whole number, 1 or more) and prints the new
+  one. A value that is not a whole number of 1 or more exits `1` and sends nothing.
+
+A change that gets no answer exits `2` and says it may or may not have gone in: run `board settings`
+before trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
+
 ## fd persona
 
 ```sh
