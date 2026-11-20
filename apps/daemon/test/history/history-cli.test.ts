@@ -388,3 +388,39 @@ describe("flightdeckd history through the command line (issue #3461)", () => {
     });
   });
 });
+
+describe("history: what the code review found (issue #3461)", () => {
+  test("a missing tool call exits 1 with --json too, as without it", async () => {
+    const daemon = fakeDaemon({ "history.tool": () => ({ tool: null }) });
+    const result = await runHistoryCli(
+      { action: "tool", claudeSessionId: "s1", uuid: "u1", index: 9, json: true },
+      config(daemon.port),
+    );
+    expect(result.code).toBe(1);
+  });
+
+  test("a refusal under --json is a JSON line with its reason", async () => {
+    const daemon = fakeDaemon({
+      "history.get": () => ({ error: { code: "not_found", message: "no such session" } }),
+    });
+    const run = await flightdeckd(["history", "get", "nope", "--json"], daemon.port);
+    expect(run.code).toBe(1);
+    expect(JSON.parse(run.err.join(""))).toMatchObject({
+      error: expect.stringContaining("no such"),
+    });
+  });
+
+  test("an index written as 1e3 or 0x10 is refused, not read as another number", () => {
+    for (const index of ["1e3", "0x10", "1.5"]) {
+      expect(parsed(["history", "tool", "s1", "u1", index])).toMatchObject({
+        refusedWith: expect.stringContaining("index"),
+      });
+    }
+  });
+
+  test("--tail with --cursor is refused: a tail opens without a cursor", () => {
+    expect(parsed(["history", "get", "s1", "--tail", "--cursor", "c"])).toMatchObject({
+      refusedWith: expect.stringContaining("--tail"),
+    });
+  });
+});
