@@ -26,6 +26,8 @@ export interface CliArgs {
     | "snippet"
     | "message"
     | "card"
+    | "host"
+    | "sessions"
     | "version"
     | "db"
     | "backup"
@@ -123,6 +125,8 @@ const USAGE = [
   "     flightdeckd card show <card> [--json] [--config <file>]",
   "     flightdeckd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
   "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
+  "     flightdeckd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
+  "     flightdeckd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
   "     flightdeckd action list [--project <id>] [--config <file>]",
   "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
   "     flightdeckd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
@@ -318,6 +322,8 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "show" || action === "start") args.cardId = operand(reader, "the card");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  host: setCommand("host"),
+  sessions: setCommand("sessions"),
   "--json": setFlag((args) => {
     args.json = true;
   }),
@@ -402,12 +408,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
     handler(args, reader, value);
   }
-  if (
-    args.command !== "card" &&
-    (args.json || args.description !== undefined || args.workflow !== undefined)
-  )
+  if (args.json && !["card", "host", "sessions"].includes(args.command))
     throw new Error(
-      `--json, --description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, host and sessions\n${USAGE}`,
+    );
+  if (args.command !== "card" && (args.description !== undefined || args.workflow !== undefined))
+    throw new Error(
+      `--description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
     );
   return args;
 }
