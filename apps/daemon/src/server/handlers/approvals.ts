@@ -11,11 +11,13 @@ export const approvalHandlers = {
     const approvers = server.need("approvers");
     if (payload.purpose !== "approve")
       return approvers.challenge(payload.purpose, undefined, ws.data.id);
-    // A nonce for an allow is made only for a request that is open, managed or external.
+    // A nonce for an allow is made only for a request that is open: a permission request, managed or
+    // external, or a secret use that waits for a device's proof (#3452).
     const { requestId } = payload;
     const open =
       server.opts.central?.permissions.placeOf(requestId) !== undefined ||
-      Boolean(server.manager.sessionOfRequest(requestId));
+      Boolean(server.manager.sessionOfRequest(requestId)) ||
+      server.opts.actions?.needsProof(requestId) === true;
     if (!open) {
       throw new FlightdeckError(
         "not_found",

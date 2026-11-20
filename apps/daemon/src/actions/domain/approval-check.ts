@@ -1,13 +1,28 @@
+import type { ApprovalProof } from "@flightdeck/protocol";
 import type { Waiting } from "./secret-use.ts";
 
 /** How long the Approve button of a prod or high-risk request is held. */
 const HOLD_MS = 2000;
+
+/** What a proof of an enrolled device is checked against: the request, the scope approved and the proof sent. */
+export interface VaultProofGate {
+  /** Whether a device key is enrolled: then a hold-needing request takes a proof, not the hold. */
+  enrolled: () => boolean;
+  /** Throws (`approval_proof_required`, `approval_challenge_expired`) unless the proof signs this request and scope. */
+  checkVault: (input: {
+    requestId: string;
+    scope: "once" | "session";
+    proof?: ApprovalProof;
+  }) => void;
+}
 
 /** What the app or the tray sends when the person approves a request that asked. */
 export interface Approval {
   via: "app" | "tray";
   heldMs?: number;
   scope?: "once" | "session";
+  /** #3452: the signed proof of an enrolled device. */
+  proof?: ApprovalProof;
 }
 
 /** Why an approval is refused: the English message and the reason key the app translates. */
@@ -16,8 +31,16 @@ export interface ApprovalRefusal {
   reason: string;
 }
 
-/** The first rule an approval of this waiting request breaks, or null when it may go through. */
-export function approvalRefusal(waiting: Waiting, approval: Approval): ApprovalRefusal | null {
+/**
+ * The first rule an approval of this waiting request breaks, or null when it may go through. With
+ * `byProof` (a host with an enrolled device, #3452) a prod or high-risk request is not held: the caller
+ * checks the device's proof after this, and `heldMs` counts for nothing.
+ */
+export function approvalRefusal(
+  waiting: Waiting,
+  approval: Approval,
+  byProof = false,
+): ApprovalRefusal | null {
   if (waiting.decision !== "ask") {
     return { message: "the request needs no approval", reason: "action_no_approval_needed" };
   }
@@ -28,7 +51,7 @@ export function approvalRefusal(waiting: Waiting, approval: Approval): ApprovalR
         reason: "action_tray_refused",
       };
     }
-    if ((approval.heldMs ?? 0) < HOLD_MS) {
+    if (!byProof && (approval.heldMs ?? 0) < HOLD_MS) {
       return { message: "hold the Approve button for 2 s", reason: "action_hold_needed" };
     }
     // An approval for the session would let the next uses through without the button held.

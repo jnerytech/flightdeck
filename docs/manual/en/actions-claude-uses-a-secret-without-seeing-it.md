@@ -68,6 +68,15 @@ at once. An action with `approval: never` runs without a question, `first-per-se
 and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
 is high risk: hold the button for 2 seconds to approve it; the tray offers only Deny and Open.
 
+On a host where you enrolled an approving device (see `fd approvers`), a request for a production
+secret, or a `run_with_secret`, is not approved by the hold. Approve asks your device to confirm in
+its own system dialog, which names the request and whether the approval is for one use or the whole
+session; the daemon accepts only that signature, so a session or a script that sends the old
+"held for 2 seconds" fields is refused (`approval_proof_required`) and the secret is not delivered.
+Press Cancel in the dialog and the request is denied. A host with no enrolled device keeps the hold,
+and the **Approving devices** section of the host's page says "Protection is off" there. A
+request that needs no hold is approved as before.
+
 ## Usage rules per secret
 
 Each secret has an ordered list of rules: the first that matches a use decides, and without one

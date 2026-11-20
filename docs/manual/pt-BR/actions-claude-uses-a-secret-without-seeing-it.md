@@ -67,6 +67,15 @@ pergunta uma vez e fica lembrada até o app reiniciar, e `always` pergunta todas
 `run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar; a bandeja só
 oferece Negar e Abrir.
 
+Em um host onde você cadastrou um dispositivo aprovador (veja `fd approvers`), o pedido de um segredo
+de produção, ou um `run_with_secret`, não é aprovado pelo segurar. Aprovar pede ao seu dispositivo
+que confirme no diálogo do próprio sistema, que diz qual é o pedido e se a aprovação vale para um uso
+ou para a sessão inteira; o daemon só aceita essa assinatura, então uma sessão ou um script que envie
+os campos antigos de "segurou por 2 segundos" é recusado (`approval_proof_required`) e o segredo não
+é entregue. Cancelar no diálogo nega o pedido. Um host sem dispositivo cadastrado mantém o segurar, e
+a seção **Dispositivos que aprovam** da página do host diz "Proteção desligada". Um
+pedido que não precisa de segurar é aprovado como antes.
+
 ## Regras de uso por segredo
 
 Cada segredo tem uma lista ordenada de regras: a primeira que casa com um uso decide, e sem regra

@@ -18,7 +18,7 @@ interface VaultState {
  */
 export function wireVaultApprovals(
   kernel: AppKernel<VaultState>,
-  deps: Pick<VaultApprovalsCore, "vault" | "optionsPolicy" | "notify" | "recorded">,
+  deps: Pick<VaultApprovalsCore, "vault" | "optionsPolicy" | "notify" | "recorded" | "prove">,
 ): VaultApprovalsSlice {
   return new VaultApprovalsSlice({
     vault: deps.vault,
@@ -31,6 +31,7 @@ export function wireVaultApprovals(
     now: () => kernel.now(),
     notify: deps.notify,
     recorded: deps.recorded,
+    prove: deps.prove,
     t: () => kernel.t(),
   });
 }
