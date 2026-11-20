@@ -1,3 +1,4 @@
+import { Command } from "@flightdeck/protocol";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { newBoard } from "../support/board-helpers.ts";
@@ -103,5 +104,23 @@ describe("card-pr-merge-head: a merge bound to the head commit the person saw (#
     const ctx = await setup();
     await ctx.board.mergePr(ctx.cardId, "squash", true);
     expect(mergeCalls(gh)).toEqual([["pr", "merge", PR_URL, "--squash"]]);
+  });
+
+  test("the command takes the address and the head together, and a head that is not a commit hash is refused", () => {
+    const accepts = (payload: Record<string, unknown>) =>
+      Command.safeParse({
+        id: "1",
+        type: "card.pr.merge",
+        payload: { cardId: "c", method: "squash", confirm: true, ...payload },
+      }).success;
+    expect([
+      accepts({ prUrl: PR_URL, headSha: SEEN }),
+      accepts({ prUrl: PR_URL, headSha: "c".repeat(64) }),
+      accepts({}),
+      accepts({ prUrl: PR_URL }),
+      accepts({ headSha: SEEN }),
+      accepts({ prUrl: PR_URL, headSha: "--delete-branch" }),
+      accepts({ prUrl: PR_URL, headSha: "a".repeat(39) }),
+    ]).toEqual([true, true, true, false, false, false, false]);
   });
 });
