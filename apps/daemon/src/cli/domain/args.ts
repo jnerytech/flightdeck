@@ -6,6 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { rulesProblem } from "./rules-args.ts";
 import { USAGE } from "./usage.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -205,8 +206,14 @@ const HANDLERS: Record<string, Handler> = {
   ),
   history: withAction("history", ["reindex"], "invalid history action"),
   approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
-  rules: withAction("rules", ["list"], "invalid rules action"),
-  autoapprove: withAction("autoapprove", ["list"], "invalid autoapprove action"),
+  rules: (args, reader) => {
+    args.command = "rules";
+    const action = subAction(reader, ["list", "remove"] as const, "invalid rules action");
+    args.action = action;
+    // The rule is the text the project holds, as `rules list` printed it: an operand, never a flag.
+    if (action === "remove") args.rule = operand(reader, "rule");
+  },
+  autoapprove: withAction("autoapprove", ["list", "resume"], "invalid autoapprove action"),
   action: withNamedAction(
     "action",
     ["list", "run"],
@@ -585,6 +592,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
+    // `rules remove` and `autoapprove resume` confirm too; `rulesProblem` checks them below.
+    if (flag === "--confirm" && ["rules", "autoapprove"].includes(args.command)) continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -596,6 +605,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   const personaFault = personaProblem(args);
   if (personaFault !== undefined) throw new Error(`${personaFault}\n${USAGE}`);
+  const rulesFault = rulesProblem(args);
+  if (rulesFault !== undefined) throw new Error(`${rulesFault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

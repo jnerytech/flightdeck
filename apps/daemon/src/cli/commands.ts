@@ -167,7 +167,9 @@ async function rulesCli(
     await runRulesCli(
       {
         noun,
-        action: "list",
+        action: args.action === "remove" || args.action === "resume" ? args.action : "list",
+        ...(args.rule === undefined ? {} : { rule: args.rule }),
+        ...(args.confirm ? { confirm: true } : {}),
         ...(args.project === undefined ? {} : { project: args.project }),
         ...(args.session === undefined ? {} : { session: args.session }),
         ...(args.limit === undefined ? {} : { limit: args.limit }),

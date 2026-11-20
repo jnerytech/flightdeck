@@ -332,6 +332,22 @@ function changesAPersona(prog: string, args: string[]): boolean {
   );
 }
 
+/**
+ * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
+ * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
+ * session that got third-party content. `--confirm` is only a flag the caller types.
+ */
+function changesWhatGuards(prog: string, args: string[]): boolean {
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const runsCli = ["fd", "flightdeckd"].includes(prog)
+    ? true
+    : RUNNERS.includes(prog) &&
+      words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  const verb = (noun: string, change: string) =>
+    words.some((w, i) => w === noun && words[i + 1] === change);
+  return runsCli && (verb("rules", "remove") || verb("autoapprove", "resume"));
+}
+
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
@@ -371,6 +387,10 @@ const DANGEROUS: Array<{
     when: endsACard,
     reason: () =>
       "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)",
+  },
+  {
+    when: changesWhatGuards,
+    reason: () => "changes what guards the sessions (flightdeckd rules remove, autoapprove resume)",
   },
   {
     when: changesAPersona,

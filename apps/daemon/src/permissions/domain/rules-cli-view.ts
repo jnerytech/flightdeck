@@ -20,10 +20,14 @@ export interface AutoApproveAnswer {
 export interface RulesCliArgs {
   /** The noun after `flightdeckd`. */
   noun: "rules" | "autoapprove";
-  action: "list";
+  action: "list" | "remove" | "resume";
   /** `--project`: the name or id; `rules list` needs one unless the host has a single project. */
   project?: string;
-  /** `autoapprove list --session`: the session key the decisions are about. */
+  /** `rules remove <rule>`: the rule, exactly as `rules list` printed it. */
+  rule?: string;
+  /** `--confirm`: the yes that `rules remove` and `autoapprove resume` need. */
+  confirm?: boolean;
+  /** `autoapprove list --session`: the session key the decisions are about; `resume` needs it. */
   session?: string;
   /** `autoapprove list --limit`: how many decisions to read, 1 to 1000. */
   limit?: number;
@@ -52,4 +56,11 @@ export function autoApproveLines(answer: AutoApproveAnswer): string[] {
     ),
   ];
   return lines.length > 0 ? lines : ["no automatic approval decisions yet"];
+}
+
+export const UNSURE =
+  "; the change may or may not have gone in: check with `rules list` or `autoapprove list` before trying again";
+
+export function removedLine(rule: string, projectName: string, left: number): string {
+  return `removed ${rule} from ${projectName}, ${left} ${left === 1 ? "rule" : "rules"} left`;
 }
