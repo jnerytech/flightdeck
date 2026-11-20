@@ -190,3 +190,20 @@ live; the list is the project's, so a session of another project never shows her
   Host, Project and Persona lists narrow the cards, and the count reads "n of m shown". When a
   session changes state its card glides to the other column (not with reduced motion). The board
   scrolls inside itself. Simple mode does not have this screen.
+
+### From a shell
+
+```sh
+fd project trust-state ~/work/api ~/work/web
+fd project stack ~/work/api
+fd project trust-inspect ~/work/api --json
+fd project harness-preview ~/work/api --parts claudeMd,hooks --template web
+```
+
+`fd project` reads what the app's project screens read: whether a folder is trusted and through which record
+(`trust-state`, any number of folders), what it is built with and the commands to test, lint, format and build it
+(`stack`, read and never run), what its own files would load into a session (`trust-inspect`), and what applying the
+harness parts would add (`harness-preview`, which writes nothing). A folder must be inside the allowed folders.
+`--host <name>` asks another host, and the folder must then be an absolute path on that host. `trust-inspect` shows
+hook commands and server arguments whole, so a host answers it only to a person at that host, and `harness-preview`
+with `--template` too.
