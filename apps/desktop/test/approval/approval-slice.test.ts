@@ -25,7 +25,9 @@ const NEW_KEY = spki(9);
 const OTHER_PUBLIC = spki(3);
 /** What both devices show: sixteen characters of the key's id, in groups of four. */
 const printOf = (publicKey: string) =>
-  shaBytes(Buffer.from(publicKey, "base64")).slice(0, 16).replace(/(.{4})(?=.)/g, "$1-");
+  shaBytes(Buffer.from(publicKey, "base64"))
+    .slice(0, 16)
+    .replace(/(.{4})(?=.)/g, "$1-");
 const OTHER = { keyId: "key-other", name: "Laptop", client: "app", enrolledAt: "x", address: "a" };
 const THIS = { keyId: "key-this", name: "Phone", client: "app", enrolledAt: "x", address: "a" };
 
@@ -311,7 +313,10 @@ describe("approval: adding a second device (#3478)", () => {
     encodeAdd({ daemonId: "daemon-1", publicKey: NEW_KEY, name: "Laptop", ...over });
 
   test("a new device makes its key and shows a text that carries the key, the host and the name", async () => {
-    const { slice, log, keyLog } = approval({ local: null, list: { protectionOff: false, keys: [OTHER] } });
+    const { slice, log, keyLog } = approval({
+      local: null,
+      list: { protectionOff: false, keys: [OTHER] },
+    });
     const request = await slice.requestAdd("h", "Laptop");
     expect(keyLog.map((k) => k.op)).toEqual(["get", "create"]);
     expect(log.map((l) => l.type)).toEqual(["approval.list"]);
@@ -329,6 +334,14 @@ describe("approval: adding a second device (#3478)", () => {
     const request = await slice.requestAdd("h", "Laptop");
     expect(keyLog.map((k) => k.op)).toEqual(["get"]);
     expect(decodeAdd(request.text)?.publicKey).toBe(KEY.publicKey);
+  });
+
+  test("a name that an enrolled device would refuse makes no key", async () => {
+    for (const name of ["", "  ", "x".repeat(65), "a\u202eb", "3f2a-91bc-07de-44a1"]) {
+      const { slice, keyLog } = approval({ local: null });
+      await expect(slice.requestAdd("h", name)).rejects.toThrow(t("approvalDevices.addBadName"));
+      expect(keyLog.filter((k) => k.op === "create")).toEqual([]);
+    }
   });
 
   test("a device the host already lists asks for nothing", async () => {
@@ -367,7 +380,10 @@ describe("approval: adding a second device (#3478)", () => {
     ];
     for (const [input, message] of cases) {
       const { slice, keyLog } = approval({
-        list: { protectionOff: false, keys: [THIS, { ...OTHER, publicKey: OTHER_PUBLIC } as never] },
+        list: {
+          protectionOff: false,
+          keys: [THIS, { ...OTHER, keyId: shaBytes(Buffer.from(OTHER_PUBLIC, "base64")) }],
+        },
       });
       await expect(slice.readAdd("h", input)).rejects.toThrow(message);
       expect(keyLog.filter((k) => k.op === "sign")).toEqual([]);
@@ -421,7 +437,12 @@ describe("approval: adding a second device (#3478)", () => {
   test("a device with no key signs no add", async () => {
     const { slice, keyLog } = approval({ local: null });
     await expect(
-      slice.confirmAdd("h", { name: "Laptop", publicKey: NEW_KEY, fingerprint: "x", host: "daemon-1" }),
+      slice.confirmAdd("h", {
+        name: "Laptop",
+        publicKey: NEW_KEY,
+        fingerprint: "x",
+        host: "daemon-1",
+      }),
     ).rejects.toThrow(t("approvalDevices.noKeyHere"));
     expect(keyLog.filter((k) => k.op === "sign")).toEqual([]);
   });
