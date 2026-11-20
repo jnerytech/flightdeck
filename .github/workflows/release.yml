@@ -58,6 +58,14 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bun run release:sign
 
+      # The CLI reads a paired host's token through this helper, found beside the app (#3429).
+      - name: Helper de credenciais (flightdeck-cred), como sidecar do app
+        working-directory: apps/desktop/src-tauri
+        run: cargo build -p flightdeck-cred --release
+
+      - name: Pôr o helper onde o Tauri lê os sidecars
+        run: bun run release:cred
+
       - name: Instaladores do app (NSIS e MSI), com o .sig do updater
         working-directory: apps/desktop
         env:
