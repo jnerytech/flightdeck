@@ -290,7 +290,9 @@ export function daemon(
     ...(options.risk ? { risk: options.risk(root) } : {}),
   });
   const rewinder = snapshots ? new Rewinder({ snapshots, sessions: manager }) : undefined;
-  const forker = rewinder ? new Forker({ runtime, manager, rewinder }) : undefined;
+  const forker = rewinder
+    ? new Forker({ runtime, manager, rewinder, allowedRoots: roots })
+    : undefined;
   // The user's own ~/.claude.json and ~/.claude stay untouched: both live in this daemon's root.
   const mcp = options.agentcfg
     ? new McpConfig({ userConfigPath: join(root, "claude.json"), timeoutMs: 5000 })

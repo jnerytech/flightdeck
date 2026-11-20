@@ -167,6 +167,19 @@ export const projectHandlers = {
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     // The template is read again here: apply never takes its content from the app.
     const markdown = await markdownOf(server, template);
+    // #3507: with a device enrolled, the person signs the whole request, and the folder in it is the folder
+    // the host writes to: a link or a relative path that resolves elsewhere is refused with the folder it is.
+    // The proof is checked after every refusal that does not need it, so those never spend a challenge.
+    const approvers = server.opts.approvers;
+    if (approvers?.needsCommandProof("project.harness.apply", payload) && path !== payload.path) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the folder is another one than the folder named",
+        "harness_path_differs",
+        { path },
+      );
+    }
+    approvers?.requireCommandProof("project.harness.apply", payload, ["path", "parts", "digests"]);
     return await apply(path, parts, digests, {
       reformat: reformat === true,
       ...(markdown ? { template: markdown } : {}),

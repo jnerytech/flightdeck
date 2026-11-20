@@ -74,6 +74,12 @@ until then the hold of the Approve button is the only check, as before.
   everything inside it. Cancel it and nothing is sent. If the folder you typed is a link or a path that points
   elsewhere, the host refuses and tells you the folder it really is: add that one. A host that does not yet ask
   for the device here shows a notice on its page: update it.
+- **Writing a project's Claude Code setup.** With a device enrolled, **Apply the setup** asks you once more in a
+  window of the system. The window names the folder and the parts to write (and the template, if you picked one),
+  says that hooks run as commands in every session of the project, and says when the settings file will be rewritten
+  with another layout. It does not list the hook commands: read them in the preview before you apply. Cancel it and
+  nothing is written. If the setup changed on the host after you previewed it, the host refuses: preview again and
+  confirm again. A host that does not yet ask for the device here shows a notice on its page: update it.
 - **Trusting a project.** With a device enrolled, **Trust this project** asks you once more in a window of the
   system. The window names the folder and says that its hooks and servers will then run with no prompt. Cancel it
   and nothing is sent. Revoking trust asks for nothing. A host that does not yet ask for the device when you

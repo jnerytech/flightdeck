@@ -73,6 +73,8 @@ export function setup(
     laterTemplates?: Array<Array<{ id: string; title: string; files: string[]; bytes: number }>>;
     /** A preview that names a template is refused (it is gone): the banner, and no preview. */
     previewRefusesTemplate?: boolean;
+    /** The host asks a device to sign the apply (#3507): the person signs, says no, or the signing fails. */
+    proof?: "signed" | "declined" | "fails";
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -82,6 +84,23 @@ export function setup(
   store.projectList.load = (async () => []) as never;
   store.sessionLists.refresh = (async () => {}) as never;
   const sent: Array<[string, unknown]> = [];
+  const signed: Array<Record<string, unknown>> = [];
+  const errors: string[] = [];
+  if (options.proof) {
+    store.approval.harnessPayload = (async (_host: string, body: Record<string, unknown>) => {
+      signed.push(body);
+      if (options.proof === "fails") throw new Error("no key on this device");
+      return options.proof === "declined"
+        ? { kind: "declined" }
+        : {
+            kind: "payload",
+            payload: { ...body, proof: { keyId: "k", nonce: "n", signature: "s" } },
+          };
+    }) as never;
+    store.reportError = ((message: string) => {
+      errors.push(message);
+    }) as never;
+  }
   const answers = [
     ...(options.answers ?? [{ ok: true, data: { written: [SETTINGS, "CLAUDE.md"] } }]),
   ];
@@ -124,7 +143,7 @@ export function setup(
     <ProjectPage store={store} state={appState} hostId="h1" projectId="p1" go={() => {}} />
   );
   const count = (type: string) => sent.filter(([sentType]) => sentType === type).length;
-  return { view, sent, count };
+  return { view, sent, count, signed, errors };
 }
 
 export const listing = (text = "What this project would load") =>

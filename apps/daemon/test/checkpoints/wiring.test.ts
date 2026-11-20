@@ -29,6 +29,7 @@ describe("checkpoints-wiring: the checkpoints the daemon serves (#2094)", () => 
       snapshots,
       manager,
       runtime,
+      allowedRoots: [dirname(repo)],
       prepare: (persona, cwd) => {
         prepared.push(cwd);
         return withoutPersonas(persona, cwd);
