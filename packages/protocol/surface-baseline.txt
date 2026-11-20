@@ -1548,6 +1548,7 @@ Command[type=approval.challenge].payload|3.command="autoapprove.resume"
 Command[type=approval.challenge].payload|3.command="card.pr.merge"
 Command[type=approval.challenge].payload|3.command="host.bypass"
 Command[type=approval.challenge].payload|3.command="plugins.install"
+Command[type=approval.challenge].payload|3.command="plugins.marketplaceAdd"
 Command[type=approval.challenge].payload|3.command="plugins.update"
 Command[type=approval.challenge].payload|3.command="project.harness.apply"
 Command[type=approval.challenge].payload|3.command="project.trust.set"
@@ -3055,6 +3056,10 @@ Command[type=plugins.list].type=="plugins.list"
 Command[type=plugins.marketplaceAdd].id
 Command[type=plugins.marketplaceAdd].payload
 Command[type=plugins.marketplaceAdd].payload.confirm?
+Command[type=plugins.marketplaceAdd].payload.proof.keyId
+Command[type=plugins.marketplaceAdd].payload.proof.nonce
+Command[type=plugins.marketplaceAdd].payload.proof.signature
+Command[type=plugins.marketplaceAdd].payload.proof?
 Command[type=plugins.marketplaceAdd].payload.scope="local"
 Command[type=plugins.marketplaceAdd].payload.scope="project"
 Command[type=plugins.marketplaceAdd].payload.scope="user"
