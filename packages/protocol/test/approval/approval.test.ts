@@ -400,6 +400,47 @@ describe("command-approve: a device signs the command and a hash of what it carr
     ]).toEqual([true, true, true]);
   });
 
+  test("Given the plugins.install payloads the Rust crate also reads, Then their digests and hashes are the shared literals", () => {
+    const confirmHash = "a".repeat(64);
+    const cases: Array<[Record<string, unknown>, string, string]> = [
+      [
+        {
+          plugin: "deploy-tools@acme",
+          scope: "project",
+          confirmHash,
+          acceptCommand: "b".repeat(64),
+        },
+        '{"acceptCommand":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","confirmHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","plugin":"deploy-tools@acme","scope":"project"}',
+        "9f63013ef3891d7e3a3c30dbdb4812172f4c3d17e9f3babab503feae8cb0a2ef",
+      ],
+      [
+        { dir: "/work/plugins/deploy", confirmHash },
+        '{"confirmHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","dir":"/work/plugins/deploy"}',
+        "6e0874106473077fddaefcda0cb2963d24ecfac81bbaa0bf0e63577df0798713",
+      ],
+      [
+        { plugin: "deploy-tools@acme", confirmHash },
+        '{"confirmHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","plugin":"deploy-tools@acme"}',
+        "105dd69dedb5eeca4e9d83cfca9005986688a4bab71e3cc6450cd685c6d18198",
+      ],
+    ];
+    for (const [payload, digest, hash] of cases) {
+      expect(commandDigest(payload)).toBe(digest);
+      expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(hash);
+    }
+  });
+
+  test("Given the plugin commands, Then every payload of install and update needs the proof, and a challenge for each is one of the gate's", () => {
+    expect([
+      commandNeedsProof("plugins.install", { plugin: "deploy-tools@acme", confirmHash: "x" }),
+      commandNeedsProof("plugins.install", {}),
+      commandNeedsProof("plugins.update", { plugin: "deploy-tools@acme", confirmHash: "x" }),
+      commandNeedsProof("plugins.update", {}),
+      challenge({ purpose: "command", command: "plugins.install" }),
+      challenge({ purpose: "command", command: "plugins.update" }),
+    ]).toEqual([true, true, true, true, true, true]);
+  });
+
   test("Given a challenge for roots.add, Then it is one of the gate's commands", () => {
     expect(challenge({ purpose: "command", command: "roots.add" })).toBe(true);
   });

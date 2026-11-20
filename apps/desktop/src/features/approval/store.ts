@@ -14,12 +14,12 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_HARNESS,
+  FEATURE_APPROVAL_PLUGINS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
-  type HARNESS_PREVIEW_PARTS,
   needsApprovalProof,
   PermissionRespondPayload,
   type PermissionUpdate,
@@ -34,73 +34,19 @@ import type { AppKernel, HostResult } from "../../lib/kernel.ts";
 import { hasFeature } from "../../lib/version.ts";
 import type { Platform } from "../../platform/types.ts";
 import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./add-text.ts";
-
-/** The payload of a guarded merge, or the person's no (#3453). */
-type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
-
-/** The payload of `roots.add`, or the person's no (#3507). */
-type RootsPayload =
-  | { kind: "payload"; payload: { path: string; confirm: true; proof?: ApprovalProof } }
-  | { kind: "declined" };
-
-/** The payload of `project.harness.apply`, or the person's no (#3507). */
-type HarnessPayload =
-  | { kind: "payload"; payload: HarnessBody & { proof?: ApprovalProof } }
-  | { kind: "declined" };
-
-/** What `project.harness.apply` asks for: the folder, the parts, the preview's digests and the options. */
-export interface HarnessBody {
-  path: string;
-  parts: Array<(typeof HARNESS_PREVIEW_PARTS)[number]>;
-  digests: Record<string, string>;
-  confirm: true;
-  reformat?: true;
-  template?: string;
-}
-
-/** The payload of `host.bypass` that turns bypass on, or the person's no (#3507). */
-type BypassPayload = { kind: "payload"; payload: BypassBody } | { kind: "declined" };
-
-/** `host.bypass` turning bypass on: the proof is there only for a host that checks it and has a device enrolled. */
-interface BypassBody {
-  allow: true;
-  confirm: true;
-  proof?: ApprovalProof;
-}
-
-/** `card.pr.merge`'s payload: the head binding and the proof are there only for a host that checks them. */
-interface MergeBody {
-  cardId: string;
-  method: "merge" | "squash";
-  confirm: boolean;
-  prUrl?: string;
-  headSha?: string;
-  proof?: { keyId: string; nonce: string; signature: string };
-}
-
-/** The payload of `project.trust.set`, or the person's no (#3453). */
-type TrustPayload =
-  | {
-      kind: "payload";
-      payload: {
-        path: string;
-        trusted: boolean;
-        proof?: { keyId: string; nonce: string; signature: string };
-      };
-    }
-  | { kind: "declined" };
-
-/** The payload of `autoapprove.resume`, or the person's no (#3453). */
-type ResumePayload =
-  | {
-      kind: "payload";
-      payload: {
-        sessionKey: string;
-        confirm: boolean;
-        proof?: { keyId: string; nonce: string; signature: string };
-      };
-    }
-  | { kind: "declined" };
+import type {
+  BypassBody,
+  BypassPayload,
+  HarnessBody,
+  HarnessPayload,
+  MergeBody,
+  MergePayload,
+  PluginBody,
+  PluginPayload,
+  ResumePayload,
+  RootsPayload,
+  TrustPayload,
+} from "./payloads.ts";
 
 /** The feature a host announces for each command it guards (#3453). */
 const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
@@ -110,10 +56,19 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "autoapprove.resume": FEATURE_APPROVAL_RESUME,
   "roots.add": FEATURE_APPROVAL_ROOTS,
   "project.harness.apply": FEATURE_APPROVAL_HARNESS,
+  "plugins.install": FEATURE_APPROVAL_PLUGINS,
+  "plugins.update": FEATURE_APPROVAL_PLUGINS,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand = "merge" | "trust" | "bypass" | "resume" | "roots" | "harness";
+export type UncheckedCommand =
+  | "merge"
+  | "trust"
+  | "bypass"
+  | "resume"
+  | "roots"
+  | "harness"
+  | "plugins";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -308,6 +263,7 @@ export class ApprovalSlice {
     if (!hasFeature(features, FEATURE_APPROVAL_RESUME, false)) unchecked.push("resume");
     if (!hasFeature(features, FEATURE_APPROVAL_ROOTS, false)) unchecked.push("roots");
     if (!hasFeature(features, FEATURE_APPROVAL_HARNESS, false)) unchecked.push("harness");
+    if (!hasFeature(features, FEATURE_APPROVAL_PLUGINS, false)) unchecked.push("plugins");
     return unchecked;
   }
 
@@ -644,6 +600,37 @@ export class ApprovalSlice {
    */
   async harnessPayload(hostId: string, body: HarnessBody): Promise<HarnessPayload> {
     const proof = await this.proveCommand(hostId, "project.harness.apply", { ...body });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...body, proof: proof.proof } : body,
+    };
+  }
+
+  /**
+   * The payload of `plugins.install` (#3516), with the device's proof over the whole request when the host
+   * checks it and has a device enrolled; a host from before the feature gets the plain payload. The host
+   * installs the folder `dir` resolves to and refuses a proof for another one. A re-send that carries
+   * `acceptCommand` is a request of its own, so it is signed again. `declined`: the person said no.
+   */
+  async pluginInstallPayload(hostId: string, body: PluginBody): Promise<PluginPayload> {
+    return await this.pluginPayload(hostId, "plugins.install", body);
+  }
+
+  /** The payload of `plugins.update` (#3516), as `pluginInstallPayload`. */
+  async pluginUpdatePayload(
+    hostId: string,
+    body: PluginBody & { plugin: string },
+  ): Promise<PluginPayload<PluginBody & { plugin: string }>> {
+    return await this.pluginPayload(hostId, "plugins.update", body);
+  }
+
+  private async pluginPayload<B extends PluginBody>(
+    hostId: string,
+    command: "plugins.install" | "plugins.update",
+    body: B,
+  ): Promise<PluginPayload<B>> {
+    const proof = await this.proveCommand(hostId, command, { ...(body as PluginBody) });
     if (proof.kind === "declined") return proof;
     return {
       kind: "payload",
