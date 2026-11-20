@@ -38,8 +38,14 @@ const TARGETS = [PROD, target("t2", "db"), target("t3", "twin"), target("t4", "t
 
 const OPEN: Handlers = {
   "ssh.list": () => ({ targets: TARGETS }),
-  "ssh.save": (payload) =>
-    target(String(payload.id ?? "t9"), String(payload.name), { hostKey: null }),
+  // Like the daemon: a changed address or port clears the pinned key, anything else keeps it.
+  "ssh.save": (payload) => {
+    const before = TARGETS.find((t) => t.id === payload.id);
+    const kept = before?.host === payload.host && before?.port === payload.port;
+    return target(String(payload.id ?? "t9"), String(payload.name), {
+      hostKey: kept ? before.hostKey : null,
+    });
+  },
 };
 
 /** The one JSON value a `--json` run printed, or null when it printed none. */
@@ -154,7 +160,7 @@ describe("flightdeckd ssh add (issue #3537)", () => {
 describe("flightdeckd ssh edit (issue #3537)", () => {
   test("a change keeps every other field: the whole destination goes back with its id", async () => {
     const daemon = fakeDaemon(OPEN);
-    const run = await flightdeckd(["ssh", "edit", "prod", "--port", "2300"], daemon.port);
+    const run = await flightdeckd(["ssh", "edit", "prod", "--user", "ops"], daemon.port);
     expect({ code: run.code, out: run.out, err: run.err }).toEqual({
       code: 0,
       out: ["prod: updated"],
@@ -165,8 +171,8 @@ describe("flightdeckd ssh edit (issue #3537)", () => {
         id: "t1",
         name: "prod",
         host: "prod.internal",
-        port: 2300,
-        user: "deploy",
+        port: 2200,
+        user: "ops",
         viaHost: "pi",
         auth: "password",
         secretRef: "vault-item-1",
