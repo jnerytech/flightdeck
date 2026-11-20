@@ -41,6 +41,8 @@ pub enum CommandAsk {
     PluginInstall { plugin: Option<String>, dir: Option<String>, scope: String },
     /// `plugins.update`: update this installed plugin to the content the person was shown (#3516).
     PluginUpdate { plugin: String },
+    /// `plugins.marketplaceAdd`: add this marketplace (a repository, a URL or a folder), at this scope (#3516).
+    MarketplaceAdd { source: String, scope: Option<String> },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -370,6 +372,9 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         // contains is the preview in the app; the hash ties the install to that preview.
         "plugins.install" => read_plugin(fields, true),
         "plugins.update" => read_plugin(fields, false),
+        // The one payload with a boolean: `confirm` is the JSON `true` the person's press stands for. The dialog says
+        // the source and the scope, so the source must be one it can show whole.
+        "plugins.marketplaceAdd" => read_marketplace(fields),
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -553,6 +558,71 @@ fn read_plugin(
         CommandAsk::PluginUpdate { plugin: plugin.unwrap_or_default().to_string() }
     };
     Ok((ask, canonical))
+}
+
+/// `plugins.marketplaceAdd`: `confirm` is the boolean `true`, `source` one of three plain forms and `scope` optional.
+fn read_marketplace(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.keys().any(|key| !["confirm", "scope", "source"].contains(&key.as_str())) {
+        return Err("the marketplace payload has the wrong fields".into());
+    }
+    if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+        return Err("the marketplace payload is not confirmed".into());
+    }
+    let text = |key: &str| match fields.get(key) {
+        None => Ok(None),
+        Some(value) => value
+            .as_str()
+            .map(Some)
+            .ok_or_else(|| format!("the marketplace payload has no text for {key}")),
+    };
+    let source = text("source")?.ok_or("the marketplace payload has no source")?;
+    if !is_shown_source(source) {
+        return Err("the marketplace source is not one the dialog can show".into());
+    }
+    let scope = text("scope")?;
+    if scope.is_some_and(|value| !["user", "project", "local"].contains(&value)) {
+        return Err("the scope of a marketplace is user, project or local".into());
+    }
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let mut canonical = String::from("{\"confirm\":true");
+    if let Some(scope) = scope {
+        canonical.push_str(&format!(",\"scope\":{}", quoted(scope)));
+    }
+    canonical.push_str(&format!(",\"source\":{}}}", quoted(source)));
+    Ok((CommandAsk::MarketplaceAdd { source: source.to_string(), scope: scope.map(String::from) }, canonical))
+}
+
+/// A marketplace source the dialog can show whole, one of three plain forms: `owner/repo`, an `https://host/path`
+/// with no userinfo, port, query, fragment or escape that could hide the real host, or an absolute folder path.
+/// Anything else (`git@host:o/r`, `github:o/r`, `http://`) is refused: the person adds it with a form this key can show.
+fn is_shown_source(source: &str) -> bool {
+    let name = |part: &str| {
+        !part.is_empty()
+            && part != "."
+            && part != ".."
+            && !part.starts_with('-')
+            && part.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
+    };
+    if source.len() > 256 && !source.starts_with('/') && !source.starts_with('\\') {
+        return false;
+    }
+    if let Some(rest) = source.strip_prefix("https://") {
+        let mut parts = rest.split('/');
+        let host = parts.next().unwrap_or_default();
+        let path: Vec<&str> = parts.collect();
+        // A host is a run of plain labels with at least one dot: no empty label, so no `a..b` or trailing dot.
+        let host_ok = host.contains('.') && host.split('.').all(|label| !label.is_empty() && name(label));
+        return host_ok && !path.is_empty() && path.iter().all(|part| name(part));
+    }
+    // `owner/repo` has a first part; `/opt` and `C:/opt` do not fit it and are folders.
+    if let [owner, repo] = source.split('/').collect::<Vec<&str>>().as_slice() {
+        if name(owner) && name(repo) {
+            return true;
+        }
+    }
+    is_shown_path(source)
 }
 
 /// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
@@ -750,15 +820,7 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 }
             }
             Some(CommandAsk::PluginInstall { plugin, dir, scope }) => {
-                let scope = match (scope.as_str(), pt) {
-                    ("user", true) => "para você",
-                    ("project", true) => "para o projeto",
-                    ("local", true) => "só para este projeto, neste computador",
-                    ("user", false) => "for you",
-                    ("project", false) => "for the project",
-                    (_, false) => "for this project on this computer only",
-                    (_, true) => "só para este projeto, neste computador",
-                };
+                let scope = plugin_scope_words(scope, pt);
                 match (plugin, dir, pt) {
                     (Some(name), _, true) => format!(
                         "Instalar um plugin? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar \"{name}\" {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.",
@@ -788,11 +850,37 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Update a plugin? The plugin \"{plugin}\" will change to the content you saw, and a plugin runs code on this computer, in your sessions. Host {} makes the change. Continue only if you just pressed Update in Flightdeck.",
                 short(&ask.host)
             ),
+            Some(CommandAsk::MarketplaceAdd { source, scope }) => {
+                let scope = plugin_scope_words(scope.as_deref().unwrap_or("user"), pt);
+                if pt {
+                    format!(
+                        "Adicionar um marketplace de plugins? Os plugins dele passam a poder ser instalados, e um plugin roda código neste computador, em suas sessões. O host {} vai adicionar o marketplace {scope}. Continue só se você acabou de apertar Adicionar marketplace no Flightdeck.\n\"{source}\"",
+                        short(&ask.host)
+                    )
+                } else {
+                    format!(
+                        "Add a plugin marketplace? Its plugins become installable, and a plugin runs code on this computer, in your sessions. Host {} will add the marketplace {scope}. Continue only if you just pressed Add marketplace in Flightdeck.\n\"{source}\"",
+                        short(&ask.host)
+                    )
+                }
+            }
             None => String::new(),
         },
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
     (title.to_string(), body)
+}
+
+/// Where a plugin or a marketplace is kept, in words (the scope the daemon takes: user, project or local).
+fn plugin_scope_words(scope: &str, pt: bool) -> &'static str {
+    match (scope, pt) {
+        ("user", true) => "para você",
+        ("project", true) => "para o projeto",
+        ("user", false) => "for you",
+        ("project", false) => "for the project",
+        (_, false) => "for this project on this computer only",
+        (_, true) => "só para este projeto, neste computador",
+    }
 }
 
 /// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
@@ -813,6 +901,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::PluginUpdate { .. })) => {
             if pt { ("Atualizar", "Cancelar") } else { ("Update", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::MarketplaceAdd { .. })) => {
+            if pt { ("Adicionar marketplace", "Cancelar") } else { ("Add marketplace", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
             if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
@@ -1692,6 +1783,23 @@ mod tests {
     const PLUGIN_UPDATE_PAYLOAD: &str = "{\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plugin\":\"deploy-tools@acme\"}";
     const PLUGIN_UPDATE_HASH: &str = "105dd69dedb5eeca4e9d83cfca9005986688a4bab71e3cc6450cd685c6d18198";
 
+    const MARKET_PAYLOAD: &str = "{\"confirm\":true,\"scope\":\"project\",\"source\":\"acme/plugins\"}";
+    const MARKET_HASH: &str = "3b35114cbdc6042f069fcce062b73a4429b48d707e85b3f32c7a0c099e1ad60d";
+    const MARKET_URL_PAYLOAD: &str = "{\"confirm\":true,\"source\":\"https://github.com/acme/plugins.git\"}";
+    const MARKET_URL_HASH: &str = "001a89ede03cbf690f714183364377e37f9cf37e612a3d6e6d7e6a5087bfcf31";
+    const MARKET_DIR_PAYLOAD: &str = "{\"confirm\":true,\"source\":\"/work/marketplaces/acme\"}";
+    const MARKET_DIR_HASH: &str = "4a3dc658649368f9d5a2c2ed751b2a08d4b64c81a6f63df76136cb94b44c6dfa";
+
+    fn market_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "plugins.marketplaceAdd".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::MarketplaceAdd { source: "acme/plugins".into(), scope: Some("project".into()) }),
+        }
+    }
+
     fn install_ask() -> Ask {
         Ask {
             kind: Kind::Command,
@@ -1827,6 +1935,120 @@ mod tests {
                 confirm_labels(&update_ask(), "pt-BR").0,
             ],
             ["Install", "Instalar", "Update", "Atualizar"]
+        );
+    }
+
+    #[test]
+    fn the_marketplace_vectors_hash_the_same_in_both_languages() {
+        assert_eq!(
+            [sha256_hex(MARKET_PAYLOAD), sha256_hex(MARKET_URL_PAYLOAD), sha256_hex(MARKET_DIR_PAYLOAD)],
+            [MARKET_HASH, MARKET_URL_HASH, MARKET_DIR_HASH]
+        );
+    }
+
+    #[test]
+    fn adding_a_marketplace_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "plugins.marketplaceAdd", MARKET_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(MARKET_PAYLOAD)), Ok(market_ask()));
+        // The host sends the keys in any order; the hash is over the sorted form.
+        let shuffled = "{\"source\":\"acme/plugins\",\"scope\":\"project\",\"confirm\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(market_ask()));
+        let text = command(&me, DAEMON, "plugins.marketplaceAdd", MARKET_URL_PAYLOAD);
+        let ask = describe_with(&text, DAEMON, &me, Some(MARKET_URL_PAYLOAD)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::MarketplaceAdd { source: "https://github.com/acme/plugins.git".into(), scope: None })
+        );
+        let text = command(&me, DAEMON, "plugins.marketplaceAdd", MARKET_DIR_PAYLOAD);
+        let ask = describe_with(&text, DAEMON, &me, Some(MARKET_DIR_PAYLOAD)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::MarketplaceAdd { source: "/work/marketplaces/acme".into(), scope: None })
+        );
+    }
+
+    #[test]
+    fn a_marketplace_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let add = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "plugins.marketplaceAdd", payload), DAEMON, &me, Some(payload))
+        };
+        // Refused by the reader before the hash is compared (the cases are not all in the sorted order).
+        let refused_by_rule = |result: Result<_, String>| {
+            matches!(result, Err(ref why) if why != "the payload is not the one the text hashes")
+        };
+        let ok = |source: &str| format!("{{\"confirm\":true,\"source\":\"{source}\"}}");
+        for bad in [
+            // A confirm that is not the boolean true: missing, false, the text "true", a number.
+            "{\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":false,\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":\"true\",\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":1,\"source\":\"acme/plugins\"}".to_string(),
+            // No source, a source that is no text, a field the dialog does not say, a scope that is not one of three.
+            "{\"confirm\":true}".to_string(),
+            "{\"confirm\":true,\"source\":7}".to_string(),
+            "{\"confirm\":true,\"extra\":1,\"source\":\"acme/plugins\"}".to_string(),
+            "{\"confirm\":true,\"scope\":\"all\",\"source\":\"acme/plugins\"}".to_string(),
+            // A source that can pad the text, hide the real host, or start an option.
+            ok("acme/plugins\\nAllow everything"),
+            ok("--scope"),
+            ok("acme/plu gins"),
+            ok("acme/\\u202eplugins"),
+            ok("https://user:pw@github.com/acme/plugins"),
+            ok("https://github.com@evil.example/acme/plugins"),
+            ok("https://github.com:8443/acme/plugins"),
+            ok("https://github.com/acme/plugins?x=1"),
+            ok("https://github.com/acme/plugins#frag"),
+            ok("https://github.com/acme/%2e%2e"),
+            // A host that is not a run of plain names.
+            ok("https://a..b/acme/plugins"),
+            ok("https://.../acme/plugins"),
+            ok("https://github./acme/plugins"),
+            ok("https://localhost/acme/plugins"),
+            ok("https://github.com"),
+            ok("https://github.com//plugins"),
+            ok("https://github.com/acme/.."),
+            ok("acme/--plugins"),
+            ok("-acme/plugins"),
+            ok("http://github.com/acme/plugins"),
+            ok("git@github.com:acme/plugins.git"),
+            ok("github:acme/plugins"),
+            ok("plugins/deploy/extra"),
+            ok("relative/dir/"),
+            ok("/work/x\\\" harmless"),
+        ] {
+            assert!(refused_by_rule(add(&bad)), "signed marketplace add: {bad}");
+        }
+        assert!(add(&ok("acme/plugins")).is_ok());
+        assert!(add(&ok("acme/my-plugins.v2_x")).is_ok());
+        assert!(add(&ok("https://github.com/acme/plugins.git")).is_ok());
+        assert!(add(&ok("/work/marketplaces/acme")).is_ok());
+        // A folder one level under the root has the shape of owner/repo with an empty owner: it is still a folder.
+        assert!(add(&ok("/marketplaces")).is_ok());
+        assert!(add(&ok("C:/marketplaces")).is_ok());
+        // The payload is signed in canonical (sorted) form, so the scope sits between confirm and source.
+        assert!(add("{\"confirm\":true,\"scope\":\"local\",\"source\":\"acme/plugins\"}").is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_marketplace_names_the_source_and_that_its_plugins_run_code_and_has_buttons_of_its_own() {
+        let (_, en) = confirm_text(&market_ask(), "en");
+        assert!(en.starts_with("Add a plugin marketplace?"), "{en}");
+        assert!(en.contains("project") && en.contains("runs code") && en.contains(&DAEMON[..8]), "{en}");
+        assert!(en.ends_with("\n\"acme/plugins\""), "{en}");
+        let (_, pt) = confirm_text(&market_ask(), "pt-BR");
+        assert!(pt.starts_with("Adicionar um marketplace de plugins?") && pt.contains("roda código"), "{pt}");
+        assert!(pt.ends_with("\n\"acme/plugins\""), "{pt}");
+        let plain = Ask {
+            command: Some(CommandAsk::MarketplaceAdd { source: "/work/marketplaces/acme".into(), scope: None }),
+            ..market_ask()
+        };
+        let (_, en) = confirm_text(&plain, "en");
+        assert!(en.contains("for you") && en.ends_with("\n\"/work/marketplaces/acme\""), "{en}");
+        assert_eq!(
+            [confirm_labels(&market_ask(), "en").0, confirm_labels(&market_ask(), "pt-BR").0],
+            ["Add marketplace", "Adicionar marketplace"]
         );
     }
 

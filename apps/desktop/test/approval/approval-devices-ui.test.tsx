@@ -43,7 +43,9 @@ function panel(
     declined?: boolean;
     gate?: Promise<void>;
     older?: boolean;
-    unchecked?: Array<"merge" | "trust" | "bypass" | "resume" | "roots" | "harness" | "plugins">;
+    unchecked?: Array<
+      "merge" | "trust" | "bypass" | "resume" | "roots" | "harness" | "plugins" | "marketplace"
+    >;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
@@ -263,6 +265,29 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([OFF], "en", [], { unchecked: ["plugins"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
     expect(screen.queryByText(/installing or updating a plugin/) === null).toBe(true);
+  });
+
+  test("a host that does not ask for a device to add a plugin marketplace says so, and not when it has no device enrolled (#3516)", async () => {
+    panel([HERE], "en", [], { unchecked: ["marketplace"] });
+    await settleMaybe(() => screen.queryByText(/adding a plugin marketplace/) !== null);
+    expect(
+      screen.queryByText(/does not ask for a device to confirm adding a plugin marketplace/) !==
+        null,
+    ).toBe(true);
+    cleanup();
+    panel([OFF], "en", [], { unchecked: ["marketplace"] });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    expect(screen.queryByText(/adding a plugin marketplace/) === null).toBe(true);
+  });
+
+  test("a host that does not ask for a device to add a plugin marketplace says so in Portuguese (#3516)", async () => {
+    panel([HERE], "pt-BR", [], { unchecked: ["marketplace"] });
+    await settleMaybe(() => screen.queryByText(/adicionar um marketplace de plugins/) !== null);
+    expect(
+      screen.queryByText(
+        /não pede a confirmação de um dispositivo para adicionar um marketplace de plugins/,
+      ) !== null,
+    ).toBe(true);
   });
 
   test("a host that does not ask for a device to install or update a plugin says so in Portuguese (#3516)", async () => {

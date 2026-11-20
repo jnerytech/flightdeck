@@ -205,6 +205,49 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
+const HOSTKEY_WRITES = ["confirm", "forget"];
+
+/**
+ * Which server keys a host trusts is the person's call (#3537): `ssh hostkey confirm` pins a key, and
+ * `ssh hostkey forget` unpins one so the next confirm can pin another. The reads (`ssh hostkey check`,
+ * `ssh test`, `ssh list`) stay ordinary commands. The three words are matched together, so a word in an
+ * argument (`fd send fd-qa "ssh hostkey confirm"`, `echo ssh hostkey forget`) is no verb.
+ */
+function changesTrustedHostKeys(prog: string, args: string[]): boolean {
+  return runsFlightdeckWords(prog, args, ([command, action, verb]) => {
+    return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.includes(verb ?? "");
+  });
+}
+
+/**
+ * Which destinations a host keeps is the person's call (#3537): `ssh remove` deletes one, and `ssh import
+ * apply` turns `~/.ssh/config` hosts, key-file paths included, into destinations a later connect uses. The
+ * reads (`ssh list`, `ssh import preview`) stay ordinary commands.
+ */
+function changesSshDestinations(prog: string, args: string[]): boolean {
+  return runsFlightdeckWords(prog, args, ([command, action, verb]) => {
+    return command === "ssh" && (action === "remove" || (action === "import" && verb === "apply"));
+  });
+}
+
+/**
+ * Whether a command line runs the CLI with words that `matches` accepts, as the CLI itself, or under a
+ * runtime or a shell (`bun bin.ts`, `bash -c`). Each CLI program in the text starts its own command: a
+ * word of another command is no verb of it, so `fd send fd-qa "ssh remove"` is not one.
+ */
+function runsFlightdeckWords(
+  prog: string,
+  args: string[],
+  matches: (words: string[]) => boolean,
+): boolean {
+  if (isCliProgram(prog)) return matches(flightdeckWords(shellArguments(args)));
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  return words.some(
+    (w, i) => isCliProgram(program(w)) && matches(flightdeckWords(words.slice(i + 1))),
+  );
+}
+
 /**
  * A resume that skips what the app asks a person (#3461): `history resume --force` starts the session
  * although the transcript may be running elsewhere, and `--permission-mode` picks the mode the new
@@ -383,6 +426,16 @@ const DANGEROUS: Array<{
     when: endsACard,
     reason: () =>
       "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)",
+  },
+  {
+    when: changesTrustedHostKeys,
+    reason: () =>
+      "changes which server keys a host trusts, without the person confirming it in the app (flightdeckd ssh hostkey confirm or forget)",
+  },
+  {
+    when: changesSshDestinations,
+    reason: () =>
+      "removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh remove or import apply)",
   },
   {
     when: changesWhatGuards,

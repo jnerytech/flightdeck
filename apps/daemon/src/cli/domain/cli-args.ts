@@ -125,6 +125,9 @@ export interface CliArgs {
     | "interrupted"
     | "import-preview"
     | "hostkey-check"
+    | "hostkey-confirm"
+    | "hostkey-forget"
+    | "import-apply"
     | "test"
     | "files"
     | "interrupt"
@@ -169,6 +172,10 @@ export interface CliArgs {
   sendTo?: string;
   /** `ssh hostkey check|test <target>`: the destination, its name or its id. */
   sshTarget?: string;
+  /** `ssh hostkey confirm <target> --fingerprint <SHA256:...>`: the fingerprint the person read and accepts. */
+  sshFingerprint?: string;
+  /** `ssh import apply --alias <name>...`: the `~/.ssh/config` names to turn into destinations. */
+  sshAliases?: string[];
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */

@@ -1,5 +1,5 @@
-/** Issue #3537: what `flightdeckd ssh list|import preview` print, as pure rules over the daemon's answers. */
-import type { SshImportEntry, SshTarget } from "@flightdeck/protocol";
+/** Issue #3537: what `flightdeckd ssh list|import preview|import apply|remove` print, as pure rules over the daemon's answers. */
+import type { SshImportEntry, SshImportResult, SshTarget } from "@flightdeck/protocol";
 
 /** One line per target, or a sentence when there is none; the vault secret is named by its id, never shown. */
 export function targetLines(targets: SshTarget[]): string[] {
@@ -31,3 +31,13 @@ export function importLines(entries: SshImportEntry[]): string[] {
     return parts.join("  ");
   });
 }
+
+/** One line per name `import apply` created or skipped, with the reason the daemon gave. */
+export function importResultLines(result: SshImportResult): string[] {
+  return [
+    ...result.created.map((t) => `${t.name}: imported as ${t.id}`),
+    ...result.skipped.map((s) => `${s.alias}: skipped, ${s.reason}`),
+  ];
+}
+
+export const removedLine = (name: string) => `${name}: removed`;

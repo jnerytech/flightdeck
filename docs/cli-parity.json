@@ -411,16 +411,24 @@
   "ssh.hostkey.check": {
     "cli": "ssh"
   },
-  "ssh.hostkey.confirm": {},
-  "ssh.hostkey.forget": {},
-  "ssh.import.apply": {},
+  "ssh.hostkey.confirm": {
+    "cli": "ssh"
+  },
+  "ssh.hostkey.forget": {
+    "cli": "ssh"
+  },
+  "ssh.import.apply": {
+    "cli": "ssh"
+  },
   "ssh.import.preview": {
     "cli": "ssh"
   },
   "ssh.list": {
     "cli": "ssh"
   },
-  "ssh.remove": {},
+  "ssh.remove": {
+    "cli": "ssh"
+  },
   "ssh.save": {},
   "ssh.test": {
     "cli": "ssh"

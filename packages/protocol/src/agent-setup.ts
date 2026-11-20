@@ -284,6 +284,8 @@ export const agentSetupCommands = [
         source: z.string().min(1),
         scope: z.enum(["user", "project", "local"]).optional(),
         confirm: z.boolean().optional(),
+        /** The signed proof of an enrolled device over the whole request (#3516). */
+        proof: ApprovalProof.optional(),
       })
       .strict(),
   ),

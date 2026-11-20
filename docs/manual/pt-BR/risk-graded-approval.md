@@ -87,6 +87,13 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   prévia antes de confirmar. Cancele e nada é instalado. Se o plugin mudou depois da prévia, o host recusa: veja a
   prévia de novo. Quando o marketplace declara um comando, a janela abre uma segunda vez no passo que o aceita. Um
   host que ainda não pede o dispositivo aqui mostra um aviso na página dele: atualize-o.
+- **Adicionar um marketplace de plugins.** Com um dispositivo cadastrado, **Adicionar marketplace** pede sua
+  confirmação mais uma vez numa janela do sistema. A janela diz a fonte e onde o marketplace fica guardado, e que
+  os plugins dele podem rodar código neste computador. A janela mostra uma fonte escrita como `dono/repo`, como um
+  endereço `https://` sem usuário, porta, consulta ou fragmento, ou como o caminho completo de uma pasta; qualquer
+  outra forma (um endereço `git@`, `github:dono/repo`, `http://`) é recusada com uma mensagem que cita essas três.
+  Cancele e nada é adicionado, e o que você digitou continua no campo. Um host que ainda não pede o dispositivo
+  aqui mostra um aviso na página dele: atualize-o.
 - **Confiar em um projeto.** Com um dispositivo cadastrado, **Confiar neste projeto** pede mais uma confirmação
   em uma janela do sistema. A janela nomeia a pasta e diz que os hooks e os servidores dela vão rodar sem pedir
   confirmação. Cancele e nada é enviado. Revogar a confiança não pede nada. Um host que ainda não pede o

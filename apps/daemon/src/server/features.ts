@@ -6,6 +6,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_HARNESS,
+  FEATURE_APPROVAL_MARKETPLACE,
   FEATURE_APPROVAL_PLUGINS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
@@ -43,6 +44,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.approvers && opts.harness?.apply, FEATURE_APPROVAL_HARNESS),
     // #3516: installing or updating a plugin takes the proof of an enrolled device.
     ...when(opts.approvers && opts.agentSetup?.plugins, FEATURE_APPROVAL_PLUGINS),
+    ...when(opts.approvers && opts.agentSetup?.plugins, FEATURE_APPROVAL_MARKETPLACE),
     // #3453: trusting a project folder takes the proof of an enrolled device (its own feature: a host can gate one command and not the other).
     ...when(opts.approvers && opts.projects?.trust, FEATURE_APPROVAL_TRUST),
     // #3453: turning a session's automatic approver back on takes the proof of an enrolled device (its own feature).

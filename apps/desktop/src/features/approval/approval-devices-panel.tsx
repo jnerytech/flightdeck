@@ -23,6 +23,7 @@ const UNCHECKED_TEXT = {
   roots: "approvalDevices.rootsUnchecked",
   harness: "approvalDevices.harnessUnchecked",
   plugins: "approvalDevices.pluginsUnchecked",
+  marketplace: "approvalDevices.marketplaceUnchecked",
 } as const satisfies Record<UncheckedCommand, string>;
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };

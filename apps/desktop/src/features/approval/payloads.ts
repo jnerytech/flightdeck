@@ -77,6 +77,19 @@ export interface PluginBody {
   acceptCommand?: string;
 }
 
+/** The payload of `plugins.marketplaceAdd`, or the person's no (#3516). */
+export type MarketplacePayload =
+  | {
+      kind: "payload";
+      payload: {
+        source: string;
+        scope?: "user" | "project" | "local";
+        confirm: true;
+        proof?: ApprovalProof;
+      };
+    }
+  | { kind: "declined" };
+
 /** The payload of `plugins.install` or `plugins.update`, or the person's no (#3516). */
 export type PluginPayload<B extends PluginBody = PluginBody> =
   | { kind: "payload"; payload: B & { proof?: ApprovalProof } }

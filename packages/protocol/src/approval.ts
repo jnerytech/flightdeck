@@ -29,6 +29,9 @@ export const FEATURE_APPROVAL_HARNESS = "approval-harness";
 /** The host checks a signed proof of the person's device before it installs or updates a plugin with `plugins.install` or `plugins.update` (#3516). */
 export const FEATURE_APPROVAL_PLUGINS = "approval-plugins";
 
+/** The host checks a signed proof of the person's device before it adds a plugin marketplace with `plugins.marketplaceAdd` (#3516). */
+export const FEATURE_APPROVAL_MARKETPLACE = "approval-marketplace";
+
 /** The host checks a signed proof of the person's device before it trusts a project folder (#3453). */
 export const FEATURE_APPROVAL_TRUST = "approval-trust";
 
@@ -45,6 +48,7 @@ export const PROOF_COMMANDS = [
   "project.harness.apply",
   "plugins.install",
   "plugins.update",
+  "plugins.marketplaceAdd",
 ] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
 
