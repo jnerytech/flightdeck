@@ -3,7 +3,7 @@
  * It speaks to the local daemon like `flightdeckd card` does (the same `DaemonClient`, the token of
  * the config). Exit codes: 0 done, 1 refused, 2 no daemon.
  */
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   type CliResult,
@@ -28,10 +28,10 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 type Note = { wrote: boolean };
 
 /** The body of a saved persona: the flag's text, or the whole file; null when the file cannot be read. */
-function bodyOf(args: PersonaCliArgs): string | null {
+async function bodyOf(args: PersonaCliArgs): Promise<string | null> {
   if (args.body !== undefined || args.bodyFile === undefined) return args.body ?? "";
   try {
-    return readFileSync(args.bodyFile, "utf8");
+    return await readFile(args.bodyFile, "utf8");
   } catch {
     return null;
   }
@@ -53,7 +53,7 @@ async function save(
   return args.json ? json(saved) : said(`saved ${saved.id} (${args.scope})`);
 }
 
-export function runPersonaCli(
+export async function runPersonaCli(
   args: PersonaCliArgs,
   config: { bind: string; port: number; token: string },
   options: { timeoutMs?: number } = {},
@@ -63,9 +63,8 @@ export function runPersonaCli(
   const where = projectPath === undefined ? {} : { projectPath };
   const language = args.language === undefined ? {} : { language: args.language };
   // Nothing is sent for a body that cannot be read, so the daemon is not even asked.
-  const body = args.action === "save" ? bodyOf(args) : "";
-  if (body === null)
-    return Promise.resolve(failure(1, `cannot read the body file ${args.bodyFile ?? ""}`));
+  const body = args.action === "save" ? await bodyOf(args) : "";
+  if (body === null) return failure(1, `cannot read the body file ${args.bodyFile ?? ""}`);
   return runOnLocalDaemon({
     config,
     clientName: "flightdeck-persona",
