@@ -79,6 +79,18 @@ async function localConfig(args: CliArgs) {
   }
 }
 
+/**
+ * A `watch` runs until Ctrl-C (or a stop of the process) and writes as the changes come. Only the
+ * stream listens: elsewhere Ctrl-C keeps its default, which ends the process.
+ */
+function watchStop(args: CliArgs, deps: CliDeps): AbortController {
+  const stop = new AbortController();
+  if (args.action === "watch")
+    for (const signal of ["SIGINT", "SIGTERM"] as const)
+      deps.onSignal(signal, async () => stop.abort());
+  return stop;
+}
+
 /** Prints what a command that asks the local daemon returned, and gives its exit code. */
 const reported = (deps: CliDeps, result: CliResult, asJson = false): Promise<number> =>
   settled(() => {
@@ -411,28 +423,31 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   quota: async (args, deps) => {
     const { runQuotaCli } = await import("../quota/index.ts");
     const config = await localConfig(args);
+    const stop = watchStop(args, deps);
     return reported(
       deps,
       await runQuotaCli(
         {
-          action: args.action as "get" | "history" | "pause-at",
+          action: args.action as "get" | "history" | "pause-at" | "watch",
           ...(args.quotaWindow === undefined ? {} : { window: args.quotaWindow }),
           ...(args.hours === undefined ? {} : { hours: args.hours }),
           ...(args.quotaPauseAt === undefined ? {} : { pauseAt: args.quotaPauseAt }),
           ...(args.json ? { json: true } : {}),
         },
         config,
+        { signal: stop.signal, write: (line) => deps.log.log(line) },
       ),
     );
   },
   budget: async (args, deps) => {
     const { runBudgetCli } = await import("../costs/index.ts");
     const config = await localConfig(args);
+    const stop = watchStop(args, deps);
     return reported(
       deps,
       await runBudgetCli(
         {
-          action: args.action as "list" | "set" | "set-quota" | "remove",
+          action: args.action as "list" | "set" | "set-quota" | "remove" | "watch",
           ...(args.budgetId === undefined ? {} : { id: args.budgetId }),
           // `budgetProblem` refuses a scope that is not the host or a project.
           ...(args.scope === undefined ? {} : { scope: args.scope as "host" | "project" }),
@@ -445,6 +460,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           ...(args.json ? { json: true } : {}),
         },
         config,
+        { signal: stop.signal, write: (line) => deps.log.log(line) },
       ),
     );
   },
@@ -469,7 +485,14 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       deps,
       await runCostsCli(
         {
-          action: args.action as "summary" | "session" | "card" | "run" | "status" | "export",
+          action: args.action as
+            | "summary"
+            | "session"
+            | "card"
+            | "run"
+            | "status"
+            | "export"
+            | "reprice",
           ...(args.costsId === undefined ? {} : { id: args.costsId }),
           ...(args.from === undefined ? {} : { from: args.from }),
           ...(args.until === undefined ? {} : { to: args.until }),

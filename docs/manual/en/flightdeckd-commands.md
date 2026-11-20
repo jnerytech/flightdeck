@@ -217,6 +217,7 @@ fd quota get
 fd quota history five_hour --hours 48
 fd quota pause-at 0.8
 fd quota pause-at off
+fd quota watch
 fd usage --days 30
 ```
 
@@ -230,6 +231,8 @@ for the daemon's answer.
   that it needs 3 readings) and each project's share of the cost since the window began.
 - **`quota pause-at <share>`:** sets the guard, a share of the plan from 0 to 1 (`0.8` is 80%), or `off`.
   Anything else exits `1` and sends nothing. It never stops a session that is already running.
+- **`quota watch`:** a line for each reading the daemon takes, in the words of `quota get` on one line, until
+  Ctrl-C. With `--json`, one `{ windows, pauseAt }` object per line.
 - **`usage`:** the usage of the last `--days` (1 to 90, the daemon's own default when absent), one line per
   day and project: cost, tokens in and out, and turns.
 
@@ -245,11 +248,12 @@ fd costs session <claude-session-id>
 fd costs card <card>
 fd costs run <run>
 fd costs status
+fd costs reprice --confirm
 fd roi --from 2026-11-01 --to 2026-11-20
 ```
 
 What the sessions cost and what the agents delivered, as the Costs and ROI screens show them. Each takes
-`--json` for the daemon's answer. They only read.
+`--json` for the daemon's answer. They only read, except `costs reprice`.
 
 - **`costs summary`:** the totals (cost, messages and those without a price, tokens, what the cache saved), then
   one line per project, model, origin, persona and top session. `--from` and `--to` are both needed, as
@@ -259,6 +263,9 @@ What the sessions cost and what the agents delivered, as the Costs and ROI scree
 - **`costs session|card|run <id>`:** one cost; a session also says the part its subagents spent and each model.
 - **`costs status`:** how far the transcripts are read, the price date, the models with no price and the
   sessions whose cost differs from the SDK's.
+- **`costs reprice --confirm`:** prices every recorded message again with the price table of the config, and
+  says how many entries it priced. It rewrites every cost, so it needs `--confirm`; without it, it exits `1`
+  and sends nothing. A reprice that gets no answer exits `2`: run `costs status` before trying again.
 - **`roi`:** each project's cost, cards, merged PRs and estimated hours over `--from` to `--to`, against the
   period of the same length before it. `--project` narrows it.
 

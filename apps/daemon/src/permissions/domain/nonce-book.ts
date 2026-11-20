@@ -1,7 +1,10 @@
 import { FlightdeckError } from "../../kernel/index.ts";
 
-/** What a nonce was issued for: an approval of one request, or an enrollment or a revoke (no request). */
-export type NoncePurpose = "approve" | "enroll" | "revoke";
+/**
+ * What a nonce was issued for: an approval of one request, an enrollment or a revoke (no request), or a
+ * command that moves code or trust (#3453; the command name takes the place of the request id).
+ */
+export type NoncePurpose = "approve" | "enroll" | "revoke" | "command";
 
 export interface NonceBookOptions {
   /** A monotonic clock in ms: a nonce's life never depends on the wall clock. */
@@ -9,10 +12,10 @@ export interface NonceBookOptions {
   /** A fresh unguessable text; the caller owns the entropy. */
   random: () => string;
   ttlMs?: number;
-  /** Live nonces one connection may hold in a bucket (approvals, or enrollments and revokes). */
+  /** Live nonces one connection may hold in a bucket (approvals, commands, or enrollments and revokes). */
   perConnection?: number;
-  /** Live nonces all connections may hold: approvals, and apart from them enrollments and revokes. */
-  caps?: { approve: number; other: number };
+  /** Live nonces all connections may hold: approvals, commands, and apart from them enrollments and revokes. */
+  caps?: { approve: number; other: number; command?: number };
 }
 
 export const NONCE_TTL_MS = 60_000;
@@ -78,8 +81,8 @@ export class NonceBook {
   }
 }
 
-const DEFAULT_CAPS = { approve: 256, other: 16 };
+const DEFAULT_CAPS = { approve: 256, other: 16, command: 32 };
 const DEFAULT_PER_CONNECTION = 16;
 
-const bucketOf = (purpose: NoncePurpose): "approve" | "other" =>
-  purpose === "approve" ? "approve" : "other";
+const bucketOf = (purpose: NoncePurpose): "approve" | "command" | "other" =>
+  purpose === "approve" || purpose === "command" ? purpose : "other";

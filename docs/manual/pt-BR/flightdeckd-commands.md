@@ -219,6 +219,7 @@ fd quota get
 fd quota history five_hour --hours 48
 fd quota pause-at 0.8
 fd quota pause-at off
+fd quota watch
 fd usage --days 30
 ```
 
@@ -232,6 +233,8 @@ A cota do plano deste host e o que as sessões dele custam, como a tela de Custo
   que precisa de 3 leituras) e a parte de cada projeto no custo desde o início da janela.
 - **`quota pause-at <parte>`:** define a trava, uma parte do plano de 0 a 1 (`0.8` é 80%), ou `off`. Qualquer
   outra coisa sai com `1` e não envia nada. Nunca para uma sessão que já está rodando.
+- **`quota watch`:** uma linha para cada leitura que o daemon faz, nas palavras de `quota get` em uma linha,
+  até Ctrl-C. Com `--json`, um objeto `{ windows, pauseAt }` por linha.
 - **`usage`:** o uso dos últimos `--days` (1 a 90, o padrão do daemon se faltar), uma linha por dia e
   projeto: custo, tokens de entrada e saída e turnos.
 
@@ -247,11 +250,12 @@ fd costs session <id-da-sessao-claude>
 fd costs card <cartao>
 fd costs run <execucao>
 fd costs status
+fd costs reprice --confirm
 fd roi --from 2026-11-01 --to 2026-11-20
 ```
 
 O que as sessões custam e o que os agentes entregaram, como as telas de Custos e ROI mostram. Todos aceitam
-`--json` para a resposta do daemon. Só leem.
+`--json` para a resposta do daemon. Só leem, menos `costs reprice`.
 
 - **`costs summary`:** os totais (custo, mensagens e as sem preço, tokens, o que o cache economizou), depois
   uma linha por projeto, modelo, origem, persona e sessão mais cara. `--from` e `--to` são obrigatórios, como
@@ -261,6 +265,10 @@ O que as sessões custam e o que os agentes entregaram, como as telas de Custos 
 - **`costs session|card|run <id>`:** um custo; a sessão diz também a parte gasta pelos subagentes e cada modelo.
 - **`costs status`:** até onde os transcripts foram lidos, a data dos preços, os modelos sem preço e as sessões
   cujo custo difere do SDK.
+- **`costs reprice --confirm`:** precifica de novo todas as mensagens gravadas com a tabela de preços da
+  configuração e diz quantas entradas precificou. Reescreve todos os custos, por isso pede `--confirm`; sem ele,
+  sai com `1` e não envia nada. Um reprice que fica sem resposta sai com `2`: rode `costs status` antes de
+  tentar de novo.
 - **`roi`:** custo, cartões, PRs integrados e horas estimadas de cada projeto de `--from` a `--to`, contra o
   período do mesmo tamanho antes dele. `--project` filtra.
 

@@ -5,7 +5,7 @@
 import type { QuotaHistory, QuotaState } from "@flightdeck/protocol";
 
 export interface QuotaCliArgs {
-  action: "get" | "history" | "pause-at";
+  action: "get" | "history" | "pause-at" | "watch";
   /** `history`: the window (`five_hour`, `seven_day`). */
   window?: string;
   /** `history`: how many hours back; a day when absent. */
@@ -40,6 +40,9 @@ export function stateLines(state: QuotaState): string[] {
   );
   return [...(windows.length === 0 ? ["no quota reading yet"] : windows), guardLine(state.pauseAt)];
 }
+
+/** The line `watch` prints for a reading: the windows and the guard of `quota get`, on one line. */
+export const watchLine = (state: QuotaState): string => stateLines(state).join(" | ");
 
 /** The samples, the projection to 100% (or why there is none) and who spent the window. */
 export function historyLines(history: QuotaHistory): string[] {

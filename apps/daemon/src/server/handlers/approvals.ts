@@ -9,6 +9,9 @@ import type { Handlers } from "../domain/handler.ts";
 export const approvalHandlers = {
   "approval.challenge": (payload, { ws, server }) => {
     const approvers = server.need("approvers");
+    // A command's nonce is made for that command name, where an approval's holds its request id (#3453).
+    if (payload.purpose === "command")
+      return approvers.challenge("command", payload.command, ws.data.id);
     if (payload.purpose !== "approve")
       return approvers.challenge(payload.purpose, undefined, ws.data.id);
     // A nonce for an allow is made only for a request that is open: a permission request, managed or

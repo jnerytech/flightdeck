@@ -1,5 +1,6 @@
 // The Board context's cards: their PR state and checks loop, blockers, arenas, worktrees, reviews and the issues they come from (issue #1600: moved from index.ts).
 import { z } from "zod";
+import { ApprovalProof } from "./approval.ts";
 import {
   BoardColumn,
   type CardTemplates,
@@ -535,12 +536,16 @@ export const boardCommands = [
           .string()
           .regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/)
           .optional(),
+        /** #3453: the signed proof of an enrolled device over this payload; the host with a device asks for it. */
+        proof: ApprovalProof.optional(),
       })
       .strict()
       .refine((p) => (p.prUrl === undefined) === (p.headSha === undefined), {
         message: "prUrl and headSha go together",
       }),
   ),
+  /** #3453: the card's pull request address and its head commit, read from the provider now: what the app shows and signs. */
+  cmd("card.pr.head", CardIdPayload),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
   /** Removes a card that never started; a started one is refused (use `card.discard`). */
@@ -618,6 +623,7 @@ export interface BoardResults {
   "card.message": SessionSendResult;
   "card.pr.create": Card;
   "card.pr.merge": Card;
+  "card.pr.head": { prUrl: string; headSha: string };
   "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;

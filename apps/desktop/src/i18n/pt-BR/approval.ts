@@ -2,7 +2,7 @@
 export const approval = {
   approvalDevices: {
     title: "Dispositivos que aprovam",
-    hint: "Uma permissão de risco alto ou que salva uma regra, e o uso de um segredo de produção ou de risco alto, são assinados por um dispositivo cadastrado aqui. Sem nenhum, segurar o botão é a única checagem.",
+    hint: "Uma permissão de risco alto ou que salva uma regra, o uso de um segredo de produção ou de risco alto e o merge de um PR são assinados por um dispositivo cadastrado aqui. Sem nenhum, segurar o botão é a única checagem.",
     off: "Proteção desligada: nenhum dispositivo cadastrado neste host.",
     on: "Proteção ligada: estes dispositivos podem aprovar.",
     listLabel: "Dispositivos cadastrados",
@@ -23,6 +23,8 @@ export const approval = {
     removeLocalHint:
       "O host continua listando o dispositivo até outro dispositivo cadastrado revogá-lo, ou até você zerar no host.",
     removedLocal: "A chave deste dispositivo foi removida.",
+    commandsUnchecked:
+      "Este host não pede a confirmação de um dispositivo ao fazer merge: atualize-o para proteger os merges.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",
     scope:
       "Isto protege as aprovações feitas pelo app. Quem tem um terminal no host ainda pode zerar.",

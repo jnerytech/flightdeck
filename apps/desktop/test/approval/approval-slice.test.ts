@@ -3,8 +3,12 @@ import { createHash } from "node:crypto";
 import {
   approvalDigests,
   approvalMessage,
+  Command,
+  commandDigest,
+  commandMessage,
   enrollAddMessage,
   enrollFirstMessage,
+  FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_VAULT,
   type PermissionUpdate,
@@ -70,8 +74,11 @@ function approval(
               keyLog.push({ op: "delete", args: [id] });
               local = null;
             },
-            sign: async (id, message, lang) => {
-              keyLog.push({ op: "sign", args: [id, message, lang] });
+            sign: async (id, message, lang, payload) => {
+              keyLog.push({
+                op: "sign",
+                args: payload === undefined ? [id, message, lang] : [id, message, lang, payload],
+              });
               if (over.signFails) throw over.signFails;
               return `sig:${message}`;
             },
@@ -96,6 +103,7 @@ function approval(
         "approval.challenge": { nonce: "nonce-1", daemonId: "daemon-1", expiresInMs: 60_000 },
         "approval.enroll": { keyId: KEY.keyId, daemonId: "daemon-1" },
         "approval.revoke": { keyId: OTHER.keyId },
+        "card.pr.head": { prUrl: "https://github.com/acme/repo/pull/9", headSha: "a".repeat(40) },
       };
       return { ok: true, data: data[type] };
     }) as never as () => Promise<HostResult<never>>,
@@ -613,5 +621,118 @@ describe("approval: the proof of a prod or high-risk secret use (#3452)", () => 
     await expect(slice.proveVault("h", "act-1", "once")).rejects.toThrow(
       t("approvalDevices.noKeyHere"),
     );
+  });
+});
+
+describe("approval: the proof of a command that moves code or trust (#3453)", () => {
+  const COMMAND_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_COMMAND];
+  const PR = "https://github.com/acme/repo/pull/9";
+  const MERGE = {
+    cardId: "c1",
+    method: "squash",
+    confirm: true,
+    prUrl: PR,
+    headSha: "a".repeat(40),
+  };
+
+  test("a host that checks it gets a proof over the command and a hash of the payload, which the shell also gets", async () => {
+    const { slice, log, keyLog } = approval({ features: COMMAND_HOST });
+    const result = await slice.proveCommand("h", "card.pr.merge", MERGE);
+    const digest = commandDigest(MERGE);
+    const message = commandMessage({
+      keyId: "key-this",
+      daemonId: "daemon-1",
+      command: "card.pr.merge",
+      nonce: "nonce-1",
+      payloadHash: sha(digest),
+    });
+    expect(result).toEqual({
+      kind: "proof",
+      proof: { keyId: "key-this", nonce: "nonce-1", signature: `sig:${message}` },
+    });
+    expect(log.map((l) => l.type)).toEqual(["approval.list", "approval.challenge"]);
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "card.pr.merge" });
+    expect(keyLog.find((k) => k.op === "sign")?.args).toEqual(["daemon-1", message, "en", digest]);
+  });
+
+  test("a host that does not announce it, has no key enrolled, or an app with no key port gets none", async () => {
+    for (const setup of [
+      approval({ features: [FEATURE_APPROVAL_PROOF] }),
+      approval({ features: COMMAND_HOST, keys: "none" }),
+      approval({ features: COMMAND_HOST, list: { protectionOff: true, keys: [] } }),
+    ]) {
+      expect(await setup.slice.proveCommand("h", "card.pr.merge", MERGE)).toEqual({ kind: "none" });
+      expect(setup.keyLog.filter((k) => k.op === "sign")).toEqual([]);
+    }
+  });
+
+  test("a no in the system's dialog is a decline, and a device with no key for this host is told so", async () => {
+    const declined = approval({ features: COMMAND_HOST, signFails: "declined" });
+    expect(await declined.slice.proveCommand("h", "card.pr.merge", MERGE)).toEqual({
+      kind: "declined",
+    });
+    const keyless = approval({ features: COMMAND_HOST, local: null });
+    await expect(keyless.slice.proveCommand("h", "card.pr.merge", MERGE)).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
+    );
+  });
+
+  test("a merge payload names the head read now, carries the proof, and is a payload the host accepts as sent", async () => {
+    const { slice, log } = approval({ features: COMMAND_HOST });
+    const made = await slice.mergePayload("h", "c1", "squash");
+    expect(made.kind).toBe("payload");
+    const payload = made.kind === "payload" ? made.payload : {};
+    const { proof, ...bound } = payload as typeof MERGE & { proof: unknown };
+    expect(bound).toEqual(MERGE);
+    expect(proof).toEqual({
+      keyId: "key-this",
+      nonce: "nonce-1",
+      signature: expect.stringContaining("sig:"),
+    });
+    expect(log.map((l) => l.type)).toEqual(["card.pr.head", "approval.list", "approval.challenge"]);
+    expect(Command.safeParse({ id: "1", type: "card.pr.merge", payload }).success).toBe(true);
+  });
+
+  test("the proof is over the very payload that is sent, minus the proof", async () => {
+    const { slice, keyLog } = approval({ features: COMMAND_HOST });
+    await slice.mergePayload("h", "c1", "merge");
+    const sign = keyLog.find((k) => k.op === "sign");
+    expect(sign?.args[3]).toBe(commandDigest({ ...MERGE, method: "merge" }));
+  });
+
+  test("a host with no key enrolled still gets the head bound, and no challenge", async () => {
+    const { slice, log } = approval({
+      features: COMMAND_HOST,
+      list: { protectionOff: true, keys: [] },
+    });
+    expect(await slice.mergePayload("h", "c1", "merge")).toEqual({
+      kind: "payload",
+      payload: { ...MERGE, method: "merge" },
+    });
+    expect(log.map((l) => l.type)).toEqual(["card.pr.head", "approval.list"]);
+  });
+
+  test("a host from before the feature gets the plain payload and is asked nothing else", async () => {
+    const { slice, log } = approval({ features: [FEATURE_APPROVAL_PROOF] });
+    expect(await slice.mergePayload("h", "c1", "merge")).toEqual({
+      kind: "payload",
+      payload: { cardId: "c1", method: "merge", confirm: true },
+    });
+    expect(log).toEqual([]);
+  });
+
+  test("a no from the person stops the merge, and a head that cannot be read is an error", async () => {
+    const declined = approval({ features: COMMAND_HOST, signFails: "declined" });
+    expect(await declined.slice.mergePayload("h", "c1", "merge")).toEqual({ kind: "declined" });
+    const unreadable = approval({ features: COMMAND_HOST, refuse: "card.pr.head" });
+    await expect(unreadable.slice.mergePayload("h", "c1", "merge")).rejects.toThrow();
+  });
+
+  test("a host that checks proofs but not commands is one the app says so of; one that checks both, or one not known, is not", () => {
+    expect(approval({ features: [FEATURE_APPROVAL_PROOF] }).slice.commandsUnchecked("h")).toBe(
+      true,
+    );
+    expect(approval({ features: COMMAND_HOST }).slice.commandsUnchecked("h")).toBe(false);
+    expect(approval({ features: [] }).slice.commandsUnchecked("h")).toBe(false);
   });
 });
