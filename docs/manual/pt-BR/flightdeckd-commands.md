@@ -133,23 +133,6 @@ quando a sessão está ocupada e o texto espera o fim do turno. Com `--json` imp
 `queued`. Se o daemon cair depois que o texto saiu, a saída é `2` e o texto pode ou não ter entrado:
 olhe a sessão antes de enviar de novo.
 
-## fd session
-
-```sh
-fd session interrupted
-fd session summary fd-qa
-fd session files fd-qa --json
-```
-
-Lê uma sessão do daemon. `interrupted` lista as sessões que uma reinicialização do daemon interrompeu nas
-últimas 24 horas, uma por linha: nome, pasta, quanto tempo rodou, quando foi interrompida e a última coisa
-que você pediu. `summary <sessão>` mostra o que pediram à sessão, o que ela fez, os arquivos que tocou, o
-custo e o estado, a partir da transcrição (sem chamar o modelo). `files <sessão>` lista os arquivos que ela
-editou, com o número de edições e a última edição. A sessão é o nome ou o id; um nome que duas sessões
-dividem é recusado com os ids, e uma sessão que ainda não tem sessão do Claude não tem o que ler. Com
-`--json` cada verbo imprime o que o daemon devolveu: `{"sessions": [...]}`, o resumo ou `{"files": [...]}`.
-`--host <nome>` lê um host pareado. Estes verbos só leem; os que agem sobre uma sessão vêm em outra etapa.
-
 ## fd approvers
 
 ```sh
