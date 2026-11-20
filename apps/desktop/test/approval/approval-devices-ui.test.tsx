@@ -43,7 +43,7 @@ function panel(
     declined?: boolean;
     gate?: Promise<void>;
     older?: boolean;
-    unchecked?: Array<"merge" | "trust" | "bypass" | "resume" | "roots" | "harness">;
+    unchecked?: Array<"merge" | "trust" | "bypass" | "resume" | "roots" | "harness" | "plugins">;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
@@ -250,6 +250,27 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([OFF], "en", [], { unchecked: ["harness"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
     expect(screen.queryByText(/Claude Code setup/) === null).toBe(true);
+  });
+
+  test("a host that does not ask for a device to install or update a plugin says so, in both languages, and not when it has no device enrolled (#3516)", async () => {
+    panel([HERE], "en", [], { unchecked: ["plugins"] });
+    await settleMaybe(() => screen.queryByText(/install or update a plugin/) !== null);
+    expect(
+      screen.queryByText(/does not ask for a device to confirm installing or updating a plugin/) !==
+        null,
+    ).toBe(true);
+    cleanup();
+    panel([HERE], "pt-BR", [], { unchecked: ["plugins"] });
+    await settleMaybe(() => screen.queryByText(/instalar ou atualizar um plugin/) !== null);
+    expect(
+      screen.queryByText(
+        /não pede a confirmação de um dispositivo para instalar ou atualizar um plugin/,
+      ) !== null,
+    ).toBe(true);
+    cleanup();
+    panel([OFF], "en", [], { unchecked: ["plugins"] });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    expect(screen.queryByText(/install or update a plugin/) === null).toBe(true);
   });
 
   test("a host that does not ask for a device to trust a folder says so, in both languages, and only for that", async () => {

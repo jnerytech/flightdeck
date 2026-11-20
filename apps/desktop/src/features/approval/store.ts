@@ -14,6 +14,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_HARNESS,
+  FEATURE_APPROVAL_PLUGINS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
@@ -102,6 +103,20 @@ type ResumePayload =
     }
   | { kind: "declined" };
 
+/** What `plugins.install` and `plugins.update` send: the plugin or folder, the hashes and the scope (#3516). */
+export interface PluginBody {
+  plugin?: string;
+  dir?: string;
+  scope?: "user" | "project" | "local";
+  confirmHash: string;
+  acceptCommand?: string;
+}
+
+/** The payload of `plugins.install` or `plugins.update`, or the person's no (#3516). */
+type PluginPayload =
+  | { kind: "payload"; payload: PluginBody & { proof?: ApprovalProof } }
+  | { kind: "declined" };
+
 /** The feature a host announces for each command it guards (#3453). */
 const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "card.pr.merge": FEATURE_APPROVAL_COMMAND,
@@ -110,10 +125,19 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "autoapprove.resume": FEATURE_APPROVAL_RESUME,
   "roots.add": FEATURE_APPROVAL_ROOTS,
   "project.harness.apply": FEATURE_APPROVAL_HARNESS,
+  "plugins.install": FEATURE_APPROVAL_PLUGINS,
+  "plugins.update": FEATURE_APPROVAL_PLUGINS,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand = "merge" | "trust" | "bypass" | "resume" | "roots" | "harness";
+export type UncheckedCommand =
+  | "merge"
+  | "trust"
+  | "bypass"
+  | "resume"
+  | "roots"
+  | "harness"
+  | "plugins";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -649,6 +673,16 @@ export class ApprovalSlice {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...body, proof: proof.proof } : body,
     };
+  }
+
+  /** The payload of `plugins.install` (#3516): signed over the whole request when the host checks it. */
+  async pluginInstallPayload(hostId: string, body: PluginBody): Promise<PluginPayload> {
+    return { kind: "declined" };
+  }
+
+  /** The payload of `plugins.update` (#3516), as `pluginInstallPayload`. */
+  async pluginUpdatePayload(hostId: string, body: PluginBody): Promise<PluginPayload> {
+    return { kind: "declined" };
   }
 
   /**
