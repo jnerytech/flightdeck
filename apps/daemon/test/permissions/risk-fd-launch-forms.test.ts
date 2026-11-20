@@ -85,6 +85,9 @@ describe("risk rules: the CLI reached without its name in the line (#3566)", () 
         ["bun run start -- approve r1", "fd approve r1"],
         ["cd apps/daemon && bun run start ssh hostkey confirm h", "fd ssh hostkey confirm h"],
         ["bun run start fd session close s1", "fd session close s1"],
+        ["bun start persona remove qa", "fd persona remove qa"],
+        ["bun run --silent start approve r1", "fd approve r1"],
+        ["bun run --cwd apps/daemon start persona remove qa", "fd persona remove qa"],
       ]),
     ).toEqual([]);
   });
