@@ -15,13 +15,18 @@ interface Run {
   spawned: Array<{ path: string; args: string[]; options: unknown }>;
   stderr: string[];
   exits: number[];
-  ignored: string[][];
+  traps: Map<string, () => void>;
+  killed: string[];
   child: EventEmitter;
 }
 
 /** One launch with fakes for the process, the clock-free parts of Node and the child. */
 function run(name: Name, argv: string[], platform = "linux", arch = "x64"): Run {
-  const state: Run = { spawned: [], stderr: [], exits: [], ignored: [], child: new EventEmitter() };
+  const killed: string[] = [];
+  const child = Object.assign(new EventEmitter(), {
+    kill: (signal: string) => killed.push(signal),
+  });
+  const state: Run = { spawned: [], stderr: [], exits: [], traps: new Map(), killed, child };
   launch(name, {
     dir: DIR,
     platform,
@@ -33,7 +38,7 @@ function run(name: Name, argv: string[], platform = "linux", arch = "x64"): Run 
     },
     stderr: (line) => state.stderr.push(line),
     exit: (code) => state.exits.push(code),
-    ignoreSignals: (signals) => state.ignored.push(signals),
+    trap: (signal, handler) => state.traps.set(signal, handler),
   });
   return state;
 }
@@ -104,9 +109,17 @@ describe("npm launcher: what it runs (#3541)", () => {
     expect(r.spawned[0]?.options).toEqual({ stdio: "inherit" });
   });
 
-  test("the parent ignores Ctrl-C and a stop while the binary runs, so the binary decides the exit", () => {
+  test("Ctrl-C is left to the binary, which the terminal already told, and a stop is passed on to it", () => {
     const r = run("flightdeckd", []);
-    expect(r.ignored).toEqual([["SIGINT", "SIGTERM"]]);
+    r.traps.get("SIGINT")?.();
+    const afterInterrupt = [...r.killed];
+    r.traps.get("SIGTERM")?.();
+    expect([[...r.traps.keys()].sort(), afterInterrupt, r.killed, r.exits]).toEqual([
+      ["SIGINT", "SIGTERM"],
+      [],
+      ["SIGTERM"],
+      [],
+    ]);
   });
 });
 
@@ -134,6 +147,8 @@ describe("npm launcher: how it ends (#3541)", () => {
 
   test("a binary missing from the package gives one line with its path and exit 1", () => {
     const r = run("flightdeckd", []);
+    // An EventEmitter with no 'error' listener throws; the exits below show what the launcher did with it.
+    r.child.on("error", () => undefined);
     r.child.emit("error", Object.assign(new Error("spawn ENOENT"), { code: "ENOENT" }));
     expect([r.stderr, r.exits]).toEqual([
       [`flightdeckd: cannot run ${join(DIR, "flightdeckd-linux-x64")}: spawn ENOENT`],
