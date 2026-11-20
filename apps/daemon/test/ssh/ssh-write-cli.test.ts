@@ -27,7 +27,7 @@ const TARGETS = [target("t1", "prod"), target("t2", "twin"), target("t3", "twin"
 
 const OPEN: Handlers = {
   "ssh.list": () => ({ targets: TARGETS }),
-  "ssh.remove": () => undefined,
+  "ssh.remove": () => ({}),
   "ssh.import.apply": () => ({ created: [target("t9", "staging")], skipped: [] }),
 };
 
