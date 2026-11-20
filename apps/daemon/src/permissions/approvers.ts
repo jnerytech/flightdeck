@@ -35,6 +35,9 @@ export interface Asker {
   client: string;
 }
 
+/** How long the window of the first device stays open. */
+const ENROLL_WINDOW_MS = 10 * 60_000;
+
 /** Wrong codes one window takes before it closes. */
 const MAX_WRONG_CODES = 5;
 
@@ -72,6 +75,21 @@ export class Approvers {
   daemonId(): string {
     this.id ??= this.store.daemonId();
     return this.id;
+  }
+
+  /**
+   * The host terminal's `approvers enroll`: opens the window of the first device with the hash of `code`.
+   * Refused while a key is enrolled: only a key adds a key, and `approvers reset` clears them.
+   */
+  openEnrollment(code: string): Date {
+    if (this.store.keys().length > 0)
+      throw refuse(
+        "approval_enroll_has_keys",
+        "a device is enrolled already: add another from it, or run flightdeckd approvers reset to start over",
+      );
+    const until = new Date(this.opts.now().getTime() + ENROLL_WINDOW_MS);
+    this.store.openWindow(sha256Hex(code), until);
+    return until;
   }
 
   /** The enrolled keys, read from the store on every call. */
