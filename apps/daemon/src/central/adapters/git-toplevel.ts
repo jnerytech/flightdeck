@@ -4,6 +4,18 @@
  */
 import { whichOnPath } from "../../kernel/index.ts";
 
+/** The variables that choose which repository git looks at. */
+const REPO_SELECTORS = new Set([
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_INDEX_FILE",
+  "GIT_COMMON_DIR",
+  "GIT_OBJECT_DIRECTORY",
+]);
+
+/** A stalled mount or a locked repository must not hold the launch of claude for long. */
+const GIT_TIMEOUT_MS = 3000;
+
 export async function gitToplevel(cwd: string): Promise<string | null> {
   const git = whichOnPath("git");
   if (!git) return null;
@@ -16,6 +28,7 @@ export async function gitToplevel(cwd: string): Promise<string | null> {
     stdout: "pipe",
     stderr: "ignore",
     stdin: "ignore",
+    timeout: GIT_TIMEOUT_MS,
   });
   const [stdout, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
   const top = stdout.trim();

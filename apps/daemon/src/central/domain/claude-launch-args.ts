@@ -108,7 +108,8 @@ export function nameArgs(opts: {
   if (repo === "") return [];
   const name = opts.persona === null ? repo : `${repo}-${opts.persona}`;
   if (isWindowsShim(opts.claude, opts.platform) && !/^[A-Za-z0-9._-]+$/.test(name)) return [];
-  return ["--name", name];
+  // One argument: a folder called `--x` is then a value, never a flag.
+  return [`--name=${name}`];
 }
 
 /** A user name icacls can be given as one principal: no wildcard, SID marker, separator or list. */
