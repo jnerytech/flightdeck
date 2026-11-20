@@ -347,4 +347,11 @@ describe("the project verbs on the command line (issue #3515)", () => {
       host: "pi",
     });
   });
+
+  test("a Windows host's drive path is absolute there, though this machine would not say so", () => {
+    expect(parsed(["project", "stack", "C:\\work\\app", "--host", "winbox"])).toMatchObject({
+      projectPaths: ["C:\\work\\app"],
+      host: "winbox",
+    });
+  });
 });
