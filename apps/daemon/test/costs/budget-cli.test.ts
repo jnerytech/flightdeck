@@ -468,6 +468,12 @@ describe("the arguments of budget (issue #3460)", () => {
       "--limit-pct: this flag only applies to flightdeckd budget set-quota",
     ],
     [
+      "an empty --id, which would make a new budget instead of changing one",
+      [...SET, "--id", ""],
+      "--id: a budget id",
+    ],
+    ["a remove of an empty id", ["budget", "remove", ""], "missing the budget"],
+    [
       "--project on a list",
       ["budget", "list", "--project", "p"],
       "--project: this flag only applies to flightdeckd budget set and set-quota",
