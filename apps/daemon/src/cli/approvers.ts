@@ -24,11 +24,7 @@ export async function runApprovers(
   const config = await loadConfig(configPath(args));
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
-    const approvers = new Approvers(store.db, {
-      now: () => new Date(deps.now?.() ?? Date.now()),
-      mono: () => performance.now(),
-      random: () => randomBytes(24).toString("base64url"),
-    });
+    const approvers = new Approvers(store.db, { now: () => new Date(deps.now?.() ?? Date.now()) });
     const say = (text: string, json: unknown) =>
       deps.log.log(args.json ? JSON.stringify(json) : text);
     if (args.action === "reset") {

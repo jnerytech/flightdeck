@@ -3,9 +3,9 @@ import { generateKeyPairSync } from "node:crypto";
 import { join } from "node:path";
 import { Central } from "../../src/central/central.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import { Approvers } from "../../src/permissions/approvers.ts";
 import { keyIdOf } from "../../src/permissions/domain/approval-gate.ts";
 import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
-import { Approvers } from "../../src/permissions/approvers.ts";
 import { createPermissions } from "../../src/permissions/wiring.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { newManager, poll, tempDir } from "../support/helpers.ts";
@@ -113,7 +113,13 @@ describe("approval-reach: the approvers read the real clock and randomness when 
       },
       usage: { record: () => undefined },
     });
-    const request = { sessionKey: "s", requestId: "r", toolName: "Bash", input: {} };
+    const request = {
+      sessionKey: "s",
+      requestId: "r",
+      toolName: "Bash",
+      input: {},
+      risk: { level: "low" as const, reason: "x", network: false },
+    };
     expect(await autoApprove.decide({ ...request, cwd: "/elsewhere" })).toBeNull();
     expect(await autoApprove.decide({ ...request, cwd: "/p/card" })).toBeNull();
     expect(asked).toEqual(["/elsewhere", "/p/card"]);
