@@ -349,15 +349,22 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   board: async (args, deps) => {
     const { runBoardCli } = await import("../board/index.ts");
     const config = await localConfig(args);
+    // `watch` runs until Ctrl-C (or a stop of the process), and writes as the cards come.
+    // Only the stream listens: elsewhere Ctrl-C keeps its default, which ends the process.
+    const stop = new AbortController();
+    if (args.action === "watch")
+      for (const signal of ["SIGINT", "SIGTERM"] as const)
+        deps.onSignal(signal, async () => stop.abort());
     return reported(
       deps,
       await runBoardCli(
         {
-          action: "settings",
+          action: args.action === "watch" ? "watch" : "settings",
           ...(args.maxParallelRuns === undefined ? {} : { maxParallelRuns: args.maxParallelRuns }),
           ...(args.json ? { json: true } : {}),
         },
         config,
+        { signal: stop.signal, write: (line) => deps.log.log(line) },
       ),
     );
   },
