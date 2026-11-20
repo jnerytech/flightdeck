@@ -11,7 +11,7 @@ import type {
 } from "@flightdeck/protocol";
 
 export interface PersonaCliArgs {
-  action: "list" | "show" | "subagents" | "save" | "remove" | "reset" | "publish-agent";
+  action: "list" | "show" | "subagents" | "save" | "remove" | "reset" | "publish-agent" | "trust";
   /** `show`, `save`, `remove`, `reset`, `publish-agent`: the persona's id. */
   id?: string;
   /** `save`: the persona's fields. */
@@ -24,6 +24,8 @@ export interface PersonaCliArgs {
   tools?: string[];
   permissionMode?: PersonaInput["permissionMode"];
   icon?: string;
+  /** `trust --hash`: the start of the hash `persona list` showed. */
+  hash?: string;
   /** `publish-agent --confirm`. */
   confirm?: boolean;
   /** `list --scope`. */

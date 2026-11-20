@@ -66,6 +66,7 @@ export interface CliArgs {
     | "save"
     | "remove"
     | "publish-agent"
+    | "trust"
     | "diff"
     | "spec"
     | "review"
@@ -122,6 +123,8 @@ export interface CliArgs {
   tools?: string[];
   permissionMode?: string;
   icon?: string;
+  /** `persona trust --hash`: the start of the hash `persona list` showed. */
+  hash?: string;
   /** `persona list --scope <host|project|all>`. */
   scope?: "host" | "project" | "all";
   /** `action run <name>`. */
@@ -479,7 +482,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "persona";
     const action = subAction(
       reader,
-      ["list", "show", "subagents", "save", "remove", "reset", "publish-agent"],
+      ["list", "show", "subagents", "save", "remove", "reset", "publish-agent", "trust"],
       "invalid persona action",
     );
     args.action = action;
@@ -581,6 +584,11 @@ const HANDLERS: Record<string, Handler> = {
   "--icon": setValue((args, v) => {
     args.icon = v;
   }),
+  "--hash": setValue((args, v) => {
+    if (!/^[0-9a-f]{8,}$/i.test(v))
+      throw new Error(`--hash: at least 8 hex characters of the hash persona list shows\n${USAGE}`);
+    args.hash = v.toLowerCase();
+  }),
   "--language": setValue((args, v) => {
     if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR\n${USAGE}`);
     args.language = v;
@@ -669,6 +677,7 @@ function personaFlags(args: CliArgs): Array<[string, unknown, readonly string[]]
     ["--tools", args.tools, ["save"]],
     ["--permission-mode", args.permissionMode, ["save"]],
     ["--icon", args.icon, ["save"]],
+    ["--hash", args.hash, ["trust"]],
     // `--description` and `--confirm` are the card's too: only `persona` is checked here.
     ...(args.command === "persona"
       ? ([
@@ -702,8 +711,9 @@ function checkPersona(args: CliArgs): void {
     if (args.body !== undefined && args.bodyFile !== undefined)
       throw new Error(`--body or --body-file, not both\n${USAGE}`);
   }
-  if (args.action === "publish-agent" && args.projectPath === undefined)
+  if ((args.action === "publish-agent" || args.action === "trust") && args.projectPath === undefined)
     throw missing("--project-path");
+  if (args.action === "trust" && args.hash === undefined) throw missing("--hash");
 }
 
 export function parseArgs(argv: readonly string[]): CliArgs {

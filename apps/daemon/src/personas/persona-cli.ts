@@ -117,6 +117,8 @@ export async function runPersonaCli(
           });
           return args.json ? json(published) : said(`wrote ${published.path}`);
         }
+        case "trust":
+          return said("");
       }
     },
   });
