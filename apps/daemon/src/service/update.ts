@@ -280,7 +280,7 @@ export function requestShutdown(url: string, token: string, timeoutMs: number): 
     ws.addEventListener("message", (msg) => {
       const frame = parseJsonOr(ACK_FRAME, String(msg.data), null);
       if (frame?.type !== "ack") return;
-      if (frame.ok && frame.id === "1") send("2", "daemon.shutdown", {});
+      if (frame.ok && frame.id === "1") send("2", "daemon.shutdown", { confirm: true });
       else done(frame.ok === true);
     });
     ws.addEventListener("close", () => done(false));

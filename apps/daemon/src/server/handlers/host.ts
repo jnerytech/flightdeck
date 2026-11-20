@@ -60,9 +60,18 @@ export const hostHandlers = {
   "daemon.update.check": async (_payload, { server }) => {
     return await server.needIn("updates", "check").checkNow();
   },
-  "daemon.shutdown": (_payload, { server }) => {
+  "daemon.shutdown": (payload, { server }) => {
     const { onShutdown } = server.opts;
     if (!onShutdown) throw featureOff("shutdown");
+    // A service restarts the daemon, so a stop nobody asked for is a restart on the person's host
+    // (#3507). The caller says it was asked: `flightdeckd host stop` and the app do.
+    if (payload.confirm !== true) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "stopping the daemon needs confirm: true",
+        "shutdown_confirm",
+      );
+    }
     // Right after the ack is written (a microtask, not a timer tick that may come late).
     return afterAck(undefined, () => queueMicrotask(onShutdown));
   },

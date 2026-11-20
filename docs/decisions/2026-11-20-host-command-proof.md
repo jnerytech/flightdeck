@@ -53,7 +53,7 @@ they are. With no key enrolled nothing changes, as for every command of the gate
 | `project.harness.commit` | stays on transport and `confirm: true` |
 | `daemon.update.apply` | stays on `confirm: true`, no transport check added |
 | `service.install` | stays on `confirm: true`, no transport check added |
-| `daemon.shutdown` (not one of the seven) | stays open |
+| `daemon.shutdown` (not one of the seven) | takes `confirm: true` only, no proof and no transport check (amended 2026-11-20 by fd-coordinator) |
 
 The predicate follows the one of #3453: fail closed, a payload is gated unless its field is the narrowing
 value (`allow === false`). The gate reads the payload after the schema (`allow` is a required boolean in
@@ -112,10 +112,21 @@ coerced or odd value is never read as the narrowing one.
 
 It ends the daemon, and an installed service restarts it. The config-edit path of the next section ends with
 it, but a session with a shell can `kill` the daemon anyway. A far token holder gains a restart on a host with
-a service and a stopped daemon on one without: a denial of service, not a capability. It stays open; a
-transport check on it is a candidate for the person who wants the far holder kept out, and it is not made
-here. The record names it because it was asked, and because the answer rests on the same criterion:
-nothing is widened.
+a service and a stopped daemon on one without: a denial of service, not a capability. It does not take the
+proof and gets no transport check, because nothing is widened. It was the one command of the group with no
+guard at all, though, and every neighbour that restarts or changes the host asks for `confirm: true`
+(`daemon.update.apply`, `service.install`, `host.bypass`). It now does too (amended on 2026-11-20): the handler
+refuses a payload without `confirm: true` with `invalid_state` and the reason `shutdown_confirm`, after the
+`featureOff` check. The field is optional on the wire, so the schema stays additive (`protocol.md`), and the
+refusal is the daemon's. `flightdeckd host stop` and the service update (`requestShutdown` in
+`service/update.ts`) send it. The app has no caller of this command today; a screen that adds one sends
+`confirm: true` after its own question.
+
+What an older caller does: a `flightdeckd` older than this change sends `{}` to a new daemon and is refused
+with `shutdown_confirm`; a newer one sends `{ confirm: true }` to an older daemon, whose schema is strict and
+refuses the payload. In both cases `requestShutdown` answers false and the stop falls back to ending the
+service's task or unit and the lock, as it already does for a daemon that is not there, so no host is left
+unstoppable.
 
 ## What it does not stop
 
