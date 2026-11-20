@@ -171,7 +171,7 @@ export function updateOf(args: CardCliArgs) {
 
 /** `message`: the text, which the daemon refuses when empty; nothing is sent then. */
 export function textOf(args: CardCliArgs): string {
-  if (args.text) return args.text;
+  if (args.text?.trim()) return args.text;
   throw new Refusal("card message: the text is empty");
 }
 
@@ -185,6 +185,7 @@ export function diffLines({ base, files }: CardDiff): string[] {
     ...files.flatMap((file) => {
       const what =
         file.status === "renamed" && file.oldPath ? `renamed from ${file.oldPath}` : file.status;
+      const shown = !file.secret && !file.tooLarge && !file.binary;
       const detail = file.secret
         ? "may hold a credential: not shown"
         : file.tooLarge
@@ -194,7 +195,8 @@ export function diffLines({ base, files }: CardDiff): string[] {
             : `+${file.additions} -${file.deletions}`;
       return [
         `--- ${file.path} (${what}, ${detail})`,
-        ...file.hunks.flatMap((hunk) => [
+        // The daemon sends no lines for a file it hides; the reader never relies on that alone.
+        ...(shown ? file.hunks : []).flatMap((hunk) => [
           hunk.header,
           ...hunk.lines.map((line) => `${line.op}${line.text}`),
         ]),
@@ -223,7 +225,7 @@ export function reviewLines(id: string, review: CardReviewResult): string[] {
   ];
   return [
     `review of ${id}: ${review.state}${notes.length ? ` (${notes.join(", ")})` : ""}`,
-    review.summary,
+    ...review.summary.split("\n"),
     ...(review.anchored > 0
       ? [
           `${review.anchored} ${plural(review.anchored, "finding", "findings")} anchored to the diff as a review comment`,
