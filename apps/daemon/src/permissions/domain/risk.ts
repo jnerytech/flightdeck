@@ -8,12 +8,14 @@ import { isInside } from "../../kernel/index.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
   flightdeckWords,
+  HIDDEN_VERB,
   hidesItsVerb,
   type Invocation,
   invocations,
   isCliProgram,
   program,
   RUNNERS,
+  runnerHidesAVerb,
   SHELLS,
   shellReadings,
   startsCli,
@@ -285,23 +287,6 @@ const TEAM_CHANGES = [
   "close",
   "message",
 ];
-
-/** A runner (`bunx fd persona $V qa`, `sh -c 'fd ...'`) given the CLI and a noun or verb the shell expands. */
-const runnerHidesAVerb = (prog: string, args: string[]) => {
-  if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const at = words.findIndex((w, i) => startsCli(words, i) && !program(w).includes("$"));
-  // Only a noun that has verbs: what follows `bin.ts` in `bun build bin.ts --outfile $OUT` is no command.
-  return at >= 0 && hidesItsVerb(words.slice(at + 1), true);
-};
-
-/**
- * A CLI line whose name, noun or verb the reader cannot see (#3559): the shell expands it before it runs. Every
- * rule reads the verb from the words, so a line that hides it would pass as an ordinary shell command; it is
- * high instead.
- */
-const HIDDEN_VERB =
-  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
 
 /**
  * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as

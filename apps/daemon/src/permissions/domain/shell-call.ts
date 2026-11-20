@@ -542,3 +542,20 @@ export const startsCli = (words: string[], i: number) =>
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
+
+/** A runner (`bunx fd persona $V qa`, `sh -c 'fd ...'`) given the CLI and a noun or verb the shell expands. */
+export const runnerHidesAVerb = (prog: string, args: string[]) => {
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const at = words.findIndex((w, i) => startsCli(words, i) && !program(w).includes("$"));
+  // Only a noun that has verbs: what follows `bin.ts` in `bun build bin.ts --outfile $OUT` is no command.
+  return at >= 0 && hidesItsVerb(words.slice(at + 1), true);
+};
+
+/**
+ * A CLI line whose name, noun or verb the reader cannot see (#3559): the shell expands it before it runs. Every
+ * rule reads the verb from the words, so a line that hides it would pass as an ordinary shell command; it is
+ * high instead.
+ */
+export const HIDDEN_VERB =
+  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
