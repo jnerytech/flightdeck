@@ -294,6 +294,9 @@ const OPTIONS_WITH_VALUE = [
   "--limit-usd",
   "--limit-pct",
   "--id",
+  "--resume",
+  "--cols",
+  "--rows",
 ];
 
 /** The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`), unquoted. */

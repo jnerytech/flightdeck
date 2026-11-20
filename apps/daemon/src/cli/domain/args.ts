@@ -19,7 +19,12 @@ import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
-import { readTerminal } from "./terminal-args.ts";
+import {
+  readTerminal,
+  TERMINAL_FLAGS,
+  takeTerminalFlags,
+  terminalProblem,
+} from "./terminal-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 
@@ -571,6 +576,7 @@ const HANDLERS: Record<string, Handler> = {
   ...BUDGET_FLAGS,
   ...PLUGINS_FLAGS,
   ...SSH_FLAGS,
+  ...TERMINAL_FLAGS,
   ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
@@ -693,6 +699,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
     );
+  takeTerminalFlags(args);
   if (
     !["requests", "message", "autoapprove", "vault"].includes(args.command) &&
     args.session !== undefined
@@ -763,6 +770,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     vaultProblem(args) ??
     pluginsProblem(args) ??
     sshProblem(args) ??
+    terminalProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
@@ -778,6 +786,6 @@ export function parseArgs(argv: readonly string[]): CliArgs {
 export const VALUE_FLAGS = Object.keys(HANDLERS).filter(
   (name) =>
     name.startsWith("--") &&
-    !["--help", "--version"].includes(name) &&
+    !["--help", "--version", "--"].includes(name) &&
     !FLAGS.has(HANDLERS[name] as Handler),
 );

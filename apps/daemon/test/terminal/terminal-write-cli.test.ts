@@ -31,7 +31,7 @@ const SESSIONS = {
 const OPEN: Handlers = {
   "terminal.open": () => OPENED,
   "terminal.openSession": () => OPENED,
-  "terminal.close": () => undefined,
+  "terminal.close": () => ({}),
   "terminal.settings": (payload) => ({
     enabled: (payload as { enabled: boolean }).enabled,
     max: 4,
@@ -55,29 +55,27 @@ describe("flightdeckd terminal open (issue #3538)", () => {
     expect(sent(daemon, "terminal.open")).toEqual([{ cwd: "/home/pi/app", cols: 80, rows: 24 }]);
   });
 
-  test("the words after -- are the program and its arguments, and --cols and --rows set the size", async () => {
+  test("the program and its arguments go to the daemon as a list, never as one shell line", async () => {
+    // `flightdeckd()` appends `--config` after the words, which a line with `--` would read as a program word.
+    const { runTerminalCli } = await import("../../src/terminal/index.ts");
     const daemon = fakeDaemon(OPEN);
-    const run = await flightdeckd(
-      [
-        "terminal",
-        "open",
-        "--cwd",
-        "/srv",
-        "--cols",
-        "120",
-        "--rows",
-        "40",
-        "--",
-        "bash",
-        "-lc",
-        "ls -la",
-      ],
-      daemon.port,
+    const { code } = await runTerminalCli(
+      { action: "open", cwd: "/srv", cols: 120, rows: 40, command: ["bash", "-lc", "ls -la"] },
+      config(daemon.port),
     );
-    expect(run.code).toBe(0);
+    expect(code).toBe(0);
     expect(sent(daemon, "terminal.open")).toEqual([
       { cwd: "/srv", cols: 120, rows: 40, command: ["bash", "-lc", "ls -la"] },
     ]);
+  });
+
+  test("--cols and --rows set the size", async () => {
+    const daemon = fakeDaemon(OPEN);
+    await flightdeckd(
+      ["terminal", "open", "--cwd", "/srv", "--cols", "120", "--rows=40"],
+      daemon.port,
+    );
+    expect(sent(daemon, "terminal.open")).toEqual([{ cwd: "/srv", cols: 120, rows: 40 }]);
   });
 
   test("--claude opens Claude Code here, with the session to resume and the persona when given", async () => {
@@ -215,7 +213,7 @@ describe("the arguments of the terminal write verbs (issue #3538)", () => {
     ).toMatchObject({
       command: "terminal",
       action: "open",
-      cwd: "/srv",
+      terminalCwd: "/srv",
       terminalCols: 90,
       terminalArgv: ["sh", "--login"],
     });

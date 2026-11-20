@@ -77,6 +77,8 @@ export interface CliArgs {
     | "delete"
     | "discard"
     | "settings"
+    | "open"
+    | "open-session"
     | "watch"
     | "subagents"
     | "save"
@@ -171,6 +173,26 @@ export interface CliArgs {
   sshFingerprint?: string;
   /** `ssh import apply --alias <name>...`: the `~/.ssh/config` names to turn into destinations. */
   sshAliases?: string[];
+  /** `terminal open --cwd <folder>`, `open-session --session <name|id>` and `settings --enable --confirm`, kept apart from the flags other commands also read. */
+  terminalCwd?: string;
+  terminalSession?: string;
+  terminalPersona?: string;
+  terminalConfirm?: true;
+  /** `terminal close <terminal>`: the terminal to close, its id. */
+  terminalId?: string;
+  /** `terminal open|open-session --cols <n> --rows <n>`: the size the terminal opens at. */
+  terminalCols?: number;
+  terminalRows?: number;
+  /** `terminal open ... -- <program> <argument>...`: what runs in the terminal, never through a shell. */
+  terminalArgv?: string[];
+  /** `terminal open --claude [--resume <id>] [--persona <id>]`: Claude Code in the folder, not a shell. */
+  terminalClaude?: true;
+  terminalResume?: string;
+  /** `terminal close --kill`: end the process, not only detach. */
+  terminalKill?: true;
+  /** `terminal settings --enable|--disable`: whether the host's terminals are on. */
+  terminalEnable?: true;
+  terminalDisable?: true;
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */
