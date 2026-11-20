@@ -352,8 +352,8 @@ describe("flightdeckd session verbs that set a mode or a persona (issue #3514)",
   });
 
   for (const [delivery, words] of [
-    ["queued", "the message waits behind a turn or a request"],
-    ["terminal", "the message waits for the terminal session to take it"],
+    ["queued", "the message waits for the session's turn"],
+    ["terminal", "the message went to the terminal session"],
   ] as const) {
     test(`a ${delivery} delivery says so`, async () => {
       const daemon = fakeDaemon({
