@@ -13,13 +13,13 @@ describe("session name: `<repo>-<persona>` for a launch of flightdeckd claude (#
   test("a persona puts its id after the repo, joined by a hyphen", () => {
     // twice: no counter, no time in it
     expect([named("flightdeck", "architect"), named("flightdeck", "architect")]).toEqual([
-      ["--name", "flightdeck-architect"],
-      ["--name", "flightdeck-architect"],
+      ["--name=flightdeck-architect"],
+      ["--name=flightdeck-architect"],
     ]);
   });
 
   test("no persona: the repo alone", () => {
-    expect(named("flightdeck", null)).toEqual(["--name", "flightdeck"]);
+    expect(named("flightdeck", null)).toEqual(["--name=flightdeck"]);
   });
 
   test("a name the person passed wins, in any of its three spellings", () => {
@@ -35,7 +35,7 @@ describe("session name: `<repo>-<persona>` for a launch of flightdeckd claude (#
   });
 
   test("a name text the terminal would act on has its control characters taken out", () => {
-    expect(named("evil\u001b[2Jrepo\u202e", null)).toEqual(["--name", "evil[2Jrepo"]);
+    expect(named("evil\u001b[2Jrepo\u202e", null)).toEqual(["--name=evil[2Jrepo"]);
   });
 
   test("a repo name with nothing printable left adds no name", () => {
@@ -44,11 +44,11 @@ describe("session name: `<repo>-<persona>` for a launch of flightdeckd claude (#
 
   test("a Windows shim gets a name only when cmd.exe cannot read it as anything but text", () => {
     const shim = { claude: "C:\\npm\\claude.cmd", platform: "win32" as const };
-    expect(named("my-repo.v2", "qa", [], shim)).toEqual(["--name", "my-repo.v2-qa"]);
+    expect(named("my-repo.v2", "qa", [], shim)).toEqual(["--name=my-repo.v2-qa"]);
     expect(named("a & calc", "qa", [], shim)).toEqual([]);
     expect(
       named("a & calc", "qa", [], { claude: "C:\\bin\\claude.exe", platform: "win32" }),
-    ).toEqual(["--name", "a & calc-qa"]);
+    ).toEqual(["--name=a & calc-qa"]);
   });
 });
 
@@ -63,5 +63,18 @@ describe("session name: the repo is the folder of the git toplevel (#3432)", () 
 
   test("a trailing separator does not make the name empty", () => {
     expect(repoFolder("/home/me/notes/", null)).toBe("notes");
+  });
+});
+
+describe("session name: a folder named like a flag stays a value (#3432)", () => {
+  test("the name is one --name=<name> argument, so a folder called --x is never a flag", () => {
+    const [arg, ...rest] = nameArgs({
+      repo: "--dangerously-skip-permissions",
+      persona: null,
+      user: [],
+      claude: "claude",
+      platform: "linux",
+    });
+    expect({ arg, rest }).toEqual({ arg: "--name=--dangerously-skip-permissions", rest: [] });
   });
 });

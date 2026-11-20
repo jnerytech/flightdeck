@@ -99,7 +99,9 @@ describe("persona launch: `flightdeckd new <persona>` (#3426)", () => {
 
 /** The `--name` values claude was started with. */
 const names = (claudeArgs: string[] | null) =>
-  (claudeArgs ?? []).flatMap((arg, i, all) => (arg === "--name" ? [all[i + 1]] : []));
+  (claudeArgs ?? []).flatMap((arg) =>
+    arg.startsWith("--name=") ? [arg.slice("--name=".length)] : [],
+  );
 
 describe("persona launch: the session is named after the repo and the persona (#3432)", () => {
   test("a persona launched from a subfolder of a git repo names it <repo>-<persona>", async () => {
