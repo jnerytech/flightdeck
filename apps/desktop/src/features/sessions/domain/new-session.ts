@@ -62,16 +62,19 @@ function rememberedOr<T>(value: T | undefined, offered: readonly T[], fallback: 
   return value !== undefined && offered.includes(value) ? value : fallback;
 }
 
-/** The mode and model the form starts from: what the last session chose, while the form still offers it. */
+/**
+ * The mode and model the form starts from: what the last session chose, while the form still offers
+ * it; else the mode the host starts its sessions in (bypass where the host allows it, #3427).
+ */
 export function startChoices(
   last: { mode?: PermissionMode; model?: string } | undefined,
-  _hostMode: PermissionMode = "default",
+  hostMode: PermissionMode = "default",
 ): {
   mode: PermissionMode;
   model: string;
 } {
   return {
-    mode: rememberedOr(last?.mode, MODES, "default"),
+    mode: rememberedOr(last?.mode, MODES, hostMode),
     model: rememberedOr<string>(last?.model, CLAUDE_MODELS, ""),
   };
 }
