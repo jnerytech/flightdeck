@@ -45,6 +45,9 @@ export const hostHandlers = {
         "bypass_confirm",
       );
     }
+    // #3507: with a device enrolled, turning bypass on takes its proof; the refusal above comes first so an
+    // allow not confirmed does not use up a challenge. Turning it off lowers risk and stays open.
+    server.opts.approvers?.requireCommandProof("host.bypass", payload);
     await bypass.set(allow);
     return { allowBypassPermissions: allow };
   },

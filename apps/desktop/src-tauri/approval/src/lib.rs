@@ -27,6 +27,8 @@ pub enum Kind {
 pub enum CommandAsk {
     /// `card.pr.merge`: this pull request, at this head commit, by this method.
     PrMerge { url: String, head: String, method: String },
+    /// `host.bypass` with `allow: true`: sessions of this host may start with every permission check off (#3507).
+    Bypass,
     /// `project.trust.set` with `trusted: true`: this folder's own hooks and servers run with no prompt.
     TrustProject { path: String },
 }
@@ -209,7 +211,7 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
     if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove | Kind::Command) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
     }
-    if kind == Kind::EnrollAdd && !plain(host) {
+    if matches!(kind, Kind::EnrollAdd | Kind::Command) && !plain(host) {
         return Err("the text to sign names a host that is not an id".into());
     }
     // What the allow carries besides the allow: the hashes of nothing say it carries nothing.
@@ -267,6 +269,14 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
                 quoted(url)
             );
             Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
+        }
+        // Only the turn-on is signed (turning it off is open and never asks a key), and only once confirmed.
+        "host.bypass" => {
+            let on = |key: &str| fields.get(key) == Some(&serde_json::Value::Bool(true));
+            if fields.len() != 2 || !on("allow") || !on("confirm") {
+                return Err("a bypass switch is signed only to turn it on, confirmed, with no other field".into());
+            }
+            Ok((CommandAsk::Bypass, "{\"allow\":true,\"confirm\":true}".to_string()))
         }
         "project.trust.set" => {
             if fields.len() != 2 {
@@ -419,6 +429,14 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
                 short(head)
             ),
+            Some(CommandAsk::Bypass) if pt => format!(
+                "Deixar as sessões do host {} rodarem sem nenhuma verificação de permissão? Continue só se você acabou de ligar isso no Flightdeck.",
+                short(&ask.host)
+            ),
+            Some(CommandAsk::Bypass) => format!(
+                "Let sessions on host {} run with every permission check off? Continue only if you just turned this on in Flightdeck.",
+                short(&ask.host)
+            ),
             Some(CommandAsk::TrustProject { path }) if pt => format!(
                 "Confiar em uma pasta de projeto? Os hooks e os servidores dela, e os de tudo o que há dentro dela, vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck.\n\"{path}\""
             ),
@@ -441,6 +459,8 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
         }
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
+        (Kind::Command, false) if ask.command == Some(CommandAsk::Bypass) => ("Turn on", "Cancel"),
+        (Kind::Command, true) if ask.command == Some(CommandAsk::Bypass) => ("Ligar", "Cancelar"),
         (Kind::Command, false) => ("Merge", "Cancel"),
         (Kind::Command, true) => ("Mesclar", "Cancelar"),
         (_, false) => ("Allow", "Cancel"),
@@ -893,6 +913,20 @@ mod tests {
         assert_eq!(confirm_labels(&merge_ask(), "pt-BR").0, "Mesclar");
     }
 
+    /// The payload a bypass turn-on signs, and the hash both sides share (the protocol test asserts the same canonical text).
+    const BYPASS_PAYLOAD: &str = "{\"allow\":true,\"confirm\":true}";
+    const BYPASS_HASH: &str = "2ce79890e0ec3a64a198f2d1f21fab775c0f33e6bbccb797ed642ba413136f67";
+
+    fn bypass_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "host.bypass".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::Bypass),
+        }
+    }
+
     /// The payload that trusts a folder, in canonical form with a path of the characters a real one holds
     /// (a backslash, accents), and the hash both sides share (the protocol test asserts the same two literals).
     const TRUST_PAYLOAD: &str = "{\"path\":\"C:\\\\Users\\\\José\\\\código\",\"trusted\":true}";
@@ -906,6 +940,66 @@ mod tests {
             also: Also::default(),
             command: Some(CommandAsk::TrustProject { path: "C:\\Users\\José\\código".into() }),
         }
+    }
+
+    #[test]
+    fn a_bypass_turn_on_is_read_from_its_payload_in_any_key_order() {
+        let me = own();
+        assert_eq!(sha256_hex(BYPASS_PAYLOAD), BYPASS_HASH);
+        let text = command(&me, DAEMON, "host.bypass", BYPASS_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(BYPASS_PAYLOAD)), Ok(bypass_ask()));
+        let shuffled = "{\"confirm\":true,\"allow\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(bypass_ask()));
+    }
+
+    #[test]
+    fn a_bypass_payload_that_is_not_a_confirmed_turn_on_is_not_signed() {
+        let me = own();
+        for payload in [
+            "{\"allow\":false,\"confirm\":true}",
+            "{\"allow\":true,\"confirm\":false}",
+            "{\"allow\":true}",
+            "{\"allow\":\"true\",\"confirm\":true}",
+            "{\"allow\":true,\"confirm\":true,\"path\":\"/\"}",
+            "{\"allow\":true,\"confirm\":true,\"proof\":{}}",
+            "[{\"allow\":true,\"confirm\":true}]",
+        ] {
+            // The payload guard itself, not the hash check that would refuse it anyway.
+            assert!(read_command("host.bypass", payload).is_err(), "read: {payload}");
+            let text = command(&me, DAEMON, "host.bypass", payload);
+            assert!(describe_with(&text, DAEMON, &me, Some(payload)).is_err(), "signed: {payload}");
+        }
+    }
+
+    #[test]
+    fn a_bypass_payload_is_signed_only_under_its_own_command_name() {
+        let me = own();
+        let under_merge = command(&me, DAEMON, "card.pr.merge", BYPASS_PAYLOAD);
+        assert!(describe_with(&under_merge, DAEMON, &me, Some(BYPASS_PAYLOAD)).is_err());
+        let merge_under_bypass = command(&me, DAEMON, "host.bypass", MERGE_PAYLOAD);
+        assert!(describe_with(&merge_under_bypass, DAEMON, &me, Some(MERGE_PAYLOAD)).is_err());
+        // The signer hashes the canonical form it builds, so a spaced spelling of the same payload is the same ask.
+        let spaced = "{\"allow\": true, \"confirm\": true}";
+        let text = command(&me, DAEMON, "host.bypass", BYPASS_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(spaced)), Ok(bypass_ask()));
+    }
+
+    #[test]
+    fn a_command_dialog_does_not_name_a_host_that_is_not_an_id() {
+        let me = own();
+        let host = "ab\ncd-padding";
+        let text = command(&me, host, "host.bypass", BYPASS_PAYLOAD);
+        assert!(describe_with(&text, host, &me, Some(BYPASS_PAYLOAD)).is_err());
+    }
+
+    #[test]
+    fn the_dialog_of_a_bypass_turn_on_names_the_host_and_has_its_own_buttons() {
+        let (_, en) = confirm_text(&bypass_ask(), "en");
+        assert!(en.contains("permission check") && en.contains(&DAEMON[..8]), "{en}");
+        let (_, pt) = confirm_text(&bypass_ask(), "pt-BR");
+        assert!(pt.contains("verificação de permissão") && pt.contains("Flightdeck"), "{pt}");
+        assert_eq!(confirm_labels(&bypass_ask(), "en").0, "Turn on");
+        assert_eq!(confirm_labels(&bypass_ask(), "pt-BR").0, "Ligar");
     }
 
     #[test]

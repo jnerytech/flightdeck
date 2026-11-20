@@ -64,6 +64,11 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   commit ou squash). Cancele e nada é enviado. Se alguém enviar commits ao PR depois que o app o leu, o host
   recusa o merge e diz que o PR mudou: olhe-o de novo. Um host que ainda não pede o dispositivo no merge mostra
   um aviso na própria página: atualize-o.
+- **Ignorar permissões.** Com um dispositivo cadastrado, **Permitir sessões sem pedidos** na página do host pede
+  mais uma confirmação em uma janela do sistema, e a janela nomeia o host. Cancele e nada é enviado.
+  **Desligar** não pede nada. Em um host que confere isso, uma sessão não consegue mais religar o Ignorar permissões sozinha, porque
+  não tem um dispositivo para assinar. Um host que ainda não pede o dispositivo aí mostra um aviso na própria
+  página: atualize-o.
 - **Confiar em um projeto.** Com um dispositivo cadastrado, **Confiar neste projeto** pede mais uma confirmação
   em uma janela do sistema. A janela nomeia a pasta e diz que os hooks e os servidores dela vão rodar sem pedir
   confirmação. Cancele e nada é enviado. Revogar a confiança não pede nada. Um host que ainda não pede o

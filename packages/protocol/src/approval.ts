@@ -17,22 +17,37 @@ export const FEATURE_APPROVAL_VAULT = "approval-vault";
 /** The host checks a signed proof of the person's device before a command that moves code or trust (#3453). */
 export const FEATURE_APPROVAL_COMMAND = "approval-command";
 
+/** The host checks a signed proof of the person's device before it turns bypass on with `host.bypass` (#3507). */
+export const FEATURE_APPROVAL_BYPASS = "approval-bypass";
+
 /** The host checks a signed proof of the person's device before it trusts a project folder (#3453). */
 export const FEATURE_APPROVAL_TRUST = "approval-trust";
 
 /** The commands whose payload an enrolled device signs (#3453); one list for the host and the app. */
-export const PROOF_COMMANDS = ["card.pr.merge", "project.trust.set", "autoapprove.resume"] as const;
+export const PROOF_COMMANDS = [
+  "card.pr.merge",
+  "project.trust.set",
+  "autoapprove.resume",
+  "host.bypass",
+] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
+
+/** The payload field whose value `false` lowers risk, so the command is open for it: the rest of a gated command is gated. */
+const NARROWING_FIELD: Partial<Record<string, string>> = {
+  "project.trust.set": "trusted",
+  "host.bypass": "allow",
+};
 
 /**
  * Whether `command` with this payload needs a device's proof when a key is enrolled. Fails closed:
- * a trust set is open only for `trusted: false`, which lowers trust; a missing or odd value is gated.
+ * a trust set or a bypass switch is open only for the value `false`, which lowers risk; a missing or
+ * odd value is gated.
  */
 export function commandNeedsProof(command: string, payload: unknown): boolean {
   if (!(PROOF_COMMANDS as readonly string[]).includes(command)) return false;
-  if (command !== "project.trust.set") return true;
-  const trusted = (payload as { trusted?: unknown } | null | undefined)?.trusted;
-  return trusted !== false;
+  const field = NARROWING_FIELD[command];
+  if (field === undefined) return true;
+  return (payload as Record<string, unknown> | null | undefined)?.[field] !== false;
 }
 
 /** The text a device hashes for a command: the payload without its `proof`, as canonical JSON. */
