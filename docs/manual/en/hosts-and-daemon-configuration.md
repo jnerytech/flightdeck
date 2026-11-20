@@ -253,22 +253,32 @@ the last session stops and when the daemon exits.
 
 ## Sessions without permission prompts
 
-By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
-To allow it, open the host's page and use **Sessions without permission prompts → Allow sessions
-without prompts**; the app asks you to confirm and names the host. The choice is saved in the
-host's config (`allowBypassPermissions`) and applies at once. With it on:
+By default a host starts its sessions in **Bypass permissions** (every tool runs without asking):
+a new host's config has `allowBypassPermissions` on and `defaultPermissionMode` set to
+`bypassPermissions`. To get the permission prompts back, open the host's page and use **Sessions
+without permission prompts → Turn off**. The choice is saved in the host's config and applies at
+once. A host whose config already said off keeps it: nothing is changed for you. With it on:
 
-- **New session** offers "Bypass permissions: no prompts" in the permission mode list. Picking it
-  asks again every time you press Create session, naming the host and the folder.
+- **New session** starts in "Bypass permissions: no prompts" and creates the session at once. If
+  the last session you started chose another mode, that mode is kept. Picking Bypass by hand from
+  another mode still asks every time you press Create session, naming the host and the folder.
+- A team member or a card with no permission mode of its own starts in Bypass too. A mode you set,
+  or a stricter mode of a persona, wins over the default.
 - The mode list in the message box of an open session offers every mode, including Bypass
   permissions and modes looser than the one the session started with. Switching to Bypass asks
   each time, naming the host and the session.
+- A session started in a terminal with `flightdeckd claude` gets `--permission-mode
+  bypassPermissions` too, unless you pass your own `--permission-mode` or
+  `--dangerously-skip-permissions`, or the persona's mode is stricter. Under root it adds nothing
+  and says so, because Claude Code refuses bypass there.
 - Sessions started after the switch is on can be switched to Bypass; one that was already running
   keeps what it started with (the Claude Agent SDK needs to be told at start).
 
-With it off (the default) the daemon refuses to start a session in Bypass, and an open session
-can never be made more permissive than the mode it started with. A persona's permission mode
-still counts when it is stricter. Turning the switch off asks nothing.
+With it off the daemon refuses to start a session in Bypass, new sessions start in Default, and an
+open session can never be made more permissive than the mode it started with. A persona's
+permission mode still counts when it is stricter. Turning the switch off asks nothing, and it is
+the only way back: there is no per-session opt-out. A fix run of a board card is unattended, so it
+never starts in Bypass by default.
 
 A session in Bypass permissions asks for nothing: Claude Code skips the permission prompt for every
 tool, including the ones that otherwise always ask (such as discarding a card through the
