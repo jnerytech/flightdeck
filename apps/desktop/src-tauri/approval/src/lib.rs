@@ -268,8 +268,40 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
         }
+        "project.trust.set" => {
+            if fields.len() != 2 {
+                return Err("the trust payload has the wrong fields".into());
+            }
+            let path = fields
+                .get("path")
+                .and_then(serde_json::Value::as_str)
+                .ok_or("the trust payload has no text for path")?;
+            // Revoking trust lowers risk and takes no proof: only the grant is signed.
+            if fields.get("trusted") != Some(&serde_json::Value::Bool(true)) {
+                return Err("only trusting a folder is signed".into());
+            }
+            if !is_shown_path(path) {
+                return Err("the folder is not a path the dialog can show".into());
+            }
+            let canonical = format!(
+                "{{\"path\":{},\"trusted\":true}}",
+                serde_json::to_string(path).unwrap_or_default()
+            );
+            Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
+        }
         _ => Err("this command is not one this key signs".into()),
     }
+}
+
+/// A folder path the dialog can show whole: not empty, not long, and no character that breaks a line, pads
+/// the text or reorders it (controls, line and paragraph separators, zero-width and text-direction marks).
+fn is_shown_path(path: &str) -> bool {
+    !path.is_empty()
+        && path.len() <= 512
+        && !path.chars().any(|c| {
+            c.is_control()
+                || matches!(c, '\u{061c}' | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{feff}')
+        })
 }
 
 /// `https://<host>/<owner>/<repo>/pull/<number>` in the characters of a path: nothing that can pad a line or
@@ -373,7 +405,12 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
                 short(head)
             ),
-            Some(CommandAsk::TrustProject { .. }) => String::new(),
+            Some(CommandAsk::TrustProject { path }) if pt => format!(
+                "Confiar na pasta {path}? Os hooks e os servidores dela vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck."
+            ),
+            Some(CommandAsk::TrustProject { path }) => format!(
+                "Trust the folder {path}? Its hooks and servers will run with no prompt. Continue only if you just pressed Trust in Flightdeck."
+            ),
             None => String::new(),
         },
     };
@@ -385,6 +422,9 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
 /// does not add a device.
 pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
+            if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
         (Kind::Command, false) => ("Merge", "Cancel"),
