@@ -36,7 +36,7 @@ export class ArgReader {
   }
 }
 
-export const invalid = (what: string, got: string | undefined, none = "(none)") =>
+const invalid = (what: string, got: string | undefined, none = "(none)") =>
   new Error(`${what}: ${got ?? none}\n${USAGE}`);
 
 /** The word after a command, which must be one of `allowed`. */

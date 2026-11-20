@@ -5,6 +5,7 @@
 import { isAbsolute } from "node:path";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
+import { oneOf } from "./vault-args.ts";
 
 /** The parsed arguments this check reads: `CliArgs` fits it. */
 export interface PluginsArgs {
@@ -88,3 +89,19 @@ export function readPlugins(args: CliArgs, reader: ArgReader): void {
   else if (action === "marketplace-update" && optional)
     args.marketplace = operand(reader, "the marketplace name");
 }
+
+/** The flags of the plugin writes, for the parser's table of flags. */
+export const PLUGINS_FLAGS: Record<
+  string,
+  (args: CliArgs, reader: unknown, value: () => string) => void
+> = {
+  "--confirm-hash": (args, _reader, value) => {
+    args.confirmHash = value();
+  },
+  "--accept-command": (args, _reader, value) => {
+    args.acceptCommand = value();
+  },
+  "--plugin-scope": (args, _reader, value) => {
+    args.pluginScope = oneOf("--plugin-scope", value(), ["user", "project", "local"]);
+  },
+};

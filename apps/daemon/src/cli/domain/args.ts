@@ -11,7 +11,7 @@ import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
-import { pluginsProblem, readPlugins } from "./plugins-args.ts";
+import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { teamProblem } from "./team-args.ts";
@@ -578,6 +578,7 @@ const HANDLERS: Record<string, Handler> = {
     args.limit = n;
   }),
   ...BUDGET_FLAGS,
+  ...PLUGINS_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -632,15 +633,6 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--dir": setValue((args, v) => {
     args.pluginDir = v;
-  }),
-  "--confirm-hash": setValue((args, v) => {
-    args.confirmHash = v;
-  }),
-  "--accept-command": setValue((args, v) => {
-    args.acceptCommand = v;
-  }),
-  "--plugin-scope": setValue((args, v) => {
-    args.pluginScope = oneOf("--plugin-scope", v, ["user", "project", "local"]);
   }),
   "--config": setValue((args, v) => {
     args.config = v;

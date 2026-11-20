@@ -55,14 +55,27 @@ fd plugins detail deploy-tools@acme
 fd plugins preview deploy-tools@acme --json
 fd plugins preview --dir ~/work/my-plugin
 fd plugins preview-update deploy-tools@acme --host pi
+fd plugins install deploy-tools@acme --confirm-hash <hash from preview>
+fd plugins update deploy-tools@acme --confirm-hash <hash from preview-update>
+fd plugins uninstall deploy-tools@acme --confirm
+fd plugins pin deploy-tools@acme
+fd plugins marketplace-add acme/plugins --confirm
 ```
 
-`fd plugins` reads the same plugins from a terminal. This first slice only reads: it installs, updates and removes nothing. `<plugin>` is `name@marketplace`, and `--host <name>` asks another host.
+`fd plugins` reads and changes the same plugins from a terminal. `<plugin>` is `name@marketplace`, and `--host <name>` asks another host.
 
 - **`list`:** one line per plugin: `installed`, its version, scope, `enabled` or `disabled` and the version it is pinned to; then `available` for what the marketplaces offer, and the `marketplace` lines. A host with none says `no plugins`.
 - **`detail <plugin>`:** where an installed plugin is, whether it is pinned, its content `hash`, whether it needs your attention and how many hooks, monitors, skills, agents, commands and MCP servers it brings. An id that is not installed exits `1`.
 - **`preview <plugin>`:** what an install would bring, one line per hook (the ones that can decide for you are marked), monitor, skill, agent, command and MCP server, and the `hash` of that content. A plugin whose source is not on this host prints `not local` and no hash; it exits `0`.
 - **`preview --dir <folder>`:** the same for a local folder, plus the result of its validation. The folder must be inside the allowed folders of the host; outside it exits `1` with `forbidden_cwd`. Give a plugin or `--dir`, never both. A relative folder is read from your shell's folder; with `--host` it must be absolute.
 - **`preview-update <plugin>`:** the installed copy against the marketplace's (it first refreshes the marketplace's listing, so it reaches the network): both versions and hashes, and what was added or removed in each kind of content, or `unchanged`.
+
+- **`install <plugin>` or `install --dir <folder>`:** installs what the preview showed. It needs `--confirm-hash` with the `hash` the preview printed; if the content changed since, nothing is installed and the exit code is `1`. `--plugin-scope user|project|local` picks the scope. A plugin that runs a command first prints the command and its `sha256` and installs nothing: read it, then repeat the same line with `--accept-command <sha256>`.
+- **`update <plugin>`:** the same, with the hash `preview-update` printed. A pinned plugin is left as it is.
+- **`uninstall <plugin>`:** removes it; it needs `--confirm`. `--plugin-scope` says which copy.
+- **`pin <plugin>`, `unpin <plugin>`:** fix a plugin at its version, or let updates through again.
+- **`marketplace-add <source>`, `marketplace-remove <name>`:** need `--confirm`. `marketplace-update [<name>]` refreshes the listing and needs nothing.
+
+`--confirm` and `--confirm-hash` are only words you type. They stop a slip, not a session: a session that runs `install`, `update`, `uninstall`, `marketplace-add` or `marketplace-remove` from its shell is asked about, as a high-risk command. A change that gets no answer exits `2` and says it may or may not have happened: `fd plugins list` shows which.
 
 With `--json` each verb prints the daemon's answer. A request that gets no answer exits `2`.
