@@ -14,6 +14,7 @@ import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
+import { readSession } from "./session-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
@@ -358,6 +359,7 @@ const HANDLERS: Record<string, Handler> = {
   },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
+  session: readSession,
   requests: (args) => {
     startCommand(args, "requests");
   },
@@ -642,6 +644,19 @@ const HANDLERS: Record<string, Handler> = {
   }),
 };
 
+/** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
+const JSON_COMMANDS =
+  "card board history team persona quota usage budget costs roi host sessions session requests send approve deny approvers rules autoapprove vault plugins".split(
+    " ",
+  );
+const HOST_COMMANDS = "host sessions session requests send approve deny vault plugins".split(" ");
+
+function refuseOutside(flag: string, commands: readonly string[], command: string): void {
+  if (commands.includes(command)) return;
+  const list = `${commands.slice(0, -1).join(", ")} and ${commands[commands.length - 1]}`;
+  throw new Error(`${flag}: this flag only applies to flightdeckd ${list}\n${USAGE}`);
+}
+
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
   const reader = new ArgReader(argv);
@@ -663,44 +678,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       throw new Error(`${flag} needs no value\n${USAGE}`);
     handler(args, reader, value);
   }
-  if (
-    args.json &&
-    ![
-      "card",
-      "board",
-      "history",
-      "team",
-      "persona",
-      "quota",
-      "usage",
-      "budget",
-      "costs",
-      "roi",
-      "host",
-      "sessions",
-      "requests",
-      "send",
-      "approve",
-      "deny",
-      "approvers",
-      "rules",
-      "autoapprove",
-      "vault",
-      "plugins",
-    ].includes(args.command)
-  )
-    throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove, vault and plugins\n${USAGE}`,
-    );
-  if (
-    args.host !== undefined &&
-    !["host", "sessions", "requests", "send", "approve", "deny", "vault", "plugins"].includes(
-      args.command,
-    )
-  )
-    throw new Error(
-      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve, deny, vault and plugins\n${USAGE}`,
-    );
+  if (args.json) refuseOutside("--json", JSON_COMMANDS, args.command);
+  if (args.host !== undefined) refuseOutside("--host", HOST_COMMANDS, args.command);
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (

@@ -126,7 +126,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -630,6 +630,20 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runSessionsCli } = await import("../sessions/index.ts");
     return asking(args, deps, (config, remote) =>
       runSessionsCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
+    );
+  },
+  session: async (args, deps) => {
+    const { runSessionCli } = await import("../sessions/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runSessionCli(
+        {
+          action: args.action as "interrupted" | "summary" | "files",
+          ...(args.sessionRef === undefined ? {} : { session: args.sessionRef }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+        remote ? { remote } : {},
+      ),
     );
   },
   requests: async (args, deps) => {

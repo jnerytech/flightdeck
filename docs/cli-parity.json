@@ -345,10 +345,14 @@
   "session.clearPersona": {},
   "session.close": {},
   "session.create": {},
-  "session.files": {},
+  "session.files": {
+    "cli": "session"
+  },
   "session.fork": {},
   "session.interrupt": {},
-  "session.interrupted": {},
+  "session.interrupted": {
+    "cli": "session"
+  },
   "session.list": {
     "cli": "sessions"
   },
@@ -362,7 +366,9 @@
   "session.setModel": {},
   "session.sleep": {},
   "session.subscribe": {},
-  "session.summary": {},
+  "session.summary": {
+    "cli": "session"
+  },
   "session.unsubscribe": {},
   "sessions.watch": {
     "cli": "requests"

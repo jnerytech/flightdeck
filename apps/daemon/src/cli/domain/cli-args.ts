@@ -40,6 +40,7 @@ export interface CliArgs {
     | "roi"
     | "host"
     | "sessions"
+    | "session"
     | "requests"
     | "send"
     | "approve"
@@ -117,6 +118,8 @@ export interface CliArgs {
     | "report"
     | "rules"
     | "preview"
+    | "interrupted"
+    | "files"
     | "detail"
     | "preview-update"
     | "install"
@@ -136,6 +139,8 @@ export interface CliArgs {
   host?: string;
   /** `send <session> <text>`: the session that gets the text, its name or its id. */
   sendTo?: string;
+  /** `session summary|files <session>`: the session to read, its name or its id. */
+  sessionRef?: string;
   /** `approve|deny <request>`: the id of the permission request. */
   requestId?: string;
   /** `approve|deny --message`: what the answer tells Claude. */

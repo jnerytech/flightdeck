@@ -76,7 +76,7 @@ describe("flightdeckd plugins install and update (issue #3516)", () => {
     const add = await runPluginsCli(
       {
         action: "marketplace-add",
-        marketplace: "https://user:tok3n@example.com/acme/p",
+        source: "https://user:tok3n@example.com/acme/p",
         confirm: true,
       },
       config(daemon.port),
