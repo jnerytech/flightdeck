@@ -287,7 +287,7 @@ describe("approval-command: a command that moves code or trust takes the proof o
       payload: Record<string, unknown>,
       over: { signedFor?: string; signedPayload?: Record<string, unknown>; nonce?: string } = {},
     ): ApprovalProof => {
-      const nonce = over.nonce ?? t.nonces.issue("command", undefined, 1);
+      const nonce = over.nonce ?? t.nonces.issue("command", command, 1);
       const message = commandMessage({
         keyId: t.phone.keyId,
         daemonId: "daemon-1",
