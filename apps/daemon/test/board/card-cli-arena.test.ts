@@ -278,12 +278,13 @@ describe("card dismiss-unblocked (issue #3454)", () => {
 describe("a write that got no answer says its result is unknown (issue #3454)", () => {
   test("every one of the new writes, so nobody retries blindly", async () => {
     const silent = fakeDaemon({});
-    for (const args of [
+    const writes: CardCliArgs[] = [
       { action: "start-arena", id: "c1", variants: ["a", "b"] },
       { action: "choose-variant", id: "c1", variant: "v1", confirm: true },
       { action: "check-loop", id: "c1", loop: "on" },
       { action: "dismiss-unblocked", id: "c1" },
-    ] as const) {
+    ];
+    for (const args of writes) {
       const result = await runCardCli(args, config(silent.port), { timeoutMs: 200 });
       expect(result.code).toBe(2);
       expect(text(result)).toContain("may or may not have been");
