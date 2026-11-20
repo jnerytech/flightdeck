@@ -488,6 +488,11 @@ describe("the arguments of budget (issue #3460)", () => {
     ],
     ["a remove of an empty id", ["budget", "remove", ""], "missing the budget"],
     [
+      "an --id before a remove, which would name two budgets",
+      ["--id", "keep", "budget", "remove", "other"],
+      "--id: this flag only applies to flightdeckd budget set and set-quota",
+    ],
+    [
       "--project on a list",
       ["budget", "list", "--project", "p"],
       "--project: this flag only applies to flightdeckd budget set and set-quota",
