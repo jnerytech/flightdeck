@@ -38,7 +38,10 @@ function approval(
       over.keys === "none"
         ? undefined
         : {
-            get: async (id) => (keyLog.push({ op: "get", args: [id] }), local),
+            get: async (id) => {
+              keyLog.push({ op: "get", args: [id] });
+              return local;
+            },
             create: async (id) => {
               keyLog.push({ op: "create", args: [id] });
               local = KEY;
@@ -200,7 +203,7 @@ describe("approval: this device's key on a host's page (#3439)", () => {
       publicKey: KEY.publicKey,
       codeHash: sha("the-code"),
     });
-    expect(keyLog.map((k) => k.op)).toEqual(["create", "sign"]);
+    expect(keyLog.map((k) => k.op)).toEqual(["get", "create", "sign"]);
     expect(log.map((l) => l.type)).toEqual(["approval.challenge", "approval.enroll"]);
     expect(log[0]?.payload).toEqual({ purpose: "enroll" });
     expect(log[1]?.payload).toEqual({
