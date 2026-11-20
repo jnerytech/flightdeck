@@ -37,26 +37,26 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - name: Instalar dependências
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Conferir a tag com a versão do produto
+      - name: Check the tag against the product version
         run: bun run release:version "$TAG"
 
-      - name: Daemons (Windows, Linux x64 e arm64)
+      - name: Daemons (Windows, Linux x64 and arm64)
         run: bun run build:daemon
 
-      - name: Assinar os daemons
+      - name: Sign the daemons
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bun run release:sign
 
-      - name: Tarball do npm (launcher e os três daemons)
+      - name: npm tarball (launcher and the three daemons)
         run: bun run release:npm
 
       # What a person does with the tarball, into a temporary prefix: both commands print the version.
-      - name: Instalar o tarball num prefixo temporário
+      - name: Install the tarball into a temporary prefix
         run: |
           version="${TAG#v}"
           tarball="dist/flightdeckd-${version}.tgz"
@@ -111,7 +111,7 @@ jobs:
 
       # Built, signed and packed once, on Linux (the `daemons` job): the installers and the assets
       # carry exactly those bytes.
-      - name: Daemons, assinaturas e tarball do npm (do job daemons)
+      - name: Daemons, signatures and npm tarball (from the daemons job)
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: daemons

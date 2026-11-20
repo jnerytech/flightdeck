@@ -44,9 +44,9 @@ function launch(name, deps) {
   const args = name === "fd" ? ["fd", ...deps.argv] : deps.argv;
   const child = deps.spawn(target, args, { stdio: "inherit" });
   // The terminal sends Ctrl-C to the binary too, so the launcher only has to stay alive; a stop sent
-  // to the launcher alone is passed on, so a plain `kill` still ends the command.
+  // to the launcher alone (a plain `kill`, a closed terminal) is passed on, so the command still ends.
   deps.trap("SIGINT", () => undefined);
-  deps.trap("SIGTERM", () => child.kill("SIGTERM"));
+  for (const signal of ["SIGTERM", "SIGHUP"]) deps.trap(signal, () => child.kill(signal));
   child.on("error", (error) => {
     deps.stderr(`flightdeckd: cannot run ${target}: ${error.message}`);
     deps.exit(1);
