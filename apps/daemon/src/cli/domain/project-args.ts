@@ -3,7 +3,7 @@
  * `args.ts` adds the usage text to the problem this names.
  */
 
-import { isAbsolute } from "node:path";
+import { posix, win32 } from "node:path";
 import { HARNESS_PREVIEW_PARTS, HARNESS_TEMPLATE_ID } from "@flightdeck/protocol";
 import type { HarnessPart, ProjectCliArgs } from "../../projects/index.ts";
 import { type ArgReader, subAction } from "./arg-reader.ts";
@@ -77,7 +77,10 @@ export function projectProblem(args: ProjectArgs): string | undefined {
     if (args.projectTemplate !== undefined && !HARNESS_TEMPLATE_ID.test(args.projectTemplate))
       return "--template: a template id is lower case letters, digits and dashes (up to 40)";
   }
-  if (args.host !== undefined && paths.some((path) => !isAbsolute(path)))
+  if (
+    args.host !== undefined &&
+    paths.some((path) => !posix.isAbsolute(path) && !win32.isAbsolute(path))
+  )
     return "project: on another host the folder must be an absolute path (it is read there, not here)";
   return undefined;
 }
