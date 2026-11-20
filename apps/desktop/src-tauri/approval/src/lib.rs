@@ -293,14 +293,28 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
     }
 }
 
-/// A folder path the dialog can show whole: not empty, not long, and no character that breaks a line, pads
-/// the text or reorders it (controls, line and paragraph separators, zero-width and text-direction marks).
+/// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
+/// control, no blank or invisible character, no space but the plain one and never two in a row or at an end,
+/// so it cannot pad the text, continue its sentences or reorder it.
 fn is_shown_path(path: &str) -> bool {
-    !path.is_empty()
+    let absolute = path.starts_with('/')
+        || path.starts_with("\\\\")
+        || matches!(path.as_bytes(), [d, b':', b'\\' | b'/', ..] if d.is_ascii_alphabetic());
+    absolute
         && path.len() <= 512
+        && !path.starts_with(' ')
+        && !path.ends_with(' ')
+        && !path.contains("  ")
         && !path.chars().any(|c| {
             c.is_control()
-                || matches!(c, '\u{061c}' | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{feff}')
+                || (c.is_whitespace() && c != ' ')
+                || matches!(
+                    c,
+                    '\u{00ad}' | '\u{034f}' | '\u{061c}' | '\u{115f}' | '\u{1160}' | '\u{180e}'
+                        | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{206f}'
+                        | '\u{2800}' | '\u{3164}' | '\u{fe00}'..='\u{fe0f}' | '\u{feff}' | '\u{ffa0}'
+                        | '\u{fff9}'..='\u{fffc}' | '\u{e0000}'..='\u{e007f}'
+                )
         })
 }
 
@@ -406,10 +420,10 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 short(head)
             ),
             Some(CommandAsk::TrustProject { path }) if pt => format!(
-                "Confiar na pasta {path}? Os hooks e os servidores dela vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck."
+                "Confiar em uma pasta de projeto? Os hooks e os servidores dela vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck.\n\"{path}\""
             ),
             Some(CommandAsk::TrustProject { path }) => format!(
-                "Trust the folder {path}? Its hooks and servers will run with no prompt. Continue only if you just pressed Trust in Flightdeck."
+                "Trust a project folder? Its hooks and servers will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
             ),
             None => String::new(),
         },
