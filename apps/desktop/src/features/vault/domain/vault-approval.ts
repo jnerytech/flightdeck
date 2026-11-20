@@ -95,6 +95,8 @@ export function actionPolicy(deps: {
     const approved = async (answer: VaultAnswer) => {
       // The person said no to the device's own dialog (#3452): the host is told no, nothing is delivered.
       if (ruled && (await deps.approve?.(context, answer)) === "declined") {
+        // Nothing the person refused covers the run's next secret.
+        grants.delete(runKey);
         return { kind: "deny", reason: "you declined the confirmation on this device" } as const;
       }
       return { kind: "deliver" } as const;
