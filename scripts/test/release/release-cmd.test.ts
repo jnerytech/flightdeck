@@ -374,7 +374,7 @@ describe("release: back to the branch the run started on (#572)", () => {
 
 describe("release: after the PR merged", () => {
   const merged = {
-    main: { "packages/protocol": "0.37.0", "apps/daemon": "0.37.0", "apps/desktop": "0.37.0" },
+    main: Object.fromEntries(PACKAGES.map((p) => [p, "0.37.0"])),
   };
 
   test("checks the surface, tags and closes, in that order, writing nothing", async () => {
