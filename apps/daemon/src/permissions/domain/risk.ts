@@ -245,6 +245,14 @@ const TEAM_CHANGES = [
   "message",
 ];
 
+/** A runner (`bunx fd persona $V qa`, `sh -c 'fd ...'`) given the CLI and a noun or verb the shell expands. */
+const runnerHidesAVerb = (prog: string, args: string[]) => {
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const at = words.findIndex((w) => isCliProgram(program(w)) && !program(w).includes("$"));
+  return at >= 0 && hidesItsVerb(words.slice(at + 1), false);
+};
+
 /**
  * A CLI line whose name, noun or verb the reader cannot see (#3559): the shell expands it before it runs. Every
  * rule reads the verb from the words, so a line that hides it would pass as an ordinary shell command; it is
@@ -475,7 +483,11 @@ function invocationRisks(call: Invocation, piped: boolean): Candidate[] {
   const { prog, args, sudo } = call;
   const out: Candidate[] = [];
   if (sudo) out.push(["high", "sudo"]);
-  if (call.hidden || (isCliProgram(prog) && hidesItsVerb(args, call.unresolved)))
+  if (
+    call.hidden ||
+    (isCliProgram(prog) && hidesItsVerb(args, call.unresolved)) ||
+    runnerHidesAVerb(prog, args)
+  )
     out.push(["high", HIDDEN_VERB]);
   if (piped && SHELLS.has(prog)) out.push(["high", `pipe para ${prog}`]);
   for (const rule of DANGEROUS) {

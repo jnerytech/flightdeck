@@ -196,49 +196,86 @@ export const SHELLS = new Set([
 ]);
 
 /** The names `scripts/build-daemon.ts` gives the compiled daemon, one per target. */
-const COMPILED_CLI = /^flightdeckd-(?:linux|windows)-(?:x64|arm64)$/;
-const CLI_NAMES = [
-  "fd",
-  "flightdeckd",
-  "bin.ts",
-  ...["linux", "windows"].flatMap((os) =>
-    ["x64", "arm64"].map((cpu) => `flightdeckd-${os}-${cpu}`),
-  ),
-];
+const COMPILED_CLI = ["linux", "windows"].flatMap((os) =>
+  ["x64", "arm64"].map((cpu) => `flightdeckd-${os}-${cpu}`),
+);
+const CLI_PROGRAMS = ["fd", "flightdeckd", "bin.ts", ...COMPILED_CLI];
+/** What a glob may expand to: the names above, and the launchers `program()` strips the suffix of. */
+const CLI_FILES = CLI_PROGRAMS.flatMap((name) => ["", ".exe", ".cmd", ".ps1"].map((s) => name + s));
 
 /** A program word that is one variable, which `invocations` reads as any program (`invocations` cuts the closing brace off `${BIN}`). */
 const BARE_VARIABLE = /^\$\{?\w+\}?$/;
 
+/** The end of the bracket expression that opens at `at` (`[ab]`, `[!a-c]`, `[[:lower:]]`), or -1 when it never closes. */
+function endOfBrackets(pattern: string, at: number): number {
+  let i = at + 1;
+  if ("!^".includes(pattern.charAt(i))) i++;
+  if (pattern.charAt(i) === "]") i++;
+  for (; i < pattern.length; i++) {
+    if (pattern.startsWith("[:", i)) {
+      const close = pattern.indexOf(":]", i + 2);
+      if (close >= 0) i = close + 1;
+    } else if (pattern.charAt(i) === "]") return i;
+  }
+  return -1;
+}
+
 /**
- * Whether a program word the shell expands (`f[d]`, `fl*htdeckd`, `f{d,d}`, `fd${IFS}persona`) may become the CLI
- * (#3559). A glob or a brace list is matched against the CLI's names; text after a `$` is anything, so only what
- * stands before it is. A word that fails to read as a pattern may be anything.
+ * Whether the shell's glob `pattern` (`*`, `?`, one bracket expression as one character) may match all of `name`.
+ * No RegExp: the classic two-pointer walk takes time in the product of the two lengths, however many `*` it holds.
+ */
+function globMatches(pattern: string, name: string): boolean {
+  const tokens: string[] = [];
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern.charAt(i);
+    const end = c === "[" ? endOfBrackets(pattern, i) : -1;
+    if (end < 0) tokens.push(c === "*" || c === "?" ? c : `=${c}`);
+    else {
+      tokens.push("?");
+      i = end;
+    }
+  }
+  let t = 0;
+  let n = 0;
+  let star = -1;
+  let resume = 0;
+  while (n < name.length) {
+    const token = tokens[t];
+    if (token === "*") {
+      star = t++;
+      resume = n;
+    } else if (token === "?" || token === `=${name.charAt(n)}`) {
+      t++;
+      n++;
+    } else if (star >= 0) {
+      t = star + 1;
+      n = ++resume;
+    } else return false;
+  }
+  while (tokens[t] === "*") t++;
+  return t === tokens.length;
+}
+
+/**
+ * Whether a program word the shell expands (`f[d]`, `fl*htdeckd`, `f{d,d}`, `f{d..d}`, `fd${IFS}persona`) may become
+ * the CLI (#3559). A glob or a brace list is matched against the CLI's names; text after a `$` or a brace range is
+ * anything, so only what stands before it is. A bracket that never closes is a plain character (`[ -f x ]`).
  */
 function mayBeCli(word: string): boolean {
-  const dollar = word.indexOf("$");
-  const literal = dollar < 0 ? word : word.slice(0, dollar);
+  const range = word.search(/\{[^{}]*\.\./);
+  const open = [word.indexOf("$"), range].filter((i) => i >= 0);
+  const cut = open.length > 0 ? Math.min(...open) : -1;
+  const literal = cut < 0 ? word : word.slice(0, cut);
   const parts = literal.split(/[{},]/);
   const candidates =
     literal.includes("{") || literal.includes(",")
       ? [...parts, ...parts.slice(1).map((p) => parts[0] + p)]
       : [literal];
-  try {
-    return candidates.some((c) => {
-      const source = c
-        .replace(/[.+^()|\\]/g, "\\$&")
-        .replace(/\*/g, ".*")
-        .replace(/\?/g, ".");
-      const pattern = new RegExp(`^(?:${source})${dollar < 0 ? "$" : ""}`);
-      return CLI_NAMES.some((name) => pattern.test(name));
-    });
-  } catch {
-    return true;
-  }
+  return candidates.some((c) => CLI_FILES.some((name) => globMatches(cut < 0 ? c : `${c}*`, name)));
 }
 
 /** A program name that is the Flightdeck CLI (source, compiled or launcher), or a variable that may hold it. */
-export const isCliProgram = (name: string) =>
-  ["fd", "flightdeckd", "bin.ts"].includes(name) || COMPILED_CLI.test(name) || name.includes("$");
+export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || name.includes("$");
 
 /**
  * What a segment runs, past `sudo`, `env X=1`, `timeout 5`, a subshell or brace group, a redirection and the
@@ -250,14 +287,22 @@ export function invocations(segment: string[]): Invocation[] {
     (w) => w !== "",
   );
   const { at, sudo } = programStart(words);
-  const prog = program(words[at] ?? "");
+  const written = words[at] ?? "";
+  const prog = program(written);
   const args = words.slice(at + 1);
   const expanded = /[$*?[{,]/.test(prog) && !BARE_VARIABLE.test(prog) && mayBeCli(prog);
   const hidden = expanded ? { hidden: true } : {};
   if (!prog.includes("$")) {
-    return expanded
-      ? [{ prog: "flightdeckd", args, sudo, unresolved: false, ...hidden }]
-      : [{ prog, args, sudo, unresolved: false }];
+    if (expanded) return [{ prog: "flightdeckd", args, sudo, unresolved: false, ...hidden }];
+    // Outside quotes a backslash escapes the next character (`f\d` is `fd`), and `program` reads it as a folder:
+    // the word without its backslashes is a second reading.
+    const escaped = program(written.replace(/\\/g, ""));
+    return escaped === prog
+      ? [{ prog, args, sudo, unresolved: false }]
+      : [
+          { prog, args, sudo, unresolved: false },
+          { prog: escaped, args, sudo, unresolved: false },
+        ];
   }
   return [
     { prog: "flightdeckd", args, sudo, unresolved: true, ...hidden },
@@ -406,6 +451,9 @@ export function shellReadings(args: string[]): string[][] {
 
 /** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
 const VERB_NOUNS = [
+  "card",
+  "history",
+  "approvers",
   "persona",
   "team",
   "quota",
@@ -426,7 +474,7 @@ const VERB_NOUNS = [
  * (Braces are already cut off the word by `invocations`, which leaves the comma or the dots of the expansion.)
  */
 export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
-  const expands = (word: string | undefined) => /[$*?[{,]|\.\./.test(word ?? "");
+  const expands = (word: string | undefined) => /[$*?[{,]|\w\.\.\w/.test(word ?? "");
   return shellReadings(args).some((own) => {
     const [command, verb] = flightdeckWords(own);
     return (
