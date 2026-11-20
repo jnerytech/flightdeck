@@ -30,12 +30,13 @@ export function recapLines(recap: SessionRecap): string[] {
     recap.files.length === 0 ? null : recap.files.join(", "),
     recap.filesMore > 0 ? `(${recap.filesMore} more)` : null,
   ].filter((part) => part !== null);
+  const cost = recap.costUsd === null ? "-" : "$" + recap.costUsd.toFixed(2);
   return [
     `state: ${recap.state}`,
     `asked: ${orDash(recap.asked)}`,
     `done: ${orDash(recap.done)}`,
     `files: ${files.length === 0 ? "-" : files.join(" ")}`,
-    `cost: ${recap.costUsd === null ? "-" : `$${recap.costUsd.toFixed(2)}`}`,
+    `cost: ${cost}`,
     ...(recap.question === null ? [] : [`question: ${recap.question}`]),
   ];
 }

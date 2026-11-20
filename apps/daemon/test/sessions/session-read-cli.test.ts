@@ -88,7 +88,7 @@ describe("flightdeckd session interrupted (issue #3514)", () => {
   });
 
   test("a request that carries terminal controls is printed without them", async () => {
-    const hostile = { ...INTERRUPTED, lastRequest: "ok\u001b[2Jgone‮x" };
+    const hostile = { ...INTERRUPTED, lastRequest: "ok\u001b[2Jgone\u202ex" };
     const daemon = fakeDaemon({ ...OPEN, "session.interrupted": () => ({ sessions: [hostile] }) });
     const run = await flightdeckd(["session", "interrupted"], daemon.port);
     expect(run.out.join("\n")).toContain("last: ok [2Jgone x");
