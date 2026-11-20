@@ -8,9 +8,12 @@ import { isInside } from "../../kernel/index.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
   flightdeckWords,
-  invocation,
+  type Invocation,
+  invocations,
+  isCliProgram,
   program,
   RUNNERS,
+  SHELLS,
   shellArguments,
   unquoted,
 } from "./shell-call.ts";
@@ -58,20 +61,6 @@ export const READ_TOOLS: Record<string, string[]> = {
 export const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 export const NETWORK_TOOLS = new Set(["WebFetch", "WebSearch"]);
 
-/** Programs that read or run what a pipe hands them. */
-const SHELLS = new Set([
-  "sh",
-  "bash",
-  "zsh",
-  "dash",
-  "ksh",
-  "fish",
-  "pwsh",
-  "powershell",
-  "cmd",
-  "iex",
-  "invoke-expression",
-]);
 /** Programs that talk to the network (beyond the spec: they never go automatic either). */
 const NETWORK_PROGRAMS = new Set([
   "curl",
@@ -164,11 +153,10 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
 /** Whether the command runs `fd`/`flightdeckd` with one of `verbs`, directly or through a runtime or a shell given the text. */
 function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  if (["fd", "flightdeckd"].includes(prog))
-    return verbs.includes(flightdeckWords(shellArguments(args))[0] ?? "");
+  if (isCliProgram(prog)) return verbs.includes(flightdeckWords(shellArguments(args))[0] ?? "");
   if (!RUNNERS.includes(prog)) return false;
   const names = words.map((w) => program(w));
-  const runsCli = names.some((n) => ["fd", "flightdeckd", "bin.ts"].includes(n));
+  const runsCli = names.some((n) => isCliProgram(n));
   return runsCli && words.some((w) => verbs.includes(w));
 }
 
@@ -198,7 +186,7 @@ function endsACard(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
   const loopOn = (all: string[]) => all.includes("check-loop") && all.includes("on");
-  if (["fd", "flightdeckd"].includes(prog)) {
+  if (isCliProgram(prog)) {
     const own = shellArguments(args);
     const [command, action, , switchTo] = flightdeckWords(own);
     return (
@@ -209,7 +197,7 @@ function endsACard(prog: string, args: string[]): boolean {
     );
   }
   if (!RUNNERS.includes(prog)) return false;
-  const runsCli = words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  const runsCli = words.some((w) => isCliProgram(program(w)));
   return (
     runsCli &&
     words.includes("card") &&
@@ -227,14 +215,14 @@ function resumesWithPower(prog: string, args: string[]): boolean {
     all.some(
       (w) => w === "--force" || w === "--permission-mode" || w.startsWith("--permission-mode="),
     );
-  if (["fd", "flightdeckd"].includes(prog)) {
+  if (isCliProgram(prog)) {
     const own = shellArguments(args);
     const [command, action] = flightdeckWords(own);
     return command === "history" && action === "resume" && raised(own);
   }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  const runsCli = words.some((w) => isCliProgram(program(w)));
   const resumes = words.some((w, i) => w === "history" && words[i + 1] === "resume");
   return runsCli && resumes && raised(words);
 }
@@ -257,11 +245,13 @@ const TEAM_CHANGES = [
  * the word after the command, since a value flag before it (`--language en`) shifts the words.
  */
 function runsCliVerb(prog: string, args: string[], command: string, verbs: string[]): boolean {
+  if (isCliProgram(prog)) {
+    const [first, verb] = flightdeckWords(shellArguments(args));
+    return first === command && verbs.includes(verb ?? "");
+  }
+  if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = ["fd", "flightdeckd"].includes(prog)
-    ? true
-    : RUNNERS.includes(prog) &&
-      words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  const runsCli = words.some((w) => isCliProgram(program(w)));
   return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
 }
 
@@ -371,9 +361,18 @@ function gitRisks(args: string[]): Candidate[] {
   return out;
 }
 
-/** What one segment of a shell command adds, given whether a pipe feeds it. */
+/** What one segment of a shell command adds, given whether a pipe feeds it: one reading for each program it may run. */
 function segmentRisks(segment: string[], piped: boolean): Candidate[] {
-  const { prog, args, sudo } = invocation(segment);
+  const out = invocations(segment).flatMap((call) => invocationRisks(call, piped));
+  // A process substitution (`cat <(fd card delete c1)`) runs a command of its own.
+  segment.forEach((word, i) => {
+    if (/^[<>]\(/.test(word))
+      out.push(...segmentRisks([word.slice(2), ...segment.slice(i + 1)], false));
+  });
+  return out;
+}
+
+function invocationRisks({ prog, args, sudo }: Invocation, piped: boolean): Candidate[] {
   const out: Candidate[] = [];
   if (sudo) out.push(["high", "sudo"]);
   if (piped && SHELLS.has(prog)) out.push(["high", `pipe para ${prog}`]);
@@ -384,13 +383,26 @@ function segmentRisks(segment: string[], piped: boolean): Candidate[] {
   // A shell given text (`sh -c '$FD card delete c1'`) runs it as a command line of its own (#3499).
   const text = shellText(prog, args);
   if (text !== undefined) out.push(...statementRisks(text));
+  // `find -exec <command> ;` runs the command for each file.
+  if (prog === "find") out.push(...execRisks(args));
   return out;
 }
 
-/** The text a shell is told to run with `-c` (`-lc` and `-ec` too), without its outer quotes; none otherwise. */
+/** The commands `find` runs with `-exec`, `-execdir` or `-ok`, up to their `;` or `+`. */
+function execRisks(args: string[]): Candidate[] {
+  const out: Candidate[] = [];
+  args.forEach((arg, i) => {
+    if (!["-exec", "-execdir", "-ok", "-okdir"].includes(arg)) return;
+    const end = args.findIndex((a, j) => j > i && [";", "\\;", "+"].includes(a));
+    out.push(...segmentRisks(args.slice(i + 1, end < 0 ? undefined : end), false));
+  });
+  return out;
+}
+
+/** The text a shell is told to run with `-c`, `-lc`, `-Command` or `/c`, without its outer quotes; none otherwise. */
 function shellText(prog: string, args: string[]): string | undefined {
-  if (!["sh", "bash", "zsh", "dash", "ksh"].includes(prog)) return undefined;
-  const flag = args.findIndex((a) => /^-[a-z]*c[a-z]*$/i.test(a));
+  if (!SHELLS.has(prog) || ["iex", "invoke-expression"].includes(prog)) return undefined;
+  const flag = args.findIndex((a) => /^(?:-[a-z]*c[a-z]*|\/c)$/i.test(a));
   if (flag < 0) return undefined;
   return args
     .slice(flag + 1)
@@ -549,9 +561,10 @@ export class RiskClassifier {
     const command = typeof input.command === "string" ? input.command : "";
     return [command, joinContinuations(command)].some((text) =>
       segments(text).some((segment) => {
-        const { prog, args } = invocation(segment);
-        const sub = prog === "git" ? gitCommand(args).sub : "";
-        return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
+        return invocations(segment).some(({ prog, args }) => {
+          const sub = prog === "git" ? gitCommand(args).sub : "";
+          return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
+        });
       }),
     );
   }
