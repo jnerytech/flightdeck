@@ -59,7 +59,7 @@ jobs:
       - name: Install the tarball into a temporary prefix
         run: |
           version="${TAG#v}"
-          tarball="dist/flightdeckd-${version}.tgz"
+          tarball="./dist/flightdeckd-${version}.tgz"
           ls -l "$tarball"
           npm install -g --prefix "$RUNNER_TEMP/npm-global" --no-audit --no-fund "$tarball"
           "$RUNNER_TEMP/npm-global/bin/flightdeckd" --version | grep -F "flightdeckd ${version} "
