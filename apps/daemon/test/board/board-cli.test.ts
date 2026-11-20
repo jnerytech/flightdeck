@@ -92,7 +92,7 @@ describe("the arguments of board settings (issue #3454)", () => {
   });
 
   test("the limit is a plain whole number of 1 or more", () => {
-    for (const bad of ["0", "-1", "abc", "1e1", "0x5", " 3 ", "2.5", ""])
+    for (const bad of ["0", "-1", "abc", "1e1", "0x5", " 3 ", "2.5", "", "99999999999999999999"])
       expect(parsed(["board", "settings", "--max-parallel-runs", bad])).toMatchObject({
         refusedWith: expect.stringContaining("--max-parallel-runs needs a whole number"),
       });
