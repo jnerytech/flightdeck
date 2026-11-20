@@ -54,7 +54,8 @@ export function changedLines(team: TeamInfo, action: TeamCliArgs["action"]): str
   } as Record<string, string>;
   return [
     `${done[action] ?? action} ${teamLine(team)}`,
-    ...(action === "add-member" ? waitingLines(team) : []),
+    // Only the member just added: the workers that waited before are not news.
+    ...(action === "add-member" ? waitingLines({ ...team, members: team.members.slice(-1) }) : []),
   ];
 }
 

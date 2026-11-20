@@ -318,7 +318,7 @@ function endsACard(prog: string, args: string[]): boolean {
 }
 
 const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
-const TEAM_CHANGES = ["new", "delete", "add-member", "remove-member"];
+const TEAM_CHANGES = ["new", "update", "delete", "add-member", "remove-member"];
 
 /**
  * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
@@ -345,7 +345,8 @@ const changesAPersona = (prog: string, args: string[]) =>
 /**
  * `team new` starts a coordinator and up to eight workers, each with its own permission mode (one may be
  * `bypassPermissions`) and each spending quota; `add-member` starts one more; `remove-member` and `delete`
- * stop a session or drop a team's record (#3455). The app asks the person to fill and confirm a form.
+ * stop a session or drop a team's record; `update` rewrites the goal and checks the coordinator is told as a
+ * system notice and swaps a live member's persona (#3455). The app asks the person to fill and confirm a form.
  */
 const startsATeam = (prog: string, args: string[]) => runsCliVerb(prog, args, "team", TEAM_CHANGES);
 
@@ -397,7 +398,7 @@ const DANGEROUS: Array<{
   {
     when: startsATeam,
     reason: () =>
-      "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, delete, add-member or remove-member)",
+      "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member or remove-member)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

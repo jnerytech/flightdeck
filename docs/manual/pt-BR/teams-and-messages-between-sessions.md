@@ -139,7 +139,7 @@ flightdeckd team new <objetivo> (--workers <1-8> | --worker <spec>...) [--coordi
 flightdeckd team update <time> [--goal <texto>] [--check <comando>... | --clear-checks]
   [--persona <membro>=<persona>] [--json]
 flightdeckd team add-member <time> [<spec>] [--confirm] [--json]
-flightdeckd team remove-member <time> <membro> [--json]
+flightdeckd team remove-member <time> <membro> --confirm [--json]
 flightdeckd team delete <time> --confirm [--json]
 ```
 
@@ -169,10 +169,11 @@ flightdeckd team delete <time> --confirm [--json]
 - `add-member` acrescenta um worker a um time aberto e não pausado. A spec opcional é a mesma
   `persona[:modelo[:esforço[:modo]]]`, e um worker cujo card precisa esperar diz isso. Um worker com
   `bypassPermissions` precisa de `--confirm`, como no `new`. `remove-member` tira um membro pelo nome,
-  endereço, sessão ou card; ele para a sessão do membro e avisa o worker. O coordenador não pode ser
+  endereço, sessão ou card; ele para a sessão do membro e avisa o worker, então precisa de `--confirm`, como o app
+  pergunta antes. O coordenador não pode ser
   removido. `delete` remove um time fechado, sem membro ativo, e precisa de `--confirm`: é para
-  sempre. O `team delete`, `add-member` ou `remove-member` de uma sessão conta como risco alto, como o
-  `new`. Uma mudança sem resposta diz isso, e o `team show` mostra o que ela fez.
+  sempre. O `team update`, `delete`, `add-member` ou `remove-member` de uma sessão conta como risco alto,
+  como o `new`. Uma mudança sem resposta diz isso, e o `team show` mostra o que ela fez.
 - `--json` imprime a resposta do próprio daemon, para um script. O texto que uma sessão escreveu (um
   relato, um nome) aparece como texto simples, sem caracteres de controle.
 - **Códigos de saída:** 0 feito, 1 recusado (um time ou projeto desconhecido; o motivo vai para o

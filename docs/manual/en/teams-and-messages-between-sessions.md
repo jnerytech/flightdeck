@@ -138,7 +138,7 @@ flightdeckd team new <goal> (--workers <1-8> | --worker <spec>...) [--coordinato
 flightdeckd team update <team> [--goal <text>] [--check <command>... | --clear-checks]
   [--persona <member>=<persona>] [--json]
 flightdeckd team add-member <team> [<spec>] [--confirm] [--json]
-flightdeckd team remove-member <team> <member> [--json]
+flightdeckd team remove-member <team> <member> --confirm [--json]
 flightdeckd team delete <team> --confirm [--json]
 ```
 
@@ -168,9 +168,10 @@ flightdeckd team delete <team> --confirm [--json]
 - `add-member` adds one worker to an open team that is not paused. Its optional spec is the same
   `persona[:model[:effort[:mode]]]`, and a worker whose card must wait says so. A `bypassPermissions`
   worker needs `--confirm`, as in `new`. `remove-member` takes a member out by its name, address,
-  session or card; it stops that member's session and tells the worker. The coordinator cannot be
+  session or card; it stops that member's session and tells the worker, so it needs `--confirm`, as the
+  app asks you first. The coordinator cannot be
   removed. `delete` removes a closed team with no live member, and needs `--confirm`: it is for good.
-  A session's own `team delete`, `add-member` or `remove-member` is rated high risk, like `new`.
+  A session's own `team update`, `delete`, `add-member` or `remove-member` is rated high risk, like `new`.
   A change that gets no answer says so, and `team show` tells what it did.
 - `--json` prints the daemon's own answer for a script. The text a session wrote (a report, a name)
   is shown as plain text, without control characters.

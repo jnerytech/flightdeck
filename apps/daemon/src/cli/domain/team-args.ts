@@ -13,6 +13,7 @@ export interface TeamArgs {
   teamWorkerSpecs?: string[];
   teamCoordinator?: string;
   teamChecks?: string[];
+  teamGoalFlag?: string;
   teamMember?: string;
   teamSpec?: string;
   teamPersona?: string;
@@ -32,14 +33,11 @@ function teamFlags(args: TeamArgs): Array<[string, unknown, readonly string[]]> 
     ["--check", args.teamChecks, ["new", "update"]],
     ["--clear-checks", args.teamClearChecks, ["update"]],
     ["--persona", args.teamPersona, ["update"]],
-    // The goal of `team new` is its operand (`--goal` there is refused when read); `team update` takes it as a flag.
-    ...(args.command === "team" && args.action === "new"
-      ? []
-      : ([["--goal", args.teamGoal, ["update"]]] as Array<[string, unknown, readonly string[]]>)),
+    ["--goal", args.teamGoalFlag, ["update"]],
     ...(args.command === "team"
       ? ([
           ["--name", args.personaName, ["new"]],
-          ["--confirm", args.confirm, ["new", "delete", "add-member"]],
+          ["--confirm", args.confirm, ["new", "delete", "add-member", "remove-member"]],
         ] as Array<[string, unknown, readonly string[]]>)
       : []),
   ];

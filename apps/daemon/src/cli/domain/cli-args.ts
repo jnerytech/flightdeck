@@ -107,6 +107,7 @@ export interface CliArgs {
   teamWorkerSpecs?: string[];
   teamCoordinator?: string;
   teamChecks?: string[];
+  teamGoalFlag?: string;
   teamMember?: string;
   teamSpec?: string;
   teamPersona?: string;

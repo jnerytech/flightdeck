@@ -362,11 +362,11 @@ const HANDLERS: Record<string, Handler> = {
     args.teamChecks = [...(args.teamChecks ?? []), v];
   }),
   "--goal": setValue((args, v) => {
-    if (args.command === "team" && args.action === "new")
-      throw new Error(`--goal: team new takes the goal as its operand\n${USAGE}`);
-    args.teamGoal = v;
+    if (args.teamGoalFlag !== undefined) throw new Error(`--goal: once\n${USAGE}`);
+    args.teamGoalFlag = v;
   }),
   "--persona": setValue((args, v) => {
+    if (args.teamPersona !== undefined) throw new Error(`--persona: once\n${USAGE}`);
     args.teamPersona = v;
   }),
   "--clear-checks": setFlag((args) => {
@@ -621,6 +621,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   const personaFault = personaProblem(args);
   if (personaFault !== undefined) throw new Error(`${personaFault}\n${USAGE}`);
+  // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
+  if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
   const teamFault = teamProblem(args);
   if (teamFault !== undefined) throw new Error(`${teamFault}\n${USAGE}`);
   delete args.titleFlag;

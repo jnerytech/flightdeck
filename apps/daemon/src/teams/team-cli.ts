@@ -63,28 +63,34 @@ async function newTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Pro
 }
 
 /**
- * Changes a team, or deletes it. A delete and a bypass member are what the app asks the person to
+ * Changes a team, or deletes it. A delete, a removed member and a bypass member are what the app asks the person to
  * confirm: here it is `--confirm` (the daemon has no field for it, so it is not sent).
  */
 async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
   const team = args.id ?? "";
   if (args.action === "delete" && !args.confirm)
     throw new Error(`team delete needs --confirm: it removes team ${team} and its record for good`);
+  if (args.action === "remove-member" && !args.confirm)
+    throw new Error(
+      `team remove-member needs --confirm: it stops the session of ${args.member ?? "the member"}`,
+    );
   if (args.action === "add-member" && addsBypass(args) && !args.confirm)
     throw new Error(
       "the member runs in bypassPermissions, which skips every permission prompt: pass --confirm to add it",
     );
-  const payload =
+  if (args.action === "delete") {
+    note.wrote = true;
+    const deleted = await daemon.call("teams.delete", { team });
+    return args.json ? json(deleted) : said(...changedLines(deleted, args.action));
+  }
+  const payload: CommandPayload<"teams.update"> =
     args.action === "update"
       ? updatePayload(args)
       : args.action === "add-member"
         ? addMemberPayload(args)
         : { team, removeMember: args.member ?? "" };
   note.wrote = true;
-  const changed =
-    args.action === "delete"
-      ? await daemon.call("teams.delete", { team })
-      : await daemon.call("teams.update", payload as CommandPayload<"teams.update">);
+  const changed = await daemon.call("teams.update", payload);
   return args.json ? json(changed) : said(...changedLines(changed, args.action));
 }
 
