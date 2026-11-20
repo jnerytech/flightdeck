@@ -3,8 +3,12 @@
  * over the daemon's answers. The daemon calls and the exit codes stay in `projects/project-cli.ts`.
  */
 import type {
+  HarnessDraft,
   HarnessPreview,
   HarnessStack,
+  HarnessTemplateInfo,
+  Project,
+  ProjectDetectResult,
   ProjectLoad,
   ProjectTrustStates,
 } from "@flightdeck/protocol";
@@ -12,11 +16,30 @@ import type {
 /** The parts a harness preview may name: the protocol's own list. */
 export type HarnessPart = "claudeMd" | "hooks" | "skills" | "agents" | "permissions";
 
+/** The fields of a project that `project add` and `project update` set, as the protocol takes them (a field left out keeps its value). */
+export interface ProjectFields {
+  name?: string;
+  baseBranch?: string;
+  prProvider?: "github" | "azure-devops" | "none";
+  /** `null` removes the script. */
+  setupScript?: string | null;
+  promptTemplate?: string;
+  autoApprove?: { enabled: boolean };
+  personaSubagents?: "all" | "project" | "none";
+  /** `null` removes the default; `update` only. */
+  defaultHours?: number | null;
+}
+
 /** What the person typed for `project <verb>`, as `runProjectCli` takes it. `--json` prints the daemon's own answer. */
 interface Printed {
   json?: boolean;
 }
 export type ProjectCliArgs =
+  | (Printed & { action: "detect-provider"; project: string })
+  | (Printed & { action: "add"; path: string; fields: ProjectFields })
+  | (Printed & { action: "update"; project: string; fields: ProjectFields })
+  | (Printed & { action: "harness-draft"; path: string })
+  | (Printed & { action: "harness-export"; path: string; id: string; title: string })
   | (Printed & { action: "trust-state"; paths: string[] })
   | (Printed & { action: "stack"; path: string })
   | (Printed & { action: "trust-inspect"; path: string })
@@ -133,3 +156,19 @@ export function previewLines(answer: HarnessPreview): string[] {
   ];
   return lines.length > 0 ? lines : ["nothing to add"];
 }
+
+/** What `project add` and `project update` did: the project, and the fields a change set. */
+export const projectLines = (
+  verb: "added" | "updated",
+  project: Project,
+  fields: ProjectFields,
+): string[] => [`${verb} ${project.name} (${project.id}) ${Object.keys(fields).length}`];
+
+/** What looking at the project's remote did. */
+export const detectLines = (answer: ProjectDetectResult): string[] => [answer.outcome];
+
+/** The drafted CLAUDE.md: its digest, then its text. */
+export const draftLines = (draft: HarnessDraft): string[] => [draft.digest];
+
+/** The template an export made: its id and title, then its files. */
+export const exportLines = (info: HarnessTemplateInfo): string[] => [info.id];

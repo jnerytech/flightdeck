@@ -9,16 +9,25 @@ import {
   type CliResult,
   json,
   type RemoteTarget,
+  resolveProject,
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
 import {
+  detectLines,
+  draftLines,
+  exportLines,
   inspectLines,
   type ProjectCliArgs,
   previewLines,
+  projectLines,
   stackLines,
   trustLines,
 } from "./domain/project-cli-view.ts";
+
+/** What a write that got no answer may have done: the person checks the projects before repeating it. */
+const UNSURE =
+  "; the change may or may not have happened: run flightdeckd card list or the app's projects before repeating it";
 
 /** A preview reads the folder's files and a template's, which takes longer than a lookup. */
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -35,7 +44,44 @@ export function runProjectCli(
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-project",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    perform: async (daemon) => {
+    unsure: UNSURE,
+    perform: async (daemon, note) => {
+      if (args.action === "add") {
+        note.wrote = true;
+        const answer = await daemon.call("project.add", {
+          path: folder(args.path),
+          ...args.fields,
+        });
+        return args.json ? json(answer) : said(...projectLines("added", answer, args.fields));
+      }
+      if (args.action === "update" || args.action === "detect-provider") {
+        const { projects } = await daemon.call("project.list", {});
+        const found = resolveProject(projects, args.project);
+        if ("refusal" in found) return found.refusal;
+        note.wrote = true;
+        if (args.action === "detect-provider") {
+          const answer = await daemon.call("project.detectProvider", { projectId: found.id });
+          return args.json ? json(answer) : said(...detectLines(answer));
+        }
+        const answer = await daemon.call("project.update", { projectId: found.id, ...args.fields });
+        return args.json ? json(answer) : said(...projectLines("updated", answer, args.fields));
+      }
+      if (args.action === "harness-draft") {
+        const answer = await daemon.call("project.harness.draft", {
+          path: folder(args.path),
+          part: "claudeMd",
+        });
+        return args.json ? json(answer) : said(...draftLines(answer));
+      }
+      if (args.action === "harness-export") {
+        note.wrote = true;
+        const answer = await daemon.call("project.harness.export", {
+          path: folder(args.path),
+          id: args.id,
+          title: args.title,
+        });
+        return args.json ? json(answer) : said(...exportLines(answer));
+      }
       if (args.action === "trust-state") {
         const answer = await daemon.call("project.trust.state", { paths: args.paths.map(folder) });
         return args.json ? json(answer) : said(...trustLines(answer));
