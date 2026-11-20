@@ -66,7 +66,7 @@ export interface CliArgs {
   requestId?: string;
   /** `approve|deny --message`: what the answer tells Claude. */
   answerMessage?: string;
-  /** `approve --hold`: the Approve was held, the proof a high-risk request needs. */
+  /** `approve --hold`: accepted for older scripts; it sends nothing, a high-risk allow is made in the app (#3439). */
   hold?: boolean;
   last?: number;
   /** `message team <team>`. */
@@ -150,7 +150,7 @@ export const USAGE = [
   "     fd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
   "     fd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
   "     fd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
-  "     fd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (--hold: you mean to allow a high-risk request; it is your own assertion)",
+  "     fd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
   "     fd deny <request> [--message <text>] [--json] [--config <file>]",
   "     fd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
   "     fd action list [--project <id>] [--config <file>]",

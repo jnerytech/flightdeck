@@ -87,7 +87,6 @@ async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps
         decision,
         request: args.requestId ?? "",
         ...(args.answerMessage === undefined ? {} : { message: args.answerMessage }),
-        ...(args.hold ? { hold: true } : {}),
         ...(args.json ? { json: true } : {}),
       },
       config,

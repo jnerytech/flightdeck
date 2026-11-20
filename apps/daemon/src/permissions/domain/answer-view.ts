@@ -7,16 +7,14 @@ export interface Answer {
   decision: "allow" | "deny";
   request: string;
   message?: string;
-  hold?: boolean;
 }
 
-/** The `permission.respond` payload: `held` goes only with an allow, and only when the person gave `--hold`. */
+/** The `permission.respond` payload: the command never sends `held` or a proof, so a high-risk allow is the app's (#3439). */
 export function answerPayload(answer: Answer) {
   return {
     requestId: answer.request,
     decision: answer.decision,
     ...(answer.message === undefined ? {} : { message: answer.message }),
-    ...(answer.decision === "allow" && answer.hold ? { held: true } : {}),
   };
 }
 
@@ -36,7 +34,7 @@ export function refusalLine(
 ): string | null {
   if (refusal.reason === "permission_request_closed")
     return `no such request: ${answer.request} (it is answered already, or it never was open): list the open ones with flightdeckd requests`;
-  if (refusal.reason === "hold_required")
-    return `${refusal.detail}. A high-risk request is for the person to allow: ask them. --hold is only for a person who read the request and means to allow it, and the daemon does not check it`;
+  if (refusal.reason === "hold_required" || refusal.reason === "approval_proof_required")
+    return `${answer.request} needs the person: a high-risk request, or one that saves a rule, is allowed only by a person who approves it in the app. Ask them to approve it in the app`;
   return null;
 }
