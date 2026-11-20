@@ -627,7 +627,13 @@ describe("approval: the proof of a prod or high-risk secret use (#3452)", () => 
 describe("approval: the proof of a command that moves code or trust (#3453)", () => {
   const COMMAND_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_COMMAND];
   const PR = "https://github.com/acme/repo/pull/9";
-  const MERGE = { cardId: "c1", method: "squash", confirm: true, prUrl: PR, headSha: "a".repeat(40) };
+  const MERGE = {
+    cardId: "c1",
+    method: "squash",
+    confirm: true,
+    prUrl: PR,
+    headSha: "a".repeat(40),
+  };
 
   test("a host that checks it gets a proof over the command and a hash of the payload, which the shell also gets", async () => {
     const { slice, log, keyLog } = approval({ features: COMMAND_HOST });
@@ -684,9 +690,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       signature: expect.stringContaining("sig:"),
     });
     expect(log.map((l) => l.type)).toEqual(["card.pr.head", "approval.list", "approval.challenge"]);
-    expect(
-      Command.safeParse({ id: "1", type: "card.pr.merge", payload }).success,
-    ).toBe(true);
+    expect(Command.safeParse({ id: "1", type: "card.pr.merge", payload }).success).toBe(true);
   });
 
   test("the proof is over the very payload that is sent, minus the proof", async () => {
@@ -722,5 +726,13 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
     expect(await declined.slice.mergePayload("h", "c1", "merge")).toEqual({ kind: "declined" });
     const unreadable = approval({ features: COMMAND_HOST, refuse: "card.pr.head" });
     await expect(unreadable.slice.mergePayload("h", "c1", "merge")).rejects.toThrow();
+  });
+
+  test("a host that checks proofs but not commands is one the app says so of; one that checks both, or one not known, is not", () => {
+    expect(approval({ features: [FEATURE_APPROVAL_PROOF] }).slice.commandsUnchecked("h")).toBe(
+      true,
+    );
+    expect(approval({ features: COMMAND_HOST }).slice.commandsUnchecked("h")).toBe(false);
+    expect(approval({ features: [] }).slice.commandsUnchecked("h")).toBe(false);
   });
 });
