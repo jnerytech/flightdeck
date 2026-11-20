@@ -422,4 +422,23 @@ describe("costs and roi: the arguments (issue #3460)", () => {
       error: expect.stringContaining("--to"),
     });
   });
+  test("--model on roi names the costs verbs it belongs to, not persona", () => {
+    expect(
+      parsed(["roi", "--from", "2026-11-01", "--to", "2026-11-20", "--model", "m"]),
+    ).toMatchObject({ error: expect.stringContaining("flightdeckd costs summary and export") });
+  });
+
+  test("a first day after the last day is refused before anything is sent", () => {
+    for (const argv of [
+      ["costs", "summary", "--from", "2026-11-20", "--to", "2026-11-01"],
+      ["costs", "export", "--from", "2026-11-20", "--to", "2026-11-01"],
+      ["roi", "--from", "2026-11-20", "--to", "2026-11-01"],
+    ])
+      expect(parsed(argv)).toMatchObject({
+        error: expect.stringContaining("--from is after --to"),
+      });
+    expect(parsed(["roi", "--from", "2026-11-20", "--to", "2026-11-20"])).toMatchObject({
+      command: "roi",
+    });
+  });
 });
