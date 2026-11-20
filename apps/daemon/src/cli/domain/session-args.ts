@@ -110,7 +110,7 @@ export function sessionProblem(args: CliArgs): string | undefined {
   const start = args.sessionStart;
   if (args.command !== "session" || (args.action !== "create" && args.action !== "fork"))
     return undefined;
-  if (start?.cwd === undefined) return "missing --cwd";
+  if (start?.cwd === undefined || start.cwd === "") return "missing --cwd";
   if (args.action === "create" && start.language !== undefined && start.persona === undefined)
     return "--language: only with --persona";
   return undefined;

@@ -16,7 +16,7 @@ export async function performStart(
   args: SessionCliArgs,
 ): Promise<CliResult> {
   const start = args.start ?? {};
-  if (start.cwd === undefined) return failure(1, "missing the folder: --cwd");
+  if (start.cwd === undefined || start.cwd === "") return failure(1, "missing the folder: --cwd");
   note.wrote = true;
   if (args.action === "fork") {
     const result = await daemon.call("session.fork", {
