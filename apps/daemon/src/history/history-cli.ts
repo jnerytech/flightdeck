@@ -69,10 +69,9 @@ export async function runHistoryCli(
       }
       const { claudeSessionId = "", uuid = "", index = 0 } = args;
       const found = await daemon.call("history.tool", { claudeSessionId, uuid, index });
-      if (args.json) return json(found);
-      return found.tool
-        ? said(...toolLines(found.tool))
-        : failure(1, "no tool call at that place in the transcript", "not_found");
+      if (!found.tool)
+        return failure(1, "no tool call at that place in the transcript", "not_found");
+      return args.json ? json(found) : said(...toolLines(found.tool));
     },
   });
 }

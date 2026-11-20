@@ -50,6 +50,8 @@ export function historyProblem(args: HistoryArgs): string | undefined {
     return "--json: this flag only applies to flightdeckd history list, search, get and tool";
   if (args.origin !== undefined && args.origin !== "flightdeck" && args.origin !== "external")
     return "--origin: flightdeck or external";
+  if (args.tail && args.cursor !== undefined)
+    return "--tail: a tail opens on the last messages, without --cursor";
   const most = args.action === "get" ? 500 : 200;
   if (args.limit !== undefined && args.limit > most) return `--limit: at most ${most}`;
   return undefined;

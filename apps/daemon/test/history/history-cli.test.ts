@@ -399,15 +399,11 @@ describe("history: what the code review found (issue #3461)", () => {
     expect(result.code).toBe(1);
   });
 
-  test("a refusal under --json is a JSON line with its reason", async () => {
-    const daemon = fakeDaemon({
-      "history.get": () => ({ error: { code: "not_found", message: "no such session" } }),
-    });
-    const run = await flightdeckd(["history", "get", "nope", "--json"], daemon.port);
+  test("a missing tool call under --json is a JSON line with its reason", async () => {
+    const daemon = fakeDaemon({ "history.tool": () => ({ tool: null }) });
+    const run = await flightdeckd(["history", "tool", "s1", "u1", "9", "--json"], daemon.port);
     expect(run.code).toBe(1);
-    expect(JSON.parse(run.err.join(""))).toMatchObject({
-      error: expect.stringContaining("no such"),
-    });
+    expect(JSON.parse(run.err.join(""))).toMatchObject({ reason: "not_found" });
   });
 
   test("an index written as 1e3 or 0x10 is refused, not read as another number", () => {

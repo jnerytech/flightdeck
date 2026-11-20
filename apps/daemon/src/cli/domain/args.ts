@@ -217,8 +217,9 @@ const HANDLERS: Record<string, Handler> = {
       args.claudeSessionId = operand(reader, "the session");
     if (action === "tool") {
       args.uuid = operand(reader, "the message");
-      const index = Number(operand(reader, "the tool call index"));
-      if (!Number.isInteger(index) || index < 0 || index > 1000)
+      const word = operand(reader, "the tool call index");
+      const index = /^\d{1,4}$/.test(word) ? Number(word) : -1;
+      if (index < 0 || index > 1000)
         throw new Error(`history tool: the index is a whole number from 0 to 1000\n${USAGE}`);
       args.index = index;
     }

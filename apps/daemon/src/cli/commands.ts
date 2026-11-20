@@ -477,7 +477,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     }
     const { runHistoryCli } = await import("../history/index.ts");
     const config = await localConfig(args);
-    return reported(deps, await runHistoryCli(historyCliArgs(args), config));
+    return reported(deps, await runHistoryCli(historyCliArgs(args), config), args.json);
   },
   approvers: async (args, deps) => (await import("./approvers.ts")).runApprovers(args, deps),
   doctor: async (args, deps) => (await import("./setup.ts")).runDoctorCommand(args, deps),
