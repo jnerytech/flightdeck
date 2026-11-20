@@ -250,13 +250,19 @@
   "permission.respond": {
     "cli": "approve"
   },
-  "personas.list": {},
+  "personas.list": {
+    "cli": "persona"
+  },
   "personas.publishAgent": {},
   "personas.remove": {},
   "personas.reset": {},
-  "personas.resolve": {},
+  "personas.resolve": {
+    "cli": "persona"
+  },
   "personas.save": {},
-  "personas.subagents": {},
+  "personas.subagents": {
+    "cli": "persona"
+  },
   "personas.trust": {},
   "plugins.detail": {},
   "plugins.install": {},

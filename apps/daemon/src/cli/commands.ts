@@ -3,6 +3,7 @@ import type { CardCliArgs } from "../board/index.ts";
 import { loadConfig, userHome } from "../config.ts";
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
+import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
@@ -304,6 +305,25 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runCardCli } = await import("../board/index.ts");
     const config = await localConfig(args);
     return reported(deps, await runCardCli(cardCliArgs(args), config));
+  },
+  persona: async (args, deps) => {
+    const { runPersonaCli } = await import("../personas/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runPersonaCli(
+        {
+          action: args.action as PersonaCliArgs["action"],
+          ...(args.personaId === undefined ? {} : { id: args.personaId }),
+          ...(args.scope === undefined ? {} : { scope: args.scope }),
+          ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),
+          ...(args.language === undefined ? {} : { language: args.language }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+      args.json,
+    );
   },
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");

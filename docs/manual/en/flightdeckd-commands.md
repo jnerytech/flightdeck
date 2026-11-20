@@ -157,3 +157,28 @@ remove a key.
 
 Both read the data folder from the config file and work with the daemon running or stopped. Until a
 device is enrolled, nothing changes for you.
+
+## fd persona
+
+```sh
+fd persona list
+fd persona list --scope project --project-path ~/work/api --language en
+fd persona show architect
+fd persona subagents --project-path ~/work/api --json
+```
+
+Reads the personas of this host, as the Personas screen does. Nothing here changes a persona.
+
+- **`list`:** one line per persona: its id, where it lives (`pack`, `host` or `project`), its name,
+  `(edited)` for a pack persona this host changed, and, for a project persona, the start of its hash and
+  `not trusted` until its hash is trusted. A last line names the project files that were left out and why.
+  `--scope` keeps only `host`, `project` or `all` (the default) of them.
+- **`show <id>`:** the persona with its description, the model, effort, tools and permission mode it
+  sets, and its prompt. It says where the persona came from. An id the daemon does not know is refused
+  with exit `1`.
+- **`subagents`:** the agents a session in the project gets (`persona-<id>`), and the project personas
+  left out because nobody trusted them yet.
+
+`--project-path` names the project folder (relative to where you run it); without it only the host's
+personas count. `--language en` or `pt-BR` picks the language of the pack personas. With `--json` each
+command prints the daemon's answer as one JSON object.
