@@ -12,7 +12,7 @@ const DESK = "5c1d9a0e-1b2c-4d3e-8f40-aabbccddeeff";
 type Listed = Array<{ id: string; name: string; url: string }>;
 
 /** The queued syncs start on the microtask queue: let it run, with no timer. */
-const settle = async () => {
+const drain = async () => {
   for (let turn = 0; turn < 6; turn++) await Promise.resolve();
 };
 
@@ -51,7 +51,7 @@ describe("host index sync: the CLI's names and addresses follow the host list (#
     const { store, sent } = start();
     await store.init();
     store.roster.rename(PI, "Orange Pi");
-    await settle();
+    await drain();
     store.dispose();
     expect(sent.at(-1)?.map((host) => host.name)).toEqual(["Orange Pi", "Desk"]);
   });
@@ -60,7 +60,7 @@ describe("host index sync: the CLI's names and addresses follow the host list (#
     const { store, sent } = start();
     await store.init();
     await store.roster.remove(PI);
-    await settle();
+    await drain();
     store.dispose();
     expect(sent.at(-1)?.map((host) => host.id)).toEqual([DESK]);
   });
@@ -69,7 +69,7 @@ describe("host index sync: the CLI's names and addresses follow the host list (#
     const { store, sent } = start(() => Promise.reject(new Error("the store is locked")));
     await store.init();
     const error = store.roster.rename(PI, "Orange Pi");
-    await settle();
+    await drain();
     store.dispose();
     expect({ error, syncs: sent.length }).toEqual({ error: null, syncs: 2 });
   });
