@@ -22,7 +22,7 @@ them after that. The vault item is named by its id; a secret is never printed. `
 `~/.ssh/config` that the import in the app would turn into destinations, and marks the ones already registered. It
 writes nothing. With no destination, or no host in the file, the command says so and exits `0`. With `--json` the
 commands print `{"targets": [...]}` and `{"entries": [...]}`, as the daemon returns them, with `null` for a missing
-field. `--host <name>` reads a paired host. These verbs do not connect to any server.
+field. `--host <name>` reads a paired host. `list` and `import preview` do not connect to any server.
 
 `hostkey check <target>` and `test <target>` name a destination by its name or its id, and make the daemon connect to
 it. `hostkey check` reads the server key and compares it with the one pinned: it prints `host key pinned`,

@@ -22,7 +22,7 @@ ou que tem etiquetas mostra isso depois. O item do cofre aparece pelo id; um seg
 `import preview` imprime os nomes do `~/.ssh/config` que a importação do app transformaria em destinos e marca os
 que já estão cadastrados. Não grava nada. Sem destino, ou sem host no arquivo, o comando avisa e sai com `0`. Com
 `--json` os comandos imprimem `{"targets": [...]}` e `{"entries": [...]}`, como o daemon devolve, com `null` para
-um campo ausente. `--host <nome>` lê um host pareado. Esses verbos não se conectam a nenhum servidor.
+um campo ausente. `--host <nome>` lê um host pareado. `list` e `import preview` não se conectam a nenhum servidor.
 
 `hostkey check <destino>` e `test <destino>` indicam um destino pelo nome ou pelo id e fazem o daemon se conectar a
 ele. `hostkey check` lê a chave do servidor e compara com a fixada: imprime `host key pinned`,

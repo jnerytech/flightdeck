@@ -117,7 +117,7 @@ export const USAGE = [
   "     fd session fork <claude-session-id> --cwd <folder> [--up-to <message-id>] [--open flightdeck|terminal] [--host <name>] [--json] [--config <file>]   (a copy of a session; terminal prints the command that opens it)",
   "     fd session set-mode <session> <default|acceptEdits|plan|bypassPermissions> | apply-persona <session> <persona> [--language en|pt-BR] | clear-persona <session> [--language en|pt-BR] [--host <name>] [--json] [--config <file>]",
   "     fd session meta set <session> name=<text> pinned=<true|false> archived=<true|false> [--host <name>] [--json] [--config <file>]   (at least one field; name= clears the name)",
-  "     fd ssh list | import preview | hostkey check <target> | test <target> [--host <name>] [--json] [--config <file>]   (the ssh destinations of a host; a target is a name or an id; hostkey check and test connect but write nothing, and exit 1 unless the key is pinned or the login works)",
+  "     fd ssh list | import preview | hostkey check <target> | test <target> [--host <name>] [--json] [--config <file>]   (the ssh destinations of a host; a target is a name or an id; hostkey check and test connect but pin no key and change no destination, and exit 1 unless the key is pinned or the login works)",
   "     fd approve <request> [--message <text>] [--hold] [--host <name>] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
   "     fd deny <request> [--message <text>] [--host <name>] [--json] [--config <file>]",
   "     fd requests [--session <session>] [--host <name>] [--json] [--config <file>]   (the open permission requests, oldest first)",
