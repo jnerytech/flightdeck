@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { parseJsonText } from "../../shared/lib/stored-json.ts";
+
 /** What a new device shows and an enrolled one reads to add it as an approver (#3478). */
 export interface AddText {
   daemonId: string;
@@ -5,6 +8,7 @@ export interface AddText {
   name: string;
 }
 
+const FIELDS = z.object({ d: z.string(), k: z.string(), n: z.string() }).nullable();
 const PREFIX = "flightdeck-add:";
 const MAX_TEXT = 1024;
 /** The SPKI of a P-256 key, in the uncompressed form the app and the host make. */
@@ -45,23 +49,20 @@ export function encodeAdd(text: AddText): string {
 export function decodeAdd(text: string): AddText | null {
   const trimmed = text.trim();
   if (!trimmed.startsWith(PREFIX) || trimmed.length > MAX_TEXT) return null;
-  let parsed: unknown;
+  let json: string;
   try {
     const b64 = trimmed.slice(PREFIX.length).replaceAll("-", "+").replaceAll("_", "/");
     const binary = atob(b64);
-    parsed = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(
-        Uint8Array.from(binary, (c) => c.charCodeAt(0)),
-      ),
+    json = new TextDecoder("utf-8", { fatal: true }).decode(
+      Uint8Array.from(binary, (c) => c.charCodeAt(0)),
     );
   } catch {
     return null;
   }
-  if (typeof parsed !== "object" || parsed === null) return null;
-  const { d, k, n } = parsed as Record<string, unknown>;
-  if (typeof d !== "string" || d === "" || typeof k !== "string" || typeof n !== "string")
-    return null;
-  if (bytesOf(k)?.length !== KEY_BYTES || !isDeviceName(n)) return null;
+  const fields = parseJsonText(json, FIELDS, null);
+  if (!fields) return null;
+  const { d, k, n } = fields;
+  if (d === "" || bytesOf(k)?.length !== KEY_BYTES || !isDeviceName(n)) return null;
   return { daemonId: d, publicKey: k, name: n.trim() };
 }
 
