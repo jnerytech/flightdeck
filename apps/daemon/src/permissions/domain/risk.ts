@@ -13,9 +13,9 @@ import {
   type Invocation,
   invocations,
   isCliProgram,
-  program,
   RUNNERS,
   runnerHidesAVerb,
+  runsCliVerb,
   SHELLS,
   shellReadings,
   startsCli,
@@ -294,23 +294,6 @@ const TEAM_CHANGES = [
   "close",
   "message",
 ];
-
-/**
- * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
- * the word after the command, since a value flag before it (`--language en`) shifts the words.
- */
-function runsCliVerb(prog: string, args: string[], command: string, verbs: string[]): boolean {
-  if (isCliProgram(prog)) {
-    return shellReadings(args).some((own) => {
-      const [first, verb] = flightdeckWords(own);
-      return first === command && verbs.includes(verb ?? "");
-    });
-  }
-  if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((_, i) => startsCli(words, i));
-  return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
-}
 
 /**
  * What the app asks the person to confirm, done from a session's shell (#3456): `persona save` and
