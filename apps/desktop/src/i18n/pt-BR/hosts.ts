@@ -486,7 +486,7 @@ export const hosts = {
     rootsNeeded: "Digite a pasta a permitir.",
     bypassTitle: "Sessões sem pedidos de permissão",
     bypassHint:
-      "Ligado por padrão: as sessões deste host começam em Ignorar permissões, e o Claude executa tudo sem perguntar, a menos que você escolha outro modo. Desligue para voltar a receber os pedidos de permissão. Sessões que já rodam mantêm o que tinham ao começar.",
+      "Enquanto ligado (o padrão), as sessões deste host começam em Ignorar permissões, e o Claude executa tudo sem perguntar, a menos que você escolha outro modo. Desligue para voltar a receber os pedidos de permissão. Sessões que já rodam mantêm o que tinham ao começar.",
     bypassOff: "Desligado neste host.",
     bypassOn: "Ligado: as sessões podem rodar sem pedidos de permissão.",
     bypassAllow: "Permitir sessões sem pedidos",

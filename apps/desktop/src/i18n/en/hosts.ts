@@ -480,7 +480,7 @@ export const hosts = {
     rootsNeeded: "Type the folder to allow.",
     bypassTitle: "Sessions without permission prompts",
     bypassHint:
-      "On by default: sessions of this host start in Bypass permissions, and Claude runs everything without asking you, unless you pick another mode. Turn it off to get the permission prompts back. Sessions already running keep what they started with.",
+      "While on (the default), sessions of this host start in Bypass permissions, and Claude runs everything without asking you, unless you pick another mode. Turn it off to get the permission prompts back. Sessions already running keep what they started with.",
     bypassOff: "Off on this host.",
     bypassOn: "On: sessions can run without permission prompts.",
     bypassAllow: "Allow sessions without prompts",

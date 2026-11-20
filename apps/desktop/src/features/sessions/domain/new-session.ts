@@ -74,7 +74,7 @@ export function startChoices(
   model: string;
 } {
   return {
-    mode: rememberedOr(last?.mode, MODES, hostMode),
+    mode: rememberedOr(last?.mode, sessionModes(false, hostMode === "bypassPermissions"), hostMode),
     model: rememberedOr<string>(last?.model, CLAUDE_MODELS, ""),
   };
 }
