@@ -414,9 +414,36 @@ export function stepQuote(open: string, text: string, i: number): { open: string
   return { open: c === '"' || c === "'" ? c : "", next: i + 1 };
 }
 
+/** Ends a word the shell expands (`$V`, `r*`, `{a,b}`): kept by `readArguments`, tested by `hidesItsVerb`. */
+const EXPANDS = "\u0000";
+
+/**
+ * Whether the shell expands something in a word as written (#3559): a variable, a command, a glob, a brace list or
+ * range, or an ANSI-C quote. Single quotes and an escaped character are literal, and double quotes expand only a
+ * variable or a command, so `'a,b'`, `"*.ts"` and `rem\*ove` are plain words.
+ */
+function expandsInPlace(raw: string): boolean {
+  let open = "";
+  for (let i = 0; i < raw.length; ) {
+    const c = raw.charAt(i);
+    const step = stepQuote(open, raw, i);
+    if (c !== "\\") {
+      if (
+        open === "" &&
+        ("$`*?[{,".includes(c) || (c === "." && /\w\.\.\w/.test(raw.slice(i - 1, i + 3))))
+      )
+        return true;
+      if (open === '"' && "$`".includes(c)) return true;
+    }
+    open = step.open;
+    i = step.next;
+  }
+  return false;
+}
+
 /**
  * The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`),
- * unquoted. A word that ends in a `\` escapes the blank after it, and the split on blanks lost how many there were:
+ * unquoted, and a word the shell expands ends in `EXPANDS`. A word that ends in a `\` escapes the blank after it, and the split on blanks lost how many there were:
  * one makes the next word part of this one, two or more end it. `escapedBlank` picks the reading.
  */
 function readArguments(args: string[], escapedBlank: boolean): string[] {
@@ -434,11 +461,11 @@ function readArguments(args: string[], escapedBlank: boolean): string[] {
       i = step.next;
     }
     if (!open && !escaped) {
-      words.push(unquoted(current));
+      words.push(unquoted(current) + (expandsInPlace(current) ? EXPANDS : ""));
       current = "";
     }
   }
-  if (open || escaped) words.push(unquoted(current));
+  if (open || escaped) words.push(unquoted(current) + (expandsInPlace(current) ? EXPANDS : ""));
   return words;
 }
 
@@ -474,7 +501,7 @@ const VERB_NOUNS = [
  * (Braces are already cut off the word by `invocations`, which leaves the comma or the dots of the expansion.)
  */
 export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
-  const expands = (word: string | undefined) => /[$*?[{,]|\w\.\.\w/.test(word ?? "");
+  const expands = (word: string | undefined) => (word ?? "").includes(EXPANDS);
   return shellReadings(args).some((own) => {
     const [command, verb] = flightdeckWords(own);
     return (

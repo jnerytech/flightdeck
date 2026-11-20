@@ -250,7 +250,8 @@ const runnerHidesAVerb = (prog: string, args: string[]) => {
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const at = words.findIndex((w) => isCliProgram(program(w)) && !program(w).includes("$"));
-  return at >= 0 && hidesItsVerb(words.slice(at + 1), false);
+  // Only a noun that has verbs: what follows `bin.ts` in `bun build bin.ts --outfile $OUT` is no command.
+  return at >= 0 && hidesItsVerb(words.slice(at + 1), true);
 };
 
 /**
