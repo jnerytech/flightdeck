@@ -531,7 +531,7 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--rounds": setValue((args, v) => {
     const rounds = Number(v);
-    if (v.trim() === "" || !Number.isInteger(rounds) || rounds < 1 || rounds > 10)
+    if (!/^\d+$/.test(v) || rounds < 1 || rounds > 10)
       throw new Error(`--rounds needs a whole number from 1 to 10\n${USAGE}`);
     args.rounds = rounds;
   }),
@@ -713,6 +713,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
+  if (args.rounds !== undefined && args.loop === "off")
+    throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }
