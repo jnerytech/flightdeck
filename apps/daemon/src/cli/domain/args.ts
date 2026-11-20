@@ -6,6 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -286,9 +287,10 @@ const HANDLERS: Record<string, Handler> = {
   },
   team: (args, reader) => {
     args.command = "team";
-    const action = subAction(reader, ["list", "show"], "invalid team action");
+    const action = subAction(reader, ["list", "show", "new"], "invalid team action");
     args.action = action;
     if (action === "show") args.teamId = operand(reader, "the team");
+    if (action === "new") args.teamGoal = operand(reader, "the goal");
   },
   persona: (args, reader) => {
     args.command = "persona";
@@ -336,6 +338,18 @@ const HANDLERS: Record<string, Handler> = {
     if (v.trim() === "" || !Number.isInteger(position) || position < 0)
       throw new Error(`--position needs a whole number from 0\n${USAGE}`);
     args.position = position;
+  }),
+  "--workers": setValue((args, v) => {
+    args.teamWorkers = v.trim() === "" ? Number.NaN : Number(v);
+  }),
+  "--worker": setValue((args, v) => {
+    args.teamWorkerSpecs = [...(args.teamWorkerSpecs ?? []), v];
+  }),
+  "--coordinator": setValue((args, v) => {
+    args.teamCoordinator = v;
+  }),
+  "--check": setValue((args, v) => {
+    args.teamChecks = [...(args.teamChecks ?? []), v];
   }),
   "--variant": setValue((args, v) => {
     args.variants = [...(args.variants ?? []), v];
@@ -573,6 +587,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
+    // `--confirm` is also `team new`'s, which checks its own flags below.
+    if (flag === "--confirm" && args.command === "team") continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -584,6 +600,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   const personaFault = personaProblem(args);
   if (personaFault !== undefined) throw new Error(`${personaFault}\n${USAGE}`);
+  const teamFault = teamProblem(args);
+  if (teamFault !== undefined) throw new Error(`${teamFault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

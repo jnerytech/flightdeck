@@ -273,7 +273,7 @@ describe("team new (issue #3455)", () => {
   test("a member on bypassPermissions needs --confirm, as the app asks the person again", async () => {
     for (const bypassing of [
       { coordinator: ":::bypassPermissions" },
-      { workers: undefined, workerSpecs: ["", "developer:::bypassPermissions"] },
+      { workers: undefined, workerSpecs: ["developer", "developer:::bypassPermissions"] },
     ]) {
       const refused = fakeDaemon(HANDLERS);
       const no = await run({ ...args, ...bypassing }, refused);
@@ -357,6 +357,19 @@ describe("flightdeckd team new, as the terminal runs it (issue #3455)", () => {
     });
   });
 
+  test("a bad member spec is exit 1 with what the spec takes and nothing sent", async () => {
+    for (const [flag, word] of [
+      ["--worker", "effort"],
+      ["--coordinator", "at most 4 parts"],
+    ] as const) {
+      const spec = flag === "--worker" ? "dev:opus:ultra" : "a:b:c:d:e";
+      const result = await terminal(["team", "new", "g", "--workers", "1", flag, spec]);
+      expect(result.code).toBe(1);
+      expect(text(result)).toContain(word);
+      expect(sentCreate(result.daemon)).toBeUndefined();
+    }
+  });
+
   test("a team with no worker count is exit 1 with the usage and nothing sent", async () => {
     const result = await terminal(["team", "new", "Fix the login"]);
     expect(result.code).toBe(1);
@@ -435,17 +448,6 @@ describe("team new: the arguments (issue #3455)", () => {
     expect(parsed(["team", "new", "g", ...eight])).toMatchObject({ action: "new" });
     expect(parsed(["team", "new", "g", ...eight, "--worker", "developer"])).toMatchObject({
       error: expect.stringContaining("1 to 8"),
-    });
-  });
-
-  test("a bad member spec is refused with the usage", () => {
-    expect(parsed(["team", "new", "g", "--worker", "dev:opus:ultra"])).toMatchObject({
-      error: expect.stringContaining("effort"),
-    });
-    expect(
-      parsed(["team", "new", "g", "--workers", "1", "--coordinator", "a:b:c:d:e"]),
-    ).toMatchObject({
-      error: expect.stringContaining("at most 4 parts"),
     });
   });
 
