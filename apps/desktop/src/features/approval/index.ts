@@ -9,3 +9,4 @@ export {
   type ProofAnswer,
   type ProofResult,
 } from "./store.ts";
+export { wireApproval } from "./wire.ts";
