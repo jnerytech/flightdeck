@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { runBoardCli } from "../../src/board/board-cli.ts";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
+import { poll } from "../support/helpers.ts";
 import { config, fakeDaemon, stopAll } from "./card-cli-helpers.ts";
 
 setDefaultTimeout(20_000);
@@ -141,7 +142,7 @@ const updated = (over: Record<string, unknown> = {}) => ({
   card: card(over),
 });
 
-/** Runs `board watch` until `until` says enough lines came, then presses Ctrl-C. */
+/** Runs `board watch` once the daemon has it, then presses Ctrl-C when `lines` lines came. */
 async function watched(
   daemon: ReturnType<typeof fakeDaemon>,
   options: { json?: boolean; timeoutMs?: number; lines?: number; after?: () => unknown } = {},
@@ -153,10 +154,9 @@ async function watched(
     config(daemon.port),
     { timeoutMs: options.timeoutMs ?? 2000, signal: stop.signal, write: (l) => lines.push(l) },
   );
-  const deadline = Date.now() + 5000;
-  await Bun.sleep(100);
+  await poll(() => daemon.calls.some((c) => c.type === "board.watch"));
   await options.after?.();
-  while (lines.length < (options.lines ?? 1) && Date.now() < deadline) await Bun.sleep(20);
+  await poll(() => lines.length >= (options.lines ?? 1));
   stop.abort();
   return { result: await running, lines };
 }
@@ -191,7 +191,8 @@ describe("flightdeckd board watch (issue #3454)", () => {
     const { result, lines } = await watched(daemon, {
       timeoutMs: 300,
       after: async () => {
-        await Bun.sleep(600);
+        const past = Date.now() + 600;
+        await poll(() => Date.now() > past); // longer than the limit of 300 ms
         daemon.push(updated());
       },
     });
@@ -235,18 +236,23 @@ describe("flightdeckd board watch (issue #3454)", () => {
 
   test("a daemon that goes away mid-stream exits 2, after what it had written", async () => {
     const daemon = fakeDaemon({ "board.watch": () => ({}) });
-    const { result, lines } = await watched(daemon, {
-      lines: 1,
-      after: async () => {
-        daemon.push(updated());
-        await Bun.sleep(100);
-        daemon.dropAll();
-        await Bun.sleep(100); // the close reaches the client before Ctrl-C does
-      },
+    const lines: string[] = [];
+    let result: CliResult | undefined;
+    void runBoardCli({ action: "watch" }, config(daemon.port), {
+      timeoutMs: 2000,
+      signal: new AbortController().signal,
+      write: (l) => lines.push(l),
+    }).then((r) => {
+      result = r;
     });
+    await poll(() => daemon.calls.some((c) => c.type === "board.watch"));
+    daemon.push(updated());
+    await poll(() => lines.length === 1);
+    daemon.dropAll();
+    await poll(() => result);
     expect(lines).toEqual(["c1  in_progress  Fix the login"]);
-    expect(result.code).toBe(2);
-    expect(text(result)).toContain("could not reach the daemon");
+    expect(result?.code).toBe(2);
+    expect(text(result ?? { code: 0, out: [], err: [] })).toContain("could not reach the daemon");
   });
 
   test("the token never reaches a streamed line", async () => {

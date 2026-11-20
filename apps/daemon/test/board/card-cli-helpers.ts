@@ -6,7 +6,7 @@ export const TOKEN = "card-cli-token-0123456789abcdef";
 /** What the daemon says for a command: data, or `{ error }` for a refusal. */
 type Answer = unknown | { error: { code: string; message: string } };
 /** What a handler can do besides answer: push a frame of its own to the client that asked (a stream). */
-export interface Push {
+interface Push {
   push(frame: unknown): void;
 }
 export type Handlers = Record<
