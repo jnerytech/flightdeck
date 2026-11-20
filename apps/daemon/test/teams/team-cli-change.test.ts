@@ -467,7 +467,7 @@ describe("team update, delete, add-member and remove-member: the arguments (issu
 
   test("a flag belongs to its verbs only", () => {
     for (const [argv, word] of [
-      [["team", "update", "t9", "--confirm"], "team new, delete, add-member, remove-member"],
+      [["team", "update", "t9", "--confirm"], "team new, delete, add-member, remove-member, close"],
       [["team", "delete", "t9", "--goal", "g"], "team update"],
       [["team", "show", "t9", "--clear-checks"], "team update"],
       [["team", "list", "--persona", "w1=x"], "team update"],
