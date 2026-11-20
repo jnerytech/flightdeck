@@ -167,15 +167,32 @@ describe("flightdeckd terminal open-session (issue #3538)", () => {
 });
 
 describe("flightdeckd terminal close (issue #3538)", () => {
-  test("without --kill the terminal is only detached, and with it the process ends", async () => {
+  test("--kill sends the kill and says only that, since the process may still be going", async () => {
     const daemon = fakeDaemon(OPEN);
-    const detached = await flightdeckd(["terminal", "close", "t7"], daemon.port);
-    const killed = await flightdeckd(["terminal", "close", "t7", "--kill"], daemon.port);
-    expect([detached.out, killed.out]).toEqual([["closed t7"], ["killed t7"]]);
-    expect(sent(daemon, "terminal.close")).toEqual([
-      { terminalId: "t7", kill: false },
-      { terminalId: "t7", kill: true },
-    ]);
+    const run = await flightdeckd(["terminal", "close", "t7", "--kill"], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["kill sent to t7"] });
+    expect(sent(daemon, "terminal.close")).toEqual([{ terminalId: "t7", kill: true }]);
+  });
+
+  test("without --kill a terminal that is still listed exits 1: this command never attached, so it detaches nothing", async () => {
+    const { runTerminalCli } = await import("../../src/terminal/index.ts");
+    const daemon = fakeDaemon({ ...OPEN, "terminal.list": () => ({ terminals: [OPENED] }) });
+    const result = await runTerminalCli(
+      { action: "close", terminalId: "t7", kill: false },
+      config(daemon.port),
+    );
+    expect({ code: result.code, reason: result.reason }).toEqual({
+      code: 1,
+      reason: "terminal_still_running",
+    });
+    expect(result.err.join("\n")).toContain("--kill");
+  });
+
+  test("without --kill a terminal that is gone from the list was removed, and the line says so", async () => {
+    const daemon = fakeDaemon({ ...OPEN, "terminal.list": () => ({ terminals: [] }) });
+    const run = await flightdeckd(["terminal", "close", "t7"], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["removed t7"] });
+    expect(sent(daemon, "terminal.close")).toEqual([{ terminalId: "t7", kill: false }]);
   });
 
   test("--json says what was done", async () => {
@@ -257,6 +274,10 @@ describe("the arguments of the terminal write verbs (issue #3538)", () => {
       terminalResume: "r1",
       terminalPersona: "p",
     });
+  });
+
+  test("a value on the -- separator is refused, so --=x is never read as the program's start", () => {
+    expect(refused(["terminal", "open", "--cwd", "/srv", "--=x", "sh"])).toContain("--");
   });
 
   test("open needs a folder, and --claude and a program after -- do not go together", () => {
