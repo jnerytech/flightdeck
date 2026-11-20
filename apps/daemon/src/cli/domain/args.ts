@@ -3,10 +3,11 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
-
+import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { rulesProblem } from "./rules-args.ts";
+import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -293,11 +294,25 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  board: (args, reader) => {
+    args.command = "board";
+    args.action = subAction(reader, ["settings", "watch"] as const, "invalid board action");
+  },
   team: (args, reader) => {
     args.command = "team";
-    const action = subAction(reader, ["list", "show"], "invalid team action");
+    const action = subAction(
+      reader,
+      ["list", "show", "new", "update", "delete", "add-member", "remove-member"],
+      "invalid team action",
+    );
     args.action = action;
-    if (action === "show") args.teamId = operand(reader, "the team");
+    if (action !== "list" && action !== "new") args.teamId = operand(reader, "the team");
+    if (action === "new") args.teamGoal = operand(reader, "the goal");
+    if (action === "remove-member") args.teamMember = operand(reader, "the member");
+    if (action === "add-member") {
+      const next = reader.peek();
+      if (next && !next.startsWith("--")) args.teamSpec = reader.next();
+    }
   },
   persona: (args, reader) => {
     args.command = "persona";
@@ -346,8 +361,37 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--position needs a whole number from 0\n${USAGE}`);
     args.position = position;
   }),
+  "--workers": setValue((args, v) => {
+    // Digits only: `Number` would take `0x2`, `2e0` and a padded " 2 ".
+    args.teamWorkers = /^\d+$/.test(v) ? Number(v) : Number.NaN;
+  }),
+  "--worker": setValue((args, v) => {
+    args.teamWorkerSpecs = [...(args.teamWorkerSpecs ?? []), v];
+  }),
+  "--coordinator": setValue((args, v) => {
+    args.teamCoordinator = v;
+  }),
+  "--check": setValue((args, v) => {
+    args.teamChecks = [...(args.teamChecks ?? []), v];
+  }),
+  "--goal": setValue((args, v) => {
+    if (args.teamGoalFlag !== undefined) throw new Error(`--goal: once\n${USAGE}`);
+    args.teamGoalFlag = v;
+  }),
+  "--persona": setValue((args, v) => {
+    if (args.teamPersona !== undefined) throw new Error(`--persona: once\n${USAGE}`);
+    args.teamPersona = v;
+  }),
+  "--clear-checks": setFlag((args) => {
+    args.teamClearChecks = true;
+  }),
   "--variant": setValue((args, v) => {
     args.variants = [...(args.variants ?? []), v];
+  }),
+  "--max-parallel-runs": setValue((args, v) => {
+    if (!/^\d+$/.test(v) || !Number.isSafeInteger(Number(v)) || Number(v) < 1)
+      throw new Error(`--max-parallel-runs needs a whole number, 1 or more\n${USAGE}`);
+    args.maxParallelRuns = Number(v);
   }),
   "--rounds": setValue((args, v) => {
     const rounds = Number(v);
@@ -525,6 +569,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     args.json &&
     ![
       "card",
+      "board",
       "team",
       "persona",
       "host",
@@ -539,7 +584,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, team, persona, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, team, persona, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -594,6 +639,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       continue;
     // `rules remove` and `autoapprove resume` confirm too; `rulesProblem` checks them below.
     if (flag === "--confirm" && ["rules", "autoapprove"].includes(args.command)) continue;
+    // `--confirm` is also `team new`'s, which checks its own flags below.
+    if (flag === "--confirm" && args.command === "team") continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -603,10 +650,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (args.rounds !== undefined && args.loop === "off")
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
-  const personaFault = personaProblem(args);
-  if (personaFault !== undefined) throw new Error(`${personaFault}\n${USAGE}`);
-  const rulesFault = rulesProblem(args);
-  if (rulesFault !== undefined) throw new Error(`${rulesFault}\n${USAGE}`);
+  // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
+  if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
+  const fault =
+    personaProblem(args) ?? teamProblem(args) ?? boardProblem(args) ?? rulesProblem(args);
+  if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

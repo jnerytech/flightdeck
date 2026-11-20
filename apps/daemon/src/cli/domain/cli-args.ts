@@ -29,6 +29,7 @@ export interface CliArgs {
     | "card"
     | "team"
     | "persona"
+    | "board"
     | "host"
     | "sessions"
     | "requests"
@@ -62,6 +63,8 @@ export interface CliArgs {
     | "complete"
     | "delete"
     | "discard"
+    | "settings"
+    | "watch"
     | "subagents"
     | "save"
     | "remove"
@@ -81,6 +84,8 @@ export interface CliArgs {
     | "start-arena"
     | "choose-variant"
     | "check-loop"
+    | "add-member"
+    | "remove-member"
     | "dismiss-unblocked";
   /** `message send <to> <text>`. */
   to?: string;
@@ -102,6 +107,17 @@ export interface CliArgs {
   team?: string;
   /** `team show <team>`. */
   teamId?: string;
+  /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */
+  teamGoal?: string;
+  teamWorkers?: number;
+  teamWorkerSpecs?: string[];
+  teamCoordinator?: string;
+  teamChecks?: string[];
+  teamGoalFlag?: string;
+  teamMember?: string;
+  teamSpec?: string;
+  teamPersona?: string;
+  teamClearChecks?: boolean;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
@@ -120,6 +136,8 @@ export interface CliArgs {
   variant?: string;
   loop?: "on" | "off";
   rounds?: number;
+  /** `board settings --max-parallel-runs`. */
+  maxParallelRuns?: number;
   estimate?: string;
   validationNote?: string;
   specPath?: string;
