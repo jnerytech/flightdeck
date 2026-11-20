@@ -50,6 +50,8 @@ Apaga o índice de histórico e lê todos os transcripts de novo, imprimindo qua
 mensagens entraram. Pare o daemon antes: com outro processo no mesmo `dataDir`, o comando sai com
 código 3.
 
+Para ler o histórico sem o app, veja [`fd history`](flightdeckd-commands.md#fd-history).
+
 ## No app
 
 - **Histórico por host** (🕘 ao lado do nome do host): sessões indexadas com título, pasta, data

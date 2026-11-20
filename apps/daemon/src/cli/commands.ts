@@ -3,6 +3,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CardCliArgs } from "../board/index.ts";
 import { loadConfig, userHome } from "../config.ts";
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
+import type { HistoryCliArgs } from "../history/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
@@ -210,6 +211,28 @@ function cardCliArgs(args: CliArgs): CardCliArgs {
   return { action: args.action, ...Object.fromEntries(present) } as CardCliArgs;
 }
 
+/** What the person typed for `history list|search|get|tool`, as `runHistoryCli` takes it: what they left out stays out. */
+function historyCliArgs(args: CliArgs): HistoryCliArgs {
+  const typed: Record<string, unknown> = {
+    query: args.query,
+    claudeSessionId: args.claudeSessionId,
+    uuid: args.uuid,
+    index: args.index,
+    cwd: args.cwd,
+    projectKey: args.projectKey,
+    from: args.from,
+    to: args.until,
+    origin: args.origin,
+    hideAutomated: args.hideAutomated,
+    limit: args.limit,
+    cursor: args.cursor,
+    tail: args.tail,
+    json: args.json || undefined,
+  };
+  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
+  return { action: args.action, ...Object.fromEntries(present) } as HistoryCliArgs;
+}
+
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   backup: done(async (args, deps) => (await import("./maintenance.ts")).runBackup(args, deps)),
   restore: done(async (args, deps) => (await import("./maintenance.ts")).runRestore(args, deps)),
@@ -397,7 +420,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           action: args.action as "summary" | "session" | "card" | "run" | "status" | "export",
           ...(args.costsId === undefined ? {} : { id: args.costsId }),
           ...(args.from === undefined ? {} : { from: args.from }),
-          ...(args.dateTo === undefined ? {} : { to: args.dateTo }),
+          ...(args.until === undefined ? {} : { to: args.until }),
           ...(args.project === undefined ? {} : { projectKey: args.project }),
           ...(args.model === undefined ? {} : { model: args.model }),
           ...(args.origin === undefined ? {} : { origin: args.origin as UsageOrigin }),
@@ -415,7 +438,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       await runRoiCli(
         {
           from: args.from ?? "",
-          to: args.dateTo ?? "",
+          to: args.until ?? "",
           ...(args.project === undefined ? {} : { projectKey: args.project }),
           ...(args.json ? { json: true } : {}),
         },
@@ -561,7 +584,15 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   telemetry: done(async (args, deps) =>
     (await import("./claude-settings.ts")).runTelemetry(args, deps),
   ),
-  history: done(async (args, deps) => (await import("./history.ts")).runReindex(args, deps)),
+  history: async (args, deps) => {
+    if (args.action === "reindex") {
+      await (await import("./history.ts")).runReindex(args, deps);
+      return 0;
+    }
+    const { runHistoryCli } = await import("../history/index.ts");
+    const config = await localConfig(args);
+    return reported(deps, await runHistoryCli(historyCliArgs(args), config), args.json);
+  },
   approvers: async (args, deps) => (await import("./approvers.ts")).runApprovers(args, deps),
   doctor: async (args, deps) => (await import("./setup.ts")).runDoctorCommand(args, deps),
   setup: done(async (args, deps) => (await import("./setup.ts")).runSetupCommand(args, deps)),

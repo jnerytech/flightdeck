@@ -9,7 +9,7 @@ export interface CostsArgs {
   command: string;
   action?: string;
   from?: string;
-  dateTo?: string;
+  until?: string;
   project?: string;
   model?: string;
   origin?: string;
@@ -35,8 +35,10 @@ const takesPeriod = (args: CostsArgs) =>
 
 /** What is wrong with the flags of `costs` and `roi`: a day that is not one, a missing day, a flag of another verb. */
 export function costsProblem(args: CostsArgs): string | undefined {
+  // `--to`, `--from` and `--origin` are `history`'s and `update`'s flags too: those commands are checked elsewhere.
+  if (args.command !== "costs" && args.command !== "roi") return undefined;
   const costs = args.command === "costs";
-  if (args.dateTo !== undefined && !takesPeriod(args))
+  if (args.until !== undefined && !takesPeriod(args))
     return "--to: this flag only applies to flightdeckd costs summary, export and roi";
   if (costs && args.from !== undefined && !takesPeriod(args))
     return "--from: this flag only applies to flightdeckd costs summary, export and roi";
@@ -48,11 +50,11 @@ export function costsProblem(args: CostsArgs): string | undefined {
   if (costs && !filters && args.project !== undefined)
     return "--project: this flag only applies to flightdeckd costs summary and export";
   if (!takesPeriod(args)) return undefined;
-  if (args.from === undefined || args.dateTo === undefined)
+  if (args.from === undefined || args.until === undefined)
     return "missing --from and --to: the first and the last day, as YYYY-MM-DD";
   if (!isDay(args.from)) return "--from needs a day as YYYY-MM-DD";
-  if (!isDay(args.dateTo)) return "--to needs a day as YYYY-MM-DD";
-  if (args.from > args.dateTo) return "--from is after --to";
+  if (!isDay(args.until)) return "--to needs a day as YYYY-MM-DD";
+  if (args.from > args.until) return "--from is after --to";
   if (args.origin !== undefined && !ORIGINS.includes(args.origin))
     return `--origin: ${ORIGINS.join(", ")}`;
   return undefined;

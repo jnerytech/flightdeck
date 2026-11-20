@@ -365,7 +365,7 @@ describe("costs and roi: the arguments (issue #3460)", () => {
       command: "costs",
       action: "summary",
       from: "2026-11-01",
-      dateTo: "2026-11-20",
+      until: "2026-11-20",
       origin: "card",
     });
     expect(parsed(["costs", "session", "abc-123"])).toMatchObject({
