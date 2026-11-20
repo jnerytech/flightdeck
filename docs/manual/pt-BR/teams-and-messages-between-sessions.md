@@ -134,6 +134,13 @@ daemon do mesmo host, com o token do arquivo de config, como o `flightdeckd card
 ```sh
 flightdeckd team list [--project <nome ou id>] [--json]
 flightdeckd team show <time> [--json]
+flightdeckd team new <objetivo> (--workers <1-8> | --worker <spec>...) [--coordinator <spec>]
+  [--name <texto>] [--check <comando>...] [--project <nome ou id>] [--confirm] [--json]
+flightdeckd team update <time> [--goal <texto>] [--check <comando>... | --clear-checks]
+  [--persona <membro>=<persona>] [--json]
+flightdeckd team add-member <time> [<spec>] [--confirm] [--json]
+flightdeckd team remove-member <time> <membro> --confirm [--json]
+flightdeckd team delete <time> --confirm [--json]
 ```
 
 - `list` imprime uma linha por time: id, nome, estado (`active`, `paused by user`, `paused by quota`
@@ -143,6 +150,30 @@ flightdeckd team show <time> [--json]
   do coordenador (o resultado, marcado como feito ou não) e uma linha por membro: papel, persona,
   estado da sessão, card, quantas mensagens enviou e recebeu e, abaixo, o último relato dele. Um
   worker cujo card ainda espera na fila diz "no session".
+- `new` cria um time, como o formulário **Novo time** do app: o coordenador começa na hora e o card de
+  cada worker começa ou espera na fila de execução (a resposta lista os que esperam). Diga os workers
+  como uma contagem (`--workers 3`, todos com a persona padrão) ou um `--worker <spec>` para cada um,
+  de 1 a 8. Uma spec é `persona[:modelo[:esforço[:modo]]]`, e a parte deixada vazia mantém o padrão:
+  `--worker developer::high` é a persona developer com esforço alto. `--coordinator` recebe uma spec
+  no mesmo formato. Se você nomear a persona de um worker, nomeie a de todos. `--check` acrescenta um
+  comando que o time roda para conferir o trabalho (até 10), e `--name` dá nome ao time. Com vários
+  projetos no host, `--project` diz qual. Um membro com o modo `bypassPermissions` pula todo pedido de
+  permissão, então o comando recusa, a menos que você passe também `--confirm`, como o app pergunta de
+  novo. Um time acima da cota do plano é recusado. Se o comando não recebe resposta, ele diz isso: o time
+  pode ou não existir, então rode `team list` antes de tentar de novo. O `team new` de uma sessão conta
+  como risco alto, então o pedido dela vai para você.
+- `update` muda um time aberto, como as configurações do time no app: `--goal` troca o objetivo,
+  `--check` (repetido) troca as verificações e `--clear-checks` esvazia, e `--persona w1=reviewer` dá ao
+  membro `w1` outra persona (`--persona w1=` volta à padrão). Uma chamada pode levar as três, e precisa
+  levar ao menos uma. Um time fechado é recusado.
+- `add-member` acrescenta um worker a um time aberto e não pausado. A spec opcional é a mesma
+  `persona[:modelo[:esforço[:modo]]]`, e um worker cujo card precisa esperar diz isso. Um worker com
+  `bypassPermissions` precisa de `--confirm`, como no `new`. `remove-member` tira um membro pelo nome,
+  endereço, sessão ou card; ele para a sessão do membro e avisa o worker, então precisa de `--confirm`, como o app
+  pergunta antes. O coordenador não pode ser
+  removido. `delete` remove um time fechado, sem membro ativo, e precisa de `--confirm`: é para
+  sempre. O `team update`, `delete`, `add-member` ou `remove-member` de uma sessão conta como risco alto,
+  como o `new`. Uma mudança sem resposta diz isso, e o `team show` mostra o que ela fez.
 - `--json` imprime a resposta do próprio daemon, para um script. O texto que uma sessão escreveu (um
   relato, um nome) aparece como texto simples, sem caracteres de controle.
 - **Códigos de saída:** 0 feito, 1 recusado (um time ou projeto desconhecido; o motivo vai para o

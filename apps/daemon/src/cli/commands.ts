@@ -155,6 +155,31 @@ async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps
 const stdioTransport = async (): Promise<Transport> =>
   new (await import("@modelcontextprotocol/sdk/server/stdio.js")).StdioServerTransport();
 
+/** `rules` and `autoapprove`: the permission rules of a project and the approver's decisions (#3457). */
+async function rulesCli(
+  noun: "rules" | "autoapprove",
+  args: CliArgs,
+  deps: CliDeps,
+): Promise<number> {
+  const { runRulesCli } = await import("../permissions/index.ts");
+  const config = await localConfig(args);
+  return reported(
+    deps,
+    await runRulesCli(
+      {
+        noun,
+        action: "list",
+        ...(args.project === undefined ? {} : { project: args.project }),
+        ...(args.session === undefined ? {} : { session: args.session }),
+        ...(args.limit === undefined ? {} : { limit: args.limit }),
+        ...(args.json ? { json: true } : {}),
+      },
+      config,
+    ),
+    args.json,
+  );
+}
+
 /** What the person typed for `card`, as `runCardCli` takes it: what they left out stays out. */
 function cardCliArgs(args: CliArgs): CardCliArgs {
   const typed: Record<string, unknown> = {
@@ -338,6 +363,17 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           action: args.action as TeamCliArgs["action"],
           ...(args.project === undefined ? {} : { project: args.project }),
           ...(args.teamId === undefined ? {} : { id: args.teamId }),
+          ...(args.teamGoal === undefined ? {} : { goal: args.teamGoal }),
+          ...(args.personaName === undefined ? {} : { name: args.personaName }),
+          ...(args.teamWorkers === undefined ? {} : { workers: args.teamWorkers }),
+          ...(args.teamWorkerSpecs === undefined ? {} : { workerSpecs: args.teamWorkerSpecs }),
+          ...(args.teamCoordinator === undefined ? {} : { coordinator: args.teamCoordinator }),
+          ...(args.teamChecks === undefined ? {} : { checks: args.teamChecks }),
+          ...(args.teamMember === undefined ? {} : { member: args.teamMember }),
+          ...(args.teamSpec === undefined ? {} : { spec: args.teamSpec }),
+          ...(args.teamPersona === undefined ? {} : { persona: args.teamPersona }),
+          ...(args.teamClearChecks ? { clearChecks: true } : {}),
+          ...(args.confirm ? { confirm: true } : {}),
           ...(args.json ? { json: true } : {}),
         },
         config,
@@ -403,6 +439,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       args.json,
     );
   },
+  rules: async (args, deps) => rulesCli("rules", args, deps),
+  autoapprove: async (args, deps) => rulesCli("autoapprove", args, deps),
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");
     return asking(args, deps, (config, remote) =>

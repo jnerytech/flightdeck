@@ -195,6 +195,12 @@ const OPTIONS_WITH_VALUE = [
   "--language",
   "--workflow",
   "--variant",
+  "--workers",
+  "--worker",
+  "--coordinator",
+  "--check",
+  "--goal",
+  "--persona",
   "--rounds",
   "--max-parallel-runs",
   "--scope",
@@ -207,6 +213,7 @@ const OPTIONS_WITH_VALUE = [
   "--permission-mode",
   "--icon",
   "--hash",
+  "--limit",
   "--out",
   "--from",
   "--to",
@@ -341,24 +348,37 @@ function resumesWithPower(prog: string, args: string[]): boolean {
 }
 
 const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
+const TEAM_CHANGES = ["new", "update", "delete", "add-member", "remove-member"];
 
 /**
- * What the app asks the person to confirm, done from a session's shell (#3456): `persona save` and
- * `remove` rewrite or drop a persona (a saved one is a system prompt with its own permission mode),
- * `reset` throws an edit away, `trust` lets a project's versioned persona into every session, and
- * `publish-agent` writes a file into the project. `--confirm` is only a flag the caller types. The verb
- * is read as the word after `persona`, since a value flag before it (`--language en`) shifts the words.
+ * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
+ * the word after the command, since a value flag before it (`--language en`) shifts the words.
  */
-function changesAPersona(prog: string, args: string[]): boolean {
+function runsCliVerb(prog: string, args: string[], command: string, verbs: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const runsCli = ["fd", "flightdeckd"].includes(prog)
     ? true
     : RUNNERS.includes(prog) &&
       words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
-  return (
-    runsCli && words.some((w, i) => w === "persona" && PERSONA_CHANGES.includes(words[i + 1] ?? ""))
-  );
+  return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
 }
+
+/**
+ * What the app asks the person to confirm, done from a session's shell (#3456): `persona save` and
+ * `remove` rewrite or drop a persona (a saved one is a system prompt with its own permission mode),
+ * `reset` throws an edit away, `trust` lets a project's versioned persona into every session, and
+ * `publish-agent` writes a file into the project. `--confirm` is only a flag the caller types.
+ */
+const changesAPersona = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "persona", PERSONA_CHANGES);
+
+/**
+ * `team new` starts a coordinator and up to eight workers, each with its own permission mode (one may be
+ * `bypassPermissions`) and each spending quota; `add-member` starts one more; `remove-member` and `delete`
+ * stop a session or drop a team's record; `update` rewrites the goal and checks the coordinator is told as a
+ * system notice and swaps a live member's persona (#3455). The app asks the person to fill and confirm a form.
+ */
+const startsATeam = (prog: string, args: string[]) => runsCliVerb(prog, args, "team", TEAM_CHANGES);
 
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
@@ -409,6 +429,11 @@ const DANGEROUS: Array<{
     when: resumesWithPower,
     reason: () =>
       "does what the app asks a person to confirm (flightdeckd history resume --force, or with a permission mode)",
+  },
+  {
+    when: startsATeam,
+    reason: () =>
+      "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member or remove-member)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

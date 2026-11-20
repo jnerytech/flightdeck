@@ -26,7 +26,7 @@ export interface HistoryArgs {
 /** The verbs that print JSON for a script (`reindex` prints a sentence). */
 const JSON_VERBS = ["list", "search", "get", "tool", "resume", "watch"];
 
-/** The flags of `history`, each with the verbs that take it (`--from` is `update`'s, `--name` the persona's and `--force` the card's too: only `history` is checked). */
+/** The flags of `history`, each with the verbs that take it (`--from` is `update`'s, `--name` the persona's, `--force` the card's and `--limit` `autoapprove`'s too: only `history` is checked). */
 function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly string[]]> {
   return [
     ["--cwd", args.cwd, ["list", "search"]],
@@ -34,7 +34,6 @@ function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly strin
     ["--to", args.until, ["list", "search"]],
     ["--origin", args.origin, ["list"]],
     ["--hide-automated", args.hideAutomated, ["list"]],
-    ["--limit", args.limit, ["list", "search", "get"]],
     ["--cursor", args.cursor, ["list", "get"]],
     ["--tail", args.tail, ["get"]],
     ...(args.command === "history"
@@ -43,6 +42,7 @@ function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly strin
           ["--name", args.personaName, ["resume"]],
           ["--permission-mode", args.permissionMode, ["resume"]],
           ["--force", args.force, ["resume"]],
+          ["--limit", args.limit, ["list", "search", "get"]],
         ] as Array<[string, unknown, readonly string[]]>)
       : []),
   ];

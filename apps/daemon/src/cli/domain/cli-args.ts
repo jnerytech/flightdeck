@@ -12,6 +12,8 @@ export interface CliArgs {
     | "service"
     | "history"
     | "approvers"
+    | "rules"
+    | "autoapprove"
     | "hooks"
     | "telemetry"
     | "hook"
@@ -81,6 +83,8 @@ export interface CliArgs {
     | "start-arena"
     | "choose-variant"
     | "check-loop"
+    | "add-member"
+    | "remove-member"
     | "dismiss-unblocked"
     | "search"
     | "tool"
@@ -105,6 +109,17 @@ export interface CliArgs {
   team?: string;
   /** `team show <team>`. */
   teamId?: string;
+  /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */
+  teamGoal?: string;
+  teamWorkers?: number;
+  teamWorkerSpecs?: string[];
+  teamCoordinator?: string;
+  teamChecks?: string[];
+  teamGoalFlag?: string;
+  teamMember?: string;
+  teamSpec?: string;
+  teamPersona?: string;
+  teamClearChecks?: boolean;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
@@ -145,6 +160,8 @@ export interface CliArgs {
   tools?: string[];
   permissionMode?: string;
   icon?: string;
+  /** `autoapprove list --limit` and `history list|search|get --limit`: how many to read. */
+  limit?: number;
   /** `persona trust --hash`: the start of the hash `persona list` showed. */
   hash?: string;
   /** `persona list --scope <host|project|all>`. */
@@ -186,7 +203,6 @@ export interface CliArgs {
   until?: string;
   origin?: "flightdeck" | "external";
   hideAutomated?: true;
-  limit?: number;
   cursor?: string;
   tail?: true;
   claudeSessionId?: string;
