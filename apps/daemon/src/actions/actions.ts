@@ -80,6 +80,11 @@ export class Actions {
     this.requests.approve(requestId, approval);
   }
 
+  /** Whether the request waits for an approval that needs a device's proof (#3452). */
+  needsProof(requestId: string): boolean {
+    return this.requests.needsProof(requestId);
+  }
+
   /** Throws unless a delivery for `purpose` may go through: a request that asks has to be approved. */
   gate(purpose: string): void {
     this.requests.gate(purpose);
