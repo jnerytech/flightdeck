@@ -476,7 +476,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   if (args.answerMessage !== undefined && !["approve", "deny"].includes(args.command))
     throw new Error(`--message: this flag only applies to flightdeckd approve and deny\n${USAGE}`);
   if (!["requests", "message"].includes(args.command) && args.session !== undefined)
-    throw new Error(`--session: this flag only applies to flightdeckd requests and message\n${USAGE}`);
+    throw new Error(
+      `--session: this flag only applies to flightdeckd requests and message\n${USAGE}`,
+    );
   if (args.command !== "card" && (args.description !== undefined || args.workflow !== undefined))
     throw new Error(
       `--description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
