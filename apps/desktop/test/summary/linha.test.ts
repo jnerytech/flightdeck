@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionRecap } from "@flightdeck/protocol";
-import { recapPreview } from "../../src/features/summary/domain/recap-preview.ts";
+import { recapFull, recapPreview } from "../../src/features/summary/domain/recap-preview.ts";
 
 const recap = (over: Partial<SessionRecap> = {}): SessionRecap => ({
   asked: "Add a retry to the queue",
@@ -29,6 +29,13 @@ describe("resumo-linha: the one line of a folded summary (issue #97)", () => {
         }),
       ),
     ).toBe("A chave da Isabela está em /home/dev/x.md. Alias: abc E-mail");
+  });
+
+  test("the whole line is the same plain text, not cut, so a tooltip can give what the line cut (#3408)", () => {
+    const done = `${"palavra ".repeat(60)}**fim**`;
+    expect(recapFull(recap({ done }))).toBe(`${"palavra ".repeat(60)}fim`);
+    expect(recapFull(recap())).toBe("Retry added with backoff.");
+    expect(recapFull(recap({ done: null, asked: null }))).toBe("");
   });
 
   test("a very long summary is cut with an ellipsis at 160 characters", () => {

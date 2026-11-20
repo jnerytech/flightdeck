@@ -4,6 +4,6 @@
  * re-exporting it here would close import cycles through the domains it wires.
  */
 
-export { runSessionsCli, type SessionsCliArgs } from "./cli.ts";
+export { runSessionsCli } from "./cli.ts";
 export { runSendCli } from "./send-cli.ts";
 export type { SessionManager } from "./session-manager.ts";

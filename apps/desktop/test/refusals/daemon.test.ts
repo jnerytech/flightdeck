@@ -69,6 +69,7 @@ const REASONS = [
   "column_unknown",
   "persona_id_invalid",
   "repo_not_git",
+  "repo_has_no_commit",
   "search_busy",
   "search_superseded",
   "project_exists",

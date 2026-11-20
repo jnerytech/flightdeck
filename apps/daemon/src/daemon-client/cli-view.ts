@@ -24,8 +24,9 @@ export function isLoopbackHost(host: string): boolean {
 export class TimedOut extends Error {}
 
 /** A name or a text comes from the board, an issue, a session or the daemon: it may not drive the terminal or reorder what it reads. */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching these characters is the point
-const CONTROL = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
+const CONTROL =
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching these characters is the point
+  /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u061c\u00ad\ufeff\ufff9-\ufffb]/g;
 const plain = (text: string) => text.replace(CONTROL, " ");
 
 export const json = (value: unknown): CliResult => ({

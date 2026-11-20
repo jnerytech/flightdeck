@@ -115,6 +115,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   (`apps/desktop/src/i18n/pt-BR.ts`) and the pt-BR versions of the README and the manual. Older
   text in Portuguese stays as it is; do not rename it in bulk (it would conflict with the open
   phase branches).
+- A new feature is a `flightdeckd` command first (`--json`, exit codes 0 done, 1 refused, 2 no daemon);
+  the screen calls the same daemon request (user, 2026-11-19, #3423, `docs/decisions/2026-11-19-cli-first.md`).
 - Text a person sees in the app comes from the dictionaries (`apps/desktop/src/i18n/en.ts` and
   `pt-BR.ts`), always in both languages; never a literal in a component.
 - The product version is the same in the protocol, the daemon, the desktop and

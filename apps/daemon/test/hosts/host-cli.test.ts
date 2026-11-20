@@ -92,4 +92,12 @@ describe("flightdeckd host (issue #3424)", () => {
     expect(run.code).toBe(1);
     expect(run.err.join("\n")).toContain("only applies to flightdeckd card");
   });
+
+  test("a config that is not valid JSON is refused without printing what it holds", async () => {
+    const secret = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const run = await flightdeckd(["host"], 1, `{"token": ${secret}}`);
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).not.toContain(secret);
+    expect(run.err.join("\n")).toContain("config file");
+  });
 });

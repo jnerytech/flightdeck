@@ -31,6 +31,7 @@ export { DEFAULT_ALLOWED_NETWORKS, ipInNetworks, parseCidr } from "./networks.ts
 export { ntfsName } from "./ntfs-name.ts";
 export { assistantDir, isInside, resolveAllowedCwd, rootNames, samePath } from "./paths.ts";
 export { present } from "./present.ts";
+export type { OnProcessEvent, ProcessEventName } from "./process-events.ts";
 export { readRegular, readRegularSized } from "./read-regular.ts";
 export { assertBranchName, HEAD, type Rev, refArg } from "./ref-arg.ts";
 export { settled } from "./settled.ts";
