@@ -95,6 +95,14 @@ describe("fd launcher: installing it (#3433)", () => {
     expect(readFileSync(launcher, "utf8")).toBe(fdLauncherText(stable, platform));
   });
 
+  test("a script that only mentions our marker in a comment is not ours", async () => {
+    const { stable, launcher } = home();
+    const text = "#!/bin/sh\necho mine\n# flightdeck fd launcher\n";
+    writeFileSync(launcher, text);
+    expect((await installFdLauncher(stable, platform)).outcome).toBe("foreign");
+    expect(readFileSync(launcher, "utf8")).toBe(text);
+  });
+
   test("an fd that is not ours stays untouched", async () => {
     const { stable, launcher } = home();
     writeFileSync(launcher, "#!/bin/sh\necho someone else's fd\n");
@@ -109,6 +117,24 @@ describe("fd launcher: installing it (#3433)", () => {
     symlinkSync(target, launcher);
     expect((await installFdLauncher(stable, platform)).outcome).toBe("foreign");
     expect(readFileSync(target, "utf8")).toBe("keep\n");
+  });
+
+  test("a folder that is not there is a failure to write, not a foreign fd", async () => {
+    const { dir } = home();
+    const stable = join(dir, "missing", "flightdeckd");
+    const result = await installFdLauncher(stable, platform);
+    expect(result.outcome).toBe("failed");
+    expect(result.error).toContain("ENOENT");
+  });
+
+  test("our launcher that cannot be replaced is a failure, and the old one stays", async () => {
+    const { stable, launcher } = home();
+    const old = fdLauncherText(join(stable, "..", "old", "flightdeckd"), platform);
+    writeFileSync(launcher, old);
+    mkdirSync(`${launcher}.new`);
+    writeFileSync(join(`${launcher}.new`, "x"), "x");
+    expect((await installFdLauncher(stable, platform)).outcome).toBe("failed");
+    expect(readFileSync(launcher, "utf8")).toBe(old);
   });
 
   test("a folder called fd is foreign too, not an error", async () => {
@@ -128,19 +154,32 @@ describe("fd launcher: what setup tells the person (#3433)", () => {
     const text = lines.join("\n");
     expect(text).toContain("/usr/bin/fd");
     expect(text).toContain("first on your PATH");
-    expect(text).toContain(`export PATH="${join(stable, "..")}:$PATH"`);
+    expect(text).toContain(`export PATH='${join(stable, "..")}':"$PATH"`);
   });
 
-  test("on Windows the line to put the folder first is for PowerShell", () => {
+  test("a folder with a dollar sign or a quote cannot run anything from the line to paste", () => {
+    const lines = fdPathNotes({
+      launcher: "/home/a$(touch x)'b/.flightdeck/bin/fd",
+      platform: "linux",
+      outcome: "written",
+      found: "/usr/bin/fd",
+    });
+    expect(lines.join("\n")).toContain(
+      String.raw`export PATH='/home/a$(touch x)'\''b/.flightdeck/bin':"$PATH"`,
+    );
+  });
+
+  test("on Windows the folder goes first by hand, not by a script that rewrites the Path", () => {
     const lines = fdPathNotes({
       launcher: String.raw`C:\Users\dev\.flightdeck\bin\fd.cmd`,
       platform: "win32",
       outcome: "written",
       found: String.raw`C:\tools\fd.exe`,
     });
-    expect(lines.join("\n")).toContain(
-      String.raw`[Environment]::SetEnvironmentVariable("Path", "C:\Users\dev\.flightdeck\bin;" + [Environment]::GetEnvironmentVariable("Path", "User"), "User")`,
-    );
+    const text = lines.join("\n");
+    expect(text).toContain(String.raw`C:\Users\dev\.flightdeck\bin`);
+    expect(text).toContain("Edit environment variables for your account");
+    expect(text).not.toContain("SetEnvironmentVariable");
   });
 
   test("the first line says where the launcher went and what was done", async () => {
@@ -159,6 +198,14 @@ describe("fd launcher: what setup tells the person (#3433)", () => {
     const { stable } = home();
     const lines = await setupFdLauncher({ stable, platform, which: found(null) });
     expect(lines.slice(1)).toEqual([]);
+  });
+
+  test("a launcher that could not be written is told as a warning, and setup goes on", async () => {
+    const { dir } = home();
+    const stable = join(dir, "missing", "flightdeckd");
+    const lines = await setupFdLauncher({ stable, platform, which: found(null) });
+    expect(lines.join("\n")).toContain("could not write");
+    expect(lines.join("\n")).not.toContain("is not Flightdeck's");
   });
 
   test("a foreign fd in our folder is named, kept, and the way to claude is told", async () => {
