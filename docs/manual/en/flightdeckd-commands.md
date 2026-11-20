@@ -190,11 +190,13 @@ fd history list [--cwd <folder>] [--project-key <key>] [--from <time>] [--to <ti
 fd history search "login bug" [--cwd <folder>] [--from <time>] [--to <time>] [--limit 10] [--json]
 fd history get <session> [--tail] [--limit 50] [--cursor <c>] [--json]
 fd history tool <session> <message> <index> [--json]
+fd history resume <session> [--name <text>] [--permission-mode <mode>] [--force] [--json]
+fd history watch [--json]
 fd history reindex
 ```
 
-These read the conversations Claude Code already recorded, as the History screen does. They change
-nothing, and the folders in `history.excludeCwds` stay out, as in the app.
+`list`, `search`, `get` and `tool` read the conversations Claude Code already recorded, as the History
+screen does. They change nothing, and the folders in `history.excludeCwds` stay out, as in the app.
 
 - **`list`:** one line per session: id, time of the last message, folder, title and message count, with
   `[may be running]` when another process may still be writing it. A longer list ends with
@@ -207,9 +209,19 @@ nothing, and the folders in `history.excludeCwds` stay out, as in the app.
 - **`tool <session> <message> <index>`:** the whole input and result of one tool call of a message (the
   `<message>` id is the second column of `search`, and `<index>` counts from 0). It says when the
   transcript held more than the 64 KiB shown. A call the transcript does not hold exits `1`.
+- **`resume <session>`:** starts a new session that continues the transcript, in its folder, and prints
+  `resumed as session <id>` (with `--json`, the daemon's answer). `--name` names it (the transcript's
+  title by default) and `--permission-mode` picks its mode (the host's default otherwise). A transcript
+  that may be running elsewhere is refused with `1` until you add `--force`. If the daemon does not
+  answer, the message says the session may or may not have been started: check `sessions` before trying again.
+- **`watch`:** keeps one connection open and prints a line for each transcript that grows: id, time of the
+  last message, folder and `[may be running]` (with `--json`, one object per line:
+  `claudeSessionId`, `cwd`, `lastTs`, `maybeActive`). It runs until Ctrl-C (exit `0`); if the daemon goes
+  away it exits `2`.
 - **`reindex`:** rebuilds the index; stop the daemon first (see [History](history.md)).
 
-`--limit` takes 1 to 200 (to 500 for `get`). With `--json` the first four print the daemon's answer.
+`--limit` takes 1 to 200 (to 500 for `get`). With `--json` all but `reindex` print the daemon's answer.
+From a session's shell, a resume with `--force` or `--permission-mode` is rated high: the person confirms it.
 Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
 ## fd persona

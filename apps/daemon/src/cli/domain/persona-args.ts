@@ -36,13 +36,20 @@ export interface PersonaArgs {
 function personaFlags(args: PersonaArgs): Array<[string, unknown, readonly string[]]> {
   return [
     ["--scope", args.scope, ["list", "save", "remove"]],
-    ["--name", args.personaName, ["save"]],
+    // `--name` and `--permission-mode` are also `history resume`'s: only `persona` is checked here.
+    ...(args.command === "history"
+      ? []
+      : ([["--name", args.personaName, ["save"]]] as Array<[string, unknown, readonly string[]]>)),
     ["--body", args.body, ["save"]],
     ["--body-file", args.bodyFile, ["save"]],
     ["--model", args.model, ["save"]],
     ["--effort", args.effort, ["save"]],
     ["--tools", args.tools, ["save"]],
-    ["--permission-mode", args.permissionMode, ["save"]],
+    ...(args.command === "history"
+      ? []
+      : ([["--permission-mode", args.permissionMode, ["save"]]] as Array<
+          [string, unknown, readonly string[]]
+        >)),
     ["--icon", args.icon, ["save"]],
     ["--hash", args.hash, ["trust"]],
     // `--description` and `--confirm` are the card's too: only `persona` is checked here.
