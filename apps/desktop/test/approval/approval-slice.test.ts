@@ -148,6 +148,12 @@ describe("approval: the proof of a high-risk allow (#3439)", () => {
     expect(signed).toContain(sha(digests.message));
   });
 
+  test("a request whose risk is not known is treated as high when the host is protected", async () => {
+    const { slice } = approval();
+    const result = await slice.prove("h", { requestId: "r1", decision: "allow" }, undefined);
+    expect(result.kind).toBe("proof");
+  });
+
   test("when the person declines the system's dialog, nothing is sent and no error is raised", async () => {
     const { slice } = approval({ signFails: "declined" });
     expect(await slice.prove("h", { requestId: "r", decision: "allow" }, "high")).toEqual({
@@ -204,9 +210,13 @@ describe("approval: this device's key on a host's page (#3439)", () => {
       codeHash: sha("the-code"),
     });
     expect(keyLog.map((k) => k.op)).toEqual(["get", "create", "sign"]);
-    expect(log.map((l) => l.type)).toEqual(["approval.challenge", "approval.enroll"]);
-    expect(log[0]?.payload).toEqual({ purpose: "enroll" });
-    expect(log[1]?.payload).toEqual({
+    expect(log.map((l) => l.type)).toEqual([
+      "approval.list",
+      "approval.challenge",
+      "approval.enroll",
+    ]);
+    expect(log[1]?.payload).toEqual({ purpose: "enroll" });
+    expect(log[2]?.payload).toEqual({
       publicKey: KEY.publicKey,
       name: "My phone",
       nonce: "nonce-1",
@@ -216,9 +226,34 @@ describe("approval: this device's key on a host's page (#3439)", () => {
   });
 
   test("a refused enrollment leaves no key on this device", async () => {
-    const { slice, keyLog } = approval({ local: null, refuse: "approval.enroll" });
+    const { slice, keyLog } = approval({
+      local: null,
+      refuse: "approval.enroll",
+      list: { protectionOff: true, keys: [] },
+    });
     await expect(slice.enroll("h", "My phone", "wrong")).rejects.toThrow();
     expect(keyLog.at(-1)).toEqual({ op: "delete", args: ["daemon-1"] });
+  });
+
+  test("a declined dialog is an outcome of its own, and the key made for it is dropped", async () => {
+    const { slice, keyLog } = approval({ local: null, signFails: "declined" });
+    expect(await slice.enroll("h", "My phone", "code")).toBe("declined");
+    expect(keyLog.at(-1)).toEqual({ op: "delete", args: ["daemon-1"] });
+    const revoker = approval({ signFails: "declined" });
+    expect(await revoker.slice.revoke("h", "key-other")).toBe("declined");
+    expect(revoker.log.map((l) => l.type)).toEqual(["approval.challenge"]);
+  });
+
+  test("an error after the host listed this key keeps the key: the host trusts it", async () => {
+    const { slice, keyLog } = approval({ local: null, refuse: "approval.enroll" });
+    await expect(slice.enroll("h", "My phone", "code")).rejects.toThrow();
+    expect(keyLog.filter((k) => k.op === "delete")).toEqual([]);
+  });
+
+  test("a key the host does not list is stale: enrolling replaces it", async () => {
+    const { slice, keyLog } = approval({ list: { protectionOff: true, keys: [] } });
+    expect(await slice.enroll("h", "My phone", "code")).toBe("done");
+    expect(keyLog.map((k) => k.op)).toEqual(["get", "delete", "create", "sign"]);
   });
 
   test("a device that already holds a key for the host does not make another", async () => {

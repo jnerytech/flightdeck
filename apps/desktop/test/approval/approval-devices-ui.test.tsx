@@ -35,7 +35,12 @@ const HERE: Status = {
 };
 
 /** The panel over a slice whose statuses come one after the other (the last one stays) and whose changes are recorded. */
-function panel(statuses: Status[], language: "en" | "pt-BR" = "en", failures: Error[] = []) {
+function panel(
+  statuses: Status[],
+  language: "en" | "pt-BR" = "en",
+  failures: Error[] = [],
+  opts: { declined?: boolean; gate?: Promise<void> } = {},
+) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const calls: string[] = [];
@@ -52,19 +57,22 @@ function panel(statuses: Status[], language: "en" | "pt-BR" = "en", failures: Er
       calls.push(`${name}:${args.slice(1).join("|")}`);
       const failure = failures.shift();
       if (failure) throw failure;
+      await opts.gate;
+      return opts.declined ? "declined" : "done";
     };
   slice.enroll = record("enroll");
   slice.revoke = record("revoke");
   slice.removeLocalKey = record("removeLocal");
-  render(
+  const ui = (id: string) => (
     <TContext.Provider value={store.i18n.t}>
       <ApprovalDevicesPanel
         store={store}
-        host={{ id: "h1", name: "pi" } as Parameters<typeof ApprovalDevicesPanel>[0]["host"]}
+        host={{ id, name: "pi" } as Parameters<typeof ApprovalDevicesPanel>[0]["host"]}
       />
-    </TContext.Provider>,
+    </TContext.Provider>
   );
-  return { calls };
+  const shown = render(ui("h1"));
+  return { calls, show: (id: string) => shown.rerender(ui(id)) };
 }
 
 const press = async (name: string) => {
@@ -102,6 +110,71 @@ describe("approval devices panel: enrolling this device (#3439)", () => {
     await settleMaybe(() => screen.queryByRole("alert") !== null);
     expect(screen.queryByRole("alert")?.textContent).toBe("The code is wrong or has expired.");
     expect(screen.queryByLabelText("One-time code")).not.toBeNull();
+  });
+});
+
+describe("approval devices panel: what the person did and what the host said (#3439)", () => {
+  test("a declined dialog is not an enrollment: no success is said and the form stays", async () => {
+    const { calls } = panel([OFF], "en", [], { declined: true });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    type("Name of this device", "phone");
+    type("One-time code", "abc");
+    await press("Enroll");
+    await settleMaybe(() => calls.length > 0);
+    expect(calls).toEqual(["enroll:phone|abc"]);
+    expect(screen.queryByText("This device is enrolled.") === null).toBe(true);
+    expect(screen.queryByLabelText("One-time code") !== null).toBe(true);
+  });
+
+  test("a second submit while the first runs sends nothing and the button says it is busy", async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { calls } = panel([OFF, HERE], "en", [], { gate });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    type("Name of this device", "phone");
+    type("One-time code", "abc");
+    await press("Enroll");
+    const button = screen.queryByRole("button", { name: "Enroll" }) as HTMLButtonElement;
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.disabled).toBe(true);
+    fireEvent.submit(screen.queryByRole("form", { name: "Enroll this device" }) as HTMLElement);
+    expect(calls).toEqual(["enroll:phone|abc"]);
+    await act(async () => release());
+    await settleMaybe(() => screen.queryByText("This device is enrolled.") !== null);
+  });
+
+  test("a change that worked is still said when the list cannot be read again", async () => {
+    panel([OFF, undefined as never]);
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    type("Name of this device", "phone");
+    type("One-time code", "abc");
+    await press("Enroll");
+    await settleMaybe(() => screen.queryByText("The host's devices could not be read.") !== null);
+    expect(screen.queryByText("This device is enrolled.") !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Try again" }) !== null).toBe(true);
+  });
+
+  test("with protection on and no key here, the panel says what to do, not 'enroll here'", async () => {
+    panel([{ ...HERE, thisKeyId: null }]);
+    await settleMaybe(() => screen.queryByText(/flightdeckd approvers reset/) !== null);
+    expect(screen.queryByText(/flightdeckd approvers reset/) !== null).toBe(true);
+    expect(screen.queryByLabelText("One-time code") === null).toBe(true);
+  });
+
+  test("a key left on this device that the host does not list can be replaced by enrolling", async () => {
+    panel([{ protectionOff: true, keys: [], thisKeyId: "k1" }]);
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    expect(screen.queryByLabelText("One-time code") !== null).toBe(true);
+  });
+
+  test("moving to another host forgets the devices seen on the first one", async () => {
+    const { show } = panel([HERE, OFF]);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Revoke Laptop" }) !== null);
+    show("h2");
+    await settleMaybe(() => screen.queryByText(/Protection is off/) !== null);
+    expect(screen.queryByText(/someone with access to it did/) === null).toBe(true);
   });
 });
 
