@@ -342,13 +342,16 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     added.push(
       ...(await systemPromptArgs(opts, args, persona, `${launchId}.md`, write)),
       ...(await agentArgs(opts, { claude, args, print, launchId }, write)),
-      ...nameArgs({
-        repo: repoFolder(cwd, await gitToplevel(cwd)),
-        persona: persona?.persona.id ?? null,
-        user: args,
-        claude,
-        platform: opts.platform ?? process.platform,
-      }),
+      // Print mode is a one-shot, not a session a person lists: plain claude, as before.
+      ...(print
+        ? []
+        : nameArgs({
+            repo: repoFolder(cwd, await gitToplevel(cwd)),
+            persona: persona?.persona.id ?? null,
+            user: args,
+            claude,
+            platform: opts.platform ?? process.platform,
+          })),
     );
     return await launchClaude(
       buildClaudeLaunch({
