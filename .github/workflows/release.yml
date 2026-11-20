@@ -13,8 +13,68 @@ permissions:
   contents: read
 
 jobs:
+  # The daemons of the three platforms, their signatures and the CLI's npm tarball (#3541). Linux,
+  # because `npm pack` on Windows would not keep the execute bit of the binaries. It holds the signing
+  # key in one step and no write access: the release job publishes what it made.
+  daemons:
+    name: daemons and npm tarball (linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # Inputs go through the environment, never straight into a script.
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Conferir a tag com a versão do produto
+        run: bun run release:version "$TAG"
+
+      - name: Daemons (Windows, Linux x64 e arm64)
+        run: bun run build:daemon
+
+      - name: Assinar os daemons
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bun run release:sign
+
+      - name: Tarball do npm (launcher e os três daemons)
+        run: bun run release:npm
+
+      # What a person does with the tarball, into a temporary prefix: both commands print the version.
+      - name: Instalar o tarball num prefixo temporário
+        run: |
+          version="${TAG#v}"
+          tarball="dist/flightdeckd-${version}.tgz"
+          ls -l "$tarball"
+          npm install -g --prefix "$RUNNER_TEMP/npm-global" --no-audit --no-fund "$tarball"
+          "$RUNNER_TEMP/npm-global/bin/flightdeckd" --version | grep -F "flightdeckd ${version} "
+          "$RUNNER_TEMP/npm-global/bin/fd" --version | grep -F "flightdeckd ${version} "
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: daemons
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
   release:
     name: release (windows)
+    needs: daemons
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:
@@ -49,14 +109,13 @@ jobs:
       - name: Config de build do app (chave pública e updater)
         run: bun run release:tauri-config
 
-      - name: Daemons (Windows, Linux x64 e arm64)
-        run: bun run build:daemon
-
-      - name: Assinar os daemons
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun run release:sign
+      # Built, signed and packed once, on Linux (the `daemons` job): the installers and the assets
+      # carry exactly those bytes.
+      - name: Daemons, assinaturas e tarball do npm (do job daemons)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: daemons
+          path: dist
 
       # The CLI reads a paired host's token through this helper, found beside the app (#3429).
       - name: Credential helper (flightdeck-cred), built as the app's sidecar

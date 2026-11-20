@@ -86,6 +86,7 @@
     "release:close": "bun run scripts/release-close.ts",
     "release:version": "bun run scripts/release-version.ts",
     "release:assets": "bun run scripts/release-assets.ts",
+    "release:npm": "bun run scripts/release-npm.ts",
     "release:tauri-config": "bun run scripts/release-tauri-config.ts",
     "release:cred": "bun run scripts/release-cred.ts",
     "release:sign": "bun run scripts/release-sign.ts"
