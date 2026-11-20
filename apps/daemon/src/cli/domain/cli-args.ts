@@ -118,7 +118,13 @@ export interface CliArgs {
     | "rules"
     | "preview"
     | "interrupted"
-    | "files";
+    | "files"
+    | "interrupt"
+    | "close"
+    | "sleep"
+    | "set-model"
+    | "set-effort"
+    | "meta-set";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -130,6 +136,10 @@ export interface CliArgs {
   sendTo?: string;
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
+  /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */
+  sessionValue?: string;
+  /** `session meta set <session> name=... pinned=... archived=...`: the fields to change. */
+  sessionMeta?: { name?: string | null; pinned?: boolean; archived?: boolean };
   /** `approve|deny <request>`: the id of the permission request. */
   requestId?: string;
   /** `approve|deny --message`: what the answer tells Claude. */
