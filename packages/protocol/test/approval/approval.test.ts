@@ -260,6 +260,14 @@ describe("command-approve: a device signs the command and a hash of what it carr
     );
   });
 
+  test("Given the trust payload the Rust crate also reads, with a backslash and accents in the path, Then its digest and hash are the shared literals", () => {
+    const digest = commandDigest({ trusted: true, path: "C:\\Users\\José\\código" });
+    expect(digest).toBe('{"path":"C:\\\\Users\\\\José\\\\código","trusted":true}');
+    expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(
+      "3e9907a6f46d40d59cbc41b9cd51ddc6b2c11c1ca2195fedc491e9f0643ec51f",
+    );
+  });
+
   test("Given any one part changed, Then the signed text changes", () => {
     const base = commandMessage(parts);
     for (const key of ["keyId", "daemonId", "command", "nonce", "payloadHash"] as const) {

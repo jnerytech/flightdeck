@@ -203,6 +203,7 @@ const REASONS = [
   "bg_no_message_path",
   "transport_refused",
   "trust_root_refused",
+  "trust_path_differs",
   "harness_stale",
   "harness_confirm",
   "harness_reformat",

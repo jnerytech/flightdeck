@@ -173,7 +173,7 @@ before. Its command text says that with an enrolled device it is the person's to
 `rules remove` is unchanged. The CLI test pins that `autoapprove resume` sends exactly `sessionKey` and
 `confirm`, the fields of the strict schema. `card.pr.merge` is already marked app-only in `docs/cli-parity.json` (for this
 reason); `project.trust.set` has no command line and its row there is empty, which the cli-parity ratchet counts
-as a gap, so the PR of `card.pr.merge` marks it app-only with the same kind of reason (no new gap).
+as a gap, so the PR of `project.trust.set` marks it app-only with the same kind of reason (no new gap).
 This is the same exception to "CLI first" that #3439 took for approving a high-risk request, and it has a cost: a
 host reachable only by a terminal, with a device enrolled, cannot resume the approver until the person removes
 the device with `flightdeckd approvers`.
@@ -225,6 +225,22 @@ the device with `flightdeckd approvers`.
   unused challenge costs one entry in a capped bucket and decides nothing.
 - **Old hosts.** A host from before this change has a strict `card.pr.merge` schema and no `card.pr.head`, so
   the app sends the binding and the proof only when the host announces `approval-command`.
+
+## Divergences found while building the trust of a folder (#3453)
+
+- **One feature per command.** `approval-command` now means only that `card.pr.merge` is guarded, and the host
+  announces `approval-trust` when it also guards `project.trust.set`. A host that has the first but not the second
+  is one the app says so of in the devices panel, one notice per unchecked command, and the app sends a proof only
+  to a host that announces the feature of that command (an older strict schema rejects the field).
+- **The folder is checked only with a device enrolled.** The signed folder must be the folder the daemon trusts, so
+  with a device enrolled a `path` that resolves to another folder (a link, a relative path) is refused with
+  `trust_path_differs` and the folder it is; the app sends the folder the host reports for the project, so a
+  person meets this only when that report is stale. A host with no device behaves as before, links included.
+- **The signer shows the folder and signs only the grant.** The shell reads `{path, trusted: true}` and nothing
+  else, refuses a path that is empty, over 512 bytes, or holds a control, line-separator, zero-width or
+  text-direction character, and names the folder in its dialog. Revoking is never signed.
+- **A fix to the merge PR's note above.** The PR of `card.pr.merge` did not mark `project.trust.set` app-only; this
+  one does.
 
 ## Order of work
 
