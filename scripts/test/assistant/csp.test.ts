@@ -19,6 +19,7 @@ const COMMANDS = [
   "token_get",
   "token_set",
   "token_delete",
+  "hosts_sync",
   "vault::vault_get",
   "vault::vault_set",
   "vault::vault_delete",
