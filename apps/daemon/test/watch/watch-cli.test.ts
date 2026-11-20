@@ -387,3 +387,39 @@ describe("the arguments of the watch read verbs (issue #3539)", () => {
     expect(JSON.stringify(parsed(["watch", "get", "c1", "c2"]))).toContain("unknown argument: c2");
   });
 });
+
+describe("the watch read verbs, after the review (issue #3539)", () => {
+  test("trace --json and by-url --json give a round's drift as null when an older daemon sends none, as get does", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const trace = await flightdeckd(["watch", "trace", "c1", "--json"], daemon.port);
+    const byUrl = await flightdeckd(
+      ["watch", "by-url", "https://github.com/o/r/pull/9", "--json"],
+      daemon.port,
+    );
+    const traced = printed(trace.out) as { rounds: Record<string, unknown>[] };
+    const found = printed(byUrl.out) as { trace: { rounds: Record<string, unknown>[] } };
+    expect(traced.rounds[0]?.drift).toBeNull();
+    expect(found.trace.rounds[0]?.drift).toBeNull();
+  });
+
+  test("a link the daemon matched to a card with no trace to show is still via: card", async () => {
+    const daemon = fakeDaemon({
+      ...OPEN,
+      "watch.byUrl": () => ({ via: "card", trace: null, sessions: [] }),
+    });
+    const run = await flightdeckd(
+      ["watch", "by-url", "https://github.com/o/r/pull/9"],
+      daemon.port,
+    );
+    expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["via: card"] });
+  });
+
+  test("a description that ends in a line break does not print an extra blank line", async () => {
+    const daemon = fakeDaemon({
+      ...OPEN,
+      "watch.describe": () => ({ text: "Fixes the login.\n", redacted: 0 }),
+    });
+    const run = await flightdeckd(["watch", "describe", "c1"], daemon.port);
+    expect(run.out).toEqual(["Fixes the login."]);
+  });
+});
