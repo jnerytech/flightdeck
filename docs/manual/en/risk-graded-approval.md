@@ -69,6 +69,11 @@ until then the hold of the Approve button is the only check, as before.
   you once more in a window of the system, and the window names the host. Cancel it and nothing is sent.
   **Turn off** asks nothing. On a host that checks it, a session can no longer turn Bypass back on by itself, because it has no
   device to sign. A host that does not yet ask for the device here shows a notice on its page: update it.
+- **Allowed folders.** With a device enrolled, adding a folder to **Allowed folders** asks you once more in a
+  window of the system. The window names the folder and says that sessions will be able to run in it and in
+  everything inside it. Cancel it and nothing is sent. If the folder you typed is a link or a path that points
+  elsewhere, the host refuses and tells you the folder it really is: add that one. A host that does not yet ask
+  for the device here shows a notice on its page: update it.
 - **Trusting a project.** With a device enrolled, **Trust this project** asks you once more in a window of the
   system. The window names the folder and says that its hooks and servers will then run with no prompt. Cancel it
   and nothing is sent. Revoking trust asks for nothing. A host that does not yet ask for the device when you

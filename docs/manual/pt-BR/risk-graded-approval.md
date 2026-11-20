@@ -69,6 +69,11 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   **Desligar** não pede nada. Em um host que confere isso, uma sessão não consegue mais religar o Ignorar permissões sozinha, porque
   não tem um dispositivo para assinar. Um host que ainda não pede o dispositivo aí mostra um aviso na própria
   página: atualize-o.
+- **Pastas permitidas.** Com um dispositivo cadastrado, adicionar uma pasta em **Pastas permitidas** pede mais
+  uma confirmação em uma janela do sistema. A janela nomeia a pasta e diz que as sessões poderão rodar nela e em
+  tudo o que há dentro dela. Cancele e nada é enviado. Se a pasta digitada for um atalho ou um caminho que aponta
+  para outro lugar, o host recusa e diz qual é a pasta de verdade: adicione essa. Um host que ainda não pede o
+  dispositivo aí mostra um aviso na própria página: atualize-o.
 - **Confiar em um projeto.** Com um dispositivo cadastrado, **Confiar neste projeto** pede mais uma confirmação
   em uma janela do sistema. A janela nomeia a pasta e diz que os hooks e os servidores dela vão rodar sem pedir
   confirmação. Cancele e nada é enviado. Revogar a confiança não pede nada. Um host que ainda não pede o

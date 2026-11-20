@@ -6,6 +6,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_ROOTS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   FEATURE_APPROVAL_WATCH,
@@ -33,6 +34,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.approvers, FEATURE_APPROVAL_COMMAND),
     // #3507: turning bypass on with `host.bypass` takes the proof of an enrolled device.
     ...when(opts.approvers, FEATURE_APPROVAL_BYPASS),
+    // #3507: adding an allowed folder with `roots.add` takes the proof of an enrolled device.
+    ...when(opts.approvers, FEATURE_APPROVAL_ROOTS),
     // #3453: trusting a project folder takes the proof of an enrolled device (its own feature: a host can gate one command and not the other).
     ...when(opts.approvers && opts.projects?.trust, FEATURE_APPROVAL_TRUST),
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).

@@ -630,6 +630,8 @@ export const refusals = {
     board_sync_failed: "Não deu para falar com o quadro: {detail}",
     roi_period_invalid: "O período precisa ser de dias reais, de no máximo um ano.",
     root_confirm: "Adicionar uma pasta permitida precisa da sua confirmação.",
+    root_path_differs:
+      "Essa pasta na verdade é {path}: o dispositivo confirma a pasta que o host guarda, então adicione essa e tente de novo.",
     root_missing: "A pasta {path} não existe neste host.",
     root_system:
       "A pasta {path} é uma pasta do sistema: ela não pode ser uma pasta permitida. Escolha uma pasta de projeto.",

@@ -32,6 +32,7 @@ export const PROOF_COMMANDS = [
   "project.trust.set",
   "autoapprove.resume",
   "host.bypass",
+  "roots.add",
 ] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
 

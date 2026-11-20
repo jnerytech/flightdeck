@@ -255,6 +255,8 @@ export const DAEMON_REASONS = [
   "root_confirm",
   "root_missing",
   "root_system",
+  /** Issue #3507: the folder to add resolves elsewhere (a link or a relative path), so the device cannot sign what the host would store. */
+  "root_path_differs",
   "session_not_found",
   /** Issue #100: a session that cannot be packaged for another host, and a package that is gone. */
   "teleport_busy",

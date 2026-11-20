@@ -301,6 +301,25 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
         }
+        // Every payload of the command is signed: adding a folder has no value that lowers risk. Only a confirmed
+        // add of a path the dialog can show whole is.
+        "roots.add" => {
+            if fields.len() != 2 || fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+                return Err("a folder is signed only confirmed, with a path and no other field".into());
+            }
+            let path = fields
+                .get("path")
+                .and_then(serde_json::Value::as_str)
+                .ok_or("the folder payload has no text for path")?;
+            if !is_shown_path(path) {
+                return Err("the folder is not a path the dialog can show".into());
+            }
+            let canonical = format!(
+                "{{\"confirm\":true,\"path\":{}}}",
+                serde_json::to_string(path).unwrap_or_default()
+            );
+            Ok((CommandAsk::RootsAdd { path: path.into() }, canonical))
+        }
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -445,7 +464,14 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             Some(CommandAsk::TrustProject { path }) => format!(
                 "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
             ),
-            Some(CommandAsk::RootsAdd { .. }) => String::new(),
+            Some(CommandAsk::RootsAdd { path }) if pt => format!(
+                "Permitir sessões em uma pasta? Sessões do host {} poderão rodar nela e em tudo o que há dentro dela. Continue só se você acabou de apertar Adicionar às pastas permitidas no Flightdeck.\n\"{path}\"",
+                short(&ask.host)
+            ),
+            Some(CommandAsk::RootsAdd { path }) => format!(
+                "Allow sessions in a folder? Sessions on host {} will be able to run in it and in everything inside it. Continue only if you just pressed Add to allowed folders in Flightdeck.\n\"{path}\"",
+                short(&ask.host)
+            ),
             None => String::new(),
         },
     };
@@ -459,6 +485,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::RootsAdd { .. })) => {
+            if pt { ("Adicionar pasta", "Cancelar") } else { ("Add folder", "Cancel") }
         }
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),

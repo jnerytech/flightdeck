@@ -125,6 +125,8 @@ interface HostsDeps {
   webhookFeed: () => WebhookFeed;
   /** The session summaries that fold a team's workers. */
   rememberTeam: SummariesSlice["rememberTeam"];
+  /** The payload that adds an allowed folder, signed by the person's device when the host asks for it (#3507). */
+  rootsPayload: ApprovalSlice["rootsPayload"];
   /** A refusal or a failure as text. */
   describeError: (error: unknown) => string;
   /** The daemon update's timeout, in milliseconds (tests set it). */
@@ -185,7 +187,19 @@ export function composeHosts(kernel: AppKernel<AppState>, deps: HostsDeps): Host
       },
       setName: (hostId, name) => deps.updateHost(hostId, (h) => ({ ...h, name })),
       rememberToken: deps.rememberToken,
-      addRoot: (hostId, path) => kernel.hostCommand(hostId, "roots.add", { path, confirm: true }),
+      addRoot: async (hostId, path) => {
+        // With a device enrolled the person signs the folder first (#3507); a no sends nothing and a device
+        // that cannot sign here is said in the banner.
+        try {
+          const made = await deps.rootsPayload(hostId, path);
+          return made.kind === "declined"
+            ? null
+            : await kernel.hostCommand(hostId, "roots.add", made.payload);
+        } catch (error) {
+          kernel.fail(error);
+          return null;
+        }
+      },
       setAllowedRoots: (hostId, allowedRoots) => {
         const conn = kernel.connection(hostId);
         if (conn?.info) conn.info = { ...conn.info, allowedRoots };

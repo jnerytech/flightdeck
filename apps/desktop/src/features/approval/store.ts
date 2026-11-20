@@ -14,6 +14,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_ROOTS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   needsApprovalProof,
@@ -33,6 +34,11 @@ import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./ad
 
 /** The payload of a guarded merge, or the person's no (#3453). */
 type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
+
+/** The payload of `roots.add`, or the person's no (#3507). */
+type RootsPayload =
+  | { kind: "payload"; payload: { path: string; confirm: true; proof?: ApprovalProof } }
+  | { kind: "declined" };
 
 /** The payload of `host.bypass` that turns bypass on, or the person's no (#3507). */
 type BypassPayload = { kind: "payload"; payload: BypassBody } | { kind: "declined" };
@@ -71,6 +77,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "card.pr.merge": FEATURE_APPROVAL_COMMAND,
   "project.trust.set": FEATURE_APPROVAL_TRUST,
   "host.bypass": FEATURE_APPROVAL_BYPASS,
+  "roots.add": FEATURE_APPROVAL_ROOTS,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
@@ -266,6 +273,7 @@ export class ApprovalSlice {
     if (!hasFeature(features, FEATURE_APPROVAL_COMMAND, false)) unchecked.push("merge");
     if (!hasFeature(features, FEATURE_APPROVAL_TRUST, false)) unchecked.push("trust");
     if (!hasFeature(features, FEATURE_APPROVAL_BYPASS, false)) unchecked.push("bypass");
+    if (!hasFeature(features, FEATURE_APPROVAL_ROOTS, false)) unchecked.push("roots");
     return unchecked;
   }
 
@@ -579,15 +587,20 @@ export class ApprovalSlice {
     };
   }
 
-  /** The payload that adds the allowed folder `path` (#3507). */
-  async rootsPayload(
-    _hostId: string,
-    path: string,
-  ): Promise<
-    | { kind: "payload"; payload: { path: string; confirm: true; proof?: ApprovalProof } }
-    | { kind: "declined" }
-  > {
-    return { kind: "payload", payload: { path, confirm: true } };
+  /**
+   * The payload that adds the allowed folder `path` (#3507), with the device's proof over it when the host
+   * checks it and has a device enrolled; a host from before the feature gets the plain payload. The host
+   * stores the folder `path` resolves to and refuses a proof for another one, so `path` is the folder to show.
+   * `declined`: the person said no in the system's dialog.
+   */
+  async rootsPayload(hostId: string, path: string): Promise<RootsPayload> {
+    const plain = { path, confirm: true } as const;
+    const proof = await this.proveCommand(hostId, "roots.add", { ...plain });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
+    };
   }
 
   /**

@@ -620,6 +620,8 @@ export const refusals = {
     board_sync_failed: "The board could not be reached: {detail}",
     roi_period_invalid: "The period must be real days, at most a year long.",
     root_confirm: "Adding an allowed folder needs your confirmation.",
+    root_path_differs:
+      "That folder is really {path}: the device confirms the folder the host stores, so add that one and try again.",
     root_missing: "The folder {path} does not exist on this host.",
     root_system:
       "The folder {path} is a system folder: it cannot be an allowed folder. Pick a project folder.",

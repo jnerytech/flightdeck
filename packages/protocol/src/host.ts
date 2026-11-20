@@ -314,7 +314,15 @@ export const hostCommands = [
    * first and sends `confirm: true`; the host refuses system folders and a connection outside
    * loopback and Tailscale.
    */
-  cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
+  cmd(
+    "roots.add",
+    z.object({
+      path: z.string().min(1),
+      confirm: z.boolean().optional(),
+      /** With a device enrolled, its signed proof over this payload; the host stores the folder it signed (#3507). */
+      proof: ApprovalProof.optional(),
+    }),
+  ),
   /**
    * Lets a session of this host start with every permission check off; turning it on asks for `confirm`,
    * and, with a device enrolled, for its `proof` over this payload (#3507). Turning it off needs neither.
