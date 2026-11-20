@@ -111,8 +111,10 @@ export const cardHandlers = {
   "card.pr.merge": async (payload, { ws, server }) => {
     // It merges on the provider with this computer's gh login: a near connection only.
     requireVaultTransport(ws.data.origin, "card.pr.merge", server.opts.log);
-    const { cardId, method, confirm } = payload;
-    return await server.need("board").mergePr(cardId, method, confirm === true);
+    const { cardId, method, confirm, prUrl, headSha } = payload;
+    // #3453: a merge that names the PR and head the person saw is bound to them.
+    const expect = prUrl !== undefined && headSha !== undefined ? { prUrl, headSha } : undefined;
+    return await server.need("board").mergePr(cardId, method, confirm === true, expect);
   },
   "card.complete": async (payload, { server }) => {
     const { cardId, confirm } = payload;

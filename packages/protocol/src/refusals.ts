@@ -180,6 +180,7 @@ export const DAEMON_REASONS = [
   "project_no_pr_provider",
   "card_no_pr",
   "card_pr_not_open",
+  "card_pr_stale",
   "card_pr_merge_unsupported",
   "card_pr_checks_failing",
   "card_pr_review_required",

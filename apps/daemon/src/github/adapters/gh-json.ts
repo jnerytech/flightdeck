@@ -32,6 +32,9 @@ export const GhPrStatus = z.object({
 /** `gh pr view --json mergeStateStatus,reviewDecision,statusCheckRollup`, read to say why a merge was refused. */
 export const GhMergeState = GhPrStatus.omit({ state: true, createdAt: true });
 
+/** `gh pr view --json headRefOid`. */
+export const GhHead = z.object({ headRefOid: z.string() });
+
 /** `gh pr view --json mergeable`. */
 export const GhMergeable = z.object({ mergeable: z.string() });
 

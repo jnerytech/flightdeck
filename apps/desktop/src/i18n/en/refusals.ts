@@ -506,6 +506,7 @@ export const refusals = {
       "The project has no PR provider. Set it in the project's settings (GitHub or Azure DevOps), after adding a remote to the repository if it has none.",
     card_no_pr: "The card has no PR.",
     card_pr_not_open: "The card's PR is not open.",
+    card_pr_stale: "The PR changed since you looked at it. Look at it again, then merge.",
     card_pr_merge_unsupported: "This PR host cannot merge from Flightdeck: merge the PR there.",
     card_pr_checks_failing: "Checks are failing or still running: the PR cannot be merged yet.",
     card_pr_review_required: "The PR needs a review before it can be merged.",

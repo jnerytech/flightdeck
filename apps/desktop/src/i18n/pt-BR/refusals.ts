@@ -514,6 +514,7 @@ export const refusals = {
       "O projeto não tem provedor de PR. Defina-o nas configurações do projeto (GitHub ou Azure DevOps), depois de adicionar um remote ao repositório se ele não tiver.",
     card_no_pr: "O card não tem PR.",
     card_pr_not_open: "O PR do card não está aberto.",
+    card_pr_stale: "O PR mudou desde que você o viu. Veja de novo e então faça o merge.",
     card_pr_merge_unsupported:
       "Este host de PR não faz merge pelo Flightdeck: faça o merge do PR lá.",
     card_pr_checks_failing:
