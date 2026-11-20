@@ -16,12 +16,14 @@ import {
   RUNNERS,
   runnerHidesAVerb,
   runsCliVerb,
+  runsFlightdeckWords,
   SHELLS,
   shellReadings,
   startsCli,
   stepQuote,
   unquoted,
 } from "./shell-call.ts";
+import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
 
 export { credential };
 
@@ -244,22 +246,6 @@ function changesSshDestinations(prog: string, args: string[]): boolean {
 }
 
 /**
- * Whether a command line runs the CLI with words that `matches` accepts, as the CLI itself, or under a
- * runtime or a shell (`bun bin.ts`, `bash -c`). Each CLI program in the text starts its own command: a
- * word of another command is no verb of it, so `fd send fd-qa "ssh remove"` is not one.
- */
-function runsFlightdeckWords(
-  prog: string,
-  args: string[],
-  matches: (words: string[]) => boolean,
-): boolean {
-  if (isCliProgram(prog)) return shellReadings(args).some((own) => matches(flightdeckWords(own)));
-  if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  return words.some((_, i) => startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1))));
-}
-
-/**
  * A resume that skips what the app asks a person (#3461): `history resume --force` starts the session
  * although the transcript may be running elsewhere, and `--permission-mode` picks the mode the new
  * session runs in (`bypassPermissions` included). A plain resume takes the host's defaults.
@@ -433,6 +419,16 @@ const DANGEROUS: Array<{
     when: changesSshDestinations,
     reason: () =>
       "adds, changes or removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh add, edit, remove or import apply)",
+  },
+  {
+    when: opensATerminal,
+    reason: () =>
+      "opens a terminal on the host, a shell that runs what is typed into it, without the person opening it in the app (flightdeckd terminal open or open-session)",
+  },
+  {
+    when: enablesTerminals,
+    reason: () =>
+      "turns the host's terminals on, a full shell for whoever reaches the daemon, without the person choosing it in the app (flightdeckd terminal settings --enable)",
   },
   {
     when: changesWhatGuards,

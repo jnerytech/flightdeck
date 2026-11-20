@@ -413,6 +413,9 @@ export const OPTIONS_WITH_VALUE = [
   "--limit-usd",
   "--limit-pct",
   "--id",
+  "--resume",
+  "--cols",
+  "--rows",
 ];
 
 /**
@@ -559,6 +562,27 @@ export const startsCli = (words: string[], i: number) =>
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
+
+/**
+ * Whether a command line runs the CLI with words that `matches` accepts, as the CLI itself, or under a
+ * runtime or a shell (`bun bin.ts`, `bash -c`). Each CLI program in the text starts its own command: a
+ * word of another command is no verb of it, so `fd send fd-qa "ssh remove"` is not one. `matches` gets the
+ * command's words and, as a second argument, its own arguments.
+ */
+export function runsFlightdeckWords(
+  prog: string,
+  args: string[],
+  matches: (words: string[], own: string[]) => boolean,
+): boolean {
+  if (isCliProgram(prog))
+    return shellReadings(args).some((own) => matches(flightdeckWords(own), own));
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  return words.some(
+    (_, i) =>
+      startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1)), words.slice(i + 1)),
+  );
+}
 
 /** A runner (`bunx fd persona $V qa`, `sh -c 'fd ...'`) given the CLI and a noun or verb the shell expands. */
 export const runnerHidesAVerb = (prog: string, args: string[]) => {
