@@ -13,10 +13,12 @@ import {
   said,
 } from "../daemon-client/index.ts";
 import {
+  byUrlJson,
   byUrlLines,
   describeParts,
   settingsJson,
   settingsLines,
+  traceJson,
   traceLines,
   watchJson,
   watchLines,
@@ -48,7 +50,7 @@ export function runWatchCli(
       }
       if (args.action === "trace") {
         const trace = await daemon.call("watch.trace", { cardId: args.target });
-        return args.json ? json(trace) : said(...traceLines(trace));
+        return args.json ? json(traceJson(trace)) : said(...traceLines(trace));
       }
       if (args.action === "describe") {
         const result = await daemon.call("watch.describe", { cardId: args.target });
@@ -59,7 +61,7 @@ export function runWatchCli(
       }
       if (args.action === "by-url") {
         const found = await daemon.call("watch.byUrl", { url: args.target });
-        return args.json ? json(found) : said(...byUrlLines(found));
+        return args.json ? json(byUrlJson(found)) : said(...byUrlLines(found));
       }
       const { projects } = await daemon.call("project.list", {});
       const chosen = resolveProject(projects, args.target);

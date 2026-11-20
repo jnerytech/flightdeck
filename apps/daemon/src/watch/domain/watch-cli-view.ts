@@ -31,8 +31,20 @@ export function watchJson(info: WatchInfo) {
     reason: info.reason ?? null,
     roundsUsed: info.roundsUsed ?? null,
     maxRounds: info.maxRounds ?? null,
-    rounds: info.rounds.map((round) => ({ ...round, drift: round.drift ?? null })),
+    rounds: withDrift(info.rounds),
   };
+}
+
+const withDrift = (rounds: FixRoundInfo[]) =>
+  rounds.map((round) => ({ ...round, drift: round.drift ?? null }));
+
+/** The trace with each round's `drift` as `null` when an older daemon leaves it out, as `watchJson` does. */
+export function traceJson(trace: CardTraceInfo) {
+  return { ...trace, rounds: withDrift(trace.rounds) };
+}
+
+export function byUrlJson(found: UrlTraceInfo) {
+  return { ...found, trace: found.trace ? traceJson(found.trace) : null };
 }
 
 export function watchLines(info: WatchInfo): string[] {
@@ -69,7 +81,7 @@ export function traceLines(trace: CardTraceInfo): string[] {
 }
 
 export function byUrlLines(found: UrlTraceInfo): string[] {
-  if (found.via === "card" && found.trace) return ["via: card", ...traceLines(found.trace)];
+  if (found.via === "card") return ["via: card", ...(found.trace ? traceLines(found.trace) : [])];
   if (found.via === "history") {
     return [
       "via: history",
@@ -86,7 +98,7 @@ export function describeParts(result: { text: string; redacted: number }): {
 } {
   const n = result.redacted;
   return {
-    lines: result.text.split("\n"),
+    lines: result.text.replace(/\n$/, "").split("\n"),
     notice:
       n > 0
         ? `${n} ${n === 1 ? "line looked" : "lines looked"} like a secret and ${n === 1 ? "was" : "were"} left out`
