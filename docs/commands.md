@@ -80,3 +80,16 @@ The full detail of the commands that `CLAUDE.md` summarizes (moved out of it wor
   `bun run slot -- bun run e2e -- --repeat-each 5` hunts flakes; the HTML report is in `playwright-report/`).
 - Builds: `bun run slot -- bun run build:daemon`, `bun run slot -- bun run build:desktop`.
   `cargo check` (in `apps/desktop/src-tauri`) requires the desktop build first.
+
+## CLI parity (#3428)
+
+`docs/cli-parity.json` has one row for each daemon command of the protocol (every `cmd("<name>", ...)`),
+so the gap between the app and `flightdeckd` is a number that only goes down. `bun run arch` prints it
+as the row `cli-parity commands with no CLI command` and fails when it is above `cli-parity-baseline.json`.
+
+- A command the CLI covers: `"session.list": { "cli": "sessions" }`. The value is a key of `COMMANDS`
+  (`apps/daemon/src/cli/commands.ts`); a name that is not one fails.
+- A command with no CLI meaning (it moves the app window): `{ "appOnly": "<why>" }`. A blank reason fails.
+- A command that has no CLI command yet: `{}`. It counts as a gap.
+- A new `cmd(...)` in the protocol has no row until you add one: `arch` fails and names it. Add the row
+  (`{}` if there is no CLI command yet) and lower the baseline when a row stops being a gap.
