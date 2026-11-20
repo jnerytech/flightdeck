@@ -33,7 +33,7 @@ export const approval = {
       "This device has no approving key on this host. Approve from a device that has one, or reset protection at the host's terminal with flightdeckd approvers reset and enroll this device again.",
     hasKeyHere: "This device already has a key for this host.",
     heardEnrolled:
-      "A device named {name} was enrolled on {host}. If it was not you, revoke it on the host's page.",
+      "A device named “{name}” was enrolled on {host}. If it was not you, revoke it on the host's page.",
     heardRevoked: "A device was revoked on {host}.",
     heardRevokedOwn:
       "This device's key was revoked on {host}. It can no longer approve there; enroll it again to approve from here.",

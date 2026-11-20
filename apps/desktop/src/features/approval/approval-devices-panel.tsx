@@ -14,6 +14,9 @@ type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: 
  * revoking one and dropping this device's own key. Shown only for a host that checks proofs, on an
  * app that can hold a key. The system's dialog, not this panel, is where a person says yes.
  */
+/** The most announced changes the panel keeps on screen. */
+const MAX_HEARD = 5;
+
 export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
@@ -22,7 +25,9 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // A change the host announced that this device did not make (#3477), until the person dismisses it.
-  const [heard, setHeard] = useState<ApprovalHeard | null>(null);
+  // All of them are kept: a later change must not hide an alert about an earlier one.
+  const [heard, setHeard] = useState<ApprovalHeard[]>([]);
+  const heardBox = useRef<HTMLDivElement>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   // The most devices this panel saw: protection that drops to none after that was not turned off here.
@@ -42,13 +47,13 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     setView({ kind: "loading" });
     setDone(null);
     setProblem(null);
-    setHeard(null);
+    setHeard([]);
     void reload();
   }, [reload]);
   useEffect(
     () =>
       store.approval.subscribe(host.id, (change) => {
-        setHeard(change);
+        setHeard((before) => [...before, change].slice(-MAX_HEARD));
         void reload();
       }),
     [store, host.id, reload],
@@ -72,24 +77,41 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   };
   const notices = (
     <>
-      {heard && (
-        <Stack gap={1}>
-          <InlineNotice tone={heardTone(heard)}>{heardText(t, heard, host.name)}</InlineNotice>
-          <Inline>
-            <ActionButton variant="outline" onClick={() => setHeard(null)}>
-              {t("approvalDevices.dismiss")}
-            </ActionButton>
-          </Inline>
-        </Stack>
-      )}
       {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
       {done && <InlineNotice tone="info">{done}</InlineNotice>}
     </>
   );
   const hint = <p className="text-muted-foreground text-xs">{t("approvalDevices.hint")}</p>;
+  // First in the panel, and always mounted: it takes the focus back when the person dismisses.
+  const heardNotices = (
+    <div ref={heardBox} tabIndex={-1}>
+      {heard.length > 0 && (
+        <Stack gap={1}>
+          {heard.map((one, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: a list that only grows, cleared as a whole
+            <InlineNotice key={index} tone={heardTone(one)}>
+              {heardText(t, one, host.name)}
+            </InlineNotice>
+          ))}
+          <Inline>
+            <ActionButton
+              variant="outline"
+              onClick={() => {
+                setHeard([]);
+                heardBox.current?.focus();
+              }}
+            >
+              {t("approvalDevices.dismiss")}
+            </ActionButton>
+          </Inline>
+        </Stack>
+      )}
+    </div>
+  );
   if (view.kind !== "ready") {
     return (
       <Panel title={t("approvalDevices.title")} slot="host-section-approval">
+        {heardNotices}
         {hint}
         <p className="text-sm" role="status">
           {t(view.kind === "failed" ? "approvalDevices.loadFailed" : "approvalDevices.loading")}
@@ -110,6 +132,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const hasKey = status.thisKeyId !== null;
   return (
     <Panel title={t("approvalDevices.title")} slot="host-section-approval">
+      {heardNotices}
       {hint}
       <p className="text-sm">
         {t(status.protectionOff ? "approvalDevices.off" : "approvalDevices.on")}

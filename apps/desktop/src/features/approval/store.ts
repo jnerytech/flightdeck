@@ -39,20 +39,24 @@ export interface ApprovalHeard {
   own: boolean;
 }
 
+/** A name the host sent, as plain text: control and bidirectional characters out, at most 64 long. */
+function deviceName(name: string | undefined): string {
+  return (name ?? "").replace(/[\p{Cc}\p{Cf}]/gu, "").slice(0, 64);
+}
+
 /** The one line a change is told in, on the host's page and in a notice. */
 export function heardText(t: T, heard: ApprovalHeard, host: string): string {
   if (heard.kind === "enrolled") {
-    return t("approvalDevices.heardEnrolled", { name: heard.name ?? "", host });
+    return t("approvalDevices.heardEnrolled", { name: deviceName(heard.name), host });
   }
   return t(heard.own ? "approvalDevices.heardRevokedOwn" : "approvalDevices.heardRevoked", {
     host,
   });
 }
 
-/** How loud a change is told: a device nobody here made is an alert. */
-export function heardTone(heard: ApprovalHeard): "error" | "warn" | "info" {
-  if (heard.kind === "enrolled") return "error";
-  return heard.own ? "warn" : "info";
+/** How loud a change is told: a device nobody here made, or this device's own key gone, is an alert. */
+export function heardTone(heard: ApprovalHeard): "error" | "info" {
+  return heard.kind === "enrolled" || heard.own ? "error" : "info";
 }
 
 /** What the proof path found: nothing to prove, a proof to send, or the person declined the system's dialog. */
@@ -111,7 +115,7 @@ function isDecline(error: unknown): boolean {
  */
 export class ApprovalSlice {
   private readonly listeners = new Map<string, Set<(heard: ApprovalHeard) => void>>();
-  /** Keys this app is revoking right now: the host's announcement of them is its own doing. */
+  /** Keys (as `host/keyId`) this app is revoking right now: the host's announcement of them is its own doing. */
   private readonly revoking = new Set<string>();
 
   constructor(private readonly core: ApprovalCore) {}
@@ -134,6 +138,9 @@ export class ApprovalSlice {
    * this device's own key revoked, a quiet one for another device's.
    */
   async onChange(hostId: string, change: ApprovalEnrolled | ApprovalRevoked): Promise<void> {
+    // Before the first await: the revoke's answer may follow the announcement closely.
+    if (change.type === "approval.revoked" && this.revoking.has(`${hostId}/${change.keyId}`))
+      return;
     const host = this.core.host(hostId);
     const own = (await this.localKeyId(host?.daemonId)) === change.keyId;
     let heard: ApprovalHeard;
@@ -141,7 +148,6 @@ export class ApprovalSlice {
       if (own) return;
       heard = { kind: "enrolled", name: change.name, own: false };
     } else {
-      if (this.revoking.has(change.keyId)) return;
       heard = { kind: "revoked", own };
     }
     const watchers = this.listeners.get(hostId);
@@ -246,7 +252,8 @@ export class ApprovalSlice {
       throw error;
     }
     // The host announces the revoke before it answers: it is this app's own, so it is not news.
-    this.revoking.add(targetKeyId);
+    const revoke = `${hostId}/${targetKeyId}`;
+    this.revoking.add(revoke);
     try {
       await this.ask(hostId, "approval.revoke", {
         targetKeyId,
@@ -255,7 +262,7 @@ export class ApprovalSlice {
         signature,
       });
     } finally {
-      this.revoking.delete(targetKeyId);
+      this.revoking.delete(revoke);
     }
     return "done";
   }
