@@ -1,4 +1,4 @@
-import type { RiskLevel } from "@flightdeck/protocol";
+import type { ApprovalProof, RiskLevel } from "@flightdeck/protocol";
 import type { ProofAnswer, ProofResult } from "@/features/approval/index.ts";
 import { parseRequestLink } from "@/features/inbox/index.ts";
 import type { T } from "../../i18n/index.ts";
@@ -20,7 +20,7 @@ function permissionResponse(requestId: string, decision: "allow" | "deny", answe
   };
 }
 
-type PermissionResponse = ReturnType<typeof permissionResponse>;
+type PermissionResponse = ReturnType<typeof permissionResponse> & { proof?: ApprovalProof };
 
 /** What answering a request reads and asks through the app's store. */
 export interface PermissionsCore {
@@ -116,8 +116,9 @@ export class PermissionsSlice {
     // A request of the vault is answered in its own queue; any other goes to the host.
     const vaultAnswer = decision === "allow" ? ({ scope: "once", via: "app" } as const) : null;
     if (!this.core.settleVault(requestId, vaultAnswer)) {
+      const response = await this.signed(hostId, requestId, decision, answer);
       try {
-        await this.core.sendOn(hostId, permissionResponse(requestId, decision, answer));
+        if (response) await this.core.sendOn(hostId, response);
       } catch (error) {
         this.core.fail(error);
       }
@@ -126,10 +127,41 @@ export class PermissionsSlice {
   }
 
   /** Answers a request of the session open in the window. */
-  respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
+  async respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
     const hostId = this.core.selectedHostId();
-    if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
-    return this.core.sendSelected(permissionResponse(requestId, decision, answer));
+    if (hostId && this.unheld(hostId, requestId, decision, answer)) return;
+    const response = hostId
+      ? await this.signed(hostId, requestId, decision, answer)
+      : permissionResponse(requestId, decision, answer);
+    if (response) await this.core.sendSelected(response);
+  }
+
+  /**
+   * The request of an answer with this device's proof when the host needs one (#3439). Null when
+   * nothing is to be sent: the person declined the system's dialog (silent), or the proof could not
+   * be made (the banner says why).
+   */
+  private async signed(
+    hostId: string,
+    requestId: string,
+    decision: "allow" | "deny",
+    answer: Answer,
+  ): Promise<PermissionResponse | null> {
+    const response = permissionResponse(requestId, decision, answer);
+    if (decision !== "allow" || !this.core.prove) return response;
+    try {
+      const { updatedPermissions, updatedInput, message } = response;
+      const outcome = await this.core.prove(
+        hostId,
+        { requestId, decision, updatedPermissions, updatedInput, message },
+        this.riskOf(hostId, requestId),
+      );
+      if (outcome.kind === "declined") return null;
+      return outcome.kind === "proof" ? { ...response, proof: outcome.proof } : response;
+    } catch (error) {
+      this.core.fail(error);
+      return null;
+    }
   }
 
   /** The daemon's risk of a waiting request: its queue entry, else the session item it is. */
