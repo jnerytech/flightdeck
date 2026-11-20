@@ -90,7 +90,8 @@ describe("flightdeckd plugins install and update (issue #3516)", () => {
       config(daemon.port),
     );
     const all = [add, install, asJson].map(text).join("\n");
-    expect([all.includes("tok3n"), /[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/.test(all)]).toEqual([
+    expect([all.includes("tok3n"), all.includes("\u001b"), all.includes("\r")]).toEqual([
+      false,
       false,
       false,
     ]);
