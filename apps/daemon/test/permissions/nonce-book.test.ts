@@ -100,3 +100,13 @@ describe("nonce-book: a full bucket gives up what is dead first, and a connectio
     expect(busy(() => nonces.issue("revoke", undefined, 3))).toBe("approval_challenge_busy");
   });
 });
+
+describe("nonce-book: no one connection can take a whole bucket (#3439)", () => {
+  test("Given the default limits, When one connection keeps asking for enrollment challenges, Then another connection still gets one", () => {
+    let n = 0;
+    const nonces = new NonceBook({ mono: () => 1_000, random: () => `d${++n}` });
+    for (let i = 0; i < 40; i++) nonces.issue("enroll", undefined, 1);
+    expect(busy(() => nonces.issue("enroll", undefined, 2))).toBeUndefined();
+    expect(busy(() => nonces.issue("revoke", undefined, 3))).toBeUndefined();
+  });
+});
