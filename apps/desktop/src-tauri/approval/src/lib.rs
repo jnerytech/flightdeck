@@ -124,8 +124,50 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
 /// for anything else). Built here from the parsed message, never from text the webview sent.
-pub fn confirm_text(_ask: &Ask, _lang: &str) -> (String, String) {
-    (String::new(), String::new())
+pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
+    let pt = lang == "pt-BR";
+    let short = |id: &str| id.chars().take(8).collect::<String>();
+    // A key is shown by the id the device list shows: the SHA-256 of its public form, 8 characters.
+    let print = |public_key: &str| {
+        let der = STANDARD.decode(public_key).unwrap_or_default();
+        short(&Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect::<String>())
+    };
+    let body = match (ask.kind, pt) {
+        (Kind::Approve, false) => format!(
+            "Allow request {}? Continue only if you just pressed Approve in Flightdeck.",
+            ask.subject
+        ),
+        (Kind::Approve, true) => format!(
+            "Permitir o pedido {}? Continue só se você acabou de apertar Aprovar no Flightdeck.",
+            ask.subject
+        ),
+        (Kind::EnrollFirst, false) => format!(
+            "Enroll this device (key {}) as an approver of this host? Continue only if you just started it in Flightdeck.",
+            print(&ask.subject)
+        ),
+        (Kind::EnrollFirst, true) => format!(
+            "Cadastrar este dispositivo (chave {}) como aprovador deste host? Continue só se você acabou de iniciar isso no Flightdeck.",
+            print(&ask.subject)
+        ),
+        (Kind::EnrollAdd, false) => format!(
+            "Add the device with key {} as an approver of this host? Continue only if you just asked for it in Flightdeck.",
+            print(&ask.subject)
+        ),
+        (Kind::EnrollAdd, true) => format!(
+            "Adicionar o dispositivo com a chave {} como aprovador deste host? Continue só se você acabou de pedir isso no Flightdeck.",
+            print(&ask.subject)
+        ),
+        (Kind::Revoke, false) => format!(
+            "Remove the device with key {} from the approvers of this host? Continue only if you just asked for it in Flightdeck.",
+            short(&ask.subject)
+        ),
+        (Kind::Revoke, true) => format!(
+            "Remover o dispositivo com a chave {} dos aprovadores deste host? Continue só se você acabou de pedir isso no Flightdeck.",
+            short(&ask.subject)
+        ),
+    };
+    let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
+    (title.to_string(), body)
 }
 
 #[cfg(test)]
