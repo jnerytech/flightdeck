@@ -48,10 +48,11 @@ export const said = (...out: string[]): CliResult => ({
   err: [],
 });
 
-export const failure = (code: 1 | 2, message: string): CliResult => ({
+export const failure = (code: 1 | 2, message: string, reason?: string): CliResult => ({
   code,
   out: [],
   err: [plain(message)],
+  ...(reason === undefined ? {} : { reason }),
 });
 
 /** Why this command will not talk to the address of the config, or null when it is the local daemon. */
