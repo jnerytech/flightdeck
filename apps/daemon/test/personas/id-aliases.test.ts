@@ -77,4 +77,17 @@ describe("persona ids that were Portuguese (#3413)", () => {
     expect(personas.reset("revisor", { language: "en" }).modified).toBe(false);
     expect(await codeOf(() => personas.remove("host", "revisor"))).toBe("not_found");
   });
+
+  test("reset of an old id that is a persona of the person's own does not touch the pack one", async () => {
+    const { personas } = setup();
+    await personas.save({
+      scope: "host",
+      persona: input({ id: "reviewer", name: "Edited reviewer" }),
+    });
+    await personas.save({ scope: "host", persona: input({ id: "revisor", name: "Mine" }) });
+    expect(await codeOf(async () => personas.reset("revisor", { language: "en" }))).toBe(
+      "persona_pack_only",
+    );
+    expect((await personas.get("reviewer", { language: "en" })).modified).toBe(true);
+  });
 });

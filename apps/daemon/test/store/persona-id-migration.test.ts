@@ -137,7 +137,9 @@ describe("persona ids that were Portuguese, in a database (#3413)", () => {
     ]);
     expect(after.start).toEqual([{ start_persona: "architect" }]);
     expect(after.runs).toEqual([
-      { id: "r1", persona: JSON.stringify({ id: "security", language: "en" }) },
+      // The person's own `security` exists beside the old row: a reference to `seguranca` keeps
+      // reaching the row it named, so the pair is left as it was.
+      { id: "r1", persona: JSON.stringify({ id: "seguranca", language: "en" }) },
       { id: "r2", persona: null },
     ]);
     expect(
