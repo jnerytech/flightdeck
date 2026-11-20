@@ -37,7 +37,7 @@ until then the hold of the Approve button is the only check, as before.
   prints, and press **Enroll**. The code works once, for ten minutes. The app makes a key that never
   leaves this device and gives the host only its public half.
 - **Approve.** With the host's protection on, **Hold to approve** (and the approval of a saved rule) asks
-  you once more in a window of the system, naming what you are allowing. Cancel it and nothing is sent;
+  you once more in a window of the system, naming the request and saying when the approval also saves a rule. Cancel it and nothing is sent;
   the request stays open. The window is the system's, not the app's, so a page shown inside a session
   cannot press it.
 - **See and revoke.** The panel lists every enrolled device with its name, the app and address it enrolled

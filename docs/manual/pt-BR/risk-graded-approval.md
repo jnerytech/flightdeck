@@ -36,7 +36,7 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   imprime, e aperte **Cadastrar**. O código vale uma vez, por dez minutos. O app cria uma chave que nunca sai
   deste dispositivo e entrega ao host só a metade pública.
 - **Aprovar.** Com a proteção do host ligada, **Segurar para aprovar** (e a aprovação de uma regra salva)
-  pergunta mais uma vez numa janela do sistema, dizendo o que você está permitindo. Cancele e nada é enviado;
+  pergunta mais uma vez numa janela do sistema, dizendo qual é o pedido e avisando quando a aprovação também salva uma regra. Cancele e nada é enviado;
   o pedido continua aberto. A janela é do sistema, não do app, então uma página mostrada dentro de uma sessão
   não consegue apertá-la.
 - **Ver e revogar.** O painel lista cada dispositivo cadastrado com o nome, o app e o endereço de onde

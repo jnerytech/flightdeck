@@ -110,10 +110,13 @@ A token holder could enroll its own key, so enrollment is closed unless a person
 - **A host and an app on one machine as one user.** The session reads the app's key store, so the barrier does
   nothing there (it falls back to option C).
 - **A compromised renderer.** A script in the app's webview (the sessions' text is rendered there) can ask for
-  a challenge and ask the app to sign. The signing is a Rust command that refuses unless the Approve press
-  came from the person (the app PR states how it checks this); the palette's "approve the oldest" action, the
-  `A` key and any notification or tray allow either go through that press or are refused for a high-risk
-  request. It is a reduction, not a proof.
+  a challenge and ask the app to sign. The signing is a Rust command behind a system dialog the webview cannot press. It checks nothing about
+  where the call came from: a script can call it, the person sees "Allow request <id>?" and the dialog says
+  only what the allow also saves (rules, a changed input, a message; the hashes say it), never the tool or its
+  command, because the signed text holds hashes only. A habitual Allow gives a script a valid proof. The
+  dialog shows one at a time, the id is bounded to id characters, a key is never replaced by `create`, and
+  the key signs no `enroll-add`. The palette's "approve the oldest" action, the `A` key and any notification
+  or tray allow either go through the app's Approve press or are refused for a high-risk request. It is a reduction, not a proof.
 - **Same user, same reach.** A session on the host can run `flightdeckd approvers enroll` and read its own
   code, run `reset`, edit the store or the config, or restart the daemon with a different setup (a remote token
   holder cannot: rule 1). Only the app showing every enrollment makes that visible to the person. A session that
