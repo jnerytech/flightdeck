@@ -136,23 +136,24 @@ describe("command-proof-plugins: installing and updating a plugin with a device 
     ]);
   });
 
-  test("a proof signed for one plugin does not install another, or the same one at another scope", async () => {
+  test("a proof covers the whole request: one signed without a scope or an accepted command does not carry them", async () => {
     const t = await host();
     const signed = { plugin: "deploy-tools@acme", confirmHash: await t.hash() };
-    const proof = await t.prove("plugins.install", signed);
-    const other = await t.client.request("plugins.install", {
-      ...signed,
-      plugin: "outro@acme",
-      proof,
-    });
-    expect([failure(other).includes("approval_proof_required"), installs(t)]).toEqual([true, []]);
-    const again = await t.prove("plugins.install", signed);
     const wider = await t.client.request("plugins.install", {
       ...signed,
       scope: "user",
-      proof: again,
+      proof: await t.prove("plugins.install", signed),
     });
     expect([failure(wider).includes("approval_proof_required"), installs(t)]).toEqual([true, []]);
+    const accepted = await t.client.request("plugins.install", {
+      ...signed,
+      acceptCommand: "c".repeat(64),
+      proof: await t.prove("plugins.install", signed),
+    });
+    expect([failure(accepted).includes("approval_proof_required"), installs(t)]).toEqual([
+      true,
+      [],
+    ]);
   });
 
   test("a content hash that is not the one shown is refused before the proof is checked, so the challenge is not spent", async () => {
@@ -216,7 +217,11 @@ describe("command-proof-plugins: installing and updating a plugin with a device 
   test("a pinned plugin is refused as before, with the challenge unspent", async () => {
     const t = await host();
     const to = await t.newer();
-    await t.pins.set("deploy-tools@acme", { version: "1.2.0", at: "2026-10-31T12:00:00.000Z" });
+    await t.pins.set("deploy-tools@acme", {
+      version: "1.2.0",
+      hash: "a".repeat(64),
+      at: "2026-10-31T12:00:00.000Z",
+    });
     const signed = { plugin: "deploy-tools@acme", confirmHash: to };
     const ack = await t.client.request("plugins.update", {
       ...signed,

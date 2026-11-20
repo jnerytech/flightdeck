@@ -23,6 +23,7 @@ import type {
   TemplateListResult,
   TemplateStartResult,
 } from "./agent-setup/templates.ts";
+import { ApprovalProof } from "./approval.ts";
 import { cmd } from "./command.ts";
 import { BudgetSource } from "./usage.ts";
 
@@ -245,6 +246,8 @@ export const agentSetupCommands = [
         scope: z.enum(["user", "project", "local"]).optional(),
         confirmHash: z.string().min(1),
         acceptCommand: z.string().min(1).optional(),
+        /** The signed proof of an enrolled device over the whole request (#3516). */
+        proof: ApprovalProof.optional(),
       })
       .strict()
       .refine((p) => (p.plugin === undefined) !== (p.dir === undefined), {
@@ -258,6 +261,8 @@ export const agentSetupCommands = [
         plugin: z.string().min(1),
         confirmHash: z.string().min(1),
         acceptCommand: z.string().min(1).optional(),
+        /** The signed proof of an enrolled device over the whole request (#3516). */
+        proof: ApprovalProof.optional(),
       })
       .strict(),
   ),

@@ -85,15 +85,37 @@ export const agentsHandlers = {
     return await server.needIn("agentSetup", "plugins").previewUpdate(payload.plugin);
   },
   "plugins.install": async (payload, { server }) => {
+    const { proof: _proof, ...request } = payload;
     // A folder to install from is read like a folder to preview: inside the allowed roots (#3516).
     const source =
-      payload.dir !== undefined
-        ? { ...payload, dir: await resolveAllowedCwd(payload.dir, server.opts.allowedRoots) }
-        : payload;
-    return await server.needIn("agentSetup", "plugins").install(source);
+      request.dir !== undefined
+        ? { ...request, dir: await resolveAllowedCwd(request.dir, server.opts.allowedRoots) }
+        : request;
+    const approvers = server.opts.approvers;
+    // #3516: with a device enrolled, the person signs the whole request, and the folder in it is the folder the
+    // host installs from: a link or a relative path that resolves elsewhere is refused with the folder it is.
+    if (
+      approvers?.needsCommandProof("plugins.install", payload) &&
+      source.dir !== undefined &&
+      source.dir !== payload.dir
+    ) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the folder is another one than the folder named",
+        "plugin_path_differs",
+        { path: source.dir },
+      );
+    }
+    // The proof is checked once the content shown is the content the host would fetch (see `Plugins.install`).
+    return await server.needIn("agentSetup", "plugins").install(source, () => {
+      approvers?.requireCommandProof("plugins.install", payload, ["confirmHash"]);
+    });
   },
   "plugins.update": async (payload, { server }) => {
-    return await server.needIn("agentSetup", "plugins").update(payload);
+    const { proof: _proof, ...request } = payload;
+    return await server.needIn("agentSetup", "plugins").update(request, () => {
+      server.opts.approvers?.requireCommandProof("plugins.update", payload, ["confirmHash"]);
+    });
   },
   "plugins.uninstall": async (payload, { server }) => {
     const { confirm, ...input } = payload;

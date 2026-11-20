@@ -206,6 +206,7 @@ const REASONS = [
   "trust_root_refused",
   "trust_path_differs",
   "harness_path_differs",
+  "plugin_path_differs",
   "harness_stale",
   "harness_confirm",
   "harness_reformat",

@@ -370,6 +370,8 @@ export const refusals = {
       "That folder is really {path}: the device confirms the folder the host trusts, so open that one and try again.",
     harness_path_differs:
       "That folder is really {path}: the device confirms the folder the host writes to, so open that one and try again.",
+    plugin_path_differs:
+      "That folder is really {path}: the device confirms the folder the host installs from, so pick that one and try again.",
     harness_stale:
       "The project changed since the preview, or the preview was not of these parts: preview again.",
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",
