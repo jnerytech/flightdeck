@@ -79,6 +79,21 @@ export function personaArgs(
   return out;
 }
 
+/**
+ * The `--permission-mode` a launch adds (#3427): bypass, the host's default, while its switch is on
+ * and the host default is bypass. Nothing is added when the person (or a persona) already chose a
+ * mode, and under root, where claude refuses bypass: the launch then opens in claude's own mode and
+ * says so. `IS_SANDBOX` is never set to get around that refusal.
+ */
+export function bypassArgs(_opts: {
+  allowed: boolean;
+  byDefault: string;
+  given: string[];
+  root: boolean;
+}): { args: string[]; notice: string | null } {
+  return { args: [], notice: null };
+}
+
 /** The folder name a session is named after: the git toplevel's when there is one, else the launch folder's. */
 export function repoFolder(cwd: string, toplevel: string | null): string {
   const trimmed = (toplevel ?? cwd).replace(/[\\/]+$/, "");
