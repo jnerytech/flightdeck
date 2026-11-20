@@ -8,8 +8,17 @@
 import { addressRefusal, type CliResult, failure, TimedOut } from "./cli-view.ts";
 import { DaemonClient, DaemonUnreachable, daemonUrl } from "./client.ts";
 
+/** A host reached by name (issue #3429): its address was judged already, and its token stays in a closure. */
+export interface RemoteTarget {
+  name: string;
+  url: string;
+  token: () => string;
+}
+
 export interface LocalCommand {
   config: { bind: string; port: number; token: string };
+  /** When set, the daemon is this host's and its token is used instead of the config's. */
+  remote?: RemoteTarget;
   /** The name the daemon lists this connection under. */
   clientName: string;
   /** How long the daemon has to answer before the command gives up (exit 2). */
