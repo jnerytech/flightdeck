@@ -129,7 +129,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `ssh`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `ssh`, `terminal`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -657,6 +657,13 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runSshCli } = await import("../ssh/index.ts");
     return asking(args, deps, (config, remote) =>
       runSshCli(sshCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  terminal: async (args, deps) => {
+    const { runTerminalCli } = await import("../terminal/index.ts");
+    const cli = { action: "list", json: args.json === true } as const;
+    return asking(args, deps, (config, remote) =>
+      runTerminalCli(cli, config, remote ? { remote } : {}),
     );
   },
   requests: async (args, deps) => {

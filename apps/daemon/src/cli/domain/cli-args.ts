@@ -44,6 +44,7 @@ export interface CliArgs {
     | "sessions"
     | "session"
     | "ssh"
+    | "terminal"
     | "requests"
     | "send"
     | "approve"
