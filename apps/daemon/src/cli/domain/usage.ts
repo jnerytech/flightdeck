@@ -103,6 +103,7 @@ export const USAGE = [
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
+  "     fd session interrupted|summary <session>|files <session> [--host <name>] [--json] [--config <file>]   (a session is its name or its id)",
   "     fd approve <request> [--message <text>] [--hold] [--host <name>] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
   "     fd deny <request> [--message <text>] [--host <name>] [--json] [--config <file>]",
   "     fd requests [--session <session>] [--host <name>] [--json] [--config <file>]   (the open permission requests, oldest first)",
