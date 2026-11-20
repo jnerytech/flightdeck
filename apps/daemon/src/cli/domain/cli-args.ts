@@ -84,6 +84,10 @@ export interface CliArgs {
     | "choose-variant"
     | "check-loop"
     | "add-member"
+    | "pause"
+    | "resume"
+    | "close"
+    | "message"
     | "remove-member"
     | "dismiss-unblocked";
   /** `message send <to> <text>`. */
@@ -113,6 +117,7 @@ export interface CliArgs {
   teamCoordinator?: string;
   teamChecks?: string[];
   teamGoalFlag?: string;
+  teamText?: string;
   teamMember?: string;
   teamSpec?: string;
   teamPersona?: string;

@@ -320,7 +320,17 @@ function endsACard(prog: string, args: string[]): boolean {
 }
 
 const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
-const TEAM_CHANGES = ["new", "update", "delete", "add-member", "remove-member"];
+const TEAM_CHANGES = [
+  "new",
+  "update",
+  "delete",
+  "add-member",
+  "remove-member",
+  "pause",
+  "resume",
+  "close",
+  "message",
+];
 
 /**
  * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
@@ -400,7 +410,7 @@ const DANGEROUS: Array<{
   {
     when: startsATeam,
     reason: () =>
-      "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member or remove-member)",
+      "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member, remove-member, pause, resume, close or message)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {
