@@ -6,7 +6,7 @@ import { withoutPersonas } from "../../src/personas/domain/prepare.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { gitRepo } from "../support/board-helpers.ts";
-import { newManager } from "../support/helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
@@ -59,5 +59,31 @@ describe("checkpoints-wiring: the checkpoints the daemon serves (#2094)", () => 
       [`${opened?.sessionId} ${opened?.claudeSessionId}`],
       [repo],
     ]);
+  });
+
+  test("the rewind it serves gets the same roots as the fork: a repository outside them is refused (#3554)", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const runtime = new FakeRuntime({ delayMs: 1 });
+    const { repo } = gitRepo();
+    const { manager } = newManager({ store, runtime, allowedRoots: [dirname(repo)] });
+    cleanups.push(() => manager.shutdown());
+    const snapshots = new Snapshots({ db: store.db });
+    const before = await snapshots.take({ cwd: repo, claudeSessionId: "orig-1", kind: "before" });
+    const turn = "row" in before ? before.row.n : -1;
+    const {
+      modules: [module],
+    } = createCheckpoints({
+      snapshots,
+      manager,
+      runtime,
+      allowedRoots: [tempDir("fd-wiring-other-root-")],
+      prepare: withoutPersonas,
+    });
+    const reason = (e: { reason?: string }) => e.reason;
+    const applied = await module.server?.checkpoints?.rewinder
+      ?.apply("orig-1", turn, true)
+      .then(() => "rewound", reason);
+    expect(applied).toBe("cwd_outside_roots");
   });
 });

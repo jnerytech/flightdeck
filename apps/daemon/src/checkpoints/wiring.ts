@@ -27,7 +27,7 @@ export function createCheckpoints({
   allowedRoots,
   folderLocks,
 }: CheckpointsDeps) {
-  const rewinder = new Rewinder({ snapshots, sessions: manager });
+  const rewinder = new Rewinder({ snapshots, sessions: manager, allowedRoots });
   const forker = new Forker({
     runtime,
     manager,

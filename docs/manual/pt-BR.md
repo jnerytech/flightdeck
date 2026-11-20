@@ -79,6 +79,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd session](pt-BR/flightdeckd-session-commands.md#fd-session)
 
+## Comandos do flightdeckd: destinos ssh
+
+[Ler o capítulo.](pt-BR/flightdeckd-ssh-commands.md) Suas seções:
+
+- [fd ssh](pt-BR/flightdeckd-ssh-commands.md#fd-ssh)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)

@@ -30,7 +30,11 @@ async function turnWith(before: (repo: string) => void, after: (repo: string) =>
   after(repo);
   const turn = "row" in taken ? taken.row.n : -1;
   const sessions = { busy: () => false, rewindFiles: async () => null };
-  return { repo, turn, rewinder: new Rewinder({ snapshots, sessions }) };
+  return {
+    repo,
+    turn,
+    rewinder: new Rewinder({ snapshots, sessions, allowedRoots: [dirname(repo)] }),
+  };
 }
 
 async function reason(promise: Promise<unknown>): Promise<string> {
@@ -102,6 +106,7 @@ describe("rewind", () => {
     const rewinder = new Rewinder({
       snapshots: tiny,
       sessions: { busy: () => false, rewindFiles: async () => null },
+      allowedRoots: [dirname(repo)],
     });
     expect(await code(rewinder.apply("s1", turn, true))).toBe("invalid_state");
     expect(existsSync(join(repo, "novo.txt"))).toBe(true);
@@ -134,7 +139,7 @@ describe("rewind", () => {
       turnUuid: "uuid-turno-1",
     });
     const turn = "row" in before ? before.row.n : -1;
-    const rewinder = new Rewinder({ snapshots, sessions: manager });
+    const rewinder = new Rewinder({ snapshots, sessions: manager, allowedRoots: [dirname(repo)] });
     expect(await rewinder.preview(claude, turn)).toEqual({
       via: "sdk",
       files: [{ path: "README.md", change: "modified" }],
@@ -269,4 +274,77 @@ describe("rewind: odd names and links (#3024)", () => {
       expect(read(outside)).toBe("outside\n");
     },
   );
+});
+
+describe("rewind: the snapshot's repository must sit inside allowedRoots (#3554)", () => {
+  const refsOf = (repo: string) => git(repo, "for-each-ref", "--format=%(refname)");
+  /** The same snapshots, behind roots that may no longer cover the repository. */
+  const behind = (snapshots: Snapshots, roots: string[]) =>
+    new Rewinder({
+      snapshots,
+      sessions: { busy: () => false, rewindFiles: async () => null },
+      allowedRoots: roots,
+    });
+
+  test("apply into a repository outside every root is refused, with no safety ref and no file written", async () => {
+    const { rewinder, snapshots, repo, turn } = await turnInRepo();
+    const refs = refsOf(repo);
+    const outside = behind(snapshots, [tempDir("fd-rewind-other-root-")]);
+    expect(await reason(outside.apply("s1", turn, true))).toBe("cwd_outside_roots");
+    expect(await code(outside.apply("s1", turn, true))).toBe("forbidden_cwd");
+    expect(refsOf(repo)).toBe(refs);
+    expect(existsSync(join(repo, "novo.txt"))).toBe(true);
+    expect(read(join(repo, "README.md"))).toBe("# repo\nlinha nova\n");
+  });
+
+  test("apply into a repository above the only root is refused: a root inside the repository does not allow the whole repository", async () => {
+    const { rewinder, snapshots, repo, turn } = await turnInRepo();
+    const inner = join(repo, "sub");
+    mkdirSync(inner);
+    expect(await reason(behind(snapshots, [inner]).apply("s1", turn, true))).toBe(
+      "cwd_outside_roots",
+    );
+    expect(existsSync(join(repo, "novo.txt"))).toBe(true);
+  });
+
+  test("undo of a rewind is refused the same way once the repository left the roots, and writes nothing", async () => {
+    const { rewinder, snapshots, repo, turn } = await turnInRepo();
+    await rewinder.apply("s1", turn, true);
+    expect(existsSync(join(repo, "novo.txt"))).toBe(false);
+    const refs = refsOf(repo);
+    const outside = behind(snapshots, [tempDir("fd-rewind-other-root-")]);
+    expect(await reason(outside.undo("s1", true))).toBe("cwd_outside_roots");
+    expect(existsSync(join(repo, "novo.txt"))).toBe(false);
+    expect(refsOf(repo)).toBe(refs);
+  });
+
+  test("a repository that is gone inside a root is refused as missing, with nothing written", async () => {
+    const { rewinder, snapshots, repo, turn } = await turnInRepo();
+    rmSync(repo, { recursive: true, force: true });
+    expect(await reason(rewinder.apply("s1", turn, true))).toBe("cwd_missing");
+    expect(existsSync(repo)).toBe(false);
+  });
+
+  test.skipIf(process.platform === "win32")(
+    "a repository that is a link leading outside the root is refused",
+    async () => {
+      const { rewinder, snapshots, repo, turn, store } = await turnInRepo();
+      const root = tempDir("fd-rewind-root-");
+      const link = join(root, "linked");
+      symlinkSync(repo, link);
+      store.db.run("UPDATE snapshots SET repo = ? WHERE claude_session_id = 's1'", [link]);
+      expect(await reason(behind(snapshots, [root]).apply("s1", turn, true))).toBe(
+        "cwd_outside_roots",
+      );
+      expect(existsSync(join(repo, "novo.txt"))).toBe(true);
+    },
+  );
+
+  test("apply inside a root still goes back, and the preview stays a read that checks no root", async () => {
+    const { rewinder, snapshots, repo, turn } = await turnInRepo();
+    const outside = behind(snapshots, [tempDir("fd-rewind-other-root-")]);
+    expect((await outside.preview("s1", turn)).via).toBe("snapshot");
+    await rewinder.apply("s1", turn, true);
+    expect(existsSync(join(repo, "novo.txt"))).toBe(false);
+  });
 });
