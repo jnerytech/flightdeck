@@ -241,6 +241,14 @@ const withNamedAction =
     if (action === allowed[1]) keep(args, operand(reader, nameWhat));
   };
 
+/** `flightdeckd <word>`: `claude --persona <the pack persona the word names>`. */
+const personaShortcut =
+  (_word: "architect" | "reviewer" | "security" | "coordinator"): Handler =>
+  (args, reader) => {
+    args.command = "claude";
+    args.claudeArgs = reader.takeRest().slice(0, 0);
+  };
+
 const HANDLERS: Record<string, Handler> = {
   db: (args, reader) => {
     args.command = "db";
@@ -270,6 +278,14 @@ const HANDLERS: Record<string, Handler> = {
   claude: (args, reader) => {
     args.command = "claude";
     args.claudeArgs = reader.takeRest();
+  },
+  architect: personaShortcut("architect"),
+  reviewer: personaShortcut("reviewer"),
+  security: personaShortcut("security"),
+  coordinator: personaShortcut("coordinator"),
+  new: (args, reader) => {
+    args.command = "claude";
+    args.claudeArgs = reader.takeRest().slice(0, 0);
   },
   askpass: (args, reader) => {
     args.command = "askpass";
