@@ -165,6 +165,8 @@ function cardCliArgs(args: CliArgs): CardCliArgs {
     position: args.position,
     force: args.force || undefined,
     confirm: args.confirm || undefined,
+    squash: args.squash || undefined,
+    message: args.answerMessage,
     estimate: args.estimate,
     validationNote: args.validationNote,
     specPath: args.specPath,
