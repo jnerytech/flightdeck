@@ -117,8 +117,8 @@ describe("the arguments of budget watch (issue #3460)", () => {
   });
 
   test("a flag of set is refused on a watch before anything is sent", () => {
-    expect(
-      JSON.stringify(parsed(["budget", "watch", "--period", "day"])),
-    ).toContain("--period: this flag only applies to flightdeckd budget set");
+    expect(JSON.stringify(parsed(["budget", "watch", "--period", "day"]))).toContain(
+      "--period: this flag only applies to flightdeckd budget set",
+    );
   });
 });
