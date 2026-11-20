@@ -73,26 +73,40 @@ describe("flightdeckd approve and deny (issue #3425)", () => {
     expect(answers(daemon)).toEqual([{ requestId: "r1", decision: "allow", message: "ok, once" }]);
   });
 
-  test("a high-risk approve without --hold is refused: exit 1, the daemon's reason and what to do", async () => {
+  test("a high-risk approve is refused: exit 1, and the text says the person approves it in the app", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(["approve", "r2"], daemon.port);
     expect(run.code).toBe(1);
     expect(run.out).toEqual([]);
     const text = run.err.join("\n");
     expect(text).toContain("high-risk");
-    expect(text).toContain("--hold");
-    expect(text).toContain("the person");
-    expect(text).not.toContain("Add --hold");
+    expect(text).toContain("approve it in the app");
+    expect(text).not.toContain("--hold");
     expect(answers(daemon)).toEqual([{ requestId: "r2", decision: "allow" }]);
   });
 
-  test("approve --hold sends held: true, and the answer says it was asserted", async () => {
+  test("approve --hold is accepted and no proof: it sends no held, and a high-risk request is still refused (#3439)", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(["approve", "r2", "--hold", "--json"], daemon.port);
-    expect(run.code).toBe(0);
-    expect(run.out).toHaveLength(1);
-    expect(JSON.parse(run.out.join("\n"))).toEqual({ id: "r2", decision: "allow", held: true });
-    expect(answers(daemon)).toEqual([{ requestId: "r2", decision: "allow", held: true }]);
+    expect(run.code).toBe(1);
+    expect(run.out).toEqual([]);
+    expect(run.err.join("\n")).toContain("approve it in the app");
+    expect(answers(daemon)).toEqual([{ requestId: "r2", decision: "allow" }]);
+  });
+
+  test("a host that holds a device key refuses the allow with a proof reason: the same words", async () => {
+    const daemon = fakeDaemon({
+      "permission.respond": () => ({
+        error: {
+          code: "invalid_state",
+          message: "the signed proof of an enrolled device is needed",
+          reason: "approval_proof_required",
+        },
+      }),
+    });
+    const run = await flightdeckd(["approve", "r2"], daemon.port);
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain("approve it in the app");
   });
 
   test("a deny of a high-risk request needs no hold", async () => {
