@@ -1,4 +1,9 @@
-import type { CommandPayload, CommandResults, VaultRequestFrame } from "@flightdeck/protocol";
+import type {
+  ApprovalProof,
+  CommandPayload,
+  CommandResults,
+  VaultRequestFrame,
+} from "@flightdeck/protocol";
 import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../needs-you/index.ts";
@@ -37,6 +42,16 @@ export interface VaultApprovalsCore {
     type: C,
     payload: CommandPayload<C>,
   ): Promise<CommandResults[C]>;
+  /**
+   * The device's proof of a prod or high-risk secret use (#3452): `none` when the host takes the hold
+   * instead (it checks no proof, or no device is enrolled); `declined` when the person said no to
+   * the device's own dialog.
+   */
+  prove(
+    hostId: string,
+    requestId: string,
+    scope: "once" | "session",
+  ): Promise<{ kind: "none" } | { kind: "proof"; proof: ApprovalProof } | { kind: "declined" }>;
   /** The policy the options chose; the one that puts requests to the person when absent. */
   optionsPolicy(): VaultPolicy | undefined;
   now(): number;

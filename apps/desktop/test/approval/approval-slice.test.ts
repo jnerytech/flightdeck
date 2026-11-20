@@ -6,8 +6,10 @@ import {
   enrollAddMessage,
   enrollFirstMessage,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_VAULT,
   type PermissionUpdate,
   revokeMessage,
+  vaultApproveMessage,
 } from "@flightdeck/protocol";
 import { decodeAdd, encodeAdd } from "../../src/features/approval/add-text.ts";
 import { ApprovalSlice } from "../../src/features/approval/index.ts";
@@ -559,3 +561,55 @@ describe("approval: what a host announces about its devices (#3477)", () => {
 });
 
 const REVOKED_OTHER = { type: "approval.revoked", keyId: "key-other" } as const;
+
+describe("approval: the proof of a prod or high-risk secret use (#3452)", () => {
+  const VAULT_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_VAULT];
+
+  test("a host that checks it gets a proof over the request and the scope, from a challenge asked for that request", async () => {
+    const { slice, log, keyLog } = approval({ features: VAULT_HOST });
+    const result = await slice.proveVault("h", "act-1", "once");
+    const message = vaultApproveMessage({
+      keyId: "key-this",
+      daemonId: "daemon-1",
+      requestId: "act-1",
+      nonce: "nonce-1",
+      scope: "once",
+    });
+    expect(result).toEqual({
+      kind: "proof",
+      proof: { keyId: "key-this", nonce: "nonce-1", signature: `sig:${message}` },
+    });
+    expect(log.map((l) => l.type)).toEqual(["approval.list", "approval.challenge"]);
+    expect(log[1]?.payload).toEqual({ purpose: "approve", requestId: "act-1" });
+    expect(keyLog.find((k) => k.op === "sign")?.args).toEqual(["daemon-1", message, "en"]);
+  });
+
+  test("the scope is in what is signed", async () => {
+    const { slice, keyLog } = approval({ features: VAULT_HOST });
+    await slice.proveVault("h", "act-1", "session");
+    expect(String(keyLog.find((k) => k.op === "sign")?.args[1])).toContain('"session"');
+  });
+
+  test("a host that does not announce the vault proof, has no key enrolled, or an app with no key port gets none", async () => {
+    for (const setup of [
+      approval({ features: [FEATURE_APPROVAL_PROOF] }),
+      approval({ features: VAULT_HOST, keys: "none" }),
+      approval({ features: VAULT_HOST, list: { protectionOff: true, keys: [] } }),
+    ]) {
+      expect(await setup.slice.proveVault("h", "act-1", "once")).toEqual({ kind: "none" });
+      expect(setup.keyLog.filter((k) => k.op === "sign")).toEqual([]);
+    }
+  });
+
+  test("when the person declines the system's dialog, nothing is sent and no error is raised", async () => {
+    const { slice } = approval({ features: VAULT_HOST, signFails: "declined" });
+    expect(await slice.proveVault("h", "act-1", "once")).toEqual({ kind: "declined" });
+  });
+
+  test("a device with no key for this host is told so, in words", async () => {
+    const { slice } = approval({ features: VAULT_HOST, local: null });
+    await expect(slice.proveVault("h", "act-1", "once")).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
+    );
+  });
+});

@@ -428,6 +428,15 @@ export class ApprovalSlice {
     }
   }
 
+  /** The proof of a prod or high-risk secret use (#3452); the same results as `prove`. Not made yet. */
+  async proveVault(
+    _hostId: string,
+    _requestId: string,
+    _scope: "once" | "session",
+  ): Promise<ProofResult> {
+    return { kind: "declined" };
+  }
+
   /** The host lists `keyId`, or its list cannot be read (then the key is kept, never guessed gone). */
   private async hostTrusts(hostId: string, keyId: string): Promise<boolean> {
     try {
