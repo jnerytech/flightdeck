@@ -118,6 +118,7 @@ export const USAGE = [
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
   "     flightdeckd channel --launch <id> --url <receiver> --token <token>   (the channel's MCP server)",
   "     fd [claude arguments]   (a bare fd is flightdeckd claude: claude with the Flightdeck channel; config in FLIGHTDECK_CONFIG)",
+  "     fd claude <prompt>      (a prompt or a claude command that starts with a word above, such as update or doctor)",
   "     flightdeckd claude [claude arguments]   (the same, by its full name)",
   "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
   "     fd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
@@ -278,6 +279,8 @@ const HANDLERS: Record<string, Handler> = {
   },
   // `fd <subcommand>` is `flightdeckd <subcommand>`; anything else goes to claude, as the alias did (#3433).
   fd: (args, reader) => {
+    // Only the first word: after another command, `fd` would silently turn it into claude.
+    if (args.command !== "start") throw new Error(`unknown argument: fd\n${USAGE}`);
     const rest = reader.takeRest();
     const word = rest[0] ?? "";
     const own = word !== "fd" && Object.hasOwn(HANDLERS, word) && !word.startsWith("-");
