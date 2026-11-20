@@ -65,6 +65,7 @@ export class Approvers {
   /** The guard of an allow: built on this service's keys, daemon id and nonces. */
   readonly gate: ApprovalGate;
   private id: string | undefined;
+  private readonly listeners = new Set<(change: ApprovalChange) => void>();
 
   private readonly opts: ApproversOptions;
 
@@ -86,8 +87,20 @@ export class Approvers {
   }
 
   /** Calls `listener` for each device enrolled or revoked from now on; the returned function stops it. */
-  onChange(_listener: (change: ApprovalChange) => void): () => void {
-    return () => undefined;
+  onChange(listener: (change: ApprovalChange) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** Tells each watcher; one that throws (a closed socket) neither undoes what happened nor silences the next. */
+  private announce(change: ApprovalChange): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(change);
+      } catch {
+        // The change is already stored: a watcher that cannot hear it is its own problem.
+      }
+    }
   }
 
   daemonId(): string {
@@ -143,15 +156,24 @@ export class Approvers {
     if (keys.length === 0) this.checkFirst(payload);
     else this.checkAdd(payload, keys);
     const keyId = keyIdOf(payload.publicKey);
+    const enrolledAt = this.opts.now().toISOString();
     this.store.add({
       keyId,
       publicKey: payload.publicKey,
       name: payload.name,
       client: asker.client,
       address: asker.address,
-      enrolledAt: this.opts.now().toISOString(),
+      enrolledAt,
     });
     this.store.closeWindow();
+    this.announce({
+      type: "approval.enrolled",
+      keyId,
+      name: payload.name,
+      client: asker.client,
+      address: asker.address,
+      enrolledAt,
+    });
     return { keyId, daemonId: this.daemonId() };
   }
 
@@ -175,6 +197,7 @@ export class Approvers {
       );
     }
     this.store.remove(payload.targetKeyId);
+    this.announce({ type: "approval.revoked", keyId: payload.targetKeyId });
     return { keyId: payload.targetKeyId };
   }
 

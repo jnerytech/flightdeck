@@ -39,4 +39,9 @@ export const approvalHandlers = {
   "approval.list": (_payload, { server }) => {
     return server.need("approvers").list();
   },
+  "approval.watch": (_payload, { ws, send, server }) => {
+    const approvers = server.need("approvers");
+    ws.data.unwatchApprovals?.();
+    ws.data.unwatchApprovals = approvers.onChange((change) => send(change));
+  },
 } satisfies Partial<Handlers>;

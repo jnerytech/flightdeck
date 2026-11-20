@@ -193,6 +193,8 @@ export const approvalCommands = [
       .strict(),
   ),
   cmd("approval.list", z.object({}).strict()),
+  /** Streams `approval.enrolled` and `approval.revoked` from now on, until the connection closes (#3476). */
+  cmd("approval.watch", z.object({}).strict()),
 ] as const;
 
 export interface ApprovalKeyInfo {
@@ -216,6 +218,7 @@ export interface ApprovalResults {
     protectionOff: boolean;
     keys: ApprovalKeyInfo[];
   };
+  "approval.watch": undefined;
 }
 
 /** Sent after `approval.watch` when a device is enrolled: who it is and where it came from, never a key, a nonce or a code. */
