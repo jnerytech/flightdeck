@@ -3,6 +3,7 @@ import type { CliResult } from "../../src/daemon-client/index.ts";
 import { runHistoryCli } from "../../src/history/history-cli.ts";
 import { parseArgs } from "../../src/main.ts";
 import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { flightdeckd } from "../support/cli-run.ts";
 
 setDefaultTimeout(20_000);
 afterEach(stopAll);
@@ -280,7 +281,7 @@ describe("the arguments of history list|search|get|tool (issue #3461)", () => {
       cwd: "/w/api",
       projectKey: "k",
       from: "2026-11-01",
-      to: "2026-11-20",
+      until: "2026-11-20",
       origin: "external",
       hideAutomated: true,
       limit: 5,
@@ -334,6 +335,56 @@ describe("the arguments of history list|search|get|tool (issue #3461)", () => {
     });
     expect(parsed(["card", "list", "--cursor", "x"])).toMatchObject({
       refusedWith: expect.stringContaining("--cursor"),
+    });
+  });
+});
+
+describe("history get pages backwards (issue #3461)", () => {
+  test("a tail page names the flag that reads the earlier one", async () => {
+    const daemon = fakeDaemon({
+      "history.get": () => ({
+        session: session("s1"),
+        messages: [message("u9")],
+        nextCursor: null,
+        prevCursor: "p1",
+      }),
+    });
+    const result = await runHistoryCli(
+      { action: "get", claudeSessionId: "s1", tail: true },
+      config(daemon.port),
+    );
+    expect(result.out.at(-1)).toBe("earlier: history get s1 --cursor p1");
+  });
+});
+
+describe("flightdeckd history through the command line (issue #3461)", () => {
+  test("history search prints the hits and exits 0", async () => {
+    const daemon = fakeDaemon({ "history.search": () => ({ hits: [] }) });
+    const run = await flightdeckd(["history", "search", "login", "--cwd", "/w/api"], daemon.port);
+    expect(run.out).toEqual(["no session matches"]);
+    expect(run.code).toBe(0);
+    expect(calls(daemon, "history.search")[0]?.payload).toEqual({ query: "login", cwd: "/w/api" });
+  });
+
+  test("history tool sends the place of the call, with --to as the end of a list", async () => {
+    const daemon = fakeDaemon({
+      "history.tool": () => ({ tool: null }),
+      "history.list": () => ({ sessions: [], nextCursor: null }),
+    });
+    const tool = await flightdeckd(["history", "tool", "s1", "u1", "4"], daemon.port);
+    expect(tool.code).toBe(1);
+    expect(calls(daemon, "history.tool")[0]?.payload).toEqual({
+      claudeSessionId: "s1",
+      uuid: "u1",
+      index: 4,
+    });
+    await flightdeckd(["history", "list", "--from", "a", "--to", "b"], daemon.port);
+    expect(calls(daemon, "history.list")[0]?.payload).toEqual({ from: "a", to: "b" });
+  });
+
+  test("--json has nothing to print for reindex", () => {
+    expect(parsed(["history", "reindex", "--json"])).toMatchObject({
+      refusedWith: expect.stringContaining("--json"),
     });
   });
 });
