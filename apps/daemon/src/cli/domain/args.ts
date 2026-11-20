@@ -3,7 +3,7 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
-
+import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { teamProblem } from "./team-args.ts";
@@ -285,6 +285,10 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  board: (args, reader) => {
+    args.command = "board";
+    args.action = subAction(reader, ["settings"] as const, "invalid board action");
+  },
   team: (args, reader) => {
     args.command = "team";
     const action = subAction(
@@ -374,6 +378,11 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--variant": setValue((args, v) => {
     args.variants = [...(args.variants ?? []), v];
+  }),
+  "--max-parallel-runs": setValue((args, v) => {
+    if (!/^\d+$/.test(v) || !Number.isSafeInteger(Number(v)) || Number(v) < 1)
+      throw new Error(`--max-parallel-runs needs a whole number, 1 or more\n${USAGE}`);
+    args.maxParallelRuns = Number(v);
   }),
   "--rounds": setValue((args, v) => {
     const rounds = Number(v);
@@ -545,6 +554,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     args.json &&
     ![
       "card",
+      "board",
       "team",
       "persona",
       "host",
@@ -557,7 +567,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, team, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, team, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -619,12 +629,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (args.rounds !== undefined && args.loop === "off")
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
-  const personaFault = personaProblem(args);
-  if (personaFault !== undefined) throw new Error(`${personaFault}\n${USAGE}`);
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
   if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
-  const teamFault = teamProblem(args);
-  if (teamFault !== undefined) throw new Error(`${teamFault}\n${USAGE}`);
+  const fault = personaProblem(args) ?? teamProblem(args) ?? boardProblem(args);
+  if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

@@ -202,6 +202,7 @@ const OPTIONS_WITH_VALUE = [
   "--goal",
   "--persona",
   "--rounds",
+  "--max-parallel-runs",
   "--scope",
   "--name",
   "--body",
