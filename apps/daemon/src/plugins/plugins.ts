@@ -164,13 +164,16 @@ export class Plugins {
   }
 
   /** Installs what was shown: the confirmation repeats the hash of the content, and only that. */
-  async install(input: {
-    plugin?: string;
-    dir?: string;
-    scope?: PluginScope;
-    confirmHash: string;
-    acceptCommand?: string;
-  }): Promise<ChangeResult> {
+  async install(
+    input: {
+      plugin?: string;
+      dir?: string;
+      scope?: PluginScope;
+      confirmHash: string;
+      acceptCommand?: string;
+    },
+    guard?: () => void,
+  ): Promise<ChangeResult> {
     arg(input.plugin ?? input.dir ?? "");
     const scope = input.scope ?? "user";
     let name: string;
@@ -198,6 +201,7 @@ export class Plugins {
       this.sameContent(shown.hash, input.confirmHash);
       args = ["install", name, "--scope", scope, "--json"];
     }
+    guard?.();
     const result = await this.change(name, args, input.acceptCommand);
     if (result.outcome !== "ok") return result;
     const checked = await this.verify(name, scope, input.confirmHash);
@@ -206,11 +210,14 @@ export class Plugins {
     return result;
   }
 
-  async update(input: {
-    plugin: string;
-    confirmHash: string;
-    acceptCommand?: string;
-  }): Promise<ChangeResult> {
+  async update(
+    input: {
+      plugin: string;
+      confirmHash: string;
+      acceptCommand?: string;
+    },
+    guard?: () => void,
+  ): Promise<ChangeResult> {
     arg(input.plugin);
     const pin = (await this.opts.pins.all())[input.plugin];
     if (pin)
@@ -223,6 +230,7 @@ export class Plugins {
     if (next.unchanged)
       return { outcome: "unchanged", message: "already at the marketplace version" };
     this.sameContent(next.to.hash, input.confirmHash);
+    guard?.();
     const result = await this.change(
       input.plugin,
       ["update", input.plugin, "--json"],

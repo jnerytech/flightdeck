@@ -49,11 +49,24 @@ export function InstallDialog(
   const install = async (acceptCommand?: string) => {
     if (!preview?.hash) return;
     setBusy(true);
-    const result = await store.hostCommand(hostId, "plugins.install", {
-      ...source,
-      confirmHash: preview.hash,
-      ...(acceptCommand ? { acceptCommand } : {}),
-    });
+    // With a device enrolled, each call is signed in the system's dialog; a no sends nothing (#3516).
+    let made: Awaited<ReturnType<typeof store.approval.pluginInstallPayload>>;
+    try {
+      made = await store.approval.pluginInstallPayload(hostId, {
+        ...source,
+        confirmHash: preview.hash,
+        ...(acceptCommand ? { acceptCommand } : {}),
+      });
+    } catch (error) {
+      setBusy(false);
+      store.reportError(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (made.kind === "declined") {
+      setBusy(false);
+      return;
+    }
+    const result = await store.hostCommand(hostId, "plugins.install", made.payload);
     setBusy(false);
     if (!result) return;
     setChange(result);

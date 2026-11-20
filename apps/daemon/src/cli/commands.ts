@@ -15,6 +15,7 @@ import type { VaultCliArgs } from "../vault/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
+import { projectCliArgs } from "./domain/project-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 
@@ -765,6 +766,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runPluginsCli } = await import("../plugins/index.ts");
     return asking(args, deps, (config, remote) =>
       runPluginsCli(pluginsCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  project: async (args, deps) => {
+    const { runProjectCli } = await import("../projects/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runProjectCli(projectCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   approvers: async (args, deps) => {
