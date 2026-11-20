@@ -8,13 +8,18 @@ import { isInside } from "../../kernel/index.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
   flightdeckWords,
+  HIDDEN_VERB,
+  hidesItsVerb,
   type Invocation,
   invocations,
   isCliProgram,
   program,
   RUNNERS,
+  runnerHidesAVerb,
   SHELLS,
-  shellArguments,
+  shellReadings,
+  startsCli,
+  stepQuote,
   unquoted,
 } from "./shell-call.ts";
 
@@ -153,10 +158,10 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
 /** Whether the command runs `fd`/`flightdeckd` with one of `verbs`, directly or through a runtime or a shell given the text. */
 function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  if (isCliProgram(prog)) return verbs.includes(flightdeckWords(shellArguments(args))[0] ?? "");
+  if (isCliProgram(prog))
+    return shellReadings(args).some((own) => verbs.includes(flightdeckWords(own)[0] ?? ""));
   if (!RUNNERS.includes(prog)) return false;
-  const names = words.map((w) => program(w));
-  const runsCli = names.some((n) => isCliProgram(n));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   return runsCli && words.some((w) => verbs.includes(w));
 }
 
@@ -187,17 +192,18 @@ function endsACard(prog: string, args: string[]): boolean {
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
   const loopOn = (all: string[]) => all.includes("check-loop") && all.includes("on");
   if (isCliProgram(prog)) {
-    const own = shellArguments(args);
-    const [command, action, , switchTo] = flightdeckWords(own);
-    return (
-      command === "card" &&
-      (CARD_ENDS.includes(action ?? "") ||
-        (action === "move" && own.includes("--force")) ||
-        (action === "check-loop" && switchTo === "on"))
-    );
+    return shellReadings(args).some((own) => {
+      const [command, action, , switchTo] = flightdeckWords(own);
+      return (
+        command === "card" &&
+        (CARD_ENDS.includes(action ?? "") ||
+          (action === "move" && own.includes("--force")) ||
+          (action === "check-loop" && switchTo === "on"))
+      );
+    });
   }
   if (!RUNNERS.includes(prog)) return false;
-  const runsCli = words.some((w) => isCliProgram(program(w)));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   return (
     runsCli &&
     words.includes("card") &&
@@ -247,12 +253,10 @@ function runsFlightdeckWords(
   args: string[],
   matches: (words: string[]) => boolean,
 ): boolean {
-  if (isCliProgram(prog)) return matches(flightdeckWords(shellArguments(args)));
+  if (isCliProgram(prog)) return shellReadings(args).some((own) => matches(flightdeckWords(own)));
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  return words.some(
-    (w, i) => isCliProgram(program(w)) && matches(flightdeckWords(words.slice(i + 1))),
-  );
+  return words.some((_, i) => startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1))));
 }
 
 /**
@@ -266,13 +270,14 @@ function resumesWithPower(prog: string, args: string[]): boolean {
       (w) => w === "--force" || w === "--permission-mode" || w.startsWith("--permission-mode="),
     );
   if (isCliProgram(prog)) {
-    const own = shellArguments(args);
-    const [command, action] = flightdeckWords(own);
-    return command === "history" && action === "resume" && raised(own);
+    return shellReadings(args).some((own) => {
+      const [command, action] = flightdeckWords(own);
+      return command === "history" && action === "resume" && raised(own);
+    });
   }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((w) => isCliProgram(program(w)));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   const resumes = words.some((w, i) => w === "history" && words[i + 1] === "resume");
   return runsCli && resumes && raised(words);
 }
@@ -296,12 +301,14 @@ const TEAM_CHANGES = [
  */
 function runsCliVerb(prog: string, args: string[], command: string, verbs: string[]): boolean {
   if (isCliProgram(prog)) {
-    const [first, verb] = flightdeckWords(shellArguments(args));
-    return first === command && verbs.includes(verb ?? "");
+    return shellReadings(args).some((own) => {
+      const [first, verb] = flightdeckWords(own);
+      return first === command && verbs.includes(verb ?? "");
+    });
   }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((w) => isCliProgram(program(w)));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
 }
 
@@ -530,9 +537,16 @@ function segmentRisks(segment: string[], piped: boolean): Candidate[] {
   return out;
 }
 
-function invocationRisks({ prog, args, sudo }: Invocation, piped: boolean): Candidate[] {
+function invocationRisks(call: Invocation, piped: boolean): Candidate[] {
+  const { prog, args, sudo } = call;
   const out: Candidate[] = [];
   if (sudo) out.push(["high", "sudo"]);
+  if (
+    call.hidden ||
+    (isCliProgram(prog) && hidesItsVerb(args, call.unresolved)) ||
+    runnerHidesAVerb(prog, args)
+  )
+    out.push(["high", HIDDEN_VERB]);
   if (piped && SHELLS.has(prog)) out.push(["high", `pipe para ${prog}`]);
   for (const rule of DANGEROUS) {
     if (rule.when(prog, args)) out.push(["high", rule.reason(prog)]);
@@ -605,21 +619,18 @@ function splitOutsideQuotes(text: string, separators: string[]): string[] {
   const parts: string[] = [];
   let quote = "";
   let from = 0;
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charAt(i);
-    if (quote !== "") {
-      if (c === quote) quote = "";
+  for (let i = 0; i < text.length; ) {
+    const step = stepQuote(quote, text, i);
+    const separator =
+      quote === "" && step.open === "" ? separators.find((s) => text.startsWith(s, i)) : undefined;
+    if (separator === undefined) {
+      quote = step.open;
+      i = step.next;
       continue;
     }
-    if (c === '"' || c === "'") {
-      quote = c;
-      continue;
-    }
-    const separator = separators.find((s) => text.startsWith(s, i));
-    if (separator === undefined) continue;
     parts.push(text.slice(from, i));
-    i += separator.length - 1;
-    from = i + 1;
+    i += separator.length;
+    from = i;
   }
   parts.push(text.slice(from));
   return parts;
@@ -680,7 +691,7 @@ export class RiskClassifier {
     if (SHELL_TOOLS.has(toolName)) {
       // A shell tool's command that is there but not text cannot be read, so a person decides.
       if (oddCommand(input)) return [["high", "the command is not text"]];
-      return this.shellCandidates(text("command"), cwd);
+      return this.shellCandidates(text("command"), cwd, toolName === "PowerShell");
     }
     if (toolName === "TodoWrite") return [["low", "lista de tarefas"]];
     const fields = READ_TOOLS[toolName];
@@ -711,10 +722,14 @@ export class RiskClassifier {
   }
 
   /** The command as written, and as a shell that joins continuation lines reads it. */
-  private shellCandidates(command: string, cwd: string): Candidate[] {
+  private shellCandidates(command: string, cwd: string, powershell: boolean): Candidate[] {
     const joined = joinContinuations(command);
     const written = this.shell(command, cwd);
-    return joined === command ? written : [...written, ...this.shell(joined, cwd)];
+    const out = joined === command ? written : [...written, ...this.shell(joined, cwd)];
+    // PowerShell's backslash is a path separator and its escape is the backtick (#3559): the line is read once more
+    // with the two swapped, so `"C:\work\" persona remove qa` does not read as one open string.
+    const swapped = command.replace(/\\/g, "/").replace(/`/g, "\\");
+    return powershell && swapped !== command ? [...out, ...this.shell(swapped, cwd)] : out;
   }
 
   private shell(command: string, cwd: string): Candidate[] {
