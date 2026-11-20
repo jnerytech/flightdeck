@@ -375,6 +375,8 @@ export const refusals = {
       "Essa pasta na verdade é {path}: o dispositivo confirma a pasta em que o host confia, então abra essa e tente de novo.",
     harness_path_differs:
       "Essa pasta na verdade é {path}: o dispositivo confirma a pasta em que o host grava, então abra essa e tente de novo.",
+    plugin_path_differs:
+      "Essa pasta na verdade é {path}: o dispositivo confirma a pasta de que o host instala, então escolha essa e tente de novo.",
     harness_stale:
       "O projeto mudou desde a prévia, ou a prévia não era destas partes: faça a prévia de novo.",
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",

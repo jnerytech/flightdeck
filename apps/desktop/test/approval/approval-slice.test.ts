@@ -11,6 +11,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_HARNESS,
+  FEATURE_APPROVAL_PLUGINS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
@@ -820,25 +821,36 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       "resume",
       "roots",
       "harness",
+      "plugins",
     ]);
-    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "bypass", "resume", "roots", "harness"]);
+    expect(unchecked(COMMAND_HOST)).toEqual([
+      "trust",
+      "bypass",
+      "resume",
+      "roots",
+      "harness",
+      "plugins",
+    ]);
     expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual([
       "merge",
       "bypass",
       "resume",
       "roots",
       "harness",
+      "plugins",
     ]);
     expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual([
       "bypass",
       "resume",
       "roots",
       "harness",
+      "plugins",
     ]);
     expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST, FEATURE_APPROVAL_BYPASS])).toEqual([
       "resume",
       "roots",
       "harness",
+      "plugins",
     ]);
     expect(
       unchecked([
@@ -848,7 +860,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
         FEATURE_APPROVAL_RESUME,
         FEATURE_APPROVAL_ROOTS,
       ]),
-    ).toEqual(["harness"]);
+    ).toEqual(["harness", "plugins"]);
     expect(
       unchecked([
         ...COMMAND_HOST,
@@ -857,6 +869,17 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
         FEATURE_APPROVAL_RESUME,
         FEATURE_APPROVAL_ROOTS,
         FEATURE_APPROVAL_HARNESS,
+      ]),
+    ).toEqual(["plugins"]);
+    expect(
+      unchecked([
+        ...COMMAND_HOST,
+        FEATURE_APPROVAL_TRUST,
+        FEATURE_APPROVAL_BYPASS,
+        FEATURE_APPROVAL_RESUME,
+        FEATURE_APPROVAL_ROOTS,
+        FEATURE_APPROVAL_HARNESS,
+        FEATURE_APPROVAL_PLUGINS,
       ]),
     ).toEqual([]);
     expect(unchecked([])).toEqual([]);
@@ -911,6 +934,81 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
     expect(await declined.slice.harnessPayload("h", setupBody)).toEqual({ kind: "declined" });
     const keyless = approval({ features: HARNESS_HOST, local: null });
     await expect(keyless.slice.harnessPayload("h", setupBody)).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
+    );
+  });
+
+  const PLUGINS_HOST = [...HARNESS_HOST, FEATURE_APPROVAL_PLUGINS];
+  const INSTALL = {
+    plugin: "deploy-tools@acme",
+    confirmHash: "a".repeat(64),
+    scope: "project",
+  } as const;
+  const FOLDER_INSTALL = { dir: "/work/plugins/deploy", confirmHash: "a".repeat(64) };
+  const UPDATE = { plugin: "deploy-tools@acme", confirmHash: "a".repeat(64) };
+
+  test("installing and updating a plugin carry the proof over the whole request, each in its own dialog (#3516)", async () => {
+    const { slice, log, keyLog } = approval({ features: PLUGINS_HOST });
+    const install = await slice.pluginInstallPayload("h", {
+      ...INSTALL,
+      acceptCommand: "b".repeat(64),
+    });
+    const signedInstall = install.kind === "payload" ? install.payload : {};
+    const { proof, ...bound } = signedInstall as Record<string, unknown>;
+    expect(bound).toEqual({ ...INSTALL, acceptCommand: "b".repeat(64) });
+    expect(proof).toEqual({
+      keyId: "key-this",
+      nonce: "nonce-1",
+      signature: expect.stringContaining("sig:"),
+    });
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "plugins.install" });
+    expect(keyLog.find((k) => k.op === "sign")?.args[3]).toBe(
+      commandDigest({ ...INSTALL, acceptCommand: "b".repeat(64) }),
+    );
+    const update = await slice.pluginUpdatePayload("h", UPDATE);
+    expect(keyLog.filter((k) => k.op === "sign").map((k) => k.args[3])).toEqual([
+      commandDigest({ ...INSTALL, acceptCommand: "b".repeat(64) }),
+      commandDigest(UPDATE),
+    ]);
+    expect(log.filter((l) => l.type === "approval.challenge").map((l) => l.payload)).toEqual([
+      { purpose: "command", command: "plugins.install" },
+      { purpose: "command", command: "plugins.update" },
+    ]);
+    for (const [type, made] of [
+      ["plugins.install", install],
+      ["plugins.update", update],
+    ] as const) {
+      const payload = made.kind === "payload" ? made.payload : {};
+      expect(Command.safeParse({ id: "1", type, payload }).success).toBe(true);
+    }
+    const folder = await slice.pluginInstallPayload("h", FOLDER_INSTALL);
+    expect(folder.kind === "payload" && folder.payload.dir).toBe("/work/plugins/deploy");
+  });
+
+  test("a host that does not announce the plugins proof, or has no device enrolled, gets the plain payload and no challenge", async () => {
+    const old = approval({ features: HARNESS_HOST });
+    expect(await old.slice.pluginInstallPayload("h", INSTALL)).toEqual({
+      kind: "payload",
+      payload: INSTALL,
+    });
+    expect(await old.slice.pluginUpdatePayload("h", UPDATE)).toEqual({
+      kind: "payload",
+      payload: UPDATE,
+    });
+    expect(old.log).toEqual([]);
+    const off = approval({ features: PLUGINS_HOST, list: { protectionOff: true, keys: [] } });
+    expect(await off.slice.pluginInstallPayload("h", INSTALL)).toEqual({
+      kind: "payload",
+      payload: INSTALL,
+    });
+  });
+
+  test("a no in the dialog of a plugin sends nothing, and a device with no key for this host is told so", async () => {
+    const declined = approval({ features: PLUGINS_HOST, signFails: "declined" });
+    expect(await declined.slice.pluginInstallPayload("h", INSTALL)).toEqual({ kind: "declined" });
+    expect(await declined.slice.pluginUpdatePayload("h", UPDATE)).toEqual({ kind: "declined" });
+    const keyless = approval({ features: PLUGINS_HOST, local: null });
+    await expect(keyless.slice.pluginInstallPayload("h", INSTALL)).rejects.toThrow(
       t("approvalDevices.noKeyHere"),
     );
   });

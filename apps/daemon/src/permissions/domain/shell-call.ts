@@ -256,6 +256,8 @@ const OPTIONS_WITH_VALUE = [
   "--confirm-hash",
   "--accept-command",
   "--plugin-scope",
+  "--parts",
+  "--template",
   "--limit",
   "--out",
   "--from",

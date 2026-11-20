@@ -186,7 +186,8 @@ describe("recusas-config: the MCP servers", () => {
 });
 
 describe("recusas-config: going back", () => {
-  const row = { n: 1, kind: "before", repo: "/repo" };
+  const repo = tempDir("fd-rewind-refusal-");
+  const row = { n: 1, kind: "before", repo };
   const rewinder = (over: { list?: unknown[]; busy?: boolean; take?: unknown } = {}) =>
     new Rewinder({
       snapshots: {
@@ -194,6 +195,7 @@ describe("recusas-config: going back", () => {
         take: async () => over.take ?? { skipped: "no repo" },
       },
       sessions: { busy: () => over.busy ?? false },
+      allowedRoots: [dirname(repo)],
     } as never);
 
   test("nothing to undo, no confirm, a running session, a turn without a snapshot", async () => {

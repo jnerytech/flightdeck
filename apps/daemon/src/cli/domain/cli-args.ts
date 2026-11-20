@@ -15,6 +15,7 @@ export interface CliArgs {
     | "history"
     | "vault"
     | "plugins"
+    | "project"
     | "approvers"
     | "rules"
     | "autoapprove"
@@ -148,7 +149,12 @@ export interface CliArgs {
     | "unpin"
     | "marketplace-add"
     | "marketplace-remove"
-    | "marketplace-update";
+    | "marketplace-update"
+    // `project` (#3515)
+    | "trust-state"
+    | "stack"
+    | "trust-inspect"
+    | "harness-preview";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -314,6 +320,10 @@ export interface CliArgs {
   /** `plugins detail|preview|preview-update <plugin>`, `plugins preview --dir <folder>` (#3516). */
   plugin?: string;
   pluginDir?: string;
+  /** `project <verb> <folder>...`, `project harness-preview --parts a,b [--template id]` (#3515). */
+  projectPaths?: string[];
+  projectParts?: string[];
+  projectTemplate?: string;
   hideAutomated?: true;
   cursor?: string;
   tail?: true;
