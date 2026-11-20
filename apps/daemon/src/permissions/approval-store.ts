@@ -41,7 +41,7 @@ export class ApprovalStore {
 
   keys(): StoredKey[] {
     const rows = this.db
-      .query("SELECT * FROM approval_keys ORDER BY enrolled_at, key_id")
+      .query("SELECT * FROM approval_keys ORDER BY enrolled_at, rowid")
       .all() as KeyRow[];
     return rows.map((row) => ({
       keyId: row.key_id,

@@ -147,7 +147,7 @@ function external(approvers: Approvers) {
 
 const rule: PermissionUpdate = {
   type: "addRules",
-  rules: [{ toolName: "Bash", ruleContent: "ls:*" }],
+  rules: [{ toolName: "Bash", ruleContent: "ls" }],
   behavior: "allow",
   destination: "localSettings",
 };

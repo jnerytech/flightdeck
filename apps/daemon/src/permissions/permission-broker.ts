@@ -175,8 +175,10 @@ export class PermissionBroker {
       );
     }
     if (payload.decision === "allow") {
-      // Without the hold a high-risk request stays open, nothing applied.
-      requireHold(pending.risk, payload.held);
+      // Without the hold a high-risk request stays open, nothing applied. A host with the approval gate
+      // asks for the device's proof instead, once the answer's rules are known (below).
+      const gate = this.hooks.approval;
+      if (!gate) requireHold(pending.risk, payload.held);
       // The answer cannot change what runs, and a saved rule cannot cover more risk than this one.
       bindInput(pending.toolName, pending.input, payload.updatedInput);
       const updates = payload.updatedPermissions ?? [];
@@ -184,6 +186,17 @@ export class PermissionBroker {
         ...pending,
         classify: (tool, input) => this.hooks.classify(pending.sessionId, tool, input).level,
         ...disk,
+      });
+      gate?.check({
+        requestId: payload.requestId,
+        risk: pending.risk,
+        answer: {
+          updatedPermissions: updates,
+          updatedInput: payload.updatedInput,
+          message: payload.message,
+        },
+        held: payload.held,
+        proof: payload.proof,
       });
       this.finish(
         payload.requestId,
