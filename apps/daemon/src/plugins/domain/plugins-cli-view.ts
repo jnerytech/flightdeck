@@ -4,6 +4,7 @@
  */
 import type {
   InstalledPlugin,
+  PluginChange,
   PluginList,
   PluginPreview,
   PluginUpdatePreview,
@@ -15,13 +16,15 @@ interface Printed {
 }
 export type PluginsCliArgs =
   | (Printed & { action: "list" })
-  | (Printed & { action: "detail" | "preview-update"; plugin: string })
+  | (Printed & { action: "detail"; plugin: string })
+  | (Printed & { action: "preview-update"; plugin: string })
   | (Printed & { action: "preview"; plugin: string })
   | (Printed & { action: "preview"; dir: string })
   | (Printed & InstallArgs & { action: "install" })
   | (Printed & { action: "update"; plugin: string; confirmHash: string; acceptCommand?: string })
   | (Printed & { action: "uninstall"; plugin: string; scope?: PluginScope; confirm?: true })
-  | (Printed & { action: "pin" | "unpin"; plugin: string })
+  | (Printed & { action: "pin"; plugin: string })
+  | (Printed & { action: "unpin"; plugin: string })
   | (Printed & { action: "marketplace-add"; source: string; scope?: PluginScope; confirm?: true })
   | (Printed & { action: "marketplace-remove"; name: string; confirm?: true })
   | (Printed & { action: "marketplace-update"; name?: string });
@@ -151,4 +154,27 @@ export function updateLines(update: PluginUpdatePreview): string[] {
     ...moved,
     ...(update.unchanged ? ["unchanged: the marketplace's copy is the installed one"] : []),
   ];
+}
+
+/**
+ * What a write said, as lines and an exit code: `ok` and `unchanged` are done (0); a failed or rolled back
+ * change is refused (1); a command the marketplace declares waits for the person, who reads it here and
+ * repeats its sha256 with `--accept-command` (1, nothing was installed).
+ */
+export function changeLines(change: PluginChange): { code: 0 | 1; lines: string[] } {
+  if (change.outcome === "ok" || change.outcome === "unchanged")
+    return { code: 0, lines: [change.message] };
+  const { shownCommand } = change;
+  if (change.outcome !== "needs-command-confirmation" || shownCommand === undefined)
+    return { code: 1, lines: [change.message] };
+  return {
+    code: 1,
+    lines: [
+      change.message,
+      ...(shownCommand.plugin ? [`plugin: ${shownCommand.plugin}`] : []),
+      ...(shownCommand.command ? [`command: ${shownCommand.command}`] : []),
+      `sha256: ${shownCommand.sha256}`,
+      `Nothing was installed. After reading the command, repeat the same line with --accept-command ${shownCommand.sha256}`,
+    ],
+  };
 }

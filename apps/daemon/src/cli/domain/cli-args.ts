@@ -118,7 +118,15 @@ export interface CliArgs {
     | "rules"
     | "preview"
     | "detail"
-    | "preview-update";
+    | "preview-update"
+    | "install"
+    | "update"
+    | "uninstall"
+    | "pin"
+    | "unpin"
+    | "marketplace-add"
+    | "marketplace-remove"
+    | "marketplace-update";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -176,6 +184,11 @@ export interface CliArgs {
   position?: number;
   force?: true;
   confirm?: true;
+  /** `plugins install|update --confirm-hash <hash> [--accept-command <sha256>]`, `--plugin-scope user|project|local`, and the source or name `marketplace-add|remove|update` takes (#3516). */
+  confirmHash?: string;
+  acceptCommand?: string;
+  pluginScope?: "user" | "project" | "local";
+  marketplace?: string;
   /** `approvers watch --follow`. */
   follow?: true;
   squash?: true;

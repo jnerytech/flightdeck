@@ -4,7 +4,7 @@
  */
 import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
-import { ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
+import { ArgReader, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -633,6 +633,15 @@ const HANDLERS: Record<string, Handler> = {
   "--dir": setValue((args, v) => {
     args.pluginDir = v;
   }),
+  "--confirm-hash": setValue((args, v) => {
+    args.confirmHash = v;
+  }),
+  "--accept-command": setValue((args, v) => {
+    args.acceptCommand = v;
+  }),
+  "--plugin-scope": setValue((args, v) => {
+    args.pluginScope = oneOf("--plugin-scope", v, ["user", "project", "local"]);
+  }),
   "--config": setValue((args, v) => {
     args.config = v;
   }),
@@ -752,8 +761,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s and `costs reprice`'s, which check their own flags below.
-    if (flag === "--confirm" && ["rules", "autoapprove", "team", "costs"].includes(args.command))
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s and `plugins`', which check their own flags below.
+    if (
+      flag === "--confirm" &&
+      ["rules", "autoapprove", "team", "costs", "plugins"].includes(args.command)
+    )
       continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
