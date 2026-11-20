@@ -11,6 +11,7 @@ import {
   commandMessage,
   enrollAddMessage,
   enrollFirstMessage,
+  FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
@@ -33,6 +34,16 @@ import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./ad
 
 /** The payload of a guarded merge, or the person's no (#3453). */
 type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
+
+/** The payload of `host.bypass` that turns bypass on, or the person's no (#3507). */
+type BypassPayload = { kind: "payload"; payload: BypassBody } | { kind: "declined" };
+
+/** `host.bypass` turning bypass on: the proof is there only for a host that checks it and has a device enrolled. */
+interface BypassBody {
+  allow: true;
+  confirm: true;
+  proof?: ApprovalProof;
+}
 
 /** `card.pr.merge`'s payload: the head binding and the proof are there only for a host that checks them. */
 interface MergeBody {
@@ -72,11 +83,12 @@ type ResumePayload =
 const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "card.pr.merge": FEATURE_APPROVAL_COMMAND,
   "project.trust.set": FEATURE_APPROVAL_TRUST,
+  "host.bypass": FEATURE_APPROVAL_BYPASS,
   "autoapprove.resume": FEATURE_APPROVAL_RESUME,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand = "merge" | "trust" | "resume";
+export type UncheckedCommand = "merge" | "trust" | "bypass" | "resume";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -267,6 +279,7 @@ export class ApprovalSlice {
     const unchecked: UncheckedCommand[] = [];
     if (!hasFeature(features, FEATURE_APPROVAL_COMMAND, false)) unchecked.push("merge");
     if (!hasFeature(features, FEATURE_APPROVAL_TRUST, false)) unchecked.push("trust");
+    if (!hasFeature(features, FEATURE_APPROVAL_BYPASS, false)) unchecked.push("bypass");
     if (!hasFeature(features, FEATURE_APPROVAL_RESUME, false)) unchecked.push("resume");
     return unchecked;
   }
@@ -563,6 +576,21 @@ export class ApprovalSlice {
     return {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...bound, proof: proof.proof } : bound,
+    };
+  }
+
+  /**
+   * The payload that turns bypass on (#3507), with the device's proof over it when the host checks it and has
+   * a device enrolled; a host from before the feature gets the plain payload. Turning it off is open and has
+   * no payload here. `declined`: the person said no in the system's dialog.
+   */
+  async bypassPayload(hostId: string): Promise<BypassPayload> {
+    const plain: BypassBody = { allow: true, confirm: true };
+    const proof = await this.proveCommand(hostId, "host.bypass", { ...plain });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
     };
   }
 

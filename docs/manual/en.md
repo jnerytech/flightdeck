@@ -80,6 +80,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 - [fd approve and fd deny](en/flightdeckd-commands.md#fd-approve-and-fd-deny)
 - [fd send](en/flightdeckd-commands.md#fd-send)
 
+## flightdeckd commands: one session
+
+[Read the chapter.](en/flightdeckd-session-commands.md) Its sections:
+
+- [fd session](en/flightdeckd-session-commands.md#fd-session)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)

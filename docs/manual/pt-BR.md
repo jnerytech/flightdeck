@@ -73,6 +73,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [fd approve e fd deny](pt-BR/flightdeckd-commands.md#fd-approve-e-fd-deny)
 - [fd send](pt-BR/flightdeckd-commands.md#fd-send)
 
+## Comandos do flightdeckd: uma sessão
+
+[Ler o capítulo.](pt-BR/flightdeckd-session-commands.md) Suas seções:
+
+- [fd session](pt-BR/flightdeckd-session-commands.md#fd-session)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)
