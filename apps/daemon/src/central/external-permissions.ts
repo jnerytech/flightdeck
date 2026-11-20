@@ -1,9 +1,4 @@
-import type {
-  AutoApproval,
-  CommandPayload,
-  ExternalPermissionFrame,
-  PermissionUpdate,
-} from "@flightdeck/protocol";
+import type { AutoApproval, CommandPayload, ExternalPermissionFrame } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { ulid } from "../kernel/index.ts";
 import {
