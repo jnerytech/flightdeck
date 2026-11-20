@@ -60,10 +60,10 @@ describe("risk rules: a session pinning or forgetting a server key from its shel
 });
 
 const TARGETS_REASON =
-  "removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh remove or import apply)";
+  "adds, changes or removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh add, edit, remove or import apply)";
 
-describe("risk rules: a session removing or importing ssh destinations from its shell (#3537)", () => {
-  test("ssh remove and ssh import apply are high, however the CLI is reached", () => {
+describe("risk rules: a session changing ssh destinations from its shell (#3537)", () => {
+  test("ssh add, edit, remove and import apply are high, however the CLI is reached", () => {
     expect(
       wrongReasons([
         ["fd ssh remove prod --confirm", TARGETS_REASON],
@@ -79,6 +79,16 @@ describe("risk rules: a session removing or importing ssh destinations from its 
         ["npx flightdeckd ssh --json remove prod --confirm", TARGETS_REASON],
         ["bash -c 'fd ssh import apply --alias a'", TARGETS_REASON],
         ['sh -c "flightdeckd ssh remove prod --confirm"', TARGETS_REASON],
+        ["fd ssh add web --address web.internal --user deploy", TARGETS_REASON],
+        ["fd ssh edit prod --address evil.example --jump db", TARGETS_REASON],
+        ["flightdeckd --host pi ssh edit prod --forward-agent --confirm", TARGETS_REASON],
+        [
+          "fd --json ssh add web --address a --user u --auth key-file --secret-ref /k",
+          TARGETS_REASON,
+        ],
+        ['fd ssh "edit" prod --port 22', TARGETS_REASON],
+        ["bun run apps/daemon/src/bin.ts ssh edit prod --no-jump", TARGETS_REASON],
+        ["bash -c 'fd ssh add web --address a --user u'", TARGETS_REASON],
       ]),
     ).toEqual([]);
   });
@@ -91,6 +101,9 @@ describe("risk rules: a session removing or importing ssh destinations from its 
         "fd ssh test prod",
         "fd send fd-qa 'please ssh remove prod'",
         "echo ssh import apply",
+        "echo ssh add web",
+        "fd send fd-qa 'please ssh edit prod'",
+        "ssh-add -l",
         "bash -c 'echo ssh remove prod'",
         "bun apps/daemon/src/bin.ts ssh --host pi import preview",
         "rm ssh-remove.log",
