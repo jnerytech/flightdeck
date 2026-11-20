@@ -144,7 +144,7 @@ function saveProblem(args: CliArgs, saving: boolean): string | undefined {
   const fields = args.sshSave;
   if (!saving) {
     const [, flag] = SAVE_FLAGS.find(([field]) => fields?.[field] !== undefined) ?? [];
-    return flag === undefined || args.command !== "ssh"
+    return flag === undefined
       ? undefined
       : `${flag}: this flag only applies to flightdeckd ssh add and ssh edit`;
   }
@@ -158,6 +158,11 @@ function saveProblem(args: CliArgs, saving: boolean): string | undefined {
   } else if (fields === undefined) {
     return `ssh edit needs at least one of ${SAVE_FLAGS.map(([, flag]) => flag).join(", ")}`;
   }
+  if (
+    fields?.secretRef !== undefined &&
+    (fields.auth ?? (adding ? "agent" : undefined)) === "agent"
+  )
+    return "--secret-ref: the agent has no key reference: pass --auth key-file, vault-key or password";
   if (fields?.jump !== undefined && fields.noJump) return "--jump and --no-jump cannot go together";
   if (fields?.forwardAgent && fields.noForwardAgent)
     return "--forward-agent and --no-forward-agent cannot go together";

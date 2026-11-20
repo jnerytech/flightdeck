@@ -144,10 +144,18 @@ export function runSshCli(
         const confirm = args.confirm === true;
         const name = args.target ?? "";
         if (args.action === "add") {
-          if (targets.some((t) => t.name === name)) {
+          const named = name.trim();
+          if (targets.some((t) => t.name === named)) {
             return failure(
               1,
-              `a destination is already named ${name}: use ssh edit ${name}`,
+              `a destination is already named ${named}: use ssh edit ${named}`,
+              "ssh_name_taken",
+            );
+          }
+          if (targets.some((t) => t.id === named)) {
+            return failure(
+              1,
+              `${named} is the id of another destination: pick another name`,
               "ssh_name_taken",
             );
           }
@@ -159,6 +167,12 @@ export function runSshCli(
         }
         const found = resolveSshTarget(targets, name);
         if ("problem" in found) return failure(1, found.problem);
+        if (fields.secretRef !== undefined && (fields.auth ?? found.target.auth) === "agent") {
+          return failure(
+            1,
+            `--secret-ref: ${found.target.name} signs in with the agent, which has no key reference: pass --auth key-file, vault-key or password`,
+          );
+        }
         const saved = await daemon.call(
           "ssh.save",
           editPayload(found.target, fields, jumpId, confirm),
