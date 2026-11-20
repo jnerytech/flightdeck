@@ -4,6 +4,7 @@
  * summary reads too. Another domain imports from here, never a file inside.
  */
 
+export type { HistoryCliArgs } from "./domain/history-cli-view.ts";
 export { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "./domain/parser.ts";
 export { type LiveState, requestLine, sessionLine } from "./domain/session-line.ts";
 export { promptText } from "./domain/transcript-text.ts";

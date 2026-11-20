@@ -50,6 +50,8 @@ Deletes the history index and reads every transcript again, printing how many se
 messages went in. Stop the daemon first: with another process on the same `dataDir`, the command
 exits with code 3.
 
+To read the history without the app, see [`fd history`](flightdeckd-commands.md#fd-history).
+
 ## In the app
 
 - **Per-host history** (🕘 next to the host name): indexed sessions with title, folder, date of

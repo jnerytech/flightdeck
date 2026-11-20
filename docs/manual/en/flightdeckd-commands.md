@@ -176,6 +176,35 @@ fd board settings --json
 A change that gets no answer exits `2` and says it may or may not have gone in: run `board settings`
 before trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
+## fd history
+
+```sh
+fd history list [--cwd <folder>] [--project-key <key>] [--from <time>] [--to <time>] [--origin flightdeck|external] [--hide-automated] [--limit 20] [--cursor <c>] [--json]
+fd history search "login bug" [--cwd <folder>] [--from <time>] [--to <time>] [--limit 10] [--json]
+fd history get <session> [--tail] [--limit 50] [--cursor <c>] [--json]
+fd history tool <session> <message> <index> [--json]
+fd history reindex
+```
+
+These read the conversations Claude Code already recorded, as the History screen does. They change
+nothing, and the folders in `history.excludeCwds` stay out, as in the app.
+
+- **`list`:** one line per session: id, time of the last message, folder, title and message count, with
+  `[may be running]` when another process may still be writing it. A longer list ends with
+  `more: history list --cursor <c>`; pass that cursor to read the next page.
+- **`search <text>`:** one line per hit: session, message, time and role, then the excerpt with every match
+  between `«` and `»`. Prints `no session matches` when there is none.
+- **`get <session>`:** the transcript as text, one block per message (time, role, then the text). `--tail`
+  opens on the last messages. A page ends with `more:` and, for a tail, `earlier:` lines that give the
+  command that reads the next or the earlier page.
+- **`tool <session> <message> <index>`:** the whole input and result of one tool call of a message (the
+  `<message>` id is the second column of `search`, and `<index>` counts from 0). It says when the
+  transcript held more than the 64 KiB shown. A call the transcript does not hold exits `1`.
+- **`reindex`:** rebuilds the index; stop the daemon first (see [History](history.md)).
+
+`--limit` takes 1 to 200 (to 500 for `get`). With `--json` the first four print the daemon's answer.
+Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
+
 ## fd persona
 
 ```sh

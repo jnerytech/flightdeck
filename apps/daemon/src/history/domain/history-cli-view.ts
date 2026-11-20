@@ -28,22 +28,43 @@ export interface HistoryCliArgs {
   json?: boolean;
 }
 
+const lines = (text: string) => text.split(/\r\n|\r|\n/);
+
 /** One session of `history list`. */
-export function summaryLine(_session: HistorySessionSummary): string {
-  return "";
+export function summaryLine(session: HistorySessionSummary): string {
+  const count = `${session.messageCount} ${session.messageCount === 1 ? "message" : "messages"}`;
+  const running = session.maybeActive ? " [may be running]" : "";
+  const when = session.lastTs ?? session.firstTs ?? "-";
+  return `${session.claudeSessionId}  ${when}  ${session.cwd}  ${session.title ?? "(untitled)"} (${count})${running}`;
 }
 
 /** One hit of `history search`. */
-export function hitLine(_hit: HistorySearchHit): string {
-  return "";
+export function hitLine(hit: HistorySearchHit): string {
+  return `${hit.claudeSessionId}  ${hit.uuid}  ${hit.ts ?? "-"}  ${hit.role}: ${hit.snippet}`;
 }
 
-/** The lines of one message of `history get`: the first holds who and when, the text follows. */
-export function messageLines(_message: HistoryMessage): string[] {
-  return [];
+/** The lines of one message of `history get`: the first holds when and who, the text follows indented. */
+export function messageLines(message: HistoryMessage): string[] {
+  const [first = "", ...rest] = lines(message.text);
+  return [
+    `${message.ts ?? "-"} ${message.role ?? message.kind}: ${first}`,
+    ...rest.map((line) => `  ${line}`),
+  ];
 }
 
-/** The lines of `history tool`. */
-export function toolLines(_tool: HistoryToolDetail): string[] {
-  return [];
+/** The lines of `history tool`: the call, its input, then its result or the fact that there is none yet. */
+export function toolLines(tool: HistoryToolDetail): string[] {
+  const input = typeof tool.input === "string" ? tool.input : JSON.stringify(tool.input);
+  const result = tool.result
+    ? [
+        tool.result.isError ? "result (error):" : "result:",
+        ...lines(tool.result.content).map((line) => `  ${line}`),
+      ]
+    : ["result: (none yet)"];
+  return [
+    tool.name,
+    `input: ${input}`,
+    ...result,
+    ...(tool.truncated ? ["(cut: the transcript holds more)"] : []),
+  ];
 }
