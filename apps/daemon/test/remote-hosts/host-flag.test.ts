@@ -42,12 +42,7 @@ const HANDLERS = {
 async function onHost(argv: string[], setup: Setup, daemon: { port: number } | null = null) {
   const url = daemon ? `ws://127.0.0.1:${daemon.port}/v1/ws` : "ws://127.0.0.1:9/v1/ws";
   const m = machine({ url, ...setup });
-  const run = await flightdeckd(
-    argv,
-    1,
-    JSON.stringify({ token: "local-config-token-not-the-hosts", port: 1 }),
-    { remote: m.deps },
-  );
+  const run = await flightdeckd(argv, 1, null, { remote: m.deps });
   return { run, text: [...run.out, ...run.err].join("\n") };
 }
 
@@ -93,7 +88,7 @@ describe.skipIf(me === null)(
     test("this machine's config is not read: no daemon config is needed to ask another host", async () => {
       const daemon = fakeDaemon(HANDLERS, TOKEN);
       const m = machine({ url: `ws://127.0.0.1:${daemon.port}/v1/ws` });
-      const run = await flightdeckd(["host", "--host", "server", "--json"], 1, "not json at all", {
+      const run = await flightdeckd(["host", "--host", "server", "--json"], 1, null, {
         remote: m.deps,
       });
       expect(run.code).toBe(0);

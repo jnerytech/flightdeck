@@ -25,7 +25,9 @@ changes both.
    by PATH: beside its own executable (`process.execPath`), else the OS install folder
    (`%LOCALAPPDATA%\Programs\flightdeck`, `/Applications/Flightdeck.app/Contents/MacOS`). It spawns it only if
    the folder is not a symlink, is owned by the user or root, and is not group- or world-writable (POSIX; on
-   Windows the folder is the user's own and nothing is enforced, see "Same user"). A change in
+   Windows the folder is the user's own and nothing is enforced, see "Same user"). The CLI waits at most 15
+   seconds for the helper and reads at most 8 KiB from it; a helper that is slower or louder is killed and
+   counts as no credential, so a locked store never hangs a command. A change in
    `src-tauri` runs `tauri-rust-reviewer`.
 2. **The address comes from the store, with the token.** The app writes the host's address as a second entry
    (account `<id>:url`) whenever it writes the token, and once for every host at start, for hosts paired before
@@ -34,7 +36,7 @@ changes both.
 3. **Host list: the app writes a name index for the CLI.** `<config dir>/hosts.json`: `{hosts: [{id, name}]}`.
    No token, no address, no path. The directory is created 0700 and the file is written 0600 at
    creation, atomically, each time the list changes (a removed host leaves it in the same write that deletes its
-   store entries) and once at start. The CLI refuses a file that is a symlink or owned by another user. On
+   store entries) and once at start. The CLI refuses a file that is a symlink, owned by another user, or writable by group or others (POSIX). On
    Windows the mode is not enforced; the folder inherits the user profile's ACL. The CLI never reads the
    WebView's storage.
 4. **`--host` takes a name.** Matched exactly against `hosts.json`. An address, a name nobody has, or a name two
@@ -96,7 +98,9 @@ changes both.
   "Always Allow" makes it as easy; the CLI makes the reach easier, not new. The person decides which agents
   run on their PC. A high-risk approve on the other host still needs the device proof of #3439.
 - **Same user.** `hosts.json` carries no address and no path, so a write to it can hide or rename a host and
-  nothing more; a rename can send a token only to another of the person's own hosts. The store is another
+  nothing more; a rename can send a command, with that host's own token, to another of the person's own hosts
+  (swap `prod` and `staging`, and `send --host staging` reaches prod). The token never goes to an address the
+  person did not pair. The store is another
   matter: on Windows and Linux (keyutils) a process of the user can write the `<id>:url` entry and point it at
   `wss://attacker`, and the CLI would send the token there in full; neither decision 6 nor `wss://` limits
   that. It is not a new capability: the same process can read the token from the same store. On macOS the item

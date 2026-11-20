@@ -53,5 +53,8 @@ export async function resolveHost(name: string, deps: ResolveDeps): Promise<Reso
       refusal,
     );
   if (refusal) return refuse(`the address stored for "${name}" is not a daemon address`, refusal);
-  return { ok: true, target: { name, url: credential.url, token: credential.token } };
+  return {
+    ok: true, // The parsed address is the one that was judged above, and the one dialled.
+    target: { name, url: new URL(credential.url).href, token: credential.token },
+  };
 }

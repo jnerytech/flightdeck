@@ -11,7 +11,8 @@ export async function readHostIndex(path: string, uid: number | null): Promise<H
   // `lstat` does not follow a link, so a link is not a file here; `readRegular` refuses one again at open.
   const info = await lstat(path).catch(() => null);
   if (!info?.isFile()) return null;
-  if (uid !== null && info.uid !== uid) return null;
+  // The app writes it 0600: a file others can write could have its names swapped, and a command would reach another host.
+  if (uid !== null && (info.uid !== uid || (info.mode & 0o022) !== 0)) return null;
   const data = await readRegular(path, MAX_BYTES);
   return data ? parseHostIndex(data.toString("utf8")) : null;
 }

@@ -15,7 +15,7 @@ export {
 } from "./command.ts";
 export { API_KEY_VARS, buildChildEnv } from "./env.ts";
 export { FlightdeckError, featureOff, refusalOf } from "./errors.ts";
-export { type Exec, spawnExec } from "./exec.ts";
+export { boundedExec, type Exec, spawnExec } from "./exec.ts";
 export { layoutLike, parseJsonOr, parseJsonText, parseJsonWith } from "./json-text.ts";
 export { linesOf } from "./lines.ts";
 export {

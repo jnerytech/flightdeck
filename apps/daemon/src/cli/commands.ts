@@ -88,7 +88,8 @@ const reported = (deps: CliDeps, result: CliResult, asJson = false): Promise<num
 /** What `--host` reads on this machine: the app's index and the credential helper beside the binary. */
 async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   if (deps.remote) return deps.remote;
-  const { spawnExec } = await import("../kernel/index.ts");
+  const { boundedExec } = await import("../kernel/index.ts");
+  const { HELPER_TIMEOUT_MS } = await import("../remote-hosts/index.ts");
   return {
     env: {
       platform: process.platform,
@@ -99,7 +100,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
       execPath: process.execPath,
     },
     uid: process.getuid?.() ?? null,
-    exec: deps.exec ?? spawnExec,
+    exec: boundedExec(HELPER_TIMEOUT_MS),
   };
 }
 
@@ -112,6 +113,10 @@ async function asking(
   if (args.host === undefined) return reported(deps, await run(await localConfig(args)), args.json);
   if (args.token !== undefined)
     throw new Error("the token of this command is read from the config file only: drop --token");
+  if (args.config !== undefined)
+    throw new Error(
+      "--config names the config of this machine, which --host does not use: drop --config",
+    );
   const { resolveHost } = await import("../remote-hosts/index.ts");
   const resolved = await resolveHost(args.host, await remoteDeps(deps));
   if (!resolved.ok) return reported(deps, resolved.result, args.json);
