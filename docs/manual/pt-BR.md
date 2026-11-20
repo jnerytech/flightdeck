@@ -198,6 +198,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 [Ler o capítulo.](pt-BR/vault.md) Suas seções:
 
 - [Backup de tudo](pt-BR/vault.md#backup-de-tudo)
+- [fd vault: ler a auditoria, o relatório e as regras](pt-BR/vault.md#fd-vault)
 
 ## Ações: o Claude usa um segredo sem vê-lo
 
