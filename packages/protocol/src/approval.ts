@@ -39,6 +39,7 @@ export const PROOF_COMMANDS = [
   "autoapprove.resume",
   "host.bypass",
   "roots.add",
+  "project.harness.apply",
 ] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
 

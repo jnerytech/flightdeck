@@ -82,6 +82,12 @@ const TAG_COMMAND: &str = "flightdeck/command/v1";
 const MAX_TEXT: usize = 2048;
 /// The payload a command signs is a few short fields; anything past this is not one of them.
 const MAX_PAYLOAD: usize = 1024;
+/// A setup's payload also carries the digest of each file the host would write (up to 17 of them), so it may be longer.
+const MAX_HARNESS_PAYLOAD: usize = 8192;
+/// The parts of the Claude Code setup the host writes, as the protocol names them.
+const HARNESS_PARTS: [&str; 5] = ["claudeMd", "hooks", "permissions", "skills", "agents"];
+/// The most files one setup writes (the preview's digests).
+const MAX_HARNESS_DIGESTS: usize = 17;
 
 fn sha256_hex(text: &str) -> String {
     Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
@@ -235,7 +241,8 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
 /// Each command names its fields: one more, one less or one that is not plain is refused, so a field the
 /// dialog does not show can never be signed.
 fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), String> {
-    if payload.len() > MAX_PAYLOAD {
+    let longest = if name == "project.harness.apply" { MAX_HARNESS_PAYLOAD } else { MAX_PAYLOAD };
+    if payload.len() > longest {
         return Err("the payload to sign is too long".into());
     }
     let value: serde_json::Value =
@@ -348,8 +355,109 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::RootsAdd { path: path.into() }, canonical))
         }
+        // Every payload of the command is signed. The dialog says the folder, the parts, the template and whether
+        // hooks or a rewritten settings file are in; the digests are signed but not shown, and each one is a plain
+        // token the host makes, so nothing in them can pad the text. The hook commands are not in the payload: the
+        // host reads them again, so the person's check of them is the preview in the app.
+        "project.harness.apply" => read_harness_apply(fields),
         _ => Err("this command is not one this key signs".into()),
     }
+}
+
+fn read_harness_apply(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    const REFUSED: &str = "the setup payload has the wrong fields";
+    let allowed = ["confirm", "digests", "parts", "path", "reformat", "template"];
+    if fields.keys().any(|key| !allowed.contains(&key.as_str())) {
+        return Err(REFUSED.into());
+    }
+    if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+        return Err("a setup is signed only once it is confirmed".into());
+    }
+    let path = fields
+        .get("path")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("the setup payload has no text for path")?;
+    if !is_shown_path(path) {
+        return Err("the folder is not a path the dialog can show".into());
+    }
+    let listed = fields
+        .get("parts")
+        .and_then(serde_json::Value::as_array)
+        .ok_or("the setup payload has no list of parts")?;
+    let mut parts: Vec<String> = Vec::new();
+    for part in listed {
+        let name = part.as_str().filter(|name| HARNESS_PARTS.contains(name)).ok_or("the setup names a part the harness does not have")?;
+        if parts.iter().any(|seen| seen == name) {
+            return Err("the setup names a part twice".into());
+        }
+        parts.push(name.to_string());
+    }
+    if parts.is_empty() {
+        return Err("the setup names no part".into());
+    }
+    let reformat = match fields.get("reformat") {
+        None => false,
+        Some(serde_json::Value::Bool(value)) => *value,
+        Some(_) => return Err("the reformat of a setup is yes or no".into()),
+    };
+    let template = match fields.get("template") {
+        None => None,
+        Some(value) => {
+            let id = value.as_str().ok_or("the template of a setup is a name")?;
+            let mut chars = id.chars();
+            let plain = id.len() <= 40
+                && chars.next().is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+                && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+            if !plain {
+                return Err("the template is not a name the host takes".into());
+            }
+            Some(id.to_string())
+        }
+    };
+    let listed = fields
+        .get("digests")
+        .and_then(serde_json::Value::as_object)
+        .ok_or("the setup payload has no digests")?;
+    if listed.is_empty() || listed.len() > MAX_HARNESS_DIGESTS {
+        return Err("the setup has too many or no digests".into());
+    }
+    let mut digests: Vec<(&str, &str)> = Vec::new();
+    for (key, value) in listed {
+        let value = value.as_str().ok_or("a digest of a setup is text")?;
+        let key_ok = !key.is_empty()
+            && key.len() <= 256
+            && key.chars().all(|c| c.is_ascii_alphanumeric() || "._/-".contains(c));
+        let value_ok = !value.is_empty()
+            && value.len() <= 128
+            && value.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+        if !key_ok || !value_ok {
+            return Err("a digest of a setup is not a file name and a plain token".into());
+        }
+        digests.push((key, value));
+    }
+    // Byte order is the UTF-16 order the protocol sorts by, for ASCII.
+    digests.sort_by(|a, b| a.0.cmp(b.0));
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let digests_json = digests
+        .iter()
+        .map(|(key, value)| format!("{}:{}", quoted(key), quoted(value)))
+        .collect::<Vec<_>>()
+        .join(",");
+    let parts_json = parts.iter().map(|part| quoted(part)).collect::<Vec<_>>().join(",");
+    let mut canonical = format!(
+        "{{\"confirm\":true,\"digests\":{{{digests_json}}},\"parts\":[{parts_json}],\"path\":{}",
+        quoted(path)
+    );
+    if fields.contains_key("reformat") {
+        canonical.push_str(&format!(",\"reformat\":{reformat}"));
+    }
+    if let Some(id) = &template {
+        canonical.push_str(&format!(",\"template\":{}", quoted(id)));
+    }
+    canonical.push('}');
+    Ok((CommandAsk::HarnessApply { path: path.into(), parts, template, reformat }, canonical))
 }
 
 /// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
@@ -506,7 +614,44 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             Some(CommandAsk::ResumeApproval { session }) => format!(
                 "Turn automatic approval back on for a session? It will approve requests with no person seeing them, after it read third-party content. Continue only if you just pressed Resume in Flightdeck.\n\"{session}\""
             ),
-            Some(CommandAsk::HarnessApply { .. }) => String::new(),
+            Some(CommandAsk::HarnessApply { path, parts, template, reformat }) => {
+                let names = parts
+                    .iter()
+                    .map(|part| match (part.as_str(), pt) {
+                        ("claudeMd", _) => "CLAUDE.md",
+                        ("permissions", true) => "permissões",
+                        (other, _) => other,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let hooks = parts.iter().any(|part| part == "hooks");
+                let from = match (template, pt) {
+                    (Some(id), true) => format!(" do modelo \"{id}\""),
+                    (Some(id), false) => format!(" from template \"{id}\""),
+                    (None, _) => String::new(),
+                };
+                let runs = match (hooks, pt) {
+                    (true, true) => " Os hooks rodam como comandos em toda sessão do projeto.",
+                    (true, false) => " Hooks run as commands in every session of the project.",
+                    (false, _) => "",
+                };
+                let layout = match (*reformat, pt) {
+                    (true, true) => " O arquivo de configurações (settings) é reescrito com outro formato.",
+                    (true, false) => " The settings file is rewritten with another layout.",
+                    (false, _) => "",
+                };
+                if pt {
+                    format!(
+                        "Gravar a configuração do Claude Code de um projeto? O host {} grava: {names}{from}.{runs}{layout} Continue só se você acabou de apertar Aplicar a configuração no Flightdeck.\n\"{path}\"",
+                        short(&ask.host)
+                    )
+                } else {
+                    format!(
+                        "Write the Claude Code setup of a project? Host {} will write: {names}{from}.{runs}{layout} Continue only if you just pressed Apply the setup in Flightdeck.\n\"{path}\"",
+                        short(&ask.host)
+                    )
+                }
+            }
             None => String::new(),
         },
     };
@@ -523,6 +668,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::RootsAdd { .. })) => {
             if pt { ("Adicionar pasta", "Cancelar") } else { ("Add folder", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::HarnessApply { .. })) => {
+            if pt { ("Gravar configuração", "Cancelar") } else { ("Write setup", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
             if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }

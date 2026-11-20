@@ -116,15 +116,28 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     leavePreview();
     setShown(null);
     setBusy(true);
-    const result = await store
-      .hostRequest(hostId, "project.harness.apply", {
+    // #3507: a host that checks it asks an enrolled device to sign the whole request; a no writes nothing.
+    let made: Awaited<ReturnType<typeof store.approval.harnessPayload>>;
+    try {
+      made = await store.approval.harnessPayload(hostId, {
         path,
         parts,
         digests: previewDigests(seen),
         confirm: true,
-        ...(reformat ? { reformat: true } : {}),
+        ...(reformat ? { reformat: true as const } : {}),
         ...fromTemplate,
-      })
+      });
+    } catch (error) {
+      setBusy(false);
+      store.reportError(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (made.kind === "declined") {
+      setBusy(false);
+      return;
+    }
+    const result = await store
+      .hostRequest(hostId, "project.harness.apply", made.payload)
       .finally(() => setBusy(false));
     if (!result.ok) {
       setWrote(null);

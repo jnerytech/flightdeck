@@ -74,6 +74,13 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   tudo o que há dentro dela. Cancele e nada é enviado. Se a pasta digitada for um atalho ou um caminho que aponta
   para outro lugar, o host recusa e diz qual é a pasta de verdade: adicione essa. Um host que ainda não pede o
   dispositivo aí mostra um aviso na própria página: atualize-o.
+- **Gravar a configuração do Claude Code de um projeto.** Com um dispositivo cadastrado, **Aplicar a configuração**
+  pede mais uma confirmação em uma janela do sistema. A janela nomeia a pasta e as partes a gravar (e o modelo, se
+  você escolheu um), diz que os hooks rodam como comandos em toda sessão do projeto e avisa quando o arquivo de
+  configurações vai ser reescrito com outro formato. Ela não lista os comandos dos hooks: leia-os na prévia antes de
+  aplicar. Cancele e nada é gravado. Se a configuração mudou no host depois da prévia, o host recusa: veja a prévia
+  de novo e confirme de novo. Um host que ainda não pede o dispositivo aí mostra um aviso na própria página:
+  atualize-o.
 - **Confiar em um projeto.** Com um dispositivo cadastrado, **Confiar neste projeto** pede mais uma confirmação
   em uma janela do sistema. A janela nomeia a pasta e diz que os hooks e os servidores dela vão rodar sem pedir
   confirmação. Cancele e nada é enviado. Revogar a confiança não pede nada. Um host que ainda não pede o

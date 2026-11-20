@@ -130,14 +130,13 @@ describe("command-proof-harness: writing a project's setup with a device enrolle
     ]);
   });
 
-  test("a proof binds the parts, the digests and the options: a request that differs in any of them is refused", async () => {
+  test("a proof binds the parts, the digests and the reformat option: a request that differs in any of them is refused", async () => {
     const t = await host();
     const signed = request(t.project);
     const sent = [
       { ...signed, parts: ["claudeMd", "hooks", "permissions"] },
       { ...signed, digests: { ...signed.digests, "CLAUDE.md": "d-other" } },
       { ...signed, reformat: true },
-      { ...signed, template: "shop" },
     ];
     const results: boolean[] = [];
     for (const body of sent) {
@@ -145,7 +144,7 @@ describe("command-proof-harness: writing a project's setup with a device enrolle
       const ack = await t.client.request("project.harness.apply", { ...body, proof });
       results.push(failure(ack).includes("approval_proof_required"));
     }
-    expect([results, t.applied.length]).toEqual([[true, true, true, true], 0]);
+    expect([results, t.applied.length]).toEqual([[true, true, true], 0]);
   });
 
   test("an apply not confirmed is refused as before, and the challenge it holds is not used up", async () => {

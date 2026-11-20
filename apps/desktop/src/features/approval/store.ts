@@ -13,11 +13,13 @@ import {
   enrollFirstMessage,
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
+  FEATURE_APPROVAL_HARNESS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
+  type HARNESS_PREVIEW_PARTS,
   needsApprovalProof,
   PermissionRespondPayload,
   type PermissionUpdate,
@@ -49,7 +51,7 @@ type HarnessPayload =
 /** What `project.harness.apply` asks for: the folder, the parts, the preview's digests and the options. */
 export interface HarnessBody {
   path: string;
-  parts: string[];
+  parts: Array<(typeof HARNESS_PREVIEW_PARTS)[number]>;
   digests: Record<string, string>;
   confirm: true;
   reformat?: true;
@@ -107,6 +109,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "host.bypass": FEATURE_APPROVAL_BYPASS,
   "autoapprove.resume": FEATURE_APPROVAL_RESUME,
   "roots.add": FEATURE_APPROVAL_ROOTS,
+  "project.harness.apply": FEATURE_APPROVAL_HARNESS,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
@@ -304,6 +307,7 @@ export class ApprovalSlice {
     if (!hasFeature(features, FEATURE_APPROVAL_BYPASS, false)) unchecked.push("bypass");
     if (!hasFeature(features, FEATURE_APPROVAL_RESUME, false)) unchecked.push("resume");
     if (!hasFeature(features, FEATURE_APPROVAL_ROOTS, false)) unchecked.push("roots");
+    if (!hasFeature(features, FEATURE_APPROVAL_HARNESS, false)) unchecked.push("harness");
     return unchecked;
   }
 
@@ -638,8 +642,13 @@ export class ApprovalSlice {
    * request when the host checks it and has a device enrolled; a host from before the feature gets the plain
    * payload. `declined`: the person said no in the system's dialog.
    */
-  async harnessPayload(_hostId: string, body: HarnessBody): Promise<HarnessPayload> {
-    return { kind: "payload", payload: body };
+  async harnessPayload(hostId: string, body: HarnessBody): Promise<HarnessPayload> {
+    const proof = await this.proveCommand(hostId, "project.harness.apply", { ...body });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...body, proof: proof.proof } : body,
+    };
   }
 
   /**
