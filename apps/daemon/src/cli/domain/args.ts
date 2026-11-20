@@ -12,6 +12,7 @@ import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
+import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
@@ -180,6 +181,7 @@ const HANDLERS: Record<string, Handler> = {
   },
   vault: readVault,
   plugins: readPlugins,
+  project: readProject,
   approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
@@ -581,6 +583,7 @@ const HANDLERS: Record<string, Handler> = {
   }),
   ...BUDGET_FLAGS,
   ...PLUGINS_FLAGS,
+  ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -657,10 +660,11 @@ const HANDLERS: Record<string, Handler> = {
 
 /** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
 const JSON_COMMANDS =
-  "card board history team persona quota usage budget costs roi host sessions session requests send approve deny approvers rules autoapprove vault plugins".split(
+  "card board history team persona quota usage budget costs roi host sessions session requests send approve deny approvers rules autoapprove vault plugins project".split(
     " ",
   );
-const HOST_COMMANDS = "host sessions session requests send approve deny vault plugins".split(" ");
+const HOST_COMMANDS =
+  "host sessions session requests send approve deny vault plugins project".split(" ");
 
 function refuseOutside(flag: string, commands: readonly string[], command: string): void {
   if (commands.includes(command)) return;
@@ -770,6 +774,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     historyProblem(args) ??
     vaultProblem(args) ??
     pluginsProblem(args) ??
+    projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
     rulesProblem(args) ??
