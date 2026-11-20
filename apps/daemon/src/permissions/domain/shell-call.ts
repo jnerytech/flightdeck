@@ -71,9 +71,11 @@ const KEYWORDS = new Set([
   ")",
 ]);
 
-/** A word as a program name: no quotes, no folder, no `\` alias escape, no `.exe`, lowercase. */
+/** A word as a program name: no quotes, no folder, no `\` alias escape, no `.exe`, `.cmd` or `.ps1`, lowercase. */
 export const program = (word: string) =>
-  (word.replace(/["']/g, "").split(/[\\/]/).at(-1) as string).toLowerCase().replace(/\.exe$/, "");
+  (word.replace(/["']/g, "").split(/[\\/]/).at(-1) as string)
+    .toLowerCase()
+    .replace(/\.(exe|cmd|ps1)$/, "");
 
 /** A group or a substitution opens the word (`(fd`, `$(fd`, a backtick) or closes it (`on)`, `}`); `{}` is xargs's own. */
 const opened = (word: string) =>
@@ -82,11 +84,17 @@ const closed = (word: string) => (word === "{}" ? word : word.replace(/[)}`]+$/,
 
 /** The index of the word that closes the quote a word at `at` leaves open (`X="a b"`, `-d ' '`), or `at` itself. */
 function endOfQuote(words: string[], at: number): number {
-  const word = words[at] as string;
-  const quote = ["'", '"'].find((q) => word.split(q).length % 2 === 0);
-  if (!quote) return at;
-  const close = words.findIndex((w, i) => i > at && w.includes(quote));
-  return close < 0 ? at : close;
+  let open = "";
+  for (let n = at; n < words.length; n++) {
+    const word = words[n] as string;
+    for (let i = 0; i < word.length; ) {
+      const step = stepQuote(open, word, i);
+      open = step.open;
+      i = step.next;
+    }
+    if (open === "") return n === at ? at : n;
+  }
+  return at;
 }
 
 /** A redirection that takes the next word as its target (`>`, `2>>`, `&>`, `<`): both words are no part of the command. */
@@ -165,6 +173,8 @@ export interface Invocation {
   args: string[];
   sudo: boolean;
   unresolved: boolean;
+  /** The program word is an expansion that may become the CLI (`f[d]`, `fd${IFS}persona`): what it runs cannot be read. */
+  hidden?: boolean;
 }
 
 /** Programs that read or run what a pipe hands them, or text given with `-c`. */
@@ -185,9 +195,93 @@ export const SHELLS = new Set([
   "invoke-expression",
 ]);
 
-/** A program name that is the Flightdeck CLI, or a variable that may hold it. */
-export const isCliProgram = (name: string) =>
-  ["fd", "flightdeckd", "bin.ts"].includes(name) || name.includes("$");
+/** The names `scripts/build-daemon.ts` gives the compiled daemon, one per target. */
+const COMPILED_CLI = ["linux", "windows"].flatMap((os) =>
+  ["x64", "arm64"].map((cpu) => `flightdeckd-${os}-${cpu}`),
+);
+const CLI_PROGRAMS = ["fd", "flightdeckd", "bin.ts", ...COMPILED_CLI];
+/** What a glob may expand to: the names above, and the launchers `program()` strips the suffix of. */
+const CLI_FILES = CLI_PROGRAMS.flatMap((name) => ["", ".exe", ".cmd", ".ps1"].map((s) => name + s));
+
+/** The longest program word that `mayBeCli` matches against the CLI's names. */
+const MAX_GLOB_WORD = 64;
+
+/** A program word that is one variable, which `invocations` reads as any program (`invocations` cuts the closing brace off `${BIN}`). */
+const BARE_VARIABLE = /^\$\{?\w+\}?$/;
+
+/** The end of the bracket expression that opens at `at` (`[ab]`, `[!a-c]`, `[[:lower:]]`), or -1 when it never closes. */
+function endOfBrackets(pattern: string, at: number): number {
+  let i = at + 1;
+  if ("!^".includes(pattern.charAt(i))) i++;
+  if (pattern.charAt(i) === "]") i++;
+  for (; i < pattern.length; i++) {
+    if (pattern.startsWith("[:", i)) {
+      const close = pattern.indexOf(":]", i + 2);
+      if (close >= 0) i = close + 1;
+    } else if (pattern.charAt(i) === "]") return i;
+  }
+  return -1;
+}
+
+/**
+ * Whether the shell's glob `pattern` (`*`, `?`, one bracket expression as one character) may match all of `name`.
+ * No RegExp: the classic two-pointer walk takes time in the product of the two lengths, however many `*` it holds.
+ */
+function globMatches(pattern: string, name: string): boolean {
+  const tokens: string[] = [];
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern.charAt(i);
+    const end = c === "[" ? endOfBrackets(pattern, i) : -1;
+    if (end < 0) tokens.push(c === "*" || c === "?" ? c : `=${c}`);
+    else {
+      tokens.push("?");
+      i = end;
+    }
+  }
+  let t = 0;
+  let n = 0;
+  let star = -1;
+  let resume = 0;
+  while (n < name.length) {
+    const token = tokens[t];
+    if (token === "*") {
+      star = t++;
+      resume = n;
+    } else if (token === "?" || token === `=${name.charAt(n)}`) {
+      t++;
+      n++;
+    } else if (star >= 0) {
+      t = star + 1;
+      n = ++resume;
+    } else return false;
+  }
+  while (tokens[t] === "*") t++;
+  return t === tokens.length;
+}
+
+/**
+ * Whether a program word the shell expands (`f[d]`, `fl*htdeckd`, `f{d,d}`, `f{d..d}`, `fd${IFS}persona`) may become
+ * the CLI (#3559). A glob or a brace list is matched against the CLI's names; text after a `$` or a brace range is
+ * anything, so only what stands before it is. A bracket that never closes is a plain character (`[ -f x ]`).
+ */
+function mayBeCli(word: string): boolean {
+  // The longest CLI file name is under 30 characters. A longer word is matched in time that grows with the square of
+  // its length, so one of many brackets or commas could stall the rules: it is read as a CLI it may expand to.
+  if (word.length > MAX_GLOB_WORD) return true;
+  const range = word.search(/\{[^{}]*\.\./);
+  const open = [word.indexOf("$"), range].filter((i) => i >= 0);
+  const cut = open.length > 0 ? Math.min(...open) : -1;
+  const literal = cut < 0 ? word : word.slice(0, cut);
+  const parts = literal.split(/[{},]/);
+  const candidates =
+    literal.includes("{") || literal.includes(",")
+      ? [...parts, ...parts.slice(1).map((p) => parts[0] + p)]
+      : [literal];
+  return candidates.some((c) => CLI_FILES.some((name) => globMatches(cut < 0 ? c : `${c}*`, name)));
+}
+
+/** A program name that is the Flightdeck CLI (source, compiled or launcher), or a variable that may hold it. */
+export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || name.includes("$");
 
 /**
  * What a segment runs, past `sudo`, `env X=1`, `timeout 5`, a subshell or brace group, a redirection and the
@@ -199,11 +293,25 @@ export function invocations(segment: string[]): Invocation[] {
     (w) => w !== "",
   );
   const { at, sudo } = programStart(words);
-  const prog = program(words[at] ?? "");
+  const written = words[at] ?? "";
+  const prog = program(written);
   const args = words.slice(at + 1);
-  if (!prog.includes("$")) return [{ prog, args, sudo, unresolved: false }];
+  const expanded = /[$*?[{,]/.test(prog) && !BARE_VARIABLE.test(prog) && mayBeCli(prog);
+  const hidden = expanded ? { hidden: true } : {};
+  if (!prog.includes("$")) {
+    if (expanded) return [{ prog: "flightdeckd", args, sudo, unresolved: false, ...hidden }];
+    // Outside quotes a backslash escapes the next character (`f\d` is `fd`), and `program` reads it as a folder:
+    // the word without its backslashes is a second reading.
+    const escaped = program(written.replace(/\\/g, ""));
+    return escaped === prog
+      ? [{ prog, args, sudo, unresolved: false }]
+      : [
+          { prog, args, sudo, unresolved: false },
+          { prog: escaped, args, sudo, unresolved: false },
+        ];
+  }
   return [
-    { prog: "flightdeckd", args, sudo, unresolved: true },
+    { prog: "flightdeckd", args, sudo, unresolved: true, ...hidden },
     { prog: "sh", args, sudo, unresolved: true },
     ...invocations(args).map((i) => ({ ...i, sudo: i.sudo || sudo })),
   ];
@@ -216,7 +324,7 @@ export const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCas
  * The options of `fd` that take a value, which can stand before the command (`fd --project p card
  * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import.
  */
-const OPTIONS_WITH_VALUE = [
+export const OPTIONS_WITH_VALUE = [
   "--message",
   "--position",
   "--title",
@@ -272,7 +380,6 @@ const OPTIONS_WITH_VALUE = [
   "--project-key",
   "--origin",
   "--cursor",
-  "--limit",
   "--folders",
   "--launch",
   "--url",
@@ -296,42 +403,169 @@ const OPTIONS_WITH_VALUE = [
   "--runtime",
   "--period",
   "--window",
-  "--action",
   "--limit-usd",
   "--limit-pct",
   "--id",
 ];
 
-/** The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`), unquoted. */
-export function shellArguments(args: string[]): string[] {
-  const out: string[] = [];
+/**
+ * One step of the shell's reading of quotes (#3559): the quote in force after the character at `i` (`"`, `'`, `$'`
+ * for an ANSI-C quote, or "" outside one) and where the next step starts. A backslash escapes the next character
+ * outside quotes, and inside double quotes only `"`, `\`, `$` and the backtick; single quotes take everything up
+ * to their close; an ANSI-C quote lets a backslash escape anything, its own closing quote included.
+ */
+export function stepQuote(open: string, text: string, i: number): { open: string; next: number } {
+  const c = text.charAt(i);
+  if (open === "'") return { open: c === "'" ? "" : open, next: i + 1 };
+  if (open === "$'") {
+    if (c === "\\") return { open, next: i + 2 };
+    return { open: c === "'" ? "" : open, next: i + 1 };
+  }
+  if (c === "\\" && (open === "" || '"\\$`'.includes(text.charAt(i + 1))))
+    return { open, next: i + 2 };
+  if (open === '"') return { open: c === '"' ? "" : open, next: i + 1 };
+  if (c === "$" && text.charAt(i + 1) === "'") return { open: "$'", next: i + 2 };
+  return { open: c === '"' || c === "'" ? c : "", next: i + 1 };
+}
+
+/** Ends a word the shell expands (`$V`, `r*`, `{a,b}`): kept by `readArguments`, tested by `hidesItsVerb`. */
+const EXPANDS = "\u0000";
+
+/**
+ * Whether the shell expands something in a word as written (#3559): a variable, a command, a glob, a brace list or
+ * range, or an ANSI-C quote. Single quotes and an escaped character are literal, and double quotes expand only a
+ * variable or a command, so `'a,b'`, `"*.ts"` and `rem\*ove` are plain words.
+ */
+function expandsInPlace(raw: string): boolean {
+  let open = "";
+  for (let i = 0; i < raw.length; ) {
+    const c = raw.charAt(i);
+    const step = stepQuote(open, raw, i);
+    if (c !== "\\") {
+      if (
+        open === "" &&
+        ("$`*?[{,".includes(c) || (c === "." && /\w\.\.\w/.test(raw.slice(i - 1, i + 3))))
+      )
+        return true;
+      if (open === '"' && "$`".includes(c)) return true;
+    }
+    open = step.open;
+    i = step.next;
+  }
+  return false;
+}
+
+/**
+ * The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`),
+ * unquoted, and a word the shell expands ends in `EXPANDS`. A word that ends in a `\` escapes the blank after it, and the split on blanks lost how many there were:
+ * one makes the next word part of this one, two or more end it. `escapedBlank` picks the reading.
+ */
+function readArguments(args: string[], escapedBlank: boolean): string[] {
+  const words: string[] = [];
   let open = "";
   let current = "";
+  let escaped = false;
   for (const arg of args) {
-    current = open ? `${current} ${arg}` : arg;
-    for (const ch of arg) {
-      if (ch === open) open = "";
-      else if (!open && (ch === '"' || ch === "'")) open = ch;
+    current = open || escaped ? `${current} ${arg}` : arg;
+    escaped = false;
+    for (let i = 0; i < arg.length; ) {
+      const step = stepQuote(open, arg, i);
+      open = step.open;
+      escaped = escapedBlank && step.next > arg.length && open === "";
+      i = step.next;
     }
-    if (!open) {
-      out.push(unquoted(current));
+    if (!open && !escaped) {
+      words.push(unquoted(current) + (expandsInPlace(current) ? EXPANDS : ""));
       current = "";
     }
   }
-  if (open) out.push(unquoted(current));
-  return out;
+  if (open || escaped) words.push(unquoted(current) + (expandsInPlace(current) ? EXPANDS : ""));
+  return words;
 }
 
-/** The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`). */
+/** Every way the shell may have read the arguments: one, or two when a word ends in a `\` outside a quote. */
+export function shellReadings(args: string[]): string[][] {
+  const joined = readArguments(args, true);
+  const separate = readArguments(args, false);
+  return joined.length === separate.length ? [joined] : [joined, separate];
+}
+
+/** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
+const VERB_NOUNS = [
+  "card",
+  "history",
+  "approvers",
+  "persona",
+  "team",
+  "quota",
+  "budget",
+  "costs",
+  "session",
+  "rules",
+  "autoapprove",
+  "plugins",
+  "project",
+];
+
+/**
+ * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,
+ * `rem[o]ve`, `{remove,list}`. No reading of such a line says which verb it is, so it is read as high risk. The
+ * command is checked unless the program itself is unresolved (`$EDITOR $FILE` is anything); the second word only
+ * for a command that has verbs, since for the others it is an argument (`fd send $SID hello`).
+ * (Braces are already cut off the word by `invocations`, which leaves the comma or the dots of the expansion.)
+ */
+export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
+  const expands = (word: string | undefined) => (word ?? "").includes(EXPANDS);
+  return shellReadings(args).some((own) => {
+    const [command, verb] = flightdeckWords(own);
+    return (
+      (!unresolved && expands(command)) || (VERB_NOUNS.includes(command ?? "") && expands(verb))
+    );
+  });
+}
+
+/** The words of a CLI line that `flightdeckWords` reads: the rules read a noun, a verb and one or two words more. */
+const MAX_CLI_WORDS = 6;
+
+/**
+ * The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`).
+ * The parser reads `flightdeckd fd <command>` as `flightdeckd <command>`, so one leading `fd` is no word (#3566); a
+ * second one stays, since the parser sends `fd fd` to claude, and a later one is an argument.
+ */
 export function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
-  for (let i = 0; i < args.length; i++) {
+  for (let i = 0; i < args.length && words.length < MAX_CLI_WORDS; i++) {
     const arg = args[i] as string;
     if (OPTIONS_WITH_VALUE.includes(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
   }
-  return words;
+  return words[0] === "fd" ? words.slice(1) : words;
 }
+
+/**
+ * Whether the word at `i` of a runner's text starts the CLI: its name, or `bun start` or `bun run [options] start`, the script of
+ * `apps/daemon/package.json` that runs `bin.ts` (#3566).
+ */
+export const startsCli = (words: string[], i: number) =>
+  isCliProgram(program(words[i] ?? "")) ||
+  (words[i] === "start" && (i === 0 || words.slice(0, i).includes("run")));
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
+
+/** A runner (`bunx fd persona $V qa`, `sh -c 'fd ...'`) given the CLI and a noun or verb the shell expands. */
+export const runnerHidesAVerb = (prog: string, args: string[]) => {
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const at = words.findIndex((w, i) => startsCli(words, i) && !program(w).includes("$"));
+  // Only a noun that has verbs: what follows `bin.ts` in `bun build bin.ts --outfile $OUT` is no command.
+  return at >= 0 && hidesItsVerb(words.slice(at + 1), true);
+};
+
+/**
+ * A CLI line whose name, noun or verb the reader cannot see (#3559): the shell expands it before it runs. Every
+ * rule reads the verb from the words, so a line that hides it would pass as an ordinary shell command; it is
+ * high instead.
+ */
+export const HIDDEN_VERB =
+  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";

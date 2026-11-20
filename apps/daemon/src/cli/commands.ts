@@ -6,7 +6,6 @@ import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import type { HistoryCliArgs } from "../history/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
-import type { PluginsCliArgs } from "../plugins/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
@@ -14,6 +13,7 @@ import type { VaultCliArgs } from "../vault/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
+import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
@@ -130,7 +130,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `ssh`, `watch`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `ssh`, `terminal`, `watch`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -277,43 +277,6 @@ function vaultCliArgs(args: CliArgs): VaultCliArgs {
   };
   const present = Object.entries(typed).filter(([, value]) => value !== undefined);
   return { action: args.action, ...Object.fromEntries(present) } as VaultCliArgs;
-}
-
-/** What the person typed for `plugins`, as `runPluginsCli` takes it: a preview names a plugin or a folder, the parser checked which. */
-function pluginsCliArgs(args: CliArgs): PluginsCliArgs {
-  const printed = args.json ? { json: true as const } : {};
-  const plugin = args.plugin ?? "";
-  if (args.action === "list") return { action: "list", ...printed };
-  if (args.action === "detail") return { action: "detail", plugin, ...printed };
-  if (args.action === "preview-update") return { action: "preview-update", plugin, ...printed };
-  const scope = args.pluginScope === undefined ? {} : { scope: args.pluginScope };
-  const confirmed = args.confirm ? { confirm: true as const } : {};
-  const hash = {
-    confirmHash: args.confirmHash ?? "",
-    ...(args.acceptCommand === undefined ? {} : { acceptCommand: args.acceptCommand }),
-  };
-  const target = args.marketplace ?? "";
-  if (args.action === "install")
-    return args.pluginDir === undefined
-      ? { action: "install", plugin, ...hash, ...scope, ...printed }
-      : { action: "install", dir: args.pluginDir, ...hash, ...scope, ...printed };
-  if (args.action === "update") return { action: "update", plugin, ...hash, ...printed };
-  if (args.action === "uninstall")
-    return { action: "uninstall", plugin, ...scope, ...confirmed, ...printed };
-  if (args.action === "pin" || args.action === "unpin")
-    return { action: args.action, plugin, ...printed };
-  if (args.action === "marketplace-add")
-    return { action: "marketplace-add", source: target, ...scope, ...confirmed, ...printed };
-  if (args.action === "marketplace-remove")
-    return { action: "marketplace-remove", name: target, ...confirmed, ...printed };
-  if (args.action === "marketplace-update")
-    return {
-      action: "marketplace-update",
-      ...(args.marketplace === undefined ? {} : { name: args.marketplace }),
-      ...printed,
-    };
-  if (args.pluginDir !== undefined) return { action: "preview", dir: args.pluginDir, ...printed };
-  return { action: "preview", plugin, ...printed };
 }
 
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
@@ -664,6 +627,13 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runWatchCli } = await import("../watch/index.ts");
     return asking(args, deps, (config, remote) =>
       runWatchCli(watchCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  terminal: async (args, deps) => {
+    const { runTerminalCli } = await import("../terminal/index.ts");
+    const cli = { action: args.action as "list", json: args.json === true };
+    return asking(args, deps, (config, remote) =>
+      runTerminalCli(cli, config, remote ? { remote } : {}),
     );
   },
   requests: async (args, deps) => {

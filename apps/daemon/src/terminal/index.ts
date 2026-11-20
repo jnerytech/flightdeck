@@ -3,4 +3,6 @@
  * a client's transport hands them for their frames. `main.ts` still builds the domain through
  * `wiring.ts`. Another domain imports from here, never a file inside.
  */
+
+export { runTerminalCli } from "./terminal-cli.ts";
 export type { TerminalManager, TerminalSink } from "./terminal-manager.ts";

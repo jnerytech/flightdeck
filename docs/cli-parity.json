@@ -499,7 +499,9 @@
   "terminal.attach": {},
   "terminal.close": {},
   "terminal.detach": {},
-  "terminal.list": {},
+  "terminal.list": {
+    "cli": "terminal"
+  },
   "terminal.open": {},
   "terminal.openSession": {},
   "terminal.resize": {},
