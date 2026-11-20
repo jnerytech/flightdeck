@@ -80,4 +80,19 @@ describe("fd: the command a person types for flightdeckd (issue #3433)", () => {
     });
     expect(out).toEqual([`flightdeckd ${DAEMON_VERSION} (protocolo ${PROTOCOL_VERSION})`]);
   });
+
+  test("fd claude <words> is the way to give claude a prompt or a command that is also a subcommand", () => {
+    expect(parseArgs(["fd", "claude", "update", "the", "readme"])).toMatchObject({
+      command: "claude",
+      claudeArgs: ["update", "the", "readme"],
+    });
+  });
+
+  test("fd after another command is refused, not a silent switch to claude", () => {
+    expect(() => parseArgs(["pair", "--rotate", "fd", "-p", "x"])).toThrow("unknown argument: fd");
+  });
+
+  test("the usage says how to reach claude when the prompt starts with a subcommand", () => {
+    expect(() => parseArgs(["--bogus"])).toThrow("fd claude <prompt>");
+  });
 });
