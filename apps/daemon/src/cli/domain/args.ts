@@ -271,6 +271,10 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "claude";
     args.claudeArgs = reader.takeRest();
   },
+  fd: (args, reader) => {
+    args.command = "start";
+    reader.takeRest();
+  },
   askpass: (args, reader) => {
     args.command = "askpass";
     args.askpassPrompt = reader.takeRest().join(" ");
