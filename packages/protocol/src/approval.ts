@@ -41,7 +41,7 @@ export function needsApprovalProof(
   risk: RiskLevel,
   updatedPermissions: readonly unknown[] | undefined,
 ): boolean {
-  return false;
+  return risk === "high" || (updatedPermissions?.length ?? 0) > 0;
 }
 
 /** The three texts of a `permission.respond` allow that a proof binds; each side hashes them with SHA-256. */

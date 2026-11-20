@@ -5,12 +5,12 @@ import {
   type ApprovalProof,
   approvalDigests,
   approvalMessage,
+  needsApprovalProof,
 } from "@flightdeck/protocol";
 import {
   ApprovalGate,
   type EnrolledKey,
   keyIdOf,
-  needsProof,
   sha256Hex,
   verifySignature,
 } from "../../src/permissions/domain/approval-gate.ts";
@@ -89,11 +89,11 @@ describe("approval-crypto: ids, digests and signatures", () => {
   });
 
   test("Given the three cases, Then only a high risk or a saved rule needs a proof", () => {
-    expect(needsProof("high", [])).toBe(true);
-    expect(needsProof("medium", [{}])).toBe(true);
-    expect(needsProof("low", [{}])).toBe(true);
-    expect(needsProof("medium", [])).toBe(false);
-    expect(needsProof("low", [])).toBe(false);
+    expect(needsApprovalProof("high", [])).toBe(true);
+    expect(needsApprovalProof("medium", [{}])).toBe(true);
+    expect(needsApprovalProof("low", [{}])).toBe(true);
+    expect(needsApprovalProof("medium", [])).toBe(false);
+    expect(needsApprovalProof("low", [])).toBe(false);
   });
 });
 

@@ -4,6 +4,7 @@ import {
   type ApprovalProof,
   approvalDigests,
   approvalMessage,
+  needsApprovalProof,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../kernel/index.ts";
 import { requireHold } from "./hold.ts";
@@ -68,11 +69,6 @@ export function verifySignature(publicKey: string, message: string, signature: s
   }
 }
 
-/** An allow needs the proof of a device when the request is high risk, or when it saves rules. */
-export function needsProof(risk: RiskLevel, updates: readonly unknown[]): boolean {
-  return risk === "high" || updates.length > 0;
-}
-
 /** One refusal for a missing, unknown or bad proof: it never says which, and never echoes a nonce, key or signature. */
 const proofRequired = () =>
   new FlightdeckError(
@@ -100,7 +96,7 @@ export class ApprovalGate {
 
   check(input: ApprovalCheck): void {
     const { requestId, risk, answer, held, proof } = input;
-    if (!needsProof(risk, answer.updatedPermissions ?? [])) return;
+    if (!needsApprovalProof(risk, answer.updatedPermissions)) return;
     const keys = this.ports.keys();
     if (keys.length === 0) {
       requireHold(risk, held);
