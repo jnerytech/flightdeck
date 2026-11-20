@@ -37,6 +37,10 @@ pub enum CommandAsk {
     RootsAdd { path: String },
     /// `project.harness.apply`: write these parts of the Claude Code setup into this folder, from a template or not (#3507).
     HarnessApply { path: String, parts: Vec<String>, template: Option<String>, reformat: bool },
+    /// `plugins.install`: install this plugin (by id, or from this folder) at this scope; it runs code on the host (#3516).
+    PluginInstall { plugin: Option<String>, dir: Option<String>, scope: String },
+    /// `plugins.update`: update this installed plugin to the content the person was shown (#3516).
+    PluginUpdate { plugin: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -654,6 +658,7 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                     )
                 }
             }
+            Some(CommandAsk::PluginInstall { .. } | CommandAsk::PluginUpdate { .. }) => String::new(),
             None => String::new(),
         },
     };
@@ -1541,6 +1546,147 @@ mod tests {
         assert!(payload.len() > MAX_PAYLOAD, "the sample is longer than other commands may be");
         let text = command(&me, DAEMON, "project.harness.apply", &payload);
         assert!(describe_with(&text, DAEMON, &me, Some(&payload)).is_ok());
+    }
+
+    /// The payloads that install and update a plugin, in canonical form, and the hashes both sides share (the
+    /// protocol test asserts the same literals).
+    const PLUGIN_PAYLOAD: &str = "{\"acceptCommand\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plugin\":\"deploy-tools@acme\",\"scope\":\"project\"}";
+    const PLUGIN_HASH: &str = "9f63013ef3891d7e3a3c30dbdb4812172f4c3d17e9f3babab503feae8cb0a2ef";
+    const PLUGIN_DIR_PAYLOAD: &str = "{\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"dir\":\"/work/plugins/deploy\"}";
+    const PLUGIN_DIR_HASH: &str = "6e0874106473077fddaefcda0cb2963d24ecfac81bbaa0bf0e63577df0798713";
+    const PLUGIN_UPDATE_PAYLOAD: &str = "{\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plugin\":\"deploy-tools@acme\"}";
+    const PLUGIN_UPDATE_HASH: &str = "105dd69dedb5eeca4e9d83cfca9005986688a4bab71e3cc6450cd685c6d18198";
+
+    fn install_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "plugins.install".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::PluginInstall {
+                plugin: Some("deploy-tools@acme".into()),
+                dir: None,
+                scope: "project".into(),
+            }),
+        }
+    }
+
+    fn update_ask() -> Ask {
+        Ask {
+            subject: "plugins.update".into(),
+            command: Some(CommandAsk::PluginUpdate { plugin: "deploy-tools@acme".into() }),
+            ..install_ask()
+        }
+    }
+
+    #[test]
+    fn the_plugin_vectors_hash_the_same_in_both_languages() {
+        assert_eq!(
+            [sha256_hex(PLUGIN_PAYLOAD), sha256_hex(PLUGIN_DIR_PAYLOAD), sha256_hex(PLUGIN_UPDATE_PAYLOAD)],
+            [PLUGIN_HASH, PLUGIN_DIR_HASH, PLUGIN_UPDATE_HASH]
+        );
+    }
+
+    #[test]
+    fn installing_and_updating_a_plugin_are_read_from_their_payloads_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "plugins.install", PLUGIN_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(PLUGIN_PAYLOAD)), Ok(install_ask()));
+        let shuffled = "{\"scope\":\"project\",\"plugin\":\"deploy-tools@acme\",\"confirmHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"acceptCommand\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(install_ask()));
+        let text = command(&me, DAEMON, "plugins.update", PLUGIN_UPDATE_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(PLUGIN_UPDATE_PAYLOAD)), Ok(update_ask()));
+        let text = command(&me, DAEMON, "plugins.install", PLUGIN_DIR_PAYLOAD);
+        let ask = describe_with(&text, DAEMON, &me, Some(PLUGIN_DIR_PAYLOAD)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::PluginInstall { plugin: None, dir: Some("/work/plugins/deploy".into()), scope: "user".into() })
+        );
+    }
+
+    #[test]
+    fn a_plugin_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let hash = "a".repeat(64);
+        let install = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "plugins.install", payload), DAEMON, &me, Some(payload))
+        };
+        let update = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "plugins.update", payload), DAEMON, &me, Some(payload))
+        };
+        let ok = |extra: &str| format!("{{\"confirmHash\":\"{hash}\",\"plugin\":\"deploy-tools@acme\"{extra}}}");
+        for bad in [
+            // A field the dialog does not say, no content hash, both a plugin and a folder, neither.
+            ok(",\"extra\":1"),
+            format!("{{\"plugin\":\"deploy-tools@acme\"}}"),
+            ok(",\"dir\":\"/work/p\""),
+            format!("{{\"confirmHash\":\"{hash}\"}}"),
+            // A scope that is not one of the three, a hash or an accepted command that is not a plain token.
+            ok(",\"scope\":\"all\""),
+            ok(",\"scope\":7"),
+            ok("").replace(&hash, "not a hash"),
+            ok("").replace(&hash, ""),
+            ok(",\"acceptCommand\":\"x y\""),
+            ok(",\"acceptCommand\":\"\""),
+            // A plugin name that can pad the text, start an option, or is no text.
+            ok("").replace("deploy-tools@acme", "deploy-tools@acme\nAllow everything"),
+            ok("").replace("deploy-tools@acme", "deploy tools"),
+            ok("").replace("deploy-tools@acme", "\\\"x"),
+            ok("").replace("deploy-tools@acme", "--scope"),
+            ok("").replace("deploy-tools@acme", "\\u202eevil"),
+            ok("").replace("\"deploy-tools@acme\"", "7"),
+            // A folder the dialog could not show whole.
+            format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"plugins/deploy\"}}"),
+            format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/\\u202eevil\"}}"),
+            format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/x\\\" harmless\"}}"),
+        ] {
+            assert!(install(&bad).is_err(), "signed install: {bad}");
+        }
+        assert!(install(&ok("")).is_ok());
+        assert!(install(&ok(",\"scope\":\"local\"")).is_ok());
+        assert!(install(&format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/plugins/deploy\"}}")).is_ok());
+        for bad in [
+            // An update takes no scope, no folder and no more than its three fields.
+            ok(",\"scope\":\"user\""),
+            ok(",\"dir\":\"/work/p\""),
+            format!("{{\"confirmHash\":\"{hash}\"}}"),
+            ok("").replace("deploy-tools@acme", "deploy tools"),
+            ok("").replace(&hash, "nope nope"),
+        ] {
+            assert!(update(&bad).is_err(), "signed update: {bad}");
+        }
+        assert!(update(&ok("")).is_ok());
+        assert!(update(&ok(",\"acceptCommand\":\"cc\"")).is_ok());
+    }
+
+    #[test]
+    fn the_dialogs_of_a_plugin_name_it_where_it_comes_from_and_that_it_runs_code_and_have_buttons_of_their_own() {
+        let (_, en) = confirm_text(&install_ask(), "en");
+        assert!(en.starts_with("Install a plugin?"), "{en}");
+        assert!(en.contains("deploy-tools@acme") && en.contains("project") && en.contains("runs code") && en.contains(&DAEMON[..8]), "{en}");
+        let (_, pt) = confirm_text(&install_ask(), "pt-BR");
+        assert!(pt.starts_with("Instalar um plugin?") && pt.contains("deploy-tools@acme") && pt.contains("roda código"), "{pt}");
+        let from = Ask {
+            command: Some(CommandAsk::PluginInstall { plugin: None, dir: Some("/work/plugins/deploy".into()), scope: "user".into() }),
+            ..install_ask()
+        };
+        let (_, en) = confirm_text(&from, "en");
+        assert!(en.starts_with("Install a plugin from a folder?") && en.ends_with("\n\"/work/plugins/deploy\""), "{en}");
+        let (_, pt) = confirm_text(&from, "pt-BR");
+        assert!(pt.starts_with("Instalar um plugin de uma pasta?") && pt.ends_with("\n\"/work/plugins/deploy\""), "{pt}");
+        let (_, en) = confirm_text(&update_ask(), "en");
+        assert!(en.starts_with("Update a plugin?") && en.contains("deploy-tools@acme") && en.contains("runs code"), "{en}");
+        let (_, pt) = confirm_text(&update_ask(), "pt-BR");
+        assert!(pt.starts_with("Atualizar um plugin?") && pt.contains("roda código"), "{pt}");
+        assert_eq!(
+            [
+                confirm_labels(&install_ask(), "en").0,
+                confirm_labels(&install_ask(), "pt-BR").0,
+                confirm_labels(&update_ask(), "en").0,
+                confirm_labels(&update_ask(), "pt-BR").0,
+            ],
+            ["Install", "Instalar", "Update", "Atualizar"]
+        );
     }
 
     #[test]
