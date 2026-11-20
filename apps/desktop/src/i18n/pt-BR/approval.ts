@@ -27,6 +27,7 @@ export const approval = {
     scope:
       "Isto protege as aprovações feitas pelo app. Quem tem um terminal no host ainda pode zerar.",
     loading: "Lendo os dispositivos do host…",
+    retry: "Tentar de novo",
     loadFailed: "Não foi possível ler os dispositivos do host.",
     noKeyHere:
       "Este dispositivo não tem chave de aprovação neste host. Cadastre-o na página do host, ou aprove no host.",

@@ -27,6 +27,7 @@ export const approval = {
     scope:
       "This guards approvals made from the app. Anyone with a terminal on the host can still reset it.",
     loading: "Reading the host's devices…",
+    retry: "Try again",
     loadFailed: "The host's devices could not be read.",
     noKeyHere:
       "This device has no approving key on this host. Enroll it on the host's page, or approve at the host.",

@@ -1,0 +1,173 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settleMaybe } from "../wait.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { ApprovalDevicesPanel } = await import(
+  "../../src/features/approval/approval-devices-panel.tsx"
+);
+const { TContext } = await import("../../src/i18n/context.tsx");
+
+setDefaultTimeout(30_000);
+afterEach(cleanup);
+
+/** The host page's panel of the approving devices (#3439): the status the slice reads and what a person can do. */
+
+type Status = Awaited<ReturnType<InstanceType<typeof AppStore>["approval"]["status"]>>;
+const KEY = {
+  name: "Ana's phone",
+  client: "flightdeck-app",
+  address: "100.64.0.7",
+  enrolledAt: "2026-11-20T12:00:00.000Z",
+};
+const OFF: Status = { protectionOff: true, keys: [], thisKeyId: null };
+const HERE: Status = {
+  protectionOff: false,
+  keys: [
+    { ...KEY, keyId: "k1" },
+    { ...KEY, keyId: "k2", name: "Laptop" },
+  ],
+  thisKeyId: "k1",
+};
+
+/** The panel over a slice whose statuses come one after the other (the last one stays) and whose changes are recorded. */
+function panel(statuses: Status[], language: "en" | "pt-BR" = "en", failures: Error[] = []) {
+  const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
+  store.i18n.start();
+  const calls: string[] = [];
+  let read = 0;
+  const slice = store.approval as unknown as Record<string, unknown>;
+  slice.status = async () => {
+    const next = statuses[Math.min(read++, statuses.length - 1)];
+    if (!next) throw new Error("no status");
+    return next;
+  };
+  const record =
+    (name: string) =>
+    async (...args: unknown[]) => {
+      calls.push(`${name}:${args.slice(1).join("|")}`);
+      const failure = failures.shift();
+      if (failure) throw failure;
+    };
+  slice.enroll = record("enroll");
+  slice.revoke = record("revoke");
+  slice.removeLocalKey = record("removeLocal");
+  render(
+    <TContext.Provider value={store.i18n.t}>
+      <ApprovalDevicesPanel
+        store={store}
+        host={{ id: "h1", name: "pi" } as Parameters<typeof ApprovalDevicesPanel>[0]["host"]}
+      />
+    </TContext.Provider>,
+  );
+  return { calls };
+}
+
+const press = async (name: string) => {
+  await act(async () => {
+    fireEvent.click(screen.queryByRole("button", { name }) as HTMLElement);
+  });
+};
+const type = (label: string, value: string) =>
+  fireEvent.change(screen.queryByLabelText(label) as HTMLElement, { target: { value } });
+
+describe("approval devices panel: enrolling this device (#3439)", () => {
+  test("with no device enrolled it says protection is off and enrolls only once the name and the code are typed", async () => {
+    const { calls } = panel([OFF, HERE]);
+    await settleMaybe(() => screen.queryByText(/Protection is off/) !== null);
+    const enroll = screen.queryByRole("button", { name: "Enroll" }) as HTMLButtonElement;
+    expect(enroll.disabled).toBe(true);
+    type("Name of this device", "  Ana's phone ");
+    type("One-time code", " abc-123 ");
+    expect((screen.queryByRole("button", { name: "Enroll" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+    await press("Enroll");
+    await settleMaybe(() => screen.queryByText("This device is enrolled.") !== null);
+    expect(calls).toEqual(["enroll:Ana's phone|abc-123"]);
+    expect(screen.queryByText("This device is enrolled.")).not.toBeNull();
+    expect(screen.queryByLabelText("One-time code")).toBeNull();
+  });
+
+  test("a refusal is said where the person is looking, as an alert, and the form stays", async () => {
+    panel([OFF], "en", [new Error("The code is wrong or has expired.")]);
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    type("Name of this device", "phone");
+    type("One-time code", "nope");
+    await press("Enroll");
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toBe("The code is wrong or has expired.");
+    expect(screen.queryByLabelText("One-time code")).not.toBeNull();
+  });
+});
+
+describe("approval devices panel: the enrolled devices (#3439)", () => {
+  test("each device is listed with where it is, this one is marked, and a revoke names the device", async () => {
+    const { calls } = panel([HERE, { ...HERE, keys: HERE.keys.slice(0, 1) }]);
+    await settleMaybe(() => screen.queryByRole("list", { name: "Enrolled devices" }) !== null);
+    const items = within(
+      screen.queryByRole("list", { name: "Enrolled devices" }) as HTMLElement,
+    ).queryAllByRole("listitem");
+    expect(items.map((li) => li.textContent?.includes("This device"))).toEqual([true, false]);
+    expect(items[1]?.textContent).toContain("Another device");
+    expect(items[0]?.textContent).toContain("flightdeck-app · 100.64.0.7 · enrolled");
+    await press("Revoke Laptop");
+    await settleMaybe(() => screen.queryByText("Device revoked.") !== null);
+    expect(calls).toEqual(["revoke:k2"]);
+    expect(screen.queryByRole("button", { name: "Revoke Laptop" })).toBeNull();
+  });
+
+  test("dropping this device's key is offered when it has one, and the list is read again", async () => {
+    const { calls } = panel([HERE, { ...HERE, thisKeyId: null }]);
+    await settleMaybe(
+      () => screen.queryByRole("button", { name: "Remove this device's key" }) !== null,
+    );
+    await press("Remove this device's key");
+    await settleMaybe(() => screen.queryByText("This device's key was removed.") !== null);
+    expect(calls).toEqual(["removeLocal:"]);
+    expect(screen.queryByRole("button", { name: "Remove this device's key" })).toBeNull();
+  });
+
+  test("protection that drops to no device after devices were seen is called out", async () => {
+    panel([HERE, OFF]);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Revoke Laptop" }) !== null);
+    expect(screen.queryByText(/someone with access to it did/)).toBeNull();
+    await press("Revoke Laptop");
+    await settleMaybe(() => screen.queryByText(/someone with access to it did/) !== null);
+    expect(screen.queryByText(/someone with access to it did/)).not.toBeNull();
+  });
+});
+
+describe("approval devices panel: when the host cannot be read, and in Portuguese (#3439)", () => {
+  test("a failed read says so and offers to try again", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    let reads = 0;
+    (store.approval as unknown as Record<string, unknown>).status = async () => {
+      if (reads++ === 0) throw new Error("offline");
+      return OFF;
+    };
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <ApprovalDevicesPanel
+          store={store}
+          host={{ id: "h1", name: "pi" } as Parameters<typeof ApprovalDevicesPanel>[0]["host"]}
+        />
+      </TContext.Provider>,
+    );
+    await settleMaybe(() => screen.queryByText("The host's devices could not be read.") !== null);
+    await press("Try again");
+    await settleMaybe(() => screen.queryByText(/Protection is off/) !== null);
+    expect(screen.queryByText(/Protection is off/)).not.toBeNull();
+  });
+
+  test("the panel speaks Portuguese", async () => {
+    panel([HERE], "pt-BR");
+    await settleMaybe(() => screen.queryByText("Dispositivos que aprovam") !== null);
+    expect(screen.queryByText("Dispositivos que aprovam")).not.toBeNull();
+  });
+});
