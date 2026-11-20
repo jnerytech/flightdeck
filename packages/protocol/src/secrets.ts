@@ -1,5 +1,6 @@
 // The Secrets context: vault rules and requests, declared actions, webhooks and SSH destinations (issue #1600: moved from index.ts).
 import { z } from "zod";
+import { ApprovalProof } from "./approval.ts";
 import { cmd } from "./command.ts";
 import { TerminalCols, type TerminalInfo, TerminalRows } from "./terminal.ts";
 
@@ -396,6 +397,11 @@ export const secretsCommands = [
       /** How long the Approve button was held, for the requests that need 2 s. */
       heldMs: z.number().int().min(0).optional(),
       scope: z.enum(["once", "session"]).optional(),
+      /**
+       * #3452: the signed proof of an enrolled device. A host with enrolled keys takes it, not `via` and
+       * `heldMs`, for a prod or high-risk request; the scope it signs is the scope approved.
+       */
+      proof: ApprovalProof.optional(),
     }),
   ),
   cmd(

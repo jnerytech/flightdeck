@@ -129,14 +129,21 @@ export function enrollAddMessage(parts: {
 }
 
 /** What an enrolled device signs to approve the use of a secret for request `requestId`, for `scope` (#3452). */
-export function vaultApproveMessage(_parts: {
+export function vaultApproveMessage(parts: {
   keyId: string;
   daemonId: string;
   requestId: string;
   nonce: string;
   scope: "once" | "session";
 }): string {
-  return "";
+  return canonicalJson([
+    "flightdeck/vault-approve/v1",
+    parts.keyId,
+    parts.daemonId,
+    parts.requestId,
+    parts.nonce,
+    parts.scope,
+  ]);
 }
 
 /** What an enrolled device signs to revoke `targetKeyId` (its own or another's). */
