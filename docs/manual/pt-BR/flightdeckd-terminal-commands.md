@@ -16,4 +16,4 @@ fd terminal list --json
 linhas, `running` ou `exited <código>`, quantas janelas o acompanham e quando começou. Um terminal aberto pelo botão
 "Claude aqui" mostra também o id do `launch`. O programa aparece sem os argumentos. Sem terminal, o comando avisa e
 sai com `0`. Com `--json` imprime `{"terminals": [...]}`, como o daemon devolve, com `null` para um campo ausente.
-`--host <nome>` lê um host pareado. O verbo não abre, não lê e não escreve em nenhum terminal.
+`--host <nome>` lê um host pareado. O verbo não abre nenhum terminal e não lê a saída de nenhum.

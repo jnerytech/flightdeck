@@ -16,4 +16,4 @@ fd terminal list --json
 and rows, `running` or `exited <code>`, how many windows follow it and when it started. A terminal that a "Claude
 here" button opened also shows its `launch` id. The program is shown without its arguments. With no terminal the
 command says so and exits `0`. With `--json` it prints `{"terminals": [...]}`, as the daemon returns it, with `null`
-for a missing field. `--host <name>` reads a paired host. The verb opens, reads and writes no terminal.
+for a missing field. `--host <name>` reads a paired host. The verb opens no terminal and reads none of their output.

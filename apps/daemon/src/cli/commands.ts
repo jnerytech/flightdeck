@@ -661,7 +661,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   terminal: async (args, deps) => {
     const { runTerminalCli } = await import("../terminal/index.ts");
-    const cli = { action: "list", json: args.json === true } as const;
+    const cli = { action: args.action as "list", json: args.json === true };
     return asking(args, deps, (config, remote) =>
       runTerminalCli(cli, config, remote ? { remote } : {}),
     );

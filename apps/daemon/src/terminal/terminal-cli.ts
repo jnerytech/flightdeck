@@ -1,6 +1,6 @@
 /**
- * Issue #3538: `flightdeckd terminal list`, the read side of a host's terminals. It opens, reads and
- * writes none: the daemon answers from the list it keeps. Exit codes: 0 done, 1 refused, 2 no daemon.
+ * Issue #3538: `flightdeckd terminal list`, the read side of a host's terminals. It opens none and
+ * reads no terminal's output: the daemon answers from the list it keeps. Exit codes: 0 done, 1 refused, 2 no daemon.
  */
 import {
   type CliResult,
