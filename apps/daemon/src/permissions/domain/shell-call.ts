@@ -518,6 +518,9 @@ export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
   });
 }
 
+/** The words of a CLI line that `flightdeckWords` reads: the rules read a noun, a verb and one or two words more. */
+const MAX_CLI_WORDS = 6;
+
 /**
  * The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`).
  * The parser reads `flightdeckd fd <command>` as `flightdeckd <command>`, so one leading `fd` is no word (#3566); a
@@ -525,7 +528,7 @@ export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
  */
 export function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
-  for (let i = 0; i < args.length; i++) {
+  for (let i = 0; i < args.length && words.length < MAX_CLI_WORDS; i++) {
     const arg = args[i] as string;
     if (OPTIONS_WITH_VALUE.includes(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
