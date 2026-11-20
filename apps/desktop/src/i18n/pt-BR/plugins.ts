@@ -78,6 +78,8 @@ export const plugins = {
     addMarketplace: "Adicionar marketplace",
     addMessage: "Adicionar o marketplace {source}? Os plugins dele passam a poder ser instalados.",
     addConfirm: "Adicionar",
+    addSigningHint:
+      "Com um dispositivo de aprovação, a fonte de um marketplace é dono/repo, um endereço https ou o caminho completo de uma pasta.",
     marketplaceAdded: "Marketplace adicionado.",
     refreshMarketplace: "Atualizar marketplace {name}",
     refreshShort: "Atualizar",

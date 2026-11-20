@@ -86,6 +86,12 @@ until then the hold of the Approve button is the only check, as before.
   before you confirm. Cancel it and nothing is installed. If the plugin changed after you previewed it, the host
   refuses: preview again. When the marketplace declares a command, the dialog opens a second time for the step that
   accepts it. A host that does not yet ask for the device here shows a notice on its page: update it.
+- **Adding a plugin marketplace.** With a device enrolled, **Add marketplace** asks you once more in a window of
+  the system. The window names the source and where the marketplace is kept, and says that its plugins can run code
+  on this computer. The window can show a source written as `owner/repo`, as an `https://` address with no user,
+  port, query or fragment, or as the full path of a folder; any other form (a `git@` address, `github:owner/repo`,
+  `http://`) is refused with a message that names these three. Cancel it and nothing is added, and what you typed
+  stays in the field. A host that does not yet ask for the device here shows a notice on its page: update it.
 - **Trusting a project.** With a device enrolled, **Trust this project** asks you once more in a window of the
   system. The window names the folder and says that its hooks and servers will then run with no prompt. Cancel it
   and nothing is sent. Revoking trust asks for nothing. A host that does not yet ask for the device when you

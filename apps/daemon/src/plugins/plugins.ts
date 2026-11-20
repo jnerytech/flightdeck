@@ -264,14 +264,15 @@ export class Plugins {
     return result;
   }
 
-  async marketplaceAdd(input: {
-    source: string;
-    scope?: PluginScope;
-    confirm: boolean;
-  }): Promise<ChangeResult> {
+  async marketplaceAdd(
+    input: { source: string; scope?: PluginScope; confirm: boolean },
+    /** Called once the request is valid and before anything changes: it checks the device's proof (#3516). */
+    guard?: () => void,
+  ): Promise<ChangeResult> {
     arg(input.source);
     if (!input.confirm)
       throw invalid("adding a marketplace needs confirm: true", "marketplace_add_confirm");
+    guard?.();
     const args = [
       "marketplace",
       "add",
