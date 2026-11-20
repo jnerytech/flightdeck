@@ -85,7 +85,12 @@ export const agentsHandlers = {
     return await server.needIn("agentSetup", "plugins").previewUpdate(payload.plugin);
   },
   "plugins.install": async (payload, { server }) => {
-    return await server.needIn("agentSetup", "plugins").install(payload);
+    // A folder to install from is read like a folder to preview: inside the allowed roots (#3516).
+    const source =
+      payload.dir !== undefined
+        ? { ...payload, dir: await resolveAllowedCwd(payload.dir, server.opts.allowedRoots) }
+        : payload;
+    return await server.needIn("agentSetup", "plugins").install(source);
   },
   "plugins.update": async (payload, { server }) => {
     return await server.needIn("agentSetup", "plugins").update(payload);

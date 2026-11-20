@@ -2,6 +2,7 @@
  * Issue #3516: what the `plugins` verbs of the CLI take, checked before anything is sent. The parser in
  * `args.ts` adds the usage text to the problem this names.
  */
+import { isAbsolute } from "node:path";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 
@@ -11,6 +12,7 @@ export interface PluginsArgs {
   action?: string;
   plugin?: string;
   pluginDir?: string;
+  host?: string;
 }
 
 /** What is wrong with the `plugins` words and flags: `--dir` outside a preview, or a preview that names no plugin or two. */
@@ -20,6 +22,8 @@ export function pluginsProblem(args: PluginsArgs): string | undefined {
     return "--dir: this flag only applies to flightdeckd plugins preview";
   if (preview && (args.plugin === undefined) === (args.pluginDir === undefined))
     return "plugins preview: give a plugin or --dir, one of the two";
+  if (args.pluginDir !== undefined && args.host !== undefined && !isAbsolute(args.pluginDir))
+    return "--dir: on another host the folder must be an absolute path (it is read there, not here)";
   return undefined;
 }
 

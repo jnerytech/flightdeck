@@ -22,6 +22,11 @@ export type PluginsCliArgs =
 /** The plural line of a count: `hooks: 2`, and how many of them can decide for the person. */
 const count = (label: string, n: number, extra = "") => `${label}: ${n}${extra}`;
 
+/** A marketplace added by a URL may carry `user:token@` in it; the line shows the URL without it. */
+function withoutUserinfo(source: string): string {
+  return source.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@\s]*@/i, "$1");
+}
+
 /** The lines of `plugins list`: the installed ones first, then what the marketplaces offer and the marketplaces. */
 export function listLines(list: PluginList): string[] {
   const installed = list.installed.map((p) => {
@@ -32,7 +37,9 @@ export function listLines(list: PluginList): string[] {
   const available = list.available.map(
     (p) => `available  ${p.id}${p.description ? `  ${p.description}` : ""}`,
   );
-  const marketplaces = list.marketplaces.map((m) => `marketplace  ${m.name}  ${m.source}`);
+  const marketplaces = list.marketplaces.map(
+    (m) => `marketplace  ${m.name}  ${withoutUserinfo(m.source)}`,
+  );
   const lines = [...installed, ...available, ...marketplaces];
   return lines.length ? lines : ["no plugins"];
 }

@@ -2,8 +2,12 @@
  * Issue #3516: `flightdeckd plugins list|detail|preview|preview-update`, the Claude Code plugins of a
  * host from a terminal or a script. It speaks to the daemon like `flightdeckd send` does (the same
  * `DaemonClient`, the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. Every verb here
- * is a read: what an install would bring, with the hash a later install repeats.
+ * installs nothing: what an install would bring, with the hash a later install repeats. `preview-update`
+ * first refreshes the marketplace's listing (the daemon runs `claude plugin marketplace update`, as the app's
+ * update dialog does), so it reaches the network.
  */
+
+import { resolve } from "node:path";
 import {
   type CliResult,
   json,
@@ -46,10 +50,12 @@ export function runPluginsCli(
         const answer = await daemon.call("plugins.previewUpdate", { plugin: args.plugin });
         return args.json ? json(answer) : said(...updateLines(answer));
       }
-      const answer = await daemon.call(
-        "plugins.preview",
-        "dir" in args ? { dir: args.dir } : { plugin: args.plugin },
-      );
+      // A relative folder means the shell's, so it is made absolute here; the daemon's own folder is another one.
+      const where =
+        "dir" in args
+          ? { dir: options.remote ? args.dir : resolve(args.dir) }
+          : { plugin: args.plugin };
+      const answer = await daemon.call("plugins.preview", where);
       return args.json ? json(answer) : said(...previewLines(answer));
     },
   });
