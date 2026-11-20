@@ -80,19 +80,35 @@ export function personaArgs(
 }
 
 /** The folder name a session is named after: the git toplevel's when there is one, else the launch folder's. */
-export function repoFolder(_cwd: string, _toplevel: string | null): string {
-  return "";
+export function repoFolder(cwd: string, toplevel: string | null): string {
+  const trimmed = (toplevel ?? cwd).replace(/[\\/]+$/, "");
+  return trimmed.slice(Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\")) + 1);
 }
 
-/** The `--name` a launch adds: `<repo>-<persona>`, or `<repo>`; none when the person named or resumes the session. */
-export function nameArgs(_opts: {
+/** What a session is named after is a folder's name: no control or invisible-format character may reach the terminal title. */
+const UNPRINTABLE = /[\p{Cc}\p{Cf}]/gu;
+
+/** Flags that name a session or point at one that already has its name (renaming it is not ours to do). */
+const NAMED = ["-n", "--name", "-r", "--resume", "-c", "--continue"];
+
+/**
+ * The `--name` a launch adds: `<repo>-<persona>`, or `<repo>` without a persona, the same for the
+ * same folder and persona. Nothing is added when the person named the session or resumes one, or
+ * when a Windows shim would have cmd.exe re-parse a name that is not plain (`a & calc`, #936).
+ */
+export function nameArgs(opts: {
   repo: string;
   persona: string | null;
   user: string[];
   claude: string;
   platform: NodeJS.Platform;
 }): string[] {
-  return ["--name", "?"];
+  if (NAMED.some((flag) => passed(opts.user, flag))) return [];
+  const repo = opts.repo.replace(UNPRINTABLE, "").trim();
+  if (repo === "") return [];
+  const name = opts.persona === null ? repo : `${repo}-${opts.persona}`;
+  if (isWindowsShim(opts.claude, opts.platform) && !/^[A-Za-z0-9._-]+$/.test(name)) return [];
+  return ["--name", name];
 }
 
 /** A user name icacls can be given as one principal: no wildcard, SID marker, separator or list. */

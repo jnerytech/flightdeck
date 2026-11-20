@@ -64,7 +64,7 @@ async function run(argv: string[], folder = "", before: (project: string) => voi
   const fake = installFakeClaude([{ do: "exit", code: 0 }]);
   cleanups.push(fake.restore);
   const said: string[] = [];
-  let code: number | null = null;
+  let code = null as number | null;
   await runCli(argv, {
     env: { ...process.env, FLIGHTDECK_CONFIG: where.file },
     log: { log: (m) => said.push(m), error: (m) => said.push(m) },
