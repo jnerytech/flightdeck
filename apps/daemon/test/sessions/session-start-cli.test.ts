@@ -131,7 +131,7 @@ describe("flightdeckd session create (issue #3514)", () => {
     );
     expect(result.code).toBe(2);
     expect(result.err.join("\n")).toContain(
-      "a session may or may not have been started: look at fd sessions before you do it again",
+      "a session may or may not have been started: check with `sessions` before trying again",
     );
   });
 });
