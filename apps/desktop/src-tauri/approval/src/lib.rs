@@ -471,6 +471,15 @@ mod tests {
     }
 
     #[test]
+    fn an_add_for_a_host_id_that_could_fake_a_dialog_line_is_not_signed() {
+        let me = own();
+        let other = own();
+        for host in ["line\nbreak-host", "\u{202e}evil-host", "spaced host", ""] {
+            assert!(describe(&add(&me.key_id, host, &other.public_key), host, &me).is_err(), "signed: {host:?}");
+        }
+    }
+
+    #[test]
     fn an_add_of_something_that_is_not_a_p256_key_is_not_signed() {
         let me = own();
         for new in ["", "AAAA", "not base64 at all", &"A".repeat(200)] {
