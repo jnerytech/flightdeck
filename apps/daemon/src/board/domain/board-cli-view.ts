@@ -3,6 +3,7 @@
  * daemon call and the exit codes stay in `board/board-cli.ts`.
  */
 import type { BoardSettings, Card } from "@flightdeck/protocol";
+import { waitOf } from "./card-cli-view.ts";
 
 export interface BoardCliArgs {
   action: "settings" | "watch";
@@ -22,6 +23,7 @@ export function settingsLine(settings: BoardSettings): string {
 }
 
 /** The line `watch` prints for a card that changed; the same words as `card list`. */
-export function watchLine(_card: Card): string {
-  return "";
+export function watchLine(card: Card): string {
+  const wait = waitOf(card);
+  return `${card.id}  ${card.column}  ${card.title}${wait === null ? "" : ` (${wait})`}`;
 }

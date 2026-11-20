@@ -165,14 +165,21 @@ Enquanto nenhum dispositivo estiver cadastrado, nada muda para você.
 fd board settings
 fd board settings --max-parallel-runs 4
 fd board settings --json
+fd board watch
+fd board watch --json
 ```
 
-`settings` mostra os ajustes do quadro para o host todo, como a tela de Projetos.
+`settings` mostra os ajustes do quadro para o host todo, como a tela de Projetos. `watch` acompanha o quadro.
 
 - **`settings`:** imprime `max parallel runs: <n>`, quantas execuções de cartão o quadro inicia ao mesmo
   tempo neste host. Com `--json` imprime a resposta do daemon.
 - **`settings --max-parallel-runs <n>`:** muda esse limite (um número inteiro, 1 ou mais) e imprime o
   novo. Um valor que não seja inteiro de 1 ou mais sai com `1` e não envia nada.
+
+- **`watch`:** fica conectado e imprime uma linha a cada vez que um cartão muda, com as palavras de
+  `card list` (`<id>  <coluna>  <título>`, com o motivo da espera, se houver). Roda até você apertar
+  Ctrl-C, que sai com `0`. Com `--json` imprime um cartão por linha, em JSON, para um script. O limite de
+  15 s vale só para a conexão; se o daemon sumir enquanto você acompanha, sai com `2`.
 
 Uma alteração que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode
 `board settings` antes de tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1`

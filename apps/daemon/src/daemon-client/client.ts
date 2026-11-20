@@ -8,6 +8,7 @@ import {
   type CommandResults,
   type CommandType,
   parseServerMessage,
+  type ServerMessage,
   WS_PATH,
 } from "@flightdeck/protocol";
 
@@ -52,18 +53,40 @@ export class DaemonRefusal extends Error {
 /** The daemon protocol, as any client of the app speaks it: `hello`, then commands and acks. */
 export class DaemonClient {
   private readonly acks = new Map<string, { ok(ack: Ack): void; fail(error: Error): void }>();
+  private readonly listeners = new Set<(frame: ServerMessage) => void>();
   private seq = 0;
+  /** The close code, once the socket closed: a stream waits on it to know the daemon went away. */
+  readonly closed: Promise<number>;
 
   private constructor(private readonly ws: WebSocket) {
     ws.addEventListener("message", (msg) => {
       const frame = parseServerMessage(String(msg.data));
       if (frame.type === "ping") ws.send(JSON.stringify({ type: "pong", id: frame.id }));
       if (frame.type === "ack") this.acks.get(frame.id)?.ok(frame);
+      for (const listener of this.listeners) listener(frame);
     });
-    ws.addEventListener("close", (event) => {
-      for (const pending of this.acks.values()) pending.fail(new ConnectionClosed(event.code));
-      this.acks.clear();
+    this.closed = new Promise((resolve) => {
+      ws.addEventListener("close", (event) => {
+        for (const pending of this.acks.values()) pending.fail(new ConnectionClosed(event.code));
+        this.acks.clear();
+        resolve(event.code);
+      });
     });
+  }
+
+  /**
+   * Calls `listener` for every pushed frame of this type, from now on (a stream, #3454). Register it
+   * before the request that starts the stream, so a frame sent right after the ack is not lost.
+   */
+  onFrame<T extends ServerMessage["type"]>(
+    type: T,
+    listener: (frame: Extract<ServerMessage, { type: T }>) => void,
+  ): () => void {
+    const each = (frame: ServerMessage) => {
+      if (frame.type === type) listener(frame as Extract<ServerMessage, { type: T }>);
+    };
+    this.listeners.add(each);
+    return () => void this.listeners.delete(each);
   }
 
   /** `signal` gives up: it closes the socket, so nothing is sent on a connection nobody waits for. */

@@ -285,7 +285,7 @@ const HANDLERS: Record<string, Handler> = {
   },
   board: (args, reader) => {
     args.command = "board";
-    args.action = subAction(reader, ["settings"] as const, "invalid board action");
+    args.action = subAction(reader, ["settings", "watch"] as const, "invalid board action");
   },
   persona: (args, reader) => {
     args.command = "persona";
@@ -630,7 +630,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   if (args.rounds !== undefined && args.loop === "off")
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   checkPersona(args);
-  if (args.maxParallelRuns !== undefined && args.command !== "board")
+  if (
+    args.maxParallelRuns !== undefined &&
+    !(args.command === "board" && args.action === "settings")
+  )
     throw new Error(
       `--max-parallel-runs: this flag only applies to flightdeckd board settings\n${USAGE}`,
     );
