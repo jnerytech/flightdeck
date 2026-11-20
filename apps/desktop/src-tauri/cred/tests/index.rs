@@ -1,6 +1,6 @@
 //! The host name index and the address entries the app writes for the CLI.
 
-use flightdeck_cred::index::{render, write, write_addresses, HostRef};
+use flightdeck_cred::index::{render, sync, write, write_addresses, HostRef};
 use flightdeck_cred::{url_account, Store};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -124,4 +124,37 @@ fn each_host_gets_its_address_in_the_store_and_a_bad_id_gets_none() {
     ];
     want.sort();
     assert_eq!(kept, want);
+}
+
+#[test]
+fn sync_writes_the_addresses_and_the_index_together() {
+    let scratch = Scratch::new("sync");
+    let store = Fake::default();
+    sync(&scratch.0, &store, &[host(ID, "Pi", "wss://pi/v1/ws")]).unwrap();
+    let text = std::fs::read_to_string(scratch.0.join("hosts.json")).unwrap_or_default();
+    let listed: serde_json::Value = serde_json::from_str(&text).unwrap_or(serde_json::Value::Null);
+    let address = store.0.borrow().get(&url_account(ID)).cloned();
+    assert_eq!(
+        (listed, address),
+        (serde_json::json!({ "hosts": [{ "id": ID, "name": "Pi" }] }), Some("wss://pi/v1/ws".to_string()))
+    );
+}
+
+struct Refusing;
+
+impl Store for Refusing {
+    fn read(&self, _account: &str) -> Result<Option<String>, String> {
+        Ok(None)
+    }
+    fn write(&self, _account: &str, _value: &str) -> Result<(), String> {
+        Err("the store is locked".to_string())
+    }
+}
+
+#[test]
+fn sync_still_writes_the_index_when_the_store_refuses_and_says_so() {
+    let scratch = Scratch::new("sync-locked");
+    let result = sync(&scratch.0, &Refusing, &[host(ID, "Pi", "wss://pi/v1/ws")]);
+    let text = std::fs::read_to_string(scratch.0.join("hosts.json")).unwrap_or_default();
+    assert_eq!((result, text.contains("Pi")), (Err("the store is locked".to_string()), true));
 }
