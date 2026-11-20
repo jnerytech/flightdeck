@@ -3,231 +3,13 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
+
+import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { USAGE } from "./usage.ts";
 
-export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
-
-export interface CliArgs {
-  command:
-    | "start"
-    | "pair"
-    | "setup"
-    | "doctor"
-    | "service"
-    | "history"
-    | "approvers"
-    | "hooks"
-    | "telemetry"
-    | "hook"
-    | "channel"
-    | "claude"
-    | "help"
-    | "askpass"
-    | "mcp"
-    | "statusline"
-    | "action"
-    | "snippet"
-    | "message"
-    | "card"
-    | "persona"
-    | "host"
-    | "sessions"
-    | "requests"
-    | "send"
-    | "approve"
-    | "deny"
-    | "version"
-    | "db"
-    | "backup"
-    | "restore"
-    | "update";
-  /** `service <action>`, `hooks <action>`, `history reindex` or `action list|run`. */
-  action?:
-    | ServiceAction
-    | "reindex"
-    | "enroll"
-    | "reset"
-    | "list"
-    | "run"
-    | "get"
-    | "send"
-    | "idle"
-    | "read"
-    | "team"
-    | "show"
-    | "new"
-    | "start"
-    | "move"
-    | "update"
-    | "stop"
-    | "complete"
-    | "delete"
-    | "discard"
-    | "subagents"
-    | "save"
-    | "remove"
-    | "publish-agent"
-    | "trust"
-    | "diff"
-    | "spec"
-    | "review"
-    | "message"
-    | "templates"
-    | "validation-template"
-    | "pr-create"
-    | "update-from-base"
-    | "merge-local";
-  /** `message send <to> <text>`. */
-  to?: string;
-  text?: string;
-  /** `message idle|read <session>`, with `--last N` for read; `requests --session`. */
-  session?: string;
-  /** `--host <name>`: ask the paired host of that name instead of this machine's daemon (#3429). */
-  host?: string;
-  /** `send <session> <text>`: the session that gets the text, its name or its id. */
-  sendTo?: string;
-  /** `approve|deny <request>`: the id of the permission request. */
-  requestId?: string;
-  /** `approve|deny --message`: what the answer tells Claude. */
-  answerMessage?: string;
-  /** `approve --hold`: accepted for older scripts; it sends nothing, a high-risk allow is made in the app (#3439). */
-  hold?: boolean;
-  last?: number;
-  /** `message team <team>`. */
-  team?: string;
-  /** `action ... --project <id>`, `card ... --project <name or id>`. */
-  project?: string;
-  /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
-  cardId?: string;
-  cardTitle?: string;
-  /** `card move <card> <column> [--position n] [--force]`, `card complete|discard|delete --confirm`, `card update --estimate ... --blocked-by ...`. */
-  column?: string;
-  /** `--title`, until the end of the arguments says whether the action takes it. */
-  titleFlag?: string;
-  position?: number;
-  force?: true;
-  confirm?: true;
-  squash?: true;
-  estimate?: string;
-  validationNote?: string;
-  specPath?: string;
-  blockedBy?: string;
-  description?: string;
-  workflow?: string;
-  /** `card review` and `persona list|show|subagents`: the language of the text. */
-  language?: "en" | "pt-BR";
-  json?: true;
-  /** `persona show|save|remove|reset|publish-agent <id>`. */
-  personaId?: string;
-  /** `persona save`: the persona's fields, as flags. */
-  personaName?: string;
-  body?: string;
-  bodyFile?: string;
-  model?: string;
-  effort?: "low" | "medium" | "high" | "xhigh" | "max";
-  tools?: string[];
-  permissionMode?: string;
-  icon?: string;
-  /** `persona trust --hash`: the start of the hash `persona list` showed. */
-  hash?: string;
-  /** `persona list --scope <host|project|all>`. */
-  scope?: "host" | "project" | "all";
-  /** `action run <name>`. */
-  actionName?: string;
-  /** `snippet get <name>` (phase 18). */
-  snippetName?: string;
-  /** `snippet ... --project-path <path>`: the project whose snippets count too. */
-  projectPath?: string;
-  /** `snippet list --query <text>`. */
-  query?: string;
-  /** `action run ... --param k=v`, repeatable. */
-  params?: Record<string, string>;
-  /** `service ... --dry-run`: print, change nothing. */
-  dryRun?: true;
-  config?: string;
-  runtime?: RuntimeKind;
-  /** `pair --rotate`: generate a new token first. */
-  rotate?: true;
-  /** `setup --yes --folders a,b`: no questions, the folders come from here. */
-  yes?: true;
-  folders?: string[];
-  /** `hook session-start --url <receptor> --token <hooks.token>`, as `hooks install` writes it. */
-  url?: string;
-  token?: string;
-  /** `channel --launch <id>`: the `flightdeckd claude` launch this channel serves. */
-  launch?: string;
-  /** `backup --out <file>`. */
-  out?: string;
-  /** `restore <file>`. */
-  file?: string;
-  /** `update --from <binary> [--allow-downgrade]`. */
-  from?: string;
-  allowDowngrade?: true;
-  /** `claude [args]`: everything after `claude` belongs to the real claude. */
-  claudeArgs?: string[];
-  /** `askpass <prompt...>`: what ssh is asking for. */
-  askpassPrompt?: string;
-}
-
-export const USAGE = [
-  "usage: flightdeckd [start] [--config <file>] [--runtime fake|claude]",
-  "     fd --version | --help",
-  "     fd db prune [--dry-run] [--config <file>]",
-  "     fd backup [--out <file>] [--config <file>]",
-  "     fd restore <file> [--config <file>]   (with the daemon stopped)",
-  "     fd update --from <binary> [--allow-downgrade] [--config <file>]",
-  "     fd setup [--yes --folders <a,b>] [--config <file>]   (guided first run)",
-  "     fd doctor [--config <file>]   (what is missing for it to work, and how to fix it)",
-  "     fd pair [--rotate] [--config <file>]",
-  "     fd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
-  "     fd history reindex [--config <file>]",
-  "     fd approvers enroll [--json] [--config <file>]   (this host's terminal opens the window that enrolls the first device)",
-  "     fd approvers reset [--json] [--config <file>]   (removes every enrolled device)",
-  "     fd hooks install|uninstall|status [--config <file>]",
-  "     fd telemetry install|uninstall|status [--config <file>]",
-  "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
-  "     flightdeckd channel --launch <id> --url <receiver> --token <token>   (the channel's MCP server)",
-  "     fd [claude arguments]   (a bare fd is flightdeckd claude: claude with the Flightdeck channel; config in FLIGHTDECK_CONFIG)",
-  "     fd claude <prompt>      (a prompt or a claude command that starts with a word above, such as update or doctor)",
-  "     flightdeckd claude [claude arguments]   (the same, by its full name)",
-  "     fd architect|reviewer|security|coordinator [claude arguments]   (claude with that persona)",
-  "     fd new <persona> [claude arguments]   (claude with any persona, by its id)",
-  "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
-  "     fd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
-  "     fd statusline [--config <file>]   (one line for Claude Code's statusline)",
-  "     fd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
-  "     fd card list [--project <name or id>] [--json] [--config <file>]",
-  "     fd card show <card> [--json] [--config <file>]",
-  "     fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
-  "     fd card start <card> [--workflow <name>] [--json] [--config <file>]",
-  "     fd card move <card> <column> [--position <n>] [--force] [--json] [--config <file>]",
-  "     fd card update <card> [--title <text>] [--description <text>] [--estimate <hours|none>] [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json] [--config <file>]",
-  "     fd card stop <card> [--json] [--config <file>]",
-  "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
-  "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
-  "     fd persona show <id> [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
-  "     fd persona subagents [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
-  "     fd persona trust <id> --project-path <folder> --hash <hash> [--json] [--config <file>]",
-  "     fd card diff <card> [--json] [--config <file>]",
-  "     fd card spec <card> [--json] [--config <file>]",
-  "     fd card review <card> [--language en|pt-BR] [--json] [--config <file>]",
-  "     fd card message <card> <text> [--json] [--config <file>]",
-  "     fd card templates [--project <name or id>] [--json] [--config <file>]",
-  "     fd card validation-template <card> [--json] [--config <file>]",
-  "     fd card pr-create <card> [--title <text>] [--description <text>] [--json] [--config <file>]",
-  "     fd card update-from-base <card> [--json] [--config <file>]",
-  "     fd card merge-local <card> --confirm [--squash] [--message <text>] [--json] [--config <file>]",
-  "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
-  "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
-  "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
-  "     fd approve <request> [--message <text>] [--hold] [--host <name>] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
-  "     fd deny <request> [--message <text>] [--host <name>] [--json] [--config <file>]",
-  "     fd requests [--session <session>] [--host <name>] [--json] [--config <file>]   (the open permission requests, oldest first)",
-  "     fd action list [--project <id>] [--config <file>]",
-  "     fd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
-  "     fd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
-  "     fd snippet get <name> [--project-path <folder>] [--config <file>]",
-].join("\n");
+export type { CliArgs, ServiceAction } from "./cli-args.ts";
+export { USAGE } from "./usage.ts";
 
 const SERVICE_ACTIONS: readonly ServiceAction[] = [
   "install",
@@ -480,6 +262,11 @@ const HANDLERS: Record<string, Handler> = {
         "pr-create",
         "update-from-base",
         "merge-local",
+        "arena",
+        "start-arena",
+        "choose-variant",
+        "check-loop",
+        "dismiss-unblocked",
       ],
       "invalid card action",
     );
@@ -487,6 +274,13 @@ const HANDLERS: Record<string, Handler> = {
     // Every action but `list`, `new` and `templates` names the card it works on.
     if (!["list", "new", "templates"].includes(action)) args.cardId = operand(reader, "the card");
     if (action === "move") args.column = operand(reader, "the column");
+    if (action === "choose-variant") args.variant = operand(reader, "the variant");
+    if (action === "check-loop") {
+      const loop = operand(reader, "on or off");
+      if (loop !== "on" && loop !== "off")
+        throw new Error(`card check-loop: on or off, not "${loop}"\n${USAGE}`);
+      args.loop = loop;
+    }
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
@@ -536,6 +330,15 @@ const HANDLERS: Record<string, Handler> = {
     if (v.trim() === "" || !Number.isInteger(position) || position < 0)
       throw new Error(`--position needs a whole number from 0\n${USAGE}`);
     args.position = position;
+  }),
+  "--variant": setValue((args, v) => {
+    args.variants = [...(args.variants ?? []), v];
+  }),
+  "--rounds": setValue((args, v) => {
+    const rounds = Number(v);
+    if (!/^\d+$/.test(v) || rounds < 1 || rounds > 10)
+      throw new Error(`--rounds needs a whole number from 1 to 10\n${USAGE}`);
+    args.rounds = rounds;
   }),
   "--title": setValue((args, v) => {
     args.titleFlag = v;
@@ -596,15 +399,15 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--permission-mode: ${PERMISSION_MODES.join(", ")}\n${USAGE}`);
     args.permissionMode = v;
   }),
-  "--icon": setValue((args, v) => {
-    args.icon = v;
-  }),
   "--hash": setValue((args, v) => {
     if (!/^[0-9a-f]{12,}$/i.test(v))
       throw new Error(
         `--hash: at least 12 hex characters of the hash persona list shows\n${USAGE}`,
       );
     args.hash = v.toLowerCase();
+  }),
+  "--icon": setValue((args, v) => {
+    args.icon = v;
   }),
   "--language": setValue((args, v) => {
     if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR\n${USAGE}`);
@@ -741,10 +544,16 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   const flagged: Array<[string, unknown, readonly string[] | null]> = [
     ["--title", args.titleFlag, ["update", "pr-create"]],
     ["--description", args.description, ["new", "update", "pr-create"]],
-    ["--workflow", args.workflow, ["start"]],
+    ["--workflow", args.workflow, ["start", "start-arena"]],
+    ["--variant", args.variants, ["start-arena"]],
+    ["--rounds", args.rounds, ["check-loop"]],
     ["--force", args.force, ["move"]],
     ["--position", args.position, ["move"]],
-    ["--confirm", args.confirm, ["complete", "discard", "delete", "merge-local"]],
+    [
+      "--confirm",
+      args.confirm,
+      ["complete", "discard", "delete", "merge-local", "choose-variant", "check-loop"],
+    ],
     ["--squash", args.squash, ["merge-local"]],
     ["--estimate", args.estimate, ["update"]],
     ["--validation-note", args.validationNote, ["update"]],
@@ -764,6 +573,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
+  if (args.rounds !== undefined && args.loop === "off")
+    throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   const personaFault = personaProblem(args);
   if (personaFault !== undefined) throw new Error(`${personaFault}\n${USAGE}`);
   delete args.titleFlag;

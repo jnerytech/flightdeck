@@ -3,11 +3,14 @@
  * the address of the config. The daemon calls and the timer stay in `board/card-cli.ts`.
  */
 import {
+  type Arena,
+  type ArenaVariant,
   BoardColumn,
   type Card,
   type CardDiff,
   type CardReviewResult,
   type CardTemplates,
+  EffortLevel,
   type Project,
   type ValidationTemplate,
 } from "@flightdeck/protocol";
@@ -32,7 +35,12 @@ export interface CardCliArgs {
     | "validation-template"
     | "pr-create"
     | "update-from-base"
-    | "merge-local";
+    | "merge-local"
+    | "arena"
+    | "start-arena"
+    | "choose-variant"
+    | "check-loop"
+    | "dismiss-unblocked";
   /** `message`: the text; `review --language`. */
   text?: string;
   language?: "en" | "pt-BR";
@@ -54,6 +62,12 @@ export interface CardCliArgs {
   /** `merge-local`: one commit instead of a merge commit, and the message the person typed for it. */
   squash?: boolean;
   message?: string;
+  /** `start-arena --variant model[:effort[:persona]]`, 2 to 4 of them; `choose-variant`: the variant kept. */
+  variants?: string[];
+  variant?: string;
+  /** `check-loop <on|off>` and `--rounds`: the card's own cap on rounds. */
+  loop?: "on" | "off";
+  rounds?: number;
   /** `update`: what changes; `none` clears the estimate, the note, the spec path and the blockers. */
   estimate?: string;
   validationNote?: string;
@@ -124,7 +138,7 @@ export function columnOf(wanted: string | undefined): BoardColumn {
   );
 }
 
-/** The yes the daemon asks for in `complete`, `discard`, `delete` and `merge-local`: nothing is sent without it. */
+/** The yes the daemon asks for in `complete`, `discard`, `delete`, `merge-local` and `choose-variant`: nothing is sent without it. */
 export function confirmed(args: CardCliArgs): true {
   if (args.confirm) return true;
   throw new Refusal(
@@ -265,6 +279,61 @@ export function validationLines(found: ValidationTemplate): string[] {
   return ["the project has no validation template"];
 }
 
+/** One `--variant model[:effort[:persona]]`: a part left empty keeps the default. */
+function variantOf(spec: string) {
+  const [model = "", effort = "", persona = "", ...extra] = spec.split(":");
+  const level = EffortLevel.safeParse(effort);
+  if (extra.length > 0 || (effort !== "" && !level.success))
+    throw new Refusal(
+      `--variant "${spec}": use model[:effort[:persona]], the effort being one of ${EffortLevel.options.join(", ")}`,
+    );
+  return {
+    ...(model === "" ? {} : { model }),
+    ...(level.success ? { effort: level.data } : {}),
+    ...(persona === "" ? {} : { persona: { id: persona } }),
+  };
+}
+
+/** The variants of `card start-arena`: the daemon takes 2 to 4, and nothing is sent for any other count. */
+export function variantsOf(specs: string[] | undefined) {
+  const given = specs ?? [];
+  if (given.length < 2 || given.length > 4)
+    throw new Refusal(`card start-arena needs 2 to 4 --variant, got ${given.length}`);
+  return given.map(variantOf);
+}
+
+function variantLine(v: ArenaVariant): string[] {
+  const added = v.files.reduce((sum, file) => sum + file.additions, 0);
+  const removed = v.files.reduce((sum, file) => sum + file.deletions, 0);
+  const files = `${v.files.length} ${plural(v.files.length, "file", "files")} +${added} -${removed}`;
+  const parts = [
+    v.id,
+    v.label,
+    v.column,
+    [v.model ?? "default model", v.effort].filter(Boolean).join(" "),
+    ...(v.persona ? [`persona ${v.persona}`] : []),
+    ...(v.queued ? ["queued"] : v.sessionStatus ? [v.sessionStatus] : []),
+    ...(v.costUsd === null ? [] : [`$${v.costUsd.toFixed(2)}`]),
+    ...(v.files.length > 0 ? [files] : []),
+  ];
+  return [parts.join("  "), ...(v.notice ? [`  notice: ${v.notice}`] : [])];
+}
+
+/** An arena as text: its variants side by side, one line each, so a person or a script can compare them. */
+export function arenaLines(arena: Arena, started = false): string[] {
+  const count = `${arena.variants.length} ${plural(arena.variants.length, "variant", "variants")}`;
+  return [
+    `${started ? "started the arena" : "arena"} of ${arena.cardId}: ${count}`,
+    ...arena.variants.flatMap(variantLine),
+  ];
+}
+
+/** What a check loop is after the command: the switch, and the cap on rounds if the card has one. */
+export function loopLine(id: string, on: boolean, rounds: number | null | undefined): string {
+  const cap = on && rounds ? ` (up to ${rounds} ${plural(rounds, "round", "rounds")})` : "";
+  return `check loop of ${id}: ${on ? "on" : "off"}${cap}`;
+}
+
 /** What a write that got no answer may have done. */
 export const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
   "pr-create":
@@ -287,4 +356,12 @@ export const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
     "; the review may or may not have been done, and the card may have moved: check with `card show` before trying again",
   message:
     "; the message may or may not have been sent: check with `card show` before trying again",
+  "start-arena":
+    "; the arena may or may not have been started: check with `card arena` before trying again",
+  "choose-variant":
+    "; the variant may or may not have been chosen: check with `card arena` before trying again",
+  "check-loop":
+    "; the loop may or may not have been switched: check with `card show` before trying again",
+  "dismiss-unblocked":
+    "; the mark may or may not have been dismissed: check with `card show` before trying again",
 };
