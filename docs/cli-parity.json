@@ -114,6 +114,9 @@
   "card.pr.create": {
     "cli": "card"
   },
+  "card.pr.head": {
+    "appOnly": "the app reads the head commit it then signs for a merge, which a terminal cannot sign (#3453)"
+  },
   "card.pr.merge": {
     "appOnly": "merging a pull request takes the person's proof, which a terminal cannot give (#3453)"
   },

@@ -30,10 +30,10 @@ import type { Platform } from "../../platform/types.ts";
 import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./add-text.ts";
 
 /** The payload of a guarded merge, or the person's no (#3453). */
-export type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
+type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
 
 /** `card.pr.merge`'s payload: the head binding and the proof are there only for a host that checks them. */
-export interface MergeBody {
+interface MergeBody {
   cardId: string;
   method: "merge" | "squash";
   confirm: boolean;
