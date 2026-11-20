@@ -16,12 +16,34 @@ export interface RequestRow {
 }
 
 export function requestRows(
-  _summaries: ReadonlyArray<SessionEventOf<"session.summary">>,
-  _sessionId?: string,
+  summaries: ReadonlyArray<SessionEventOf<"session.summary">>,
+  sessionId?: string,
 ): RequestRow[] {
-  return [];
+  const rows = summaries
+    .filter((s) => sessionId === undefined || s.sessionId === sessionId)
+    .flatMap((s) =>
+      s.pendingPermissions.map((p) => ({
+        id: p.requestId,
+        sessionId: s.sessionId,
+        session: s.name,
+        tool: p.toolName,
+        risk: p.risk ?? null,
+        riskReason: p.riskReason ?? null,
+        createdAt: p.createdAt,
+        input: p.input ?? null,
+      })),
+    );
+  // The queue of the whole host, as the person would answer it: the one that waited longest first.
+  return rows.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
 }
 
-export function requestLine(_row: RequestRow): string {
-  return "";
+/** What the request asks is cut here: the line says which request it is, the app shows the rest. */
+const ASKS_MAX = 120;
+
+export function requestLine(row: RequestRow): string {
+  const asks = row.input ? JSON.stringify(row.input) : "";
+  const shown = asks.length > ASKS_MAX ? `${asks.slice(0, ASKS_MAX)}…` : asks;
+  return [row.id, row.session ?? row.sessionId, row.risk ?? "unknown", row.tool, shown]
+    .join("  ")
+    .trimEnd();
 }
