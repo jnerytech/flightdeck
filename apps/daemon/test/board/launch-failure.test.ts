@@ -53,6 +53,22 @@ describe("a card run that fails to launch (#3404)", () => {
     expect(logs).toEqual([expect.stringContaining("recording went wrong")]);
   });
 
+  test("when recording the failure throws, the card's slot still goes to the next card", async () => {
+    const ctx = newBoard({ maxParallelRuns: 1, log: () => {} });
+    boards.push(ctx.board);
+    const { board } = ctx;
+    const project = await board.addProject({ path: ctx.repo, setupScript: "exit 3" });
+    const first = board.createCard(project.id, { title: "Primeiro", description: "d" });
+    const second = board.createCard(project.id, { title: "Segundo", description: "d" });
+    board.workflows.fail = () => {
+      throw new Error("recording went wrong");
+    };
+    await board.startCard(first.id);
+    await board.startCard(second.id);
+    const started = await cardWhen(board, second.id, (c) => c.queueReason === null);
+    expect(started?.queueReason).toBeNull();
+  });
+
   test("a repository with no commit says so on the card, not git's own error", async () => {
     const ctx = newBoard();
     boards.push(ctx.board);
