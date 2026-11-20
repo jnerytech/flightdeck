@@ -1,30 +1,30 @@
 import type { Language } from "./domain/language.ts";
 import type { PersonaDef } from "./domain/model.ts";
 import { parsePersona } from "./domain/model.ts";
-import enArquiteto from "./pack/en/arquiteto.md" with { type: "text" };
-import enCoordenador from "./pack/en/coordenador.md" with { type: "text" };
+import enArchitect from "./pack/en/architect.md" with { type: "text" };
+import enCoordinator from "./pack/en/coordinator.md" with { type: "text" };
 import enDba from "./pack/en/dba.md" with { type: "text" };
 import enDev from "./pack/en/dev.md" with { type: "text" };
 import enDocs from "./pack/en/docs.md" with { type: "text" };
 import enFrontend from "./pack/en/frontend.md" with { type: "text" };
 import enPerformance from "./pack/en/performance.md" with { type: "text" };
 import enQa from "./pack/en/qa.md" with { type: "text" };
-import enRevisor from "./pack/en/revisor.md" with { type: "text" };
-import enSeguranca from "./pack/en/seguranca.md" with { type: "text" };
+import enReviewer from "./pack/en/reviewer.md" with { type: "text" };
+import enSecurity from "./pack/en/security.md" with { type: "text" };
 import enSpecifier from "./pack/en/specifier.md" with { type: "text" };
 import enSre from "./pack/en/sre.md" with { type: "text" };
 import enUi from "./pack/en/ui.md" with { type: "text" };
 import enUx from "./pack/en/ux.md" with { type: "text" };
-import ptArquiteto from "./pack/pt-BR/arquiteto.md" with { type: "text" };
-import ptCoordenador from "./pack/pt-BR/coordenador.md" with { type: "text" };
+import ptArchitect from "./pack/pt-BR/architect.md" with { type: "text" };
+import ptCoordinator from "./pack/pt-BR/coordinator.md" with { type: "text" };
 import ptDba from "./pack/pt-BR/dba.md" with { type: "text" };
 import ptDev from "./pack/pt-BR/dev.md" with { type: "text" };
 import ptDocs from "./pack/pt-BR/docs.md" with { type: "text" };
 import ptFrontend from "./pack/pt-BR/frontend.md" with { type: "text" };
 import ptPerformance from "./pack/pt-BR/performance.md" with { type: "text" };
 import ptQa from "./pack/pt-BR/qa.md" with { type: "text" };
-import ptRevisor from "./pack/pt-BR/revisor.md" with { type: "text" };
-import ptSeguranca from "./pack/pt-BR/seguranca.md" with { type: "text" };
+import ptReviewer from "./pack/pt-BR/reviewer.md" with { type: "text" };
+import ptSecurity from "./pack/pt-BR/security.md" with { type: "text" };
 import ptSpecifier from "./pack/pt-BR/specifier.md" with { type: "text" };
 import ptSre from "./pack/pt-BR/sre.md" with { type: "text" };
 import ptUi from "./pack/pt-BR/ui.md" with { type: "text" };
@@ -36,35 +36,35 @@ import ptUx from "./pack/pt-BR/ux.md" with { type: "text" };
  */
 const SOURCES: Record<Language, string[]> = {
   "pt-BR": [
-    ptArquiteto,
-    ptSeguranca,
+    ptArchitect,
+    ptSecurity,
     ptQa,
     ptSre,
     ptPerformance,
-    ptRevisor,
+    ptReviewer,
     ptDocs,
     ptSpecifier,
     ptFrontend,
     ptUx,
     ptUi,
     ptDba,
-    ptCoordenador,
+    ptCoordinator,
     ptDev,
   ],
   en: [
-    enArquiteto,
-    enSeguranca,
+    enArchitect,
+    enSecurity,
     enQa,
     enSre,
     enPerformance,
-    enRevisor,
+    enReviewer,
     enDocs,
     enSpecifier,
     enFrontend,
     enUx,
     enUi,
     enDba,
-    enCoordenador,
+    enCoordinator,
     enDev,
   ],
 };
