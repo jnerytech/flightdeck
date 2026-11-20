@@ -6,6 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
+import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
@@ -297,6 +298,24 @@ const HANDLERS: Record<string, Handler> = {
       if (next && !next.startsWith("--")) args.teamSpec = reader.next();
     }
   },
+  budget: (args, reader) => {
+    args.command = "budget";
+    const action = subAction(
+      reader,
+      ["list", "set", "set-quota", "remove"],
+      "invalid budget action",
+    );
+    args.action = action;
+    if (action === "remove") {
+      // An --id given before the verb names a second budget.
+      if (args.budgetId !== undefined)
+        throw new Error(
+          `--id: this flag only applies to flightdeckd budget set and set-quota\n${USAGE}`,
+        );
+      args.budgetId = operand(reader, "the budget");
+      if (args.budgetId.trim() === "") throw new Error(`missing the budget\n${USAGE}`);
+    }
+  },
   quota: (args, reader) => {
     args.command = "quota";
     const action = subAction(reader, ["get", "history", "pause-at"], "invalid quota action");
@@ -558,6 +577,7 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--limit: a whole number from 1 to 1000, got ${v}\n${USAGE}`);
     args.limit = n;
   }),
+  ...BUDGET_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -646,6 +666,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "persona",
       "quota",
       "usage",
+      "budget",
       "costs",
       "roi",
       "host",
@@ -661,7 +682,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -737,6 +758,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
   if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
+  takeBudgetAction(args);
   const fault =
     personaProblem(args) ??
     teamProblem(args) ??
@@ -744,6 +766,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     historyProblem(args) ??
     vaultProblem(args) ??
     quotaProblem(args) ??
+    budgetProblem(args) ??
     rulesProblem(args) ??
     approversProblem(args) ??
     costsProblem(args);

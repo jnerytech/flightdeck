@@ -34,6 +34,7 @@ export interface CliArgs {
     | "board"
     | "quota"
     | "usage"
+    | "budget"
     | "costs"
     | "roi"
     | "host"
@@ -98,6 +99,8 @@ export interface CliArgs {
     | "remove-member"
     | "history"
     | "pause-at"
+    | "set"
+    | "set-quota"
     | "summary"
     | "session"
     | "card"
@@ -148,6 +151,13 @@ export interface CliArgs {
   quotaWindow?: string;
   quotaPauseAt?: number | null;
   hours?: number;
+  /** `budget set|set-quota` and `budget remove <id>` (#3460); `--scope` and `--project` are the shared flags. */
+  budgetId?: string;
+  budgetPeriod?: "day" | "month";
+  budgetWindow?: "five_hour" | "seven_day";
+  limitUsd?: number;
+  limitPct?: number;
+  budgetAction?: "notify" | "queue";
   /** `costs session|card|run <id>`: the Claude session, card or run id. */
   costsId?: string;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
