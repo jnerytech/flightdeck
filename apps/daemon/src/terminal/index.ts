@@ -4,5 +4,5 @@
  * `wiring.ts`. Another domain imports from here, never a file inside.
  */
 
-export { runTerminalCli } from "./terminal-cli.ts";
+export { runTerminalCli, type TerminalCliArgs } from "./terminal-cli.ts";
 export type { TerminalManager, TerminalSink } from "./terminal-manager.ts";
