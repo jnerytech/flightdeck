@@ -11,7 +11,15 @@ import {
   type ApprovalStatus,
   heardText,
   heardTone,
+  type UncheckedCommand,
 } from "./store.ts";
+
+/** The notice for each command a host does not guard. */
+const UNCHECKED_TEXT = {
+  merge: "approvalDevices.commandsUnchecked",
+  trust: "approvalDevices.trustUnchecked",
+  bypass: "approvalDevices.bypassUnchecked",
+} as const satisfies Record<UncheckedCommand, string>;
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
 
@@ -178,11 +186,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       {!status.protectionOff &&
         store.approval.uncheckedCommands(host.id).map((command) => (
           <InlineNotice key={command} tone="warn">
-            {t(
-              command === "merge"
-                ? "approvalDevices.commandsUnchecked"
-                : "approvalDevices.trustUnchecked",
-            )}
+            {t(UNCHECKED_TEXT[command])}
           </InlineNotice>
         ))}
       {status.keys.length > 0 && (

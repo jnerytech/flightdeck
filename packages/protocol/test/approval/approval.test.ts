@@ -282,7 +282,7 @@ describe("command-approve: a device signs the command and a hash of what it carr
     );
   });
 
-  test("Given each command, Then only the three that move code or trust need a proof, and a trust set fails closed", () => {
+  test("Given each command, Then only those that move code or trust need a proof, and a trust set fails closed", () => {
     expect([
       commandNeedsProof("card.pr.merge", { cardId: "c" }),
       commandNeedsProof("autoapprove.resume", {}),
@@ -293,12 +293,45 @@ describe("command-approve: a device signs the command and a hash of what it carr
     ]).toEqual([true, true, true, true, false, false]);
   });
 
-  test("Given a challenge for a command, Then it names one of the three; any other is refused", () => {
+  test("Given a bypass switch (#3507), Then only the narrowing value is open: a missing or odd allow is gated", () => {
+    expect([
+      commandNeedsProof("host.bypass", { allow: true, confirm: true }),
+      commandNeedsProof("host.bypass", { allow: false }),
+      commandNeedsProof("host.bypass", {}),
+      commandNeedsProof("host.bypass", { allow: "false" }),
+      commandNeedsProof("host.bypass", { allow: 0 }),
+      commandNeedsProof("host.bypass", null),
+    ]).toEqual([true, false, true, true, true, true]);
+  });
+
+  test("Given a bypass switch with a proof, Then the payload keeps it; a proof that lacks its signature is refused", () => {
+    const proof = { keyId: "k1", nonce: "n1", signature: "sig" };
+    const parse = (payload: unknown) =>
+      Command.safeParse({ id: "1", type: "host.bypass", payload });
+    const parsed = parse({ allow: true, confirm: true, proof });
+    expect(
+      parsed.success && "proof" in parsed.data.payload ? parsed.data.payload.proof : null,
+    ).toEqual(proof);
+    expect(parse({ allow: true, confirm: true, proof: { keyId: "k1", nonce: "n1" } }).success).toBe(
+      false,
+    );
+  });
+
+  test("Given the bypass payload the Rust crate also reads, Then its digest and hash are the shared literals", () => {
+    const digest = commandDigest({ confirm: true, allow: true });
+    expect(digest).toBe('{"allow":true,"confirm":true}');
+    expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(
+      "2ce79890e0ec3a64a198f2d1f21fab775c0f33e6bbccb797ed642ba413136f67",
+    );
+  });
+
+  test("Given a challenge for a command, Then it names a command of the gate; any other is refused", () => {
     expect([
       challenge({ purpose: "command", command: "card.pr.merge" }),
       challenge({ purpose: "command", command: "autoapprove.resume" }),
+      challenge({ purpose: "command", command: "host.bypass" }),
       challenge({ purpose: "command", command: "session.start" }),
       challenge({ purpose: "command" }),
-    ]).toEqual([true, true, false, false]);
+    ]).toEqual([true, true, true, false, false]);
   });
 });

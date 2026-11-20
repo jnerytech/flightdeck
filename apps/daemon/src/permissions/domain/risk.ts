@@ -296,6 +296,14 @@ const repricesTheCosts = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "costs", ["reprice"]);
 
 /**
+ * `session close` ends a session of the daemon (#3514): the app asks a person to confirm it, it drops
+ * the queued messages and the open permission requests, and a team coordinator is closed with none of
+ * the guards `team remove-member` has. The other session verbs undo or repeat with one more command.
+ */
+const endsASession = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "session", ["close"]);
+
+/**
  * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
  * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
  * session that got third-party content. `--confirm` is only a flag the caller types.
@@ -376,6 +384,11 @@ const DANGEROUS: Array<{
     when: startsATeam,
     reason: () =>
       "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member, remove-member, pause, resume, close or message)",
+  },
+  {
+    when: endsASession,
+    reason: () =>
+      "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
   },
   {
     when: movesTheQuotaGuard,

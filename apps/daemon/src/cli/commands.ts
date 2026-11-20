@@ -8,6 +8,7 @@ import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
 import type { PluginsCliArgs } from "../plugins/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
+import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import type { VaultCliArgs } from "../vault/index.ts";
 import { configPath } from "./config-path.ts";
@@ -637,8 +638,10 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     return asking(args, deps, (config, remote) =>
       runSessionCli(
         {
-          action: args.action as "interrupted" | "summary" | "files",
+          action: args.action as SessionCliArgs["action"],
           ...(args.sessionRef === undefined ? {} : { session: args.sessionRef }),
+          ...(args.sessionValue === undefined ? {} : { value: args.sessionValue }),
+          ...(args.sessionMeta === undefined ? {} : { meta: args.sessionMeta }),
           ...(args.json ? { json: true } : {}),
         },
         config,
