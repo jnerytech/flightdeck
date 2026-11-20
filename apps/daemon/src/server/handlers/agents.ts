@@ -127,10 +127,13 @@ export const agentsHandlers = {
     return await server.needIn("agentSetup", "plugins").pin(payload.plugin, payload.pinned);
   },
   "plugins.marketplaceAdd": async (payload, { server }) => {
-    const { confirm, ...input } = payload;
+    const { confirm, proof: _proof, ...input } = payload;
+    // The proof is checked once the request confirms (see `Plugins.marketplaceAdd`), over the request as sent (#3516).
     return await server
       .needIn("agentSetup", "plugins")
-      .marketplaceAdd({ ...input, confirm: confirm === true });
+      .marketplaceAdd({ ...input, confirm: confirm === true }, () => {
+        server.opts.approvers?.requireCommandProof("plugins.marketplaceAdd", payload, ["confirm"]);
+      });
   },
   "plugins.marketplaceRemove": async (payload, { server }) => {
     const { confirm, ...input } = payload;

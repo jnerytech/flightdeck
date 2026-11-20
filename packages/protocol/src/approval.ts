@@ -48,6 +48,7 @@ export const PROOF_COMMANDS = [
   "project.harness.apply",
   "plugins.install",
   "plugins.update",
+  "plugins.marketplaceAdd",
 ] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
 
