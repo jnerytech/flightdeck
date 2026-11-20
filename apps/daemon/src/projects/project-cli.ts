@@ -63,7 +63,13 @@ export function runProjectCli(
           const answer = await daemon.call("project.detectProvider", { projectId: found.id });
           return args.json ? json(answer) : said(...detectLines(found.name, answer));
         }
-        const answer = await daemon.call("project.update", { projectId: found.id, ...args.fields });
+        // The daemon fills a missing model or low-risk rule of the patch with its default, so the
+        // project's own values go along with the switch.
+        const current = projects.find((p) => p.id === found.id)?.autoApprove;
+        const fields = args.fields.autoApprove
+          ? { ...args.fields, autoApprove: { ...current, ...args.fields.autoApprove } }
+          : args.fields;
+        const answer = await daemon.call("project.update", { projectId: found.id, ...fields });
         return args.json ? json(answer) : said(...projectLines("updated", answer, args.fields));
       }
       if (args.action === "harness-draft") {
