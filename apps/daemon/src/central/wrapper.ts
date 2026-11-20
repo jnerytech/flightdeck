@@ -85,6 +85,8 @@ export interface RunClaudeOptions {
   timeoutMs: number;
   /** The platform claude runs on; the process's when absent. Injected in tests. */
   platform?: NodeJS.Platform;
+  /** Whether the config file existed before this launch: a file it had to create is not a host's choice. */
+  configExisted?: boolean;
   /** Whether the process runs as root, where claude refuses bypass; the process's when absent. Injected in tests. */
   root?: boolean;
   /** Runs `icacls` for the folder that holds the channel config on Windows; the real one when absent. */
@@ -358,7 +360,9 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     );
     // The host's default mode (#3427); a persona's `plan` or the person's own mode (both in `given`) wins.
     const bypass = bypassArgs({
-      allowed: opts.config.allowBypassPermissions,
+      // A terminal whose FLIGHTDECK_CONFIG points at nothing would read a fresh default, not its host's switch.
+      allowed: opts.config.allowBypassPermissions && opts.configExisted !== false,
+      personaMode: persona?.persona.permissionMode ?? null,
       byDefault: opts.config.defaultPermissionMode,
       given: [...added, ...args],
       root: opts.root ?? process.getuid?.() === 0,

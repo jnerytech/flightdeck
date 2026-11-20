@@ -95,6 +95,7 @@ export function bypassArgs(opts: {
 }): { args: string[]; notice: string | null } {
   const none = { args: [], notice: null };
   if (!opts.allowed || opts.byDefault !== "bypassPermissions") return none;
+  if (opts.personaMode && opts.personaMode !== "bypassPermissions") return none;
   if (
     passed(opts.given, "--permission-mode") ||
     passed(opts.given, "--dangerously-skip-permissions")
