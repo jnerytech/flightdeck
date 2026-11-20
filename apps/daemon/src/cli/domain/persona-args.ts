@@ -61,8 +61,8 @@ export function personaProblem(args: PersonaArgs): string | undefined {
     if (value === undefined) continue;
     // `team new --name` is the team's name, checked by `teamProblem`.
     if (flag === "--name" && args.command === "team") continue;
-    // `costs summary|export --model` filters by model: checked by `costsProblem`.
-    if (flag === "--model" && args.command === "costs") continue;
+    // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
+    if (flag === "--model" && (args.command === "costs" || args.command === "roi")) continue;
     if (args.command !== "persona" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}`;
   }

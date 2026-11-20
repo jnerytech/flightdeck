@@ -43,7 +43,7 @@ export function costsProblem(args: CostsArgs): string | undefined {
   const filters = costs && (args.action === "summary" || args.action === "export");
   if (args.origin !== undefined && !filters)
     return "--origin: this flag only applies to flightdeckd costs summary and export";
-  if (args.model !== undefined && costs && !filters)
+  if (args.model !== undefined && (costs || args.command === "roi") && !filters)
     return "--model: this flag only applies to flightdeckd costs summary and export";
   if (costs && !filters && args.project !== undefined)
     return "--project: this flag only applies to flightdeckd costs summary and export";
@@ -52,6 +52,7 @@ export function costsProblem(args: CostsArgs): string | undefined {
     return "missing --from and --to: the first and the last day, as YYYY-MM-DD";
   if (!isDay(args.from)) return "--from needs a day as YYYY-MM-DD";
   if (!isDay(args.dateTo)) return "--to needs a day as YYYY-MM-DD";
+  if (args.from > args.dateTo) return "--from is after --to";
   if (args.origin !== undefined && !ORIGINS.includes(args.origin))
     return `--origin: ${ORIGINS.join(", ")}`;
   return undefined;
