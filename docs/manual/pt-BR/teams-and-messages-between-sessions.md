@@ -141,6 +141,10 @@ flightdeckd team update <time> [--goal <texto>] [--check <comando>... | --clear-
 flightdeckd team add-member <time> [<spec>] [--confirm] [--json]
 flightdeckd team remove-member <time> <membro> --confirm [--json]
 flightdeckd team delete <time> --confirm [--json]
+flightdeckd team pause <time> [--json]
+flightdeckd team resume <time> [--json]
+flightdeckd team close <time> --confirm [--json]
+flightdeckd team message <time> <texto> [--json]
 ```
 
 - `list` imprime uma linha por time: id, nome, estado (`active`, `paused by user`, `paused by quota`
@@ -172,8 +176,17 @@ flightdeckd team delete <time> --confirm [--json]
   endereço, sessão ou card; ele para a sessão do membro e avisa o worker, então precisa de `--confirm`, como o app
   pergunta antes. O coordenador não pode ser
   removido. `delete` remove um time fechado, sem membro ativo, e precisa de `--confirm`: é para
-  sempre. O `team update`, `delete`, `add-member` ou `remove-member` de uma sessão conta como risco alto,
-  como o `new`. Uma mudança sem resposta diz isso, e o `team show` mostra o que ela fez.
+  sempre. O `team update`, `delete`, `add-member`, `remove-member`, `pause`, `resume`, `close` ou
+  `message` de uma sessão conta como risco alto, como o `new`. Uma mudança sem resposta diz isso, e o
+  `team show` mostra o que ela fez.
+- `pause` impede o time de começar trabalho novo e avisa os membros; `resume` deixa seguir. `close`
+  encerra o time e avisa os membros, e precisa de `--confirm`, como o app pergunta antes. Os três
+  imprimem o time como ele está agora, e um time desconhecido ou fechado é recusado.
+- `message` manda um texto (entre aspas, como um só argumento) a todo membro de um time aberto que tem
+  sessão, como um aviso do Flightdeck, e diz quantos receberam e quantos recusaram. É outro jeito de
+  falar com o time além do `flightdeckd message send`, que escreve a uma sessão como ela mesma. A meta, o
+  relato e o fluxo ao vivo das mudanças do time ficam no app: o coordenador relata como ele mesmo, e o
+  `team show` lê o estado quando você pede.
 - `--json` imprime a resposta do próprio daemon, para um script. O texto que uma sessão escreveu (um
   relato, um nome) aparece como texto simples, sem caracteres de controle.
 - **Códigos de saída:** 0 feito, 1 recusado (um time ou projeto desconhecido; o motivo vai para o

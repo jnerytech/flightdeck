@@ -51,6 +51,9 @@ export function changedLines(team: TeamInfo, action: TeamCliArgs["action"]): str
     delete: "deleted",
     "add-member": "member added to",
     "remove-member": "member removed from",
+    pause: "paused",
+    resume: "resumed",
+    close: "closed",
   } as Record<string, string>;
   return [
     `${done[action] ?? action} ${teamLine(team)}`,
@@ -60,7 +63,15 @@ export function changedLines(team: TeamInfo, action: TeamCliArgs["action"]): str
 }
 
 /** What a change that got no answer may have done. */
-export const UNSURE_CHANGE: Record<"update" | "delete" | "add-member" | "remove-member", string> = {
+export const UNSURE_CHANGE: Record<
+  Exclude<TeamCliArgs["action"], "list" | "show" | "new">,
+  string
+> = {
+  pause: "; the team may or may not have been paused: check with `team show` before trying again",
+  resume: "; the team may or may not have been resumed: check with `team show` before trying again",
+  close: "; the team may or may not have been closed: check with `team show` before trying again",
+  message:
+    "; the message may or may not have been delivered: check the members with `team show` before sending it again",
   update: "; the team may or may not have been applied: check with `team show` before trying again",
   delete: "; the team may or may not have been deleted: check with `team list` before trying again",
   "add-member":
