@@ -4,6 +4,11 @@ const MAX = 160;
 /** How much of a recap field is read: the daemon cuts them at 480, but the protocol does not (a host may send more). */
 const READ = 2000;
 
+/** The whole text of the folded line, before it is cut: what a person reads in a tooltip. */
+export function recapFull(_recap: SessionRecap): string {
+  return "";
+}
+
 /**
  * The one line a folded summary shows: what was done, else what was asked, as plain text (no
  * markdown marks, no line breaks), cut with an ellipsis when it is long.
