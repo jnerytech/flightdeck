@@ -3,7 +3,13 @@
  * version, the system, the features) from a terminal or a script. It asks `host.info` like the app
  * does, with the token of the config. Exit codes: 0 done, 1 refused, 2 no daemon.
  */
-import { type CliResult, json, runOnLocalDaemon, said } from "../daemon-client/index.ts";
+import {
+  type CliResult,
+  json,
+  type RemoteTarget,
+  runOnLocalDaemon,
+  said,
+} from "../daemon-client/index.ts";
 
 export interface HostCliArgs {
   /** `--json`: one small object, for a script. */
@@ -13,6 +19,8 @@ export interface HostCliArgs {
 export interface HostCliOptions {
   /** How long the daemon has to answer before the command gives up (exit 2). */
   timeoutMs?: number;
+  /** A paired host to ask instead of this machine's daemon (`--host`, #3429); the config is not used then. */
+  remote?: RemoteTarget;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -26,6 +34,7 @@ export function runHostCli(
   return runOnLocalDaemon({
     config,
     clientName: "flightdeck-host",
+    ...(options.remote ? { remote: options.remote } : {}),
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     perform: async (daemon) => {
       const info = await daemon.call("host.info", {});

@@ -26,6 +26,13 @@ export class DaemonUnreachable extends Error {
   }
 }
 
+/** The socket closed under a call; `code` is the close code the daemon gave (4401: it refused the token). */
+export class ConnectionClosed extends Error {
+  constructor(readonly code: number) {
+    super("connection closed");
+  }
+}
+
 /**
  * The daemon answered and refused. The message is `<code>: <text>`, as it always was; the parts are
  * kept so a command can word the refusals it knows (issue #3425).
@@ -53,8 +60,8 @@ export class DaemonClient {
       if (frame.type === "ping") ws.send(JSON.stringify({ type: "pong", id: frame.id }));
       if (frame.type === "ack") this.acks.get(frame.id)?.ok(frame);
     });
-    ws.addEventListener("close", () => {
-      for (const pending of this.acks.values()) pending.fail(new Error("connection closed"));
+    ws.addEventListener("close", (event) => {
+      for (const pending of this.acks.values()) pending.fail(new ConnectionClosed(event.code));
       this.acks.clear();
     });
   }
