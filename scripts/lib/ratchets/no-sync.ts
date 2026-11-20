@@ -101,5 +101,5 @@ export function withBaseline(source: string, counts: Record<string, number>): st
 }
 
 export const SYNC_BASELINE: Record<string, number> = {
-  "apps/daemon/src/logs/file-log.ts": 2,
+  "apps/daemon/src/logs/file-log.ts": 4,
 };

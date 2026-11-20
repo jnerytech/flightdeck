@@ -1,4 +1,4 @@
-import { appendFileSync, constants, lstatSync } from "node:fs";
+import { appendFileSync, closeSync, constants, lstatSync, openSync } from "node:fs";
 import { lstat, mkdir, open, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { type SecretScanner, scrubHome } from "@flightdeck/protocol";
@@ -70,10 +70,16 @@ export class FileLog {
     if (line === null) return;
     try {
       if (lstatSync(this.path(), { throwIfNoEntry: false })?.isSymbolicLink()) return;
-      appendFileSync(this.path(), line, {
-        flag: constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | NO_FOLLOW,
-        mode: 0o600,
-      });
+      const fd = openSync(
+        this.path(),
+        constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | NO_FOLLOW,
+        0o600,
+      );
+      try {
+        appendFileSync(fd, line);
+      } finally {
+        closeSync(fd);
+      }
     } catch {
       // A log that cannot be written is not worth stopping for.
     }
