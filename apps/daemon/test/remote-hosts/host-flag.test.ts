@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { parseArgs } from "../../src/main.ts";
-import { CLOSE, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { CLOSE, fakeDaemon, REVOKE, stopAll } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
 import { machine, me, type Setup, TOKEN } from "./machine.ts";
 
@@ -238,16 +238,47 @@ describe.skipIf(me === null)(
       expect(text).not.toContain(TOKEN);
     });
 
-    test("--token and --config are refused on the four new commands too", async () => {
-      for (const argv of [
-        ["requests", "--host", "server", "--token", "abc"],
-        ["send", "api", "hi", "--host", "server", "--token", "abc"],
-        ["approve", "r1", "--host", "server", "--config", "/etc/other.json"],
-        ["deny", "r1", "--host", "server", "--config", "/etc/other.json"],
-      ]) {
-        const { run } = await onHost(argv, {});
-        expect({ argv, code: run.code }).toEqual({ argv, code: 1 });
+    test("a token revoked after a write was sent is still a refusal, and says the write may have gone out", async () => {
+      const daemon = fakeDaemon({ "permission.respond": () => REVOKE }, TOKEN);
+      const { run, text } = await onHost(["deny", "r1", "--host", "server", "--json"], {}, daemon);
+      expect(run.code).toBe(1);
+      expect(JSON.parse(run.err.join("\n"))).toMatchObject({ reason: "token_refused" });
+      expect(text).toContain("may or may not have been recorded");
+    });
+
+    test("--token and --config are refused on the four new commands too, before anything is sent", async () => {
+      const daemon = fakeDaemon(HANDLERS, TOKEN);
+      for (const [argv, flag] of [
+        [["requests", "--host", "server", "--token", "abc"], "--token"],
+        [["send", "api", "hi", "--host", "server", "--token", "abc"], "--token"],
+        [["approve", "r1", "--host", "server", "--config", "/etc/other.json"], "--config"],
+        [["deny", "r1", "--host", "server", "--config", "/etc/other.json"], "--config"],
+      ] as const) {
+        const { run } = await onHost([...argv], {}, daemon);
+        expect({ argv, code: run.code, names: run.err.join(" ").includes(flag) }).toEqual({
+          argv,
+          code: 1,
+          names: true,
+        });
       }
+      expect(daemon.calls).toEqual([]);
+    });
+
+    test("a refusal of that host's daemon is exit 1 with its own words: a closed request, an unknown session", async () => {
+      const closed = {
+        error: {
+          code: "not_found",
+          message: "request r9 is not open",
+          reason: "permission_request_closed",
+        },
+      };
+      const daemon = fakeDaemon({ ...HANDLERS, "permission.respond": () => closed }, TOKEN);
+      const approve = await onHost(["approve", "r9", "--host", "server"], {}, daemon);
+      const send = await onHost(["send", "nobody", "hi", "--host", "server"], {}, daemon);
+      expect([approve.run.code, send.run.code]).toEqual([1, 1]);
+      expect(send.text).toContain("nobody");
+      expect(daemon.calls.some((c) => c.type === "session.send")).toBe(false);
+      expect(approve.text + send.text).not.toContain(TOKEN);
     });
 
     test("the token is in no output of any path: success, refused, unreachable, unknown, no store, cleartext", async () => {
