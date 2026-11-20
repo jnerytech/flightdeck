@@ -28,6 +28,8 @@ export const approval = {
     trustUnchecked:
       "Este host não pede a confirmação de um dispositivo ao confiar em uma pasta: atualize-o para proteger a confiança.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",
+    resumeUnchecked:
+      "Este host não pede a confirmação de um dispositivo ao reativar a aprovação automática: atualize-o para protegê-la.",
     scope:
       "Isto protege as aprovações feitas pelo app. Quem tem um terminal no host ainda pode zerar.",
     loading: "Lendo os dispositivos do host…",

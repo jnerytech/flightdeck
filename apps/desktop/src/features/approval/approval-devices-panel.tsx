@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import type { Key } from "@/i18n/index.ts";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
@@ -11,6 +12,7 @@ import {
   type ApprovalStatus,
   heardText,
   heardTone,
+  type UncheckedCommand,
 } from "./store.ts";
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
@@ -23,6 +25,13 @@ type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: 
  */
 /** The most announced changes the panel keeps on screen. */
 const MAX_HEARD = 5;
+
+/** What the panel says of a command the host leaves unchecked (#3453). */
+const UNCHECKED_TEXT = {
+  merge: "approvalDevices.commandsUnchecked",
+  trust: "approvalDevices.trustUnchecked",
+  resume: "approvalDevices.resumeUnchecked",
+} as const satisfies Record<UncheckedCommand, Key>;
 
 export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
@@ -178,11 +187,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       {!status.protectionOff &&
         store.approval.uncheckedCommands(host.id).map((command) => (
           <InlineNotice key={command} tone="warn">
-            {t(
-              command === "merge"
-                ? "approvalDevices.commandsUnchecked"
-                : "approvalDevices.trustUnchecked",
-            )}
+            {t(UNCHECKED_TEXT[command])}
           </InlineNotice>
         ))}
       {status.keys.length > 0 && (

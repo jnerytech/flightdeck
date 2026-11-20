@@ -13,6 +13,7 @@ import {
   enrollFirstMessage,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   needsApprovalProof,
@@ -71,6 +72,7 @@ type ResumePayload =
 const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "card.pr.merge": FEATURE_APPROVAL_COMMAND,
   "project.trust.set": FEATURE_APPROVAL_TRUST,
+  "autoapprove.resume": FEATURE_APPROVAL_RESUME,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
@@ -265,6 +267,7 @@ export class ApprovalSlice {
     const unchecked: UncheckedCommand[] = [];
     if (!hasFeature(features, FEATURE_APPROVAL_COMMAND, false)) unchecked.push("merge");
     if (!hasFeature(features, FEATURE_APPROVAL_TRUST, false)) unchecked.push("trust");
+    if (!hasFeature(features, FEATURE_APPROVAL_RESUME, false)) unchecked.push("resume");
     return unchecked;
   }
 
@@ -578,9 +581,18 @@ export class ApprovalSlice {
     };
   }
 
-  /** Stub (#3453): the payload that resumes a session, signed when the host checks it. */
-  async resumePayload(_hostId: string, _sessionKey: string): Promise<ResumePayload> {
-    return { kind: "declined" };
+  /**
+   * The payload that resumes the automatic approver of a session, signed by the device when the host checks
+   * it and a device is enrolled (#3453). `declined`: the person said no in the system's dialog.
+   */
+  async resumePayload(hostId: string, sessionKey: string): Promise<ResumePayload> {
+    const plain = { sessionKey, confirm: true };
+    const proof = await this.proveCommand(hostId, "autoapprove.resume", plain);
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
+    };
   }
 
   /**
