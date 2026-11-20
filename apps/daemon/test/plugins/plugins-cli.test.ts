@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { resolve } from "node:path";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { runPluginsCli } from "../../src/plugins/index.ts";
@@ -91,6 +92,17 @@ describe("flightdeckd plugins list and detail (issue #3516)", () => {
     ]);
     const asJson = await runPluginsCli({ action: "list", json: true }, config(daemon.port));
     expect(asJson.out).toEqual([JSON.stringify(empty, null, 2)]);
+  });
+
+  test("the credentials of a marketplace's URL never reach the terminal", async () => {
+    const marketplaces = [
+      { name: "acme", source: "https://user:tok3n@git.example.com/acme/plugins.git" },
+    ];
+    const daemon = fakeDaemon({
+      "plugins.list": () => ({ installed: [], available: [], marketplaces }),
+    });
+    const result = await runPluginsCli({ action: "list" }, config(daemon.port));
+    expect(result.out).toEqual(["marketplace  acme  https://git.example.com/acme/plugins.git"]);
   });
 
   test("detail sends the plugin and prints what it installs", async () => {
@@ -235,6 +247,24 @@ describe("flightdeckd plugins preview and preview-update (issue #3516)", () => {
     const outside = await runPluginsCli({ action: "preview", dir: "/etc" }, config(daemon.port));
     expect(outside.code).toBe(1);
     expect(text(outside)).toContain("forbidden_cwd: outside the allowed folders");
+  });
+
+  test("a relative folder is read from the shell's folder, not the daemon's", async () => {
+    const daemon = fakeDaemon({
+      "plugins.preview": () => ({ plugin: "mine", inventory: null, hash: null }),
+    });
+    await runPluginsCli({ action: "preview", dir: "./mine" }, config(daemon.port));
+    expect(calls(daemon, "plugins.preview")[0]?.payload).toEqual({ dir: resolve("./mine") });
+  });
+
+  test("a folder read on another host must be an absolute path", () => {
+    expect(parsed(["plugins", "preview", "--dir", "./mine", "--host", "pi"])).toMatchObject({
+      refusedWith: expect.stringContaining("absolute"),
+    });
+    expect(parsed(["plugins", "preview", "--dir", "/srv/mine", "--host", "pi"])).toMatchObject({
+      pluginDir: "/srv/mine",
+      host: "pi",
+    });
   });
 
   test("preview-update prints from, to and what changed, or that nothing did", async () => {

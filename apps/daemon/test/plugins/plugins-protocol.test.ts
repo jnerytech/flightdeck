@@ -157,6 +157,14 @@ describe("plugins: protocolo", () => {
     });
   });
 
+  test("plugins.install of a folder reads only inside the allowed roots too (#3516)", async () => {
+    const { client } = await served(true, [realpathSync.native(tempDir("fd-roots-"))]);
+    const outside = plugin({ ".claude-plugin/plugin.json": MANIFEST });
+    expect(
+      await client.request("plugins.install", { dir: outside, confirmHash: "x" }),
+    ).toMatchObject({ ok: false, error: { code: "forbidden_cwd" } });
+  });
+
   test("plugins.install recusa um hash que não é o mostrado e, com o certo, instala sem -y", async () => {
     const { client, fake, marketplace } = await served();
     expect(
