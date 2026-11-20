@@ -214,18 +214,15 @@ const HOSTKEY_WRITES = ["confirm", "forget"];
  * argument (`fd send fd-qa "ssh hostkey confirm"`, `echo ssh hostkey forget`) is no verb.
  */
 function changesTrustedHostKeys(prog: string, args: string[]): boolean {
-  const spelled = (words: string[]) =>
-    words.some(
-      (w, i) =>
-        w === "ssh" && words[i + 1] === "hostkey" && HOSTKEY_WRITES.includes(words[i + 2] ?? ""),
-    );
-  if (isCliProgram(prog)) {
-    const [command, action, verb] = flightdeckWords(shellArguments(args));
+  const writes = (words: string[]) => {
+    const [command, action, verb] = flightdeckWords(words);
     return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.includes(verb ?? "");
-  }
+  };
+  if (isCliProgram(prog)) return writes(shellArguments(args));
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  return words.some((w) => isCliProgram(program(w))) && spelled(words);
+  // Each CLI program in the text starts its own command: a word of another command is no verb of it.
+  return words.some((w, i) => isCliProgram(program(w)) && writes(words.slice(i + 1)));
 }
 
 /**
