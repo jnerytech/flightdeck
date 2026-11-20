@@ -239,6 +239,12 @@ flightdeckd card update <card> [--title <texto>] [--description <texto>] [--esti
   [--validation-note <texto|none>] [--spec-path <caminho|none>] [--blocked-by <ids|none>] [--json]
 flightdeckd card stop <card> [--json]
 flightdeckd card complete|discard|delete <card> --confirm [--json]
+flightdeckd card diff <card> [--json]
+flightdeckd card spec <card> [--json]
+flightdeckd card review <card> [--language en|pt-BR] [--json]
+flightdeckd card message <card> "<texto>" [--json]
+flightdeckd card templates [--project <nome ou id>] [--json]
+flightdeckd card validation-template <card> [--json]
 ```
 
 - `list` imprime uma linha por card (projeto, id, coluna, título e por que um card espera). Sem
@@ -255,9 +261,22 @@ flightdeckd card complete|discard|delete <card> --confirm [--json]
 - `stop` para a execução do card. `complete`, `discard` e `delete` não têm volta, então cada um exige
   `--confirm`; sem ele o comando sai com 1 e não envia nada. `delete` só remove um card que nunca
   começou (use `discard` para um que começou).
+- `diff` imprime as mudanças do card como o git faz: um cabeçalho por arquivo e depois os trechos. Um
+  arquivo que pode guardar uma credencial, um binário e um grande demais aparecem sem linhas. O texto
+  mostra a tabulação como espaço; `--json` mantém o texto exato. `spec` diz onde está o arquivo de spec
+  do card e se ele foi encontrado.
+- `review` pede a um modelo uma segunda opinião sobre o diff do card, como o botão do app: pode levar
+  alguns minutos (o comando espera até 5), pode mover o card, e uma revisão que falhou sai com 1. Os
+  achados sem uma linha alterada são impressos; os outros viram comentários de revisão no app.
+  `--language` é o idioma dos achados.
+- `message` envia o texto à sessão do card (o mesmo que `flightdeckd send`); se a sessão está
+  trabalhando, o texto entra na fila e é lido depois do turno dela.
+- `templates` lista os modelos de card de um projeto (`.flightdeck/templates/cards.json`), e
+  `validation-template` imprime o formato próprio do projeto para uma nota de validação, ou diz por que
+  ele não foi usado.
 - `--json` imprime a resposta para um script.
 - **Códigos de saída:** 0 feito, 1 recusado (o motivo vai para o stderr, com o código do daemon), 2
-  sem daemon (parado, ou mudo por 15 s).
+  sem daemon (parado, ou mudo por 15 s; 5 minutos no `review`).
 - **O token** vem só do arquivo de config: `--token` é recusado e o ambiente não é lido. Ele nunca
   é impresso. O comando fala só com um daemon no loopback (`127.0.0.1` ou `::1`); um daemon ligado a
   outro endereço é recusado. Como no `flightdeckd mcp`, o token vai para o que estiver escutando

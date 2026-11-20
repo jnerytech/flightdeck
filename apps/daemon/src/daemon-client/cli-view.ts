@@ -26,9 +26,20 @@ export function isLoopbackHost(host: string): boolean {
 export class TimedOut extends Error {}
 
 /** A name or a text comes from the board, an issue, a session or the daemon: it may not drive the terminal or reorder what it reads. */
-const CONTROL =
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching these characters is the point
-  /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u061c\u00ad\ufeff\ufff9-\ufffb]/g;
+const HIDDEN = [
+  "\\u0000-\\u001f", // C0 controls
+  "\\u007f-\\u009f", // DEL and C1 controls
+  "\\u200b-\\u200f", // zero-width and direction marks
+  "\\u2028-\\u202e", // line and paragraph separators, direction embeddings
+  "\\u2060-\\u2064",
+  "\\u2066-\\u206f",
+  "\\u061c\\u00ad\\u034f\\u180e", // Arabic mark, soft hyphen, grapheme joiner, Mongolian separator
+  "\\ufe00-\\ufe0f", // variation selectors
+  "\\ufeff\\ufff9-\\ufffb",
+  "\\u{e0000}-\\u{e007f}", // tag characters
+];
+// Built from a list: a literal class would pair a combining mark with its neighbour (S5868).
+const CONTROL = new RegExp(`[${HIDDEN.join("")}]`, "gu");
 const plain = (text: string) => text.replace(CONTROL, " ");
 
 export const json = (value: unknown): CliResult => ({
