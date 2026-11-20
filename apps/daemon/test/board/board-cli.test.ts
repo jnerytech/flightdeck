@@ -241,6 +241,7 @@ describe("flightdeckd board watch (issue #3454)", () => {
         daemon.push(updated());
         await Bun.sleep(100);
         daemon.dropAll();
+        await Bun.sleep(100); // the close reaches the client before Ctrl-C does
       },
     });
     expect(lines).toEqual(["c1  in_progress  Fix the login"]);
