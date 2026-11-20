@@ -37,13 +37,19 @@ async function listDecisions(args: RulesCliArgs, daemon: DaemonClient): Promise<
     if ("refusal" in chosen) return chosen.refusal;
     projectId = chosen.id;
   }
-  const answer = redactedAnswer(
-    await daemon.call("autoapprove.list", {
-      ...(projectId === undefined ? {} : { projectId }),
-      ...(args.session === undefined ? {} : { sessionKey: args.session }),
-      ...(args.limit === undefined ? {} : { limit: args.limit }),
-    }),
-  );
+  const asked = await daemon.call("autoapprove.list", {
+    ...(projectId === undefined ? {} : { projectId }),
+    ...(args.session === undefined ? {} : { sessionKey: args.session }),
+    ...(args.limit === undefined ? {} : { limit: args.limit }),
+  });
+  // The daemon filters the decisions only; a suspension has no project, so --session is the one narrowing it.
+  const answer = redactedAnswer({
+    ...asked,
+    suspended:
+      args.session === undefined
+        ? asked.suspended
+        : asked.suspended.filter((s) => s.sessionKey === args.session),
+  });
   return args.json ? json(answer) : said(...autoApproveLines(answer));
 }
 

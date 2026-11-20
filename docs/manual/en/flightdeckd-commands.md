@@ -219,12 +219,12 @@ fd autoapprove list --project api --session <key> --limit 20 --json
 These read what guards a project's sessions, as the Security screen does. Neither changes anything.
 
 - **`rules list`:** the permission rules the project allows (`permissions.allow` of its
-  `.claude/settings.local.json`), one per line, as the file holds them. `--project` is the name or the id
+  `.claude/settings.local.json`), one per line, exactly as the file holds them (they are not redacted, so a rule that holds a secret shows it). `--project` is the name or the id
   of the project; a host with one project needs no `--project`. With `--json` it prints the list of rule
   strings. A project with no rules says so, and `--json` prints an empty list.
 - **`autoapprove list`:** first the sessions whose automatic approval is suspended (they got
   third-party content), then the decisions of the automatic approver, newest first: the time, `allow` or
-  `ask`, the risk, the tool, the session key, who decided (`rule` or `ai`) and why. `--project` and
-  `--session` keep one project or one session key; `--limit` reads 1 to 1000 decisions. With `--json` it
+  `ask`, the risk, the tool, the session key, who decided (`rule` or `ai`) and why. `--project` keeps the
+  decisions of one project and `--session` those and the suspension of one session key; `--limit` reads 1 to 1000 decisions. With `--json` it
   prints the daemon's answer, `decisions` and `suspended`. A secret that the approver quoted in a reason
   is cut out.
