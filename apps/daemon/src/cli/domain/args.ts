@@ -14,6 +14,7 @@ export interface CliArgs {
     | "doctor"
     | "service"
     | "history"
+    | "approvers"
     | "hooks"
     | "telemetry"
     | "hook"
@@ -42,6 +43,8 @@ export interface CliArgs {
   action?:
     | ServiceAction
     | "reindex"
+    | "enroll"
+    | "reset"
     | "list"
     | "run"
     | "get"
@@ -71,7 +74,7 @@ export interface CliArgs {
   requestId?: string;
   /** `approve|deny --message`: what the answer tells Claude. */
   answerMessage?: string;
-  /** `approve --hold`: the Approve was held, the proof a high-risk request needs. */
+  /** `approve --hold`: accepted for older scripts; it sends nothing, a high-risk allow is made in the app (#3439). */
   hold?: boolean;
   last?: number;
   /** `message team <team>`. */
@@ -144,6 +147,8 @@ export const USAGE = [
   "     fd pair [--rotate] [--config <file>]",
   "     fd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
   "     fd history reindex [--config <file>]",
+  "     fd approvers enroll [--json] [--config <file>]   (this host's terminal opens the window that enrolls the first device)",
+  "     fd approvers reset [--json] [--config <file>]   (removes every enrolled device)",
   "     fd hooks install|uninstall|status [--config <file>]",
   "     fd telemetry install|uninstall|status [--config <file>]",
   "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
@@ -168,7 +173,7 @@ export const USAGE = [
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
-  "     fd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (--hold: you mean to allow a high-risk request; it is your own assertion)",
+  "     fd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
   "     fd deny <request> [--message <text>] [--json] [--config <file>]",
   "     fd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
   "     fd action list [--project <id>] [--config <file>]",
@@ -370,6 +375,7 @@ const HANDLERS: Record<string, Handler> = {
     "invalid telemetry action",
   ),
   history: withAction("history", ["reindex"], "invalid history action"),
+  approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
   action: withNamedAction(
     "action",
     ["list", "run"],
@@ -563,10 +569,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (
     args.json &&
-    !["card", "host", "sessions", "requests", "send", "approve", "deny"].includes(args.command)
+    !["card", "host", "sessions", "requests", "send", "approve", "deny", "approvers"].includes(
+      args.command,
+    )
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve and deny\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (args.host !== undefined && !["host", "sessions"].includes(args.command))
     throw new Error(`--host: this flag only applies to flightdeckd host and sessions\n${USAGE}`);

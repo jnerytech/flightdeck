@@ -225,6 +225,8 @@ export const HostInfoResult = z.object({
   flightdeckdPath: z.string().nullable().optional(),
   /** Phase 8: the WSL distro this daemon runs in, `null` outside WSL. */
   wslDistro: z.string().nullable().optional(),
+  /** #3439: this daemon's own id, made once at its first start; the device's signature names it (the `approval-proof` feature). */
+  daemonId: z.string().optional(),
   /** Phase 14: the host's terminals: on or off, how many at most, which shell. */
   terminal: TerminalSettings.optional(),
   /** Phase 33: the host's default mode and lock; absent before the phase. */

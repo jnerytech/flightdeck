@@ -14,6 +14,15 @@ export const refusals = {
       "Este host não tem um gerenciador de serviços que inicie o flightdeckd com o computador ({platform}).",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
     hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
+    approval_proof_required:
+      "Este host exige o seu aparelho cadastrado para aprovar este pedido, e a prova faltou ou não conferiu.",
+    approval_challenge_expired: "A aprovação demorou demais: aperte Aprovar de novo.",
+    approval_challenge_busy:
+      "Há aprovações demais esperando neste host: tente de novo em um minuto.",
+    approval_enroll_closed:
+      "Este host não aceita um aparelho novo: abra o cadastro no host com flightdeckd approvers enroll.",
+    approval_last_key:
+      "Este é o último aparelho cadastrado: remova-o no host com flightdeckd approvers reset.",
     input_changed: "Um pedido é aprovado como foi feito: a resposta muda o que ele executa.",
     update_needs_service:
       "O daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>.",

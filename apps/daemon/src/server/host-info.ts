@@ -64,6 +64,8 @@ export async function hostInfo(server: ServerContext, origin: string) {
       runtimes: opts.opencode && [hostRuntime(opts.opencode.info())],
       update,
       autoUpdate: opts.updates?.auto?.status(),
+      // #3439: the id a device signs into every proof, so a proof made for one host fails on another.
+      daemonId: opts.approvers?.daemonId(),
     }),
     ...(opts.fileLog ? logPathFor(opts.fileLog, origin) : {}),
     ...opts.terminal,

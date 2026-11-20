@@ -92,17 +92,17 @@ hand is not listed, but `fd approve` and `fd deny` can still answer it if you kn
 ```sh
 fd approve <request>
 fd approve <request> --message "once only"
-fd approve <request> --hold
 fd deny <request> --message "too broad"
 ```
 
 Answer one open request by its id, as the Approve button and the Deny button do. `--message` is what
 Claude is told with the answer. Prints `allowed <id>` or `denied <id>`; with `--json`, an object
-with `id`, `decision` and, when given, `message` and `held`.
+with `id`, `decision` and, when given, `message`.
 
-A request the daemon rates **high risk** is refused unless you add `--hold` to `approve`. `--hold`
-means you looked at the request and you mean to allow it. It is your own word: the daemon does not
-check it, so an agent that runs `fd approve --hold` decides for itself. A `deny` never needs it.
+A request the daemon rates **high risk**, or an allow that saves a rule, is not for the command line:
+`fd approve` is refused with exit `1` and tells you to approve it in the app. The app signs the answer
+with the key of your device (see `fd approvers`), and a script or an agent has no such key. A `deny`
+never needs it. `--hold` is still accepted so that older scripts keep running, and it does nothing.
 
 A request that is not open (answered already, or never there) is refused with exit `1` and
 `no such request`. If the daemon is cut off before it answers, the exit is `2` and the answer may or
@@ -120,3 +120,29 @@ two sessions share is refused, and the error lists their ids. Prints `sent to <i
 `queued for <id>` when the session is busy and the text waits for its turn to end. With `--json` it
 prints `session` and `queued`. If the daemon is cut off after the text left, the exit is `2` and the
 text may or may not have gone in: look at the session before you send it again.
+
+## fd approvers
+
+```sh
+fd approvers enroll
+fd approvers enroll --json
+fd approvers reset
+```
+
+A high-risk request, or an allow that saves a rule, is approved only with the signed proof of a device
+you enrolled: the app signs the answer with a key that never leaves the device, and the daemon checks
+the signature. These two commands are the only way to start or undo that, and they work from the
+terminal of the host only: no message from the app, a session or a script can open the enrollment or
+remove a key.
+
+- **`enroll`:** prints a one-time code and opens a window of 10 minutes. Type the code into the app's
+  device enrollment screen. The window closes when the first device enrolls, when the
+  10 minutes pass, or after five wrong codes, and each run makes a new code. With `--json` it prints
+  `code` and `expiresAt`. It is refused with exit `1` when a device is enrolled already: add another
+  device from the app on the first one, or run `reset`.
+- **`reset`:** removes every enrolled device and closes the window. The host goes back to how it was
+  before the first device: a high-risk allow needs only the hold of the Approve button. Prints how many
+  devices went; with `--json`, `removed`. The host keeps its identity.
+
+Both read the data folder from the config file and work with the daemon running or stopped. Until a
+device is enrolled, nothing changes for you.

@@ -1,7 +1,7 @@
 /**
  * Issue #3425: `flightdeckd approve|deny <request>`, one answer to one open permission request of the
  * local daemon. It sends what the person said and nothing more: the daemon decides, so a high-risk
- * allow without `--hold` is refused there, and `--hold` is the person's own assertion, not a proof.
+ * allow is refused there. `--hold` is still accepted but sends nothing: a terminal cannot hold a button or sign (#3439).
  * Exit codes: 0 done, 1 refused, 2 no daemon (or no answer: the request may or may not be answered).
  */
 import {
@@ -20,8 +20,6 @@ export interface AnswerCliArgs {
   request: string;
   /** What the answer tells Claude. */
   message?: string;
-  /** `--hold`: the person's own assertion that the Approve was held; a high-risk allow needs it. */
-  hold?: boolean;
   json?: boolean;
 }
 

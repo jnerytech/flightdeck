@@ -4,7 +4,7 @@ import type {
   SessionRuntime,
   SessionSummary,
 } from "@flightdeck/protocol";
-import type { AutoApprover, RiskClassifier } from "../permissions/index.ts";
+import type { ApprovalGate, AutoApprover, RiskClassifier } from "../permissions/index.ts";
 import type { AgentRuntime, QuotaReading } from "../runtime/index.ts";
 import type { EventStore } from "../store/index.ts";
 
@@ -46,6 +46,8 @@ export interface SessionManagerOptions {
   keepAwake?: (session: SessionSummary) => boolean;
   /** Phase 13: the projects' automatic approval. */
   autoApprove?: Pick<AutoApprover, "decide">;
+  /** #3439: the guard of a high-risk allow, which a signed proof of an enrolled device satisfies. */
+  approval?: ApprovalGate;
 }
 
 export interface TurnEdge {

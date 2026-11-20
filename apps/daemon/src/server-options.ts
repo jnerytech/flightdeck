@@ -48,7 +48,7 @@ import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle, Messaging } from "./messaging/index.ts";
 import type { Names } from "./names/index.ts";
-import type { AutoApprover } from "./permissions/index.ts";
+import type { Approvers, AutoApprover } from "./permissions/index.ts";
 import type { OpenSessionPersonas, Personas } from "./personas/index.ts";
 import type { Plugins } from "./plugins/plugins.ts";
 import type { GitRunner, PlatformInfo } from "./projects/index.ts";
@@ -432,6 +432,8 @@ export interface ServerOptions {
   issues?: Issues;
   /** Phase 13: the projects' automatic approval (`autoapprove.*`). */
   autoApprove?: AutoApprover;
+  /** #3439: the devices that sign a high-risk allow (`approval.*`); absent, the hold is the whole guard. */
+  approvers?: Approvers;
   /** What Claude Code's agents are set up with (phases 12, 26 and 33, #1593). */
   agentSetup?: AgentSetupServer;
   /** Phase 12, #1593: the turns' snapshots, the rewind and the fork. */

@@ -11,6 +11,7 @@ export const GATES = {
   account: "account",
   activity: "activity",
   actions: "actions",
+  approvers: "approvalProof",
   autoApprove: "autoApprove",
   automations: "automations",
   bg: "bg",

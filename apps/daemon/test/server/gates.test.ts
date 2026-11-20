@@ -19,6 +19,7 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   account: "account",
   activity: "activity",
   actions: "actions",
+  approvers: "approvalProof",
   autoApprove: "autoApprove",
   automations: "automations",
   bg: "bg",

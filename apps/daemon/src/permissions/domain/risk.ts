@@ -191,20 +191,27 @@ function flightdeckWords(args: string[]): string[] {
 /** The programs that can run the CLI for a session: itself, a runtime or a shell given the text. */
 const RUNNERS = ["bun", "bunx", "npx", "node", "sh", "bash", "zsh", "dash", "pwsh", "powershell"];
 
-/**
- * The person's answer to a permission request is theirs: a session that runs `fd approve --hold` from
- * its own shell, directly or through a runtime or a shell, would answer for them (#3425). This is a
- * heuristic over the command text: the daemon cannot tell who holds the shell.
- */
-function answersARequest(prog: string, args: string[]): boolean {
+/** Whether the command runs `fd`/`flightdeckd` with one of `verbs`, directly or through a runtime or a shell given the text. */
+function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const verbs = ["approve", "deny"];
   if (["fd", "flightdeckd"].includes(prog)) return verbs.includes(flightdeckWords(words)[0] ?? "");
   if (!RUNNERS.includes(prog)) return false;
   const names = words.map((w) => program(w));
   const runsCli = names.some((n) => ["fd", "flightdeckd", "bin.ts"].includes(n));
   return runsCli && words.some((w) => verbs.includes(w));
 }
+
+/**
+ * The person's answer to a permission request is theirs: a session that runs `fd approve --hold` from
+ * its own shell, directly or through a runtime or a shell, would answer for them (#3425). This is a
+ * heuristic over the command text: the daemon cannot tell who holds the shell.
+ */
+const answersARequest = (prog: string, args: string[]) =>
+  runsFlightdeckVerb(prog, args, ["approve", "deny"]);
+
+/** `approvers enroll|reset` decide which devices may approve (#3439): a session must not run them for the person. */
+const changesApprovers = (prog: string, args: string[]) =>
+  runsFlightdeckVerb(prog, args, ["approvers"]);
 
 const CARD_ENDS = ["discard", "complete", "delete"];
 
@@ -262,6 +269,10 @@ const DANGEROUS: Array<{
   {
     when: answersARequest,
     reason: () => "answers a permission request (flightdeckd approve or deny)",
+  },
+  {
+    when: changesApprovers,
+    reason: () => "changes the devices that may approve (flightdeckd approvers)",
   },
   {
     when: endsACard,

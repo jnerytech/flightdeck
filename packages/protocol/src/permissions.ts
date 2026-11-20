@@ -1,6 +1,7 @@
 // The Permission context: the modes of a session, its requests (with their plain wording and risk), auto-approval and the saved rules (issue #1600: moved from index.ts).
 
 import { z } from "zod";
+import { ApprovalProof } from "./approval.ts";
 import { cmd } from "./command.ts";
 import { LocalizedText } from "./localized-text.ts";
 
@@ -156,6 +157,12 @@ export const PermissionRespondPayload = z.object({
    * Absent from an older app, which a newer host refuses only for a high-risk allow.
    */
   held: z.boolean().optional(),
+  /**
+   * #3439: the signature of an enrolled device over this exact answer (`approval.challenge` gives the
+   * nonce). A host with a device enrolled allows a high-risk request, or an allow that saves rules,
+   * only with it; `held` alone no longer passes there.
+   */
+  proof: ApprovalProof.optional(),
 });
 
 /** Phase 13: the project's automatic approval, off by default. */

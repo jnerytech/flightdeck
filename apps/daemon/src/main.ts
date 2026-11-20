@@ -237,7 +237,7 @@ async function bootDaemon(
   const snapshots = new Snapshots({ db: store.db });
   // Phase 13: the risk classifier and the projects' automatic approval, through the board (defined
   // below) and the costs.
-  const { risk, autoApprove } = await domains.add(
+  const { risk, autoApprove, approvers } = await domains.add(
     createPermissions({
       db: store.db,
       runtime,
@@ -291,6 +291,7 @@ async function bootDaemon(
     runtime,
     risk,
     autoApprove,
+    approval: approvers.gate,
     config,
     projectTrust,
     keepAwake,
@@ -438,6 +439,7 @@ async function bootDaemon(
     createCentral({
       risk,
       autoApprove,
+      approval: approvers.gate,
       snapshots,
       db: store.db,
       keys,

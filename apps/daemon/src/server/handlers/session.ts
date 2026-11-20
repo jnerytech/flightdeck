@@ -168,7 +168,8 @@ export const sessionHandlers = {
     const asked = manager.sessionOfRequest(payload.requestId);
     if (asked) opts.board?.personTurnOfSession(asked);
     // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
-    const { requestId, decision, message, updatedPermissions, updatedInput, held } = payload;
+    const { requestId, decision, ...answer } = payload;
+    const { updatedPermissions } = answer;
     const external = opts.central?.permissions;
     // A rule that names a folder covers all it holds (#395): look its paths up first, only for
     // an allow of a request that is open (an unknown one is refused below anyway).
@@ -186,9 +187,7 @@ export const sessionHandlers = {
             realPaths(ruleReadings(updates), cwd, home, realPathOf),
           ]).then(([kind, real]) => ({ kind, real }))
         : undefined;
-    if (
-      !external?.respond(requestId, decision, message, updatedPermissions, updatedInput, held, disk)
-    ) {
+    if (!external?.respond(requestId, decision, answer, disk)) {
       manager.respondPermission(payload, disk);
     }
     return undefined;
