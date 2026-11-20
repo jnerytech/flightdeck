@@ -122,6 +122,12 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     Ok(Ask { kind, subject: subject.to_string() })
 }
 
+/// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
+/// for anything else). Built here from the parsed message, never from text the webview sent.
+pub fn confirm_text(_ask: &Ask, _lang: &str) -> (String, String) {
+    (String::new(), String::new())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,5 +251,29 @@ mod tests {
         for m in refused {
             assert!(describe(&m, DAEMON, &me).is_err(), "signed: {m}");
         }
+    }
+
+    #[test]
+    fn the_confirmation_names_the_action_and_its_subject_in_both_languages() {
+        let approve = Ask { kind: Kind::Approve, subject: "ext-7".into() };
+        let (title, body) = confirm_text(&approve, "en");
+        assert!(title.contains("Flightdeck"));
+        assert!(body.contains("ext-7") && body.contains("just pressed"));
+        let (_, body_pt) = confirm_text(&approve, "pt-BR");
+        assert!(body_pt.contains("ext-7") && body_pt.contains("acabou de apertar"));
+        let revoke = Ask { kind: Kind::Revoke, subject: "0123456789abcdef".into() };
+        assert!(confirm_text(&revoke, "en").1.contains("01234567"));
+        assert!(!confirm_text(&revoke, "en").1.contains("0123456789abcdef"));
+    }
+
+    #[test]
+    fn an_enrollment_shows_the_fingerprint_of_the_key_not_its_text() {
+        let info = public_info(&generate()).unwrap();
+        let first = Ask { kind: Kind::EnrollFirst, subject: info.public_key.clone() };
+        let body = confirm_text(&first, "en").1;
+        assert!(body.contains(&info.key_id[..8]));
+        assert!(!body.contains(&info.public_key));
+        let add = Ask { kind: Kind::EnrollAdd, subject: info.public_key.clone() };
+        assert!(confirm_text(&add, "pt-BR").1.contains(&info.key_id[..8]));
     }
 }
