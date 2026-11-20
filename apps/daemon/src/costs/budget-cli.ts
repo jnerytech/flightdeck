@@ -6,6 +6,7 @@ import {
   type CliResult,
   json,
   runOnLocalDaemon,
+  type StreamOptions,
   said,
   streamFrames,
 } from "../daemon-client/index.ts";
@@ -30,13 +31,7 @@ const scopeOf = (args: BudgetCliArgs) => ({
 export async function runBudgetCli(
   args: BudgetCliArgs,
   config: { bind: string; port: number; token: string },
-  options: {
-    timeoutMs?: number;
-    /** `watch` stops when this aborts (Ctrl-C). */
-    signal?: AbortSignal;
-    /** `watch` writes each line here as it comes. */
-    write?: (line: string) => void;
-  } = {},
+  options: StreamOptions & { timeoutMs?: number } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
@@ -47,8 +42,7 @@ export async function runBudgetCli(
         return streamFrames({
           daemon,
           flow,
-          signal: options.signal ?? new AbortController().signal,
-          write: options.write ?? (() => undefined),
+          ...options,
           open: () => daemon.call("budget.watch", {}),
           type: "budget.updated",
           line: (frame) =>

@@ -6,6 +6,7 @@ import {
   type CliResult,
   json,
   runOnLocalDaemon,
+  type StreamOptions,
   said,
   streamFrames,
 } from "../daemon-client/index.ts";
@@ -21,12 +22,8 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
-export interface QuotaCliOptions {
+export interface QuotaCliOptions extends StreamOptions {
   timeoutMs?: number;
-  /** `watch` stops when this aborts (Ctrl-C). */
-  signal?: AbortSignal;
-  /** `watch` writes each line here as it comes. */
-  write?: (line: string) => void;
 }
 
 export async function runQuotaCli(
@@ -43,8 +40,7 @@ export async function runQuotaCli(
         return streamFrames({
           daemon,
           flow,
-          signal: options.signal ?? new AbortController().signal,
-          write: options.write ?? (() => undefined),
+          ...options,
           open: () => daemon.call("quota.watch", {}),
           type: "quota.updated",
           line: (frame) =>
