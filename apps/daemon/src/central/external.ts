@@ -2,7 +2,6 @@ import type { Database } from "bun:sqlite";
 import { stat } from "node:fs/promises";
 import {
   type ExternalSession,
-  type ExternalStatus,
   inSequence,
   PermissionMode,
   SessionPersona,
@@ -18,7 +17,8 @@ import { planTextIn, type Tail, type Waiting, waitingIn } from "./domain/waiting
 import { tailOfFile } from "./waiting.ts";
 
 // What the daemon keeps is what goes on the wire.
-export type { ExternalSession, ExternalStatus };
+export type { ExternalStatus } from "@flightdeck/protocol";
+export type { ExternalSession };
 
 export interface Timers {
   setInterval(fn: () => void, ms: number): ReturnType<typeof setInterval>;
