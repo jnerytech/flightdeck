@@ -84,6 +84,19 @@ describe("costs reprice: the arguments (issue #3460)", () => {
     );
   });
 
+  test("a second command word after another command is refused, so a read cannot carry a reprice", () => {
+    for (const argv of [
+      ["quota", "get", "costs", "reprice", "--confirm"],
+      ["quota", "watch", "costs", "reprice", "--confirm"],
+      ["budget", "list", "costs", "reprice", "--confirm"],
+      ["costs", "status", "costs", "reprice", "--confirm"],
+    ])
+      expect({ argv, refused: JSON.stringify(parsed(argv)).includes("unknown argument") }).toEqual({
+        argv,
+        refused: true,
+      });
+  });
+
   test("the day and filter flags do not apply to a reprice", () => {
     expect(
       JSON.stringify(parsed(["costs", "reprice", "--confirm", "--from", "2026-11-01"])),
