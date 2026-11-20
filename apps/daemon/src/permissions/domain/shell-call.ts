@@ -369,6 +369,13 @@ export const OPTIONS_WITH_VALUE = [
   "--hash",
   "--confirm-hash",
   "--accept-command",
+  "--base-branch",
+  "--pr-provider",
+  "--setup-script",
+  "--prompt-template",
+  "--auto-approve",
+  "--default-hours",
+  "--persona-subagents",
   "--plugin-scope",
   "--parts",
   "--template",
@@ -593,3 +600,25 @@ export const runnerHidesAVerb = (prog: string, args: string[]) => {
  */
 export const HIDDEN_VERB =
   "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
+
+/**
+ * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
+ * the word after the command, since a value flag before it (`--language en`) shifts the words.
+ */
+export function runsCliVerb(
+  prog: string,
+  args: string[],
+  command: string,
+  verbs: string[],
+): boolean {
+  if (isCliProgram(prog)) {
+    return shellReadings(args).some((own) => {
+      const [first, verb] = flightdeckWords(own);
+      return first === command && verbs.includes(verb ?? "");
+    });
+  }
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const runsCli = words.some((_, i) => startsCli(words, i));
+  return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
+}

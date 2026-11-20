@@ -1,6 +1,7 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
 import type { VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
+import type { ProjectFields } from "../../projects/index.ts";
 import type { SessionStartOptions } from "../../sessions/index.ts";
 import type { SshSaveFields } from "../../ssh/index.ts";
 
@@ -160,7 +161,12 @@ export interface CliArgs {
     | "trust-state"
     | "stack"
     | "trust-inspect"
-    | "harness-preview";
+    | "harness-preview"
+    | "detect-provider"
+    | "add"
+    | "update"
+    | "harness-draft"
+    | "harness-export";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -352,6 +358,14 @@ export interface CliArgs {
   projectPaths?: string[];
   projectParts?: string[];
   projectTemplate?: string;
+  /** `project update|detect-provider <name or id>`. */
+  projectRef?: string;
+  /** Every word of `project <verb>` before the first flag, whichever verb takes it as what. */
+  projectWords?: string[];
+  /** `project harness-export <folder> <id> <title>`: the id and the title (empty when not typed). */
+  projectExport?: { id: string; title: string };
+  /** `project add|update`'s fields as flags; `--name` is `personaName`. */
+  projectFields?: ProjectFields;
   hideAutomated?: true;
   cursor?: string;
   tail?: true;

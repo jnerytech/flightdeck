@@ -15,6 +15,7 @@ import {
   isCliProgram,
   RUNNERS,
   runnerHidesAVerb,
+  runsCliVerb,
   runsFlightdeckWords,
   SHELLS,
   shellReadings,
@@ -281,23 +282,6 @@ const TEAM_CHANGES = [
 ];
 
 /**
- * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
- * the word after the command, since a value flag before it (`--language en`) shifts the words.
- */
-function runsCliVerb(prog: string, args: string[], command: string, verbs: string[]): boolean {
-  if (isCliProgram(prog)) {
-    return shellReadings(args).some((own) => {
-      const [first, verb] = flightdeckWords(own);
-      return first === command && verbs.includes(verb ?? "");
-    });
-  }
-  if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((_, i) => startsCli(words, i));
-  return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
-}
-
-/**
  * What the app asks the person to confirm, done from a session's shell (#3456): `persona save` and
  * `remove` rewrite or drop a persona (a saved one is a system prompt with its own permission mode),
  * `reset` throws an edit away, `trust` lets a project's versioned persona into every session, and
@@ -344,6 +328,15 @@ const repricesTheCosts = (prog: string, args: string[]) =>
  */
 const endsASession = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "session", ["close"]);
+
+/**
+ * `project add` and `update` set a project's setup script (a shell command that runs in every card), its
+ * auto-approval and its prompt; `harness-export` copies its instructions into the host's shared store and
+ * `harness-draft` runs a model over the repository (#3515). The app has the person fill a form and press a
+ * button; from a shell, any session could widen what the next card runs or is allowed to do.
+ */
+const changesAProject = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "project", ["add", "update", "harness-draft", "harness-export"]);
 
 /**
  * `session create` and `fork` start a session with a folder, a prompt, a model and a permission mode of
@@ -460,6 +453,11 @@ const DANGEROUS: Array<{
     when: endsASession,
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
+  },
+  {
+    when: changesAProject,
+    reason: () =>
+      "sets what a project runs or allows without the person confirming it in the app: its setup script, its auto-approval, or the instructions it exports to the shared store, and a drafted CLAUDE.md is a model call (flightdeckd project add, update, harness-draft or harness-export)",
   },
   {
     when: startsOrReshapesASession,

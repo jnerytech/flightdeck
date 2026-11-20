@@ -214,3 +214,13 @@ formatar e compilar (`stack`, só lê e nunca executa), o que os arquivos da pr�
 precisa estar dentro das pastas permitidas. `--host <nome>` consulta outro host, e a pasta deve então ser um caminho
 absoluto naquele host. `trust-inspect` mostra comandos de hook e argumentos de servidor por inteiro, então um host só o
 responde a uma pessoa naquele host, e `harness-preview` com `--template` também.
+
+`fd project add <pasta>` coloca uma pasta no quadro, e `fd project update <nome ou id>` muda só os campos que você
+passar: `--name`, `--base-branch`, `--pr-provider github|azure-devops|none`, `--setup-script <comando|none>`,
+`--prompt-template`, `--auto-approve on|off` e, no `update`, também `--default-hours <0-1000|none>` e
+`--persona-subagents all|project|none`. Um `update` sem nenhum campo é recusado. `fd project detect-provider <nome ou id>`
+lê o remoto origin e define o provedor de PR quando ele é GitHub ou Azure DevOps. `fd project harness-draft <pasta>`
+mostra um CLAUDE.md rascunhado (uma chamada ao modelo; não grava nada), e `fd project harness-export <pasta> <id> <título>`
+salva a configuração de agentes da pasta como um modelo naquele host. Um script de preparação roda em todo card e
+`--auto-approve` muda o que é aprovado sem perguntar, então uma sessão que executa isso pelo shell para até você
+aprovar.
