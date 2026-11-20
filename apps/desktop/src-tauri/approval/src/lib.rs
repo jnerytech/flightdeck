@@ -1997,6 +1997,16 @@ mod tests {
             ok("https://github.com/acme/plugins?x=1"),
             ok("https://github.com/acme/plugins#frag"),
             ok("https://github.com/acme/%2e%2e"),
+            // A host that is not a run of plain names.
+            ok("https://a..b/acme/plugins"),
+            ok("https://.../acme/plugins"),
+            ok("https://github./acme/plugins"),
+            ok("https://localhost/acme/plugins"),
+            ok("https://github.com"),
+            ok("https://github.com//plugins"),
+            ok("https://github.com/acme/.."),
+            ok("acme/--plugins"),
+            ok("-acme/plugins"),
             ok("http://github.com/acme/plugins"),
             ok("git@github.com:acme/plugins.git"),
             ok("github:acme/plugins"),
@@ -2010,6 +2020,9 @@ mod tests {
         assert!(add(&ok("acme/my-plugins.v2_x")).is_ok());
         assert!(add(&ok("https://github.com/acme/plugins.git")).is_ok());
         assert!(add(&ok("/work/marketplaces/acme")).is_ok());
+        // A folder one level under the root has the shape of owner/repo with an empty owner: it is still a folder.
+        assert!(add(&ok("/marketplaces")).is_ok());
+        assert!(add(&ok("C:/marketplaces")).is_ok());
         // The payload is signed in canonical (sorted) form, so the scope sits between confirm and source.
         assert!(add("{\"confirm\":true,\"scope\":\"local\",\"source\":\"acme/plugins\"}").is_ok());
     }
