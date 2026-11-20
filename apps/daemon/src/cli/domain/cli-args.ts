@@ -47,6 +47,7 @@ export interface CliArgs {
     | "session"
     | "ssh"
     | "terminal"
+    | "watch"
     | "requests"
     | "send"
     | "approve"
@@ -128,6 +129,9 @@ export interface CliArgs {
     | "preview"
     | "interrupted"
     | "import-preview"
+    | "trace"
+    | "describe"
+    | "by-url"
     | "hostkey-check"
     | "hostkey-confirm"
     | "hostkey-forget"
@@ -204,6 +208,8 @@ export interface CliArgs {
   terminalDisable?: true;
   /** `ssh add|edit`: the flags that set a destination. */
   sshSave?: SshSaveFields;
+  /** `watch get|trace|describe <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
+  watchTarget?: string;
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */

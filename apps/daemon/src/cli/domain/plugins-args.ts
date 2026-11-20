@@ -3,6 +3,7 @@
  * `args.ts` adds the usage text to the problem this names.
  */
 import { isAbsolute } from "node:path";
+import type { PluginsCliArgs } from "../../plugins/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { oneOf } from "./vault-args.ts";
@@ -105,3 +106,40 @@ export const PLUGINS_FLAGS: Record<
     args.pluginScope = oneOf("--plugin-scope", value(), ["user", "project", "local"]);
   },
 };
+
+/** What the person typed for `plugins`, as `runPluginsCli` takes it: a preview names a plugin or a folder, the parser checked which. */
+export function pluginsCliArgs(args: CliArgs): PluginsCliArgs {
+  const printed = args.json ? { json: true as const } : {};
+  const plugin = args.plugin ?? "";
+  if (args.action === "list") return { action: "list", ...printed };
+  if (args.action === "detail") return { action: "detail", plugin, ...printed };
+  if (args.action === "preview-update") return { action: "preview-update", plugin, ...printed };
+  const scope = args.pluginScope === undefined ? {} : { scope: args.pluginScope };
+  const confirmed = args.confirm ? { confirm: true as const } : {};
+  const hash = {
+    confirmHash: args.confirmHash ?? "",
+    ...(args.acceptCommand === undefined ? {} : { acceptCommand: args.acceptCommand }),
+  };
+  const target = args.marketplace ?? "";
+  if (args.action === "install")
+    return args.pluginDir === undefined
+      ? { action: "install", plugin, ...hash, ...scope, ...printed }
+      : { action: "install", dir: args.pluginDir, ...hash, ...scope, ...printed };
+  if (args.action === "update") return { action: "update", plugin, ...hash, ...printed };
+  if (args.action === "uninstall")
+    return { action: "uninstall", plugin, ...scope, ...confirmed, ...printed };
+  if (args.action === "pin" || args.action === "unpin")
+    return { action: args.action, plugin, ...printed };
+  if (args.action === "marketplace-add")
+    return { action: "marketplace-add", source: target, ...scope, ...confirmed, ...printed };
+  if (args.action === "marketplace-remove")
+    return { action: "marketplace-remove", name: target, ...confirmed, ...printed };
+  if (args.action === "marketplace-update")
+    return {
+      action: "marketplace-update",
+      ...(args.marketplace === undefined ? {} : { name: args.marketplace }),
+      ...printed,
+    };
+  if (args.pluginDir !== undefined) return { action: "preview", dir: args.pluginDir, ...printed };
+  return { action: "preview", plugin, ...printed };
+}

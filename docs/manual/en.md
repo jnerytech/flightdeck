@@ -98,6 +98,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd terminal](en/flightdeckd-terminal-commands.md#fd-terminal)
 
+## flightdeckd commands: the PR watch of a card
+
+[Read the chapter.](en/flightdeckd-watch-commands.md) Its sections:
+
+- [fd watch](en/flightdeckd-watch-commands.md#fd-watch)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)

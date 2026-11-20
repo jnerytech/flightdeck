@@ -543,14 +543,14 @@
     "appOnly": "uses a delivered secret value, which a terminal must never print or pass as an argument (#3458)"
   },
   "vault.watch": {},
-  "watch.byUrl": {},
-  "watch.describe": {},
+  "watch.byUrl": { "cli": "watch" },
+  "watch.describe": { "cli": "watch" },
   "watch.extend": {},
-  "watch.get": {},
+  "watch.get": { "cli": "watch" },
   "watch.resolveHeld": {},
   "watch.set": {},
-  "watch.settings": {},
-  "watch.trace": {},
+  "watch.settings": { "cli": "watch" },
+  "watch.trace": { "cli": "watch" },
   "watch.watch": {},
   "webhook.send": {
     "appOnly": "the payload carries the webhook URL, a vault secret that only the app holds and hands over for one use; a CLI verb would let a session post a body of its choice and would need the person to paste the URL (#3459)"
