@@ -65,3 +65,8 @@ export function parityCheck(input: {
   }
   return { gaps, problems };
 }
+
+/** The gap baseline: the lower of main's file and the branch's, so a PR cannot raise it (#3428). */
+export function gapsBaseline(_onMain: string | null, _head: string | null): number {
+  return -1;
+}

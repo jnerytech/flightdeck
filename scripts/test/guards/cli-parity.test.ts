@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parityCheck, protocolCommands } from "../../lib/arch/cli-parity.ts";
+import { gapsBaseline, parityCheck, protocolCommands } from "../../lib/arch/cli-parity.ts";
 
 const table = (rows: Record<string, unknown>) => JSON.stringify(rows);
 
@@ -82,5 +82,41 @@ describe("parityCheck (#3428)", () => {
       expect(result.problems).toHaveLength(1);
       expect(result.gaps).toEqual(commands);
     }
+  });
+});
+
+describe("parityCheck rows that are not a row (#3428)", () => {
+  const commands = ["session.list"];
+  const cliCommands = ["sessions"];
+
+  test("a row that is not an object, or whose fields are not strings, is a problem that names it", () => {
+    for (const row of ["sessions", [{ cli: "sessions" }], { cli: 3 }, { appOnly: true }]) {
+      const result = parityCheck({ commands, cliCommands, table: table({ "session.list": row }) });
+      expect(result.problems).toEqual([expect.stringContaining("session.list")]);
+      expect(result.gaps).toEqual([]);
+    }
+  });
+
+  test("a row with both a CLI command and an app-only reason is a problem", () => {
+    const result = parityCheck({
+      commands,
+      cliCommands,
+      table: table({ "session.list": { cli: "sessions", appOnly: "why" } }),
+    });
+    expect(result.problems).toEqual([expect.stringContaining("session.list")]);
+  });
+});
+
+describe("gapsBaseline (#3428)", () => {
+  const file = (gaps: number) => JSON.stringify({ gaps });
+
+  test("a PR cannot raise it: the lower of main's file and its own", () => {
+    expect(gapsBaseline(file(341), file(351))).toBe(341);
+    expect(gapsBaseline(file(341), file(300))).toBe(300);
+  });
+
+  test("with no file on main yet, the branch's own is the baseline; with neither, 0", () => {
+    expect(gapsBaseline(null, file(341))).toBe(341);
+    expect(gapsBaseline(null, null)).toBe(0);
   });
 });
