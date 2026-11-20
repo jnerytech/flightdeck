@@ -200,6 +200,7 @@ const OPTIONS_WITH_VALUE = [
   "--coordinator",
   "--check",
   "--rounds",
+  "--max-parallel-runs",
   "--scope",
   "--name",
   "--body",

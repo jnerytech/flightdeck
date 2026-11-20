@@ -53,7 +53,7 @@
   "board.get": {
     "cli": "card"
   },
-  "board.settings": {},
+  "board.settings": { "cli": "board" },
   "board.watch": {},
   "boardsync.boards": {},
   "boardsync.link": {},

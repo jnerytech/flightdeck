@@ -7,6 +7,7 @@
  */
 
 export type { Board } from "./board.ts";
+export { runBoardCli } from "./board-cli.ts";
 export { runCardCli } from "./card-cli.ts";
 export { createInside, readInside, type Walk, walkInside } from "./create-inside.ts";
 export type { CardCliArgs } from "./domain/card-cli-view.ts";
