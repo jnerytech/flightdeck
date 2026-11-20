@@ -165,9 +165,14 @@ fd persona list
 fd persona list --scope project --project-path ~/work/api --language en
 fd persona show architect
 fd persona subagents --project-path ~/work/api --json
+fd persona save architect --scope host --name Architect --description "Designs modules" --body-file architect.md
+fd persona remove architect --scope host
+fd persona reset reviewer
+fd persona publish-agent architect --project-path ~/work/api --confirm
 ```
 
-Reads the personas of this host, as the Personas screen does. Nothing here changes a persona.
+`list`, `show` and `subagents` read the personas of this host, as the Personas screen does. `save`,
+`remove`, `reset` and `publish-agent` change them.
 
 - **`list`:** one line per persona: its id, where it lives (`pack`, `host` or `project`), its name,
   `(edited)` for a pack persona this host changed, and, for a project persona, the start of its hash and
@@ -178,6 +183,19 @@ Reads the personas of this host, as the Personas screen does. Nothing here chang
   with exit `1`.
 - **`subagents`:** the agents a session in the project gets (`persona-<id>`), and the project personas
   left out because nobody trusted them yet.
+- **`save <id>`:** creates or edits a persona. It needs `--scope host|project`, `--name`,
+  `--description` and the prompt, from `--body <text>` or `--body-file <path>` (one of the two). It can
+  also set `--model`, `--effort low|medium|high|xhigh|max`, `--tools Read,Grep` (only restricts),
+  `--permission-mode` and `--icon`. A project persona needs `--project-path`. The daemon refuses a prompt
+  that holds a secret, with exit `1`.
+- **`remove <id> --scope host|project`:** deletes the persona of that scope.
+- **`reset <id>`:** puts a pack persona back as it came; the host's edit goes away.
+- **`publish-agent <id> --project-path <folder>`:** writes the persona as the project agent
+  `.claude/agents/persona-<id>.md`. It changes a file in the project, so it refuses with exit `1` and sends
+  nothing until you pass `--confirm`.
+
+A change that gets no answer exits `2` and says it may or may not have gone in: run `persona list` before
+trying again.
 
 `--project-path` names the project folder (relative to where you run it); without it only the host's
 personas count. `--language en` or `pt-BR` picks the language of the pack personas. With `--json` each
