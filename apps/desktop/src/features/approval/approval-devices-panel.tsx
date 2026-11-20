@@ -137,8 +137,11 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       {heard.length > 0 && (
         <Stack gap={1}>
           {heard.map((one, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: a list that only grows, cleared as a whole
-            <InlineNotice key={index} tone={heardTone(one)}>
+            <InlineNotice
+              // biome-ignore lint/suspicious/noArrayIndexKey: a list that only grows, cleared as a whole
+              key={index} // NOSONAR: a list that only grows and is cleared as a whole, so an index is stable
+              tone={heardTone(one)}
+            >
               {heardText(t, one, host.name)}
             </InlineNotice>
           ))}
@@ -162,9 +165,9 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       <Panel title={t("approvalDevices.title")} slot="host-section-approval">
         {heardNotices}
         {hint}
-        <p className="text-sm" role="status">
+        <output className="block text-sm">
           {t(view.kind === "failed" ? "approvalDevices.loadFailed" : "approvalDevices.loading")}
-        </p>
+        </output>
         {view.kind === "failed" && (
           <Inline>
             <ActionButton variant="outline" onClick={reload}>
@@ -228,9 +231,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
         </Stack>
       )}
       {!status.protectionOff && !hasKey && (
-        <p className="text-sm" role="status">
-          {t("approvalDevices.noKeyHere")}
-        </p>
+        <output className="block text-sm">{t("approvalDevices.noKeyHere")}</output>
       )}
       {status.protectionOff && (
         <Form
@@ -369,9 +370,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                   {t("approvalDevices.addOfferCode")}{" "}
                   <code className="font-mono">{request.fingerprint}</code>
                 </p>
-                <p className="text-sm" role="status">
-                  {t("approvalDevices.requestWaiting")}
-                </p>
+                <output className="block text-sm">{t("approvalDevices.requestWaiting")}</output>
                 <Inline>
                   <ActionButton variant="outline" onClick={reload}>
                     {t("approvalDevices.requestCheck")}

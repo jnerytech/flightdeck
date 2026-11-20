@@ -144,9 +144,9 @@ export type ProofResult =
 export interface ProofAnswer {
   requestId: string;
   decision: "allow" | "deny";
-  updatedPermissions?: PermissionUpdate[] | undefined;
-  updatedInput?: Record<string, unknown> | undefined;
-  message?: string | undefined;
+  updatedPermissions?: PermissionUpdate[];
+  updatedInput?: Record<string, unknown>;
+  message?: string;
 }
 
 /** What the approval devices read and ask through the app's store. */
@@ -222,25 +222,27 @@ export class ApprovalSlice {
       change.type === "approval.enrolled" && this.adding.has(`${hostId}/${change.keyId}`);
     const host = this.core.host(hostId);
     const own = (await this.localKeyId(host?.daemonId)) === change.keyId;
-    let heard: ApprovalHeard;
-    if (change.type === "approval.enrolled") {
-      // Made here, by this device or by the person's agreement: no news, but a watching page reads the list again.
-      heard = { kind: "enrolled", name: change.name, own: own || added };
-      if (heard.own) {
-        for (const listener of [...(this.listeners.get(hostId) ?? [])]) listener(heard);
-        return;
-      }
-    } else {
-      heard = { kind: "revoked", own };
-    }
-    const watchers = this.listeners.get(hostId);
-    if (watchers?.size) {
-      for (const listener of [...watchers]) listener(heard);
+    const heard: ApprovalHeard =
+      change.type === "approval.enrolled"
+        ? { kind: "enrolled", name: change.name, own: own || added }
+        : { kind: "revoked", own };
+    // Made here, by this device or by the person's agreement: no news, but a watching page reads the list again.
+    if (heard.kind === "enrolled" && heard.own) {
+      this.tell(hostId, heard);
       return;
     }
+    if (this.tell(hostId, heard)) return;
     const text = heardText(this.core.t(), heard, host?.name ?? hostId);
     if (heard.kind === "revoked" && !heard.own) this.core.success(text);
     else this.core.fail(text);
+  }
+
+  /** Gives the change to each page watching the host; false when none is. */
+  private tell(hostId: string, heard: ApprovalHeard): boolean {
+    const watchers = this.listeners.get(hostId);
+    if (!watchers?.size) return false;
+    for (const listener of [...watchers]) listener(heard); // NOSONAR: the copy lets a listener unsubscribe as it runs
+    return true;
   }
 
   private async localKeyId(daemonId: string | undefined): Promise<string | null> {
