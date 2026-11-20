@@ -8,6 +8,7 @@ import {
   commandNeedsProof,
   enrollAddMessage,
   enrollFirstMessage,
+  FEATURE_APPROVAL_RESUME,
   needsApprovalProof,
   revokeMessage,
   vaultApproveMessage,
@@ -70,6 +71,26 @@ describe("approval-message: what a device signs binds the key, the host, the req
     expect(approvalMessage(parts)).toBe(
       '["flightdeck/approval/v1","k1","d1","r1","n1","allow","aa","bb","cc"]',
     );
+  });
+
+  test("Given the resume payload the Rust crate also reads, Then its digest and hash are the shared literals", () => {
+    const digest = commandDigest({ sessionKey: "card:c1", confirm: true });
+    expect(digest).toBe('{"confirm":true,"sessionKey":"card:c1"}');
+    expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(
+      "e0a91d4acb8e261e30090aa274dad9660a38643c12544415b7fc128214ff6e00",
+    );
+  });
+
+  test("Given the resume command, Then it takes the proof and names its feature, and a field it does not know is refused", () => {
+    const proof = { keyId: "k", nonce: "n", signature: "s" };
+    const accepts = (payload: Record<string, unknown>) =>
+      Command.safeParse({ id: "1", type: "autoapprove.resume", payload }).success;
+    expect([
+      FEATURE_APPROVAL_RESUME,
+      accepts({ sessionKey: "card:c1", confirm: true, proof }),
+      accepts({ sessionKey: "card:c1", confirm: true }),
+      accepts({ sessionKey: "card:c1", confirm: true, extra: 1 }),
+    ]).toEqual(["approval-resume", true, true, false]);
   });
 
   test("Given any one part changed, Then the signed text changes", () => {

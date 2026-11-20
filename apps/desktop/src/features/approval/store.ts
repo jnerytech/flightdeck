@@ -55,6 +55,18 @@ type TrustPayload =
     }
   | { kind: "declined" };
 
+/** The payload of `autoapprove.resume`, or the person's no (#3453). */
+type ResumePayload =
+  | {
+      kind: "payload";
+      payload: {
+        sessionKey: string;
+        confirm: boolean;
+        proof?: { keyId: string; nonce: string; signature: string };
+      };
+    }
+  | { kind: "declined" };
+
 /** The feature a host announces for each command it guards (#3453). */
 const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "card.pr.merge": FEATURE_APPROVAL_COMMAND,
@@ -62,7 +74,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand = "merge" | "trust";
+export type UncheckedCommand = "merge" | "trust" | "resume";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -564,6 +576,11 @@ export class ApprovalSlice {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
     };
+  }
+
+  /** Stub (#3453): the payload that resumes a session, signed when the host checks it. */
+  async resumePayload(_hostId: string, _sessionKey: string): Promise<ResumePayload> {
+    return { kind: "declined" };
   }
 
   /**

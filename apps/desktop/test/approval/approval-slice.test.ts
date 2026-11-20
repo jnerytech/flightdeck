@@ -10,6 +10,7 @@ import {
   enrollFirstMessage,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   type PermissionUpdate,
@@ -731,10 +732,16 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
 
   test("a host that checks proofs but not a command is one the app says so of, for each command; one that checks all, or one not known, is not", () => {
     const unchecked = (features: string[]) => approval({ features }).slice.uncheckedCommands("h");
-    expect(unchecked([FEATURE_APPROVAL_PROOF])).toEqual(["merge", "trust"]);
-    expect(unchecked(COMMAND_HOST)).toEqual(["trust"]);
-    expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual(["merge"]);
-    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual([]);
+    expect(unchecked([FEATURE_APPROVAL_PROOF])).toEqual(["merge", "trust", "resume"]);
+    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "resume"]);
+    expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual([
+      "merge",
+      "resume",
+    ]);
+    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual(["resume"]);
+    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST, FEATURE_APPROVAL_RESUME])).toEqual(
+      [],
+    );
     expect(unchecked([])).toEqual([]);
   });
 
@@ -789,6 +796,60 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
     expect(await declined.slice.trustPayload("h", "/work/api")).toEqual({ kind: "declined" });
     const keyless = approval({ features: TRUST_HOST, local: null });
     await expect(keyless.slice.trustPayload("h", "/work/api")).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
+    );
+  });
+  const RESUME_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_RESUME];
+  const RESUME = { sessionKey: "card:c1", confirm: true };
+
+  test("resuming a session on a host that checks it is signed over the session, in the dialog that names it", async () => {
+    const { slice, log, keyLog } = approval({ features: RESUME_HOST });
+    const made = await slice.resumePayload("h", "card:c1");
+    const digest = commandDigest(RESUME);
+    const message = commandMessage({
+      keyId: "key-this",
+      daemonId: "daemon-1",
+      command: "autoapprove.resume",
+      nonce: "nonce-1",
+      payloadHash: sha(digest),
+    });
+    expect(made).toEqual({
+      kind: "payload",
+      payload: {
+        ...RESUME,
+        proof: { keyId: "key-this", nonce: "nonce-1", signature: `sig:${message}` },
+      },
+    });
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "autoapprove.resume" });
+    expect(keyLog.find((k) => k.op === "sign")?.args).toEqual(["daemon-1", message, "en", digest]);
+    expect(
+      Command.safeParse({
+        id: "1",
+        type: "autoapprove.resume",
+        payload: made.kind === "payload" ? made.payload : {},
+      }).success,
+    ).toBe(true);
+  });
+
+  test("a host that does not announce the resume proof, or has no device enrolled, gets the plain payload and is asked for no signature", async () => {
+    for (const setup of [
+      approval({ features: COMMAND_HOST }),
+      approval({ features: RESUME_HOST, list: { protectionOff: true, keys: [] } }),
+      approval({ features: RESUME_HOST, keys: "none" }),
+    ]) {
+      expect(await setup.slice.resumePayload("h", "card:c1")).toEqual({
+        kind: "payload",
+        payload: RESUME,
+      });
+      expect(setup.keyLog.filter((k) => k.op === "sign")).toEqual([]);
+    }
+  });
+
+  test("a no in the dialog of a resume sends nothing, and a device with no key for this host is told so", async () => {
+    const declined = approval({ features: RESUME_HOST, signFails: "declined" });
+    expect(await declined.slice.resumePayload("h", "card:c1")).toEqual({ kind: "declined" });
+    const keyless = approval({ features: RESUME_HOST, local: null });
+    await expect(keyless.slice.resumePayload("h", "card:c1")).rejects.toThrow(
       t("approvalDevices.noKeyHere"),
     );
   });
