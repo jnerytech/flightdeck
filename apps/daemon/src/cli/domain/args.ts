@@ -13,6 +13,7 @@ import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
+import { readSession } from "./session-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
@@ -358,6 +359,7 @@ const HANDLERS: Record<string, Handler> = {
   },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
+  session: readSession,
   requests: (args) => {
     startCommand(args, "requests");
   },
@@ -671,6 +673,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "roi",
       "host",
       "sessions",
+      "session",
       "requests",
       "send",
       "approve",
@@ -682,14 +685,16 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, costs, roi, host, sessions, session, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
-    !["host", "sessions", "requests", "send", "approve", "deny", "vault"].includes(args.command)
+    !["host", "sessions", "session", "requests", "send", "approve", "deny", "vault"].includes(
+      args.command,
+    )
   )
     throw new Error(
-      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve, deny and vault\n${USAGE}`,
+      `--host: this flag only applies to flightdeckd host, sessions, session, requests, send, approve, deny and vault\n${USAGE}`,
     );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
