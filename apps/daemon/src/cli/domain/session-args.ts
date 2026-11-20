@@ -18,6 +18,11 @@ const SESSION_ACTIONS = [
   "set-model",
   "set-effort",
   "meta",
+  "create",
+  "set-mode",
+  "fork",
+  "apply-persona",
+  "clear-persona",
 ] as const;
 
 /** The levels of `set-effort` are the protocol's own; `default` gives the model's own back. */
