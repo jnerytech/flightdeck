@@ -7,9 +7,9 @@ export function openedLine(terminal: TerminalInfo): string {
   return `opened ${terminalLines([terminal])[0]}`;
 }
 
-/** `killed` when the process ended, `closed` when the terminal was only detached (or a dead one removed). */
+/** `kill sent to` when the process was asked to end (it may still be going), `removed` for a dead terminal taken off the list. */
 export function closedLine(terminalId: string, kill: boolean): string {
-  return `${kill ? "killed" : "closed"} ${terminalId}`;
+  return `${kill ? "kill sent to" : "removed"} ${terminalId}`;
 }
 
 export function settingsLine(settings: TerminalSettings): string {

@@ -26,6 +26,9 @@ const UNSURE =
 const ENABLE_CONFIRM =
   "turning the terminals on gives whoever reaches this daemon a full shell on the host: pass --confirm";
 
+const STILL_RUNNING = (id: string) =>
+  `${id} is still running: a terminal is detached by the window that attached to it, and from the command line it ends only with --kill`;
+
 type Size = { cols: number; rows: number };
 
 export type TerminalCliArgs = { json?: boolean } & (
@@ -89,6 +92,13 @@ export function runTerminalCli(
       if (args.action === "close") {
         note.wrote = true;
         await daemon.call("terminal.close", { terminalId: args.terminalId, kill: args.kill });
+        // The daemon detaches only the connection that asks, and this one never attached: without --kill
+        // the call changes nothing but a terminal that had already ended, so the list says which it was.
+        if (!args.kill) {
+          const { terminals } = await daemon.call("terminal.list", {});
+          if (terminals.some((t) => t.terminalId === args.terminalId))
+            return failure(1, STILL_RUNNING(args.terminalId), "terminal_still_running");
+        }
         return args.json
           ? json({ terminalId: args.terminalId, kill: args.kill, closed: true })
           : said(closedLine(args.terminalId, args.kill));

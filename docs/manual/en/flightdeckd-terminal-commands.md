@@ -32,7 +32,7 @@ which run as they are, not through a shell. `--claude` runs Claude Code in the f
 `--cols` (up to 500) and `--rows` (up to 300). `open-session` opens a shell in the folder the host holds for a
 session, named by its name or its id.
 
-`close` detaches a terminal and `--kill` also ends its process. A terminal keeps running after the command that
+`close <terminal> --kill` asks the host to end a terminal's process and prints `kill sent to`; the process may still be going a moment later. Without `--kill` it only removes a terminal that had already ended, and exits `1` when the terminal is still running, because detaching belongs to the app's window. A terminal keeps running after the command that
 opened it, so `list` is where you find it again. `settings` turns the host's terminals on or off and prints whether
 they are on, how many may run at once and which shell they use. Turning them on gives whoever reaches the daemon a
 full shell on the host, so it needs `--confirm`; without it the command exits `1` and sends nothing. A host with the

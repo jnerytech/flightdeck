@@ -4,16 +4,15 @@
  * verbs that stream a terminal's output or type into it (`attach`, `write`, `resize`, `ack`, `detach`)
  * belong to the app's view and are not words of this noun.
  */
+import { TerminalCols, TerminalRows } from "@flightdeck/protocol";
 import type { TerminalCliArgs } from "../../terminal/index.ts";
-import { type ArgReader, operand, subAction } from "./arg-reader.ts";
+import { type ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { USAGE } from "./usage.ts";
 
 const TERMINAL_ACTIONS = ["list", "open", "open-session", "close", "settings"] as const;
 const DEFAULT_SIZE = { cols: 80, rows: 24 };
-/** What the protocol takes for a terminal's size (`terminal.open`). */
-const LIMITS = { cols: 500, rows: 300 };
 
 /** `terminal list|open|open-session|settings`, or `terminal close <terminal>`. */
 export function readTerminal(args: CliArgs, reader: ArgReader): void {
@@ -23,23 +22,31 @@ export function readTerminal(args: CliArgs, reader: ArgReader): void {
   if (action === "close") args.terminalId = operand(reader, "the terminal id");
 }
 
+/** A size the protocol takes (`terminal.open`): the flag, the field it fills and the protocol's own limit. */
 const size =
-  (flag: "--cols" | "--rows", field: "terminalCols" | "terminalRows"): Handler =>
+  (
+    flag: "--cols" | "--rows",
+    field: "terminalCols" | "terminalRows",
+    limit: typeof TerminalCols,
+  ): Handler =>
   (args, _reader, value) => {
     const given = value();
-    const max = LIMITS[flag === "--cols" ? "cols" : "rows"];
-    if (!/^\d+$/.test(given) || Number(given) < 1 || Number(given) > max)
-      throw new Error(`${flag}: a whole number from 1 to ${max}\n${USAGE}`);
+    if (!/^\d+$/.test(given) || !limit.safeParse(Number(given)).success)
+      throw new Error(`${flag}: a whole number from 1 to ${limit.maxValue}\n${USAGE}`);
     args[field] = Number(given);
   };
 
+/** The words after `--` are the program's: a `--=x` is an error, not the start of a program. */
+const separator: Handler = (args, reader) => {
+  args.terminalArgv = reader.takeRest();
+};
+FLAGS.add(separator);
+
 /** The flags of the terminal verbs; each verb takes its own, checked in `terminalProblem`. */
 export const TERMINAL_FLAGS: Record<string, Handler> = {
-  "--": (args, reader) => {
-    args.terminalArgv = reader.takeRest();
-  },
-  "--cols": size("--cols", "terminalCols"),
-  "--rows": size("--rows", "terminalRows"),
+  "--": separator,
+  "--cols": size("--cols", "terminalCols", TerminalCols),
+  "--rows": size("--rows", "terminalRows", TerminalRows),
   "--resume": setValue((args, v) => {
     args.terminalResume = v;
   }),
