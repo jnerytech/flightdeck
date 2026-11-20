@@ -52,6 +52,12 @@ function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly strin
 export function historyProblem(args: HistoryArgs): string | undefined {
   for (const [flag, value, verbs] of historyFlags(args)) {
     if (value === undefined) continue;
+    // `costs summary|export` and `roi` take `--to` and `--origin` too: checked by `costsProblem`.
+    if (
+      (flag === "--to" || flag === "--origin") &&
+      (args.command === "costs" || args.command === "roi")
+    )
+      continue;
     if (args.command !== "history" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd history ${verbs.join(", ")}`;
   }
