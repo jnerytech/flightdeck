@@ -245,6 +245,9 @@ flightdeckd card review <card> [--language en|pt-BR] [--json]
 flightdeckd card message <card> "<texto>" [--json]
 flightdeckd card templates [--project <nome ou id>] [--json]
 flightdeckd card validation-template <card> [--json]
+flightdeckd card pr-create <card> [--title "<texto>"] [--description "<texto>"] [--json]
+flightdeckd card update-from-base <card> [--json]
+flightdeckd card merge-local <card> --confirm [--squash] [--message "<texto>"] [--json]
 ```
 
 - `list` imprime uma linha por card (projeto, id, coluna, título e por que um card espera). Sem
@@ -274,6 +277,14 @@ flightdeckd card validation-template <card> [--json]
 - `templates` lista os modelos de card de um projeto (`.flightdeck/templates/cards.json`), e
   `validation-template` imprime o formato próprio do projeto para uma nota de validação, ou diz por que
   ele não foi usado.
+- `pr-create` envia o branch do card e abre o pull request com o título e o texto do card, ou com
+  `--title` e `--description`; um texto que parece ter um segredo é recusado. O link é impresso.
+- `update-from-base` faz o rebase do branch do card sobre a base; num conflito ele para e deixa o
+  worktree como estava (saída 1).
+- `merge-local` é para um card sem pull request: junta o card na base (um commit de merge, ou um só
+  commit com `--squash`), remove o worktree e o branch dele e o move para Concluído. Não dá para
+  desfazer, então exige `--confirm`; `--message` é a mensagem do commit. O shell de uma sessão que o
+  roda fica retido até o sim da pessoa, como no `discard`.
 - `--json` imprime a resposta para um script.
 - **Códigos de saída:** 0 feito, 1 recusado (o motivo vai para o stderr, com o código do daemon), 2
   sem daemon (parado, ou mudo por 15 s; 5 minutos no `review`).
