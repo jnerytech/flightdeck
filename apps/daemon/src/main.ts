@@ -104,8 +104,8 @@ export interface Daemon {
   stop(): Promise<void>;
   /** What the daemon says: the console and, redacted, the log file. */
   logger: Logger;
-  /** One redacted line in the log file, written at once: for a process that is ending (#3403). */
-  logAtExit(level: "info" | "error", message: string): void;
+  /** One redacted line in the log file, written at once, for a process that is ending (#3403); returns its text. */
+  logAtExit(level: "info" | "error", message: string): string;
 }
 
 /** What `startDaemon` takes besides the command line: the seams the tests and the demo give. */

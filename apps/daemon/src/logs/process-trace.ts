@@ -25,20 +25,26 @@ export function traceProcessEnd(
   on: OnProcessEvent,
   exit: (code: number) => void,
   fileLog: Pick<FileLog, "writeAtExit">,
-  _report: (line: string) => void,
+  report: (line: string) => void,
 ): ProcessTrace {
-  let traced = false;
+  /** A line is written for the crash, or the daemon stopped by itself: the `exit` that follows adds none. */
+  let ended = false;
+  let crashed = false;
   const crash = (event: "uncaughtException" | "unhandledRejection") => (thrown: unknown) => {
-    if (!traced) fileLog.writeAtExit("error", `${event}: ${describe(thrown)}`);
-    traced = true;
-    // A registered handler removes the default exit: the process must end by itself.
+    if (!crashed) {
+      crashed = true;
+      const written = fileLog.writeAtExit("error", `${event}: ${describe(thrown)}`);
+      // A registered handler removes the runtime's own report of the crash (stderr, the journal).
+      report(written);
+    }
+    // ... and the default exit: the process must end by itself.
     exit(1);
   };
   on("uncaughtException", crash("uncaughtException"));
   on("unhandledRejection", crash("unhandledRejection"));
   on("exit", (code) => {
-    if (traced) return;
-    traced = true;
+    if (ended || crashed) return;
+    ended = true;
     fileLog.writeAtExit(
       code === 0 ? "info" : "error",
       `the daemon's process ended: exit code ${String(code)}`,
@@ -46,7 +52,7 @@ export function traceProcessEnd(
   });
   return {
     stopped: () => {
-      traced = true;
+      ended = true;
     },
   };
 }
