@@ -28,6 +28,8 @@ export const approval = {
       "This host does not ask for a device to confirm a merge: update it to protect merges.",
     trustUnchecked:
       "This host does not ask for a device to confirm trusting a folder: update it to protect trust.",
+    bypassUnchecked:
+      "This host does not ask for a device to turn on Bypass permissions: update it to protect that switch.",
     scope:
       "This guards approvals made from the app. Anyone with a terminal on the host can still reset it.",
     loading: "Reading the host's devices…",

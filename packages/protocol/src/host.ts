@@ -1,5 +1,6 @@
 // Host operations: the host's info and pause, its daemon updates, service, maintenance, logs, doctor, dependencies, releases, roots and folders (issue #1600: moved from index.ts).
 import { z } from "zod";
+import { ApprovalProof } from "./approval.ts";
 import { cmd } from "./command.ts";
 import { SessionRuntime } from "./sessions.ts";
 import { TerminalSettings } from "./terminal.ts";
@@ -314,8 +315,18 @@ export const hostCommands = [
    * loopback and Tailscale.
    */
   cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
-  /** Lets a session of this host start with every permission check off; turning it on asks for `confirm`. */
-  cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
+  /**
+   * Lets a session of this host start with every permission check off; turning it on asks for `confirm`,
+   * and, with a device enrolled, for its `proof` over this payload (#3507). Turning it off needs neither.
+   */
+  cmd(
+    "host.bypass",
+    z.object({
+      allow: z.boolean(),
+      confirm: z.boolean().optional(),
+      proof: ApprovalProof.optional(),
+    }),
+  ),
   /** Keep this computer awake while sessions run: the host's switch (issue #163). */
   cmd("host.keepAwake", z.object({ enabled: z.boolean() }).strict()),
   /** Issue #1404: new card runs wait on the host while paused; near only. */

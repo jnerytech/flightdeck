@@ -8,6 +8,7 @@ import {
   commandMessage,
   enrollAddMessage,
   enrollFirstMessage,
+  FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_TRUST,
@@ -729,12 +730,53 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
     await expect(unreadable.slice.mergePayload("h", "c1", "merge")).rejects.toThrow();
   });
 
+  const BYPASS_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_COMMAND, FEATURE_APPROVAL_BYPASS];
+  const ON = { allow: true, confirm: true } as const;
+
+  test("turning bypass on carries the proof over exactly {allow, confirm}, signed with this device's key (#3507)", async () => {
+    const { slice, log, keyLog } = approval({ features: BYPASS_HOST });
+    const made = await slice.bypassPayload("h");
+    const payload = made.kind === "payload" ? made.payload : {};
+    const { proof, ...bound } = payload as typeof ON & { proof: unknown };
+    expect(bound).toEqual(ON);
+    expect(proof).toEqual({
+      keyId: "key-this",
+      nonce: "nonce-1",
+      signature: expect.stringContaining("sig:"),
+    });
+    expect(log.map((l) => l.type)).toEqual(["approval.list", "approval.challenge"]);
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "host.bypass" });
+    expect(keyLog.find((k) => k.op === "sign")?.args[3]).toBe(commandDigest(ON));
+    expect(Command.safeParse({ id: "1", type: "host.bypass", payload }).success).toBe(true);
+  });
+
+  test("a host that announces the merge proof but not the bypass one gets the plain payload and no challenge", async () => {
+    const { slice, log } = approval({ features: COMMAND_HOST });
+    expect(await slice.bypassPayload("h")).toEqual({ kind: "payload", payload: ON });
+    expect(log).toEqual([]);
+  });
+
+  test("a host with no device enrolled gets the plain payload; a no in the dialog stops it; a device with no key here is told so", async () => {
+    const off = approval({ features: BYPASS_HOST, list: { protectionOff: true, keys: [] } });
+    expect(await off.slice.bypassPayload("h")).toEqual({ kind: "payload", payload: ON });
+    const declined = approval({ features: BYPASS_HOST, signFails: "declined" });
+    expect(await declined.slice.bypassPayload("h")).toEqual({ kind: "declined" });
+    const keyless = approval({ features: BYPASS_HOST, local: null });
+    await expect(keyless.slice.bypassPayload("h")).rejects.toThrow(t("approvalDevices.noKeyHere"));
+  });
+
   test("a host that checks proofs but not a command is one the app says so of, for each command; one that checks all, or one not known, is not", () => {
     const unchecked = (features: string[]) => approval({ features }).slice.uncheckedCommands("h");
-    expect(unchecked([FEATURE_APPROVAL_PROOF])).toEqual(["merge", "trust"]);
-    expect(unchecked(COMMAND_HOST)).toEqual(["trust"]);
-    expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual(["merge"]);
-    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual([]);
+    expect(unchecked([FEATURE_APPROVAL_PROOF])).toEqual(["merge", "trust", "bypass"]);
+    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "bypass"]);
+    expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual([
+      "merge",
+      "bypass",
+    ]);
+    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual(["bypass"]);
+    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST, FEATURE_APPROVAL_BYPASS])).toEqual(
+      [],
+    );
     expect(unchecked([])).toEqual([]);
   });
 

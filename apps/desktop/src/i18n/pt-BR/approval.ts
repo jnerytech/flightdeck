@@ -27,6 +27,8 @@ export const approval = {
       "Este host não pede a confirmação de um dispositivo ao fazer merge: atualize-o para proteger os merges.",
     trustUnchecked:
       "Este host não pede a confirmação de um dispositivo ao confiar em uma pasta: atualize-o para proteger a confiança.",
+    bypassUnchecked:
+      "Este host não pede a confirmação de um dispositivo para ligar Ignorar permissões: atualize-o para proteger essa chave.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",
     scope:
       "Isto protege as aprovações feitas pelo app. Quem tem um terminal no host ainda pode zerar.",
