@@ -246,6 +246,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchQuota?.();
         ws.data.unwatchAccount?.();
         ws.data.unwatchAskpass?.();
+        ws.data.unwatchApprovals?.();
         ws.data.unwatchBudgets?.();
         if (ws.data.terminalSink) opts.terminals?.detachAll(ws.data.terminalSink);
         for (const stop of ws.data.changeWatchers.values()) stop();

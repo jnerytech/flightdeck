@@ -262,6 +262,8 @@ const OPTIONS_WITH_VALUE = [
   "--url",
   "--token",
   "--last",
+  "--hours",
+  "--days",
   "--project",
   "--project-path",
   "--query",

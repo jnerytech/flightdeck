@@ -3,10 +3,12 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
+import { approversProblem } from "./approvers-args.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
@@ -226,7 +228,7 @@ const HANDLERS: Record<string, Handler> = {
       args.index = index;
     }
   },
-  approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
+  approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
     const action = subAction(reader, ["list", "remove"] as const, "invalid rules action");
@@ -347,6 +349,25 @@ const HANDLERS: Record<string, Handler> = {
       if (next && !next.startsWith("--")) args.teamSpec = reader.next();
     }
   },
+  quota: (args, reader) => {
+    args.command = "quota";
+    const action = subAction(reader, ["get", "history", "pause-at"], "invalid quota action");
+    args.action = action;
+    if (action === "history") args.quotaWindow = operand(reader, "the window");
+    if (action === "pause-at") {
+      const share = parseShare(operand(reader, "the share"));
+      if (share === undefined)
+        throw new Error(`quota pause-at: a share from 0 to 1, or off\n${USAGE}`);
+      args.quotaPauseAt = share;
+    }
+  },
+  usage: setCommand("usage"),
+  "--hours": setValue((args, v) => {
+    args.hours = wholeFrom("--hours", v, 720);
+  }),
+  "--days": setValue((args, v) => {
+    args.days = wholeFrom("--days", v, 90);
+  }),
   persona: (args, reader) => {
     args.command = "persona";
     const action = subAction(
@@ -452,6 +473,9 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--session": setValue((args, v) => {
     args.session = v;
+  }),
+  "--follow": setFlag((args) => {
+    args.follow = true;
   }),
   "--json": setFlag((args) => {
     args.json = true;
@@ -627,6 +651,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "history",
       "team",
       "persona",
+      "quota",
+      "usage",
       "host",
       "sessions",
       "requests",
@@ -639,7 +665,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove
 ${USAGE}`,
     );
   if (
@@ -718,7 +744,9 @@ ${USAGE}`,
     teamProblem(args) ??
     boardProblem(args) ??
     historyProblem(args) ??
-    rulesProblem(args);
+    quotaProblem(args) ??
+    rulesProblem(args) ??
+    approversProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;

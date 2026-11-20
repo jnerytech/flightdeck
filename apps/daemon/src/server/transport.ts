@@ -6,6 +6,8 @@
 import type {
   AccountUpdated,
   Ack,
+  ApprovalEnrolled,
+  ApprovalRevoked,
   AskpassRequest,
   BudgetUpdated,
   CardUpdated,
@@ -75,6 +77,8 @@ export interface Connection {
   unwatchAccount?: () => void;
   /** Stops the `askpass.watch` stream, when active. */
   unwatchAskpass?: () => void;
+  /** Stops the `approval.watch` stream, when active. */
+  unwatchApprovals?: () => void;
   /** Stops the `budget.watch` stream, when active. */
   unwatchBudgets?: () => void;
   /** Stops each `changes.watch`, by target. */
@@ -101,6 +105,8 @@ export type Outgoing =
   | EventEnvelope
   | Ping
   | HistoryChanged
+  | ApprovalEnrolled
+  | ApprovalRevoked
   | CardUpdated
   | ExternalUpdated
   | ExternalPermissionFrame

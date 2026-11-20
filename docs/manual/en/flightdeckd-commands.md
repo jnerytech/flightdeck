@@ -138,6 +138,8 @@ text may or may not have gone in: look at the session before you send it again.
 fd approvers enroll
 fd approvers enroll --json
 fd approvers reset
+fd approvers watch
+fd approvers watch --follow --json
 ```
 
 A high-risk request, or an allow that saves a rule, is approved only with the signed proof of a device
@@ -155,8 +157,16 @@ remove a key.
   before the first device: a high-risk allow needs only the hold of the Approve button. Prints how many
   devices went; with `--json`, `removed`. The host keeps its identity.
 
-Both read the data folder from the config file and work with the daemon running or stopped. Until a
-device is enrolled, nothing changes for you.
+- **`watch`:** asks the running daemon which devices can approve and prints one line per device: key id,
+  name, app, address and the time it enrolled (or `no device enrolled: protection is off`). With
+  `--follow` it stays open and prints a line `enrolled ...` or `revoked <key id>` each time a device is
+  enrolled or revoked, until Ctrl-C (exit `0`); with `--follow --json` each change is one JSON object per
+  line. It needs the daemon: exit `2` when none runs, and `--follow` exits `1` when the host refuses the
+  watch (an older version, or one without approving devices). It never prints a key, a nonce or a code. A `reset` at the terminal sends no line: run
+  `watch` again to see the empty list.
+
+`enroll` and `reset` read the data folder from the config file and work with the daemon running or
+stopped. Until a device is enrolled, nothing changes for you.
 
 ## fd board
 
@@ -182,6 +192,32 @@ fd board watch --json
 
 A change that gets no answer exits `2` and says it may or may not have gone in: run `board settings`
 before trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
+
+## fd quota and fd usage
+
+```sh
+fd quota get
+fd quota history five_hour --hours 48
+fd quota pause-at 0.8
+fd quota pause-at off
+fd usage --days 30
+```
+
+The plan quota of this host and what its sessions cost, as the Costs screen shows them. Each takes `--json`
+for the daemon's answer.
+
+- **`quota get`:** one line per window (`five_hour  42%  allowed  resets <time>`), then the guard: `new cards
+  wait from 80%` or `the quota guard is off`. A window with no reading yet says `unknown`.
+- **`quota history <window>`:** the readings of the window over `--hours` (1 to 720, a day when absent): how
+  many there are, the projection (`reaches 100% at <time>`, `does not reach 100% before it resets`, or a note
+  that it needs 3 readings) and each project's share of the cost since the window began.
+- **`quota pause-at <share>`:** sets the guard, a share of the plan from 0 to 1 (`0.8` is 80%), or `off`.
+  Anything else exits `1` and sends nothing. It never stops a session that is already running.
+- **`usage`:** the usage of the last `--days` (1 to 90, the daemon's own default when absent), one line per
+  day and project: cost, tokens in and out, and turns.
+
+A `pause-at` that gets no answer exits `2` and says it may or may not have changed: run `quota get` before
+trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
 ## fd history
 
@@ -307,3 +343,10 @@ fd autoapprove resume --session <key> --confirm
 A change that gets no answer exits `2` and says it may or may not have gone in: run `rules list` or
 `autoapprove list` before trying again. Run from a session's own shell, `rules remove` and
 `autoapprove resume` are classified as high-risk commands.
+
+
+## Left in the app
+
+`webhook.send` has no command. Its payload is the webhook URL, a vault secret that only the app
+holds and hands over for one use, so a verb would make the person paste it, and would let a session post a body of
+its choice.

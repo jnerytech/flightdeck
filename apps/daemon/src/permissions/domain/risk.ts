@@ -273,6 +273,14 @@ const changesAPersona = (prog: string, args: string[]) =>
 const startsATeam = (prog: string, args: string[]) => runsCliVerb(prog, args, "team", TEAM_CHANGES);
 
 /**
+ * `quota pause-at` moves or turns off the guard that holds new cards when the plan quota runs low (#3460):
+ * with the guard gone, queued cards and team members start at once and spend the plan, and the setting is
+ * kept in the config file. Every value is rated, since the text cannot tell a raise from a lowering.
+ */
+const movesTheQuotaGuard = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "quota", ["pause-at"]);
+
+/**
  * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
  * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
  * session that got third-party content. `--confirm` is only a flag the caller types.
@@ -339,6 +347,11 @@ const DANGEROUS: Array<{
     when: startsATeam,
     reason: () =>
       "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member, remove-member, pause, resume, close or message)",
+  },
+  {
+    when: movesTheQuotaGuard,
+    reason: () =>
+      "moves or turns off the plan-quota guard that holds new cards back, so sessions can spend past the plan the person set (flightdeckd quota pause-at)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

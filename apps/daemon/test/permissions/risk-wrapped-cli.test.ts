@@ -13,6 +13,7 @@ const VERBS: Record<string, string> = {
   "history resume": "history resume abc --force",
   rules: "rules remove r1 --confirm",
   autoapprove: "autoapprove resume s1",
+  "quota guard": "quota pause-at off",
 };
 
 /** The same call in a form a shell reads as the same call; `%` is the call as the plain form types it. */
