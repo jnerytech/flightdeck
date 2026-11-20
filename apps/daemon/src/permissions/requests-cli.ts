@@ -4,8 +4,14 @@
  * asks for the summaries once (`sessions.watch` with the snapshot in the ack) and closes. Exit codes:
  * 0 done, 1 refused, 2 no daemon.
  */
-import { type CliResult, json, runOnLocalDaemon, said } from "../daemon-client/index.ts";
-import { resolveSession } from "../daemon-client/session-ref.ts";
+import {
+  type CliResult,
+  json,
+  resolveSession,
+  runOnLocalDaemon,
+  said,
+} from "../daemon-client/index.ts";
+
 import { requestLine, requestRows } from "./domain/requests-view.ts";
 
 export interface RequestsCliArgs {
