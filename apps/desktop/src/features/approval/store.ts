@@ -48,7 +48,7 @@ type BypassPayload = { kind: "payload"; payload: BypassBody } | { kind: "decline
 interface BypassBody {
   allow: true;
   confirm: true;
-  proof?: { keyId: string; nonce: string; signature: string };
+  proof?: ApprovalProof;
 }
 
 /** `card.pr.merge`'s payload: the head binding and the proof are there only for a host that checks them. */

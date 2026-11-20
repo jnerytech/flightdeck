@@ -126,13 +126,26 @@ describe("command-proof-bypass: turning bypass on with a device enrolled takes i
 
   test("an allow not confirmed is refused as before, and the challenge it holds is not used up", async () => {
     const t = await host();
-    const proof = await t.prove({ allow: true });
+    const proof = await t.prove(ON);
     const first = await t.client.request("host.bypass", { allow: true, proof });
     const second = await t.client.request("host.bypass", { ...ON, proof });
-    expect([
-      failure(first).includes("bypass_confirm"),
-      failure(second).includes("approval_proof_required"),
-    ]).toEqual([true, true]);
+    expect([failure(first).includes("bypass_confirm"), second.ok, t.allowed()]).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  test("odd shapes of allow are refused over the wire and leave the switch off", async () => {
+    const t = await host();
+    for (const odd of [
+      { allow: "true", confirm: true },
+      { allow: 1, confirm: true },
+      { confirm: true },
+    ]) {
+      const ack = await t.client.request("host.bypass", odd);
+      expect([ack.ok, t.allowed()]).toEqual([false, false]);
+    }
   });
 
   test("with no device enrolled, allow true runs as before and carries no proof", async () => {

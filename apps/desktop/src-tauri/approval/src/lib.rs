@@ -209,7 +209,7 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
     if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove | Kind::Command) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
     }
-    if kind == Kind::EnrollAdd && !plain(host) {
+    if matches!(kind, Kind::EnrollAdd | Kind::Command) && !plain(host) {
         return Err("the text to sign names a host that is not an id".into());
     }
     // What the allow carries besides the allow: the hashes of nothing say it carries nothing.
@@ -892,9 +892,32 @@ mod tests {
             "{\"allow\":true,\"confirm\":true,\"proof\":{}}",
             "[{\"allow\":true,\"confirm\":true}]",
         ] {
+            // The payload guard itself, not the hash check that would refuse it anyway.
+            assert!(read_command("host.bypass", payload).is_err(), "read: {payload}");
             let text = command(&me, DAEMON, "host.bypass", payload);
             assert!(describe_with(&text, DAEMON, &me, Some(payload)).is_err(), "signed: {payload}");
         }
+    }
+
+    #[test]
+    fn a_bypass_payload_is_signed_only_under_its_own_command_name() {
+        let me = own();
+        let under_merge = command(&me, DAEMON, "card.pr.merge", BYPASS_PAYLOAD);
+        assert!(describe_with(&under_merge, DAEMON, &me, Some(BYPASS_PAYLOAD)).is_err());
+        let merge_under_bypass = command(&me, DAEMON, "host.bypass", MERGE_PAYLOAD);
+        assert!(describe_with(&merge_under_bypass, DAEMON, &me, Some(MERGE_PAYLOAD)).is_err());
+        // The signer hashes the canonical form it builds, so a spaced spelling of the same payload is the same ask.
+        let spaced = "{\"allow\": true, \"confirm\": true}";
+        let text = command(&me, DAEMON, "host.bypass", BYPASS_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(spaced)), Ok(bypass_ask()));
+    }
+
+    #[test]
+    fn a_command_dialog_does_not_name_a_host_that_is_not_an_id() {
+        let me = own();
+        let host = "ab\ncd-padding";
+        let text = command(&me, host, "host.bypass", BYPASS_PAYLOAD);
+        assert!(describe_with(&text, host, &me, Some(BYPASS_PAYLOAD)).is_err());
     }
 
     #[test]

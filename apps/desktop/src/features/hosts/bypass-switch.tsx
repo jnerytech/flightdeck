@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors.ts";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
@@ -22,11 +23,15 @@ export function BypassSwitch(props: Readonly<{ store: AppStore; host: HostView }
       // Turning it on is signed by the person's device when the host has one enrolled (#3507); off asks nothing.
       const made = allow ? await store.approval.bypassPayload(host.id) : null;
       if (made?.kind === "declined") return;
-      await store.hostCommand(
+      const result = await store.hostRequest(
         host.id,
         "host.bypass",
         made?.payload ?? { allow: false, confirm: true },
       );
+      if (!result.ok) {
+        setRefused(refusalText(result.code, result.message, t, result));
+        return;
+      }
       await store.reloadHostInfo(host.id);
     } catch (error) {
       setRefused(error instanceof Error ? error.message : String(error));

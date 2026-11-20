@@ -66,6 +66,66 @@ describe("bypass-ui: the host settings", () => {
   });
 });
 
+describe("bypass-ui: turning it on with a device enrolled (#3507)", () => {
+  async function onHostPage() {
+    const d = makeDaemon(cleanups);
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    await act(async () => {
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await act(async () => store.router.push({ name: "host", host: hostId }));
+    await settle(() => screen.queryByText("Sessions without permission prompts") !== null);
+    return store;
+  }
+  const confirmAllow = async () => {
+    await press("Allow sessions without prompts");
+    await click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Allow sessions without prompts",
+      }),
+    );
+  };
+
+  test("a no in the system's dialog sends nothing", async () => {
+    const store = await onHostPage();
+    const sent: string[] = [];
+    const app = store as unknown as Record<string, unknown>;
+    app.hostRequest = async (_host: string, type: string) => {
+      sent.push(type);
+      return { ok: true };
+    };
+    (store.approval as unknown as Record<string, unknown>).bypassPayload = async () => ({
+      kind: "declined",
+    });
+    await confirmAllow();
+    expect(sent).toEqual([]);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("a refusal of the host is said in place, in words, and the signed payload is sent once", async () => {
+    const store = await onHostPage();
+    const sent: unknown[] = [];
+    const app = store as unknown as Record<string, unknown>;
+    app.hostRequest = async (_host: string, type: string, payload: unknown) => {
+      sent.push([type, payload]);
+      return { ok: false, code: "approval_proof_required", message: "needs a proof" };
+    };
+    const proof = { keyId: "k", nonce: "n", signature: "s" };
+    (store.approval as unknown as Record<string, unknown>).bypassPayload = async () => ({
+      kind: "payload",
+      payload: { allow: true, confirm: true, proof },
+    });
+    await confirmAllow();
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect(sent).toEqual([["host.bypass", { allow: true, confirm: true, proof }]]);
+    expect(screen.queryByRole("alert")?.textContent ?? "").not.toBe("");
+  });
+});
+
 describe("bypass-ui: the New session form", () => {
   const form = (allow: boolean | undefined, created: unknown[]) => {
     const host = {

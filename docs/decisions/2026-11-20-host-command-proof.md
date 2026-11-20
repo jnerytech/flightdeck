@@ -211,3 +211,6 @@ issue, with `terminal.settings` and `mcp.save` first.
   the switch gets the plain payload, and its page shows a notice (`approvalDevices.bypassUnchecked`).
 - There is no CLI verb for `host.bypass`; the parity row stays as it is. When a verb is added it follows the
   rule above.
+- The gate guards the protocol path only. A host whose config file already says bypass is on (the default), or
+  a person or process that edits the config file and restarts the daemon, gets bypass without a device: the
+  proof stops a session from turning back on, over the protocol, what the person turned off.
