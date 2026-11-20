@@ -139,6 +139,14 @@ export interface Platform {
     delete(id: string): Promise<void>;
   };
   /**
+   * Issue #3429: keeps what the `flightdeckd` CLI reads for `--host` in step with the host list: each
+   * host's address in the credential store beside its token, and the index of names in the app's
+   * config folder. Absent where there is no such store (a browser). No token goes through it.
+   */
+  hostIndex?: {
+    sync(hosts: Array<{ id: string; name: string; url: string }>): Promise<void>;
+  };
+  /**
    * Phase 16: the vault's values (service `flightdeck-vault`, account = the secret id), apart from
    * the host tokens in `secrets`. The metadata lives in `storage` and never holds a value.
    */
