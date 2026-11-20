@@ -153,6 +153,13 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             shape(5)?;
             (Kind::Revoke, part(2), Some(part(1)), part(4))
         }
+        TAG_VAULT_APPROVE => {
+            shape(6)?;
+            if !matches!(part(5), "once" | "session") {
+                return Err("a use of a secret is signed for once or for the session only".into());
+            }
+            (Kind::VaultApprove, part(2), Some(part(1)), part(3))
+        }
         _ => return Err("this text is not one this key signs".into()),
     };
     if host != daemon_id {
@@ -167,7 +174,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             && text.len() <= 64
             && text.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
     };
-    if matches!(kind, Kind::Approve | Kind::Revoke) && !plain(subject) {
+    if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
     }
     if kind == Kind::EnrollAdd && !plain(host) {
@@ -178,7 +185,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     let also = if kind == Kind::Approve {
         Also { rules: none(6, "[]"), input: none(7, "null"), message: none(8, ""), session: false }
     } else {
-        Also::default()
+        Also { session: kind == Kind::VaultApprove && part(5) == "session", ..Also::default() }
     };
     Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also })
 }
@@ -249,7 +256,16 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             "Remover o dispositivo com a chave {} dos aprovadores deste host? Continue só se você acabou de pedir isso no Flightdeck.",
             short(&ask.subject)
         ),
-        (Kind::VaultApprove, _) => String::new(),
+        (Kind::VaultApprove, false) => format!(
+            "Allow the use of a secret for request {}, {}? Continue only if you just pressed Approve in Flightdeck.",
+            ask.subject,
+            if ask.also.session { "for the whole session" } else { "once" }
+        ),
+        (Kind::VaultApprove, true) => format!(
+            "Permitir o uso de um segredo no pedido {}, {}? Continue só se você acabou de apertar Aprovar no Flightdeck.",
+            ask.subject,
+            if ask.also.session { "durante toda a sessão" } else { "uma vez" }
+        ),
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
     (title.to_string(), body)
