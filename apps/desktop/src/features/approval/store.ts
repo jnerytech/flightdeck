@@ -14,6 +14,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
@@ -72,16 +73,29 @@ type TrustPayload =
     }
   | { kind: "declined" };
 
+/** The payload of `autoapprove.resume`, or the person's no (#3453). */
+type ResumePayload =
+  | {
+      kind: "payload";
+      payload: {
+        sessionKey: string;
+        confirm: boolean;
+        proof?: { keyId: string; nonce: string; signature: string };
+      };
+    }
+  | { kind: "declined" };
+
 /** The feature a host announces for each command it guards (#3453). */
 const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "card.pr.merge": FEATURE_APPROVAL_COMMAND,
   "project.trust.set": FEATURE_APPROVAL_TRUST,
   "host.bypass": FEATURE_APPROVAL_BYPASS,
+  "autoapprove.resume": FEATURE_APPROVAL_RESUME,
   "roots.add": FEATURE_APPROVAL_ROOTS,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand = "merge" | "trust" | "bypass" | "roots";
+export type UncheckedCommand = "merge" | "trust" | "bypass" | "resume" | "roots";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -273,6 +287,7 @@ export class ApprovalSlice {
     if (!hasFeature(features, FEATURE_APPROVAL_COMMAND, false)) unchecked.push("merge");
     if (!hasFeature(features, FEATURE_APPROVAL_TRUST, false)) unchecked.push("trust");
     if (!hasFeature(features, FEATURE_APPROVAL_BYPASS, false)) unchecked.push("bypass");
+    if (!hasFeature(features, FEATURE_APPROVAL_RESUME, false)) unchecked.push("resume");
     if (!hasFeature(features, FEATURE_APPROVAL_ROOTS, false)) unchecked.push("roots");
     return unchecked;
   }
@@ -611,6 +626,20 @@ export class ApprovalSlice {
   async trustPayload(hostId: string, path: string): Promise<TrustPayload> {
     const plain = { path, trusted: true };
     const proof = await this.proveCommand(hostId, "project.trust.set", plain);
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
+    };
+  }
+
+  /**
+   * The payload that resumes the automatic approver of a session, signed by the device when the host checks
+   * it and a device is enrolled (#3453). `declined`: the person said no in the system's dialog.
+   */
+  async resumePayload(hostId: string, sessionKey: string): Promise<ResumePayload> {
+    const plain = { sessionKey, confirm: true };
+    const proof = await this.proveCommand(hostId, "autoapprove.resume", plain);
     if (proof.kind === "declined") return proof;
     return {
       kind: "payload",

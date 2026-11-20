@@ -187,7 +187,17 @@ export const permissionsCommands = [
     }),
   ),
   /** Turns the automatic approval back on in a session that got third-party content. */
-  cmd("autoapprove.resume", z.object({ sessionKey: z.string(), confirm: z.boolean().optional() })),
+  cmd(
+    "autoapprove.resume",
+    z
+      .object({
+        sessionKey: z.string(),
+        confirm: z.boolean().optional(),
+        /** #3453: the signed proof of an enrolled device over the session; a host with one asks for it. */
+        proof: ApprovalProof.optional(),
+      })
+      .strict(),
+  ),
   /** `permissions.allow` of the project's `.claude/settings.local.json`. */
   cmd("rules.list", z.object({ projectId: z.string() })),
   cmd(

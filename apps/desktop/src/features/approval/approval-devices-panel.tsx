@@ -19,6 +19,7 @@ const UNCHECKED_TEXT = {
   merge: "approvalDevices.commandsUnchecked",
   trust: "approvalDevices.trustUnchecked",
   bypass: "approvalDevices.bypassUnchecked",
+  resume: "approvalDevices.resumeUnchecked",
   roots: "approvalDevices.rootsUnchecked",
 } as const satisfies Record<UncheckedCommand, string>;
 
