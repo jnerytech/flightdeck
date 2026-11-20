@@ -64,7 +64,9 @@ export function fakeDaemon(
         if (answer === CLOSE) return void ws.close();
         if (answer === REVOKE) return void ws.close(4401);
         if (answer === undefined && type !== "hello") return; // a daemon that never answers
-        const error = (answer as { error?: unknown } | undefined)?.error;
+        // A refusal is `{ error: { code, message } }`; a result may carry an `error` string (ssh.test).
+        const said = (answer as { error?: unknown } | undefined)?.error;
+        const error = typeof said === "object" ? said : undefined;
         ws.send(
           JSON.stringify({
             type: "ack",

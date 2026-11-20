@@ -111,7 +111,7 @@ describe("flightdeckd ssh hostkey check (issue #3537)", () => {
     expect({ code: run.code, out: run.out, err: run.err }).toEqual({
       code: 1,
       out: [],
-      err: ["no such ssh target: nope"],
+      err: ["flightdeckd: no such ssh target: nope"],
     });
     expect(callsOf(daemon, "ssh.hostkey.check")).toEqual([]);
   });
@@ -121,7 +121,7 @@ describe("flightdeckd ssh hostkey check (issue #3537)", () => {
     const run = await flightdeckd(["ssh", "hostkey", "check", "twin"], daemon.port);
     expect({ code: run.code, err: run.err }).toEqual({
       code: 1,
-      err: ["2 ssh targets are named twin: use an id (t3, t4)"],
+      err: ["flightdeckd: 2 ssh targets are named twin: use an id (t3, t4)"],
     });
     expect(callsOf(daemon, "ssh.hostkey.check")).toEqual([]);
   });
@@ -225,6 +225,8 @@ describe("the arguments of ssh hostkey check and ssh test (issue #3537)", () => 
   });
 
   test("a second operand is refused, so a typo cannot pass", () => {
-    expect(JSON.stringify(parsed(["ssh", "test", "prod", "db"]))).toContain("unknown argument: db");
+    expect(JSON.stringify(parsed(["ssh", "test", "prod", "db"]))).toContain(
+      "one command at a time: ssh, then db",
+    );
   });
 });
