@@ -135,6 +135,11 @@ flightdeckd team list [--project <name or id>] [--json]
 flightdeckd team show <team> [--json]
 flightdeckd team new <goal> (--workers <1-8> | --worker <spec>...) [--coordinator <spec>]
   [--name <text>] [--check <command>...] [--project <name or id>] [--confirm] [--json]
+flightdeckd team update <team> [--goal <text>] [--check <command>... | --clear-checks]
+  [--persona <member>=<persona>] [--json]
+flightdeckd team add-member <team> [<spec>] [--confirm] [--json]
+flightdeckd team remove-member <team> <member> --confirm [--json]
+flightdeckd team delete <team> --confirm [--json]
 ```
 
 - `list` prints one line per team: id, name, state (`active`, `paused by user`, `paused by quota` or
@@ -156,6 +161,18 @@ flightdeckd team new <goal> (--workers <1-8> | --worker <spec>...) [--coordinato
   you again. A team over the plan quota is refused. If the command gets no answer it says so: the team
   may or may not exist, so run `team list` before trying again. A session's own `team new` is rated high
   risk, so its request goes to you.
+- `update` changes an open team, as the app's team settings do: `--goal` replaces its goal, `--check`
+  (repeated) replaces its checks and `--clear-checks` empties them, and `--persona w1=reviewer` gives
+  the member `w1` another persona (`--persona w1=` returns it to the default). One call can carry all
+  three, and it must carry at least one. A closed team is refused.
+- `add-member` adds one worker to an open team that is not paused. Its optional spec is the same
+  `persona[:model[:effort[:mode]]]`, and a worker whose card must wait says so. A `bypassPermissions`
+  worker needs `--confirm`, as in `new`. `remove-member` takes a member out by its name, address,
+  session or card; it stops that member's session and tells the worker, so it needs `--confirm`, as the
+  app asks you first. The coordinator cannot be
+  removed. `delete` removes a closed team with no live member, and needs `--confirm`: it is for good.
+  A session's own `team update`, `delete`, `add-member` or `remove-member` is rated high risk, like `new`.
+  A change that gets no answer says so, and `team show` tells what it did.
 - `--json` prints the daemon's own answer for a script. The text a session wrote (a report, a name)
   is shown as plain text, without control characters.
 - **Exit codes:** 0 done, 1 refused (an unknown team or project; the reason is on stderr), 2 no daemon.

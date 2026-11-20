@@ -136,6 +136,11 @@ flightdeckd team list [--project <nome ou id>] [--json]
 flightdeckd team show <time> [--json]
 flightdeckd team new <objetivo> (--workers <1-8> | --worker <spec>...) [--coordinator <spec>]
   [--name <texto>] [--check <comando>...] [--project <nome ou id>] [--confirm] [--json]
+flightdeckd team update <time> [--goal <texto>] [--check <comando>... | --clear-checks]
+  [--persona <membro>=<persona>] [--json]
+flightdeckd team add-member <time> [<spec>] [--confirm] [--json]
+flightdeckd team remove-member <time> <membro> --confirm [--json]
+flightdeckd team delete <time> --confirm [--json]
 ```
 
 - `list` imprime uma linha por time: id, nome, estado (`active`, `paused by user`, `paused by quota`
@@ -157,6 +162,18 @@ flightdeckd team new <objetivo> (--workers <1-8> | --worker <spec>...) [--coordi
   novo. Um time acima da cota do plano é recusado. Se o comando não recebe resposta, ele diz isso: o time
   pode ou não existir, então rode `team list` antes de tentar de novo. O `team new` de uma sessão conta
   como risco alto, então o pedido dela vai para você.
+- `update` muda um time aberto, como as configurações do time no app: `--goal` troca o objetivo,
+  `--check` (repetido) troca as verificações e `--clear-checks` esvazia, e `--persona w1=reviewer` dá ao
+  membro `w1` outra persona (`--persona w1=` volta à padrão). Uma chamada pode levar as três, e precisa
+  levar ao menos uma. Um time fechado é recusado.
+- `add-member` acrescenta um worker a um time aberto e não pausado. A spec opcional é a mesma
+  `persona[:modelo[:esforço[:modo]]]`, e um worker cujo card precisa esperar diz isso. Um worker com
+  `bypassPermissions` precisa de `--confirm`, como no `new`. `remove-member` tira um membro pelo nome,
+  endereço, sessão ou card; ele para a sessão do membro e avisa o worker, então precisa de `--confirm`, como o app
+  pergunta antes. O coordenador não pode ser
+  removido. `delete` remove um time fechado, sem membro ativo, e precisa de `--confirm`: é para
+  sempre. O `team update`, `delete`, `add-member` ou `remove-member` de uma sessão conta como risco alto,
+  como o `new`. Uma mudança sem resposta diz isso, e o `team show` mostra o que ela fez.
 - `--json` imprime a resposta do próprio daemon, para um script. O texto que uma sessão escreveu (um
   relato, um nome) aparece como texto simples, sem caracteres de controle.
 - **Códigos de saída:** 0 feito, 1 recusado (um time ou projeto desconhecido; o motivo vai para o

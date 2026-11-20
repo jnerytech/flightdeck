@@ -93,13 +93,16 @@ export function bypassAsked(args: TeamCliArgs): boolean {
   return specs.some((spec) => memberSpec(spec).permission === "bypassPermissions");
 }
 
+/** The workers whose card waits in the run queue instead of running: what a command that adds them says. */
+export function waitingLines(team: TeamInfo): string[] {
+  return team.members
+    .filter((m) => m.role === "worker" && m.cardId && !m.sessionId)
+    .map((m) => `${m.name}  waits in the run queue (card ${m.cardId})`);
+}
+
 /** What `team new` says: the team, and which workers wait in the run queue instead of running. */
 export function createdLines(team: TeamInfo): string[] {
-  const waiting = team.members.filter((m) => m.role === "worker" && m.cardId && !m.sessionId);
-  return [
-    `created ${teamLine(team)}`,
-    ...waiting.map((m) => `${m.name}  waits in the run queue (card ${m.cardId})`),
-  ];
+  return [`created ${teamLine(team)}`, ...waitingLines(team)];
 }
 
 /** What a `team new` that got no answer may have done. */

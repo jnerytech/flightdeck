@@ -392,24 +392,32 @@
   },
   "task.preview": {},
   "task.results": {},
-  "teams.add_member": {},
+  "teams.add_member": {
+    "appOnly": "the team's coordinator asks as itself (the request carries its identity, which a terminal has none of); a person adds a member with flightdeckd team add-member"
+  },
   "teams.close": {},
   "teams.create": {
     "cli": "team"
   },
-  "teams.delete": {},
+  "teams.delete": {
+    "cli": "team"
+  },
   "teams.list": {
     "cli": "team"
   },
   "teams.message": {},
   "teams.pause": {},
-  "teams.remove_member": {},
+  "teams.remove_member": {
+    "appOnly": "the team's coordinator asks as itself (the request carries its identity, which a terminal has none of); a person removes a member with flightdeckd team remove-member"
+  },
   "teams.report": {},
   "teams.resume": {},
   "teams.status": {
     "cli": "message"
   },
-  "teams.update": {},
+  "teams.update": {
+    "cli": "team"
+  },
   "teams.watch": {},
   "telemetry.install": {},
   "telemetry.session": {},

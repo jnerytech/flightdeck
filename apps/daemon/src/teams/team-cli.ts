@@ -3,6 +3,7 @@
  * agent. It speaks to the local daemon like `flightdeckd card` does (the same `DaemonClient`, the
  * token of the config). Exit codes: 0 done, 1 refused, 2 no daemon.
  */
+import type { CommandPayload } from "@flightdeck/protocol";
 import { pickProject } from "../board/index.ts";
 import {
   type CliResult,
@@ -11,6 +12,13 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
+import {
+  addMemberPayload,
+  addsBypass,
+  changedLines,
+  UNSURE_CHANGE,
+  updatePayload,
+} from "./domain/team-change.ts";
 import { showLines, type TeamCliArgs, teamLine } from "./domain/team-cli-view.ts";
 import { bypassAsked, createdLines, newTeamPayload, UNSURE_NEW } from "./domain/team-new.ts";
 
@@ -54,6 +62,38 @@ async function newTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Pro
   return args.json ? json(team) : said(...createdLines(team));
 }
 
+/**
+ * Changes a team, or deletes it. A delete, a removed member and a bypass member are what the app asks the person to
+ * confirm: here it is `--confirm` (the daemon has no field for it, so it is not sent).
+ */
+async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  const team = args.id ?? "";
+  if (args.action === "delete" && !args.confirm)
+    throw new Error(`team delete needs --confirm: it removes team ${team} and its record for good`);
+  if (args.action === "remove-member" && !args.confirm)
+    throw new Error(
+      `team remove-member needs --confirm: it stops the session of ${args.member ?? "the member"}`,
+    );
+  if (args.action === "add-member" && addsBypass(args) && !args.confirm)
+    throw new Error(
+      "the member runs in bypassPermissions, which skips every permission prompt: pass --confirm to add it",
+    );
+  if (args.action === "delete") {
+    note.wrote = true;
+    const deleted = await daemon.call("teams.delete", { team });
+    return args.json ? json(deleted) : said(...changedLines(deleted, args.action));
+  }
+  const payload: CommandPayload<"teams.update"> =
+    args.action === "update"
+      ? updatePayload(args)
+      : args.action === "add-member"
+        ? addMemberPayload(args)
+        : { team, removeMember: args.member ?? "" };
+  note.wrote = true;
+  const changed = await daemon.call("teams.update", payload);
+  return args.json ? json(changed) : said(...changedLines(changed, args.action));
+}
+
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */
 export function runTeamCli(
   args: TeamCliArgs,
@@ -69,7 +109,14 @@ export function runTeamCli(
         ? listTeams(args, daemon)
         : args.action === "new"
           ? newTeam(args, daemon, note)
-          : showTeam(args, daemon),
-    unsure: args.action === "new" ? UNSURE_NEW : undefined,
+          : args.action === "show"
+            ? showTeam(args, daemon)
+            : changeTeam(args, daemon, note),
+    unsure:
+      args.action === "new"
+        ? UNSURE_NEW
+        : args.action === "list" || args.action === "show"
+          ? undefined
+          : UNSURE_CHANGE[args.action],
   });
 }
