@@ -37,6 +37,10 @@ export class Forker {
       rewinder?: Rewinder;
       /** Reads the personas for the forked session; none when absent. */
       preparePersonas?: Prepare;
+      /** The folders a fork may name, as for `create` (#3550). */
+      allowedRoots: readonly string[];
+      /** The folders being removed: a fork there is refused, as a start is (#3550). */
+      folderLocks?: { isHeld(cwd: string): boolean };
     },
   ) {}
 

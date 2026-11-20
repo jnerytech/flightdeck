@@ -142,7 +142,7 @@ describe("protocolo-compat", () => {
     const { manager } = newManager({ store });
     const snapshots = new Snapshots({ db: store.db });
     const rewinder = new Rewinder({ snapshots, sessions: manager });
-    const forker = new Forker({ runtime: new FakeRuntime(), manager, rewinder });
+    const forker = new Forker({ runtime: new FakeRuntime(), manager, rewinder, allowedRoots: [] });
     const featuresOf = async (extra: Partial<Parameters<typeof startServer>[0]>) => {
       const client = new FrameClient(serve({ features: undefined, ...extra }).url);
       cleanups.push(() => client.close());
