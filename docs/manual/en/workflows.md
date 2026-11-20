@@ -233,6 +233,12 @@ flightdeckd card update <card> [--title <text>] [--description <text>] [--estima
   [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json]
 flightdeckd card stop <card> [--json]
 flightdeckd card complete|discard|delete <card> --confirm [--json]
+flightdeckd card diff <card> [--json]
+flightdeckd card spec <card> [--json]
+flightdeckd card review <card> [--language en|pt-BR] [--json]
+flightdeckd card message <card> "<text>" [--json]
+flightdeckd card templates [--project <name or id>] [--json]
+flightdeckd card validation-template <card> [--json]
 ```
 
 - `list` prints one line per card (project, id, column, title, and why a card waits). Without
@@ -249,9 +255,20 @@ flightdeckd card complete|discard|delete <card> --confirm [--json]
 - `stop` stops the card's run. `complete`, `discard` and `delete` cannot be undone, so each needs
   `--confirm`; without it the command exits 1 and sends nothing. `delete` only removes a card that never
   started (use `discard` for one that did).
+- `diff` prints the card's changes as git does: a header per file, then its hunks. A file that may hold a
+  credential, a binary file and one that is too large are listed without lines. The text shows a tab as a
+  space; `--json` keeps the exact text. `spec` says where the card's spec file is, and whether it was found.
+- `review` asks a model for a second opinion on the card's diff, as the app's button does: it can take a
+  few minutes (the command waits up to 5), it may move the card, and a review that failed exits 1. The
+  findings not tied to a changed line are printed; the others are review comments in the app.
+  `--language` is the language of the findings.
+- `message` sends the text to the card's session (the same as `flightdeckd send`); when the session is
+  working the text is queued and read after its turn.
+- `templates` lists the card templates of a project (`.flightdeck/templates/cards.json`), and
+  `validation-template` prints the project's own shape for a validation note, or says why it was not used.
 - `--json` prints the answer for a script.
 - **Exit codes:** 0 done, 1 refused (the reason is on stderr, with the daemon's code), 2 no daemon
-  (not running, or silent for 15 s).
+  (not running, or silent for 15 s; 5 minutes for `review`).
 - **The token** comes only from the config file: `--token` is refused and the environment is not
   read. It is never printed. The command talks only to a daemon on the loopback (`127.0.0.1` or
   `::1`); a daemon bound to another address is refused. As with `flightdeckd mcp`, the token goes to

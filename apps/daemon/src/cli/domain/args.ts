@@ -62,7 +62,13 @@ export interface CliArgs {
     | "complete"
     | "delete"
     | "discard"
-    | "subagents";
+    | "subagents"
+    | "diff"
+    | "spec"
+    | "review"
+    | "message"
+    | "templates"
+    | "validation-template";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -99,11 +105,11 @@ export interface CliArgs {
   blockedBy?: string;
   description?: string;
   workflow?: string;
+  /** `card review` and `persona list|show|subagents`: the language of the text. */
+  language?: "en" | "pt-BR";
   json?: true;
   /** `persona show <id>`. */
   personaId?: string;
-  /** `persona list|show|subagents --language <pt-BR|en>`: the language of the pack personas. */
-  language?: "pt-BR" | "en";
   /** `persona list --scope <host|project|all>`. */
   scope?: "host" | "project" | "all";
   /** `action run <name>`. */
@@ -181,6 +187,12 @@ export const USAGE = [
   "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona show <id> [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona subagents [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd card diff <card> [--json] [--config <file>]",
+  "     fd card spec <card> [--json] [--config <file>]",
+  "     fd card review <card> [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd card message <card> <text> [--json] [--config <file>]",
+  "     fd card templates [--project <name or id>] [--json] [--config <file>]",
+  "     fd card validation-template <card> [--json] [--config <file>]",
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
@@ -424,13 +436,31 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "card";
     const action = subAction(
       reader,
-      ["list", "show", "new", "start", "move", "update", "stop", "complete", "delete", "discard"],
+      [
+        "list",
+        "show",
+        "new",
+        "start",
+        "move",
+        "update",
+        "stop",
+        "complete",
+        "delete",
+        "discard",
+        "diff",
+        "spec",
+        "review",
+        "message",
+        "templates",
+        "validation-template",
+      ],
       "invalid card action",
     );
     args.action = action;
-    // Every action but `list` and `new` names the card it works on.
-    if (action !== "list" && action !== "new") args.cardId = operand(reader, "the card");
+    // Every action but `list`, `new` and `templates` names the card it works on.
+    if (!["list", "new", "templates"].includes(action)) args.cardId = operand(reader, "the card");
     if (action === "move") args.column = operand(reader, "the column");
+    if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
   persona: (args, reader) => {
@@ -502,6 +532,10 @@ const HANDLERS: Record<string, Handler> = {
   "--description": setValue((args, v) => {
     args.description = v;
   }),
+  "--language": setValue((args, v) => {
+    if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR\n${USAGE}`);
+    args.language = v;
+  }),
   "--workflow": setValue((args, v) => {
     args.workflow = v;
   }),
@@ -540,10 +574,6 @@ const HANDLERS: Record<string, Handler> = {
     if (!Number.isInteger(last) || last < 1)
       throw new Error(`--last needs a positive integer\n${USAGE}`);
     args.last = last;
-  }),
-  "--language": setValue((args, v) => {
-    if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR, got ${v}\n${USAGE}`);
-    args.language = v;
   }),
   "--scope": setValue((args, v) => {
     if (v !== "host" && v !== "project" && v !== "all")
@@ -638,9 +668,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ["--validation-note", args.validationNote, ["update"]],
     ["--spec-path", args.specPath, ["update"]],
     ["--blocked-by", args.blockedBy, ["update"]],
+    ["--language", args.language, ["review"]],
   ];
   for (const [flag, value, actions] of flagged) {
     if (value === undefined) continue;
+    // `--language` also belongs to `persona`, which checks its own flags below.
+    if (flag === "--language" && args.command === "persona") continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -650,8 +683,6 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (args.scope !== undefined && (args.command !== "persona" || args.action !== "list"))
     throw new Error(`--scope: this flag only applies to flightdeckd persona list\n${USAGE}`);
-  if (args.language !== undefined && args.command !== "persona")
-    throw new Error(`--language: this flag only applies to flightdeckd persona\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

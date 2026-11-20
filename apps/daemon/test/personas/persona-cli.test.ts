@@ -110,7 +110,7 @@ describe("flightdeckd persona: the reading verbs (issue #3456)", () => {
       /--scope: this flag only applies to flightdeckd persona list/,
     );
     expect(() => parseArgs(["card", "list", "--language", "en"])).toThrow(
-      /--language: this flag only applies to flightdeckd persona/,
+      /--language: this flag only applies to flightdeckd card review/,
     );
     expect(() => parseArgs(["card", "list", "--scope", "host"])).toThrow(
       /--scope: this flag only applies to flightdeckd persona/,
