@@ -276,16 +276,8 @@ const withNamedAction =
 /** The words of `fd` that are not subcommands but are still Flightdeck's own. */
 const FD_FLAGS = ["--version", "--help", "-h"];
 
-/**
- * The pack persona each shortcut word opens. The pack still carries the Portuguese ids until #3413
- * renames them to the words themselves; then this table goes and the word is the id.
- */
-const SHORTCUTS = {
-  architect: "arquiteto",
-  reviewer: "revisor",
-  security: "seguranca",
-  coordinator: "coordenador",
-} as const;
+/** The pack personas a shortcut word opens: the word is the persona's id (#3413, #3441). */
+const SHORTCUTS = ["architect", "reviewer", "security", "coordinator"] as const;
 
 /** `flightdeckd <word>` is `flightdeckd claude --persona <id> ...`: one launch path, the claude one. */
 const openWith =
@@ -326,7 +318,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "claude";
     args.claudeArgs = reader.takeRest();
   },
-  ...Object.fromEntries(Object.entries(SHORTCUTS).map(([word, id]) => [word, openWith(() => id)])),
+  ...Object.fromEntries(SHORTCUTS.map((word) => [word, openWith(() => word)])),
   new: openWith((reader) => {
     const id = reader.next();
     if (id === undefined || id.startsWith("-")) throw new Error(`missing persona id\n${USAGE}`);
