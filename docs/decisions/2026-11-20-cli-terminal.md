@@ -13,8 +13,28 @@ from the list its terminal manager keeps.
   that was passed on a command line.
 - `--json` prints the daemon's `{"terminals": [...]}` as it is, `null` for a missing field; `--host <name>` reads a
   paired host. With no terminal the command says `no terminal` and exits `0`.
-- `terminal` has no other word yet. The verbs that open, close and configure terminals follow in the write slice, with
-  their risk rules and a security review. The five rows that belong to the app's view of one terminal (`attach`,
-  `ack`, `detach`, `write`, `resize`: a stream bound to the socket that sent `attach`, its flow control and the
-  keyboard) are marked `appOnly`, each with its reason, in that slice too; until then `terminal attach` and
-  `terminal write` are refused as unknown words.
+
+## The terminal writes (slice 2)
+
+`terminal open`, `open-session`, `close` and `settings`, over `terminal.open`, `terminal.openSession`,
+`terminal.close` and `terminal.settings`. Every one of them is a write, so a missing answer exits `2` and says that
+a terminal may or may not have changed.
+
+- `open --cwd <folder>` starts the host's shell, or `-- <program> <argument>...` (a list, never run through a
+  shell), or `--claude [--resume <id>] [--persona <id>]` (Claude Code in the folder; not together with a
+  program). The size defaults to 80x24 and `--cols`/`--rows` take whole numbers up to 500 and 300, as the protocol does.
+  `open-session --session <name|id>` opens a shell in the folder the host holds for that session; a name that no
+  session has, or that two share, opens nothing. Both print `opened` and the terminal's line, as `list` prints it.
+- `close <terminal> [--kill]` detaches the terminal, or ends its process with `--kill`.
+- `settings --enable --confirm | --disable` turns the host's terminals on or off and prints `terminals on|off`,
+  the most terminals at once and the shell. `--enable` without `--confirm` exits `1` with the reason
+  `terminal_enable_confirm` before anything is sent: it is a full shell on the host for whoever reaches the daemon.
+- The folder is checked by the daemon, by its real path, against the allowed roots, and the terminal's environment
+  is the daemon's own filtered one; the CLI adds no path or environment logic. A terminal outlives the command that
+  opened it, and `list` shows it.
+- Risk (`permissions/domain/risk.ts`): a session that runs `terminal open`, `open-session` or `settings --enable`
+  from its shell is high risk, since each one hands it a shell the person did not open in the app. `list`, `close`
+  and `settings --disable` stay ordinary.
+- Five rows are `appOnly`, each with its reason in `docs/cli-parity.json`: `attach`, `ack`, `detach`, `write` and
+  `resize` belong to the app's view of one terminal (a stream bound to the socket that sent `attach`, its flow
+  control and the keyboard). `terminal attach` and `terminal write` are refused as unknown words.

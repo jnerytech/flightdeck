@@ -491,18 +491,36 @@
   "teleport.write": {},
   "template.list": {},
   "template.start": {},
-  "terminal.ack": {},
-  "terminal.attach": {},
-  "terminal.close": {},
-  "terminal.detach": {},
+  "terminal.ack": {
+    "appOnly": "the flow control of an attached stream, which only the view that attached has (#3538)"
+  },
+  "terminal.attach": {
+    "appOnly": "streams the terminal's output to the socket that sent it and ends with that socket; a command that exits has no stream to hold (#3538)"
+  },
+  "terminal.close": {
+    "cli": "terminal"
+  },
+  "terminal.detach": {
+    "appOnly": "ends the stream of the socket that attached; a command line holds no stream, and terminal close detaches or ends a terminal (#3538)"
+  },
   "terminal.list": {
     "cli": "terminal"
   },
-  "terminal.open": {},
-  "terminal.openSession": {},
-  "terminal.resize": {},
-  "terminal.settings": {},
-  "terminal.write": {},
+  "terminal.open": {
+    "cli": "terminal"
+  },
+  "terminal.openSession": {
+    "cli": "terminal"
+  },
+  "terminal.resize": {
+    "appOnly": "follows the size of the app's own view of the terminal (#3538)"
+  },
+  "terminal.settings": {
+    "cli": "terminal"
+  },
+  "terminal.write": {
+    "appOnly": "types into a terminal from the app's own view, the keyboard of that terminal; a session that could type into one would drive a shell the person did not hand it (#3538)"
+  },
   "trace.export": {},
   "trace.get": {},
   "ui.set": {},
