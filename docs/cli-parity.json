@@ -407,7 +407,9 @@
   "snippets.save": {},
   "snippets.trust": {},
   "snippets.use": {},
-  "ssh.connect": {},
+  "ssh.connect": {
+    "appOnly": "opens a terminal in the app's window: a shell already is one, so there is nothing for a command to open (use ssh in the shell)"
+  },
   "ssh.hostkey.check": {
     "cli": "ssh"
   },
@@ -429,7 +431,9 @@
   "ssh.remove": {
     "cli": "ssh"
   },
-  "ssh.save": {},
+  "ssh.save": {
+    "cli": "ssh"
+  },
   "ssh.test": {
     "cli": "ssh"
   },
