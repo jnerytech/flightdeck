@@ -6,7 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
-import { BUDGET_FLAGS, budgetProblem } from "./budget-args.ts";
+import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
@@ -758,6 +758,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
   if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
+  takeBudgetAction(args);
   const fault =
     personaProblem(args) ??
     teamProblem(args) ??
