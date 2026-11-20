@@ -203,6 +203,7 @@ export const USAGE = [
   "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona show <id> [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona subagents [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd persona trust <id> --project-path <folder> --hash <hash> [--json] [--config <file>]",
   "     fd card diff <card> [--json] [--config <file>]",
   "     fd card spec <card> [--json] [--config <file>]",
   "     fd card review <card> [--language en|pt-BR] [--json] [--config <file>]",
@@ -586,8 +587,10 @@ const HANDLERS: Record<string, Handler> = {
     args.icon = v;
   }),
   "--hash": setValue((args, v) => {
-    if (!/^[0-9a-f]{8,}$/i.test(v))
-      throw new Error(`--hash: at least 8 hex characters of the hash persona list shows\n${USAGE}`);
+    if (!/^[0-9a-f]{12,}$/i.test(v))
+      throw new Error(
+        `--hash: at least 12 hex characters of the hash persona list shows\n${USAGE}`,
+      );
     args.hash = v.toLowerCase();
   }),
   "--language": setValue((args, v) => {

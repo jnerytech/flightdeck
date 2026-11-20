@@ -46,7 +46,7 @@ export const shortHash = (hash: string) => hash.slice(0, HASH_SHOWN);
 
 /** Why a trust is refused when the persona is no longer the one the person looked at. */
 export const hashChanged = (id: string, named: string, now: string) =>
-  `${id} is not the persona you looked at: its hash is ${shortHash(now)} now, not ${named}; read it with persona show ${id} and trust it again`;
+  `the hash ${named} does not match ${id}, whose hash is ${shortHash(now)}: if the file was edited, read it with persona show ${id} and trust it again`;
 
 /** The lines `persona list` prints: one per persona, then the project files that were left out. */
 export function listLines(answer: {

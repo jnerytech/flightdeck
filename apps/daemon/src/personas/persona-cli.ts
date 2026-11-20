@@ -69,10 +69,13 @@ async function trust(
   const { personas } = await daemon.call("personas.list", { scope: "project", projectPath });
   const found = personas.find((p) => p.scope === "project" && p.id === args.id);
   if (found === undefined) return failure(1, `no project persona ${args.id} in ${projectPath}`);
+  const named = args.hash ?? "";
   const hash = found.hash ?? "";
-  if (!hash.startsWith(args.hash ?? ""))
-    return failure(1, hashChanged(args.id ?? "", args.hash ?? "", hash));
-  if (found.trusted) return said(`${found.id} is already trusted`);
+  if (hash === "")
+    return failure(1, `${found.id} has no hash to trust: save it to a project file first`);
+  if (named === "" || !hash.startsWith(named))
+    return failure(1, hashChanged(found.id, named, hash));
+  if (found.trusted) return args.json ? json(found) : said(`${found.id} is already trusted`);
   note.wrote = true;
   const trusted = await daemon.call("personas.trust", { projectPath, id: found.id, hash });
   return args.json ? json(trusted) : said(`trusted ${trusted.id}  ${shortHash(hash)}`);
