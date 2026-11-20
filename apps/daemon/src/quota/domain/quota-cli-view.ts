@@ -48,7 +48,7 @@ export function historyLines(history: QuotaHistory): string[] {
     ? "no projection yet: it needs 3 samples of the window"
     : projection.exhaustsAt === null
       ? "does not reach 100% before it resets"
-      : `reaches 100% at ${projection.exhaustsAt} (resets ${projection.resetsAt})`;
+      : `reaches 100% at ${projection.exhaustsAt}${projection.resetsAt === null ? "" : ` (resets ${projection.resetsAt})`}`;
   return [
     `${history.window}, last ${history.hours} h: ${history.samples.length} samples`,
     outlook,
