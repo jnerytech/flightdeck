@@ -657,7 +657,11 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runSshCli } = await import("../ssh/index.ts");
     return asking(args, deps, (config, remote) =>
       runSshCli(
-        { action: args.action as SshCliArgs["action"], ...(args.json ? { json: true } : {}) },
+        {
+          action: args.action as SshCliArgs["action"],
+          ...(args.sshTarget === undefined ? {} : { target: args.sshTarget }),
+          ...(args.json ? { json: true } : {}),
+        },
         config,
         remote ? { remote } : {},
       ),
