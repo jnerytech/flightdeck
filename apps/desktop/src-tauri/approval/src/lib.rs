@@ -3,6 +3,11 @@
 //! the parts that need no Tauri: making a key, its two public forms, the signature, and reading the
 //! text to be signed so the native confirmation says what the key is about to do.
 
+use base64::{engine::general_purpose::STANDARD, Engine};
+use p256::ecdsa::{signature::Signer, Signature, SigningKey};
+use p256::pkcs8::EncodePublicKey;
+use sha2::{Digest, Sha256};
+
 /// What a signed text asks for.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Kind {
@@ -28,25 +33,93 @@ pub struct PublicInfo {
     pub key_id: String,
 }
 
+const TAG_APPROVAL: &str = "flightdeck/approval/v1";
+const TAG_ENROLL_FIRST: &str = "flightdeck/enroll-first/v1";
+const TAG_ENROLL_ADD: &str = "flightdeck/enroll-add/v1";
+const TAG_REVOKE: &str = "flightdeck/revoke/v1";
+
 /// A new key: the base64 of its 32-byte scalar.
 pub fn generate() -> String {
-    String::new()
+    STANDARD.encode(SigningKey::random(&mut rand_core::OsRng).to_bytes())
 }
 
-pub fn public_info(_secret: &str) -> Result<PublicInfo, String> {
-    Ok(PublicInfo { public_key: String::new(), key_id: String::new() })
+fn signing_key(secret: &str) -> Result<SigningKey, String> {
+    let bytes = STANDARD
+        .decode(secret)
+        .map_err(|_| "the stored key is not base64".to_string())?;
+    SigningKey::from_slice(&bytes).map_err(|_| "the stored key is not a P-256 scalar".to_string())
+}
+
+pub fn public_info(secret: &str) -> Result<PublicInfo, String> {
+    let der = signing_key(secret)?
+        .verifying_key()
+        .to_public_key_der()
+        .map_err(|e| e.to_string())?;
+    let key_id = Sha256::digest(der.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    Ok(PublicInfo { public_key: STANDARD.encode(der.as_bytes()), key_id })
 }
 
 /// The base64 of the 64-byte r||s signature (IEEE P1363) of ECDSA P-256 / SHA-256 over `message`.
-pub fn sign(_secret: &str, _message: &str) -> Result<String, String> {
-    Ok(String::new())
+pub fn sign(secret: &str, message: &str) -> Result<String, String> {
+    let signature: Signature = signing_key(secret)?.sign(message.as_bytes());
+    Ok(STANDARD.encode(signature.to_bytes()))
 }
 
 /// Reads the text a device is asked to sign and refuses what the key must never sign: another tag,
 /// another host (`daemon_id`), a message made for another key, or an enrollment of another key
-/// than this one.
-pub fn describe(_message: &str, _daemon_id: &str, _own: &PublicInfo) -> Result<Ask, String> {
-    Ok(Ask { kind: Kind::Approve, subject: String::new() })
+/// than this one. The text is the canonical JSON array of strings the protocol builds.
+pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask, String> {
+    let parts: Vec<String> = serde_json::from_str::<Vec<serde_json::Value>>(message)
+        .map_err(|_| "the text to sign is not a list".to_string())?
+        .into_iter()
+        .map(|part| match part {
+            serde_json::Value::String(text) => Ok(text),
+            _ => Err("the text to sign holds a part that is not text".to_string()),
+        })
+        .collect::<Result<_, _>>()?;
+    let shape = |len: usize| {
+        if parts.len() == len {
+            Ok(())
+        } else {
+            Err("the text to sign has the wrong shape".to_string())
+        }
+    };
+    let part = |i: usize| parts.get(i).map(String::as_str).unwrap_or_default();
+    let (kind, host, key, subject) = match part(0) {
+        TAG_APPROVAL => {
+            shape(9)?;
+            if part(5) != "allow" {
+                return Err("only an allow is signed".into());
+            }
+            (Kind::Approve, part(2), Some(part(1)), part(3))
+        }
+        TAG_ENROLL_FIRST => {
+            shape(5)?;
+            if part(3) != own.public_key {
+                return Err("an enrollment of another key is not signed".into());
+            }
+            (Kind::EnrollFirst, part(1), None, part(3))
+        }
+        TAG_ENROLL_ADD => {
+            shape(5)?;
+            (Kind::EnrollAdd, part(2), Some(part(1)), part(4))
+        }
+        TAG_REVOKE => {
+            shape(5)?;
+            (Kind::Revoke, part(2), Some(part(1)), part(4))
+        }
+        _ => return Err("this text is not one this key signs".into()),
+    };
+    if host != daemon_id {
+        return Err("the text is for another host".into());
+    }
+    if key.is_some_and(|k| k != own.key_id) {
+        return Err("the text is made for another key".into());
+    }
+    Ok(Ask { kind, subject: subject.to_string() })
 }
 
 #[cfg(test)]
