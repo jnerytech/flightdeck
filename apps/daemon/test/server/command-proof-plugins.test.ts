@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { commandDigest, commandMessage } from "@flightdeck/protocol";
 import { Approvers } from "../../src/permissions/approvers.ts";
@@ -158,15 +158,18 @@ describe("command-proof-plugins: installing and updating a plugin with a device 
 
   test("a content hash that is not the one shown is refused before the proof is checked, so the challenge is not spent", async () => {
     const t = await host();
-    const signed = { plugin: "deploy-tools@acme", confirmHash: "0".repeat(64) };
+    // The person signs the hash of a copy the host does not have yet.
+    const extra = join(t.marketplace, "plugins/deploy-tools/extra.txt");
+    writeFileSync(extra, "novo");
+    const future = await t.hash();
+    rmSync(extra);
+    const signed = { plugin: "deploy-tools@acme", confirmHash: future };
     const proof = await t.prove("plugins.install", signed);
     const stale = await t.client.request("plugins.install", { ...signed, proof });
     expect([failure(stale).includes("plugin_content_changed"), installs(t)]).toEqual([true, []]);
-    const right = { plugin: "deploy-tools@acme", confirmHash: await t.hash() };
-    const ack = await t.client.request("plugins.install", {
-      ...right,
-      proof: await t.prove("plugins.install", right),
-    });
+    // The host now has that copy: the same proof, still unspent, installs it.
+    writeFileSync(extra, "novo");
+    const ack = await t.client.request("plugins.install", { ...signed, proof });
     expect([ack.ok, installs(t).length]).toEqual([true, 1]);
   });
 
@@ -223,11 +226,13 @@ describe("command-proof-plugins: installing and updating a plugin with a device 
       at: "2026-10-31T12:00:00.000Z",
     });
     const signed = { plugin: "deploy-tools@acme", confirmHash: to };
-    const ack = await t.client.request("plugins.update", {
-      ...signed,
-      proof: await t.prove("plugins.update", signed),
-    });
+    const proof = await t.prove("plugins.update", signed);
+    const ack = await t.client.request("plugins.update", { ...signed, proof });
     expect([failure(ack).includes("plugin_pinned"), installs(t)]).toEqual([true, []]);
+    // Released, the same proof, still unspent, updates the plugin.
+    await t.pins.delete("deploy-tools@acme");
+    const again = await t.client.request("plugins.update", { ...signed, proof });
+    expect([again.ok, installs(t)]).toEqual([true, ["plugin update deploy-tools@acme --json"]]);
   });
 
   test("with no device enrolled, install and update need no proof", async () => {

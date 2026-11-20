@@ -1749,6 +1749,11 @@ mod tests {
         let update = |payload: &str| {
             describe_with(&command(&me, DAEMON, "plugins.update", payload), DAEMON, &me, Some(payload))
         };
+        // The reader refuses these before the hash is compared; a refusal by the hash would hide a missing rule,
+        // because the cases are not all written in the sorted order the canonical text has.
+        let refused_by_rule = |result: Result<_, String>| {
+            matches!(result, Err(ref why) if why != "the payload is not the one the text hashes")
+        };
         let ok = |extra: &str| format!("{{\"confirmHash\":\"{hash}\",\"plugin\":\"deploy-tools@acme\"{extra}}}");
         for bad in [
             // A field the dialog does not say, no content hash, both a plugin and a folder, neither.
@@ -1775,7 +1780,7 @@ mod tests {
             format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/\\u202eevil\"}}"),
             format!("{{\"confirmHash\":\"{hash}\",\"dir\":\"/work/x\\\" harmless\"}}"),
         ] {
-            assert!(install(&bad).is_err(), "signed install: {bad}");
+            assert!(refused_by_rule(install(&bad)), "signed install: {bad}");
         }
         assert!(install(&ok("")).is_ok());
         assert!(install(&ok(",\"scope\":\"local\"")).is_ok());
@@ -1788,7 +1793,7 @@ mod tests {
             ok("").replace("deploy-tools@acme", "deploy tools"),
             ok("").replace(&hash, "nope nope"),
         ] {
-            assert!(update(&bad).is_err(), "signed update: {bad}");
+            assert!(refused_by_rule(update(&bad)), "signed update: {bad}");
         }
         assert!(update(&ok("")).is_ok());
         // The payload is signed in canonical (sorted) form, so the accepted command comes first.
