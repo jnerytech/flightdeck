@@ -45,6 +45,31 @@ function withoutUserinfo(source: string): string {
   return source.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@\s]*@/i, "$1");
 }
 
+/**
+ * Text the plugin manager or a marketplace wrote may name a URL with `user:token@` in it (a git error does):
+ * the userinfo is cut, as `plugins list` does for a marketplace's source. Control characters are the printer's
+ * to remove (`said`), and JSON escapes them.
+ */
+const plain = (text: string): string => text.replace(/([a-z][a-z0-9+.-]*:\/\/)[^/@\s]*@/gi, "$1");
+
+/** A change with the URLs of the text the daemon relayed cut of their userinfo; the outcome and the hash are left as they are. */
+export function plainChange(change: PluginChange): PluginChange {
+  const { shownCommand } = change;
+  return {
+    ...change,
+    message: plain(change.message),
+    ...(shownCommand
+      ? {
+          shownCommand: {
+            ...shownCommand,
+            ...(shownCommand.command === undefined ? {} : { command: plain(shownCommand.command) }),
+            ...(shownCommand.plugin === undefined ? {} : { plugin: plain(shownCommand.plugin) }),
+          },
+        }
+      : {}),
+  };
+}
+
 /** The lines of `plugins list`: the installed ones first, then what the marketplaces offer and the marketplaces. */
 export function listLines(list: PluginList): string[] {
   const installed = list.installed.map((p) => {

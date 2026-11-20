@@ -57,7 +57,7 @@ describe("flightdeckd plugins install and update (issue #3516)", () => {
     ]);
   });
 
-  test("what a marketplace or the plugin manager said is printed without terminal escapes or the userinfo of a URL, as text and as json", async () => {
+  test("what a marketplace or the plugin manager said is printed without the userinfo of a URL, as text and as json", async () => {
     const daemon = fakeDaemon({
       "plugins.marketplaceAdd": () => ({
         outcome: "failed",

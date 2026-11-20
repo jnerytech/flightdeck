@@ -21,12 +21,14 @@ import {
   detailLines,
   listLines,
   type PluginsCliArgs,
+  plainChange,
   previewLines,
   updateLines,
 } from "./domain/plugins-cli-view.ts";
 
 /** A change the daemon made or refused: the message and the exit code its outcome says; `--json` prints the daemon's answer whole. */
-function written(change: PluginChange, asJson: boolean | undefined): CliResult {
+function written(change0: PluginChange, asJson: boolean | undefined): CliResult {
+  const change = plainChange(change0);
   const { code, lines } = changeLines(change);
   if (code === 0) return asJson ? json(change) : said(...lines);
   const shown = asJson ? json(change) : { out: [], err: said(...lines).out };
