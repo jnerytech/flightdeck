@@ -254,6 +254,22 @@ describe("team add-member (issue #3455)", () => {
     });
   });
 
+  test("says only the new worker waits in the run queue, not the ones that already did", async () => {
+    const daemon = fakeDaemon({
+      ...HANDLERS,
+      "teams.update": () =>
+        team({
+          members: [
+            member("lead", "coordinator", { sessionId: "s1" }),
+            member("w1", "worker", { cardId: "c1" }),
+            member("w2", "worker", { cardId: "c2", sessionId: "s3" }),
+          ],
+        }),
+    });
+    const result = await run(args, daemon);
+    expect(result.out).toEqual(["member added to t9  Fix the login  active  2 workers"]);
+  });
+
   test("a bad spec is exit 1 and sends nothing", async () => {
     const daemon = fakeDaemon(HANDLERS);
     const result = await run({ ...args, spec: "dev:opus:ultra" }, daemon);
@@ -411,6 +427,22 @@ describe("team update, delete, add-member and remove-member: the arguments (issu
       teamId: "t9",
       confirm: true,
     });
+  });
+
+  test("a flag given twice, or a goal flag on team new, is refused whatever its place", () => {
+    expect(
+      parsed(["team", "update", "t9", "--persona", "w1=a", "--persona", "w2=b"]),
+    ).toMatchObject({ error: expect.stringContaining("--persona: once") });
+    expect(parsed(["team", "update", "t9", "--goal", "a", "--goal", "b"])).toMatchObject({
+      error: expect.stringContaining("--goal: once"),
+    });
+    for (const argv of [
+      ["team", "new", "g", "--workers", "1", "--goal", "x"],
+      ["--goal", "x", "team", "new", "g", "--workers", "1"],
+    ])
+      expect(parsed(argv)).toMatchObject({
+        error: expect.stringContaining("this flag only applies to flightdeckd team update"),
+      });
   });
 
   test("a missing team or member is refused", () => {

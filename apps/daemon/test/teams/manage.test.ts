@@ -197,6 +197,12 @@ describe("team-manage: the coordinator adds and removes a member (#2090)", () =>
     expect([full, room, workersOf(teams, team.id).length]).toEqual(["team_full", "ok", 8]);
   });
 
+  test("teams.update adds a member only below the cap, as addMember does, and a refused one leaves the team as it was (#3455)", async () => {
+    const { teams, team } = await boot(8);
+    const full = await refused(() => teams.update({ team: team.id, addMember: {} }));
+    expect([full, workersOf(teams, team.id).length]).toEqual(["team_full", 8]);
+  });
+
   test("two members asked for at once do not pass the cap together, and a removal during an add is not lost", async () => {
     const { teams, team, coordinator } = await boot(7);
     const both = await Promise.all([
