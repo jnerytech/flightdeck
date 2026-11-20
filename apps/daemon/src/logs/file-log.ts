@@ -1,4 +1,4 @@
-import { constants } from "node:fs";
+import { appendFileSync, constants, lstatSync } from "node:fs";
 import { lstat, mkdir, open, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { type SecretScanner, scrubHome } from "@flightdeck/protocol";
@@ -54,20 +54,42 @@ export class FileLog {
   }
 
   write(level: "info" | "error", message: string): void {
-    let line: string;
+    const line = this.format(level, message);
+    if (line === null) return;
+    this.queue = this.queue.then(() => this.append(line));
+  }
+
+  /**
+   * One line written at once, for a process that is ending: its `exit` listeners are synchronous
+   * and no async write finishes after them, so this is the one blocking write in the log. It
+   * makes the same line (redacted, one row, cut) and keeps the same rules (never through a link,
+   * private to the user); it does not rotate or make the folder (a daemon that is ending has written there already), and a failure is ignored as everywhere here.
+   */
+  writeAtExit(level: "info" | "error", message: string): void {
+    const line = this.format(level, message);
+    if (line === null) return;
+    try {
+      if (lstatSync(this.path(), { throwIfNoEntry: false })?.isSymbolicLink()) return;
+      appendFileSync(this.path(), line, {
+        flag: constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | NO_FOLLOW,
+        mode: 0o600,
+      });
+    } catch {
+      // A log that cannot be written is not worth stopping for.
+    }
+  }
+
+  /** The row for one message: secrets and the user's name out, one line, cut; null when it cannot be made. */
+  private format(level: "info" | "error", message: string): string | null {
     try {
       const text = this.clean(message)
         .replace(/[\r\n]+/g, " ")
         .slice(0, MAX_LINE);
-      line = `${new Date(this.now()).toISOString()} ${level === "error" ? "ERROR" : "INFO"} ${text}\n`;
+      return `${new Date(this.now()).toISOString()} ${level === "error" ? "ERROR" : "INFO"} ${text}\n`;
     } catch {
-      return;
+      return null;
     }
-    this.queue = this.queue.then(() => this.append(line));
   }
-
-  /** One line written at once, for a process that is ending and cannot wait for the queue. */
-  writeAtExit(_level: "info" | "error", _message: string): void {}
 
   /** Secrets out, then the user's name out of the paths. */
   private clean(text: string): string {

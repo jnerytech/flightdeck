@@ -43,7 +43,7 @@ import {
   spawnExec,
 } from "./kernel/index.ts";
 import { createKnowledge } from "./knowledge/wiring.ts";
-import { createHostLog } from "./logs/index.ts";
+import { createHostLog, type ProcessTrace, traceProcessEnd } from "./logs/index.ts";
 import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { createNames } from "./names/wiring.ts";
@@ -104,6 +104,8 @@ export interface Daemon {
   stop(): Promise<void>;
   /** What the daemon says: the console and, redacted, the log file. */
   logger: Logger;
+  /** One redacted line in the log file, written at once: for a process that is ending (#3403). */
+  logAtExit(level: "info" | "error", message: string): void;
 }
 
 /** What `startDaemon` takes besides the command line: the seams the tests and the demo give. */
@@ -669,6 +671,7 @@ async function bootDaemon(
     url: server.url,
     runtime,
     logger,
+    logAtExit: (level, message) => fileLog.writeAtExit(level, message),
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
@@ -699,12 +702,20 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
   try {
     const args = parseArgs(argv);
     let stopping: Promise<void> | null = null;
-    // SIGINT, SIGTERM and `daemon.shutdown` all close the same way, once.
+    let trace: ProcessTrace | undefined;
+    // SIGINT, SIGTERM and `daemon.shutdown` all close the same way, once; the exit that follows is
+    // the daemon's own, so the trace of the process's end says nothing about it.
     const stop = () => {
-      stopping ??= daemon.stop().then(() => deps.exit(0));
+      stopping ??= daemon.stop().then(() => {
+        trace?.stopped();
+        deps.exit(0);
+      });
       return stopping;
     };
     const daemon = await startDaemon(args, deps.env, deps.log, { onShutdown: () => void stop() });
+    // An error nobody caught, or an exit nobody asked for, leaves a line in the log (#3403).
+    if (deps.onProcessEvent)
+      trace = traceProcessEnd(deps.onProcessEvent, deps.exit, { writeAtExit: daemon.logAtExit });
     deps.onSignal("SIGINT", stop);
     deps.onSignal("SIGTERM", stop);
     return daemon;

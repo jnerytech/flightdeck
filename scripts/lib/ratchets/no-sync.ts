@@ -100,4 +100,6 @@ export function withBaseline(source: string, counts: Record<string, number>): st
   return head + opening + closed + rest;
 }
 
-export const SYNC_BASELINE: Record<string, number> = {};
+export const SYNC_BASELINE: Record<string, number> = {
+  "apps/daemon/src/logs/file-log.ts": 2,
+};

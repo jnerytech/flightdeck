@@ -49,14 +49,14 @@ describe("process-trace: the daemon's end leaves a line", () => {
   test("a rejection nobody caught is one line with the error and its stack, and the process ends with 1", () => {
     const { proc, exits, lines } = traced();
     const error = new Error("run is not a workflow");
-    const frame = (error.stack ?? "").split("\n")[1]?.trim() ?? "no frame";
     proc.fire("unhandledRejection", error);
     expect(exits).toEqual([1]);
     expect(lines()).toHaveLength(1);
     expect(lines()[0]).toContain("ERROR");
     expect(lines()[0]).toContain("unhandledRejection");
     expect(lines()[0]).toContain("run is not a workflow");
-    expect(lines()[0]).toContain(frame);
+    // The stack is in the line (the home folder in its paths is `~`, so the file name is what is looked for).
+    expect(lines()[0]).toContain("process-trace.test.ts");
   });
 
   test("a thrown error nobody caught is traced the same way, and a value that is not an Error is shown as text", () => {
