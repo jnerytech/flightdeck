@@ -156,12 +156,17 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     if key.is_some_and(|k| k != own.key_id) {
         return Err("the text is made for another key".into());
     }
-    // The subject goes into the dialog: only the characters of an id, so it cannot pad or fake a line.
-    let plain = !subject.is_empty()
-        && subject.len() <= 64
-        && subject.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
-    if matches!(kind, Kind::Approve | Kind::Revoke) && !plain {
+    // The subject and the host go into the dialog: only the characters of an id, so they cannot pad or fake a line.
+    let plain = |text: &str| {
+        !text.is_empty()
+            && text.len() <= 64
+            && text.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
+    };
+    if matches!(kind, Kind::Approve | Kind::Revoke) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
+    }
+    if kind == Kind::EnrollAdd && !plain(host) {
+        return Err("the text to sign names a host that is not an id".into());
     }
     // What the allow carries besides the allow: the hashes of nothing say it carries nothing.
     let none = |index: usize, empty: &str| part(index) != sha256_hex(empty);
