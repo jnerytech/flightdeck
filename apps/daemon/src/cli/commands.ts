@@ -37,6 +37,8 @@ export interface CliDeps extends SetupCommandDeps, MaintenanceCommandDeps {
   remote?: ResolveDeps;
   /** The platform `flightdeckd claude` launches claude on; the process's when absent. Injected in tests. */
   platform?: NodeJS.Platform;
+  /** Whether `flightdeckd claude` runs as root (claude refuses bypass there); the process's when absent. Injected in tests. */
+  root?: boolean;
 }
 
 /** A command that is not the daemon: what it prints and does, and the exit code (null: it stays open). */
@@ -184,7 +186,9 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { daemonCommand } = await import("../service/index.ts");
     // Its own arguments all go to claude, so the config comes from the environment.
     const file = configPath({ ...args, config: deps.env.FLIGHTDECK_CONFIG });
+    const configExisted = await Bun.file(file).exists();
     return runClaude({
+      configExisted,
       args: args.claudeArgs ?? [],
       cwd: deps.cwd ?? process.cwd(),
       config: await loadConfig(file),
@@ -193,6 +197,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       log: deps.log,
       timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
       ...(deps.platform ? { platform: deps.platform } : {}),
+      ...(deps.root === undefined ? {} : { root: deps.root }),
       ...(deps.exec ? { exec: deps.exec } : {}),
     });
   },
