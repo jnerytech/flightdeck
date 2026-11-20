@@ -43,7 +43,7 @@ function setup(
     /** The listing is refused (a connection that is not near), the state is not. */
     noListing?: boolean;
     /** What the device makes of the trust, in place of the real slice (#3453). */
-    trust?: "declined" | "signed";
+    trust?: "declined" | "signed" | "pending";
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -59,6 +59,8 @@ function setup(
   if (options.trust) {
     store.approval.trustPayload = (async (_host: string, path: string) => {
       signed.push(path);
+      // The person has not answered the system's dialog yet.
+      if (options.trust === "pending") return await new Promise(() => {});
       return options.trust === "declined"
         ? { kind: "declined" }
         : { kind: "payload", payload: { path, trusted: true, proof } };
@@ -262,6 +264,31 @@ describe("trust-ui: the project page says what a project would load and lets the
       trusted: true,
       proof: { keyId: "k", nonce: "n", signature: "s" },
     });
+  });
+
+  test("a second click on Trust while the device's dialog is open asks for no second signature (#3453)", async () => {
+    const { view, signed } = setup({ trust: "pending" });
+    render(view);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Trust this project" })).not.toBeNull(),
+    );
+    const confirm = async () => {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Trust this project" }));
+      });
+      await act(async () => {
+        fireEvent.click(
+          within(screen.getByRole("alertdialog")).getByRole("button", {
+            name: "Trust this project",
+          }),
+        );
+      });
+    };
+    await confirm();
+    expect(signed).toEqual(["/work/api"]);
+    expect(
+      screen.queryByRole("button", { name: "Trust this project" })?.hasAttribute("disabled"),
+    ).toBe(true);
   });
 
   test("a no in the device's dialog sends nothing and leaves the project untrusted (#3453)", async () => {

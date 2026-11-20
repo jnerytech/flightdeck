@@ -970,6 +970,8 @@ mod tests {
         assert!(en.starts_with("Trust a project folder?"), "{en}");
         assert!(en.ends_with("\n\"C:\\Users\\José\\código\""), "{en}");
         assert!(pt.starts_with("Confiar em uma pasta de projeto?"), "{pt}");
+        // Trusting a folder trusts what is inside it too: the dialog says so.
+        assert!(en.contains("everything inside it") && pt.contains("tudo o que há dentro dela"), "{en} {pt}");
         assert_eq!(confirm_labels(&trust_ask(), "en").0, "Trust");
         assert_eq!(confirm_labels(&trust_ask(), "pt-BR").0, "Confiar");
     }
