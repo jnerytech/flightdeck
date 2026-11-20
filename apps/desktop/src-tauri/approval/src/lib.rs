@@ -1076,6 +1076,6 @@ mod tests {
         let (_, pt) = confirm_text(&resume_ask(), "pt-BR");
         assert!(pt.starts_with("Reativar a aprovação automática") && pt.ends_with("\n\"card:c1\""), "{pt}");
         assert_eq!(confirm_labels(&resume_ask(), "en").0, "Resume");
-        assert_eq!(confirm_labels(&resume_ask(), "pt-BR").0, "Retomar");
+        assert_eq!(confirm_labels(&resume_ask(), "pt-BR").0, "Reativar");
     }
 }
