@@ -6,6 +6,7 @@
 import {
   type CliResult,
   type DaemonClient,
+  DaemonRefusal,
   failure,
   json,
   resolveProject,
@@ -89,10 +90,18 @@ async function resume(
   if (!suspended.some((s) => s.sessionKey === sessionKey))
     return failure(1, `automatic approval is not suspended for ${sessionKey}`);
   note.wrote = true;
-  const left = await daemon.call("autoapprove.resume", {
-    sessionKey,
-    confirm: args.confirm === true,
-  });
+  let left: Awaited<ReturnType<typeof daemon.call<"autoapprove.resume">>>;
+  try {
+    left = await daemon.call("autoapprove.resume", { sessionKey, confirm: args.confirm === true });
+  } catch (error) {
+    // A host with a device enrolled wants that device's signature, which a terminal cannot give (#3453).
+    if (error instanceof DaemonRefusal && error.reason === "approval_proof_required")
+      return failure(
+        1,
+        `${sessionKey} needs the person: this host has a device enrolled, which confirms turning automatic approval back on, so do it in the app`,
+      );
+    throw error;
+  }
   return args.json ? json(left) : said(`automatic approval resumed for ${sessionKey}`);
 }
 

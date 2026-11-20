@@ -43,7 +43,7 @@ function panel(
     declined?: boolean;
     gate?: Promise<void>;
     older?: boolean;
-    unchecked?: Array<"merge" | "trust" | "bypass">;
+    unchecked?: Array<"merge" | "trust" | "bypass" | "resume">;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
@@ -223,6 +223,26 @@ describe("approval devices panel: what the person did and what the host said (#3
         null,
     ).toBe(true);
     expect(screen.queryByText(/ao fazer merge/) !== null).toBe(true);
+  });
+
+  test("a host that does not ask for a device to resume automatic approval says so, in both languages, and only for that", async () => {
+    panel([HERE], "en", [], { unchecked: ["resume"] });
+    await settleMaybe(() => screen.queryByText(/to confirm turning automatic approval/) !== null);
+    expect(
+      screen.queryByText(
+        /does not ask for a device to confirm turning automatic approval back on/,
+      ) !== null,
+    ).toBe(true);
+    expect(screen.queryByText(/to confirm a merge/) === null).toBe(true);
+    cleanup();
+    panel([HERE], "pt-BR", [], { unchecked: ["resume"] });
+    await settleMaybe(() => screen.queryByText(/reativar a aprovação automática/) !== null);
+    expect(
+      screen.queryByText(
+        /não pede a confirmação de um dispositivo ao reativar a aprovação automática/,
+      ) !== null,
+    ).toBe(true);
+    expect(screen.queryByText(/ao fazer merge/) === null).toBe(true);
   });
 
   test("a host that checks merges, or has no device enrolled, says nothing of it", async () => {

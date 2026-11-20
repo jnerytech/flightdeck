@@ -31,6 +31,8 @@ pub enum CommandAsk {
     Bypass,
     /// `project.trust.set` with `trusted: true`: this folder's own hooks and servers run with no prompt.
     TrustProject { path: String },
+    /// `autoapprove.resume`: the automatic approver answers this session's requests again with no person.
+    ResumeApproval { session: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -299,6 +301,30 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
         }
+        "autoapprove.resume" => {
+            if fields.len() != 2 {
+                return Err("the resume payload has the wrong fields".into());
+            }
+            let key = fields
+                .get("sessionKey")
+                .and_then(serde_json::Value::as_str)
+                .ok_or("the resume payload has no text for sessionKey")?;
+            if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+                return Err("a resume is signed only once it is confirmed".into());
+            }
+            // A session key is a plain token, like a card id: nothing in it can pad or continue the dialog.
+            let token = !key.is_empty()
+                && key.len() <= 128
+                && key.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+            if !token {
+                return Err("the session key is not one the dialog can show".into());
+            }
+            let canonical = format!(
+                "{{\"confirm\":true,\"sessionKey\":{}}}",
+                serde_json::to_string(key).unwrap_or_default()
+            );
+            Ok((CommandAsk::ResumeApproval { session: key.into() }, canonical))
+        }
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -443,6 +469,12 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             Some(CommandAsk::TrustProject { path }) => format!(
                 "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
             ),
+            Some(CommandAsk::ResumeApproval { session }) if pt => format!(
+                "Reativar a aprovação automática de uma sessão? Ela volta a aprovar pedidos sem que nenhuma pessoa os veja, depois de ter lido conteúdo de terceiros. Continue só se você acabou de apertar Reativar no Flightdeck.\n\"{session}\""
+            ),
+            Some(CommandAsk::ResumeApproval { session }) => format!(
+                "Turn automatic approval back on for a session? It will approve requests with no person seeing them, after it read third-party content. Continue only if you just pressed Resume in Flightdeck.\n\"{session}\""
+            ),
             None => String::new(),
         },
     };
@@ -456,6 +488,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
+            if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
         }
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
@@ -1068,5 +1103,73 @@ mod tests {
         assert!(en.contains("everything inside it") && pt.contains("tudo o que há dentro dela"), "{en} {pt}");
         assert_eq!(confirm_labels(&trust_ask(), "en").0, "Trust");
         assert_eq!(confirm_labels(&trust_ask(), "pt-BR").0, "Confiar");
+    }
+
+    /// The payload that resumes the automatic approver of a session, in canonical form, and the hash both sides
+    /// share (the protocol test asserts the same two literals).
+    const RESUME_PAYLOAD: &str = "{\"confirm\":true,\"sessionKey\":\"card:c1\"}";
+    const RESUME_HASH: &str = "e0a91d4acb8e261e30090aa274dad9660a38643c12544415b7fc128214ff6e00";
+
+    fn resume_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "autoapprove.resume".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::ResumeApproval { session: "card:c1".into() }),
+        }
+    }
+
+    #[test]
+    fn the_resume_vector_hashes_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(RESUME_PAYLOAD), RESUME_HASH);
+    }
+
+    #[test]
+    fn resuming_a_session_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "autoapprove.resume", RESUME_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(RESUME_PAYLOAD)), Ok(resume_ask()));
+        let shuffled = "{\"sessionKey\":\"card:c1\",\"confirm\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(resume_ask()));
+    }
+
+    #[test]
+    fn a_resume_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "autoapprove.resume", payload), DAEMON, &me, Some(payload))
+        };
+        let long = format!("{{\"confirm\":true,\"sessionKey\":\"{}\"}}", "a".repeat(200));
+        for bad in [
+            // No confirm, a false one, a field the dialog does not say, no key, an empty key, a key that is no text.
+            "{\"sessionKey\":\"card:c1\"}".to_string(),
+            "{\"confirm\":false,\"sessionKey\":\"card:c1\"}".to_string(),
+            "{\"confirm\":true,\"sessionKey\":\"card:c1\",\"extra\":1}".to_string(),
+            "{\"confirm\":true}".to_string(),
+            "{\"confirm\":true,\"sessionKey\":\"\"}".to_string(),
+            "{\"confirm\":true,\"sessionKey\":7}".to_string(),
+            // A key is a plain token: a space, a line break, a mark or a quote could pad or continue the dialog.
+            "{\"confirm\":true,\"sessionKey\":\"card c1\"}".to_string(),
+            "{\"confirm\":true,\"sessionKey\":\"card:c1\\nAllow\"}".to_string(),
+            "{\"confirm\":true,\"sessionKey\":\"card:\\u202ec1\"}".to_string(),
+            "{\"confirm\":true,\"sessionKey\":\"card:\\u00a0c1\"}".to_string(),
+            "{\"confirm\":true,\"sessionKey\":\"card:\\\"c1\"}".to_string(),
+            long,
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed("{\"confirm\":true,\"sessionKey\":\"3f2c9a1e-7d44-4b6e-9d10-5a8e2b7c4f60\"}").is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_resume_names_the_session_and_what_resuming_lets_happen_and_has_a_button_of_its_own() {
+        let (_, en) = confirm_text(&resume_ask(), "en");
+        assert!(en.starts_with("Turn automatic approval back on"), "{en}");
+        assert!(en.contains("no person") && en.ends_with("\n\"card:c1\""), "{en}");
+        let (_, pt) = confirm_text(&resume_ask(), "pt-BR");
+        assert!(pt.starts_with("Reativar a aprovação automática") && pt.ends_with("\n\"card:c1\""), "{pt}");
+        assert_eq!(confirm_labels(&resume_ask(), "en").0, "Resume");
+        assert_eq!(confirm_labels(&resume_ask(), "pt-BR").0, "Reativar");
     }
 }

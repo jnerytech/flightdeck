@@ -30,6 +30,8 @@ export const approval = {
     bypassUnchecked:
       "Este host não pede a confirmação de um dispositivo para ligar Ignorar permissões: atualize-o para proteger essa chave.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",
+    resumeUnchecked:
+      "Este host não pede a confirmação de um dispositivo ao reativar a aprovação automática: atualize-o para protegê-la.",
     scope:
       "Isto protege as aprovações feitas pelo app. Quem tem um terminal no host ainda pode zerar.",
     loading: "Lendo os dispositivos do host…",

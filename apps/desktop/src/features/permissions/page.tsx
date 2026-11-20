@@ -44,11 +44,15 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
 
   const resume = async (item: AutoApproveSuspension) => {
     setResuming(null);
-    const result = await store.hostCommand(hostId, "autoapprove.resume", {
-      sessionKey: item.sessionKey,
-      confirm: true,
-    });
-    if (result) setSuspended(result.suspended);
+    // A host with a device enrolled wants its signature over the session; a no in the device's dialog sends nothing (#3453).
+    try {
+      const made = await store.approval.resumePayload(hostId, item.sessionKey);
+      if (made.kind !== "payload") return;
+      const result = await store.hostCommand(hostId, "autoapprove.resume", made.payload);
+      if (result) setSuspended(result.suspended);
+    } catch (error) {
+      store.reportError(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const needle = text.trim().toLowerCase();
