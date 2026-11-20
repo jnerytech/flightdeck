@@ -13,6 +13,7 @@ export interface CliArgs {
     | "service"
     | "history"
     | "vault"
+    | "plugins"
     | "approvers"
     | "rules"
     | "autoapprove"
@@ -124,7 +125,9 @@ export interface CliArgs {
     | "sleep"
     | "set-model"
     | "set-effort"
-    | "meta-set";
+    | "meta-set"
+    | "detail"
+    | "preview-update";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -274,6 +277,9 @@ export interface CliArgs {
   risk?: "low" | "medium" | "high";
   approval?: "always" | "never" | "first-per-session";
   at?: number;
+  /** `plugins detail|preview|preview-update <plugin>`, `plugins preview --dir <folder>` (#3516). */
+  plugin?: string;
+  pluginDir?: string;
   hideAutomated?: true;
   cursor?: string;
   tail?: true;

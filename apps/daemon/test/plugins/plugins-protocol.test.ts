@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type FakeCli, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { startDaemon } from "../../src/main.ts";
@@ -74,7 +74,7 @@ describe("plugins: protocolo", () => {
     return fake;
   };
 
-  async function served(withPlugins = true) {
+  async function served(withPlugins = true, allowedRoots: string[] = []) {
     const marketplace = marketplaceOf();
     const fake = claude(marketplace);
     const pins = join(tempDir("fd-pins-"), "pins.json");
@@ -90,7 +90,7 @@ describe("plugins: protocolo", () => {
       bind: "127.0.0.1",
       port: 0,
       token: TOKEN,
-      allowedRoots: [],
+      allowedRoots,
     });
     stops.push(() => server.stop());
     const client = new FrameClient(server.url);
@@ -141,6 +141,28 @@ describe("plugins: protocolo", () => {
       ok: false,
       error: { code: "bad_request" },
     });
+  });
+
+  test("plugins.preview of a folder reads only inside the allowed roots (#3516)", async () => {
+    const inside = realpathSync.native(tempDir("fd-roots-"));
+    const folder = join(inside, "mine");
+    mkdirSync(join(folder, ".claude-plugin"), { recursive: true });
+    writeFileSync(join(folder, ".claude-plugin/plugin.json"), MANIFEST);
+    const { client } = await served(true, [inside]);
+    expect(await client.request("plugins.preview", { dir: folder })).toMatchObject({ ok: true });
+    const outside = plugin({ ".claude-plugin/plugin.json": MANIFEST });
+    expect(await client.request("plugins.preview", { dir: outside })).toMatchObject({
+      ok: false,
+      error: { code: "forbidden_cwd" },
+    });
+  });
+
+  test("plugins.install of a folder reads only inside the allowed roots too (#3516)", async () => {
+    const { client } = await served(true, [realpathSync.native(tempDir("fd-roots-"))]);
+    const outside = plugin({ ".claude-plugin/plugin.json": MANIFEST });
+    expect(
+      await client.request("plugins.install", { dir: outside, confirmHash: "x" }),
+    ).toMatchObject({ ok: false, error: { code: "forbidden_cwd" } });
   });
 
   test("plugins.install recusa um hash que não é o mostrado e, com o certo, instala sem -y", async () => {

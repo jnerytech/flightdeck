@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { cpSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { FakeCli, FakeRule } from "../../../../scripts/test/fake-cli.ts";
 import { tempDir } from "../../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -59,6 +59,16 @@ async function open(extra: (ctx: Ctx) => FakeRule[]) {
   });
   await settle(() => screen.queryByRole("tab", { name: "Disponíveis" }) !== null);
   return { store, ...h };
+}
+
+/** A local plugin folder inside the host's root: `plugins.preview` and `plugins.install` read only such folders. */
+function localPlugin(root: string): string {
+  const dir = join(root, "local", "meu");
+  write(dir, {
+    ".claude-plugin/plugin.json": MANIFEST.replace("deploy-tools", "meu-local"),
+    "skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\nx\n",
+  });
+  return dir;
 }
 
 async function click(name: string | RegExp, role = "button") {
@@ -167,11 +177,6 @@ describe("plugins-ui: instalar", () => {
   });
 
   test("uma pasta local mostra a prévia e o resultado do validate; se o validate recusa, não há como instalar", async () => {
-    const dir = join(tempDir("fd-local-"), "meu");
-    write(dir, {
-      ".claude-plugin/plugin.json": MANIFEST.replace("deploy-tools", "meu-local"),
-      "skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\nx\n",
-    });
     const bad = await open((ctx) => [
       listing(ctx),
       {
@@ -183,6 +188,7 @@ describe("plugins-ui: instalar", () => {
         }),
       },
     ]);
+    const dir = localPlugin(bad.d.root);
     const field = screen.queryByLabelText("Pasta de um plugin local");
     expect(field).not.toBeNull();
     await act(async () => {
@@ -200,20 +206,26 @@ describe("plugins-ui: instalar", () => {
   });
 
   test("uma pasta local que passa no validate instala pelo marketplace de diretório", async () => {
-    const dir = join(tempDir("fd-local-"), "meu");
-    write(dir, {
-      ".claude-plugin/plugin.json": MANIFEST.replace("deploy-tools", "meu-local"),
-      "skills/x/SKILL.md": "---\nname: x\ndescription: d\n---\nx\n",
-    });
     const copy = join(tempDir("fd-installed-"), "meu-local");
-    cpSync(dir, copy, { recursive: true });
-    const { fake } = await open((ctx) => [
-      listing(ctx, [
-        { id: "meu-local@dir", version: "1.2.0", scope: "user", enabled: true, installPath: copy },
-      ]),
-      { args: ["validate", "--json"], stdout: JSON.stringify({ success: true }) },
-      { args: ["install"], stdout: ok("install") },
-    ]);
+    let dir = "";
+    const { fake } = await open((ctx) => {
+      // The folder is inside the daemon's root: the host reads only folders in its allowed roots.
+      dir = localPlugin(dirname(dirname(ctx.marketplace)));
+      cpSync(dir, copy, { recursive: true });
+      return [
+        listing(ctx, [
+          {
+            id: "meu-local@dir",
+            version: "1.2.0",
+            scope: "user",
+            enabled: true,
+            installPath: copy,
+          },
+        ]),
+        { args: ["validate", "--json"], stdout: JSON.stringify({ success: true }) },
+        { args: ["install"], stdout: ok("install") },
+      ];
+    });
     const field = screen.queryByLabelText("Pasta de um plugin local");
     expect(field).not.toBeNull();
     await act(async () => {

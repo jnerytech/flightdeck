@@ -4,4 +4,6 @@
  * behind this entry with the remaining deep imports. Another domain imports from here.
  */
 
+export type { PluginsCliArgs } from "./domain/plugins-cli-view.ts";
+export { runPluginsCli } from "./plugins-cli.ts";
 export { createAgentSetup } from "./wiring.ts";

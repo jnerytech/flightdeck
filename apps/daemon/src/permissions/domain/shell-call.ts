@@ -271,6 +271,7 @@ const OPTIONS_WITH_VALUE = [
   "--risk",
   "--approval",
   "--at",
+  "--dir",
   "--project",
   "--project-path",
   "--query",
