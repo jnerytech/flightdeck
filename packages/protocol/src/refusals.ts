@@ -297,6 +297,8 @@ export const DAEMON_REASONS = [
   "transport_refused",
   "trust_root_refused",
   "trust_path_differs",
+  /** Issue #3507: the folder to write the setup into resolves elsewhere, so the device cannot sign what the host would write to. */
+  "harness_path_differs",
   "harness_stale",
   "harness_confirm",
   "harness_reformat",

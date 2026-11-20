@@ -5,6 +5,7 @@
 import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
+  FEATURE_APPROVAL_HARNESS,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
@@ -37,6 +38,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.approvers, FEATURE_APPROVAL_BYPASS),
     // #3507: adding an allowed folder with `roots.add` takes the proof of an enrolled device.
     ...when(opts.approvers, FEATURE_APPROVAL_ROOTS),
+    // #3507: writing a project's Claude Code setup with `project.harness.apply` takes the proof of an enrolled device.
+    ...when(opts.approvers && opts.harness?.apply, FEATURE_APPROVAL_HARNESS),
     // #3453: trusting a project folder takes the proof of an enrolled device (its own feature: a host can gate one command and not the other).
     ...when(opts.approvers && opts.projects?.trust, FEATURE_APPROVAL_TRUST),
     // #3453: turning a session's automatic approver back on takes the proof of an enrolled device (its own feature).
