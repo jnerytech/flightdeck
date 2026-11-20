@@ -4,6 +4,7 @@
  * pull request comments are separate.
  */
 import { manageCard } from "../../board/index.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../domain/handler.ts";
 
@@ -112,9 +113,18 @@ export const cardHandlers = {
     // It merges on the provider with this computer's gh login: a near connection only.
     requireVaultTransport(ws.data.origin, "card.pr.merge", server.opts.log);
     const { cardId, method, confirm, prUrl, headSha } = payload;
-    // #3453: a merge that names the PR and head the person saw is bound to them.
+    // The cheap refusal comes first: a merge not confirmed must not use up a device's challenge.
+    if (confirm !== true) {
+      throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
+    }
+    // #3453: with a device enrolled the person signs the PR and its head; a payload without them is not accepted.
+    server.opts.approvers?.requireCommandProof("card.pr.merge", payload, ["prUrl", "headSha"]);
+    // A merge that names the PR and head the person saw is bound to them.
     const expect = prUrl !== undefined && headSha !== undefined ? { prUrl, headSha } : undefined;
-    return await server.need("board").mergePr(cardId, method, confirm === true, expect);
+    return await server.need("board").mergePr(cardId, method, true, expect);
+  },
+  "card.pr.head": async (payload, { server }) => {
+    return await server.need("board").prHead(payload.cardId);
   },
   "card.complete": async (payload, { server }) => {
     const { cardId, confirm } = payload;
