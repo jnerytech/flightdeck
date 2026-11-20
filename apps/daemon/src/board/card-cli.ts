@@ -7,6 +7,7 @@
 import {
   type CliResult,
   type DaemonClient,
+  failure,
   json,
   runOnLocalDaemon,
   said,
@@ -15,9 +16,15 @@ import {
   type CardCliArgs,
   columnOf,
   confirmed,
+  diffLines,
   pick,
+  reviewLines,
+  specLines,
+  templatesLines,
+  textOf,
   UNSURE,
   updateOf,
+  validationLines,
   waitOf,
 } from "./domain/card-cli-view.ts";
 
@@ -27,6 +34,8 @@ export interface CardCliOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+/** A review asks a model for a second opinion: it takes minutes, not seconds. */
+const REVIEW_TIMEOUT_MS = 300_000;
 
 type Note = { wrote: boolean };
 
@@ -147,6 +156,59 @@ async function endCard(
   return args.json ? json(card) : said(`${done} ${card.id}  ${card.title}`);
 }
 
+async function diffCard(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const diff = await daemon.call("card.diff", { cardId: args.id ?? "" });
+  return args.json ? json(diff) : said(...diffLines(diff));
+}
+
+async function specOfCard(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const card = await daemon.call("card.spec", { cardId: args.id ?? "" });
+  return args.json ? json(card) : said(...specLines(card));
+}
+
+/** The review may move the card (it can send it to Waiting) and costs the plan: a write, like the app's button. */
+async function reviewCard(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  note.wrote = true;
+  const review = await daemon.call("card.review", {
+    cardId: args.id ?? "",
+    ...(args.language ? { language: args.language } : {}),
+  });
+  const printed = args.json ? json(review) : said(...reviewLines(args.id ?? "", review));
+  if (review.state === "done") return printed;
+  // A review that failed is not a result to build on: exit 1, with what it said.
+  return args.json
+    ? { ...printed, code: 1 }
+    : failure(1, `review of ${args.id ?? ""} failed: ${review.summary}`);
+}
+
+async function messageCard(
+  args: CardCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+): Promise<CliResult> {
+  const text = textOf(args);
+  note.wrote = true;
+  const sent = await daemon.call("card.message", { cardId: args.id ?? "", text });
+  if (args.json) return json(sent);
+  return said(
+    sent.queued
+      ? `queued for ${args.id ?? ""}: the session is working, it reads this after its turn`
+      : `sent to ${args.id ?? ""}`,
+  );
+}
+
+async function templatesOf(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { projects } = await daemon.call("project.list", {});
+  const project = pick(projects, args.project);
+  const found = await daemon.call("card.templates", { projectId: project.id });
+  return args.json ? json(found) : said(...templatesLines(project, found));
+}
+
+async function validationOf(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const found = await daemon.call("card.validationTemplate", { cardId: args.id ?? "" });
+  return args.json ? json(found) : said(...validationLines(found));
+}
+
 function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
   switch (args.action) {
     case "move":
@@ -169,6 +231,18 @@ function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<C
       return newCard(args, daemon, note);
     case "start":
       return startCard(args, daemon, note);
+    case "diff":
+      return diffCard(args, daemon);
+    case "spec":
+      return specOfCard(args, daemon);
+    case "review":
+      return reviewCard(args, daemon, note);
+    case "message":
+      return messageCard(args, daemon, note);
+    case "templates":
+      return templatesOf(args, daemon);
+    case "validation-template":
+      return validationOf(args, daemon);
   }
 }
 
@@ -181,7 +255,8 @@ export function runCardCli(
   return runOnLocalDaemon({
     config,
     clientName: "flightdeck-card",
-    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    timeoutMs:
+      options.timeoutMs ?? (args.action === "review" ? REVIEW_TIMEOUT_MS : DEFAULT_TIMEOUT_MS),
     perform: (daemon, note) => perform(args, daemon, note),
     unsure: UNSURE[args.action],
   });

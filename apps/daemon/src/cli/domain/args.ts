@@ -57,7 +57,13 @@ export interface CliArgs {
     | "stop"
     | "complete"
     | "delete"
-    | "discard";
+    | "discard"
+    | "diff"
+    | "spec"
+    | "review"
+    | "message"
+    | "templates"
+    | "validation-template";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -94,6 +100,7 @@ export interface CliArgs {
   blockedBy?: string;
   description?: string;
   workflow?: string;
+  language?: "en" | "pt-BR";
   json?: true;
   /** `action run <name>`. */
   actionName?: string;
@@ -165,6 +172,12 @@ export const USAGE = [
   "     fd card update <card> [--title <text>] [--description <text>] [--estimate <hours|none>] [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json] [--config <file>]",
   "     fd card stop <card> [--json] [--config <file>]",
   "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
+  "     fd card diff <card> [--json] [--config <file>]",
+  "     fd card spec <card> [--json] [--config <file>]",
+  "     fd card review <card> [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd card message <card> <text> [--json] [--config <file>]",
+  "     fd card templates [--project <name or id>] [--json] [--config <file>]",
+  "     fd card validation-template <card> [--json] [--config <file>]",
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
@@ -407,13 +420,31 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "card";
     const action = subAction(
       reader,
-      ["list", "show", "new", "start", "move", "update", "stop", "complete", "delete", "discard"],
+      [
+        "list",
+        "show",
+        "new",
+        "start",
+        "move",
+        "update",
+        "stop",
+        "complete",
+        "delete",
+        "discard",
+        "diff",
+        "spec",
+        "review",
+        "message",
+        "templates",
+        "validation-template",
+      ],
       "invalid card action",
     );
     args.action = action;
-    // Every action but `list` and `new` names the card it works on.
-    if (action !== "list" && action !== "new") args.cardId = operand(reader, "the card");
+    // Every action but `list`, `new` and `templates` names the card it works on.
+    if (!["list", "new", "templates"].includes(action)) args.cardId = operand(reader, "the card");
     if (action === "move") args.column = operand(reader, "the column");
+    if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
   host: setCommand("host"),
@@ -478,6 +509,10 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--description": setValue((args, v) => {
     args.description = v;
+  }),
+  "--language": setValue((args, v) => {
+    if (v !== "en" && v !== "pt-BR") throw new Error(`--language: en or pt-BR\n${USAGE}`);
+    args.language = v;
   }),
   "--workflow": setValue((args, v) => {
     args.workflow = v;
@@ -591,6 +626,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ["--validation-note", args.validationNote, ["update"]],
     ["--spec-path", args.specPath, ["update"]],
     ["--blocked-by", args.blockedBy, ["update"]],
+    ["--language", args.language, ["review"]],
   ];
   for (const [flag, value, actions] of flagged) {
     if (value === undefined) continue;

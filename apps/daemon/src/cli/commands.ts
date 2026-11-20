@@ -292,6 +292,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           ...(args.validationNote === undefined ? {} : { validationNote: args.validationNote }),
           ...(args.specPath === undefined ? {} : { specPath: args.specPath }),
           ...(args.blockedBy === undefined ? {} : { blockedBy: args.blockedBy }),
+          ...(args.text === undefined ? {} : { text: args.text }),
+          ...(args.language === undefined ? {} : { language: args.language }),
           ...(args.json ? { json: true } : {}),
         },
         config,

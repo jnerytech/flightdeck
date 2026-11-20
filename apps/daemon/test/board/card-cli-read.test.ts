@@ -227,7 +227,9 @@ describe("card message (issue #3454)", () => {
     ]);
     expect(sent.result.out).toEqual(["sent to c1"]);
     const queued = await run({ action: "message", id: "busy", text: "hi" });
-    expect(queued.result.out).toEqual(["queued for busy: the session is working, it reads this after its turn"]);
+    expect(queued.result.out).toEqual([
+      "queued for busy: the session is working, it reads this after its turn",
+    ]);
   });
 
   test("--json holds the daemon's answer; an empty text is refused before sending", async () => {
