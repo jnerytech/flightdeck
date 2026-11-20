@@ -326,6 +326,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
             ? {}
             : { permissionMode: args.permissionMode as PersonaCliArgs["permissionMode"] }),
           ...(args.icon === undefined ? {} : { icon: args.icon }),
+          ...(args.hash === undefined ? {} : { hash: args.hash }),
           ...(args.confirm ? { confirm: true } : {}),
           ...(args.scope === undefined ? {} : { scope: args.scope }),
           ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),

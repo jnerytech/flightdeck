@@ -38,6 +38,7 @@ export const USAGE = [
   "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona show <id> [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona subagents [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd persona trust <id> --project-path <folder> --hash <hash> [--json] [--config <file>]",
   "     fd card diff <card> [--json] [--config <file>]",
   "     fd card spec <card> [--json] [--config <file>]",
   "     fd card review <card> [--language en|pt-BR] [--json] [--config <file>]",

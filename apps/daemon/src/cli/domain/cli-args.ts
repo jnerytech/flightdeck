@@ -63,6 +63,7 @@ export interface CliArgs {
     | "save"
     | "remove"
     | "publish-agent"
+    | "trust"
     | "diff"
     | "spec"
     | "review"
@@ -133,6 +134,8 @@ export interface CliArgs {
   tools?: string[];
   permissionMode?: string;
   icon?: string;
+  /** `persona trust --hash`: the start of the hash `persona list` showed. */
+  hash?: string;
   /** `persona list --scope <host|project|all>`. */
   scope?: "host" | "project" | "all";
   /** `action run <name>`. */

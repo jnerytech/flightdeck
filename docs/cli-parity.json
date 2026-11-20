@@ -271,7 +271,9 @@
   "personas.subagents": {
     "cli": "persona"
   },
-  "personas.trust": {},
+  "personas.trust": {
+    "cli": "persona"
+  },
   "plugins.detail": {},
   "plugins.install": {},
   "plugins.list": {},
