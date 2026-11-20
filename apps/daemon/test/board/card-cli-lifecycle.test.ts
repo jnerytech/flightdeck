@@ -139,6 +139,24 @@ describe("card update (issue #3454)", () => {
     expect(bad.calls).toEqual([]);
   });
 
+  test("an empty blocker list or a loose number is refused, only `none` clears", async () => {
+    for (const patch of [
+      { blockedBy: "" },
+      { blockedBy: "," },
+      { estimate: "1e3" },
+      { estimate: "0x10" },
+      { estimate: " 5 " },
+      { estimate: "" },
+    ]) {
+      const { result, calls } = await run({ action: "update", id: "c1", ...patch });
+      expect(result.code).toBe(1);
+      expect(text(result)).toContain(
+        Object.keys(patch)[0] === "blockedBy" ? "--blocked-by" : "--estimate",
+      );
+      expect(calls).toEqual([]);
+    }
+  });
+
   test("--json prints the card", async () => {
     const { result } = await run({ action: "update", id: "c1", title: "T", json: true });
     expect(result.out).toHaveLength(1);
@@ -276,6 +294,26 @@ describe("the arguments of the lifecycle verbs (issue #3454)", () => {
     expect(() => parseArgs(["card", "delete", "c1", "--confirm=yes"])).toThrow(
       "--confirm needs no value",
     );
+  });
+
+  test("a flag belongs to the card action that reads it, and is refused on the others", () => {
+    for (const argv of [
+      ["card", "stop", "c1", "--force"],
+      ["card", "list", "--confirm"],
+      ["card", "show", "c1", "--position", "3"],
+      ["card", "move", "c1", "done", "--estimate", "5"],
+      ["card", "move", "c1", "done", "--confirm"],
+      ["card", "discard", "c1", "--confirm", "--force"],
+      ["card", "update", "c1", "--title", "T", "--workflow", "w"],
+      ["card", "new", "Real", "--title", "Other"],
+      ["card", "list", "--title", "T"],
+    ])
+      expect(() => parseArgs(argv)).toThrow("only applies to flightdeckd card");
+    expect(parseArgs(["card", "new", "Real", "--description", "D"])).toMatchObject({
+      cardTitle: "Real",
+      description: "D",
+    });
+    expect(parseArgs(["card", "start", "c1", "--workflow", "w"])).toMatchObject({ workflow: "w" });
   });
 
   test("the usage lists every lifecycle verb", () => {
