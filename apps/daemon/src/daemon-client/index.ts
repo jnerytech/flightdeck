@@ -7,4 +7,5 @@
 export { type RemoteTarget, runOnLocalDaemon } from "./cli.ts";
 export { type CliResult, failure, isLoopbackHost, json, plain, said } from "./cli-view.ts";
 export { DaemonClient, DaemonRefusal, daemonUrl } from "./client.ts";
+export { resolveProject } from "./project-ref.ts";
 export { resolveSession } from "./session-ref.ts";

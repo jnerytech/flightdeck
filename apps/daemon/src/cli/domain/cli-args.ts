@@ -12,6 +12,8 @@ export interface CliArgs {
     | "service"
     | "history"
     | "approvers"
+    | "rules"
+    | "autoapprove"
     | "hooks"
     | "telemetry"
     | "hook"
@@ -160,6 +162,8 @@ export interface CliArgs {
   tools?: string[];
   permissionMode?: string;
   icon?: string;
+  /** `autoapprove list --limit`: how many decisions to read. */
+  limit?: number;
   /** `persona trust --hash`: the start of the hash `persona list` showed. */
   hash?: string;
   /** `persona list --scope <host|project|all>`. */

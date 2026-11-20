@@ -233,3 +233,24 @@ Uma alteração que fica sem resposta sai com `2` e diz que pode ou não ter sid
 `--project-path` indica a pasta do projeto (relativa a onde você roda); sem ele só contam as personas do
 host. `--language en` ou `pt-BR` escolhe o idioma das personas do pacote. Com `--json` cada comando
 imprime a resposta do daemon como um objeto JSON.
+
+## fd rules e fd autoapprove
+
+```sh
+fd rules list --project api
+fd rules list --json
+fd autoapprove list
+fd autoapprove list --project api --session <chave> --limit 20 --json
+```
+
+Eles leem o que protege as sessões de um projeto, como a tela de Segurança. Nenhum altera nada.
+
+- **`rules list`:** as regras de permissão que o projeto libera (`permissions.allow` do
+  `.claude/settings.local.json`), uma por linha, exatamente como o arquivo as guarda (não são censuradas: uma regra que contém um segredo o mostra). `--project` é o nome ou o id do
+  projeto; um host com um só projeto dispensa o `--project`. Com `--json` imprime a lista de regras. Um
+  projeto sem regras avisa, e `--json` imprime uma lista vazia.
+- **`autoapprove list`:** primeiro as sessões com a aprovação automática suspensa (receberam conteúdo de
+  terceiros), depois as decisões do aprovador automático, a mais nova primeiro: a hora, `allow` ou `ask`, o
+  risco, a ferramenta, a chave da sessão, quem decidiu (`rule` ou `ai`) e por quê. `--project` deixa só as
+  decisões de um projeto e `--session` as decisões e a suspensão de uma chave de sessão; `--limit` lê de 1 a 1000 decisões. Com `--json` imprime a
+  resposta do daemon, `decisions` e `suspended`. Um segredo que o aprovador citou num motivo é cortado.
