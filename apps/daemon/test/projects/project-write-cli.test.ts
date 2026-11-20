@@ -42,6 +42,27 @@ const listed = (...projects: Array<Record<string, unknown>>) => ({
   "project.list": () => ({ projects, maxParallelRuns: 2 }),
 });
 
+describe("flightdeckd project update --auto-approve (issue #3515)", () => {
+  test("keeps the model and the low-risk rule the project already has, because the daemon fills a missing one with its default", async () => {
+    const daemon = fakeDaemon({
+      ...listed(
+        project({
+          autoApprove: { enabled: false, model: "claude-opus-5-5", lowWithoutAi: false },
+        }),
+      ),
+      "project.update": () => project(),
+    });
+    await runProjectCli(
+      { action: "update", project: "api", fields: { autoApprove: { enabled: true } } },
+      config(daemon.port),
+    );
+    expect(calls(daemon, "project.update")[0]?.payload).toEqual({
+      projectId: "p1",
+      autoApprove: { enabled: true, model: "claude-opus-5-5", lowWithoutAi: false },
+    });
+  });
+});
+
 describe("flightdeckd project add (issue #3515)", () => {
   test("sends the folder made absolute and only the fields the person set, and says what was added", async () => {
     const daemon = fakeDaemon({ "project.add": () => project() });
