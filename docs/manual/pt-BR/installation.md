@@ -41,6 +41,9 @@ A release traz também as assinaturas (`.sig`) do instalador NSIS e dos daemons 
    npm i -g https://github.com/jnerytech/flightdeck/releases/download/v<versão>/flightdeckd-<versão>.tgz
    ```
 
+   Para conferir o arquivo antes, baixe-o junto com o `SHA256SUMS`, rode `sha256sum -c SHA256SUMS --ignore-missing`
+   e depois `npm i -g ./flightdeckd-<versão>.tgz`.
+
    Ele instala só a CLI e o binário do daemon, então você ainda roda `flightdeckd setup` no host
    (passo 3). O `flightdeckd update` troca a cópia do serviço em `~/.flightdeck/bin`, não a que o
    npm instalou: para atualizar essa, instale o tarball da nova release do mesmo jeito.

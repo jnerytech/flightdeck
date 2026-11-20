@@ -43,6 +43,9 @@ the `latest.json` and `daemon-latest.json` manifests used by the
    npm i -g https://github.com/jnerytech/flightdeck/releases/download/v<version>/flightdeckd-<version>.tgz
    ```
 
+   To check the file first, download it and `SHA256SUMS`, run `sha256sum -c SHA256SUMS --ignore-missing`,
+   then `npm i -g ./flightdeckd-<version>.tgz`.
+
    It installs only the CLI and the daemon binary, so you still run `flightdeckd setup` on the host
    (step 3). `flightdeckd update` replaces the service's copy of the daemon in `~/.flightdeck/bin`,
    not the one npm installed: to update that one, install the new release's tarball the same way.
