@@ -242,6 +242,12 @@ flightdeckd card validation-template <card> [--json]
 flightdeckd card pr-create <card> [--title "<text>"] [--description "<text>"] [--json]
 flightdeckd card update-from-base <card> [--json]
 flightdeckd card merge-local <card> --confirm [--squash] [--message "<text>"] [--json]
+flightdeckd card arena <card> [--json]
+flightdeckd card start-arena <card> --variant <model[:effort[:persona]]> --variant <...> [--variant <...>]
+  [--workflow <name>] [--json]
+flightdeckd card choose-variant <card> <variant> --confirm [--json]
+flightdeckd card check-loop <card> on|off [--rounds <1 to 10>] [--confirm] [--json]
+flightdeckd card dismiss-unblocked <card> [--json]
 ```
 
 - `list` prints one line per card (project, id, column, title, and why a card waits). Without
@@ -278,6 +284,15 @@ flightdeckd card merge-local <card> --confirm [--squash] [--message "<text>"] [-
   or one commit with `--squash`), removes its worktree and branch, and moves it to Done. It cannot be
   undone, so it needs `--confirm`; `--message` is the commit message. A session's own shell that runs it
   is held for the person's yes, like `discard`.
+- `arena` prints the variants of a card's arena, one line each: its model and effort, its state (or
+  `queued`), its cost, the files it changed and any notice. `start-arena` starts the same card in 2 to 4
+  variants, each given as `--variant model[:effort[:persona]]` (a part left empty keeps the default);
+  any other count, or an effort that does not exist, exits 1 and sends nothing.
+- `choose-variant` keeps one variant as the card's work and removes the others' worktrees. It cannot be
+  undone, so it needs `--confirm`; a session's own shell that runs it is held for the person's yes.
+- `check-loop` turns the card's check loop on or off; `--rounds` caps its rounds (1 to 10). The daemon
+  says whether turning it on needs a yes: pass `--confirm` when you give it. A session's own shell that
+  turns it on is held for the person's yes. `dismiss-unblocked` clears the card's "unblocked" mark.
 - `--json` prints the answer for a script.
 - **Exit codes:** 0 done, 1 refused (the reason is on stderr, with the daemon's code), 2 no daemon
   (not running, or silent for 15 s; 5 minutes for `review`).
