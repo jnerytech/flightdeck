@@ -8,6 +8,7 @@ import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
+import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
@@ -659,20 +660,6 @@ const HANDLERS: Record<string, Handler> = {
     args.sessionStart = { ...args.sessionStart, open: v };
   }),
 };
-
-/** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
-const JSON_COMMANDS =
-  "card board history team persona quota usage budget costs roi host sessions session ssh requests send approve deny approvers rules autoapprove vault plugins project".split(
-    " ",
-  );
-const HOST_COMMANDS =
-  "host sessions session ssh requests send approve deny vault plugins project".split(" ");
-
-function refuseOutside(flag: string, commands: readonly string[], command: string): void {
-  if (commands.includes(command)) return;
-  const list = `${commands.slice(0, -1).join(", ")} and ${commands[commands.length - 1]}`;
-  throw new Error(`${flag}: this flag only applies to flightdeckd ${list}\n${USAGE}`);
-}
 
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
