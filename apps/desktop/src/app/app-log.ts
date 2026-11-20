@@ -1,10 +1,11 @@
 import { SecretScanner, scrubHome } from "@flightdeck/protocol";
 import type { LogLevel } from "@/shared/lib/index.ts";
 import type { LogSink } from "../platform/types.ts";
-import { type Budget, LOG_BURST, spend } from "./domain/log-budget.ts";
+import { type Budget, spend } from "./domain/log-budget.ts";
 import { isReactError, type ReactErrorInfo, reactErrorLine } from "./domain/react-error-line.ts";
 
-export { isReactError, LOG_BURST, type ReactErrorInfo, reactErrorLine };
+export { LOG_BURST } from "./domain/log-budget.ts";
+export { isReactError, type ReactErrorInfo, reactErrorLine };
 
 export interface AppLogOptions {
   sink?: LogSink;

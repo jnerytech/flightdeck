@@ -9,9 +9,7 @@ import { KIND_LABEL, type WebhookKind } from "./domain/webhook-format.ts";
 import {
   checkNtfy,
   checkUrl,
-  type TargetErrorCode,
   type TargetInput,
-  type TargetStatus,
   type WebhookTarget,
   WebhookTargetError,
 } from "./domain/webhook-target.ts";

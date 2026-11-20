@@ -5,7 +5,7 @@
  */
 import { ntfyTopic, type WebhookKind, type WebhookType } from "./webhook-format.ts";
 
-export type TargetStatus = "new" | "ok" | "failing";
+type TargetStatus = "new" | "ok" | "failing";
 
 export interface WebhookTarget {
   id: string;

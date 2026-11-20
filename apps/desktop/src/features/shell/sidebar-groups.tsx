@@ -29,12 +29,7 @@ export function SidebarGroups(
   }>,
 ) {
   const { hosts, navHostId, here, t, collapsed, folded, go } = props;
-  const item = (
-    key: NavKey,
-    label: string,
-    route: Route,
-    extra?: { badge?: string | undefined },
-  ) => (
+  const item = (key: NavKey, label: string, route: Route, extra?: { badge?: string }) => (
     <NavButton
       collapsed={collapsed}
       icon={<NavIcon name={key} aria-hidden="true" className={NAV_ICON} />}
