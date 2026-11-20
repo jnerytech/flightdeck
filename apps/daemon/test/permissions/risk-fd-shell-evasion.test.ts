@@ -179,4 +179,38 @@ describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)"
       ]),
     ).toEqual([]);
   });
+
+  test("a word in single quotes, or escaped, is a literal and never an expansion", () => {
+    expect(
+      notHigh([
+        "fd persona 'a,b'",
+        "fd card '1..2'",
+        'fd "*.ts"',
+        "fd 'foo,bar'",
+        "fd -g '*.md'",
+        String.raw`fd '.*\.ts$' src`,
+        String.raw`fd persona rem\*ove qa`,
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a word in double quotes expands a variable but not a glob", () => {
+    expect(
+      wrongReasons([
+        ['fd persona "$V" qa', HIDDEN],
+        ['fd persona "re${x}move" qa', HIDDEN],
+      ]),
+    ).toEqual([]);
+    expect(notHigh(['fd persona "r*" qa', 'fd persona "a,b" qa'])).toEqual([]);
+  });
+
+  test("building or testing the daemon's entry file is not running it with a hidden verb", () => {
+    expect(
+      notHigh([
+        "bun build apps/daemon/src/bin.ts --outfile $OUT",
+        'bun build --compile --target=bun-linux-x64 apps/daemon/src/bin.ts --outfile "dist/flightdeckd-$OS-$CPU"',
+        "bun test apps/daemon/test/bin.ts $X",
+      ]),
+    ).toEqual([]);
+  });
 });
