@@ -7,6 +7,7 @@ import {
   enrollFirstMessage,
   needsApprovalProof,
   revokeMessage,
+  vaultApproveMessage,
 } from "../../src/approval.ts";
 import { Command, ServerMessage } from "../../src/index.ts";
 
@@ -178,5 +179,46 @@ describe("approval-watch: a client that watches hears when a device is enrolled 
     const { keyId: _keyId, ...noKey } = enrolled;
     expect(ServerMessage.safeParse(noKey).success).toBe(false);
     expect(ServerMessage.safeParse({ type: "approval.revoked" }).success).toBe(false);
+  });
+});
+
+describe("vault-approve: a device signs the use of a secret for one request and one scope (#3452)", () => {
+  const parts = {
+    keyId: "k1",
+    daemonId: "d1",
+    requestId: "r1",
+    nonce: "n1",
+    scope: "once",
+  } as const;
+  const parse = (payload: unknown) =>
+    Command.safeParse({ id: "1", type: "vault.approve", payload });
+
+  test("Given the parts, Then the message is the canonical array with its own tag first", () => {
+    expect(vaultApproveMessage(parts)).toBe(
+      '["flightdeck/vault-approve/v1","k1","d1","r1","n1","once"]',
+    );
+  });
+
+  test("Given any one part changed, Then the signed text changes: the scope is signed too", () => {
+    const base = vaultApproveMessage(parts);
+    expect(vaultApproveMessage({ ...parts, scope: "session" })).not.toBe(base);
+    for (const key of ["keyId", "daemonId", "requestId", "nonce"] as const) {
+      expect(vaultApproveMessage({ ...parts, [key]: "other" })).not.toBe(base);
+    }
+  });
+
+  test("Given a vault approve with a proof, Then the payload keeps it; the old fields stay accepted", () => {
+    const proof = { keyId: "k1", nonce: "n1", signature: "sig" };
+    const parsed = parse({ requestId: "r1", via: "app", scope: "once", proof });
+    expect(
+      parsed.success && "proof" in parsed.data.payload ? parsed.data.payload.proof : null,
+    ).toEqual(proof);
+    expect(parse({ requestId: "r1", via: "app", heldMs: 2000 }).success).toBe(true);
+  });
+
+  test("Given a proof that lacks its signature, Then the vault approve is not a command", () => {
+    expect(
+      parse({ requestId: "r1", via: "app", proof: { keyId: "k1", nonce: "n1" } }).success,
+    ).toBe(false);
   });
 });

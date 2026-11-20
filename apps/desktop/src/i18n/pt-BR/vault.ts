@@ -142,6 +142,8 @@ export const vault = {
       "Um comando escrito pelo Claude, com os segredos no ambiente: sempre pede a sua aprovação",
     notifyTitle: "Pedido de segredo",
     notifyBody: "{requester} quer rodar {what} em {host}",
+    proofFailedTitle: "Seu dispositivo não conseguiu confirmar a aprovação",
+    proofFailedBody: "{reason} O pedido foi negado.",
   },
   vaultRulesUi: {
     open: "Regras de {name}",

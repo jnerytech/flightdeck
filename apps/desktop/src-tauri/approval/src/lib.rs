@@ -16,6 +16,8 @@ pub enum Kind {
     /// An enrolled device adds another one (#3478).
     EnrollAdd,
     Revoke,
+    /// The use of a secret of a prod or high-risk request (#3452).
+    VaultApprove,
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -30,11 +32,13 @@ pub struct Ask {
 }
 
 /// What a signed allow also does: saves permission rules, rewrites the tool's input, adds a message.
+/// A signed use of a secret (#3452) says here whether it holds for the whole session, not one use.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Also {
     pub rules: bool,
     pub input: bool,
     pub message: bool,
+    pub session: bool,
 }
 
 /// The two public forms the daemon knows a key by.
@@ -50,6 +54,7 @@ const TAG_APPROVAL: &str = "flightdeck/approval/v1";
 const TAG_ENROLL_FIRST: &str = "flightdeck/enroll-first/v1";
 const TAG_ENROLL_ADD: &str = "flightdeck/enroll-add/v1";
 const TAG_REVOKE: &str = "flightdeck/revoke/v1";
+const TAG_VAULT_APPROVE: &str = "flightdeck/vault-approve/v1";
 
 /// The longest text the protocol builds is about 600 bytes; anything past this is not one of them.
 const MAX_TEXT: usize = 2048;
@@ -148,6 +153,13 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             shape(5)?;
             (Kind::Revoke, part(2), Some(part(1)), part(4))
         }
+        TAG_VAULT_APPROVE => {
+            shape(6)?;
+            if !matches!(part(5), "once" | "session") {
+                return Err("a use of a secret is signed for once or for the session only".into());
+            }
+            (Kind::VaultApprove, part(2), Some(part(1)), part(3))
+        }
         _ => return Err("this text is not one this key signs".into()),
     };
     if host != daemon_id {
@@ -162,7 +174,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             && text.len() <= 64
             && text.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
     };
-    if matches!(kind, Kind::Approve | Kind::Revoke) && !plain(subject) {
+    if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
     }
     if kind == Kind::EnrollAdd && !plain(host) {
@@ -171,9 +183,9 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     // What the allow carries besides the allow: the hashes of nothing say it carries nothing.
     let none = |index: usize, empty: &str| part(index) != sha256_hex(empty);
     let also = if kind == Kind::Approve {
-        Also { rules: none(6, "[]"), input: none(7, "null"), message: none(8, "") }
+        Also { rules: none(6, "[]"), input: none(7, "null"), message: none(8, ""), session: false }
     } else {
-        Also::default()
+        Also { session: kind == Kind::VaultApprove && part(5) == "session", ..Also::default() }
     };
     Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also })
 }
@@ -243,6 +255,16 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
         (Kind::Revoke, true) => format!(
             "Remover o dispositivo com a chave {} dos aprovadores deste host? Continue só se você acabou de pedir isso no Flightdeck.",
             short(&ask.subject)
+        ),
+        (Kind::VaultApprove, false) => format!(
+            "Allow the use of a secret for request {}, {}? Continue only if you just pressed Approve in Flightdeck.",
+            ask.subject,
+            if ask.also.session { "for the whole session" } else { "once" }
+        ),
+        (Kind::VaultApprove, true) => format!(
+            "Permitir o uso de um segredo no pedido {}, {}? Continue só se você acabou de apertar Aprovar no Flightdeck.",
+            ask.subject,
+            if ask.also.session { "durante toda a sessão" } else { "uma vez" }
         ),
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
@@ -314,7 +336,7 @@ mod tests {
     }
 
     fn also_all() -> Also {
-        Also { rules: true, input: true, message: true }
+        Also { rules: true, input: true, message: true, session: false }
     }
 
     /// An approval text for `id`, carrying the hashes of the saved rules, the input and the message.
@@ -421,11 +443,11 @@ mod tests {
         assert_eq!(ask.also, Also::default());
         assert!(!confirm_text(&ask, "en").1.contains("also"));
         let rules = describe(&approval(&me, "ext-7", "[{\"a\":1}]", "null", ""), DAEMON, &me).unwrap();
-        assert_eq!(rules.also, Also { rules: true, input: false, message: false });
+        assert_eq!(rules.also, Also { rules: true, input: false, message: false, session: false });
         assert!(confirm_text(&rules, "en").1.contains("saves permission rules"));
         assert!(confirm_text(&rules, "pt-BR").1.contains("salva regras de permissão"));
         let input = describe(&approval(&me, "ext-7", "[]", "{\"c\":\"x\"}", "hi"), DAEMON, &me).unwrap();
-        assert_eq!(input.also, Also { rules: false, input: true, message: true });
+        assert_eq!(input.also, Also { rules: false, input: true, message: true, session: false });
         let body = confirm_text(&input, "en").1;
         assert!(body.contains("changes the tool's input") && body.contains("adds a message"));
     }
@@ -539,5 +561,52 @@ mod tests {
         let compressed = STANDARD.encode(&der);
         assert_ne!(compressed, me.public_key);
         assert!(describe(&add(&me.key_id, DAEMON, &compressed), DAEMON, &me).is_err());
+    }
+
+    /// A vault-approve text (#3452): tag, key id, host, request id, nonce, scope.
+    fn vault(me: &PublicInfo, host: &str, id: &str, scope: &str) -> String {
+        serde_json::to_string(&["flightdeck/vault-approve/v1", &me.key_id, host, id, "n", scope]).unwrap()
+    }
+
+    #[test]
+    fn a_vault_approve_names_its_request_and_scope() {
+        let me = own();
+        assert_eq!(
+            describe(&vault(&me, DAEMON, "act-7", "once"), DAEMON, &me),
+            Ok(Ask { kind: Kind::VaultApprove, host: DAEMON.into(), subject: "act-7".into(), also: Also::default() })
+        );
+        let session = describe(&vault(&me, DAEMON, "act-7", "session"), DAEMON, &me).unwrap();
+        assert!(session.kind == Kind::VaultApprove && session.also.session);
+    }
+
+    #[test]
+    fn a_vault_approve_for_another_host_key_scope_or_id_is_not_signed() {
+        let me = own();
+        let other = own();
+        assert!(describe(&vault(&me, DAEMON, "act-7", "once"), DAEMON, &me).is_ok());
+        for text in [
+            vault(&me, "another-host", "act-7", "once"),
+            vault(&other, DAEMON, "act-7", "once"),
+            vault(&me, DAEMON, "act-7", "forever"),
+            vault(&me, DAEMON, "act-7", ""),
+            vault(&me, DAEMON, "act 7\nAllow", "once"),
+            vault(&me, DAEMON, "", "once"),
+        ] {
+            assert!(describe(&text, DAEMON, &me).is_err(), "{text}");
+        }
+        let short = serde_json::to_string(&["flightdeck/vault-approve/v1", &me.key_id, DAEMON, "act-7", "n"]).unwrap();
+        assert!(describe(&short, DAEMON, &me).is_err());
+    }
+
+    #[test]
+    fn the_dialog_of_a_vault_approve_says_a_secret_is_used_and_for_how_long() {
+        let me = own();
+        let once = describe(&vault(&me, DAEMON, "act-7", "once"), DAEMON, &me).unwrap();
+        let session = describe(&vault(&me, DAEMON, "act-7", "session"), DAEMON, &me).unwrap();
+        let (_, en) = confirm_text(&once, "en");
+        assert!(en.contains("secret") && en.contains("act-7") && en.contains("once"), "{en}");
+        let (_, pt) = confirm_text(&session, "pt-BR");
+        assert!(pt.contains("segredo") && pt.contains("act-7") && pt.contains("sessão"), "{pt}");
+        assert_eq!(confirm_labels(Kind::VaultApprove, "en").0, "Allow");
     }
 }

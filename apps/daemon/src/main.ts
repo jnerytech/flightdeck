@@ -493,6 +493,8 @@ async function bootDaemon(
         hostName: config.hostName,
         risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
         projectKey: (id) => keys.known(board.getProject(id).path),
+        // #3452: a prod or high-risk secret use is approved by an enrolled device's signature.
+        approval: approvers.gate,
       },
     }),
   );

@@ -2,7 +2,7 @@
 export const approval = {
   approvalDevices: {
     title: "Approving devices",
-    hint: "A high-risk allow, or one that saves a rule, is signed by a device you enroll here. With none enrolled, holding the button is the only check.",
+    hint: "A high-risk allow, one that saves a rule, and the use of a production or high-risk secret are signed by a device you enroll here. With none enrolled, holding the button is the only check.",
     off: "Protection is off: no device is enrolled on this host.",
     on: "Protection is on: these devices can approve.",
     listLabel: "Enrolled devices",
