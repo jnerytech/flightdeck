@@ -6,6 +6,7 @@
 import {
   type CliResult,
   json,
+  type RemoteTarget,
   resolveSession,
   runOnLocalDaemon,
   said,
@@ -27,10 +28,11 @@ const UNSURE =
 export function runSendCli(
   args: SendCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
+    ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-send",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,

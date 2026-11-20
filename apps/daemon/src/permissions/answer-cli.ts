@@ -9,6 +9,7 @@ import {
   DaemonRefusal,
   failure,
   json,
+  type RemoteTarget,
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
@@ -31,10 +32,11 @@ const UNSURE =
 export function runAnswerCli(
   args: AnswerCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
+    ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-answer",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,

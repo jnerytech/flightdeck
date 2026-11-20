@@ -7,6 +7,7 @@
 import {
   type CliResult,
   json,
+  type RemoteTarget,
   resolveSession,
   runOnLocalDaemon,
   said,
@@ -25,10 +26,11 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 export function runRequestsCli(
   args: RequestsCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
+    ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-requests",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     perform: async (daemon) => {

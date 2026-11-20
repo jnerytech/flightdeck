@@ -12,9 +12,19 @@ works in its place everywhere.
 - **`--json`:** prints one JSON value and nothing else, for a script. A fact the daemon does not
   report is `null` (or an empty list), never missing.
 - **Exit codes:** `0` done, `1` refused, `2` no daemon (not running, cut off, or too slow).
-- **This machine only:** the command reads the token from the daemon config file and talks only to
-  `127.0.0.1` or `::1`. `--token` is refused.
-- **The config:** `--config <file>`, else the default path.
+- **This machine, by default:** the command reads the token from the daemon config file and talks
+  only to `127.0.0.1` or `::1`. `--token` is refused.
+- **Another host, with `--host <name>`:** `fd host`, `fd sessions`, `fd requests`, `fd send`,
+  `fd approve` and `fd deny` take the name of a host paired in the app. The command asks that
+  host's daemon with the token the app keeps in the system credential store. The token is never
+  printed, and `--token` and `--config` are refused with `--host`. A refusal is exit `1`: an unknown
+  or ambiguous name (the message lists the known hosts), no credential store (pair from the app),
+  a plain `ws://` address outside a private network, or a token the host no longer accepts (pair
+  the host again in the app). A host that does not answer is exit `2`. With `--json` a refusal is
+  one JSON line on stderr, `{"error": "...", "reason": "..."}`, with a stable reason such as
+  `unknown_host`, `no_store`, `token_refused` or `unreachable`. A write (`fd send`, `fd approve`,
+  `fd deny`) that gets no answer says the change may have gone out: look before you repeat it.
+- **The config:** `--config <file>`, else the default path (not with `--host`).
 
 ## fd host
 

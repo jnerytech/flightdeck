@@ -172,10 +172,10 @@ export const USAGE = [
   "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
-  "     fd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
-  "     fd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
-  "     fd deny <request> [--message <text>] [--json] [--config <file>]",
-  "     fd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
+  "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
+  "     fd approve <request> [--message <text>] [--hold] [--host <name>] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
+  "     fd deny <request> [--message <text>] [--host <name>] [--json] [--config <file>]",
+  "     fd requests [--session <session>] [--host <name>] [--json] [--config <file>]   (the open permission requests, oldest first)",
   "     fd action list [--project <id>] [--config <file>]",
   "     fd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
   "     fd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
@@ -576,8 +576,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
-  if (args.host !== undefined && !["host", "sessions"].includes(args.command))
-    throw new Error(`--host: this flag only applies to flightdeckd host and sessions\n${USAGE}`);
+  if (
+    args.host !== undefined &&
+    !["host", "sessions", "requests", "send", "approve", "deny"].includes(args.command)
+  )
+    throw new Error(
+      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve and deny\n${USAGE}`,
+    );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (args.answerMessage !== undefined && !["approve", "deny"].includes(args.command))

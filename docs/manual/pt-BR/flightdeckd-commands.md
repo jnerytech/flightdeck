@@ -12,9 +12,20 @@ no lugar dele em todo canto.
 - **`--json`:** imprime um único valor JSON e mais nada, para um script. Um dado que o daemon não
   informa vem como `null` (ou lista vazia), nunca ausente.
 - **Códigos de saída:** `0` feito, `1` recusado, `2` sem daemon (parado, cortado ou lento demais).
-- **Só esta máquina:** o comando lê o token do arquivo de config do daemon e fala apenas com
-  `127.0.0.1` ou `::1`. `--token` é recusado.
-- **A config:** `--config <arquivo>`, senão o caminho padrão.
+- **Esta máquina, por padrão:** o comando lê o token do arquivo de config do daemon e fala apenas
+  com `127.0.0.1` ou `::1`. `--token` é recusado.
+- **Outro host, com `--host <nome>`:** `fd host`, `fd sessions`, `fd requests`, `fd send`,
+  `fd approve` e `fd deny` aceitam o nome de um host pareado no app. O comando pergunta ao daemon
+  desse host com o token que o app guarda no cofre de credenciais do sistema. O token nunca é
+  impresso, e `--token` e `--config` são recusados com `--host`. Uma recusa é saída `1`: nome
+  desconhecido ou ambíguo (a mensagem lista os hosts conhecidos), sem cofre de credenciais (pareie
+  pelo app), endereço `ws://` simples fora de rede privada, ou um token que o host não aceita mais
+  (pareie o host de novo no app). Um host que não responde é saída `2`. Com `--json`, uma recusa é
+  uma linha JSON no stderr, `{"error": "...", "reason": "..."}`, com um motivo estável como
+  `unknown_host`, `no_store`, `token_refused` ou `unreachable`. Uma escrita (`fd send`,
+  `fd approve`, `fd deny`) que não recebe resposta avisa que a mudança pode ter sido feita: olhe
+  antes de repetir.
+- **A config:** `--config <arquivo>`, senão o caminho padrão (não com `--host`).
 
 ## fd host
 
