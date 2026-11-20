@@ -4,6 +4,8 @@
  * domain imports from here, never a file inside.
  */
 
+export type { ProjectCliArgs } from "./domain/project-cli-view.ts";
 export type { PlatformInfo } from "./domain/system-folders.ts";
+export { runProjectCli } from "./project-cli.ts";
 export { allowedRoot, cloneRepo, type GitRunner, scanRepos, spawnGit } from "./project-find.ts";
 export { addAllowedRoot, warnIfNoRoots } from "./roots.ts";
