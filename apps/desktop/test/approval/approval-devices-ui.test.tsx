@@ -254,7 +254,7 @@ describe("approval devices panel: what the person did and what the host said (#3
 
   test("a host that does not ask for a device to install or update a plugin says so, and not when it has no device enrolled (#3516)", async () => {
     panel([HERE], "en", [], { unchecked: ["plugins"] });
-    await settleMaybe(() => screen.queryByText(/install or update a plugin/) !== null);
+    await settleMaybe(() => screen.queryByText(/installing or updating a plugin/) !== null);
     expect(
       screen.queryByText(/does not ask for a device to confirm installing or updating a plugin/) !==
         null,
@@ -262,7 +262,7 @@ describe("approval devices panel: what the person did and what the host said (#3
     cleanup();
     panel([OFF], "en", [], { unchecked: ["plugins"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
-    expect(screen.queryByText(/install or update a plugin/) === null).toBe(true);
+    expect(screen.queryByText(/installing or updating a plugin/) === null).toBe(true);
   });
 
   test("a host that does not ask for a device to install or update a plugin says so in Portuguese (#3516)", async () => {
