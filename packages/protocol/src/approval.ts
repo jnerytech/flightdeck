@@ -17,6 +17,9 @@ export const FEATURE_APPROVAL_VAULT = "approval-vault";
 /** The host checks a signed proof of the person's device before a command that moves code or trust (#3453). */
 export const FEATURE_APPROVAL_COMMAND = "approval-command";
 
+/** The host checks a signed proof of the person's device before it trusts a project folder (#3453). */
+export const FEATURE_APPROVAL_TRUST = "approval-trust";
+
 /** The commands whose payload an enrolled device signs (#3453); one list for the host and the app. */
 export const PROOF_COMMANDS = ["card.pr.merge", "project.trust.set", "autoapprove.resume"] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];

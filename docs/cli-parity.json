@@ -303,7 +303,9 @@
     "cli": "card"
   },
   "project.trust.inspect": {},
-  "project.trust.set": {},
+  "project.trust.set": {
+    "appOnly": "trusting a folder takes the person's proof, which a terminal cannot give (#3453)"
+  },
   "project.trust.state": {},
   "project.update": {},
   "projects.clone": {},
