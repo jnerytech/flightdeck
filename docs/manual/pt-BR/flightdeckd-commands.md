@@ -3,7 +3,7 @@
 [Voltar ao manual](../pt-BR.md) · [English](../en/flightdeckd-commands.md)
 
 Todo comando do `flightdeckd` que pergunta ao daemon desta máquina funciona do mesmo jeito. Abaixo,
-`fd` significa `flightdeckd` (`alias fd=flightdeckd`).
+`fd` é o nome curto do `flightdeckd` (veja #3433); até ele chegar, digite `flightdeckd` no lugar.
 
 ## O que todos têm em comum
 
@@ -12,7 +12,7 @@ Todo comando do `flightdeckd` que pergunta ao daemon desta máquina funciona do 
 - **Códigos de saída:** `0` feito, `1` recusado, `2` sem daemon (parado, cortado ou lento demais).
 - **Só esta máquina:** o comando lê o token do arquivo de config do daemon e fala apenas com
   `127.0.0.1` ou `::1`. `--token` é recusado.
-- **A config:** `--config <arquivo>`, senão `FLIGHTDECK_CONFIG`, senão o caminho padrão.
+- **A config:** `--config <arquivo>`, senão o caminho padrão.
 
 ## fd host
 

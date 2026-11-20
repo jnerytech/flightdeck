@@ -56,7 +56,14 @@ const printed = (deps: CliDeps, result: unknown): Promise<number> =>
 async function localConfig(args: CliArgs) {
   if (args.token !== undefined)
     throw new Error("the token of this command is read from the config file only: drop --token");
-  return loadConfig(configPath(args));
+  try {
+    return await loadConfig(configPath(args));
+  } catch {
+    // The parser's message quotes the text it could not read, and that text may be the token.
+    throw new Error(
+      "the config file cannot be read or is not valid: fix it, or start the daemon once to write it",
+    );
+  }
 }
 
 /** Prints what a command that asks the local daemon returned, and gives its exit code. */

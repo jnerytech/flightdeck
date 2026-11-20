@@ -2,8 +2,8 @@
 
 [Back to the manual](../en.md) · [Português (Brasil)](../pt-BR/flightdeckd-commands.md)
 
-Every `flightdeckd` command that asks the daemon of this machine works the same way. Below, `fd`
-stands for `flightdeckd` (`alias fd=flightdeckd`).
+Every `flightdeckd` command that asks the daemon of this machine works the same way. Below, `fd` is
+the short name of `flightdeckd` (see #3433); until it ships, type `flightdeckd` in its place.
 
 ## What they all share
 
@@ -12,7 +12,7 @@ stands for `flightdeckd` (`alias fd=flightdeckd`).
 - **Exit codes:** `0` done, `1` refused, `2` no daemon (not running, cut off, or too slow).
 - **This machine only:** the command reads the token from the daemon config file and talks only to
   `127.0.0.1` or `::1`. `--token` is refused.
-- **The config:** `--config <file>`, else `FLIGHTDECK_CONFIG`, else the default path.
+- **The config:** `--config <file>`, else the default path.
 
 ## fd host
 

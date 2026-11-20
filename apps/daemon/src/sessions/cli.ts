@@ -39,7 +39,9 @@ export function runSessionsCli(
         permissionMode: s.permissionMode,
         updatedAt: s.updatedAt,
       }));
-      return args.json ? json(rows) : said(...rows.map((r) => `${r.name}  ${r.status}  ${r.cwd}`));
+      return args.json
+        ? json(rows)
+        : said(...rows.map((r) => `${r.name ?? "(unnamed)"}  ${r.status}  ${r.cwd}`));
     },
   });
 }

@@ -79,9 +79,11 @@ describe("flightdeckd sessions (issue #3424)", () => {
     const human = await flightdeckd(["sessions"], daemon.port);
     expect(human.out).toEqual(["evil [2Jname x  idle  /w/ ]0;pwn x"]);
     const machine = await flightdeckd(["sessions", "--json"], daemon.port);
+    // On the wire ESC is the text \u001b, so the terminal gets nothing to act on; the invisible
+    // U+2060 is the character that has to become a space.
     expect(JSON.parse(machine.out.join("\n"))[0]).toMatchObject({
-      name: "evil [2Jname x",
-      cwd: "/w/ ]0;pwn x",
+      name: "evil\u001b[2Jname x",
+      cwd: "/w/\u001b]0;pwn\u0007x",
     });
     expect(hasControl(machine.out.join(""))).toBe(false);
   });
