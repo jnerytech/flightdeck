@@ -250,38 +250,6 @@ O que as sessões custam e o que os agentes entregaram, como as telas de Custos 
 Um dia que não é `YYYY-MM-DD` ou não existe no calendário sai com `1` e não envia nada. Os códigos de saída são
 os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
 
-## fd budget
-
-```sh
-fd budget list
-fd budget set --scope host --period day --limit-usd 25 --action queue
-fd budget set --scope project --project flightdeck --period month --limit-usd 400 --action notify
-fd budget set-quota --scope host --window five_hour --limit-pct 0.5 --action notify
-fd budget set --scope host --period day --limit-usd 40 --action queue --id <orçamento>
-fd budget remove <orçamento>
-```
-
-Os limites de custo deste host, como a tela de Custos mostra. Todos aceitam `--json` para a resposta do
-daemon.
-
-- **`budget list`:** uma linha por orçamento: o id, o escopo (`host` ou `project <chave>`), o período, quanto
-  já gastou do limite e o que ele faz no limite. Um limite em dólares aparece como `spent $1.20 of $5.00
-  (24%)`; uma parte de uma janela da cota aparece como `spent ~12% of 20% (60%)`, e o `~` marca a parte de um
-  projeto como estimativa. Sem orçamento, diz `no budget yet`.
-- **`budget set`:** cria um limite em dólares para o host, ou para um projeto com `--scope project --project
-  <chave>`. `--period` é `day` ou `month`, `--limit-usd` um valor de pelo menos 0.01 em dígitos simples (`12.50`) e
-  `--action` é `notify` (avisa no limite) ou `queue` (os cartões novos do escopo esperam aos 100%; uma
-  sessão que já está rodando nunca é segurada). `--id <orçamento>` altera um orçamento existente em vez de
-  criar outro.
-- **`budget set-quota`:** o mesmo, como parte de uma janela da cota em vez de dólares: `--window` é
-  `five_hour` ou `seven_day`, `--limit-pct` uma parte de `0.001` a `1`. Um host sem a cota do plano recusa.
-- **`budget remove <orçamento>`:** apaga um orçamento.
-
-Uma flag de outro verbo, um escopo de projeto sem `--project` ou um valor fora do limite sai com `1` e não
-envia nada. Uma escrita que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode
-`budget list` antes de tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1`
-recusado, `2` sem daemon.
-
 ## fd history
 
 ```sh

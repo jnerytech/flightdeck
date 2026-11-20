@@ -69,7 +69,7 @@ window resets.
 
 - **From a shell:** `fd quota get` prints the windows and the guard, and `fd quota pause-at 0.8` (or `off`)
   sets the guard, as **New cards wait from** does. See [flightdeckd commands](flightdeckd-commands.md#fd-quota-and-fd-usage).
-- **Budgets from a shell:** `fd budget list`, `set`, `set-quota` and `remove` do what the budget form does. See [flightdeckd commands](flightdeckd-commands.md#fd-budget).
+- **Budgets from a shell:** `fd budget list`, `set`, `set-quota` and `remove` do what the budget form does. See [Budgets from a shell](#budgets-from-a-shell).
 
 ## The status bar
 
@@ -233,6 +233,37 @@ In **Settings**, each host with costs has the **Budgets** section:
   (the plan does not say who used it). A new reading of the plan counts at once. With no reading
   of the window the budget stays at zero and nothing alerts. A host with an older flightdeckd
   keeps the dollar form only.
+
+### Budgets from a shell
+
+```sh
+fd budget list
+fd budget set --scope host --period day --limit-usd 25 --action queue
+fd budget set --scope project --project flightdeck --period month --limit-usd 400 --action notify
+fd budget set-quota --scope host --window five_hour --limit-pct 0.5 --action notify
+fd budget set --scope host --period day --limit-usd 40 --action queue --id <budget>
+fd budget remove <budget>
+```
+
+The cost limits of this host, as the Costs screen shows them. Each takes `--json` for the daemon's answer.
+
+- **`budget list`:** one line per budget: its id, its scope (`host` or `project <key>`), its period, what it
+  has spent of its limit, and what it does at the limit. A limit in dollars reads `spent $1.20 of $5.00
+  (24%)`; a share of a quota window reads `spent ~12% of 20% (60%)`, the `~` marking a project's share as an
+  estimate. With no budget it says `no budget yet`.
+- **`budget set`:** makes a limit in dollars for the host, or for one project with `--scope project --project
+  <key>`. `--period` is `day` or `month`, `--limit-usd` an amount of at least 0.01 in plain digits (`12.50`), and
+  `--action` is `notify` (say so at the limit) or `queue` (new cards of the scope wait at 100%; a session
+  that is running is never held). `--id <budget>` changes an existing budget instead of making a new one.
+- **`budget set-quota`:** the same, as a share of a quota window instead of dollars: `--window` is
+  `five_hour` or `seven_day`, `--limit-pct` a share from `0.001` to `1`. A host without the plan quota
+  refuses it.
+- **`budget remove <budget>`:** drops a budget.
+
+A flag that belongs to another verb, a project scope without `--project`, or a value out of range exits `1`
+and sends nothing. A write that gets no answer exits `2` and says it may or may not have gone in: run
+`budget list` before trying again. Exit codes are the same as the other commands: `0` done, `1` refused,
+`2` no daemon.
 
 ## Quota history
 

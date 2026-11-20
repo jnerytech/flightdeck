@@ -68,7 +68,7 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
 
 - **Pelo terminal:** `fd quota get` imprime as janelas e a trava, e `fd quota pause-at 0.8` (ou `off`) define
   a trava, como **Cartões novos esperam a partir de** faz. Veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-quota-e-fd-usage).
-- **Orçamentos pelo terminal:** `fd budget list`, `set`, `set-quota` e `remove` fazem o que o formulário de orçamento faz. Veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-budget).
+- **Orçamentos pelo terminal:** `fd budget list`, `set`, `set-quota` e `remove` fazem o que o formulário de orçamento faz. Veja [Orçamentos pelo terminal](#orçamentos-pelo-terminal).
 
 ## A barra de status
 
@@ -231,6 +231,38 @@ Em **Configurações**, cada host com custos tem a seção **Orçamentos**:
   (de 0,1% a 100%) e a janela é o período: alertas e retenção recomeçam quando ela reinicia. Num
   projeto o uso é estimado pela parte dele no custo da janela (a lista marca **estimativa**). Sem
   leitura da janela o orçamento fica em zero. Um flightdeckd mais antigo só tem o formulário em dólares.
+
+### Orçamentos pelo terminal
+
+```sh
+fd budget list
+fd budget set --scope host --period day --limit-usd 25 --action queue
+fd budget set --scope project --project flightdeck --period month --limit-usd 400 --action notify
+fd budget set-quota --scope host --window five_hour --limit-pct 0.5 --action notify
+fd budget set --scope host --period day --limit-usd 40 --action queue --id <orçamento>
+fd budget remove <orçamento>
+```
+
+Os limites de custo deste host, como a tela de Custos mostra. Todos aceitam `--json` para a resposta do
+daemon.
+
+- **`budget list`:** uma linha por orçamento: o id, o escopo (`host` ou `project <chave>`), o período, quanto
+  já gastou do limite e o que ele faz no limite. Um limite em dólares aparece como `spent $1.20 of $5.00
+  (24%)`; uma parte de uma janela da cota aparece como `spent ~12% of 20% (60%)`, e o `~` marca a parte de um
+  projeto como estimativa. Sem orçamento, diz `no budget yet`.
+- **`budget set`:** cria um limite em dólares para o host, ou para um projeto com `--scope project --project
+  <chave>`. `--period` é `day` ou `month`, `--limit-usd` um valor de pelo menos 0.01 em dígitos simples (`12.50`) e
+  `--action` é `notify` (avisa no limite) ou `queue` (os cartões novos do escopo esperam aos 100%; uma
+  sessão que já está rodando nunca é segurada). `--id <orçamento>` altera um orçamento existente em vez de
+  criar outro.
+- **`budget set-quota`:** o mesmo, como parte de uma janela da cota em vez de dólares: `--window` é
+  `five_hour` ou `seven_day`, `--limit-pct` uma parte de `0.001` a `1`. Um host sem a cota do plano recusa.
+- **`budget remove <orçamento>`:** apaga um orçamento.
+
+Uma flag de outro verbo, um escopo de projeto sem `--project` ou um valor fora do limite sai com `1` e não
+envia nada. Uma escrita que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode
+`budget list` antes de tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1`
+recusado, `2` sem daemon.
 
 ## Histórico da cota
 
