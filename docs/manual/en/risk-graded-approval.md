@@ -36,6 +36,14 @@ until then the hold of the Approve button is the only check, as before.
   `flightdeckd approvers enroll`, then type the **name** of this device and the **one-time code** it
   prints, and press **Enroll**. The code works once, for ten minutes. The app makes a key that never
   leaves this device and gives the host only its public half.
+- **Add a second device.** With protection on, a new device is added by one that is already enrolled. On the
+  new device open the host's page, type a **name** and press **Show the text**: it makes its key and shows a
+  text and a **code** of four groups of four characters. Copy the text to the enrolled device, paste it in
+  **Add another device** on the same host's page and press **Read**. The panel shows the name, the host and
+  the code. Add the device only if the **code is the same** on both screens: the name is only a label. Press
+  **Add this device** and agree in the window of the system, which names the code and the host again.
+  Cancel the window and nothing changes. The new device lists itself once the host has it; **Cancel** on it
+  drops its key.
 - **Approve.** With the host's protection on, **Hold to approve** (and the approval of a saved rule) asks
   you once more in a window of the system, naming the request and saying when the approval also saves a rule. Cancel it and nothing is sent;
   the request stays open. The window is the system's, not the app's, so a page shown inside a session
@@ -50,5 +58,6 @@ until then the hold of the Approve button is the only check, as before.
 - **A warning.** If protection was on and the host now lists no device, the panel says so. If you did not
   reset it at the host, someone with access to it did.
 - **What it does not cover.** It guards approvals made from the app. Anyone with a terminal on the host
-  can still reset it, and a request in the medium tier needs no proof. A second device is added with a key
-  that is already enrolled; the app cannot do that yet, so for now reset at the host and enroll again.
+  can still reset it, and a request in the medium tier needs no proof. A device you cannot sign
+  from (for example, the only one enrolled was lost) is added again only by resetting at the host and enrolling
+  again.
