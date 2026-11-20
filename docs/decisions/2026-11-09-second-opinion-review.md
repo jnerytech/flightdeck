@@ -54,7 +54,7 @@ comments on the card's **Changes**. This file settles how; the code follows it.
 
   It cannot open a file, run a command or write anything. It sees only what Flightdeck puts in the
   prompt.
-- The instructions are those of the **Code reviewer** persona (`personas/pack/<lang>/revisor.md`),
+- The instructions are those of the **Code reviewer** persona (`personas/pack/<lang>/reviewer.md`),
   taken as text, plus a fixed request for findings. The persona's `tools` field does not apply, since
   the call has none.
 - **Model:** the host's default model for one-shot calls, as the wand uses. A project can name
