@@ -196,6 +196,7 @@ const OPTIONS_WITH_VALUE = [
   "--workflow",
   "--variant",
   "--rounds",
+  "--scope",
   "--out",
   "--from",
   "--folders",
