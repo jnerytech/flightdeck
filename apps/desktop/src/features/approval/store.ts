@@ -42,6 +42,21 @@ interface MergeBody {
   proof?: { keyId: string; nonce: string; signature: string };
 }
 
+/** The payload of `project.trust.set`, or the person's no (#3453). */
+type TrustPayload =
+  | {
+      kind: "payload";
+      payload: {
+        path: string;
+        trusted: boolean;
+        proof?: { keyId: string; nonce: string; signature: string };
+      };
+    }
+  | { kind: "declined" };
+
+/** A command a host from before its proof does not guard: the devices panel says so for each. */
+export type UncheckedCommand = "merge" | "trust";
+
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
   /** No key is enrolled: a high-risk allow needs only the hold. */
@@ -225,13 +240,10 @@ export class ApprovalSlice {
    * The host checks the proof of an allow but not of a merge (#3453): it is from before the commands were
    * guarded, so its merges ask for no device. A host the app has no features for is not said to be one.
    */
-  commandsUnchecked(hostId: string): boolean {
+  uncheckedCommands(hostId: string): UncheckedCommand[] {
     const features = this.core.host(hostId)?.features;
-    return (
-      features !== undefined &&
-      hasFeature(features, FEATURE_APPROVAL_PROOF, false) &&
-      !hasFeature(features, FEATURE_APPROVAL_COMMAND, false)
-    );
+    if (features === undefined || !hasFeature(features, FEATURE_APPROVAL_PROOF, false)) return [];
+    return hasFeature(features, FEATURE_APPROVAL_COMMAND, false) ? [] : ["merge"];
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
@@ -525,6 +537,11 @@ export class ApprovalSlice {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...bound, proof: proof.proof } : bound,
     };
+  }
+
+  /** The payload that trusts `path` for a host that checks it (#3453). */
+  async trustPayload(hostId: string, path: string): Promise<TrustPayload> {
+    return await Promise.resolve({ kind: "payload", payload: { path, trusted: true } });
   }
 
   /**

