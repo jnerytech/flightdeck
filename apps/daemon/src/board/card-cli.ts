@@ -13,10 +13,12 @@ import {
   said,
 } from "../daemon-client/index.ts";
 import {
+  arenaLines,
   type CardCliArgs,
   columnOf,
   confirmed,
   diffLines,
+  loopLine,
   pick,
   reviewLines,
   specLines,
@@ -25,6 +27,7 @@ import {
   UNSURE,
   updateOf,
   validationLines,
+  variantsOf,
   waitOf,
 } from "./domain/card-cli-view.ts";
 
@@ -188,6 +191,62 @@ async function mergeCard(args: CardCliArgs, daemon: DaemonClient, note: Note): P
   return args.json ? json(card) : said(`merged ${card.id}  ${card.title}`);
 }
 
+async function arenaOf(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const arena = await daemon.call("card.arena", { cardId: args.id ?? "" });
+  return args.json ? json(arena) : said(...arenaLines(arena));
+}
+
+/** The same request in 2 to 4 variants, each in its own worktree and session: it spends the plan, like `start`. */
+async function startArena(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  const variants = variantsOf(args.variants);
+  note.wrote = true;
+  const arena = await daemon.call("card.startArena", {
+    cardId: args.id ?? "",
+    variants,
+    ...(args.workflow ? { workflow: args.workflow } : {}),
+  });
+  return args.json ? json(arena) : said(...arenaLines(arena, true));
+}
+
+/** Keeps one variant as the card's worktree and removes the others: the daemon asks for the yes, and so does this. */
+async function chooseVariant(
+  args: CardCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+): Promise<CliResult> {
+  const confirm = confirmed(args);
+  note.wrote = true;
+  const card = await daemon.call("card.chooseVariant", {
+    cardId: args.id ?? "",
+    variantId: args.variant ?? "",
+    confirm,
+  });
+  return args.json ? json(card) : said(`chose ${args.variant ?? ""} for ${card.id}  ${card.title}`);
+}
+
+/** The loop runs the checks on its own: the daemon decides whether turning it on needs the person's yes. */
+async function checkLoop(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  const on = args.loop === "on";
+  note.wrote = true;
+  const card = await daemon.call("card.checkLoop", {
+    cardId: args.id ?? "",
+    on,
+    ...(args.rounds === undefined ? {} : { rounds: args.rounds }),
+    ...(args.confirm ? { confirm: true } : {}),
+  });
+  return args.json ? json(card) : said(loopLine(card.id, on, args.rounds));
+}
+
+async function dismissUnblocked(
+  args: CardCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+): Promise<CliResult> {
+  note.wrote = true;
+  const card = await daemon.call("card.dismissUnblocked", { cardId: args.id ?? "" });
+  return args.json ? json(card) : said(`dismissed the unblocked mark of ${card.id}  ${card.title}`);
+}
+
 async function diffCard(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
   const diff = await daemon.call("card.diff", { cardId: args.id ?? "" });
   return args.json ? json(diff) : said(...diffLines(diff));
@@ -281,6 +340,16 @@ function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<C
       return rebaseCard(args, daemon, note);
     case "merge-local":
       return mergeCard(args, daemon, note);
+    case "arena":
+      return arenaOf(args, daemon);
+    case "start-arena":
+      return startArena(args, daemon, note);
+    case "choose-variant":
+      return chooseVariant(args, daemon, note);
+    case "check-loop":
+      return checkLoop(args, daemon, note);
+    case "dismiss-unblocked":
+      return dismissUnblocked(args, daemon, note);
   }
 }
 
