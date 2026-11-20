@@ -123,7 +123,8 @@ export const cardHandlers = {
     const expect = prUrl !== undefined && headSha !== undefined ? { prUrl, headSha } : undefined;
     return await server.need("board").mergePr(cardId, method, true, expect);
   },
-  "card.pr.head": async (payload, { server }) => {
+  "card.pr.head": async (payload, { server, ws }) => {
+    requireVaultTransport(ws.data.origin, "card.pr.head", server.opts.log);
     return await server.need("board").prHead(payload.cardId);
   },
   "card.complete": async (payload, { server }) => {

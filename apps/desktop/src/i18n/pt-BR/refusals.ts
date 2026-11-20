@@ -15,8 +15,8 @@ export const refusals = {
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
     hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
     approval_proof_required:
-      "Este host exige o seu aparelho cadastrado para aprovar este pedido, e a prova faltou ou não conferiu.",
-    approval_challenge_expired: "A aprovação demorou demais: aperte Aprovar de novo.",
+      "Este host exige o seu aparelho cadastrado para confirmar isto, e a prova faltou ou não conferiu.",
+    approval_challenge_expired: "A confirmação demorou demais: faça de novo.",
     approval_challenge_busy:
       "Há aprovações demais esperando neste host: tente de novo em um minuto.",
     approval_enroll_closed:

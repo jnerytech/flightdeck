@@ -249,10 +249,9 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             let id = !card.is_empty()
                 && card.len() <= 64
                 && card.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
-            // An address of a page, in the characters of one: no space, quote, backslash or control character can pad a line.
-            let address = url.starts_with("https://")
-                && url.len() <= 200
-                && url.chars().all(|c| c.is_ascii_alphanumeric() || "-._~:/?#[]@!$&()*+,;=%".contains(c));
+            // The address of a pull request's page, plain: https://<host>/<owner>/<repo>/pull/<number>, with no
+            // userinfo, port, query or fragment, so the host the dialog shows is the one that is meant.
+            let address = url.len() <= 200 && is_pull_request_address(url);
             let commit = matches!(head.len(), 40 | 64) && head.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f'));
             if !id || !address || !commit || !matches!(method, "merge" | "squash") {
                 return Err("the merge payload names something that is not a card, an address, a commit or a method".into());
@@ -269,6 +268,22 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         }
         _ => Err("this command is not one this key signs".into()),
     }
+}
+
+/// `https://<host>/<owner>/<repo>/pull/<number>` in the characters of a path: nothing that can pad a line or
+/// hide the real host (`@`, `:`, `?`, `#`).
+fn is_pull_request_address(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("https://") else { return false };
+    let parts: Vec<&str> = rest.split('/').collect();
+    let plain = |part: &str, extra: &str| {
+        !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
+    };
+    matches!(parts.as_slice(), [host, owner, repo, "pull", number]
+        if plain(host, "-.")
+            && plain(owner, "-._")
+            && plain(repo, "-._")
+            && number.chars().all(|c| c.is_ascii_digit())
+            && !number.is_empty())
 }
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
