@@ -4,7 +4,7 @@ import { bash, MEDIUM, notHigh, wrongReasons } from "../support/permissions-risk
 const PERSONA =
   "changes what the app asks a person to confirm (flightdeckd persona save, remove, reset, trust or publish-agent)";
 const HIDDEN =
-  "runs a flightdeckd command whose noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
+  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
 
 describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)", () => {
   test("an escaped quote inside a flag's value does not swallow the verb behind it", () => {
@@ -34,6 +34,52 @@ describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)"
     ).toEqual([]);
   });
 
+  test("a backslash before two blanks ends the word, so the verb after it is still read", () => {
+    expect(
+      wrongReasons([
+        [String.raw`fd --prompt \  persona remove qa`, PERSONA],
+        [String.raw`fd --project-path a\  persona remove qa`, PERSONA],
+        ["fd --prompt \\\t persona remove qa", PERSONA],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("an ANSI-C quote keeps an escaped quote inside, and an escaped quote in an assignment is no quote", () => {
+    expect(
+      wrongReasons([
+        [String.raw`fd --project-path $'\'' persona remove qa`, PERSONA],
+        [String.raw`fd --prompt $'a\';b' persona remove qa`, PERSONA],
+        [String.raw`X=a\"b fd --prompt "x" persona remove qa`, PERSONA],
+        [String.raw`FOO=\" fd --prompt "x" persona remove qa`, PERSONA],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a program name the shell expands to the CLI is high, with a reason that says why", () => {
+    expect(
+      wrongReasons([
+        ["fd${IFS}persona${IFS}remove${IFS}qa", HIDDEN],
+        ["{fd,persona,remove,qa}", HIDDEN],
+        ["f{d,d} persona remove qa", HIDDEN],
+        ["/path/bin/f[d] persona remove qa", HIDDEN],
+        ["./dist/flightdeckd-linux-x6? persona remove qa", HIDDEN],
+        ["fl*htdeckd persona remove qa", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("PowerShell reads a backslash as a path separator and a backtick as the escape", () => {
+    expect(
+      wrongReasons(
+        [
+          [String.raw`fd --project-path "C:\work\" persona remove qa`, PERSONA],
+          ['fd --project-path "a`" b" persona remove qa', PERSONA],
+        ],
+        "PowerShell",
+      ),
+    ).toEqual([]);
+  });
+
   test("an argument past the verb may hold an expansion, and a word in quotes is a word", () => {
     expect(
       notHigh([
@@ -41,6 +87,14 @@ describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)"
         'fd card list --project "$P"',
         "fd send fd-qa $MESSAGE",
         'fd persona show "$NAME"',
+        "fd send $SID hello",
+        "fd open ../repo",
+        "fd status *",
+        'fd say "hello, world"',
+        "$EDITOR $FILE",
+        "$CC $FLAGS main.c",
+        "python$V script.py",
+        "ls f*",
       ]),
     ).toEqual([]);
     expect(bash("fd persona show qa").reason).toBe(MEDIUM);
