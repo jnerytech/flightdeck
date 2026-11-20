@@ -4,7 +4,7 @@
  */
 import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
-import { ArgReader, operand, subAction } from "./arg-reader.ts";
+import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -56,7 +56,6 @@ const setValue =
   };
 
 /** A flag that takes no value: `--hold=false` is an error, never a `--hold` (#3425). */
-const FLAGS = new WeakSet<Handler>();
 const setFlag = (set: (args: CliArgs) => void): Handler => {
   const handler: Handler = (args) => {
     set(args);

@@ -2,7 +2,7 @@
 
 [Voltar ao manual](../pt-BR.md) · [English](../en/flightdeckd-ssh-commands.md)
 
-Os verbos que leem, testam, fixam as chaves, removem e importam os destinos ssh de um host. Funcionam como os outros comandos do `flightdeckd`: veja
+Os verbos que leem, testam, adicionam, editam, fixam as chaves, removem e importam os destinos ssh de um host. Funcionam como os outros comandos do `flightdeckd`: veja
 [o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum).
 
 ## fd ssh
@@ -15,6 +15,10 @@ fd ssh hostkey check prod
 fd ssh test prod
 fd ssh hostkey confirm prod --fingerprint SHA256:...
 fd ssh hostkey forget prod
+fd ssh add web --address web.internal --user deploy --port 2222 --jump prod
+fd ssh edit web --address web2.internal
+fd ssh edit web --no-jump --auth agent
+fd ssh edit web --forward-agent --confirm
 fd ssh remove prod --confirm
 fd ssh import apply --alias staging --alias prod
 ```
@@ -52,4 +56,14 @@ passa como salto é recusado pelo daemon: remova o outro antes.
 antes e nomeie só os que você quer, no mínimo um e no máximo 500. Imprime uma linha por nome, `imported as <id>` ou
 `skipped` com o motivo, e sai com `1` quando algum nome foi pulado (já existe, não está no arquivo, ou os saltos
 formam um ciclo). Um host com `IdentityFile` vira um destino de chave em arquivo que usa esse caminho. Um agente que
-roda `remove` ou `import apply` do próprio shell precisa de confirmação.
+roda `add`, `edit`, `remove` ou `import apply` do próprio shell precisa de confirmação.
+
+`add <nome> --address <host> --user <nome>` cria um destino e imprime `<nome>: added as <id>`. Opcionais: `--port`
+(1 a 65535), `--auth agent|key-file|vault-key|password`, `--secret-ref <caminho da chave ou nome do item do cofre>` (um nome, nunca o segredo em si; o agente não tem) e `--jump <destino>`,
+o destino pelo qual ele passa (um nome ou um id). Recusa um nome que já existe e aponta para `edit`.
+`edit <destino>` muda os campos que você nomeia e mantém o resto; exige ao menos um entre `--address`, `--user`,
+`--port`, `--auth`, `--secret-ref`, `--jump`, `--no-jump`, `--forward-agent` e `--no-forward-agent`. Um `--auth` novo
+esquece a referência de chave antiga, a menos que você passe `--secret-ref` junto. Mudar o endereço ou a porta limpa
+a chave de host fixada; o comando avisa, e você roda `hostkey check` e `hostkey confirm` de novo. `--forward-agent`
+deixa o host remoto usar o seu agente ssh, então exige `--confirm`. Tags, um host pelo qual passar, redirecionamentos
+locais e renomear continuam no app.
