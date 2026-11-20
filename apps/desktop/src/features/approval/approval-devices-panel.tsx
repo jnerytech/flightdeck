@@ -4,7 +4,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
-import type { ApprovalStatus } from "./store.ts";
+import type { AddOffer, AddRequest, ApprovalStatus } from "./store.ts";
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
 
@@ -23,6 +23,11 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  // Adding a second device (#3478): the new device's text, and what an enrolled one read from it.
+  const [addName, setAddName] = useState("");
+  const [request, setRequest] = useState<AddRequest | null>(null);
+  const [addText, setAddText] = useState("");
+  const [offer, setOffer] = useState<AddOffer | null>(null);
   // The most devices this panel saw: protection that drops to none after that was not turned off here.
   const seen = useRef(0);
   const reload = useCallback(async () => {
@@ -40,19 +45,31 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     setView({ kind: "loading" });
     setDone(null);
     setProblem(null);
+    setRequest(null);
+    setOffer(null);
+    setAddText("");
     void reload();
   }, [reload]);
+  // The host lists this device now: the text did its work.
+  useEffect(() => {
+    if (!request || view.kind !== "ready") return;
+    const { thisKeyId, keys } = view.status;
+    if (thisKeyId && keys.some((key) => key.keyId === thisKeyId)) {
+      setRequest(null);
+      setDone(t("approvalDevices.enrolled"));
+    }
+  }, [request, view, t]);
   /**
    * Runs one change, one at a time: its refusal is shown here, its success is said once (not when the
    * person declined the system's dialog), and the list is read again.
    */
-  const change = async (work: () => Promise<unknown>, success: string) => {
+  const change = async (work: () => Promise<unknown>, success: string | null) => {
     if (busy) return;
     setBusy(true);
     setDone(null);
     setProblem(null);
     try {
-      if ((await work()) !== "declined") setDone(success);
+      if ((await work()) !== "declined" && success) setDone(success);
     } catch (error) {
       setProblem(error instanceof Error ? error.message : String(error));
     }
@@ -87,6 +104,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const { status } = view;
   const lost = status.protectionOff && seen.current > 0;
   const hasKey = status.thisKeyId !== null;
+  const enrolledHere = hasKey && status.keys.some((key) => key.keyId === status.thisKeyId);
   return (
     <Panel title={t("approvalDevices.title")} slot="host-section-approval">
       {hint}
@@ -177,6 +195,139 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
             busy={busy}
           />
         </Form>
+      )}
+      {!status.protectionOff && enrolledHere && (
+        <Panel title={t("approvalDevices.addTitle")} slot="approval-add-device">
+          <p className="text-muted-foreground text-xs">{t("approvalDevices.addHint")}</p>
+          {offer ? (
+            <Form
+              variant="panel"
+              aria-label={t("approvalDevices.addOfferTitle")}
+              onSubmit={() =>
+                void change(async () => {
+                  const outcome = await store.approval.confirmAdd(host.id, offer);
+                  if (outcome === "done") setOffer(null);
+                  else setDone(t("approvalDevices.addDeclined"));
+                  return outcome;
+                }, t("approvalDevices.addDone"))
+              }
+            >
+              <h4 className="font-medium text-sm">{t("approvalDevices.addOfferTitle")}</h4>
+              <p className="text-sm">
+                {t("approvalDevices.addOfferFor", { name: offer.name, host: offer.host })}
+              </p>
+              <p className="text-sm">
+                {t("approvalDevices.addOfferCode")}{" "}
+                <code className="font-mono">{offer.fingerprint}</code>
+              </p>
+              <p className="text-muted-foreground text-xs">{t("approvalDevices.addOfferHint")}</p>
+              <FormActions
+                submit={t("approvalDevices.addConfirm")}
+                busy={busy}
+                cancel={t("approvalDevices.addCancel")}
+                onCancel={() => setOffer(null)}
+              />
+            </Form>
+          ) : (
+            <Form
+              variant="panel"
+              aria-label={t("approvalDevices.addTitle")}
+              onSubmit={() =>
+                void change(async () => {
+                  setOffer(await store.approval.readAdd(host.id, addText.trim()));
+                }, null)
+              }
+            >
+              <Field label={t("approvalDevices.addTextLabel")}>
+                {(control) => (
+                  <Input
+                    {...control}
+                    value={addText}
+                    maxLength={1024}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => setAddText(event.target.value)}
+                  />
+                )}
+              </Field>
+              <FormActions
+                submit={t("approvalDevices.addRead")}
+                disabled={addText.trim() === ""}
+                busy={busy}
+              />
+            </Form>
+          )}
+        </Panel>
+      )}
+      {!status.protectionOff && !enrolledHere && (
+        <Panel title={t("approvalDevices.requestTitle")} slot="approval-request-add">
+          <p className="text-muted-foreground text-xs">{t("approvalDevices.requestHint")}</p>
+          {request ? (
+            <Stack gap={2}>
+              <Field label={t("approvalDevices.requestTextLabel")}>
+                {(control) => (
+                  <Input
+                    {...control}
+                    readOnly
+                    value={request.text}
+                    spellCheck={false}
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                )}
+              </Field>
+              <p className="text-sm">
+                {t("approvalDevices.addOfferCode")}{" "}
+                <code className="font-mono">{request.fingerprint}</code>
+              </p>
+              <p className="text-sm" role="status">
+                {t("approvalDevices.requestWaiting")}
+              </p>
+              <Inline>
+                <ActionButton variant="outline" onClick={reload}>
+                  {t("approvalDevices.requestCheck")}
+                </ActionButton>
+                <ActionButton
+                  variant="outline"
+                  onClick={() =>
+                    change(async () => {
+                      await store.approval.removeLocalKey(host.id);
+                      setRequest(null);
+                    }, null)
+                  }
+                >
+                  {t("approvalDevices.addCancel")}
+                </ActionButton>
+              </Inline>
+            </Stack>
+          ) : (
+            <Form
+              variant="panel"
+              aria-label={t("approvalDevices.requestTitle")}
+              onSubmit={() =>
+                void change(async () => {
+                  setRequest(await store.approval.requestAdd(host.id, addName.trim()));
+                }, null)
+              }
+            >
+              <Field label={t("approvalDevices.nameLabel")}>
+                {(control) => (
+                  <Input
+                    {...control}
+                    value={addName}
+                    maxLength={64}
+                    autoComplete="off"
+                    onChange={(event) => setAddName(event.target.value)}
+                  />
+                )}
+              </Field>
+              <FormActions
+                submit={t("approvalDevices.requestShow")}
+                disabled={addName.trim() === ""}
+                busy={busy}
+              />
+            </Form>
+          )}
+        </Panel>
       )}
       {hasKey && (
         <Stack gap={1}>
