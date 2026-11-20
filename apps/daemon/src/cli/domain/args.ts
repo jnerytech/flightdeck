@@ -57,6 +57,8 @@ export interface CliArgs {
   text?: string;
   /** `message idle|read <session>`, with `--last N` for read; `requests --session`. */
   session?: string;
+  /** `--host <name>`: ask the paired host of that name instead of this machine's daemon (#3429). */
+  host?: string;
   /** `send <session> <text>`: the session that gets the text, its name or its id. */
   sendTo?: string;
   /** `approve|deny <request>`: the id of the permission request. */
@@ -416,6 +418,9 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--json": setFlag((args) => {
     args.json = true;
+  }),
+  "--host": setValue((args, v) => {
+    args.host = v;
   }),
   "--description": setValue((args, v) => {
     args.description = v;
