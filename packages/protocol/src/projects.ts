@@ -279,6 +279,8 @@ export const projectsCommands = [
         reformat: z.boolean().optional(),
         /** #75, slice T1b: a host template's Markdown instead of the fixed files. */
         template: z.string().regex(HARNESS_TEMPLATE_ID).optional(),
+        /** The signed proof of an enrolled device over the whole request (#3507). */
+        proof: ApprovalProof.optional(),
       })
       .strict(),
   ),

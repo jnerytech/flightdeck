@@ -74,3 +74,11 @@ tarball failure stops the release before anything is public. Artifact actions ar
 - Is a self-update of the npm copy wanted (out of scope here)?
 - Does the artifact hand-off from `daemons` to `release` keep file names under 0755 loss? The release
   job only copies, so it does not need the bit.
+
+## The real install is checked by the release job only (issue #3541, 2026-11-20)
+
+A unit test that ran the real `npm pack` and `npm install -g` into a temporary prefix took 5.8 to 7.3 s
+on CI, over the 5 s limit of the slow-tests guard, and failed other PRs. It was removed instead of
+allowlisted. The `daemons` job of `release.yml` already does the real `npm install -g` of the tarball
+and runs `flightdeckd --version` and `fd --version`. The manifest, the packed folder and the launcher
+(arguments reach the binary untouched) stay covered by fast tests.
