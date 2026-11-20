@@ -39,7 +39,7 @@ function panel(
   statuses: Status[],
   language: "en" | "pt-BR" = "en",
   failures: Error[] = [],
-  opts: { declined?: boolean; gate?: Promise<void> } = {},
+  opts: { declined?: boolean; gate?: Promise<void>; older?: boolean } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -60,6 +60,7 @@ function panel(
       await opts.gate;
       return opts.declined ? "declined" : "done";
     };
+  slice.commandsUnchecked = () => opts.older === true;
   slice.enroll = record("enroll");
   slice.revoke = record("revoke");
   slice.removeLocalKey = record("removeLocal");
@@ -170,6 +171,28 @@ describe("approval devices panel: what the person did and what the host said (#3
     await settleMaybe(() => screen.queryByText("The host's devices could not be read.") !== null);
     expect(screen.queryByText("This device is enrolled.") !== null).toBe(true);
     expect(screen.queryByRole("button", { name: "Try again" }) !== null).toBe(true);
+  });
+
+  test("a host that checks allows but not a merge says its merges ask for no device, in both languages", async () => {
+    panel([HERE], "en", [], { older: true });
+    await settleMaybe(() => screen.queryByText(/does not ask for a device/) !== null);
+    expect(screen.queryByText(/does not ask for a device to confirm a merge/) !== null).toBe(true);
+    cleanup();
+    panel([HERE], "pt-BR", [], { older: true });
+    await settleMaybe(() => screen.queryByText(/não pede a confirmação/) !== null);
+    expect(
+      screen.queryByText(/não pede a confirmação de um dispositivo ao fazer merge/) !== null,
+    ).toBe(true);
+  });
+
+  test("a host that checks merges, or has no device enrolled, says nothing of it", async () => {
+    panel([HERE]);
+    await settleMaybe(() => screen.queryByRole("list", { name: "Enrolled devices" }) !== null);
+    expect(screen.queryByText(/does not ask for a device/) === null).toBe(true);
+    cleanup();
+    panel([OFF], "en", [], { older: true });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    expect(screen.queryByText(/does not ask for a device/) === null).toBe(true);
   });
 
   test("with protection on and no key here, the panel says what to do, not 'enroll here'", async () => {

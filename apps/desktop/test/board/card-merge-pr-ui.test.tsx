@@ -264,3 +264,49 @@ describe("card-merge-pr-ui: a card merges its open PR from the card (#1196)", ()
     ]);
   });
 });
+
+describe("card-merge-pr-ui: a merge bound to the head and signed by a device (#3453)", () => {
+  const SIGNED = {
+    cardId: "c1",
+    method: "merge",
+    confirm: true,
+    prUrl: PR_URL,
+    headSha: "a".repeat(40),
+    proof: { keyId: "k", nonce: "n", signature: "s" },
+  };
+
+  async function confirm(made: () => Promise<unknown>, language: "en" | "pt-BR" = "en") {
+    const run = setup({ language });
+    const asked: unknown[][] = [];
+    run.store.approval.mergePayload = (async (...args: unknown[]) => {
+      asked.push(args);
+      return await made();
+    }) as never;
+    render(run.view);
+    await opened(language === "en" ? "Merge PR" : "Fazer merge do PR");
+    await click(inDialog(language === "en" ? "Merge PR" : "Fazer merge do PR"));
+    await settleMaybe(() => run.sent.length > 0 || screen.queryAllByRole("alert").length > 0, 2000);
+    return { ...run, asked };
+  }
+
+  test("the confirm sends the payload the approval slice made for this card and way, proof and head included", async () => {
+    const { sent, asked } = await confirm(async () => ({ kind: "payload", payload: SIGNED }));
+    expect([asked, sent]).toEqual([[["h1", "c1", "merge"]], [["card.pr.merge", SIGNED]]]);
+  });
+
+  test("a no in the system's dialog sends nothing and says nothing went wrong", async () => {
+    const { sent } = await confirm(async () => ({ kind: "declined" }));
+    expect([sent, screen.queryAllByRole("alert").length]).toEqual([[], 0]);
+  });
+
+  test("a payload that could not be made is said in place with the error's own text", async () => {
+    const { sent } = await confirm(async () => {
+      throw new Error("The host's devices could not be read.");
+    });
+    const alert = screen.queryAllByRole("alert").find((box) => (box.textContent ?? "") !== "");
+    expect([sent, alert?.textContent?.includes("The host's devices could not be read.")]).toEqual([
+      [],
+      true,
+    ]);
+  });
+});

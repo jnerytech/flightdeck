@@ -15,8 +15,8 @@ export const refusals = {
     permission_request_closed: "The permission request {id} is not open.",
     hold_required: "A high-risk request is approved only by holding the button.",
     approval_proof_required:
-      "This host needs your enrolled device to approve this request, and the proof was missing or did not check out.",
-    approval_challenge_expired: "The approval took too long: press Approve again.",
+      "This host needs your enrolled device to confirm this, and the proof was missing or did not check out.",
+    approval_challenge_expired: "The confirmation took too long: do it again.",
     approval_challenge_busy: "Too many approvals are waiting on this host: try again in a minute.",
     approval_enroll_closed:
       "This host is not accepting a new device: open enrollment at the host with flightdeckd approvers enroll.",

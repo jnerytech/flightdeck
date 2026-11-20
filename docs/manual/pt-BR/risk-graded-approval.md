@@ -28,7 +28,7 @@ podem ser rebaixados.
 ## Dispositivos que aprovam
 
 Um host também pode pedir a **prova assinada de um dos seus dispositivos** antes de aprovar um pedido de risco
-alto, e antes de qualquer aprovação que grave uma regra ("sempre permitir"). Fica desligado até você
+alto, e antes de qualquer aprovação que grave uma regra ("sempre permitir") e antes de fazer merge de um PR a partir de um cartão. Fica desligado até você
 cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única conferência, como antes.
 
 - **Cadastrar.** Abra a página do host e procure **Dispositivos que aprovam**. No terminal do host rode
@@ -59,6 +59,11 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   cadastrado de novo. Com a página do host aberta, o aviso aparece nela, com **Dispensar**; senão, é um
   aviso temporário. Um terminal vê as mesmas mudanças: `flightdeckd approvers watch --follow` imprime uma
   linha a cada uma. Hosts mais antigos que este anúncio só são lidos quando você abre a página.
+- **Merge de um PR.** Com um dispositivo cadastrado, **Fazer merge do PR** em um cartão pede mais uma
+  confirmação em uma janela do sistema. A janela nomeia o PR, o commit da ponta (curto) e a forma (merge
+  commit ou squash). Cancele e nada é enviado. Se alguém enviar commits ao PR depois que o app o leu, o host
+  recusa o merge e diz que o PR mudou: olhe-o de novo. Um host que ainda não pede o dispositivo no merge mostra
+  um aviso na própria página: atualize-o.
 - **Um aviso.** Se a proteção estava ligada e o host agora não lista nenhum dispositivo, o painel avisa. Se
   você não zerou no host, alguém com acesso a ele zerou.
 - **O que não cobre.** Protege as aprovações feitas pelo app. Quem tem um terminal no host ainda consegue

@@ -7,23 +7,40 @@ import {
   approvalDigests,
   approvalMessage,
   type CommandPayload,
+  commandDigest,
+  commandMessage,
   enrollAddMessage,
   enrollFirstMessage,
+  FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_VAULT,
   needsApprovalProof,
   PermissionRespondPayload,
   type PermissionUpdate,
+  type ProofCommand,
   type RiskLevel,
   revokeMessage,
   vaultApproveMessage,
 } from "@flightdeck/protocol";
 import { refusalText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
-import type { AppKernel } from "../../lib/kernel.ts";
+import type { AppKernel, HostResult } from "../../lib/kernel.ts";
 import { hasFeature } from "../../lib/version.ts";
 import type { Platform } from "../../platform/types.ts";
 import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./add-text.ts";
+
+/** The payload of a guarded merge, or the person's no (#3453). */
+type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
+
+/** `card.pr.merge`'s payload: the head binding and the proof are there only for a host that checks them. */
+interface MergeBody {
+  cardId: string;
+  method: "merge" | "squash";
+  confirm: boolean;
+  prUrl?: string;
+  headSha?: string;
+  proof?: { keyId: string; nonce: string; signature: string };
+}
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -202,6 +219,19 @@ export class ApprovalSlice {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * The host checks the proof of an allow but not of a merge (#3453): it is from before the commands were
+   * guarded, so its merges ask for no device. A host the app has no features for is not said to be one.
+   */
+  commandsUnchecked(hostId: string): boolean {
+    const features = this.core.host(hostId)?.features;
+    return (
+      features !== undefined &&
+      hasFeature(features, FEATURE_APPROVAL_PROOF, false) &&
+      !hasFeature(features, FEATURE_APPROVAL_COMMAND, false)
+    );
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
@@ -450,6 +480,54 @@ export class ApprovalSlice {
   }
 
   /**
+   * The proof of a command that moves code or trust (#3453): the device's signature over the command and a
+   * hash of the payload it sends. The shell gets that payload too, to say in its dialog what the command
+   * does; it signs only when the payload is the one the hash is of. The same results as `prove`.
+   */
+  async proveCommand(
+    hostId: string,
+    command: ProofCommand,
+    payload: Record<string, unknown>,
+  ): Promise<ProofResult> {
+    const signer = await this.signer(hostId, FEATURE_APPROVAL_COMMAND);
+    if (!signer) return { kind: "none" };
+    const challenge = await this.ask(hostId, "approval.challenge", { purpose: "command", command });
+    const digest = commandDigest(payload);
+    const message = commandMessage({
+      keyId: signer.local.keyId,
+      daemonId: challenge.daemonId,
+      command,
+      nonce: challenge.nonce,
+      payloadHash: await sha256Hex(digest),
+    });
+    return await this.signed(signer, challenge.nonce, message, digest);
+  }
+
+  /**
+   * The payload of `card.pr.merge` for a host that binds a merge (#3453): the pull request and head commit
+   * read now, and the device's proof over them when a device is enrolled. A host from before the feature
+   * gets the plain payload. `declined`: the person said no in the system's dialog.
+   */
+  async mergePayload(
+    hostId: string,
+    cardId: string,
+    method: "merge" | "squash",
+  ): Promise<MergePayload> {
+    const plain: MergeBody = { cardId, method, confirm: true };
+    if (!this.supported(hostId, FEATURE_APPROVAL_COMMAND))
+      return { kind: "payload", payload: plain };
+    const result = await this.core.request(hostId, "card.pr.head", { cardId });
+    if (!result.ok) throw new Error(this.refused(result));
+    const bound: MergeBody = { ...plain, ...result.data };
+    const proof = await this.proveCommand(hostId, "card.pr.merge", { ...bound });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...bound, proof: proof.proof } : bound,
+    };
+  }
+
+  /**
    * This device's key for a host that checks proofs for `feature` and has a device enrolled, or null
    * when nothing needs proving (no key port, a host that does not check, protection off). It throws,
    * with the person's text, when the host asks for a proof this device has no key for.
@@ -468,9 +546,14 @@ export class ApprovalSlice {
   }
 
   /** The device signs `message` in its own dialog; a no from the person is `declined`, not an error. */
-  private async signed(signer: Signer, nonce: string, message: string): Promise<ProofResult> {
+  private async signed(
+    signer: Signer,
+    nonce: string,
+    message: string,
+    payload?: string,
+  ): Promise<ProofResult> {
     try {
-      const signature = await signer.keys.sign(signer.daemonId, message, this.core.lang());
+      const signature = await signer.keys.sign(signer.daemonId, message, this.core.lang(), payload);
       return { kind: "proof", proof: { keyId: signer.local.keyId, nonce, signature } };
     } catch (error) {
       if (isDecline(error)) return { kind: "declined" };
@@ -508,10 +591,15 @@ export class ApprovalSlice {
   ): Promise<ApprovalResults[C]> {
     const result = await this.core.request(hostId, type, payload);
     if (result.ok) return result.data as ApprovalResults[C];
+    throw new Error(this.refused(result));
+  }
+
+  /** The person's text for a refusal. */
+  private refused(result: Extract<HostResult<unknown>, { ok: false }>): string {
     const why = {
       ...(result.reason ? { reason: result.reason } : {}),
       ...(result.params ? { params: result.params } : {}),
     };
-    throw new Error(refusalText(result.code, result.message, this.core.t(), why));
+    return refusalText(result.code, result.message, this.core.t(), why);
   }
 }

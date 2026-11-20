@@ -93,6 +93,7 @@ export const validCommands: Record<CommandType, unknown> = {
   "project.harness.export": { path: "/work/app", id: "shop", title: "Shop" },
   "harness.templates.list": {},
   "card.pr.merge": { cardId: "c1", method: "squash", confirm: true },
+  "card.pr.head": { cardId: "c1" },
   "harness.templates.delete": { id: "shop", confirm: true },
   "project.harness.commit": {
     path: "/work/app",

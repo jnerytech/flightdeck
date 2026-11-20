@@ -2,7 +2,7 @@
 export const approval = {
   approvalDevices: {
     title: "Approving devices",
-    hint: "A high-risk allow, one that saves a rule, and the use of a production or high-risk secret are signed by a device you enroll here. With none enrolled, holding the button is the only check.",
+    hint: "A high-risk allow, one that saves a rule, the use of a production or high-risk secret and the merge of a pull request are signed by a device you enroll here. With none enrolled, holding the button is the only check.",
     off: "Protection is off: no device is enrolled on this host.",
     on: "Protection is on: these devices can approve.",
     listLabel: "Enrolled devices",
@@ -24,6 +24,8 @@ export const approval = {
       "The host keeps listing the device until another enrolled device revokes it, or until you reset it at the host.",
     removedLocal: "This device's key was removed.",
     lost: "Protection was on and the host now lists no device. If you did not reset it at the host, someone with access to it did.",
+    commandsUnchecked:
+      "This host does not ask for a device to confirm a merge: update it to protect merges.",
     scope:
       "This guards approvals made from the app. Anyone with a terminal on the host can still reset it.",
     loading: "Reading the host's devices…",

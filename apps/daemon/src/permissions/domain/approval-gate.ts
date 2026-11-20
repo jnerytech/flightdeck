@@ -1,9 +1,11 @@
 import { createHash, createPublicKey, type KeyObject, verify } from "node:crypto";
 import {
   type ApprovalAnswer,
-  type ApprovalProof,
+  ApprovalProof,
   approvalDigests,
   approvalMessage,
+  commandDigest,
+  commandMessage,
   needsApprovalProof,
   vaultApproveMessage,
 } from "@flightdeck/protocol";
@@ -70,13 +72,23 @@ export function verifySignature(publicKey: string, message: string, signature: s
   }
 }
 
+/** What a refusal says: the text names the allow or the command; the reason code is the same. */
+interface Texts {
+  required: string;
+  expired: string;
+}
+const ALLOW: Texts = {
+  required: "this allow needs the signed proof of an enrolled device",
+  expired: "the challenge expired: press Approve again",
+};
+const COMMAND: Texts = {
+  required: "this command needs the confirmation of an enrolled device",
+  expired: "the challenge expired: confirm again",
+};
+
 /** One refusal for a missing, unknown or bad proof: it never says which, and never echoes a nonce, key or signature. */
-const proofRequired = () =>
-  new FlightdeckError(
-    "invalid_state",
-    "this allow needs the signed proof of an enrolled device",
-    "approval_proof_required",
-  );
+const proofRequired = (texts: Texts = ALLOW) =>
+  new FlightdeckError("invalid_state", texts.required, "approval_proof_required");
 
 export interface ApprovalCheck {
   requestId: string;
@@ -115,7 +127,33 @@ export class ApprovalGate {
       nonce: proof.nonce,
       scope,
     });
-    this.spend(key, proof, message, requestId);
+    this.spend(key, proof, message, "approve", requestId);
+  }
+
+  /**
+   * The proof of a command that moves code or trust (#3453): a signature of an enrolled key over the command
+   * and a hash of its whole payload (the proof aside) with a live nonce made for that command. The caller asks
+   * only when a key is enrolled and passes its own command name, never a client's field. A payload that
+   * omits a field of `mustCarry` is refused as a missing proof: leaving a binding out never skips it.
+   */
+  checkCommand(
+    command: string,
+    payload: Record<string, unknown>,
+    mustCarry: readonly string[] = [],
+  ): void {
+    if (mustCarry.some((field) => payload[field] === undefined)) throw proofRequired(COMMAND);
+    const proof = ApprovalProof.safeParse(payload.proof);
+    const key =
+      proof.success && this.ports.keys().find((candidate) => candidate.keyId === proof.data.keyId);
+    if (!proof.success || !key) throw proofRequired(COMMAND);
+    const message = commandMessage({
+      keyId: key.keyId,
+      daemonId: this.ports.daemonId(),
+      command,
+      nonce: proof.data.nonce,
+      payloadHash: sha256Hex(commandDigest(payload)),
+    });
+    this.spend(key, proof.data, message, "command", command, COMMAND);
   }
 
   check(input: ApprovalCheck): void {
@@ -138,20 +176,23 @@ export class ApprovalGate {
       inputHash: sha256Hex(digests.input),
       messageHash: sha256Hex(digests.message),
     });
-    this.spend(key, proof, message, requestId);
+    this.spend(key, proof, message, "approve", requestId);
   }
 
   /** A forged proof cannot burn a nonce: it is used up only by a signature of an enrolled key. */
-  private spend(key: EnrolledKey, proof: ApprovalProof, message: string, requestId: string): void {
-    if (!verifySignature(key.publicKey, message, proof.signature)) throw proofRequired();
-    const taken = this.ports.nonces.take(proof.nonce, "approve", requestId);
-    if (taken === "unknown") throw proofRequired();
+  private spend(
+    key: EnrolledKey,
+    proof: ApprovalProof,
+    message: string,
+    purpose: "approve" | "command",
+    id: string,
+    texts: Texts = ALLOW,
+  ): void {
+    if (!verifySignature(key.publicKey, message, proof.signature)) throw proofRequired(texts);
+    const taken = this.ports.nonces.take(proof.nonce, purpose, id);
+    if (taken === "unknown") throw proofRequired(texts);
     if (taken === "expired") {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the challenge expired: press Approve again",
-        "approval_challenge_expired",
-      );
+      throw new FlightdeckError("invalid_state", texts.expired, "approval_challenge_expired");
     }
   }
 }

@@ -213,6 +213,19 @@ the device with `flightdeckd approvers`.
   Rust `lib.rs`, the app's approval store): that PR merges first and this work rebases on it.
 - A host that never enrolls a device is exactly as it is today.
 
+## Divergences found while building the merge (#3453)
+
+- **The app reads the head, the daemon does not store it.** The first draft had the card keep the head commit
+  it last saw. The merge now carries the pull request address and head commit the app read just before it
+  signed, through a new read-only command `card.pr.head`, and the daemon compares them with a fresh read
+  (`card_pr_stale`) and passes `--match-head-commit` to `gh`. Nothing new is stored on the card, and the
+  person signs the head they saw, not one a card cached earlier.
+- **A command challenge is issued with no key enrolled.** The nonce book hands out a `command` challenge to
+  any caller, as it does for the other purposes; the gate is consulted only when a key is enrolled, so an
+  unused challenge costs one entry in a capped bucket and decides nothing.
+- **Old hosts.** A host from before this change has a strict `card.pr.merge` schema and no `card.pr.head`, so
+  the app sends the binding and the proof only when the host announces `approval-command`.
+
 ## Order of work
 
 1. This record, with `security-reviewer` on it before any code (this PR). The three PRs below do not wait for
