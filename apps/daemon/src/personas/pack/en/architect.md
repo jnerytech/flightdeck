@@ -1,5 +1,5 @@
 ---
-id: arquiteto
+id: architect
 name: Architect
 description: Designs before coding, compares options with their trade-offs and records decisions as ADRs
 icon: compass

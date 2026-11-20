@@ -69,12 +69,12 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     expect(options("Persona")).toEqual(
       expect.arrayContaining(["Nenhuma", "Revisor de segurança", "Minha persona"]),
     );
-    await fill("Persona", "host:seguranca");
+    await fill("Persona", "host:security");
     await fill("Primeiro prompt", "revise isto");
     await click("Criar sessão");
     await poll(() => d.manager.list().length === 1);
     expect(d.manager.list()[0]?.persona).toMatchObject({
-      id: "seguranca",
+      id: "security",
       name: "Revisor de segurança",
     });
   });
@@ -112,7 +112,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await settle(() => store.router.current.name === "new-session");
     await settle(() => options("Persona").length > 1);
     expect((screen.queryByLabelText("Persona") as HTMLSelectElement | null)?.value).toBe(
-      "host:seguranca",
+      "host:security",
     );
   });
 
@@ -192,7 +192,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     const card = opened.d.board.createCard(opened.projectId, {
       title: "Do modelo",
       description: "faça",
-      startPersona: "seguranca",
+      startPersona: "security",
     });
     const asked: Array<{ type: string; payload: unknown }> = [];
     const command = opened.store.hostCommand.bind(opened.store);
@@ -212,14 +212,14 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await click("Iniciar");
     const picker = () =>
       within(startDialog()).queryByLabelText("Persona do card") as HTMLSelectElement | null;
-    await settle(() => picker()?.value === "host:seguranca");
+    await settle(() => picker()?.value === "host:security");
     await act(async () => {
       fireEvent.click(within(startDialog()).getByRole("button", { name: "Iniciar" }));
     });
     await uiIdle();
     expect(asked.find((x) => x.type === "card.start")?.payload).toMatchObject({
       cardId: card.id,
-      persona: { id: "seguranca", language: "pt-BR" },
+      persona: { id: "security", language: "pt-BR" },
     });
   });
 
@@ -297,7 +297,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await settle(() => screen.queryByRole("button", { name: "Iniciar em arena" }) !== null);
     await click("Iniciar em arena");
     await settle(() => options("Persona da variante 1").length > 1);
-    await fill("Persona da variante 1", "host:seguranca");
+    await fill("Persona da variante 1", "host:security");
     const dialog = screen.queryByRole("dialog", { name: "Iniciar em arena" }) as HTMLElement;
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
@@ -307,7 +307,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
       await act(() => Bun.sleep(20));
     }
     expect((await d.board.arena(card.id)).variants.map((v) => v.persona)).toEqual([
-      "seguranca",
+      "security",
       null,
     ]);
     const region = () => screen.queryByRole("region", { name: "Variante a" });

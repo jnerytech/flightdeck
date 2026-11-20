@@ -100,7 +100,7 @@ function PermissionItem(
 }
 
 /** The failed-turn subtypes the CLI reports that have a sentence of their own. */
-const TURN_REASONS = ["error_max_turns", "error_during_execution", "error_max_budget_usd"];
+const TURN_REASONS = new Set(["error_max_turns", "error_during_execution", "error_max_budget_usd"]);
 
 function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
@@ -108,7 +108,7 @@ function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const spent = item.turnCostUsd ?? item.costUsd;
   const cost = spent ? ` · ${usd(spent, props.t.lang, 4)}` : "";
   const seconds = (item.durationMs / 1000).toFixed(1);
-  const known = TURN_REASONS.includes(item.subtype);
+  const known = TURN_REASONS.has(item.subtype);
   let line = props.t("session.turnDone", { seconds });
   if (item.isError) {
     const reason = props.t(`session.turnReason.${known ? item.subtype : "other"}` as Key);

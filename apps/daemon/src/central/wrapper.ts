@@ -15,14 +15,17 @@ import {
 } from "../kernel/index.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/index.ts";
 import { launchClaude } from "./adapters/claude-launch.ts";
+import { gitToplevel } from "./adapters/git-toplevel.ts";
 import {
   ACCOUNT,
   buildClaudeLaunch,
   interactiveAgents,
   localBase,
+  nameArgs,
   PLAIN_PATH,
   passed,
   personaArgs,
+  repoFolder,
   takePersonaFlag,
 } from "./domain/claude-launch-args.ts";
 
@@ -93,7 +96,13 @@ async function requestedPersona(
   try {
     return await fetchPersona(opts.config, personaId, opts.cwd ?? process.cwd());
   } catch (error) {
-    opts.log.error(`flightdeckd: persona ${personaId}: ${(error as Error).message}`);
+    const message = (error as Error).message;
+    // Not found: say which ids do exist, so the person can correct the word.
+    const known = message.startsWith("not_found")
+      ? await personaIds(opts.config, opts.cwd ?? process.cwd()).catch(() => [])
+      : [];
+    const hint = known.length > 0 ? ` (personas that exist: ${known.join(", ")})` : "";
+    opts.log.error(`flightdeckd: persona ${personaId}: ${message}${hint}`);
     return "failed";
   }
 }
@@ -294,6 +303,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   // Asked for on purpose, so a persona that cannot be had stops here: no claude without the role.
   const persona = personaId ? await requestedPersona(opts, personaId) : null;
   if (persona === "failed") return 1;
+  const cwd = opts.cwd ?? process.cwd();
   const print = args.includes("-p") || args.includes("--print");
   const background = args.includes("--bg") || args.includes("--background");
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
@@ -332,6 +342,16 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     added.push(
       ...(await systemPromptArgs(opts, args, persona, `${launchId}.md`, write)),
       ...(await agentArgs(opts, { claude, args, print, launchId }, write)),
+      // Print mode is a one-shot, not a session a person lists: plain claude, as before.
+      ...(print
+        ? []
+        : nameArgs({
+            repo: repoFolder(cwd, await gitToplevel(cwd)),
+            persona: persona?.persona.id ?? null,
+            user: args,
+            claude,
+            platform: opts.platform ?? process.platform,
+          })),
     );
     return await launchClaude(
       buildClaudeLaunch({
@@ -396,6 +416,17 @@ async function fetchKnowledge(config: Config, cwd: string): Promise<string | nul
     }
   } catch {
     return null;
+  }
+}
+
+/** The ids of the personas this host and the project offer. */
+async function personaIds(config: Config, cwd: string): Promise<string[]> {
+  const daemon = await DaemonClient.connect(daemonUrl(config), config.token, "flightdeckd-claude");
+  try {
+    const { personas } = await daemon.call("personas.list", { projectPath: cwd });
+    return personas.map((persona) => persona.id);
+  } finally {
+    daemon.close();
   }
 }
 

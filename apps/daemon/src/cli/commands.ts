@@ -76,6 +76,25 @@ const reported = (deps: CliDeps, result: CliResult): Promise<number> =>
     return result.code;
   });
 
+/** `approve` and `deny`: one answer to one open permission request. */
+async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
+  const { runAnswerCli } = await import("../permissions/index.ts");
+  const config = await localConfig(args);
+  return reported(
+    deps,
+    await runAnswerCli(
+      {
+        decision,
+        request: args.requestId ?? "",
+        ...(args.answerMessage === undefined ? {} : { message: args.answerMessage }),
+        ...(args.hold ? { hold: true } : {}),
+        ...(args.json ? { json: true } : {}),
+      },
+      config,
+    ),
+  );
+}
+
 /** The MCP SDK's stdio transport, loaded only by the commands that speak MCP. */
 const stdioTransport = async (): Promise<Transport> =>
   new (await import("@modelcontextprotocol/sdk/server/stdio.js")).StdioServerTransport();
@@ -224,6 +243,37 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const config = await localConfig(args);
     return reported(deps, await runSessionsCli(args.json ? { json: true } : {}, config));
   },
+  requests: async (args, deps) => {
+    const { runRequestsCli } = await import("../permissions/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runRequestsCli(
+        {
+          ...(args.session === undefined ? {} : { session: args.session }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
+  send: async (args, deps) => {
+    const { runSendCli } = await import("../sessions/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runSendCli(
+        {
+          session: args.sendTo ?? "",
+          text: args.text ?? "",
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
+  approve: async (args, deps) => answered("allow", args, deps),
+  deny: async (args, deps) => answered("deny", args, deps),
   action: async (args, deps) => {
     const { runActionCli } = await import("../actions/index.ts");
     const config = await loadConfig(configPath(args));

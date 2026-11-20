@@ -1,5 +1,5 @@
 ---
-id: revisor
+id: reviewer
 name: Revisor de código
 description: Revisa legibilidade e padrões do repositório e defende diffs pequenos e focados
 icon: eye

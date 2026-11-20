@@ -30,8 +30,8 @@ steps:
         agent: { continue: implement, prompt: "Os testes falharam:\n{{loop.lastCheck.output}}" }
   - id: review
     parallel:
-      - agent: { persona: seguranca, prompt: "Revise o diff com foco em segurança." }
-      - agent: { persona: revisor, prompt: "Revise o diff com foco em legibilidade." }
+      - agent: { persona: security, prompt: "Revise o diff com foco em segurança." }
+      - agent: { persona: reviewer, prompt: "Revise o diff com foco em legibilidade." }
   - id: pr
     pr: {}
 ```

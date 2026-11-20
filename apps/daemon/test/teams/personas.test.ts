@@ -56,7 +56,7 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
       projectId: project?.id,
       goal: "revisar o login",
       workers: 1,
-      coordinatorPersona: "revisor",
+      coordinatorPersona: "reviewer",
       workerPersonas: ["qa"],
     });
     expect(team?.id).toBeTruthy();
@@ -66,7 +66,7 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
         const listed = await client.data<Listed>("session.list", {});
         return listed?.sessions.find((s) => s.name?.endsWith(suffix))?.persona?.id;
       });
-    expect(await personaOf("coordenadora")).toBe("revisor");
+    expect(await personaOf("coordenadora")).toBe("reviewer");
     expect(await personaOf("executora 1")).toBe("qa");
     // A persona the host does not know is refused; taking one away clears the session's.
     expect(
@@ -98,7 +98,7 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
     });
     expect(given).toMatchObject({ ok: true });
     expect((await coordinatorOf())?.persona).toBe("qa");
-    // Without one, the coordinator is the pack's coordenador.
+    // Without one, the coordinator is the pack's coordinator.
     await client.data("teams.create", {
       projectId: project?.id,
       name: "segundo",
@@ -109,7 +109,7 @@ describe("times: the personas of phase 20 reach the team's sessions", () => {
       const listed = await client.data<Listed>("session.list", {});
       return listed?.sessions.find((s) => s.name === "segundo · coordenadora")?.persona?.id;
     });
-    expect(coordinator).toBe("coordenador");
+    expect(coordinator).toBe("coordinator");
     // The worker's card is still starting: wait for it, so the daemon does not stop under it.
     await until(async () => {
       const listed = await client.data<Listed>("session.list", {});

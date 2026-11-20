@@ -55,8 +55,8 @@ sessions from one place, without opening each machine.
 - Messages between sessions, on any host: a session lists the others it may see, sends to one
   (`send_to_session`), asks to hear when one goes idle and reads one (MCP tools or the `flightdeck`
   mod). Across hosts the app carries them, and a message waits up to 24 hours for it. Every session
-  gets a standard name, `project · persona · number` (`flightdeck · revisor · 3`), and an alias
-  that addresses it (`flightdeck-revisor-3`).
+  gets a standard name, `project · persona · number` (`flightdeck · reviewer · 3`), and an alias
+  that addresses it (`flightdeck-reviewer-3`).
 - Teams: a coordinator session splits a goal into tasks, dispatches each to a worker in its own
   card, checks the work itself and accepts only a green commit. The app has Conversas, Times and a
   Mensagens tab per session; a team pauses by itself when the plan quota crosses the limit.

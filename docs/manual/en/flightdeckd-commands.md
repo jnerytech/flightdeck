@@ -1,4 +1,4 @@
-# flightdeckd commands: host and sessions
+# flightdeckd commands: host, sessions, requests, approve and send
 
 [Back to the manual](../en.md) · [Português (Brasil)](../pt-BR/flightdeckd-commands.md)
 
@@ -50,3 +50,73 @@ fd sessions --json
 Lists the sessions of the daemon, one line each: name, status and folder. With `--json` it prints an
 array of objects with `id`, `name`, `cwd`, `status`, `permissionMode` and `updatedAt`. No sessions
 gives an empty array.
+
+## fd architect, fd reviewer, fd security, fd coordinator, fd new
+
+```sh
+fd architect
+fd new qa
+fd new qa --model opus
+```
+
+Opens `claude` with a persona, the same as `flightdeckd claude --persona <id>`. The four words are
+shortcuts for the architect, the code reviewer, the security reviewer and the team coordinator;
+`new <persona>` takes the id of any persona of the host, the project or the pack. Anything after
+the persona goes to `claude` as it is. An id that does not exist is refused with exit code `1`, and
+the message lists the ids that do.
+
+The session is named `<repo>-<persona>` (for example `flightdeck-qa`), or just the repo name when
+there is no persona. The repo is the top folder of the git repository you are in, else the
+folder's own name. A name you pass (`--name` or `-n`) wins, and a launch that resumes a session
+(`--resume`, `--continue`) or runs in print mode (`-p`) is not named.
+
+## fd requests
+
+```sh
+fd requests
+fd requests --session fd-qa
+fd requests --json
+```
+
+Lists the permission requests that wait for an answer, oldest first. `--session` keeps one session
+(its name or its id). Each line is the request id, the session, the risk, the tool and what it asks
+for, cut at 120 characters. With `--json` it prints an array of objects with `id`, `sessionId`,
+`session`, `tool`, `risk`, `riskReason`, `createdAt` and `input`. Nothing waiting gives an empty
+array.
+
+It lists the requests of the sessions Flightdeck manages. A request of a session you started by
+hand is not listed, but `fd approve` and `fd deny` can still answer it if you know its id.
+
+## fd approve and fd deny
+
+```sh
+fd approve <request>
+fd approve <request> --message "once only"
+fd approve <request> --hold
+fd deny <request> --message "too broad"
+```
+
+Answer one open request by its id, as the Approve button and the Deny button do. `--message` is what
+Claude is told with the answer. Prints `allowed <id>` or `denied <id>`; with `--json`, an object
+with `id`, `decision` and, when given, `message` and `held`.
+
+A request the daemon rates **high risk** is refused unless you add `--hold` to `approve`. `--hold`
+means you looked at the request and you mean to allow it. It is your own word: the daemon does not
+check it, so an agent that runs `fd approve --hold` decides for itself. A `deny` never needs it.
+
+A request that is not open (answered already, or never there) is refused with exit `1` and
+`no such request`. If the daemon is cut off before it answers, the exit is `2` and the answer may or
+may not have been recorded: run `fd requests` to see if it is still open.
+
+## fd send
+
+```sh
+fd send fd-qa "run the suite"
+fd send 01J9… "stop and report" --json
+```
+
+Puts a text into a session, as the input box does. The session is its name or its id; a name that
+two sessions share is refused, and the error lists their ids. Prints `sent to <id>`, or
+`queued for <id>` when the session is busy and the text waits for its turn to end. With `--json` it
+prints `session` and `queued`. If the daemon is cut off after the text left, the exit is `2` and the
+text may or may not have gone in: look at the session before you send it again.

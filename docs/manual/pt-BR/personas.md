@@ -14,6 +14,10 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
   CLAUDE.md e os ADRs do projeto, roda as checagens do projeto antes de dizer que terminou, nunca
   faz push). Editar
   uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
+  Os ids do pacote são em inglês (`architect`, `coordinator`, `reviewer`, `security` e os outros). Os
+  quatro que eram em português (`arquiteto`, `coordenador`, `revisor`, `seguranca`) continuam valendo
+  num script, num fluxo ou num arquivo de time: chegam à persona que tem o id novo, a não ser que você
+  tenha criado uma com o id antigo.
 - **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
   você **Confia** antes) e **Globais (deste app)**, guardadas no app.
 - **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. **Editar**
@@ -32,6 +36,7 @@ Para usar:
   as instruções vão depois do prompt do sistema, com o modelo, o esforço e as ferramentas sugeridos.
   Uma persona só tira: as ferramentas dela são parte das da sessão, e o modo dela só vale quando é
   menos permissivo.
+- No terminal, `flightdeckd architect|reviewer|security|coordinator` e `flightdeckd new <persona>` abrem o `claude` com uma persona ([comandos do flightdeckd](flightdeckd-commands.md)); a sessão se chama `<repo>-<persona>`.
 - **Claude aqui** tem o seu seletor e roda `flightdeckd claude --persona <id>` (as do host, do
   projeto e do pacote; as do app não têm id no host).
 - Numa sessão aberta (gerenciada, ou do terminal que você controla), **Aplicar persona** manda o

@@ -5,5 +5,6 @@
  */
 
 export { runOnLocalDaemon } from "./cli.ts";
-export { type CliResult, isLoopbackHost, json, said } from "./cli-view.ts";
-export { DaemonClient, daemonUrl } from "./client.ts";
+export { type CliResult, failure, isLoopbackHost, json, said } from "./cli-view.ts";
+export { DaemonClient, DaemonRefusal, daemonUrl } from "./client.ts";
+export { resolveSession } from "./session-ref.ts";

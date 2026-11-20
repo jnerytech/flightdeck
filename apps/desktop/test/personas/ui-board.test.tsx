@@ -58,14 +58,14 @@ describe("personas-ui: the board", () => {
     await settle(() => screen.queryByRole("button", { name: "Editar repo" }) !== null);
     await click("Editar repo");
     await settle(() => options().length > 1);
-    expect(options()).toContain("revisor");
-    await choose("revisor");
+    expect(options()).toContain("reviewer");
+    await choose("reviewer");
     await click("Salvar projeto");
-    await poll(() => d.board.getProject(projectId).personaByColumn.review === "revisor");
-    expect(d.board.getProject(projectId).personaByColumn).toEqual({ review: "revisor" });
+    await poll(() => d.board.getProject(projectId).personaByColumn.review === "reviewer");
+    expect(d.board.getProject(projectId).personaByColumn).toEqual({ review: "reviewer" });
     await click("Editar repo");
     await settle(
-      () => (screen.queryByLabelText(LABEL) as HTMLSelectElement | null)?.value === "revisor",
+      () => (screen.queryByLabelText(LABEL) as HTMLSelectElement | null)?.value === "reviewer",
     );
     await choose("");
     await click("Salvar projeto");

@@ -138,7 +138,7 @@ describe("vigiar-protocolo: the watch over the protocol", () => {
     const info = await client.data<{ features?: string[] }>("host.info", {});
     expect(info?.features).toContain("watch");
     const defaults = await client.data<Record<string, unknown>>("watch.settings", { projectId });
-    expect(defaults).toMatchObject({ enabled: false, maxRounds: 3, persona: "revisor" });
+    expect(defaults).toMatchObject({ enabled: false, maxRounds: 3, persona: "reviewer" });
     const patched = await client.data<Record<string, unknown>>("watch.settings", {
       projectId,
       patch: { enabled: true, maxRounds: 2, checks: ["bun test"] },

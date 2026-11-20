@@ -954,7 +954,7 @@ const TEMPLATE = {
   name: "Bug fix",
   description: "Reproduce it, fix it, prove it.",
   criteria: ["a test fails before the fix"],
-  persona: "revisor",
+  persona: "reviewer",
   // A path inside the scenario's own repository, built so it is not read as a doc of this one.
   pins: [["docs", "specs", "bug-fix.md"].join("/")],
   spec: ["docs", "specs", "bug-fix.md"].join("/"),

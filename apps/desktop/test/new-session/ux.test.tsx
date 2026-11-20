@@ -57,11 +57,11 @@ describe("nova-sessao-ux: the persona chosen is the persona the session is in", 
         (o) => o.textContent === "Architect",
       ),
     );
-    await fill("Persona", "host:arquiteto");
+    await fill("Persona", "host:architect");
     await fill("First prompt", "desenhe o módulo");
     await press("Create session");
     await poll(() => d.manager.list().length === 1);
-    expect(d.manager.list()[0]?.persona).toMatchObject({ id: "arquiteto", name: "Architect" });
+    expect(d.manager.list()[0]?.persona).toMatchObject({ id: "architect", name: "Architect" });
     // The session's own screen shows the persona it runs in, and offers to leave it.
     await settle(() => screen.queryByRole("button", { name: "Persona: Architect" }) !== null);
     await act(async () => {
