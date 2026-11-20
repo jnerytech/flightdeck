@@ -310,3 +310,30 @@ describe("flightdeckd board settings from the terminal (issue #3454)", () => {
     ]);
   });
 });
+
+describe("flightdeckd board watch from the terminal (issue #3454)", () => {
+  test("it prints each card as it arrives and exits 0 on Ctrl-C", async () => {
+    const daemon = fakeDaemon({ "board.watch": () => ({}) });
+    const file = join(tempDir(), "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: TOKEN, port: daemon.port, dataDir: join(tempDir(), "data") }),
+    );
+    const out: string[] = [];
+    const exits: number[] = [];
+    const handlers: Array<() => Promise<void>> = [];
+    const running = runCli(["board", "watch", "--config", file], {
+      env: {},
+      log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: (_signal, handler) => handlers.push(handler),
+    });
+    await poll(() => daemon.calls.some((c) => c.type === "board.watch"));
+    daemon.push(updated());
+    await poll(() => out.length === 1);
+    await handlers[0]?.();
+    await running;
+    expect(out).toEqual(["c1  in_progress  Fix the login"]);
+    expect(exits).toEqual([0]);
+  });
+});
