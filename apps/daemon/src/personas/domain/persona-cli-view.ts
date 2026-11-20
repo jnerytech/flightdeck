@@ -1,6 +1,6 @@
 /**
  * Issue #3456: what `flightdeckd persona list|show|subagents` says, as pure rules over the daemon's
- * answers. The daemon calls and the timer stay in `personas/persona-cli.ts`.
+ * answers. The daemon calls and the exit codes stay in `personas/persona-cli.ts`.
  */
 import type {
   Persona,
@@ -31,7 +31,6 @@ export function listLines(answer: {
   personas: Persona[];
   project: PersonaProjectInfo | null;
 }): string[] {
-  if (answer.personas.length === 0) return ["no personas"];
   const rows = answer.personas.map((persona) => {
     const parts = [persona.id, persona.scope, persona.name];
     if (persona.modified) parts[2] += "  (edited)";
@@ -43,7 +42,7 @@ export function listLines(answer: {
   });
   const left = answer.project?.errors ?? [];
   const tail = left.length === 0 ? [] : [`left out of ${answer.project?.path}: ${left.join("; ")}`];
-  return [...rows, ...tail];
+  return [...(rows.length === 0 ? ["no personas"] : rows), ...tail];
 }
 
 /** The lines `persona show` prints: the header, the settings the persona sets, then its prompt. */
