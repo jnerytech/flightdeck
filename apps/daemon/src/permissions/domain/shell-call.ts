@@ -71,9 +71,11 @@ const KEYWORDS = new Set([
   ")",
 ]);
 
-/** A word as a program name: no quotes, no folder, no `\` alias escape, no `.exe`, lowercase. */
+/** A word as a program name: no quotes, no folder, no `\` alias escape, no `.exe`, `.cmd` or `.ps1`, lowercase. */
 export const program = (word: string) =>
-  (word.replace(/["']/g, "").split(/[\\/]/).at(-1) as string).toLowerCase().replace(/\.exe$/, "");
+  (word.replace(/["']/g, "").split(/[\\/]/).at(-1) as string)
+    .toLowerCase()
+    .replace(/\.(exe|cmd|ps1)$/, "");
 
 /** A group or a substitution opens the word (`(fd`, `$(fd`, a backtick) or closes it (`on)`, `}`); `{}` is xargs's own. */
 const opened = (word: string) =>
@@ -185,9 +187,12 @@ export const SHELLS = new Set([
   "invoke-expression",
 ]);
 
-/** A program name that is the Flightdeck CLI, or a variable that may hold it. */
+/** The names `scripts/build-daemon.ts` gives the compiled daemon, one per target. */
+const COMPILED_CLI = /^flightdeckd-(?:linux|windows)-(?:x64|arm64)$/;
+
+/** A program name that is the Flightdeck CLI (source, compiled or launcher), or a variable that may hold it. */
 export const isCliProgram = (name: string) =>
-  ["fd", "flightdeckd", "bin.ts"].includes(name) || name.includes("$");
+  ["fd", "flightdeckd", "bin.ts"].includes(name) || COMPILED_CLI.test(name) || name.includes("$");
 
 /**
  * What a segment runs, past `sudo`, `env X=1`, `timeout 5`, a subshell or brace group, a redirection and the
@@ -292,25 +297,53 @@ const OPTIONS_WITH_VALUE = [
   "--id",
 ];
 
+/**
+ * One step of the shell's reading of quotes (#3559): the quote in force after the character at `i` (`"` or `'`,
+ * or "" outside one) and where the next step starts. A backslash escapes the next character outside quotes, and
+ * inside double quotes only `"`, `\`, `$` and the backtick; single quotes take everything up to their close.
+ */
+export function stepQuote(open: string, text: string, i: number): { open: string; next: number } {
+  const c = text.charAt(i);
+  if (open === "'") return { open: c === "'" ? "" : open, next: i + 1 };
+  if (c === "\\" && (open === "" || '"\\$`'.includes(text.charAt(i + 1))))
+    return { open, next: i + 2 };
+  if (open === '"') return { open: c === '"' ? "" : open, next: i + 1 };
+  return { open: c === '"' || c === "'" ? c : "", next: i + 1 };
+}
+
 /** The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`), unquoted. */
 export function shellArguments(args: string[]): string[] {
-  const out: string[] = [];
+  const words: string[] = [];
   let open = "";
   let current = "";
+  let escaped = false;
   for (const arg of args) {
-    current = open ? `${current} ${arg}` : arg;
-    for (const ch of arg) {
-      if (ch === open) open = "";
-      else if (!open && (ch === '"' || ch === "'")) open = ch;
+    current = open || escaped ? `${current} ${arg}` : arg;
+    escaped = false;
+    for (let i = 0; i < arg.length; ) {
+      const step = stepQuote(open, arg, i);
+      open = step.open;
+      escaped = step.next > arg.length && open === "";
+      i = step.next;
     }
-    if (!open) {
-      out.push(unquoted(current));
+    if (!open && !escaped) {
+      words.push(unquoted(current));
       current = "";
     }
   }
-  if (open) out.push(unquoted(current));
-  return out;
+  if (open || escaped) words.push(unquoted(current));
+  return words;
 }
+
+/**
+ * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,
+ * `rem[o]ve`, `{remove,list}`. No reading of such a line says which verb it is, so it is read as high risk.
+ * (Braces are already cut off the word by `invocations`, which leaves the comma or the dots of the expansion.)
+ */
+export const hidesItsVerb = (args: string[]): boolean =>
+  flightdeckWords(shellArguments(args))
+    .slice(0, 2)
+    .some((w) => /[$*?[{,]|\.\./.test(w));
 
 /** The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`). */
 export function flightdeckWords(args: string[]): string[] {

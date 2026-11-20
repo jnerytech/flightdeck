@@ -8,6 +8,7 @@ import { isInside } from "../../kernel/index.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
   flightdeckWords,
+  hidesItsVerb,
   type Invocation,
   invocations,
   isCliProgram,
@@ -15,6 +16,7 @@ import {
   RUNNERS,
   SHELLS,
   shellArguments,
+  stepQuote,
   unquoted,
 } from "./shell-call.ts";
 
@@ -241,6 +243,14 @@ const TEAM_CHANGES = [
 ];
 
 /**
+ * A CLI line whose verb the reader cannot see (#3559): a noun or verb the shell expands before it runs. Every
+ * rule above and below reads the verb from the words, so a line that hides it would pass as an ordinary shell
+ * command; it is high instead. A program that is a variable is left out: it may be anything.
+ */
+const hidesAVerb = (prog: string, args: string[]) =>
+  isCliProgram(prog) && !prog.includes("$") && hidesItsVerb(args);
+
+/**
  * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
  * the word after the command, since a value flag before it (`--language en`) shifts the words.
  */
@@ -340,6 +350,11 @@ const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
   reason: (prog: string) => string;
 }> = [
+  {
+    when: hidesAVerb,
+    reason: () =>
+      "runs a flightdeckd command whose noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does",
+  },
   {
     when: (prog, args) => prog === "rm" && hasFlag(args, "r", ["--recursive", "-recurse"]),
     reason: () => "rm recursivo",
@@ -531,21 +546,18 @@ function splitOutsideQuotes(text: string, separators: string[]): string[] {
   const parts: string[] = [];
   let quote = "";
   let from = 0;
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charAt(i);
-    if (quote !== "") {
-      if (c === quote) quote = "";
+  for (let i = 0; i < text.length; ) {
+    const step = stepQuote(quote, text, i);
+    const separator =
+      quote === "" && step.open === "" ? separators.find((s) => text.startsWith(s, i)) : undefined;
+    if (separator === undefined) {
+      quote = step.open;
+      i = step.next;
       continue;
     }
-    if (c === '"' || c === "'") {
-      quote = c;
-      continue;
-    }
-    const separator = separators.find((s) => text.startsWith(s, i));
-    if (separator === undefined) continue;
     parts.push(text.slice(from, i));
-    i += separator.length - 1;
-    from = i + 1;
+    i += separator.length;
+    from = i;
   }
   parts.push(text.slice(from));
   return parts;
