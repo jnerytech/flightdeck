@@ -10,9 +10,10 @@ import type { Key, T } from "@/i18n/index";
 import { cn } from "@/lib/utils";
 import { focusLost, useBusy } from "@/shared/hooks/index.ts";
 import { AlwaysAllow } from "./always-allow.tsx";
+import { AnsweredQuestions } from "./answered-questions.tsx";
 import { AnswerButtons, CardTitle, PlanOrBody } from "./approval-body.tsx";
 import { approvalView } from "./domain/approval.ts";
-import { resolutionLine, savedAnswers } from "./domain/approval-lines.ts";
+import { resolutionLine } from "./domain/approval-lines.ts";
 import {
   type AskPick,
   answeredInput,
@@ -58,6 +59,20 @@ export function RiskSeal({
     >
       {t(`approval.risk.${risk}` as Key)}
     </span>
+  );
+}
+
+/** The next request waiting, for the focus to go to once the answered one lost its buttons. */
+function nextWaitingCard(self: HTMLElement | null): HTMLElement | undefined {
+  const waiting = document.querySelectorAll<HTMLElement>(
+    '[data-slot="approval-card"][data-state="waiting"]',
+  );
+  // One in a hidden or inert panel (another session's tab) cannot take the focus.
+  return Array.from(waiting).find(
+    (card) =>
+      card !== self &&
+      !card.closest("[inert],[hidden],[aria-hidden=true]") &&
+      (card.checkVisibility?.() ?? true),
   );
 }
 
@@ -119,16 +134,7 @@ export function ApprovalCard(
     if (!answered || !hadFocus.current) return;
     hadFocus.current = false;
     if (!focusLost()) return;
-    const waiting = document.querySelectorAll<HTMLElement>(
-      '[data-slot="approval-card"][data-state="waiting"]',
-    );
-    // One in a hidden or inert panel (another session's tab) cannot take the focus.
-    const next = Array.from(waiting).find(
-      (card) =>
-        card !== root.current &&
-        !card.closest("[inert],[hidden],[aria-hidden=true]") &&
-        (card.checkVisibility?.() ?? true),
-    );
+    const next = nextWaitingCard(root.current);
     (next ?? root.current)?.focus();
   }, [answered]);
   const reasonRef = useRef<HTMLInputElement>(null);
@@ -170,49 +176,18 @@ export function ApprovalCard(
   };
 
   if (questions && resolution) {
-    const given = resolution.answers ?? answers ?? savedAnswers(request.input);
-    const outcome = resolutionLine(resolution, t);
-    // Nobody answered (denied, expired, cancelled): the outcome is said once, after the questions.
-    const unanswered = questions.every((q) => given?.[q.question] === undefined);
     return (
-      <details
-        ref={(el) => {
+      <AnsweredQuestions
+        questions={questions}
+        resolution={resolution}
+        answers={answers}
+        input={request.input}
+        requestId={request.requestId}
+        rootRef={(el) => {
           root.current = el;
         }}
-        tabIndex={-1}
-        data-answered
-        data-state="answered"
-        data-request-id={request.requestId}
-        className="rounded-lg border border-border bg-card px-4 py-2 text-card-foreground text-sm"
-      >
-        <summary className="cursor-pointer">
-          {unanswered
-            ? `${questions.map((q) => q.header || q.question).join(" · ")}: ${outcome}`
-            : questions
-                .map((q) => `${q.header || q.question}: ${given?.[q.question] ?? outcome}`)
-                .join(" · ")}
-        </summary>
-        <dl className="mt-2 flex flex-col gap-1">
-          {unanswered ? (
-            // One outcome for every question: several terms share one description.
-            <div>
-              {questions.map((q) => (
-                <dt key={q.question} className="text-muted-foreground text-xs">
-                  {q.question}
-                </dt>
-              ))}
-              <dd>{outcome}</dd>
-            </div>
-          ) : (
-            questions.map((q) => (
-              <div key={q.question}>
-                <dt className="text-muted-foreground text-xs">{q.question}</dt>
-                <dd>{given?.[q.question] ?? outcome}</dd>
-              </div>
-            ))
-          )}
-        </dl>
-      </details>
+        t={t}
+      />
     );
   }
 

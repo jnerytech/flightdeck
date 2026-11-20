@@ -132,6 +132,8 @@ export const USAGE = [
   "     fd [claude arguments]   (a bare fd is flightdeckd claude: claude with the Flightdeck channel; config in FLIGHTDECK_CONFIG)",
   "     fd claude <prompt>      (a prompt or a claude command that starts with a word above, such as update or doctor)",
   "     flightdeckd claude [claude arguments]   (the same, by its full name)",
+  "     fd architect|reviewer|security|coordinator [claude arguments]   (claude with that persona)",
+  "     fd new <persona> [claude arguments]   (claude with any persona, by its id)",
   "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
   "     fd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
   "     fd statusline [--config <file>]   (one line for Claude Code's statusline)",
@@ -274,6 +276,26 @@ const withNamedAction =
 /** The words of `fd` that are not subcommands but are still Flightdeck's own. */
 const FD_FLAGS = ["--version", "--help", "-h"];
 
+/**
+ * The pack persona each shortcut word opens. The pack still carries the Portuguese ids until #3413
+ * renames them to the words themselves; then this table goes and the word is the id.
+ */
+const SHORTCUTS = {
+  architect: "arquiteto",
+  reviewer: "revisor",
+  security: "seguranca",
+  coordinator: "coordenador",
+} as const;
+
+/** `flightdeckd <word>` is `flightdeckd claude --persona <id> ...`: one launch path, the claude one. */
+const openWith =
+  (persona: (reader: ArgReader) => string): Handler =>
+  (args, reader) => {
+    args.command = "claude";
+    const id = persona(reader);
+    args.claudeArgs = ["--persona", id, ...reader.takeRest()];
+  };
+
 const HANDLERS: Record<string, Handler> = {
   db: (args, reader) => {
     args.command = "db";
@@ -304,6 +326,12 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "claude";
     args.claudeArgs = reader.takeRest();
   },
+  ...Object.fromEntries(Object.entries(SHORTCUTS).map(([word, id]) => [word, openWith(() => id)])),
+  new: openWith((reader) => {
+    const id = reader.next();
+    if (id === undefined || id.startsWith("-")) throw new Error(`missing persona id\n${USAGE}`);
+    return id;
+  }),
   // `fd <subcommand>` is `flightdeckd <subcommand>`; anything else goes to claude, as the alias did (#3433).
   fd: (args, reader) => {
     // Only the first word: after another command, `fd` would silently turn it into claude.
