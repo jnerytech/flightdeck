@@ -213,8 +213,6 @@ describe("the arguments of ssh remove and ssh import apply (issue #3537)", () =>
     expect(JSON.stringify(parsed(["ssh", "remove", "--confirm"]))).toContain(
       "missing the ssh target",
     );
-    expect(JSON.stringify(parsed(["ssh", "import", "all"]))).toContain(
-      "invalid ssh import action",
-    );
+    expect(JSON.stringify(parsed(["ssh", "import", "all"]))).toContain("invalid ssh import action");
   });
 });
