@@ -12,6 +12,8 @@ export interface CliArgs {
     | "service"
     | "history"
     | "approvers"
+    | "rules"
+    | "autoapprove"
     | "hooks"
     | "telemetry"
     | "hook"
@@ -157,6 +159,8 @@ export interface CliArgs {
   tools?: string[];
   permissionMode?: string;
   icon?: string;
+  /** `autoapprove list --limit` and `history list|search|get --limit`: how many to read. */
+  limit?: number;
   /** `persona trust --hash`: the start of the hash `persona list` showed. */
   hash?: string;
   /** `persona list --scope <host|project|all>`. */
@@ -198,7 +202,6 @@ export interface CliArgs {
   until?: string;
   origin?: "flightdeck" | "external";
   hideAutomated?: true;
-  limit?: number;
   cursor?: string;
   tail?: true;
   claudeSessionId?: string;

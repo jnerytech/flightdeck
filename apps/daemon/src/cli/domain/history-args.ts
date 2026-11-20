@@ -21,7 +21,7 @@ export interface HistoryArgs {
 
 const READS = ["list", "search", "get", "tool"];
 
-/** The flags of `history`, each with the verbs that take it (`--from` is `update`'s too: only `history` is checked). */
+/** The flags of `history`, each with the verbs that take it (`--from` is `update`'s and `--limit` `autoapprove`'s too: only `history` is checked). */
 function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly string[]]> {
   return [
     ["--cwd", args.cwd, ["list", "search"]],
@@ -29,11 +29,13 @@ function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly strin
     ["--to", args.until, ["list", "search"]],
     ["--origin", args.origin, ["list"]],
     ["--hide-automated", args.hideAutomated, ["list"]],
-    ["--limit", args.limit, ["list", "search", "get"]],
     ["--cursor", args.cursor, ["list", "get"]],
     ["--tail", args.tail, ["get"]],
     ...(args.command === "history"
-      ? ([["--from", args.from, ["list", "search"]]] as Array<[string, unknown, readonly string[]]>)
+      ? ([
+          ["--from", args.from, ["list", "search"]],
+          ["--limit", args.limit, ["list", "search", "get"]],
+        ] as Array<[string, unknown, readonly string[]]>)
       : []),
   ];
 }

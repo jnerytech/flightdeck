@@ -226,6 +226,8 @@ const HANDLERS: Record<string, Handler> = {
     }
   },
   approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
+  rules: withAction("rules", ["list"], "invalid rules action"),
+  autoapprove: withAction("autoapprove", ["list"], "invalid autoapprove action"),
   action: withNamedAction(
     "action",
     ["list", "run"],
@@ -507,12 +509,6 @@ const HANDLERS: Record<string, Handler> = {
   "--cursor": setValue((args, v) => {
     args.cursor = v;
   }),
-  "--limit": setValue((args, v) => {
-    const limit = Number(v);
-    if (!Number.isInteger(limit) || limit < 1)
-      throw new Error(`--limit needs a positive integer\n${USAGE}`);
-    args.limit = limit;
-  }),
   "--hide-automated": setFlag((args) => {
     args.hideAutomated = true;
   }),
@@ -553,6 +549,12 @@ const HANDLERS: Record<string, Handler> = {
     if (v !== "host" && v !== "project" && v !== "all")
       throw new Error(`--scope: host, project or all, got ${v}\n${USAGE}`);
     args.scope = v;
+  }),
+  "--limit": setValue((args, v) => {
+    const n = Number(v);
+    if (!/^\d+$/.test(v) || n < 1 || n > 1000)
+      throw new Error(`--limit: a whole number from 1 to 1000, got ${v}\n${USAGE}`);
+    args.limit = n;
   }),
   "--project": setValue((args, v) => {
     args.project = v;
@@ -612,10 +614,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "approve",
       "deny",
       "approvers",
+      "rules",
+      "autoapprove",
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove
+${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -634,9 +639,14 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
     );
-  if (!["requests", "message"].includes(args.command) && args.session !== undefined)
+  if (!["requests", "message", "autoapprove"].includes(args.command) && args.session !== undefined)
     throw new Error(
-      `--session: this flag only applies to flightdeckd requests and message\n${USAGE}`,
+      `--session: this flag only applies to flightdeckd requests, message and autoapprove\n${USAGE}`,
+    );
+  // `history` checks its own limits (history-args.ts).
+  if (!["autoapprove", "history"].includes(args.command) && args.limit !== undefined)
+    throw new Error(
+      `--limit: this flag only applies to flightdeckd autoapprove and history\n${USAGE}`,
     );
   // `card new` takes its title as an operand: the flag is the title of an update.
   if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
