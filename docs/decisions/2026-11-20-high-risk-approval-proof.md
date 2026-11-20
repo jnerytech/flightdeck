@@ -26,7 +26,11 @@ the app's own check.
 
 - **Key.** The app makes a P-256 key pair per host on the person's device (so a signature never crosses hosts).
   The private key does not leave the device. The daemon keeps the public keys in its store (a table, not a
-  file) and loads them at start.
+  file) and reads the table on every check and every enroll, with no copy in memory, so a reset or a window
+  written at the host terminal takes effect at once.
+- **Daemon id.** A random id made once at first start, kept in the store and returned in `host.info`. The app
+  records it per host and signs it, so a signature made for one host is useless at another. It does not exist
+  today; the daemon PR adds it.
 - **Challenge.** `approval.challenge {requestId}` is answered only for an open request that needs a proof. The
   daemon returns a random nonce and keeps, in memory, the nonce, its request and its issue time on a monotonic
   clock. A request may have several live nonces (a session that asks again does not cancel the app's). A
@@ -35,8 +39,9 @@ the app's own check.
   enroll and revoke have a separate cap. The app asks when the hold of the Approve starts, not when the card shows: the
   limit is 60 seconds from issue and one use.
 - **What is signed.** The canonical JSON of the array `["flightdeck/approval/v1", keyId, daemonId, requestId,
-  nonce, "allow", H(updatedPermissions), H(updatedInput or answers), H(message)]`: an array, so no field can
-  shift across a boundary. The daemon recomputes each hash from the payload it received. Canonical JSON has
+  nonce, "allow", H(canonical(updatedPermissions ?? [])), H(canonical(updatedInput ?? null)), H(message ?? "")]`:
+  an array, so no field can shift across a boundary. The answers of a question are inside `updatedInput`, so
+  they are covered. The daemon recomputes each hash from the payload it received. Canonical JSON has
   keys sorted by UTF-16 code unit (RFC 8785); the app and the daemon share one
   implementation in `packages/protocol`, not the locale-sensitive `canonical()` of `permission-updates.ts`.
   The signature is ECDSA P-256 / SHA-256 in IEEE P1363 form (what WebCrypto makes; the daemon verifies with
@@ -45,7 +50,10 @@ the app's own check.
   (`PermissionBroker.respond` and `ExternalPermissions.respond`), not in the handler, which awaits the disk
   lookups before it calls them. The signature is verified after `bindInput` and `checkUpdates` (so a refused
   payload does not waste the nonce), and the nonce is consumed immediately before `finish` or `close`, in the
-  same section: two answers cannot both pass.
+  same section: two answers cannot both pass. Both `respond` methods take the proof (`{keyId, nonce,
+  signature}`) as a new parameter beside the held flag. With a key enrolled, the proof check replaces the
+  `requireHold` check (which runs first today, `permission-broker.ts:176`, `external-permissions.ts:126`); with
+  none, `requireHold` stays.
 - **Refusals.** One reason, `approval_proof_required`, for a missing proof, an unknown key, a bad signature,
   a used nonce and a nonce for another request. `approval_challenge_expired` only for a nonce past 60 s, so
   the app can ask again. A refusal never echoes a nonce or a key. The request stays open.
@@ -67,13 +75,14 @@ A token holder could enroll its own key, so enrollment is closed unless a person
    a one-time code; or deleting the key rows) and the daemon reads that row on each `approval.enroll`. No
    schema in `packages/protocol` opens the window or resets, and a test pins that no `approval.*` command does
    either. So a leaked token used from another machine cannot open the window or wipe the keys.
-2. **One-time code.** The command prints a code at the terminal; the person types it into the app, and the code
-   goes in the signed enroll payload. The daemon keeps only its hash, and the code dies with the window. A
-   session that did not run the command cannot see it, so it cannot win the window by being first.
+2. **One-time code.** The command prints a code of at least 128 bits at the terminal; the person types it into
+   the app, and the code goes in the signed enroll payload. The daemon keeps only its hash, compares in constant
+   time, and closes the window after 5 failed attempts. The code dies with the window. A session that did not
+   run the command cannot read it from the store, so it cannot win the window by being first.
 3. **Proof of possession.** The enroll message is signed with the new key over the canonical JSON array
-   `["flightdeck/enroll/v1", daemonId, nonce, publicKey, codeHash]` with a daemon nonce (one use, 60 s; issued
-   only while the window is open or to an enrolled key's request).
-4. **Later keys** need a signature of an enrolled key over `["flightdeck/enroll/v1", keyId, daemonId, nonce,
+   `["flightdeck/enroll-first/v1", daemonId, nonce, publicKey, codeHash]` with a daemon nonce (one use, 60 s;
+   issued only while the window is open or to an enrolled key's request).
+4. **Later keys** need a signature of an enrolled key over `["flightdeck/enroll-add/v1", keyId, daemonId, nonce,
    newPublicKey]`, with no window. **Revoke** is signed the same way (`"flightdeck/revoke/v1"`) and covers the
    target key id. The last key cannot be revoked through the protocol: only the host reset does that. A revoke
    of another key is announced as `approval.revoked`, with the detail of an enrollment.
@@ -116,8 +125,8 @@ A token holder could enroll its own key, so enrollment is closed unless a person
 
 ## The CLI
 
-`flightdeckd approve` of a request that needs a proof (high risk, or with updates) sends no allow, prints that
-the person must approve it in the app, and exits 1. It reads the risk from the request, as `requests` does;
+`flightdeckd approve` of a high-risk request sends no allow, prints that the person must approve it in the app,
+and exits 1 (the CLI never sends `updatedPermissions`, so risk is the only case it meets). It reads the risk from the request, as `requests` does;
 the daemon refuses a raw connection the same way, so the CLI is only polite. `--hold` stays accepted and is no
 longer a proof: the text of `refusalLine` (`answer-view.ts`) that says `--hold` is for a person who means to
 allow is removed (in `answer-view.ts`). Below high risk, `approve` works as today. `flightdeckd approve` sends no
@@ -126,6 +135,7 @@ allow is removed (in `answer-view.ts`). Below high risk, `approve` works as toda
 ## Order of work
 
 1. This record, with `security-reviewer` on the changes, before any code.
-2. Protocol and daemon: `approval.*` commands, the store, challenge, check, both paths (`test(permissions)` first).
+2. Protocol and daemon: the daemon id, `approval.*` commands, the store, challenge, check, both paths
+   (`test(permissions)` first).
 3. The app: enroll, sign on the press (`tauri-rust-reviewer`), device list, the unprotected notice; the CLI exit 1.
 4. `flightdeckd approvers` commands and both manuals (`flightdeckd-commands.md`, pt-BR twin).
