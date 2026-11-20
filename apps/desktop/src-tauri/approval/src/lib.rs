@@ -927,11 +927,22 @@ mod tests {
             "{\"path\":\"/work/\\u202eppa\",\"trusted\":true}".to_string(),
             "{\"path\":\"/work/\\u2028app\",\"trusted\":true}".to_string(),
             "{\"path\":\"/work/\\u200bapp\",\"trusted\":true}".to_string(),
+            // Blank or invisible characters that are not controls, a run of spaces, text that is no absolute path.
+            "{\"path\":\"/work/\\u00a0app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u3000app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u2060app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\ufe0fapp\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/app  Nothing will run\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/app \",\"trusted\":true}".to_string(),
+            "{\"path\":\"work/app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"Nothing will run\",\"trusted\":true}".to_string(),
             long,
         ] {
             assert!(signed(&bad).is_err(), "signed: {bad}");
         }
         assert!(signed("{\"path\":\"/work/app\",\"trusted\":true}").is_ok());
+        assert!(signed("{\"path\":\"/work/my app\",\"trusted\":true}").is_ok());
+        assert!(signed("{\"path\":\"\\\\\\\\host\\\\share\\\\app\",\"trusted\":true}").is_ok());
     }
 
     #[test]
@@ -940,6 +951,11 @@ mod tests {
         assert!(en.contains("C:\\Users\\José\\código") && en.contains("hooks"), "{en}");
         let (_, pt) = confirm_text(&trust_ask(), "pt-BR");
         assert!(pt.contains("José") && pt.contains("hooks") && pt.contains("Flightdeck"), "{pt}");
+        // The fixed warning comes first and the folder last, on a line of its own and in quotes, so a path
+        // cannot pad or continue the sentences that say what trusting does.
+        assert!(en.starts_with("Trust a project folder?"), "{en}");
+        assert!(en.ends_with("\n\"C:\\Users\\José\\código\""), "{en}");
+        assert!(pt.starts_with("Confiar em uma pasta de projeto?"), "{pt}");
         assert_eq!(confirm_labels(&trust_ask(), "en").0, "Trust");
         assert_eq!(confirm_labels(&trust_ask(), "pt-BR").0, "Confiar");
     }
