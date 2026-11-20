@@ -227,6 +227,7 @@ const OPTIONS_WITH_VALUE = [
   "--session",
   "--host",
   "--fingerprint",
+  "--alias",
   "--description",
   "--language",
   "--prompt",

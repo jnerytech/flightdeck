@@ -214,15 +214,38 @@ const HOSTKEY_WRITES = ["confirm", "forget"];
  * argument (`fd send fd-qa "ssh hostkey confirm"`, `echo ssh hostkey forget`) is no verb.
  */
 function changesTrustedHostKeys(prog: string, args: string[]): boolean {
-  const writes = (words: string[]) => {
-    const [command, action, verb] = flightdeckWords(words);
+  return runsFlightdeckWords(prog, args, ([command, action, verb]) => {
     return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.includes(verb ?? "");
-  };
-  if (isCliProgram(prog)) return writes(shellArguments(args));
+  });
+}
+
+/**
+ * Which destinations a host keeps is the person's call (#3537): `ssh remove` deletes one, and `ssh import
+ * apply` turns `~/.ssh/config` hosts, key-file paths included, into destinations a later connect uses. The
+ * reads (`ssh list`, `ssh import preview`) stay ordinary commands.
+ */
+function changesSshDestinations(prog: string, args: string[]): boolean {
+  return runsFlightdeckWords(prog, args, ([command, action, verb]) => {
+    return command === "ssh" && (action === "remove" || (action === "import" && verb === "apply"));
+  });
+}
+
+/**
+ * Whether a command line runs the CLI with words that `matches` accepts, as the CLI itself, or under a
+ * runtime or a shell (`bun bin.ts`, `bash -c`). Each CLI program in the text starts its own command: a
+ * word of another command is no verb of it, so `fd send fd-qa "ssh remove"` is not one.
+ */
+function runsFlightdeckWords(
+  prog: string,
+  args: string[],
+  matches: (words: string[]) => boolean,
+): boolean {
+  if (isCliProgram(prog)) return matches(flightdeckWords(shellArguments(args)));
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  // Each CLI program in the text starts its own command: a word of another command is no verb of it.
-  return words.some((w, i) => isCliProgram(program(w)) && writes(words.slice(i + 1)));
+  return words.some(
+    (w, i) => isCliProgram(program(w)) && matches(flightdeckWords(words.slice(i + 1))),
+  );
 }
 
 /**
@@ -399,6 +422,11 @@ const DANGEROUS: Array<{
     when: changesTrustedHostKeys,
     reason: () =>
       "changes which server keys a host trusts, without the person confirming it in the app (flightdeckd ssh hostkey confirm or forget)",
+  },
+  {
+    when: changesSshDestinations,
+    reason: () =>
+      "removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh remove or import apply)",
   },
   {
     when: changesWhatGuards,
