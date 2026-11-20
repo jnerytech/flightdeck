@@ -20,4 +20,5 @@ export { credential, credentialReadGlobs } from "./domain/sensitive-paths.ts";
 export { realPathOf, statKind } from "./path-kind.ts";
 export { PermissionBroker } from "./permission-broker.ts";
 export type { PermissionJudgeRequest, PermissionJudgeVerdict } from "./ports.ts";
+export { runRequestsCli } from "./requests-cli.ts";
 export { pathKinds, realPaths } from "./rule-risk.ts";

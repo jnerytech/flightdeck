@@ -28,6 +28,7 @@ export interface CliArgs {
     | "card"
     | "host"
     | "sessions"
+    | "requests"
     | "version"
     | "db"
     | "backup"
@@ -127,6 +128,7 @@ const USAGE = [
   "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
   "     flightdeckd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
   "     flightdeckd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
+  "     flightdeckd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
   "     flightdeckd action list [--project <id>] [--config <file>]",
   "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
   "     flightdeckd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
@@ -324,6 +326,10 @@ const HANDLERS: Record<string, Handler> = {
   },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
+  requests: setCommand("requests"),
+  "--session": setValue((args, v) => {
+    args.session = v;
+  }),
   "--json": setFlag((args) => {
     args.json = true;
   }),
@@ -408,9 +414,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
     handler(args, reader, value);
   }
-  if (args.json && !["card", "host", "sessions"].includes(args.command))
+  if (args.json && !["card", "host", "sessions", "requests"].includes(args.command))
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host and sessions\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, host, sessions and requests\n${USAGE}`,
     );
   if (args.command !== "card" && (args.description !== undefined || args.workflow !== undefined))
     throw new Error(

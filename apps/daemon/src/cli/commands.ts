@@ -210,6 +210,20 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const config = await localConfig(args);
     return reported(deps, await runSessionsCli(args.json ? { json: true } : {}, config));
   },
+  requests: async (args, deps) => {
+    const { runRequestsCli } = await import("../permissions/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runRequestsCli(
+        {
+          ...(args.session === undefined ? {} : { session: args.session }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
   action: async (args, deps) => {
     const { runActionCli } = await import("../actions/index.ts");
     const config = await loadConfig(configPath(args));
