@@ -3,6 +3,7 @@
  * `args.ts` adds the usage text to the problem this names. The words and ranges are the protocol's and
  * are checked as each flag is read; this is which verb takes which flag, and what a verb needs.
  */
+import { USAGE } from "./usage.ts";
 
 /** The parsed arguments this check reads: `CliArgs` fits it. */
 export interface VaultArgs {
@@ -21,6 +22,13 @@ export interface VaultArgs {
   risk?: string;
   approval?: string;
   at?: number;
+}
+
+/** The value of a flag that is one of `words`, or the refusal that lists them (`a, b or c`). */
+export function oneOf<const T extends string>(flag: string, value: string, words: readonly T[]): T {
+  if ((words as readonly string[]).includes(value)) return value as T;
+  const list = `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+  throw new Error(`${flag}: ${list}, got ${value}\n${USAGE}`);
 }
 
 const PREVIEW = ["preview"] as const;

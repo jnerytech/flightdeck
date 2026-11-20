@@ -10,7 +10,7 @@ import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
-import { vaultProblem } from "./vault-args.ts";
+import { oneOf, vaultProblem } from "./vault-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -100,13 +100,6 @@ const setValue =
   (args, _reader, value) => {
     set(args, value());
   };
-
-/** The value of a flag that is one of `words`, or the refusal that lists them (`a, b or c`). */
-function oneOf<const T extends string>(flag: string, value: string, words: readonly T[]): T {
-  if ((words as readonly string[]).includes(value)) return value as T;
-  const list = `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
-  throw new Error(`${flag}: ${list}, got ${value}\n${USAGE}`);
-}
 
 /** A flag that takes no value: `--hold=false` is an error, never a `--hold` (#3425). */
 const FLAGS = new WeakSet<Handler>();
