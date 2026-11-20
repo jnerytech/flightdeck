@@ -15,11 +15,15 @@ export interface CliRun {
   code: number | null;
 }
 
-/** `flightdeckd <argv> --config <file>`, with a config whose daemon is at `port`. */
-export async function flightdeckd(argv: string[], port: number): Promise<CliRun> {
+/** `flightdeckd <argv> --config <file>`, with a config whose daemon is at `port` (or the text `rawConfig`, as the file). */
+export async function flightdeckd(
+  argv: string[],
+  port: number,
+  rawConfig?: string,
+): Promise<CliRun> {
   const dir = tempDir("fd-cli-run-");
   const file = join(dir, "config.json");
-  writeFileSync(file, JSON.stringify({ token: TOKEN, dataDir: dir, port }));
+  writeFileSync(file, rawConfig ?? JSON.stringify({ token: TOKEN, dataDir: dir, port }));
   const run: CliRun = { out: [], err: [], code: null };
   const deps = {
     env: {},

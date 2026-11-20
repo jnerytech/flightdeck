@@ -19,7 +19,7 @@ const session = (id: string, name: string, over: Record<string, unknown> = {}) =
   ...over,
 });
 
-const hasControl = (text: string) => [...text].some((c) => c.charCodeAt(0) < 32);
+const hasControl = (text: string) => [...text].some((c) => c.charCodeAt(0) < 32 && c !== "\n");
 
 const TWO = {
   "session.list": () => ({
@@ -70,18 +70,30 @@ describe("flightdeckd sessions (issue #3424)", () => {
     expect(JSON.parse(run.out.join("\n"))).toEqual([]);
   });
 
-  test("the name and the folder of a session cannot drive the terminal", async () => {
+  test("the name and the folder of a session cannot drive the terminal or hide text", async () => {
     const daemon = fakeDaemon({
       "session.list": () => ({
-        sessions: [session("s1", "evil\u001b[2Jname", { cwd: "/w/\u001b]0;pwn\u0007x" })],
+        sessions: [session("s1", "evil\u001b[2Jname\u2060x", { cwd: "/w/\u001b]0;pwn\u0007x" })],
       }),
     });
     const human = await flightdeckd(["sessions"], daemon.port);
-    expect(human.out.some(hasControl)).toBe(false);
-    expect(human.out).toHaveLength(1);
+    expect(human.out).toEqual(["evil [2Jname x  idle  /w/ ]0;pwn x"]);
     const machine = await flightdeckd(["sessions", "--json"], daemon.port);
-    expect(machine.out.join("").replace(/\n/g, " ").length).toBeGreaterThan(0);
-    expect(machine.out.some((line) => hasControl(line.replace(/\n/g, " ")))).toBe(false);
+    expect(JSON.parse(machine.out.join("\n"))[0]).toMatchObject({
+      name: "evil [2Jname x",
+      cwd: "/w/ ]0;pwn x",
+    });
+    expect(hasControl(machine.out.join(""))).toBe(false);
+  });
+
+  test("a session with no name is shown as (unnamed) and stays null in --json", async () => {
+    const daemon = fakeDaemon({
+      "session.list": () => ({ sessions: [session("s1", "x", { name: null })] }),
+    });
+    const human = await flightdeckd(["sessions"], daemon.port);
+    expect(human.out).toEqual(["(unnamed)  idle  /work/x"]);
+    const machine = await flightdeckd(["sessions", "--json"], daemon.port);
+    expect(JSON.parse(machine.out.join("\n"))[0].name).toBeNull();
   });
 
   test("no daemon at the address of the config: a line on stderr and exit 2", async () => {
