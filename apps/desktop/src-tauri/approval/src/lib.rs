@@ -66,9 +66,12 @@ const TAG_ENROLL_FIRST: &str = "flightdeck/enroll-first/v1";
 const TAG_ENROLL_ADD: &str = "flightdeck/enroll-add/v1";
 const TAG_REVOKE: &str = "flightdeck/revoke/v1";
 const TAG_VAULT_APPROVE: &str = "flightdeck/vault-approve/v1";
+const TAG_COMMAND: &str = "flightdeck/command/v1";
 
 /// The longest text the protocol builds is about 600 bytes; anything past this is not one of them.
 const MAX_TEXT: usize = 2048;
+/// The payload a command signs is a few short fields; anything past this is not one of them.
+const MAX_PAYLOAD: usize = 1024;
 
 fn sha256_hex(text: &str) -> String {
     Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
@@ -123,7 +126,6 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
 
 /// `describe` for a text that hashes a payload (a command, #3453): `payload` is the text the hash is of.
 pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: Option<&str>) -> Result<Ask, String> {
-    let _ = payload;
     if message.len() > MAX_TEXT {
         return Err("the text to sign is too long".into());
     }
@@ -143,6 +145,7 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
         }
     };
     let part = |i: usize| parts.get(i).map(String::as_str).unwrap_or_default();
+    let mut command = None;
     let (kind, host, key, subject) = match part(0) {
         TAG_APPROVAL => {
             shape(9)?;
@@ -177,6 +180,16 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
             }
             (Kind::VaultApprove, part(2), Some(part(1)), part(3))
         }
+        TAG_COMMAND => {
+            shape(6)?;
+            // The text carries a hash; the dialog is built from the payload whose hash it is, never from the text.
+            let (ask, canonical) = read_command(part(3), payload.ok_or("a command is signed with its payload")?)?;
+            if sha256_hex(&canonical) != part(5) {
+                return Err("the payload is not the one the text hashes".into());
+            }
+            command = Some(ask);
+            (Kind::Command, part(2), Some(part(1)), part(3))
+        }
         _ => return Err("this text is not one this key signs".into()),
     };
     if host != daemon_id {
@@ -191,7 +204,7 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
             && text.len() <= 64
             && text.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
     };
-    if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove) && !plain(subject) {
+    if matches!(kind, Kind::Approve | Kind::Revoke | Kind::VaultApprove | Kind::Command) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
     }
     if kind == Kind::EnrollAdd && !plain(host) {
@@ -204,7 +217,58 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
     } else {
         Also { session: kind == Kind::VaultApprove && part(5) == "session", ..Also::default() }
     };
-    Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also, command: None })
+    Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also, command })
+}
+
+/// Reads the payload of `command` and gives what the dialog says plus the payload in canonical form (keys
+/// sorted, no spaces: the text the protocol hashes, written here by hand so no crate feature changes it).
+/// Each command names its fields: one more, one less or one that is not plain is refused, so a field the
+/// dialog does not show can never be signed.
+fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), String> {
+    if payload.len() > MAX_PAYLOAD {
+        return Err("the payload to sign is too long".into());
+    }
+    let value: serde_json::Value =
+        serde_json::from_str(payload).map_err(|_| "the payload to sign is not JSON".to_string())?;
+    let fields = value.as_object().ok_or("the payload to sign is not an object")?;
+    match name {
+        "card.pr.merge" => {
+            if fields.len() != 5 {
+                return Err("the merge payload has the wrong fields".into());
+            }
+            let text = |key: &str| {
+                fields
+                    .get(key)
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| format!("the merge payload has no text for {key}"))
+            };
+            let (card, url, head, method) = (text("cardId")?, text("prUrl")?, text("headSha")?, text("method")?);
+            if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+                return Err("a merge is signed only once it is confirmed".into());
+            }
+            let id = !card.is_empty()
+                && card.len() <= 64
+                && card.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+            // An address of a page, in the characters of one: no space, quote, backslash or control character can pad a line.
+            let address = url.starts_with("https://")
+                && url.len() <= 200
+                && url.chars().all(|c| c.is_ascii_alphanumeric() || "-._~:/?#[]@!$&()*+,;=%".contains(c));
+            let commit = matches!(head.len(), 40 | 64) && head.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f'));
+            if !id || !address || !commit || !matches!(method, "merge" | "squash") {
+                return Err("the merge payload names something that is not a card, an address, a commit or a method".into());
+            }
+            let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+            let canonical = format!(
+                "{{\"cardId\":{},\"confirm\":true,\"headSha\":{},\"method\":{},\"prUrl\":{}}}",
+                quoted(card),
+                quoted(head),
+                quoted(method),
+                quoted(url)
+            );
+            Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
+        }
+        _ => Err("this command is not one this key signs".into()),
+    }
 }
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
@@ -283,7 +347,17 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             ask.subject,
             if ask.also.session { "durante toda a sessão" } else { "uma vez" }
         ),
-        (Kind::Command, _) => String::new(),
+        (Kind::Command, _) => match &ask.command {
+            Some(CommandAsk::PrMerge { url, head, method }) if pt => format!(
+                "Mesclar o pull request {url} no commit {} pelo método {method}? Continue só se você acabou de apertar Mesclar no Flightdeck.",
+                short(head)
+            ),
+            Some(CommandAsk::PrMerge { url, head, method }) => format!(
+                "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
+                short(head)
+            ),
+            None => String::new(),
+        },
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
     (title.to_string(), body)
@@ -295,6 +369,8 @@ pub fn confirm_labels(kind: Kind, lang: &str) -> (String, String) {
     let (yes, no) = match (kind, lang == "pt-BR") {
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
+        (Kind::Command, false) => ("Merge", "Cancel"),
+        (Kind::Command, true) => ("Mesclar", "Cancelar"),
         (_, false) => ("Allow", "Cancel"),
         (_, true) => ("Permitir", "Cancelar"),
     };

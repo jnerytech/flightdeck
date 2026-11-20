@@ -179,8 +179,11 @@ export interface Platform {
     get(daemonId: string): Promise<DeviceKey | null>;
     create(daemonId: string): Promise<DeviceKey>;
     delete(daemonId: string): Promise<void>;
-    /** Base64 IEEE P1363 ECDSA signature of `message`; rejects when the person declines in the dialog. */
-    sign(daemonId: string, message: string, lang: string): Promise<string>;
+    /**
+     * Base64 IEEE P1363 ECDSA signature of `message`; rejects when the person declines in the dialog. A command's
+     * message holds only a hash (#3453): `payload` is the canonical text it hashes, which the shell reads for the dialog.
+     */
+    sign(daemonId: string, message: string, lang: string, payload?: string): Promise<string>;
   };
   /** Whether the system showed it (false: notifications are blocked for the app). */
   notify(notification: Notification): Promise<boolean>;

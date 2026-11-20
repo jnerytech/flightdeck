@@ -102,7 +102,8 @@ export function tauriPlatform(
       get: (daemonId) => call<DeviceKey | null>("approval_key_get", { daemonId }),
       create: (daemonId) => call<DeviceKey>("approval_key_create", { daemonId }),
       delete: (daemonId) => call("approval_key_delete", { daemonId }),
-      sign: (daemonId, message, lang) => call<string>("approval_sign", { daemonId, message, lang }),
+      sign: (daemonId, message, lang, payload) =>
+        call<string>("approval_sign", { daemonId, message, lang, payload: payload ?? null }),
     },
     pickFolder: () => call<string | null>("pick_folder"),
     backupFolder: {
