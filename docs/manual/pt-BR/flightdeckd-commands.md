@@ -227,6 +227,32 @@ Histórico. Não mudam nada, e as pastas de `history.excludeCwds` ficam de fora,
 daemon. Na shell de uma sessão, um resume com `--force` ou `--permission-mode` conta como alto risco: a
 pessoa confirma. Os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
 
+## fd vault
+
+```sh
+fd vault decisions [<segredo>] [--days <1-365>] [--limit <1-1000>] [--json]
+fd vault report [--days <1-365>] [--csv] [--json]
+fd vault rules <segredo> [--json]
+fd vault rules preview <segredo> --requester <you|claude|automation|workflow> --purpose <ssh|action|run_with_secret> [--action <nome>] [--host <h>] [--project <p>] [--session <s>] [--tag <t>]... [--risk <low|medium|high>] [--approval <always|never|first-per-session>] [--at <hora>] [--json]
+```
+
+O lado de leitura do cofre, como a tela de Segredos mostra. Nenhum imprime o valor de um segredo e
+nenhum muda nada: entregar um segredo e usá-lo continuam no app.
+
+- **`decisions [<segredo>]`:** uma linha por decisão, na ordem do daemon: hora, segredo, quem pediu,
+  finalidade (e a ação) em um host, `decisão/resultado` com quem aprovou, e o motivo. `--days` e `--limit`
+  restringem; `--json` imprime a resposta do daemon. A auditoria não filtra por risco nem por host aqui,
+  porque o daemon não filtra por eles.
+- **`report`:** os usos contados por segredo, quem pediu e resultado. `--csv` imprime o texto que o app salva.
+- **`rules <segredo>`:** as tags do segredo e uma linha por regra, como o daemon a guarda.
+- **`rules preview <segredo>`:** o que um uso receberia, como ensaio: `allow`, `ask` ou `deny`, a regra ou o
+  padrão que decidiu e o motivo, com `[once per session]`, `[approval must be held 2 s]` ou
+  `[limit reached]` quando valem. `--requester` e `--purpose` são obrigatórios; `--at` aceita data e hora
+  como `2026-11-20T03:00:00Z` (agora por padrão). Não grava nada na auditoria. Um segredo chamado
+  `preview` não pode ser lido com `rules <segredo>`.
+
+Os códigos de saída são os mesmos dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
+
 ## fd persona
 
 ```sh

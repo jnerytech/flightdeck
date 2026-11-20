@@ -7,6 +7,7 @@ import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
+import type { VaultCliArgs } from "../vault/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
@@ -233,6 +234,29 @@ function historyCliArgs(args: CliArgs): HistoryCliArgs {
   };
   const present = Object.entries(typed).filter(([, value]) => value !== undefined);
   return { action: args.action, ...Object.fromEntries(present) } as HistoryCliArgs;
+}
+
+/** What the person typed for `vault decisions|report|rules`, as `runVaultCli` takes it: what they left out stays out. */
+function vaultCliArgs(args: CliArgs): VaultCliArgs {
+  const typed: Record<string, unknown> = {
+    secretId: args.secretId,
+    days: args.days,
+    limit: args.limit,
+    csv: args.csv,
+    requester: args.requester,
+    purpose: args.purpose,
+    useAction: args.useAction,
+    host: args.host,
+    project: args.project,
+    session: args.session,
+    tags: args.tags,
+    risk: args.risk,
+    approval: args.approval,
+    at: args.at,
+    json: args.json || undefined,
+  };
+  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
+  return { action: args.action, ...Object.fromEntries(present) } as VaultCliArgs;
 }
 
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
@@ -537,6 +561,14 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
         signal: stop.signal,
         write: (line) => deps.log.log(line),
       }),
+      args.json,
+    );
+  },
+  vault: async (args, deps) => {
+    const { runVaultCli } = await import("../vault/index.ts");
+    return reported(
+      deps,
+      await runVaultCli(vaultCliArgs(args), await localConfig(args)),
       args.json,
     );
   },

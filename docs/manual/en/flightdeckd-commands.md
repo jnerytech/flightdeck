@@ -224,6 +224,32 @@ screen does. They change nothing, and the folders in `history.excludeCwds` stay 
 From a session's shell, a resume with `--force` or `--permission-mode` is rated high: the person confirms it.
 Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
+## fd vault
+
+```sh
+fd vault decisions [<secret>] [--days <1-365>] [--limit <1-1000>] [--json]
+fd vault report [--days <1-365>] [--csv] [--json]
+fd vault rules <secret> [--json]
+fd vault rules preview <secret> --requester <you|claude|automation|workflow> --purpose <ssh|action|run_with_secret> [--action <name>] [--host <h>] [--project <p>] [--session <s>] [--tag <t>]... [--risk <low|medium|high>] [--approval <always|never|first-per-session>] [--at <time>] [--json]
+```
+
+The read side of the vault, as the Secrets screen shows it. None of these prints a secret value, and
+none changes anything: handing a secret over and using it stay in the app.
+
+- **`decisions [<secret>]`:** one line per decision, newest first as the daemon sorts them: time, secret,
+  requester, purpose (and the action) on a host, `decision/outcome` with who approved it, and the reason.
+  `--days` and `--limit` narrow it; `--json` prints the daemon's answer. The audit cannot be filtered by
+  risk or host from here, because the daemon does not filter on them.
+- **`report`:** uses counted by secret, requester and outcome. `--csv` prints the text the app saves.
+- **`rules <secret>`:** the secret's tags, then one line per rule as the daemon holds it.
+- **`rules preview <secret>`:** what a use would get, asked as a dry run: `allow`, `ask` or `deny`, the
+  rule or the default that decided, and the reason, with `[once per session]`, `[approval must be held 2 s]`
+  or `[limit reached]` when they apply. `--requester` and `--purpose` are needed; `--at` takes a date and
+  time such as `2026-11-20T03:00:00Z` (now by default). It writes nothing to the audit. A secret named
+  `preview` cannot be read with `rules <secret>`.
+
+Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
+
 ## fd persona
 
 ```sh

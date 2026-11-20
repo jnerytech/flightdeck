@@ -9,6 +9,7 @@ import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
+import { vaultProblem } from "./vault-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -98,6 +99,13 @@ const setValue =
   (args, _reader, value) => {
     set(args, value());
   };
+
+/** The value of a flag that is one of `words`, or the refusal that lists them (`a, b or c`). */
+function oneOf<const T extends string>(flag: string, value: string, words: readonly T[]): T {
+  if ((words as readonly string[]).includes(value)) return value as T;
+  const list = `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+  throw new Error(`${flag}: ${list}, got ${value}\n${USAGE}`);
+}
 
 /** A flag that takes no value: `--hold=false` is an error, never a `--hold` (#3425). */
 const FLAGS = new WeakSet<Handler>();
@@ -223,6 +231,26 @@ const HANDLERS: Record<string, Handler> = {
       if (index < 0 || index > 1000)
         throw new Error(`history tool: the index is a whole number from 0 to 1000\n${USAGE}`);
       args.index = index;
+    }
+  },
+  vault: (args, reader) => {
+    args.command = "vault";
+    const action = subAction(
+      reader,
+      ["decisions", "report", "rules"] as const,
+      "invalid vault action",
+    );
+    args.action = action;
+    const word = reader.peek();
+    // `decisions` may name one secret; `rules` always does, and `rules preview` asks about a use of it.
+    if (action === "decisions" && word !== undefined && !word.startsWith("--"))
+      args.secretId = operand(reader, "the secret");
+    if (action === "rules") {
+      if (word === "preview") {
+        reader.next();
+        args.action = "preview";
+      }
+      args.secretId = operand(reader, "the secret");
     }
   },
   approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
@@ -586,6 +614,39 @@ const HANDLERS: Record<string, Handler> = {
   "--dry-run": setFlag((args) => {
     args.dryRun = true;
   }),
+  "--days": setValue((args, v) => {
+    const n = Number(v);
+    if (!/^\d+$/.test(v) || n < 1 || n > 365)
+      throw new Error(`--days: a whole number from 1 to 365, got ${v}\n${USAGE}`);
+    args.days = n;
+  }),
+  "--csv": setFlag((args) => {
+    args.csv = true;
+  }),
+  "--requester": setValue((args, v) => {
+    args.requester = oneOf("--requester", v, ["you", "claude", "automation", "workflow"]);
+  }),
+  "--purpose": setValue((args, v) => {
+    args.purpose = oneOf("--purpose", v, ["ssh", "action", "run_with_secret"]);
+  }),
+  "--action": setValue((args, v) => {
+    args.useAction = v;
+  }),
+  "--tag": setValue((args, v) => {
+    args.tags = [...(args.tags ?? []), v];
+  }),
+  "--risk": setValue((args, v) => {
+    args.risk = oneOf("--risk", v, ["low", "medium", "high"]);
+  }),
+  "--approval": setValue((args, v) => {
+    args.approval = oneOf("--approval", v, ["always", "never", "first-per-session"]);
+  }),
+  "--at": setValue((args, v) => {
+    const at = Date.parse(v);
+    if (Number.isNaN(at))
+      throw new Error(`--at: a date and time, like 2026-11-20T03:00:00Z, got ${v}\n${USAGE}`);
+    args.at = at;
+  }),
   "--config": setValue((args, v) => {
     args.config = v;
   }),
@@ -629,18 +690,19 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "approvers",
       "rules",
       "autoapprove",
+      "vault",
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault
 ${USAGE}`,
     );
   if (
     args.host !== undefined &&
-    !["host", "sessions", "requests", "send", "approve", "deny"].includes(args.command)
+    !["host", "sessions", "requests", "send", "approve", "deny", "vault"].includes(args.command)
   )
     throw new Error(
-      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve and deny\n${USAGE}`,
+      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve, deny and vault\n${USAGE}`,
     );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
@@ -652,14 +714,17 @@ ${USAGE}`,
     throw new Error(
       `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
     );
-  if (!["requests", "message", "autoapprove"].includes(args.command) && args.session !== undefined)
+  if (
+    !["requests", "message", "autoapprove", "vault"].includes(args.command) &&
+    args.session !== undefined
+  )
     throw new Error(
-      `--session: this flag only applies to flightdeckd requests, message and autoapprove\n${USAGE}`,
+      `--session: this flag only applies to flightdeckd requests, message, autoapprove and vault\n${USAGE}`,
     );
-  // `history` checks its own limits (history-args.ts).
-  if (!["autoapprove", "history"].includes(args.command) && args.limit !== undefined)
+  // `history` and `vault` check their own limits (history-args.ts, vault-args.ts).
+  if (!["autoapprove", "history", "vault"].includes(args.command) && args.limit !== undefined)
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove and history\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history and vault\n${USAGE}`,
     );
   // `card new` takes its title as an operand: the flag is the title of an update.
   if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
@@ -705,7 +770,11 @@ ${USAGE}`,
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
   if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
   const fault =
-    personaProblem(args) ?? teamProblem(args) ?? boardProblem(args) ?? historyProblem(args);
+    personaProblem(args) ??
+    teamProblem(args) ??
+    boardProblem(args) ??
+    historyProblem(args) ??
+    vaultProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;

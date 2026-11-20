@@ -460,14 +460,18 @@
   "ui.set": {},
   "usage.summary": {},
   "vault.approve": {},
-  "vault.decisions": {},
-  "vault.deliver": {},
+  "vault.decisions": { "cli": "vault" },
+  "vault.deliver": {
+    "appOnly": "hands a secret value to the daemon from the person's own screen after they approve a request; a terminal would put the value in shell history (#3458)"
+  },
   "vault.deny": {},
-  "vault.report": {},
-  "vault.rules.get": {},
-  "vault.rules.preview": {},
+  "vault.report": { "cli": "vault" },
+  "vault.rules.get": { "cli": "vault" },
+  "vault.rules.preview": { "cli": "vault" },
   "vault.rules.set": {},
-  "vault.use": {},
+  "vault.use": {
+    "appOnly": "uses a delivered secret value, which a terminal must never print or pass as an argument (#3458)"
+  },
   "vault.watch": {},
   "watch.byUrl": {},
   "watch.describe": {},

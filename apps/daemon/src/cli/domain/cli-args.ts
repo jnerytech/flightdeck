@@ -1,4 +1,5 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
+import type { VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
@@ -11,6 +12,7 @@ export interface CliArgs {
     | "doctor"
     | "service"
     | "history"
+    | "vault"
     | "approvers"
     | "rules"
     | "autoapprove"
@@ -92,7 +94,11 @@ export interface CliArgs {
     | "dismiss-unblocked"
     | "search"
     | "tool"
-    | "resume";
+    | "resume"
+    | "decisions"
+    | "report"
+    | "rules"
+    | "preview";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -207,6 +213,18 @@ export interface CliArgs {
   projectKey?: string;
   until?: string;
   origin?: "flightdeck" | "external";
+  /** `vault decisions|rules|rules preview <secret>`, `vault decisions|report --days`, `vault report --csv`. */
+  secretId?: string;
+  days?: number;
+  csv?: true;
+  /** `vault rules preview`: the use to ask about. `--action` is `useAction`, `--tag` repeats, `--at` is milliseconds. */
+  requester?: VaultRequester;
+  purpose?: "ssh" | "action" | "run_with_secret";
+  useAction?: string;
+  tags?: string[];
+  risk?: "low" | "medium" | "high";
+  approval?: "always" | "never" | "first-per-session";
+  at?: number;
   hideAutomated?: true;
   cursor?: string;
   tail?: true;
