@@ -291,6 +291,30 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
         }
+        "autoapprove.resume" => {
+            if fields.len() != 2 {
+                return Err("the resume payload has the wrong fields".into());
+            }
+            let key = fields
+                .get("sessionKey")
+                .and_then(serde_json::Value::as_str)
+                .ok_or("the resume payload has no text for sessionKey")?;
+            if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+                return Err("a resume is signed only once it is confirmed".into());
+            }
+            // A session key is a plain token, like a card id: nothing in it can pad or continue the dialog.
+            let token = !key.is_empty()
+                && key.len() <= 128
+                && key.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+            if !token {
+                return Err("the session key is not one the dialog can show".into());
+            }
+            let canonical = format!(
+                "{{\"confirm\":true,\"sessionKey\":{}}}",
+                serde_json::to_string(key).unwrap_or_default()
+            );
+            Ok((CommandAsk::ResumeApproval { session: key.into() }, canonical))
+        }
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -427,7 +451,13 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             Some(CommandAsk::TrustProject { path }) => format!(
                 "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
             ),
-            Some(CommandAsk::ResumeApproval { .. }) | None => String::new(),
+            Some(CommandAsk::ResumeApproval { session }) if pt => format!(
+                "Reativar a aprovação automática de uma sessão? Ela volta a aprovar pedidos sem que nenhuma pessoa os veja, depois de ter lido conteúdo de terceiros. Continue só se você acabou de apertar Reativar no Flightdeck.\n\"{session}\""
+            ),
+            Some(CommandAsk::ResumeApproval { session }) => format!(
+                "Turn automatic approval back on for a session? It will approve requests with no person seeing them, after it read third-party content. Continue only if you just pressed Resume in Flightdeck.\n\"{session}\""
+            ),
+            None => String::new(),
         },
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
@@ -440,6 +470,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
+            if pt { ("Retomar", "Cancelar") } else { ("Resume", "Cancel") }
         }
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),

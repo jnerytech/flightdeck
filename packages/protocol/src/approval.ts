@@ -21,7 +21,7 @@ export const FEATURE_APPROVAL_COMMAND = "approval-command";
 export const FEATURE_APPROVAL_TRUST = "approval-trust";
 
 /** The host checks a signed proof of the person's device before it resumes the automatic approver of a session (#3453). */
-export const FEATURE_APPROVAL_RESUME = "";
+export const FEATURE_APPROVAL_RESUME = "approval-resume";
 
 /** The commands whose payload an enrolled device signs (#3453); one list for the host and the app. */
 export const PROOF_COMMANDS = ["card.pr.merge", "project.trust.set", "autoapprove.resume"] as const;

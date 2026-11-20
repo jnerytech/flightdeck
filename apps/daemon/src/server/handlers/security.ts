@@ -96,6 +96,11 @@ export const securityHandlers = {
         "autoapprove_resume_confirm",
       );
     }
+    // #3453: with a device enrolled, the person signs which session gets its automatic approver back.
+    server.opts.approvers?.requireCommandProof("autoapprove.resume", payload, [
+      "sessionKey",
+      "confirm",
+    ]);
     server.need("autoApprove").resume(payload.sessionKey);
     return { suspended: server.need("autoApprove").suspended() };
   },

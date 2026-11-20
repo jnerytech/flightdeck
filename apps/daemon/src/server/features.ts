@@ -5,6 +5,7 @@
 import {
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   FEATURE_APPROVAL_WATCH,
@@ -32,6 +33,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.approvers, FEATURE_APPROVAL_COMMAND),
     // #3453: trusting a project folder takes the proof of an enrolled device (its own feature: a host can gate one command and not the other).
     ...when(opts.approvers && opts.projects?.trust, FEATURE_APPROVAL_TRUST),
+    // #3453: turning a session's automatic approver back on takes the proof of an enrolled device (its own feature).
+    ...when(opts.approvers && opts.autoApprove, FEATURE_APPROVAL_RESUME),
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
