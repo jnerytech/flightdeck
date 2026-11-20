@@ -14,6 +14,7 @@ page with:
 | `flightdeckd-windows-x64.exe` | daemon for Windows |
 | `flightdeckd-linux-x64` | daemon for Linux and WSL (x64) |
 | `flightdeckd-linux-arm64` | daemon for Linux arm64 (Orange Pi, Raspberry Pi) |
+| `flightdeckd-<version>.tgz` | the CLI as an npm package: `fd` and `flightdeckd` with the three daemons inside |
 | `SHA256SUMS` | the SHA-256 of each file |
 
 The release also carries the signatures (`.sig`) of the NSIS installer and of the daemons, and
@@ -35,6 +36,16 @@ the `latest.json` and `daemon-latest.json` manifests used by the
      terminal): it copies the binary to `~/.flightdeck/bin`, asks for your project
      folders, installs and **starts** the service and prints the pairing link (see
      [First run: flightdeckd setup](service.md#first-run-flightdeckd-setup)).
+4. **Install the CLI with npm** (optional, needs Node and npm): this puts `fd` and `flightdeckd` on
+   your PATH with no download at install time and nothing from the npm registry:
+
+   ```sh
+   npm i -g https://github.com/jnerytech/flightdeck/releases/download/v<version>/flightdeckd-<version>.tgz
+   ```
+
+   It installs only the CLI and the daemon binary, so you still run `flightdeckd setup` on the host
+   (step 3). `flightdeckd update` replaces the service's copy of the daemon in `~/.flightdeck/bin`,
+   not the one npm installed: to update that one, install the new release's tarball the same way.
 
 ## From source
 
