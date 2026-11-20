@@ -203,6 +203,9 @@ const CLI_PROGRAMS = ["fd", "flightdeckd", "bin.ts", ...COMPILED_CLI];
 /** What a glob may expand to: the names above, and the launchers `program()` strips the suffix of. */
 const CLI_FILES = CLI_PROGRAMS.flatMap((name) => ["", ".exe", ".cmd", ".ps1"].map((s) => name + s));
 
+/** The longest program word that `mayBeCli` matches against the CLI's names. */
+const MAX_GLOB_WORD = 64;
+
 /** A program word that is one variable, which `invocations` reads as any program (`invocations` cuts the closing brace off `${BIN}`). */
 const BARE_VARIABLE = /^\$\{?\w+\}?$/;
 
@@ -262,6 +265,9 @@ function globMatches(pattern: string, name: string): boolean {
  * anything, so only what stands before it is. A bracket that never closes is a plain character (`[ -f x ]`).
  */
 function mayBeCli(word: string): boolean {
+  // The longest CLI file name is under 30 characters. A longer word is matched in time that grows with the square of
+  // its length, so one of many brackets or commas could stall the rules: it is read as a CLI it may expand to.
+  if (word.length > MAX_GLOB_WORD) return true;
   const range = word.search(/\{[^{}]*\.\./);
   const open = [word.indexOf("$"), range].filter((i) => i >= 0);
   const cut = open.length > 0 ? Math.min(...open) : -1;
