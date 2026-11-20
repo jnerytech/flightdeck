@@ -340,7 +340,8 @@ const HANDLERS: Record<string, Handler> = {
     args.position = position;
   }),
   "--workers": setValue((args, v) => {
-    args.teamWorkers = v.trim() === "" ? Number.NaN : Number(v);
+    // Digits only: `Number` would take `0x2`, `2e0` and a padded " 2 ".
+    args.teamWorkers = /^\d+$/.test(v) ? Number(v) : Number.NaN;
   }),
   "--worker": setValue((args, v) => {
     args.teamWorkerSpecs = [...(args.teamWorkerSpecs ?? []), v];

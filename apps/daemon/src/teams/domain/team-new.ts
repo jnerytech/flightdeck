@@ -1,7 +1,7 @@
 /**
  * Issue #3455: what `flightdeckd team new` sends and says, as pure rules. A member is one spec,
- * `persona[:model[:effort[:mode]]]`, where a part left empty keeps the default (the same shape as
- * `card start-arena --variant`).
+ * `persona[:model[:effort[:mode]]]`, where a part left empty keeps the default (the idea of
+ * `card start-arena --variant`, whose parts run `model[:effort[:persona]]`: the persona comes first here).
  */
 import {
   type CommandPayload,
