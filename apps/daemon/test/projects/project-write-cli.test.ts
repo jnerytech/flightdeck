@@ -257,7 +257,7 @@ describe("the project write verbs on the command line (issue #3515)", () => {
       command: "project",
       action: "add",
       projectPaths: ["/srv/api"],
-      name: "api",
+      personaName: "api",
       projectFields: {
         baseBranch: "main",
         prProvider: "azure-devops",
