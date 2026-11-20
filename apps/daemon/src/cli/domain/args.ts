@@ -51,7 +51,13 @@ export interface CliArgs {
     | "team"
     | "show"
     | "new"
-    | "start";
+    | "start"
+    | "move"
+    | "update"
+    | "stop"
+    | "complete"
+    | "delete"
+    | "discard";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -75,6 +81,17 @@ export interface CliArgs {
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
   cardId?: string;
   cardTitle?: string;
+  /** `card move <card> <column> [--position n] [--force]`, `card complete|discard|delete --confirm`, `card update --estimate ... --blocked-by ...`. */
+  column?: string;
+  /** `--title`, until the end of the arguments says whether the action takes it. */
+  titleFlag?: string;
+  position?: number;
+  force?: true;
+  confirm?: true;
+  estimate?: string;
+  validationNote?: string;
+  specPath?: string;
+  blockedBy?: string;
   description?: string;
   workflow?: string;
   json?: true;
@@ -144,6 +161,10 @@ export const USAGE = [
   "     fd card show <card> [--json] [--config <file>]",
   "     fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
   "     fd card start <card> [--workflow <name>] [--json] [--config <file>]",
+  "     fd card move <card> <column> [--position <n>] [--force] [--json] [--config <file>]",
+  "     fd card update <card> [--title <text>] [--description <text>] [--estimate <hours|none>] [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json] [--config <file>]",
+  "     fd card stop <card> [--json] [--config <file>]",
+  "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
@@ -384,9 +405,15 @@ const HANDLERS: Record<string, Handler> = {
   },
   card: (args, reader) => {
     args.command = "card";
-    const action = subAction(reader, ["list", "show", "new", "start"], "invalid card action");
+    const action = subAction(
+      reader,
+      ["list", "show", "new", "start", "move", "update", "stop", "complete", "delete", "discard"],
+      "invalid card action",
+    );
     args.action = action;
-    if (action === "show" || action === "start") args.cardId = operand(reader, "the card");
+    // Every action but `list` and `new` names the card it works on.
+    if (action !== "list" && action !== "new") args.cardId = operand(reader, "the card");
+    if (action === "move") args.column = operand(reader, "the column");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
   host: setCommand("host"),
@@ -409,6 +436,33 @@ const HANDLERS: Record<string, Handler> = {
   },
   "--message": setValue((args, v) => {
     args.answerMessage = v;
+  }),
+  "--force": setFlag((args) => {
+    args.force = true;
+  }),
+  "--confirm": setFlag((args) => {
+    args.confirm = true;
+  }),
+  "--position": setValue((args, v) => {
+    const position = Number(v);
+    if (v.trim() === "" || !Number.isInteger(position) || position < 0)
+      throw new Error(`--position needs a whole number from 0\n${USAGE}`);
+    args.position = position;
+  }),
+  "--title": setValue((args, v) => {
+    args.titleFlag = v;
+  }),
+  "--estimate": setValue((args, v) => {
+    args.estimate = v;
+  }),
+  "--validation-note": setValue((args, v) => {
+    args.validationNote = v;
+  }),
+  "--spec-path": setValue((args, v) => {
+    args.specPath = v;
+  }),
+  "--blocked-by": setValue((args, v) => {
+    args.blockedBy = v;
   }),
   "--hold": setFlag((args) => {
     args.hold = true;
@@ -524,9 +578,29 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests and message\n${USAGE}`,
     );
-  if (args.command !== "card" && (args.description !== undefined || args.workflow !== undefined))
-    throw new Error(
-      `--description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
-    );
+  // `card new` takes its title as an operand: the flag is the title of an update.
+  if (args.titleFlag !== undefined && args.action === "update") args.cardTitle = args.titleFlag;
+  const flagged: Array<[string, unknown, readonly string[] | null]> = [
+    ["--title", args.titleFlag, ["update"]],
+    ["--description", args.description, ["new", "update"]],
+    ["--workflow", args.workflow, ["start"]],
+    ["--force", args.force, ["move"]],
+    ["--position", args.position, ["move"]],
+    ["--confirm", args.confirm, ["complete", "discard", "delete"]],
+    ["--estimate", args.estimate, ["update"]],
+    ["--validation-note", args.validationNote, ["update"]],
+    ["--spec-path", args.specPath, ["update"]],
+    ["--blocked-by", args.blockedBy, ["update"]],
+  ];
+  for (const [flag, value, actions] of flagged) {
+    if (value === undefined) continue;
+    if (args.command !== "card")
+      throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
+    if (!actions?.includes(args.action as string))
+      throw new Error(
+        `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
+      );
+  }
+  delete args.titleFlag;
   return args;
 }

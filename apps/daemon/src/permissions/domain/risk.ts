@@ -177,14 +177,15 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
 /** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */
 const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCase();
 
-/** The subcommand of `fd` or `flightdeckd`, past its options (`--config <file>`, `--json`). */
-function flightdeckVerb(args: string[]): string {
+/** The words of `fd` or `flightdeckd` that are not options (`--config <file>`, `--json`, `--force`). */
+function flightdeckWords(args: string[]): string[] {
+  const words: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
     if (arg === "--config") i++;
-    else if (!arg.startsWith("-")) return arg;
+    else if (!arg.startsWith("-")) words.push(arg);
   }
-  return "";
+  return words;
 }
 
 /** The programs that can run the CLI for a session: itself, a runtime or a shell given the text. */
@@ -198,11 +199,37 @@ const RUNNERS = ["bun", "bunx", "npx", "node", "sh", "bash", "zsh", "dash", "pws
 function answersARequest(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const verbs = ["approve", "deny"];
-  if (["fd", "flightdeckd"].includes(prog)) return verbs.includes(flightdeckVerb(words));
+  if (["fd", "flightdeckd"].includes(prog)) return verbs.includes(flightdeckWords(words)[0] ?? "");
   if (!RUNNERS.includes(prog)) return false;
   const names = words.map((w) => program(w));
   const runsCli = names.some((n) => ["fd", "flightdeckd", "bin.ts"].includes(n));
   return runsCli && words.some((w) => verbs.includes(w));
+}
+
+const CARD_ENDS = ["discard", "complete", "delete"];
+
+/**
+ * What the app asks the person to confirm, done from a session's shell (#3454): `card discard`,
+ * `complete` and `delete` end a card (a discard removes its worktree and branch), and `card move
+ * --force` skips a column's contract. `--confirm` is only a flag the caller types, so it proves nothing.
+ */
+function endsACard(prog: string, args: string[]): boolean {
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
+  if (["fd", "flightdeckd"].includes(prog)) {
+    const [command, action] = flightdeckWords(words);
+    return (
+      command === "card" &&
+      (CARD_ENDS.includes(action ?? "") || (action === "move" && words.includes("--force")))
+    );
+  }
+  if (!RUNNERS.includes(prog)) return false;
+  const runsCli = words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  return (
+    runsCli &&
+    words.includes("card") &&
+    (words.some((w) => CARD_ENDS.includes(w)) || forcedMove(words))
+  );
 }
 
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
@@ -235,6 +262,11 @@ const DANGEROUS: Array<{
   {
     when: answersARequest,
     reason: () => "answers a permission request (flightdeckd approve or deny)",
+  },
+  {
+    when: endsACard,
+    reason: () =>
+      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete or move --force)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

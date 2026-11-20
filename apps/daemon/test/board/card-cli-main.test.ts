@@ -50,7 +50,7 @@ async function terminal(
 }
 
 describe("card cli: flightdeckd card (issue #1507)", () => {
-  test("parseArgs: the four actions and what each one takes", () => {
+  test("parseArgs: the first four actions and what each one takes", () => {
     expect(parseArgs(["card", "list"])).toMatchObject({ command: "card", action: "list" });
     expect(parseArgs(["card", "list", "--project", "api", "--json"])).toMatchObject({
       action: "list",
@@ -71,7 +71,7 @@ describe("card cli: flightdeckd card (issue #1507)", () => {
       cardId: "c1",
       workflow: "review",
     });
-    expect(() => parseArgs(["card", "discard", "c1"])).toThrow("invalid card action");
+    expect(() => parseArgs(["card", "frobnicate", "c1"])).toThrow("invalid card action");
     expect(() => parseArgs(["card"])).toThrow("invalid card action");
     expect(() => parseArgs(["card", "show"])).toThrow("missing the card");
     expect(() => parseArgs(["card", "start"])).toThrow("missing the card");
@@ -81,7 +81,7 @@ describe("card cli: flightdeckd card (issue #1507)", () => {
   test("the usage names the command and its four actions", () => {
     let usage = "";
     try {
-      parseArgs(["card", "discard"]);
+      parseArgs(["card", "frobnicate"]);
     } catch (error) {
       usage = (error as Error).message;
     }
