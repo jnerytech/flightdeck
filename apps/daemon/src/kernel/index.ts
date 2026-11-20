@@ -36,7 +36,7 @@ export { readRegular, readRegularSized } from "./read-regular.ts";
 export { assertBranchName, HEAD, type Rev, refArg } from "./ref-arg.ts";
 export { settled } from "./settled.ts";
 export { tokenMatches } from "./token.ts";
-export { trimEndOf, trimStartOf } from "./trim.ts";
+export { trimEndOf } from "./trim.ts";
 export { ulid } from "./ulid.ts";
 export { UNTRUSTED_MARK } from "./untrusted.ts";
 export type { UsageTokens } from "./usage-tokens.ts";
