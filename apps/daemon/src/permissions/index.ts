@@ -26,3 +26,4 @@ export { PermissionBroker } from "./permission-broker.ts";
 export type { PermissionJudgeRequest, PermissionJudgeVerdict } from "./ports.ts";
 export { runRequestsCli } from "./requests-cli.ts";
 export { pathKinds, realPaths } from "./rule-risk.ts";
+export { runRulesCli } from "./rules-cli.ts";
