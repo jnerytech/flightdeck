@@ -429,7 +429,7 @@
     "cli": "team"
   },
   "teams.watch": {
-    "appOnly": "a stream of team changes the app subscribes to over its open connection; a command answers once, and flightdeckd team show reads the state when asked (issue #3455)"
+    "appOnly": "a stream of team changes the app subscribes to; the issue #3455 verbs do not include it, so a script polls flightdeckd team show (a streaming CLI verb exists since board watch, issue #3454, and team watch can follow it)"
   },
   "telemetry.install": {},
   "telemetry.session": {},
