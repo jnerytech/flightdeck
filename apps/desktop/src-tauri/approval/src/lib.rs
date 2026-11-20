@@ -612,11 +612,15 @@ fn is_shown_source(source: &str) -> bool {
         let mut parts = rest.split('/');
         let host = parts.next().unwrap_or_default();
         let path: Vec<&str> = parts.collect();
-        return host.contains('.') && name(host) && !path.is_empty() && path.iter().all(|part| name(part));
+        // A host is a run of plain labels with at least one dot: no empty label, so no `a..b` or trailing dot.
+        let host_ok = host.contains('.') && host.split('.').all(|label| !label.is_empty() && name(label));
+        return host_ok && !path.is_empty() && path.iter().all(|part| name(part));
     }
-    let owner_repo: Vec<&str> = source.split('/').collect();
-    if let [owner, repo] = owner_repo.as_slice() {
-        return name(owner) && name(repo);
+    // `owner/repo` has a first part; `/opt` and `C:/opt` do not fit it and are folders.
+    if let [owner, repo] = source.split('/').collect::<Vec<&str>>().as_slice() {
+        if name(owner) && name(repo) {
+            return true;
+        }
     }
     is_shown_path(source)
 }
