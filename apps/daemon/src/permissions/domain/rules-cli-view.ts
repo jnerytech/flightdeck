@@ -58,9 +58,11 @@ export function autoApproveLines(answer: AutoApproveAnswer): string[] {
   return lines.length > 0 ? lines : ["no automatic approval decisions yet"];
 }
 
+/** What a change that got no answer says it may have done, as text that follows the message. */
 export const UNSURE =
   "; the change may or may not have gone in: check with `rules list` or `autoapprove list` before trying again";
 
+/** The line `rules remove` prints: what went, from which project, and how many rules stay. */
 export function removedLine(rule: string, projectName: string, left: number): string {
   return `removed ${rule} from ${projectName}, ${left} ${left === 1 ? "rule" : "rules"} left`;
 }
