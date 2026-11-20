@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
 import { emptySession } from "../../src/features/sessions/domain/session-state.ts";
 import { memoryPlatform } from "../fixtures.ts";
+import { settlePlain } from "../wait.ts";
 
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { routeFrame } = await import("../../src/features/hosts/frame-router.ts");
@@ -149,7 +150,7 @@ describe("approval-wiring: a device enrolled or revoked on a host reaches the pe
   test("a device nobody here made raises an alert that names the device and the host", async () => {
     const { app } = store("yes");
     handlersOf(app).routes.onApproval?.({ id: "h1" }, FOREIGN);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settlePlain(() => app.getState().notices.some((n) => n.text.includes("Unknown tablet")));
     const notice = app.getState().notices.find((n) => n.text.includes("Unknown tablet"));
     expect(notice?.kind).toBe("error");
     expect(notice?.text).toContain("alfa");
