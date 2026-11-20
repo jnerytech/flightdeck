@@ -412,6 +412,8 @@ describe("the arguments of session create, fork, set-mode and the persona verbs 
   test("a missing folder, session, mode or persona is refused before anything is sent", () => {
     expect(refused(["session", "create"])).toContain("missing --cwd");
     expect(refused(["session", "fork", "c-1"])).toContain("missing --cwd");
+    expect(refused(["session", "create", "--cwd", ""])).toContain("missing --cwd");
+    expect(refused(["session", "fork", "c-1", "--cwd", ""])).toContain("missing --cwd");
     expect(refused(["session", "fork", "--cwd", "/w"])).toContain("missing the Claude session id");
     expect(refused(["session", "set-mode", "fd-qa"])).toContain("missing the mode");
     expect(refused(["session", "apply-persona", "fd-qa"])).toContain("missing the persona");
