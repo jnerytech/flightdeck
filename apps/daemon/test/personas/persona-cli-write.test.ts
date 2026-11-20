@@ -28,7 +28,8 @@ const saved = (over: Record<string, unknown> = {}) => ({
 
 const HANDLERS: Handlers = {
   "personas.save": () => saved(),
-  "personas.remove": () => undefined,
+  // The daemon acks a removal with no data; an undefined handler result is silence in the fake.
+  "personas.remove": () => ({}),
   "personas.reset": () => saved({ scope: "pack" }),
   "personas.publishAgent": () => ({ path: "/w/api/.claude/agents/persona-architect.md" }),
 };

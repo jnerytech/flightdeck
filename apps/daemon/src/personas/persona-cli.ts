@@ -1,18 +1,57 @@
 /**
  * Issue #3456: `flightdeckd persona list|show|subagents`, the personas from a terminal or a script.
  * It speaks to the local daemon like `flightdeckd card` does (the same `DaemonClient`, the token of
- * the config). These verbs only read. Exit codes: 0 done, 1 refused, 2 no daemon.
+ * the config). Exit codes: 0 done, 1 refused, 2 no daemon.
  */
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { type CliResult, json, runOnLocalDaemon, said } from "../daemon-client/index.ts";
+import {
+  type CliResult,
+  type DaemonClient,
+  failure,
+  json,
+  runOnLocalDaemon,
+  said,
+} from "../daemon-client/index.ts";
 import {
   listLines,
   type PersonaCliArgs,
+  personaOf,
+  publishRefusal,
   showLines,
   subagentsLines,
+  UNSURE,
 } from "./domain/persona-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+type Note = { wrote: boolean };
+
+/** The body of a saved persona: the flag's text, or the whole file; null when the file cannot be read. */
+function bodyOf(args: PersonaCliArgs): string | null {
+  if (args.body !== undefined || args.bodyFile === undefined) return args.body ?? "";
+  try {
+    return readFileSync(args.bodyFile, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+async function save(
+  args: PersonaCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+  where: { projectPath?: string },
+  body: string,
+): Promise<CliResult> {
+  note.wrote = true;
+  const saved = await daemon.call("personas.save", {
+    scope: args.scope === "project" ? "project" : "host",
+    ...where,
+    persona: personaOf(args, body),
+  });
+  return args.json ? json(saved) : said(`saved ${saved.id} (${args.scope})`);
+}
 
 export function runPersonaCli(
   args: PersonaCliArgs,
@@ -23,11 +62,16 @@ export function runPersonaCli(
   const projectPath = args.projectPath === undefined ? undefined : resolve(args.projectPath);
   const where = projectPath === undefined ? {} : { projectPath };
   const language = args.language === undefined ? {} : { language: args.language };
+  // Nothing is sent for a body that cannot be read, so the daemon is not even asked.
+  const body = args.action === "save" ? bodyOf(args) : "";
+  if (body === null)
+    return Promise.resolve(failure(1, `cannot read the body file ${args.bodyFile ?? ""}`));
   return runOnLocalDaemon({
     config,
     clientName: "flightdeck-persona",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    perform: async (daemon) => {
+    unsure: UNSURE,
+    perform: async (daemon, note) => {
       switch (args.action) {
         case "list": {
           const answer = await daemon.call("personas.list", {
@@ -49,10 +93,31 @@ export function runPersonaCli(
           return args.json ? json(answer) : said(...subagentsLines(answer));
         }
         case "save":
-        case "remove":
-        case "reset":
-        case "publish-agent":
-          return said();
+          return save(args, daemon, note, where, body);
+        case "remove": {
+          note.wrote = true;
+          const scope = args.scope === "project" ? "project" : "host";
+          await daemon.call("personas.remove", { scope, id: args.id ?? "", ...where });
+          return args.json
+            ? json({ id: args.id, scope, removed: true })
+            : said(`removed ${args.id} (${scope})`);
+        }
+        case "reset": {
+          note.wrote = true;
+          const reset = await daemon.call("personas.reset", { id: args.id ?? "", ...language });
+          return args.json ? json(reset) : said(`reset ${reset.id} to the pack's version`);
+        }
+        case "publish-agent": {
+          if (!args.confirm) return failure(1, publishRefusal(args));
+          note.wrote = true;
+          const published = await daemon.call("personas.publishAgent", {
+            id: args.id ?? "",
+            projectPath: projectPath ?? "",
+            ...language,
+            confirm: true,
+          });
+          return args.json ? json(published) : said(`wrote ${published.path}`);
+        }
       }
     },
   });

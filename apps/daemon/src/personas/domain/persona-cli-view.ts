@@ -4,6 +4,7 @@
  */
 import type {
   Persona,
+  PersonaInput,
   PersonaProjectInfo,
   PersonaSubagents,
   ResolvedPersonaResult,
@@ -19,9 +20,9 @@ export interface PersonaCliArgs {
   body?: string;
   bodyFile?: string;
   model?: string;
-  effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  effort?: PersonaInput["effort"];
   tools?: string[];
-  permissionMode?: string;
+  permissionMode?: PersonaInput["permissionMode"];
   icon?: string;
   /** `publish-agent --confirm`. */
   confirm?: boolean;
@@ -76,4 +77,28 @@ export function subagentsLines({ agents, untrusted }: PersonaSubagents): string[
   const rows = Object.entries(agents).map(([name, agent]) => `${name}  ${agent.description}`);
   const tail = untrusted.length === 0 ? [] : [`not trusted, left out: ${untrusted.join(", ")}`];
   return rows.length + tail.length === 0 ? ["no subagents"] : [...rows, ...tail];
+}
+
+/** The persona `persona save` sends: the flags that were given, with the body already read. */
+export function personaOf(args: PersonaCliArgs, body: string): PersonaInput {
+  return {
+    id: args.id ?? "",
+    name: args.name ?? "",
+    description: args.description ?? "",
+    body,
+    ...(args.icon === undefined ? {} : { icon: args.icon }),
+    ...(args.model === undefined ? {} : { model: args.model }),
+    ...(args.effort === undefined ? {} : { effort: args.effort }),
+    ...(args.tools === undefined ? {} : { tools: args.tools }),
+    ...(args.permissionMode === undefined ? {} : { permissionMode: args.permissionMode }),
+  };
+}
+
+/** What a change that got no answer may have done: the next step is to look, not to repeat it. */
+export const UNSURE =
+  "; the change may or may not have gone in: check with `persona list` before trying again";
+
+/** `publish-agent` writes a file into the project: the daemon asks for the person's yes, and so does this. */
+export function publishRefusal(args: PersonaCliArgs): string {
+  return `persona publish-agent writes .claude/agents/persona-${args.id ?? ""}.md into the project and cannot be undone: pass --confirm to do it`;
 }
