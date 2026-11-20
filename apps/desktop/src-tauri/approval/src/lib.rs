@@ -27,6 +27,8 @@ pub enum Kind {
 pub enum CommandAsk {
     /// `card.pr.merge`: this pull request, at this head commit, by this method.
     PrMerge { url: String, head: String, method: String },
+    /// `project.trust.set` with `trusted: true`: this folder's own hooks and servers run with no prompt.
+    TrustProject { path: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -371,6 +373,7 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
                 short(head)
             ),
+            Some(CommandAsk::TrustProject { .. }) => String::new(),
             None => String::new(),
         },
     };
@@ -380,8 +383,8 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
 
 /// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
 /// does not add a device.
-pub fn confirm_labels(kind: Kind, lang: &str) -> (String, String) {
-    let (yes, no) = match (kind, lang == "pt-BR") {
+pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
+    let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
         (Kind::Command, false) => ("Merge", "Cancel"),
@@ -649,10 +652,10 @@ mod tests {
         assert_eq!(ask.host, DAEMON);
         assert!(confirm_text(&ask, "en").1.contains("host daemon-0"), "{}", confirm_text(&ask, "en").1);
         assert!(confirm_text(&ask, "pt-BR").1.contains("host daemon-0"));
-        assert_eq!(confirm_labels(Kind::EnrollAdd, "en"), ("Add device".to_string(), "Cancel".to_string()));
-        assert_eq!(confirm_labels(Kind::EnrollAdd, "pt-BR").0, "Adicionar dispositivo");
-        assert_eq!(confirm_labels(Kind::Approve, "en").0, "Allow");
-        assert_eq!(confirm_labels(Kind::Revoke, "pt-BR").0, "Permitir");
+        assert_eq!(confirm_labels(&ask, "en"), ("Add device".to_string(), "Cancel".to_string()));
+        assert_eq!(confirm_labels(&ask, "pt-BR").0, "Adicionar dispositivo");
+        assert_eq!(confirm_labels(&of_kind(Kind::Approve), "en").0, "Allow");
+        assert_eq!(confirm_labels(&of_kind(Kind::Revoke), "pt-BR").0, "Permitir");
     }
 
     #[test]
@@ -716,12 +719,17 @@ mod tests {
         assert!(en.contains("secret") && en.contains("act-7") && en.contains("once"), "{en}");
         let (_, pt) = confirm_text(&session, "pt-BR");
         assert!(pt.contains("segredo") && pt.contains("act-7") && pt.contains("sessão"), "{pt}");
-        assert_eq!(confirm_labels(Kind::VaultApprove, "en").0, "Allow");
+        assert_eq!(confirm_labels(&of_kind(Kind::VaultApprove), "en").0, "Allow");
     }
 
     /// The payload a merge signs, in canonical form, and the hash both sides share (the protocol test asserts the same two literals).
     const MERGE_PAYLOAD: &str = "{\"cardId\":\"c1\",\"confirm\":true,\"headSha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"method\":\"squash\",\"prUrl\":\"https://github.com/acme/repo/pull/9\"}";
     const MERGE_HASH: &str = "ab4ff38dd49488370b26c6082bcce7b9c06e7126faaf113cc562ef156d7c1e8e";
+
+    /// An ask of `kind` that carries nothing: enough to read the labels of its dialog.
+    fn of_kind(kind: Kind) -> Ask {
+        Ask { kind, host: DAEMON.into(), subject: "s".into(), also: Also::default(), command: None }
+    }
 
     /// A command text (#3453): tag, key id, host, command, nonce, hash of the payload.
     fn command(me: &PublicInfo, host: &str, name: &str, payload: &str) -> String {
@@ -827,7 +835,72 @@ mod tests {
         assert!(!en.contains(&"a".repeat(40)), "the head is shown short: {en}");
         let (_, pt) = confirm_text(&merge_ask(), "pt-BR");
         assert!(pt.contains("pull/9") && pt.contains("squash") && pt.contains("Flightdeck"), "{pt}");
-        assert_eq!(confirm_labels(Kind::Command, "en").0, "Merge");
-        assert_eq!(confirm_labels(Kind::Command, "pt-BR").0, "Mesclar");
+        assert_eq!(confirm_labels(&merge_ask(), "en").0, "Merge");
+        assert_eq!(confirm_labels(&merge_ask(), "pt-BR").0, "Mesclar");
+    }
+
+    /// The payload that trusts a folder, in canonical form with a path of the characters a real one holds
+    /// (a backslash, accents), and the hash both sides share (the protocol test asserts the same two literals).
+    const TRUST_PAYLOAD: &str = "{\"path\":\"C:\\\\Users\\\\José\\\\código\",\"trusted\":true}";
+    const TRUST_HASH: &str = "3e9907a6f46d40d59cbc41b9cd51ddc6b2c11c1ca2195fedc491e9f0643ec51f";
+
+    fn trust_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "project.trust.set".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::TrustProject { path: "C:\\Users\\José\\código".into() }),
+        }
+    }
+
+    #[test]
+    fn the_trust_vector_hashes_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(TRUST_PAYLOAD), TRUST_HASH);
+    }
+
+    #[test]
+    fn trusting_a_folder_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "project.trust.set", TRUST_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(TRUST_PAYLOAD)), Ok(trust_ask()));
+        let shuffled = "{\"trusted\":true,\"path\":\"C:\\\\Users\\\\José\\\\código\"}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(trust_ask()));
+    }
+
+    #[test]
+    fn a_trust_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "project.trust.set", payload), DAEMON, &me, Some(payload))
+        };
+        let long = format!("{{\"path\":\"/{}\",\"trusted\":true}}", "a".repeat(900));
+        for bad in [
+            // Revoking is open and is never signed; a field the dialog does not say; no path; an empty path.
+            "{\"path\":\"/work/app\",\"trusted\":false}".to_string(),
+            "{\"path\":\"/work/app\",\"trusted\":true,\"confirm\":true}".to_string(),
+            "{\"trusted\":true}".to_string(),
+            "{\"path\":\"\",\"trusted\":true}".to_string(),
+            "{\"path\":7,\"trusted\":true}".to_string(),
+            // A line break or a text-direction mark could pad or reorder what the dialog says.
+            "{\"path\":\"/work/app\\nAllow everything\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u202eppa\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u2028app\",\"trusted\":true}".to_string(),
+            "{\"path\":\"/work/\\u200bapp\",\"trusted\":true}".to_string(),
+            long,
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed("{\"path\":\"/work/app\",\"trusted\":true}").is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_trust_names_the_folder_and_what_trusting_lets_run_and_has_a_button_of_its_own() {
+        let (_, en) = confirm_text(&trust_ask(), "en");
+        assert!(en.contains("C:\\Users\\José\\código") && en.contains("hooks"), "{en}");
+        let (_, pt) = confirm_text(&trust_ask(), "pt-BR");
+        assert!(pt.contains("José") && pt.contains("hooks") && pt.contains("Flightdeck"), "{pt}");
+        assert_eq!(confirm_labels(&trust_ask(), "en").0, "Trust");
+        assert_eq!(confirm_labels(&trust_ask(), "pt-BR").0, "Confiar");
     }
 }
