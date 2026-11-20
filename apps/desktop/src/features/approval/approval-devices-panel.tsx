@@ -4,7 +4,14 @@ import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
-import type { AddOffer, AddRequest, ApprovalStatus } from "./store.ts";
+import {
+  type AddOffer,
+  type AddRequest,
+  type ApprovalHeard,
+  type ApprovalStatus,
+  heardText,
+  heardTone,
+} from "./store.ts";
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
 
@@ -14,6 +21,9 @@ type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: 
  * revoking one and dropping this device's own key. Shown only for a host that checks proofs, on an
  * app that can hold a key. The system's dialog, not this panel, is where a person says yes.
  */
+/** The most announced changes the panel keeps on screen. */
+const MAX_HEARD = 5;
+
 export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
@@ -21,6 +31,10 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [done, setDone] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // A change the host announced that this device did not make (#3477), until the person dismisses it.
+  // All of them are kept: a later change must not hide an alert about an earlier one.
+  const [heard, setHeard] = useState<ApprovalHeard[]>([]);
+  const heardBox = useRef<HTMLDivElement>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   // Adding a second device (#3478): the new device's text, and what an enrolled one read from it.
@@ -48,8 +62,17 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     setRequest(null);
     setOffer(null);
     setAddText("");
+    setHeard([]);
     void reload();
   }, [reload]);
+  useEffect(
+    () =>
+      store.approval.subscribe(host.id, (change) => {
+        setHeard((before) => [...before, change].slice(-MAX_HEARD));
+        void reload();
+      }),
+    [store, host.id, reload],
+  );
   // The host lists this device now: the text did its work.
   useEffect(() => {
     if (!request || view.kind !== "ready") return;
@@ -83,9 +106,36 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     </>
   );
   const hint = <p className="text-muted-foreground text-xs">{t("approvalDevices.hint")}</p>;
+  // First in the panel, and always mounted: it takes the focus back when the person dismisses.
+  const heardNotices = (
+    <div ref={heardBox} tabIndex={-1}>
+      {heard.length > 0 && (
+        <Stack gap={1}>
+          {heard.map((one, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: a list that only grows, cleared as a whole
+            <InlineNotice key={index} tone={heardTone(one)}>
+              {heardText(t, one, host.name)}
+            </InlineNotice>
+          ))}
+          <Inline>
+            <ActionButton
+              variant="outline"
+              onClick={() => {
+                setHeard([]);
+                heardBox.current?.focus();
+              }}
+            >
+              {t("approvalDevices.dismiss")}
+            </ActionButton>
+          </Inline>
+        </Stack>
+      )}
+    </div>
+  );
   if (view.kind !== "ready") {
     return (
       <Panel title={t("approvalDevices.title")} slot="host-section-approval">
+        {heardNotices}
         {hint}
         <p className="text-sm" role="status">
           {t(view.kind === "failed" ? "approvalDevices.loadFailed" : "approvalDevices.loading")}
@@ -107,6 +157,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const enrolledHere = hasKey && status.keys.some((key) => key.keyId === status.thisKeyId);
   return (
     <Panel title={t("approvalDevices.title")} slot="host-section-approval">
+      {heardNotices}
       {hint}
       <p className="text-sm">
         {t(status.protectionOff ? "approvalDevices.off" : "approvalDevices.on")}

@@ -63,6 +63,13 @@ function panel(
   slice.enroll = record("enroll");
   slice.revoke = record("revoke");
   slice.removeLocalKey = record("removeLocal");
+  let listener: ((heard: unknown) => void) | undefined;
+  slice.subscribe = (_host: string, next: (heard: unknown) => void) => {
+    listener = next;
+    return () => {
+      listener = undefined;
+    };
+  };
   const ui = (id: string) => (
     <TContext.Provider value={store.i18n.t}>
       <ApprovalDevicesPanel
@@ -72,7 +79,16 @@ function panel(
     </TContext.Provider>
   );
   const shown = render(ui("h1"));
-  return { calls, show: (id: string) => shown.rerender(ui(id)) };
+  return {
+    calls,
+    show: (id: string) => shown.rerender(ui(id)),
+    /** The host announces a change; the slice hands it to the page that listens. */
+    hear: async (heard: unknown) => {
+      await act(async () => listener?.(heard));
+    },
+    listening: () => listener !== undefined,
+    reads: () => read,
+  };
 }
 
 const press = async (name: string) => {
@@ -242,5 +258,110 @@ describe("approval devices panel: when the host cannot be read, and in Portugues
     panel([HERE], "pt-BR");
     await settleMaybe(() => screen.queryByText("Dispositivos que aprovam") !== null);
     expect(screen.queryByText("Dispositivos que aprovam")).not.toBeNull();
+  });
+});
+
+describe("approval devices panel: a change the host announced (#3477)", () => {
+  const FOREIGN = { kind: "enrolled", name: "Unknown tablet", own: false };
+
+  test("a device nobody here made is an alert that names it, and the list is read again", async () => {
+    const { hear, listening, reads } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    expect(listening()).toBe(true);
+    const before = reads();
+    await hear(FOREIGN);
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain("Unknown tablet");
+    expect(reads()).toBeGreaterThan(before);
+  });
+
+  test("a later change does not hide the alert about an earlier device", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear(FOREIGN);
+    await hear({ kind: "revoked", own: false });
+    await settleMaybe(() => screen.queryByText("A device was revoked on pi.") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain("Unknown tablet");
+  });
+
+  test("a name the host sent is quoted, cut at 64 characters and stripped of control characters", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear({ kind: "enrolled", name: `\u202Ea${"b".repeat(100)}`, own: false });
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    const text = screen.queryByRole("alert")?.textContent ?? "";
+    expect(text.includes(`“a${"b".repeat(63)}”`)).toBe(true);
+    expect(text.includes("\u202E")).toBe(false);
+  });
+
+  test("the notice is dismissed with its own button, which a keyboard reaches", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear(FOREIGN);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Dismiss" }) !== null);
+    const button = screen.queryByRole("button", { name: "Dismiss" }) as HTMLButtonElement;
+    expect(button.tabIndex).toBe(0);
+    await press("Dismiss");
+    expect(screen.queryByRole("alert") === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Dismiss" }) === null).toBe(true);
+  });
+
+  test("this device's own key revoked elsewhere is an alert too: it can no longer approve", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear({ kind: "revoked", own: true });
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain(
+      "This device's key was revoked on pi",
+    );
+  });
+
+  test("the notice comes before the list and the form, where the person is already looking", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear(FOREIGN);
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    const alert = screen.queryByRole("alert") as HTMLElement;
+    const list = screen.queryByRole("list", { name: "Enrolled devices" }) as HTMLElement;
+    expect(Boolean(alert.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
+      true,
+    );
+  });
+
+  test("dismissing leaves the keyboard's focus in the panel, not on the page body", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear(FOREIGN);
+    await settleMaybe(() => screen.queryByRole("button", { name: "Dismiss" }) !== null);
+    const button = screen.queryByRole("button", { name: "Dismiss" }) as HTMLButtonElement;
+    button.focus();
+    await press("Dismiss");
+    expect(document.activeElement === document.body).toBe(false);
+  });
+
+  test("another device revoked is told in one quiet line", async () => {
+    const { hear } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    await hear({ kind: "revoked", own: false });
+    await settleMaybe(() => screen.queryByText("A device was revoked on pi.") !== null);
+    expect(screen.queryByRole("alert") === null).toBe(true);
+  });
+
+  test("in Portuguese the notice and its button are Portuguese", async () => {
+    const { hear } = panel([HERE], "pt-BR");
+    await settleMaybe(() => screen.queryByText(/Outro dispositivo/) !== null);
+    await hear(FOREIGN);
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")?.textContent).toContain("Unknown tablet");
+    expect(screen.queryByRole("alert")?.textContent).toContain("foi cadastrado");
+    expect(screen.queryByRole("button", { name: "Dispensar" })).not.toBeNull();
+  });
+
+  test("leaving the page stops listening", async () => {
+    const { listening } = panel([HERE]);
+    await settleMaybe(() => screen.queryByText("Laptop · Another device") !== null);
+    expect(listening()).toBe(true);
+    cleanup();
+    expect(listening()).toBe(false);
   });
 });

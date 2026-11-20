@@ -1,7 +1,9 @@
 import {
+  type ApprovalEnrolled,
   type ApprovalKeyInfo,
   type ApprovalProof,
   type ApprovalResults,
+  type ApprovalRevoked,
   approvalDigests,
   approvalMessage,
   type CommandPayload,
@@ -45,6 +47,35 @@ export interface AddOffer {
   host: string;
 }
 
+/** A change a host announced about its devices that this app did not make (#3477). */
+export interface ApprovalHeard {
+  kind: "enrolled" | "revoked";
+  /** The name the new device gave; set for "enrolled". */
+  name?: string;
+  /** The key is this device's own. */
+  own: boolean;
+}
+
+/** A name the host sent, as plain text: control and bidirectional characters out, at most 64 long. */
+function deviceName(name: string | undefined): string {
+  return (name ?? "").replace(/[\p{Cc}\p{Cf}]/gu, "").slice(0, 64);
+}
+
+/** The one line a change is told in, on the host's page and in a notice. */
+export function heardText(t: T, heard: ApprovalHeard, host: string): string {
+  if (heard.kind === "enrolled") {
+    return t("approvalDevices.heardEnrolled", { name: deviceName(heard.name), host });
+  }
+  return t(heard.own ? "approvalDevices.heardRevokedOwn" : "approvalDevices.heardRevoked", {
+    host,
+  });
+}
+
+/** How loud a change is told: a device nobody here made, or this device's own key gone, is an alert. */
+export function heardTone(heard: ApprovalHeard): "error" | "info" {
+  return heard.kind === "enrolled" || heard.own ? "error" : "info";
+}
+
 /** What the proof path found: nothing to prove, a proof to send, or the person declined the system's dialog. */
 export type ProofResult =
   | { kind: "none" }
@@ -65,7 +96,12 @@ export interface ApprovalCore {
   /** The device's key store; none outside the desktop shell. */
   keys(): Platform["approvalKeys"];
   /** What the host announced at connect. */
-  host(hostId: string): { features?: readonly string[]; daemonId?: string } | undefined;
+  host(
+    hostId: string,
+  ): { features?: readonly string[]; daemonId?: string; name?: string } | undefined;
+  /** A short notice, already translated: `fail` is the loud one (an alert), `success` a quiet one. */
+  success(text: string): void;
+  fail(text: string): void;
   request: AppKernel<object>["hostRequest"];
   /** The app's language ("pt-BR" or "en"), for the system's dialog. */
   lang(): string;
@@ -95,7 +131,61 @@ function isDecline(error: unknown): boolean {
  * the shell: it signs after a system dialog the person answers.
  */
 export class ApprovalSlice {
+  private readonly listeners = new Map<string, Set<(heard: ApprovalHeard) => void>>();
+  /** Keys (as `host/keyId`) this app is revoking right now: the host's announcement of them is its own doing. */
+  private readonly revoking = new Set<string>();
+
   constructor(private readonly core: ApprovalCore) {}
+
+  /** Calls `listener` with each change a host announces (the host's page shows it); returns the way to stop. */
+  subscribe(hostId: string, listener: (heard: ApprovalHeard) => void): () => void {
+    const watchers = this.listeners.get(hostId) ?? new Set();
+    this.listeners.set(hostId, watchers);
+    watchers.add(listener);
+    return () => {
+      watchers.delete(listener);
+      if (watchers.size === 0) this.listeners.delete(hostId);
+    };
+  }
+
+  /**
+   * A host announced a device enrolled or revoked (#3477). This device's own enrollment, and a revoke
+   * this app is making, are the person's own doing and stay quiet. The rest goes to the page that
+   * watches the host, or, with none open, to a notice: an alert for a device nobody here made or for
+   * this device's own key revoked, a quiet one for another device's.
+   */
+  async onChange(hostId: string, change: ApprovalEnrolled | ApprovalRevoked): Promise<void> {
+    // Before the first await: the revoke's answer may follow the announcement closely.
+    if (change.type === "approval.revoked" && this.revoking.has(`${hostId}/${change.keyId}`))
+      return;
+    const host = this.core.host(hostId);
+    const own = (await this.localKeyId(host?.daemonId)) === change.keyId;
+    let heard: ApprovalHeard;
+    if (change.type === "approval.enrolled") {
+      if (own) return;
+      heard = { kind: "enrolled", name: change.name, own: false };
+    } else {
+      heard = { kind: "revoked", own };
+    }
+    const watchers = this.listeners.get(hostId);
+    if (watchers?.size) {
+      for (const listener of [...watchers]) listener(heard);
+      return;
+    }
+    const text = heardText(this.core.t(), heard, host?.name ?? hostId);
+    if (heard.kind === "revoked" && !heard.own) this.core.success(text);
+    else this.core.fail(text);
+  }
+
+  private async localKeyId(daemonId: string | undefined): Promise<string | null> {
+    const keys = this.core.keys();
+    if (!keys || !daemonId) return null;
+    try {
+      return (await keys.get(daemonId))?.keyId ?? null;
+    } catch {
+      return null;
+    }
+  }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
   supported(hostId: string): boolean {
@@ -251,12 +341,19 @@ export class ApprovalSlice {
       if (isDecline(error)) return "declined";
       throw error;
     }
-    await this.ask(hostId, "approval.revoke", {
-      targetKeyId,
-      signerKeyId: local.keyId,
-      nonce: challenge.nonce,
-      signature,
-    });
+    // The host announces the revoke before it answers: it is this app's own, so it is not news.
+    const revoke = `${hostId}/${targetKeyId}`;
+    this.revoking.add(revoke);
+    try {
+      await this.ask(hostId, "approval.revoke", {
+        targetKeyId,
+        signerKeyId: local.keyId,
+        nonce: challenge.nonce,
+        signature,
+      });
+    } finally {
+      this.revoking.delete(revoke);
+    }
     return "done";
   }
 

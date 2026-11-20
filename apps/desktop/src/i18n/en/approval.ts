@@ -58,5 +58,11 @@ export const approval = {
       "That text was made for another host. Make it again on the device, with this host open.",
     addBadName: "A name has 1 to 64 characters, with no hidden characters, and is not a code.",
     addAlready: "That device is already enrolled on this host.",
+    heardEnrolled:
+      "A device named “{name}” was enrolled on {host}. If it was not you, revoke it on the host's page.",
+    heardRevoked: "A device was revoked on {host}.",
+    heardRevokedOwn:
+      "This device's key was revoked on {host}. It can no longer approve there; enroll it again to approve from here.",
+    dismiss: "Dismiss",
   },
 };

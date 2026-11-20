@@ -59,5 +59,11 @@ export const approval = {
       "Esse texto foi feito para outro host. Gere de novo no dispositivo, com este host aberto.",
     addBadName: "O nome tem de 1 a 64 caracteres, sem caracteres ocultos, e não é um código.",
     addAlready: "Esse dispositivo já está cadastrado neste host.",
+    heardEnrolled:
+      "Um dispositivo chamado “{name}” foi cadastrado em {host}. Se não foi você, revogue-o na página do host.",
+    heardRevoked: "Um dispositivo foi revogado em {host}.",
+    heardRevokedOwn:
+      "A chave deste dispositivo foi revogada em {host}. Ele não pode mais aprovar lá; cadastre-o de novo para aprovar daqui.",
+    dismiss: "Dispensar",
   },
 };

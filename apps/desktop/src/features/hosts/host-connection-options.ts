@@ -1,5 +1,7 @@
 import type {
   AccountState,
+  ApprovalEnrolled,
+  ApprovalRevoked,
   AskpassRequest,
   BudgetUpdated,
   Card,
@@ -80,6 +82,8 @@ export interface HostConnectionOptions {
   onQuotaUpdated?(state: QuotaState): void;
   /** The host's Claude account changed (after `watchAccount`, phase 34). */
   onAccountUpdated?(state: AccountState): void;
+  /** A device was enrolled or revoked on the host (after `approval.watch`, #3477). */
+  onApproval?(change: ApprovalEnrolled | ApprovalRevoked): void;
   /** A budget changed, crossed a threshold or entered a new period (after `watchBudgets`). */
   onBudgetUpdated?(update: BudgetUpdated): void;
   /** The diff of a watched target changed on disk (after `watchChanges`, phase 11). */
