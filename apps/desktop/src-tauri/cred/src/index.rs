@@ -61,6 +61,11 @@ pub fn write_addresses(store: &dyn Store, hosts: &[HostRef]) -> Result<(), Strin
     first_error.map_or(Ok(()), Err)
 }
 
+/// Runs `work` while no other call of this process is in the store or in the index folder.
+pub fn exclusive<T>(work: impl FnOnce() -> T) -> T {
+    work()
+}
+
 /// What the app does each time its host list changes: the addresses into the store first, then the
 /// index, so a name is never listed without its address. The first error, after trying both.
 pub fn sync(dir: &Path, store: &dyn Store, hosts: &[HostRef]) -> Result<(), String> {

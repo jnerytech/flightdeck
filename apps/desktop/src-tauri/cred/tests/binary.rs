@@ -20,3 +20,15 @@ fn a_command_line_it_does_not_know_exits_1_and_says_nothing() {
         assert_eq!((seen, &args), ((Some(1), vec![], vec![]), &args));
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn an_argument_that_is_not_utf8_is_a_refusal_like_any_other() {
+    use std::os::unix::ffi::OsStrExt;
+    let out = Command::new(env!("CARGO_BIN_EXE_flightdeck-cred"))
+        .arg(std::ffi::OsStr::from_bytes(&[0xff, 0xfe]))
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!((out.status.code(), out.stdout, out.stderr), (Some(1), vec![], vec![]));
+}
