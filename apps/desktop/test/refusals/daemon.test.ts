@@ -205,6 +205,7 @@ const REASONS = [
   "transport_refused",
   "trust_root_refused",
   "trust_path_differs",
+  "harness_path_differs",
   "harness_stale",
   "harness_confirm",
   "harness_reformat",

@@ -43,7 +43,7 @@ function panel(
     declined?: boolean;
     gate?: Promise<void>;
     older?: boolean;
-    unchecked?: Array<"merge" | "trust" | "bypass" | "resume" | "roots">;
+    unchecked?: Array<"merge" | "trust" | "bypass" | "resume" | "roots" | "harness">;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
@@ -226,6 +226,30 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([OFF], "en", [], { unchecked: ["roots"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
     expect(screen.queryByText(/add an allowed folder/) === null).toBe(true);
+  });
+
+  test("a host that does not ask for a device to write a project's setup says so, in both languages, and not when it has no device enrolled (#3507)", async () => {
+    panel([HERE], "en", [], { unchecked: ["harness"] });
+    await settleMaybe(() => screen.queryByText(/Claude Code setup/) !== null);
+    expect(
+      screen.queryByText(
+        /does not ask for a device to confirm writing a project's Claude Code setup/,
+      ) !== null,
+    ).toBe(true);
+    cleanup();
+    panel([HERE], "pt-BR", [], { unchecked: ["harness"] });
+    await settleMaybe(
+      () => screen.queryByText(/configuração do Claude Code de um projeto/) !== null,
+    );
+    expect(
+      screen.queryByText(
+        /não pede a confirmação de um dispositivo para gravar a configuração do Claude Code de um projeto/,
+      ) !== null,
+    ).toBe(true);
+    cleanup();
+    panel([OFF], "en", [], { unchecked: ["harness"] });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    expect(screen.queryByText(/Claude Code setup/) === null).toBe(true);
   });
 
   test("a host that does not ask for a device to trust a folder says so, in both languages, and only for that", async () => {

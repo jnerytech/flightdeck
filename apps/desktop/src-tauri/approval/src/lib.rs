@@ -35,6 +35,8 @@ pub enum CommandAsk {
     ResumeApproval { session: String },
     /// `roots.add`: sessions of this host may start in this folder and everything inside it (#3507).
     RootsAdd { path: String },
+    /// `project.harness.apply`: write these parts of the Claude Code setup into this folder, from a template or not (#3507).
+    HarnessApply { path: String, parts: Vec<String>, template: Option<String>, reformat: bool },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -80,6 +82,12 @@ const TAG_COMMAND: &str = "flightdeck/command/v1";
 const MAX_TEXT: usize = 2048;
 /// The payload a command signs is a few short fields; anything past this is not one of them.
 const MAX_PAYLOAD: usize = 1024;
+/// A setup's payload also carries the digest of each file the host would write (up to 17 of them), so it may be longer.
+const MAX_HARNESS_PAYLOAD: usize = 8192;
+/// The parts of the Claude Code setup the host writes, as the protocol names them.
+const HARNESS_PARTS: [&str; 5] = ["claudeMd", "hooks", "permissions", "skills", "agents"];
+/// The most files one setup writes (the preview's digests).
+const MAX_HARNESS_DIGESTS: usize = 17;
 
 fn sha256_hex(text: &str) -> String {
     Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
@@ -233,7 +241,8 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
 /// Each command names its fields: one more, one less or one that is not plain is refused, so a field the
 /// dialog does not show can never be signed.
 fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), String> {
-    if payload.len() > MAX_PAYLOAD {
+    let longest = if name == "project.harness.apply" { MAX_HARNESS_PAYLOAD } else { MAX_PAYLOAD };
+    if payload.len() > longest {
         return Err("the payload to sign is too long".into());
     }
     let value: serde_json::Value =
@@ -346,8 +355,109 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::RootsAdd { path: path.into() }, canonical))
         }
+        // Every payload of the command is signed. The dialog says the folder, the parts, the template and whether
+        // hooks or a rewritten settings file are in; the digests are signed but not shown, and each one is a plain
+        // token the host makes, so nothing in them can pad the text. The hook commands are not in the payload: the
+        // host reads them again, so the person's check of them is the preview in the app.
+        "project.harness.apply" => read_harness_apply(fields),
         _ => Err("this command is not one this key signs".into()),
     }
+}
+
+fn read_harness_apply(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    const REFUSED: &str = "the setup payload has the wrong fields";
+    let allowed = ["confirm", "digests", "parts", "path", "reformat", "template"];
+    if fields.keys().any(|key| !allowed.contains(&key.as_str())) {
+        return Err(REFUSED.into());
+    }
+    if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+        return Err("a setup is signed only once it is confirmed".into());
+    }
+    let path = fields
+        .get("path")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("the setup payload has no text for path")?;
+    if !is_shown_path(path) {
+        return Err("the folder is not a path the dialog can show".into());
+    }
+    let listed = fields
+        .get("parts")
+        .and_then(serde_json::Value::as_array)
+        .ok_or("the setup payload has no list of parts")?;
+    let mut parts: Vec<String> = Vec::new();
+    for part in listed {
+        let name = part.as_str().filter(|name| HARNESS_PARTS.contains(name)).ok_or("the setup names a part the harness does not have")?;
+        if parts.iter().any(|seen| seen == name) {
+            return Err("the setup names a part twice".into());
+        }
+        parts.push(name.to_string());
+    }
+    if parts.is_empty() {
+        return Err("the setup names no part".into());
+    }
+    let reformat = match fields.get("reformat") {
+        None => false,
+        Some(serde_json::Value::Bool(value)) => *value,
+        Some(_) => return Err("the reformat of a setup is yes or no".into()),
+    };
+    let template = match fields.get("template") {
+        None => None,
+        Some(value) => {
+            let id = value.as_str().ok_or("the template of a setup is a name")?;
+            let mut chars = id.chars();
+            let plain = id.len() <= 40
+                && chars.next().is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+                && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+            if !plain {
+                return Err("the template is not a name the host takes".into());
+            }
+            Some(id.to_string())
+        }
+    };
+    let listed = fields
+        .get("digests")
+        .and_then(serde_json::Value::as_object)
+        .ok_or("the setup payload has no digests")?;
+    if listed.is_empty() || listed.len() > MAX_HARNESS_DIGESTS {
+        return Err("the setup has too many or no digests".into());
+    }
+    let mut digests: Vec<(&str, &str)> = Vec::new();
+    for (key, value) in listed {
+        let value = value.as_str().ok_or("a digest of a setup is text")?;
+        let key_ok = !key.is_empty()
+            && key.len() <= 256
+            && key.chars().all(|c| c.is_ascii_alphanumeric() || "._/-@+".contains(c));
+        let value_ok = !value.is_empty()
+            && value.len() <= 128
+            && value.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+        if !key_ok || !value_ok {
+            return Err("a digest of a setup is not a file name and a plain token".into());
+        }
+        digests.push((key, value));
+    }
+    // Byte order is the UTF-16 order the protocol sorts by, for ASCII.
+    digests.sort_by(|a, b| a.0.cmp(b.0));
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let digests_json = digests
+        .iter()
+        .map(|(key, value)| format!("{}:{}", quoted(key), quoted(value)))
+        .collect::<Vec<_>>()
+        .join(",");
+    let parts_json = parts.iter().map(|part| quoted(part)).collect::<Vec<_>>().join(",");
+    let mut canonical = format!(
+        "{{\"confirm\":true,\"digests\":{{{digests_json}}},\"parts\":[{parts_json}],\"path\":{}",
+        quoted(path)
+    );
+    if fields.contains_key("reformat") {
+        canonical.push_str(&format!(",\"reformat\":{reformat}"));
+    }
+    if let Some(id) = &template {
+        canonical.push_str(&format!(",\"template\":{}", quoted(id)));
+    }
+    canonical.push('}');
+    Ok((CommandAsk::HarnessApply { path: path.into(), parts, template, reformat }, canonical))
 }
 
 /// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
@@ -362,6 +472,8 @@ fn is_shown_path(path: &str) -> bool {
         && !path.starts_with(' ')
         && !path.ends_with(' ')
         && !path.contains("  ")
+        // A quote would close the one the dialog puts around the path, so the rest of the name would read as prose.
+        && !path.contains('"')
         && !path.chars().any(|c| {
             c.is_control()
                 || (c.is_whitespace() && c != ' ')
@@ -504,6 +616,44 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             Some(CommandAsk::ResumeApproval { session }) => format!(
                 "Turn automatic approval back on for a session? It will approve requests with no person seeing them, after it read third-party content. Continue only if you just pressed Resume in Flightdeck.\n\"{session}\""
             ),
+            Some(CommandAsk::HarnessApply { path, parts, template, reformat }) => {
+                let names = parts
+                    .iter()
+                    .map(|part| match (part.as_str(), pt) {
+                        ("claudeMd", _) => "CLAUDE.md",
+                        ("permissions", true) => "permissões",
+                        (other, _) => other,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let hooks = parts.iter().any(|part| part == "hooks");
+                let from = match (template, pt) {
+                    (Some(id), true) => format!(" do modelo \"{id}\""),
+                    (Some(id), false) => format!(" from template \"{id}\""),
+                    (None, _) => String::new(),
+                };
+                let runs = match (hooks, pt) {
+                    (true, true) => " Os hooks rodam como comandos em toda sessão do projeto.",
+                    (true, false) => " Hooks run as commands in every session of the project.",
+                    (false, _) => "",
+                };
+                let layout = match (*reformat, pt) {
+                    (true, true) => " O arquivo de configurações (settings) é reescrito com outro formato.",
+                    (true, false) => " The settings file is rewritten with another layout.",
+                    (false, _) => "",
+                };
+                if pt {
+                    format!(
+                        "Gravar a configuração do Claude Code de um projeto? O host {} grava: {names}{from}.{runs}{layout} Continue só se você acabou de apertar Aplicar a configuração no Flightdeck.\n\"{path}\"",
+                        short(&ask.host)
+                    )
+                } else {
+                    format!(
+                        "Write the Claude Code setup of a project? Host {} will write: {names}{from}.{runs}{layout} Continue only if you just pressed Apply the setup in Flightdeck.\n\"{path}\"",
+                        short(&ask.host)
+                    )
+                }
+            }
             None => String::new(),
         },
     };
@@ -520,6 +670,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::RootsAdd { .. })) => {
             if pt { ("Adicionar pasta", "Cancelar") } else { ("Add folder", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::HarnessApply { .. })) => {
+            if pt { ("Gravar configuração", "Cancelar") } else { ("Write setup", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
             if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
@@ -1275,5 +1428,143 @@ mod tests {
         assert!(pt.contains("tudo o que há dentro dela") && pt.contains("Flightdeck"), "{pt}");
         assert_eq!(confirm_labels(&roots_ask(), "en").0, "Add folder");
         assert_eq!(confirm_labels(&roots_ask(), "pt-BR").0, "Adicionar pasta");
+    }
+
+    /// The payload that writes a project's setup, in canonical form (keys sorted, digests sorted, no spaces), and the
+    /// hash both sides share (the protocol test asserts the same two literals).
+    const HARNESS_PAYLOAD: &str = "{\"confirm\":true,\"digests\":{\".claude/settings.json\":\"d-settings\",\"CLAUDE.md\":\"d-claude\"},\"parts\":[\"claudeMd\",\"hooks\"],\"path\":\"/work/api\",\"reformat\":true,\"template\":\"shop\"}";
+    const HARNESS_HASH: &str = "0292c9b1e82f6513b3e80cb1b62d9cc667079b39ea1ad2650303d318379718bf";
+
+    fn harness_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "project.harness.apply".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::HarnessApply {
+                path: "/work/api".into(),
+                parts: vec!["claudeMd".into(), "hooks".into()],
+                template: Some("shop".into()),
+                reformat: true,
+            }),
+        }
+    }
+
+    #[test]
+    fn the_harness_vector_hashes_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(HARNESS_PAYLOAD), HARNESS_HASH);
+    }
+
+    #[test]
+    fn writing_a_setup_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "project.harness.apply", HARNESS_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(HARNESS_PAYLOAD)), Ok(harness_ask()));
+        let shuffled = "{\"template\":\"shop\",\"reformat\":true,\"path\":\"/work/api\",\"parts\":[\"claudeMd\",\"hooks\"],\"digests\":{\"CLAUDE.md\":\"d-claude\",\".claude/settings.json\":\"d-settings\"},\"confirm\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(harness_ask()));
+    }
+
+    #[test]
+    fn a_setup_without_a_template_or_reformat_is_signed_as_it_is() {
+        let me = own();
+        let payload = "{\"confirm\":true,\"digests\":{\"CLAUDE.md\":\"d\"},\"parts\":[\"claudeMd\"],\"path\":\"/work/api\"}";
+        let text = command(&me, DAEMON, "project.harness.apply", payload);
+        let ask = describe_with(&text, DAEMON, &me, Some(payload)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::HarnessApply {
+                path: "/work/api".into(),
+                parts: vec!["claudeMd".into()],
+                template: None,
+                reformat: false,
+            })
+        );
+    }
+
+    #[test]
+    fn a_setup_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "project.harness.apply", payload), DAEMON, &me, Some(payload))
+        };
+        let ok = |extra: &str| format!("{{\"confirm\":true,\"digests\":{{\"a\":\"b\"}},\"parts\":[\"hooks\"],\"path\":\"/work/api\"{extra}}}");
+        let many = (0..18).map(|i| format!("\"f{i}\":\"d\"")).collect::<Vec<_>>().join(",");
+        for bad in [
+            // Not confirmed, no folder, no parts, no digests, a field the dialog does not say.
+            "{\"confirm\":false,\"digests\":{\"a\":\"b\"},\"parts\":[\"hooks\"],\"path\":\"/work/api\"}".to_string(),
+            "{\"digests\":{\"a\":\"b\"},\"parts\":[\"hooks\"],\"path\":\"/work/api\"}".to_string(),
+            "{\"confirm\":true,\"digests\":{\"a\":\"b\"},\"parts\":[\"hooks\"]}".to_string(),
+            "{\"confirm\":true,\"digests\":{\"a\":\"b\"},\"path\":\"/work/api\"}".to_string(),
+            "{\"confirm\":true,\"parts\":[\"hooks\"],\"path\":\"/work/api\"}".to_string(),
+            ok(",\"extra\":1"),
+            // A part the harness does not have, none at all, a repeated one, a part that is no text.
+            ok("").replace("\"hooks\"", "\"mcp\""),
+            ok("").replace("[\"hooks\"]", "[]"),
+            ok("").replace("[\"hooks\"]", "[\"hooks\",\"hooks\"]"),
+            ok("").replace("[\"hooks\"]", "[7]"),
+            // A reformat or a template that is not what the host takes.
+            ok(",\"reformat\":\"yes\""),
+            ok(",\"template\":\"Shop\""),
+            ok(",\"template\":\"shop\\nAllow\""),
+            ok(",\"template\":\"\""),
+            // A folder the dialog could not show whole.
+            ok("").replace("/work/api", "work/api"),
+            ok("").replace("/work/api", "/work/\\u202eipa"),
+            ok("").replace("/work/api", "/work/api\\nAllow everything"),
+            ok("").replace("/work/api", "/work/x\\\" harmless text"),
+            // Digests: too many, a key or a value the host never makes, an empty one.
+            format!("{{\"confirm\":true,\"digests\":{{{many}}},\"parts\":[\"hooks\"],\"path\":\"/work/api\"}}"),
+            ok("").replace("\"a\":\"b\"", "\"a\\\"b\":\"b\""),
+            ok("").replace("\"a\":\"b\"", "\"a\":\"b c\""),
+            ok("").replace("\"a\":\"b\"", "\"a\":7"),
+            ok("").replace("\"a\":\"b\"", "\"á\":\"b\""),
+            ok("").replace("{\"a\":\"b\"}", "[\"a\"]"),
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed(&ok("")).is_ok());
+        assert!(signed(&ok(",\"reformat\":false,\"template\":\"shop\"")).is_ok());
+        // The host names a file of a template with `@` and `+` too (plainName).
+        assert!(signed(&ok("").replace("\"a\":\"b\"", "\"skills/my+skill/a@b.md\":\"b\"")).is_ok());
+    }
+
+    #[test]
+    fn a_setup_with_all_the_digests_of_a_template_is_still_signed() {
+        let me = own();
+        let digests = (0..17)
+            .map(|i| format!("\".claude/skills/skill-{i:02}/SKILL.md\":\"{}\"", "a".repeat(64)))
+            .collect::<Vec<_>>()
+            .join(",");
+        let payload = format!(
+            "{{\"confirm\":true,\"digests\":{{{digests}}},\"parts\":[\"claudeMd\",\"hooks\",\"skills\",\"agents\",\"permissions\"],\"path\":\"/work/api\",\"template\":\"shop\"}}"
+        );
+        assert!(payload.len() > MAX_PAYLOAD, "the sample is longer than other commands may be");
+        let text = command(&me, DAEMON, "project.harness.apply", &payload);
+        assert!(describe_with(&text, DAEMON, &me, Some(&payload)).is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_setup_names_the_folder_the_parts_and_the_hooks_and_has_a_button_of_its_own() {
+        let (_, en) = confirm_text(&harness_ask(), "en");
+        assert!(en.starts_with("Write the Claude Code setup of a project?"), "{en}");
+        assert!(en.contains("CLAUDE.md, hooks") && en.contains("\"shop\""), "{en}");
+        assert!(en.contains("run as commands") && en.contains("settings file") && en.contains(&DAEMON[..8]), "{en}");
+        assert!(en.ends_with("\n\"/work/api\""), "{en}");
+        let (_, pt) = confirm_text(&harness_ask(), "pt-BR");
+        assert!(pt.starts_with("Gravar a configuração do Claude Code de um projeto?"), "{pt}");
+        assert!(pt.contains("CLAUDE.md, hooks") && pt.contains("rodam como comandos") && pt.ends_with("\n\"/work/api\""), "{pt}");
+        let plain = Ask {
+            command: Some(CommandAsk::HarnessApply {
+                path: "/work/api".into(),
+                parts: vec!["claudeMd".into()],
+                template: None,
+                reformat: false,
+            }),
+            ..harness_ask()
+        };
+        let (_, bare) = confirm_text(&plain, "en");
+        assert!(!bare.contains("run as commands") && !bare.contains("settings file") && !bare.contains("template"), "{bare}");
+        assert_eq!(confirm_labels(&harness_ask(), "en").0, "Write setup");
+        assert_eq!(confirm_labels(&harness_ask(), "pt-BR").0, "Gravar configuração");
     }
 }
