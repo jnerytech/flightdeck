@@ -81,6 +81,8 @@ export interface CliArgs {
     | "start-arena"
     | "choose-variant"
     | "check-loop"
+    | "add-member"
+    | "remove-member"
     | "dismiss-unblocked"
     | "search"
     | "tool";
@@ -104,6 +106,17 @@ export interface CliArgs {
   team?: string;
   /** `team show <team>`. */
   teamId?: string;
+  /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */
+  teamGoal?: string;
+  teamWorkers?: number;
+  teamWorkerSpecs?: string[];
+  teamCoordinator?: string;
+  teamChecks?: string[];
+  teamGoalFlag?: string;
+  teamMember?: string;
+  teamSpec?: string;
+  teamPersona?: string;
+  teamClearChecks?: boolean;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
