@@ -287,30 +287,49 @@ describe("flightdeckd plugins write verbs on the command line (issue #3516)", ()
     });
   });
 
+  /** The first line of a refusal: the problem itself, before the usage text every refusal carries. */
+  const problem = (argv: string[]) => {
+    const refused = parsed(argv) as { refusedWith?: string };
+    return refused.refusedWith?.split("\n")[0];
+  };
+
   test("an install or an update never goes without the hash, and an install names a plugin or a folder", () => {
-    for (const [argv, said] of [
-      [["plugins", "install", "a@b"], "--confirm-hash"],
-      [["plugins", "update", "a@b"], "--confirm-hash"],
-      [["plugins", "install", "--confirm-hash", HASH], "plugin or --dir"],
-      [["plugins", "install", "a@b", "--dir", "/x", "--confirm-hash", HASH], "plugin or --dir"],
-    ] as const)
-      expect(parsed([...argv])).toMatchObject({ refusedWith: expect.stringContaining(said) });
+    expect(problem(["plugins", "install", "a@b"])).toStartWith(
+      "plugins install: missing --confirm-hash <hash>",
+    );
+    expect(problem(["plugins", "update", "a@b"])).toStartWith(
+      "plugins update: missing --confirm-hash <hash>",
+    );
+    expect(problem(["plugins", "install", "--confirm-hash", HASH])).toBe(
+      "plugins install: give a plugin or --dir, one of the two",
+    );
+    expect(problem(["plugins", "install", "a@b", "--dir", "/x", "--confirm-hash", HASH])).toBe(
+      "plugins install: give a plugin or --dir, one of the two",
+    );
   });
 
   test("a flag outside the verb it belongs to is refused", () => {
     for (const [argv, said] of [
-      [["plugins", "list", "--confirm-hash", HASH], "--confirm-hash"],
-      [["plugins", "uninstall", "a@b", "--accept-command", SHA], "--accept-command"],
-      [["plugins", "pin", "a@b", "--confirm"], "--confirm"],
+      [["plugins", "list", "--confirm-hash", HASH], "--confirm-hash: this flag only applies to"],
+      [
+        ["plugins", "uninstall", "a@b", "--accept-command", SHA],
+        "--accept-command: this flag only applies to",
+      ],
+      [["plugins", "pin", "a@b", "--confirm"], "--confirm: this flag only applies to"],
       [
         ["plugins", "update", "a@b", "--confirm-hash", HASH, "--plugin-scope", "user"],
-        "--plugin-scope",
+        "--plugin-scope: this flag only applies to",
       ],
-      [["plugins", "uninstall", "a@b", "--plugin-scope", "everywhere"], "--plugin-scope"],
-      [["plugins", "update", "a@b", "--confirm-hash", HASH, "--dir", "/x"], "--dir"],
-      [["card", "list", "--confirm-hash", HASH], "--confirm-hash"],
+      [
+        ["plugins", "update", "a@b", "--confirm-hash", HASH, "--dir", "/x"],
+        "--dir: this flag only applies to",
+      ],
+      [["card", "list", "--confirm-hash", HASH], "--confirm-hash: this flag only applies to"],
     ] as const)
-      expect(parsed([...argv])).toMatchObject({ refusedWith: expect.stringContaining(said) });
+      expect(problem([...argv])).toStartWith(said);
+    expect(problem(["plugins", "uninstall", "a@b", "--plugin-scope", "everywhere"])).toStartWith(
+      "--plugin-scope",
+    );
   });
 
   test("the card's and the other commands' own --scope keeps its meaning", () => {
