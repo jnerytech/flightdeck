@@ -3,17 +3,30 @@
  * It is a script, not a copy of the binary, so the self-update (which replaces the binary) keeps it
  * working. A file called `fd` that is not ours is never touched.
  */
+import { lstat, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { posix, win32 } from "node:path";
 
 export type FdLauncherOutcome = "written" | "updated" | "same" | "foreign";
 
-/** The file name of the launcher for this platform's shell. */
+/** A line in the launcher that tells our file from someone else's `fd`. */
+const MARK = "flightdeck fd launcher";
+
+const pathApi = (platform: string) => (platform === "win32" ? win32 : posix);
+
+/** The file name of the launcher for this platform's shell, in the folder of the stable binary. */
 export function fdLauncherPath(stable: string, platform: string): string {
-  return stable + platform;
+  const api = pathApi(platform);
+  return api.join(api.dirname(stable), platform === "win32" ? "fd.cmd" : "fd");
 }
 
 /** The text of the launcher: it runs the stable binary by its absolute path, whatever the PATH. */
 export function fdLauncherText(stable: string, platform: string): string {
-  return stable + platform;
+  if (platform === "win32") {
+    // A percent sign inside a batch file is doubled; a Windows path has no quote.
+    const exe = stable.replaceAll("%", "%%");
+    return `@echo off\r\nREM ${MARK}\r\n"${exe}" fd %*\r\n`;
+  }
+  return `#!/bin/sh\n# ${MARK}\nexec '${stable.replaceAll("'", String.raw`'\''`)}' fd "$@"\n`;
 }
 
 /** Writes the launcher when no `fd` is there or the one there is ours; a foreign `fd` stays. */
@@ -21,8 +34,39 @@ export async function installFdLauncher(
   stable: string,
   platform: string,
 ): Promise<{ path: string; outcome: FdLauncherOutcome }> {
-  return { path: fdLauncherPath(stable, platform), outcome: "same" };
+  const path = fdLauncherPath(stable, platform);
+  const text = fdLauncherText(stable, platform);
+  const found = await lstat(path).catch(() => null);
+  if (found === null) {
+    // `wx` creates it or fails: a file that appears meanwhile is not overwritten.
+    const created = await writeFile(path, text, { mode: 0o755, flag: "wx" }).then(
+      () => true,
+      () => false,
+    );
+    return { path, outcome: created ? "written" : "foreign" };
+  }
+  // A link, a folder or anything but a plain file is someone else's.
+  if (!found.isFile()) return { path, outcome: "foreign" };
+  const current = await readFile(path, "utf8").catch(() => null);
+  if (current === null || !current.includes(MARK)) return { path, outcome: "foreign" };
+  if (current === text) return { path, outcome: "same" };
+  const next = `${path}.new`;
+  await rm(next, { force: true });
+  await writeFile(next, text, { mode: 0o755, flag: "wx" });
+  await rename(next, path);
+  return { path, outcome: "updated" };
 }
+
+/** The shell line that puts a folder first on the PATH, as this platform keeps it. */
+function putFirst(dir: string, platform: string): string {
+  if (platform === "win32") {
+    return `[Environment]::SetEnvironmentVariable("Path", "${dir};" + [Environment]::GetEnvironmentVariable("Path", "User"), "User")`;
+  }
+  return `export PATH="${dir}:$PATH"`;
+}
+
+const sameFile = (a: string, b: string, platform: string) =>
+  platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
 
 /** The notes for a launcher that setup placed (or found foreign) and the `fd` the PATH finds first. */
 export function fdPathNotes(options: {
@@ -31,15 +75,29 @@ export function fdPathNotes(options: {
   outcome: FdLauncherOutcome;
   found: string | null;
 }): string[] {
-  return [options.launcher + options.platform + options.outcome + options.found];
+  const { launcher, platform, outcome, found } = options;
+  if (outcome === "foreign") {
+    return [
+      `${launcher} is not Flightdeck's and stays as it is, so the fd command of Flightdeck is not installed. Type "flightdeckd claude" instead, or move that file away and run setup again.`,
+    ];
+  }
+  if (found === null || sameFile(found, launcher, platform)) return [];
+  const dir = pathApi(platform).dirname(launcher);
+  return [
+    `Another "fd" is first on your PATH: ${found}. It runs instead of Flightdeck's ${launcher} until ${dir} comes first.`,
+    `To put it first${platform === "win32" ? " (PowerShell, then open a new terminal)" : " (add the line to your shell profile)"}: ${putFirst(dir, platform)}`,
+  ];
 }
 
-/** What setup says about `fd`: a foreign one in our folder, or another `fd` that wins on the PATH. */
+/** What setup does for `fd`: installs the launcher and returns what to tell the person. */
 export async function setupFdLauncher(options: {
   stable: string;
   platform: string;
   /** The `fd` the PATH finds first, or null. */
   which: (name: string) => string | null;
 }): Promise<string[]> {
-  return [options.stable + options.platform];
+  const { stable, platform, which } = options;
+  const { path, outcome } = await installFdLauncher(stable, platform);
+  const lines = [`fd launcher: ${path} (${outcome})`];
+  return [...lines, ...fdPathNotes({ launcher: path, platform, outcome, found: which("fd") })];
 }
