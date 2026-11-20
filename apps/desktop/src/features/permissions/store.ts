@@ -1,4 +1,5 @@
 import type { RiskLevel } from "@flightdeck/protocol";
+import type { ProofAnswer, ProofResult } from "@/features/approval/index.ts";
 import { parseRequestLink } from "@/features/inbox/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
@@ -40,6 +41,11 @@ export interface PermissionsCore {
   showWindow(): void;
   /** Answers a request as the tray's menu does. */
   act(action: TrayAction): void;
+  /**
+   * The proof of this device an allow needs (#3439); none for a host that checks none. A throw reaches
+   * the banner. Absent where no device key is kept.
+   */
+  prove?(hostId: string, answer: ProofAnswer, risk: RiskLevel | undefined): Promise<ProofResult>;
 }
 
 /**
