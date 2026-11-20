@@ -170,10 +170,11 @@ fd persona save architect --scope host --name Architect --description "Desenha m
 fd persona remove architect --scope host
 fd persona reset reviewer
 fd persona publish-agent architect --project-path ~/work/api --confirm
+fd persona trust local --project-path ~/work/api --hash abcdef012345
 ```
 
 `list`, `show` e `subagents` leem as personas deste host, como a tela Personas faz. `save`, `remove`,
-`reset` e `publish-agent` as alteram.
+`reset`, `publish-agent` e `trust` as alteram.
 
 - **`list`:** uma linha por persona: o id, onde ela mora (`pack`, `host` ou `project`), o nome,
   `(edited)` para uma persona do pacote que este host alterou e, para uma persona de projeto, o começo do
@@ -195,6 +196,10 @@ fd persona publish-agent architect --project-path ~/work/api --confirm
 - **`publish-agent <id> --project-path <pasta>`:** grava a persona como o agente do projeto
   `.claude/agents/persona-<id>.md`. Altera um arquivo do projeto, então recusa com saída `1` e não envia
   nada até você passar `--confirm`.
+- **`trust <id> --project-path <pasta> --hash <hash>`:** confia numa persona de projeto versionada, e o
+  texto dela passa a chegar a todas as sessões do projeto. `--hash` é o começo (8 ou mais caracteres
+  hexadecimais) do hash que `persona list` mostrou: se o arquivo mudou desde então, o comando recusa com
+  saída `1` e diz o novo hash, para você ler de novo. Uma persona que já é confiável fica como está.
 
 Uma alteração que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode
 `persona list` antes de tentar de novo.
