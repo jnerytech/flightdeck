@@ -35,6 +35,14 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   `flightdeckd approvers enroll`, digite o **nome** deste dispositivo e o **código de uso único** que ele
   imprime, e aperte **Cadastrar**. O código vale uma vez, por dez minutos. O app cria uma chave que nunca sai
   deste dispositivo e entrega ao host só a metade pública.
+- **Adicionar um segundo dispositivo.** Com a proteção ligada, um dispositivo novo é adicionado por um que já
+  está cadastrado. No dispositivo novo abra a página do host, digite um **nome** e aperte **Mostrar o texto**:
+  ele cria a chave e mostra um texto e um **código** de quatro grupos de quatro caracteres. Copie o texto para
+  o dispositivo cadastrado, cole em **Adicionar outro dispositivo** na página do mesmo host e aperte **Ler**.
+  O painel mostra o nome, o host e o código. Adicione só se o **código for o mesmo** nas duas telas: o nome é
+  só um rótulo. Aperte **Adicionar este dispositivo** e concorde na janela do sistema, que cita de novo o
+  código e o host. Cancele a janela e nada muda. O dispositivo novo se lista quando o host o tem;
+  **Cancelar** nele apaga a chave.
 - **Aprovar.** Com a proteção do host ligada, **Segurar para aprovar** (e a aprovação de uma regra salva)
   pergunta mais uma vez numa janela do sistema, dizendo qual é o pedido e avisando quando a aprovação também salva uma regra. Cancele e nada é enviado;
   o pedido continua aberto. A janela é do sistema, não do app, então uma página mostrada dentro de uma sessão
@@ -54,5 +62,5 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
 - **Um aviso.** Se a proteção estava ligada e o host agora não lista nenhum dispositivo, o painel avisa. Se
   você não zerou no host, alguém com acesso a ele zerou.
 - **O que não cobre.** Protege as aprovações feitas pelo app. Quem tem um terminal no host ainda consegue
-  zerar, e um pedido de risco médio não pede prova. Um segundo dispositivo é cadastrado com uma chave já
-  cadastrada; o app ainda não faz isso, então por ora zere no host e cadastre de novo.
+  zerar, e um pedido de risco médio não pede prova. Um dispositivo que você não
+  consegue assinar (por exemplo, o único cadastrado se perdeu) só volta zerando no host e cadastrando de novo.
