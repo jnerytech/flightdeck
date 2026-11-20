@@ -20,6 +20,9 @@ export const FEATURE_APPROVAL_COMMAND = "approval-command";
 /** The host checks a signed proof of the person's device before it turns bypass on with `host.bypass` (#3507). */
 export const FEATURE_APPROVAL_BYPASS = "approval-bypass";
 
+/** The host checks a signed proof of the person's device before it adds an allowed folder with `roots.add` (#3507). */
+export const FEATURE_APPROVAL_ROOTS = "approval-roots";
+
 /** The host checks a signed proof of the person's device before it trusts a project folder (#3453). */
 export const FEATURE_APPROVAL_TRUST = "approval-trust";
 

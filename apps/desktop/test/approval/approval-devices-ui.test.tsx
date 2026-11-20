@@ -43,7 +43,7 @@ function panel(
     declined?: boolean;
     gate?: Promise<void>;
     older?: boolean;
-    unchecked?: Array<"merge" | "trust" | "bypass">;
+    unchecked?: Array<"merge" | "trust" | "bypass" | "roots">;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
@@ -206,6 +206,26 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([OFF], "en", [], { unchecked: ["bypass"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
     expect(screen.queryByText(/turn on Bypass permissions/) === null).toBe(true);
+  });
+
+  test("a host that does not ask for a device to add an allowed folder says so, in both languages, and not when it has no device enrolled (#3507)", async () => {
+    panel([HERE], "en", [], { unchecked: ["roots"] });
+    await settleMaybe(() => screen.queryByText(/add an allowed folder/) !== null);
+    expect(screen.queryByText(/does not ask for a device to add an allowed folder/) !== null).toBe(
+      true,
+    );
+    cleanup();
+    panel([HERE], "pt-BR", [], { unchecked: ["roots"] });
+    await settleMaybe(() => screen.queryByText(/adicionar uma pasta permitida/) !== null);
+    expect(
+      screen.queryByText(
+        /não pede a confirmação de um dispositivo para adicionar uma pasta permitida/,
+      ) !== null,
+    ).toBe(true);
+    cleanup();
+    panel([OFF], "en", [], { unchecked: ["roots"] });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    expect(screen.queryByText(/add an allowed folder/) === null).toBe(true);
   });
 
   test("a host that does not ask for a device to trust a folder says so, in both languages, and only for that", async () => {

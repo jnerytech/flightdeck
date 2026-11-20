@@ -74,7 +74,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand = "merge" | "trust" | "bypass";
+export type UncheckedCommand = "merge" | "trust" | "bypass" | "roots";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -577,6 +577,17 @@ export class ApprovalSlice {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
     };
+  }
+
+  /** The payload that adds the allowed folder `path` (#3507). */
+  async rootsPayload(
+    _hostId: string,
+    path: string,
+  ): Promise<
+    | { kind: "payload"; payload: { path: string; confirm: true; proof?: ApprovalProof } }
+    | { kind: "declined" }
+  > {
+    return { kind: "payload", payload: { path, confirm: true } };
   }
 
   /**

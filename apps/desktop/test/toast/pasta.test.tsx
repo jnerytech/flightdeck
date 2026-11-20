@@ -111,6 +111,39 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
     expect(store.getState().hosts[0]?.info?.allowedRoots).toEqual([d.root]);
   });
 
+  test("a folder is added with the payload the device signed, and a no in its dialog adds nothing (#3507)", async () => {
+    const { d, store, hostId } = await online("en-US");
+    const vault = realTempDir("fd-vault-");
+    const asked: string[] = [];
+    (store.approval as unknown as Record<string, unknown>).rootsPayload = async (
+      host: string,
+      folder: string,
+    ) => {
+      asked.push(`${host}:${folder}`);
+      return { kind: "declined" };
+    };
+    await act(async () => {
+      expect(await store.roster.allowRoot(hostId, vault)).toBe(false);
+    });
+    expect(asked).toEqual([`${hostId}:${vault}`]);
+    expect(store.getState().hosts[0]?.info?.allowedRoots).toEqual([d.root]);
+    expect(screen.queryAllByRole("alert").length).toBe(0);
+  });
+
+  test("a device that cannot sign here stops the add and says why in a toast (#3507)", async () => {
+    const { d, store, hostId } = await online("en-US");
+    const vault = realTempDir("fd-vault-");
+    (store.approval as unknown as Record<string, unknown>).rootsPayload = async () => {
+      throw new Error("no key on this device");
+    };
+    await act(async () => {
+      expect(await store.roster.allowRoot(hostId, vault)).toBe(false);
+    });
+    await settle(() => screen.queryAllByRole("alert").length >= 1);
+    expect(screen.getAllByRole("alert")[0]?.textContent ?? "").toContain("no key on this device");
+    expect(store.getState().hosts[0]?.info?.allowedRoots).toEqual([d.root]);
+  });
+
   test("the host refusing the folder (a system folder) says why in a toast", async () => {
     const { store, hostId } = await online("en-US");
     await act(async () => {
