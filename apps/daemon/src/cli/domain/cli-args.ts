@@ -32,6 +32,8 @@ export interface CliArgs {
     | "team"
     | "persona"
     | "board"
+    | "quota"
+    | "usage"
     | "host"
     | "sessions"
     | "requests"
@@ -92,6 +94,8 @@ export interface CliArgs {
     | "close"
     | "message"
     | "remove-member"
+    | "history"
+    | "pause-at"
     | "dismiss-unblocked"
     | "search"
     | "tool"
@@ -132,6 +136,10 @@ export interface CliArgs {
   teamSpec?: string;
   teamPersona?: string;
   teamClearChecks?: boolean;
+  /** `quota history <window> [--hours n]`, `quota pause-at <0-1|off>` (null is off), `usage [--days n]` (#3460; `days` is also the `vault` window below). */
+  quotaWindow?: string;
+  quotaPauseAt?: number | null;
+  hours?: number;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */

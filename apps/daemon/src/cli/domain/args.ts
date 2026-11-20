@@ -4,14 +4,16 @@
  */
 import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
+import { ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
-import { oneOf, vaultProblem } from "./vault-args.ts";
+import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -24,63 +26,7 @@ const SERVICE_ACTIONS: readonly ServiceAction[] = [
   "start",
 ];
 
-/** Where the parser is in the command line; a handler reads the words after its own through it. */
-class ArgReader {
-  private i = 0;
-  constructor(private readonly argv: readonly string[]) {}
-
-  /** The word the parser is on, or undefined once the line is read. */
-  current(): string | undefined {
-    return this.argv[this.i];
-  }
-
-  advance(): void {
-    this.i++;
-  }
-
-  /** The next word, moving onto it. */
-  next(): string | undefined {
-    return this.argv[++this.i];
-  }
-
-  /** The next word, without moving. */
-  peek(): string | undefined {
-    return this.argv[this.i + 1];
-  }
-
-  /** Everything after the current word, which the caller then owns (the parser stops). */
-  takeRest(): string[] {
-    const rest = this.argv.slice(this.i + 1);
-    this.i = this.argv.length;
-    return rest;
-  }
-}
-
 type Handler = (args: CliArgs, reader: ArgReader, value: () => string) => void;
-
-const invalid = (what: string, got: string | undefined, none = "(none)") =>
-  new Error(`${what}: ${got ?? none}\n${USAGE}`);
-
-/** The word after a command, which must be one of `allowed`. */
-function subAction<T extends string>(
-  reader: ArgReader,
-  allowed: readonly T[],
-  what: string,
-  none?: string,
-): T {
-  const action = reader.next();
-  if (action === undefined || !(allowed as readonly string[]).includes(action)) {
-    throw invalid(what, action, none);
-  }
-  return action as T;
-}
-
-/** A name after an action (`action run <name>`); it cannot be another flag. */
-function operand(reader: ArgReader, what: string): string {
-  const next = reader.next();
-  if (next === undefined || next.startsWith("--")) throw new Error(`missing ${what}\n${USAGE}`);
-  return next;
-}
 
 const setCommand =
   (command: CliArgs["command"]): Handler =>
@@ -228,26 +174,7 @@ const HANDLERS: Record<string, Handler> = {
       args.index = index;
     }
   },
-  vault: (args, reader) => {
-    args.command = "vault";
-    const action = subAction(
-      reader,
-      ["decisions", "report", "rules"] as const,
-      "invalid vault action",
-    );
-    args.action = action;
-    const word = reader.peek();
-    // `decisions` may name one secret; `rules` always does, and `rules preview` asks about a use of it.
-    if (action === "decisions" && word !== undefined && !word.startsWith("--"))
-      args.secretId = operand(reader, "the secret");
-    if (action === "rules") {
-      if (word === "preview") {
-        reader.next();
-        args.action = "preview";
-      }
-      args.secretId = operand(reader, "the secret");
-    }
-  },
+  vault: readVault,
   approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
@@ -369,6 +296,22 @@ const HANDLERS: Record<string, Handler> = {
       if (next && !next.startsWith("--")) args.teamSpec = reader.next();
     }
   },
+  quota: (args, reader) => {
+    args.command = "quota";
+    const action = subAction(reader, ["get", "history", "pause-at"], "invalid quota action");
+    args.action = action;
+    if (action === "history") args.quotaWindow = operand(reader, "the window");
+    if (action === "pause-at") {
+      const share = parseShare(operand(reader, "the share"));
+      if (share === undefined)
+        throw new Error(`quota pause-at: a share from 0 to 1, or off\n${USAGE}`);
+      args.quotaPauseAt = share;
+    }
+  },
+  usage: setCommand("usage"),
+  "--hours": setValue((args, v) => {
+    args.hours = wholeFrom("--hours", v, 720);
+  }),
   persona: (args, reader) => {
     args.command = "persona";
     const action = subAction(
@@ -618,7 +561,12 @@ const HANDLERS: Record<string, Handler> = {
   "--dry-run": setFlag((args) => {
     args.dryRun = true;
   }),
+  // `usage` keeps at most 90 days; `vault decisions` and `vault report` take up to a year.
   "--days": setValue((args, v) => {
+    if (args.command === "usage") {
+      args.days = wholeFrom("--days", v, 90);
+      return;
+    }
     const n = Number(v);
     if (!/^\d+$/.test(v) || n < 1 || n > 365)
       throw new Error(`--days: a whole number from 1 to 365, got ${v}\n${USAGE}`);
@@ -646,13 +594,7 @@ const HANDLERS: Record<string, Handler> = {
     args.approval = oneOf("--approval", v, ["always", "never", "first-per-session"]);
   }),
   "--at": setValue((args, v) => {
-    // An ISO time with a zone: `Date.parse` alone reads "5" as a year and a zone-less time as local.
-    const at = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(v)
-      ? Date.parse(v)
-      : Number.NaN;
-    if (Number.isNaN(at))
-      throw new Error(`--at: a date and time, like 2026-11-20T03:00:00Z, got ${v}\n${USAGE}`);
-    args.at = at;
+    args.at = atTime(v);
   }),
   "--config": setValue((args, v) => {
     args.config = v;
@@ -688,6 +630,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "history",
       "team",
       "persona",
+      "quota",
+      "usage",
       "host",
       "sessions",
       "requests",
@@ -701,7 +645,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault
 ${USAGE}`,
     );
   if (
@@ -784,6 +728,7 @@ ${USAGE}`,
     boardProblem(args) ??
     historyProblem(args) ??
     vaultProblem(args) ??
+    quotaProblem(args) ??
     rulesProblem(args) ??
     approversProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);

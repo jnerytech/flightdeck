@@ -45,8 +45,13 @@ until then the hold of the Approve button is the only check, as before.
   another device (or this one, but never the last: only `flightdeckd approvers reset` at the host does).
   **Remove this device's key** drops the key kept here; the host keeps listing the device until another
   one revokes it.
-- **A notice.** A terminal can see the same changes: `flightdeckd approvers watch --follow` prints a line
-  each time a device is enrolled or revoked on the host.
+- **A notice.** When a device is enrolled or revoked on a host, the app tells you. A device you did not
+  enroll from here is an alert that names it: if it was not you, revoke it on the host's page. Your own
+  enrollment, and a revoke you make here, are not announced. If another device revokes this device's key,
+  the notice says so, and this device can no longer approve there until it is enrolled again. With the
+  host's page open the notice is shown there, with **Dismiss**; otherwise it is a toast. A terminal can
+  see the same changes: `flightdeckd approvers watch --follow` prints a line each time. Hosts older than
+  this announcement are only read when you open the page.
 - **A warning.** If protection was on and the host now lists no device, the panel says so. If you did not
   reset it at the host, someone with access to it did.
 - **What it does not cover.** It guards approvals made from the app. Anyone with a terminal on the host

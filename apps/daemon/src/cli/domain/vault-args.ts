@@ -3,6 +3,8 @@
  * `args.ts` adds the usage text to the problem this names. The words and ranges are the protocol's and
  * are checked as each flag is read; this is which verb takes which flag, and what a verb needs.
  */
+import { type ArgReader, operand, subAction } from "./arg-reader.ts";
+import type { CliArgs } from "./cli-args.ts";
 import { USAGE } from "./usage.ts";
 
 /** The parsed arguments this check reads: `CliArgs` fits it. */
@@ -59,6 +61,8 @@ const typed = (verb: string) => (verb === "preview" ? "rules preview" : verb);
 export function vaultProblem(args: VaultArgs): string | undefined {
   for (const [flag, value, verbs, shared] of vaultFlags(args)) {
     if (value === undefined || (shared && args.command !== "vault")) continue;
+    // `usage --days` is the quota command's (quota-args.ts), which says so for `quota` too.
+    if (flag === "--days" && (args.command === "usage" || args.command === "quota")) continue;
     if (args.command !== "vault" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd vault ${verbs.map(typed).join(", ")}`;
   }
@@ -67,4 +71,36 @@ export function vaultProblem(args: VaultArgs): string | undefined {
     if (args.purpose === undefined) return "--purpose: needed, what the secret is for";
   }
   return undefined;
+}
+
+/** `vault <decisions|report|rules>`: the verb, and the secret that `decisions` may name and `rules` always does. */
+export function readVault(args: CliArgs, reader: ArgReader): void {
+  args.command = "vault";
+  const action = subAction(
+    reader,
+    ["decisions", "report", "rules"] as const,
+    "invalid vault action",
+  );
+  args.action = action;
+  const word = reader.peek();
+  if (action === "decisions" && word !== undefined && !word.startsWith("--"))
+    args.secretId = operand(reader, "the secret");
+  if (action === "rules") {
+    // `rules preview <secret>` asks about a use of it.
+    if (word === "preview") {
+      reader.next();
+      args.action = "preview";
+    }
+    args.secretId = operand(reader, "the secret");
+  }
+}
+
+/** `--at`: an ISO time with a zone, in milliseconds. `Date.parse` alone reads "5" as a year and a zone-less time as local. */
+export function atTime(value: string): number {
+  const at = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(value)
+    ? Date.parse(value)
+    : Number.NaN;
+  if (Number.isNaN(at))
+    throw new Error(`--at: a date and time, like 2026-11-20T03:00:00Z, got ${value}\n${USAGE}`);
+  return at;
 }
