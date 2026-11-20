@@ -61,7 +61,7 @@ export class Approvers {
 
   constructor(
     db: Database,
-    private readonly opts: ApproversOptions,
+    private readonly opts: Partial<ApproversOptions> = {},
   ) {
     this.store = new ApprovalStore(db, opts.random);
     this.nonces = new NonceBook({ mono: opts.mono, random: opts.random });
