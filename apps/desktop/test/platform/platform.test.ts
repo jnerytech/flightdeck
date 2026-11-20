@@ -273,7 +273,9 @@ describe("platform", () => {
 
   test("tauri: the host list goes to hosts_sync as ids, names and addresses, and the web build has no index (#3429)", async () => {
     invokes.length = 0;
-    const hosts = [{ id: "0b6a3f6e-5f0e-4a39-9c43-5d1d1c2b7a11", name: "Pi", url: "wss://pi/v1/ws" }];
+    const hosts = [
+      { id: "0b6a3f6e-5f0e-4a39-9c43-5d1d1c2b7a11", name: "Pi", url: "wss://pi/v1/ws" },
+    ];
     await tauriPlatform(fakeWindow().win).hostIndex?.sync(hosts);
     expect(invokes).toEqual([["hosts_sync", { hosts }]]);
     invokes.length = 0;
