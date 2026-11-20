@@ -434,7 +434,7 @@ describe("team new: the arguments (issue #3455)", () => {
       expect(parsed(["team", "new", "g", "--workers", ok])).toMatchObject({
         teamWorkers: Number(ok),
       });
-    for (const bad of ["0", "9", "1.5", "two", ""])
+    for (const bad of ["0", "9", "1.5", "two", "", "0x2", "2e0", " 2 ", "+2", "-1"])
       expect(parsed(["team", "new", "g", "--workers", bad])).toMatchObject({
         error: expect.stringContaining("--workers"),
       });
