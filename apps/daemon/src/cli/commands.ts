@@ -1,8 +1,8 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { loadConfig } from "../config.ts";
+import { loadConfig, userHome } from "../config.ts";
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
-import type { ResolveDeps } from "../remote-hosts/resolve.ts";
+import type { ResolveDeps } from "../remote-hosts/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
@@ -88,12 +88,11 @@ const reported = (deps: CliDeps, result: CliResult, asJson = false): Promise<num
 /** What `--host` reads on this machine: the app's index and the credential helper beside the binary. */
 async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   if (deps.remote) return deps.remote;
-  const { homedir } = await import("node:os");
   const { spawnExec } = await import("../kernel/index.ts");
   return {
     env: {
       platform: process.platform,
-      home: homedir(),
+      home: userHome(deps.env, process.platform),
       ...(deps.env.APPDATA ? { appData: deps.env.APPDATA } : {}),
       ...(deps.env.LOCALAPPDATA ? { localAppData: deps.env.LOCALAPPDATA } : {}),
       ...(deps.env.XDG_CONFIG_HOME ? { xdgConfigHome: deps.env.XDG_CONFIG_HOME } : {}),
@@ -113,7 +112,7 @@ async function asking(
   if (args.host === undefined) return reported(deps, await run(await localConfig(args)), args.json);
   if (args.token !== undefined)
     throw new Error("the token of this command is read from the config file only: drop --token");
-  const { resolveHost } = await import("../remote-hosts/resolve.ts");
+  const { resolveHost } = await import("../remote-hosts/index.ts");
   const resolved = await resolveHost(args.host, await remoteDeps(deps));
   if (!resolved.ok) return reported(deps, resolved.result, args.json);
   // The config of this machine plays no part: the address and the token are the host's.
