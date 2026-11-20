@@ -56,7 +56,7 @@ changes both.
    always allowed.
 7. **Exit codes.** Unknown, ambiguous or refused address: 1. A host that does not answer: 2 (as `card`). A
    refused or revoked token: 1, "pair this host again in the app". With `--json` the failure carries a stable
-   `reason` (`unknown_host`, `ambiguous_host`, `no_store`, `cleartext_remote`, `unreachable`, `token_refused`).
+   `reason` (`unknown_host`, `ambiguous_host`, `no_store`, `cleartext_remote`, `bad_address`, `unreachable`, `token_refused`; `bad_address` is an address stored for the host that is not a daemon address: a user, a path or a scheme other than `ws`/`wss`).
 
 ## The token never leaves the connection
 
@@ -85,8 +85,9 @@ changes both.
   does not persist across a reboot and is not visible to another login session (SSH, a unit), so "no credential
   store" is the common result there. A build with the persistent variant would widen that reach and needs its
   own decision. Linux is not the app's first target; this is stated, not fixed here.
-- The manual check of the helper on Windows (and macOS when a device is at hand) is done before the PR that adds
-  `--host` merges, not after.
+- The manual check of the helper on Windows (and macOS when a device is at hand) is one of the user's end-of-phase
+  checks (coordinator, 2026-11-20). It does not block a merge. Until the helper ships, `--host` answers "no
+  credential store: pair from the app" (exit 1, reason `no_store`).
 
 ## What it does not stop
 
