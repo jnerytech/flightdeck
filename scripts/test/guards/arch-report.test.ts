@@ -126,6 +126,20 @@ describe("arch-report (#1610)", () => {
     expect(ratchetRows(inputs()).some((r) => r.ratchet.startsWith("spawn-count"))).toBe(false);
   });
 
+  test("the daemon commands with no CLI command get a row; one more gap puts it above its baseline (#3428)", () => {
+    const row = (today: number) =>
+      ratchetRows(inputs({ cliParityGaps: { today, baseline: 340 } })).find((r) =>
+        r.ratchet.startsWith("cli-parity"),
+      );
+    expect(row(339)).toEqual({
+      ratchet: "cli-parity commands with no CLI command",
+      baseline: 340,
+      today: 339,
+    });
+    expect(growing([row(341) as RatchetRow])).toHaveLength(1);
+    expect(ratchetRows(inputs()).some((r) => r.ratchet.startsWith("cli-parity"))).toBe(false);
+  });
+
   test("a PR cannot raise the cycle baseline: the lower of main's file and its own counts (#1624)", () => {
     const file = (files: number) => JSON.stringify({ files });
     expect(cycleBaseline(file(172), file(160))).toBe(160);
