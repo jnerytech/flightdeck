@@ -104,7 +104,7 @@ describe("approval-wiring: the store signs a high-risk allow with this device's 
     const notices = app.getState().notices.length;
     await app.respondTo("h1", "r1", "allow", { held: true });
     expect(sent.some((s) => s.type === "permission.respond")).toBe(false);
-    expect(app.getState().notices.length).toBe(notices);
+    expect(app.getState().notices).toHaveLength(notices);
   });
 });
 
