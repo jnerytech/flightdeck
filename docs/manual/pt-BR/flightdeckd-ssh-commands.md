@@ -2,7 +2,7 @@
 
 [Voltar ao manual](../pt-BR.md) · [English](../en/flightdeckd-ssh-commands.md)
 
-Os verbos que leem, testam e fixam as chaves dos destinos ssh de um host. Funcionam como os outros comandos do `flightdeckd`: veja
+Os verbos que leem, testam, fixam as chaves, removem e importam os destinos ssh de um host. Funcionam como os outros comandos do `flightdeckd`: veja
 [o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum).
 
 ## fd ssh
@@ -15,6 +15,8 @@ fd ssh hostkey check prod
 fd ssh test prod
 fd ssh hostkey confirm prod --fingerprint SHA256:...
 fd ssh hostkey forget prod
+fd ssh remove prod --confirm
+fd ssh import apply --alias staging --alias prod
 ```
 
 `list` imprime os destinos do daemon, um por linha: nome, id, `usuário@host:porta`, como entra (`agent`,
@@ -42,3 +44,12 @@ fixa nada e sai com `1`. Um destino cuja chave já está fixada, ou cuja chave m
 `hostkey forget <destino>` antes, que desfixa a chave, e confirme de novo. `forget` não fixa nada e recebe só o
 destino. Um agente que roda isso do próprio shell precisa de confirmação, como nos outros comandos que decidem em
 que um host confia.
+
+`remove <destino> --confirm` apaga um destino. Sem `--confirm` ele recusa e não envia nada. Um destino pelo qual outro
+passa como salto é recusado pelo daemon: remova o outro antes.
+
+`import apply --alias <nome>...` transforma os hosts nomeados do `~/.ssh/config` em destinos; leia `import preview`
+antes e nomeie só os que você quer, no mínimo um e no máximo 500. Imprime uma linha por nome, `imported as <id>` ou
+`skipped` com o motivo, e sai com `1` quando algum nome foi pulado (já existe, não está no arquivo, ou os saltos
+formam um ciclo). Um host com `IdentityFile` vira um destino de chave em arquivo que usa esse caminho. Um agente que
+roda `remove` ou `import apply` do próprio shell precisa de confirmação.

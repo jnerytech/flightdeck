@@ -2,7 +2,7 @@
 
 [Back to the manual](../en.md) · [Português (Brasil)](../pt-BR/flightdeckd-ssh-commands.md)
 
-The verbs that read, test and pin the keys of the ssh destinations of a host. They work as the other `flightdeckd` commands do: see
+The verbs that read, test, pin the keys of, remove and import the ssh destinations of a host. They work as the other `flightdeckd` commands do: see
 [what they all share](flightdeckd-commands.md#what-they-all-share).
 
 ## fd ssh
@@ -15,6 +15,8 @@ fd ssh hostkey check prod
 fd ssh test prod
 fd ssh hostkey confirm prod --fingerprint SHA256:...
 fd ssh hostkey forget prod
+fd ssh remove prod --confirm
+fd ssh import apply --alias staging --alias prod
 ```
 
 `list` prints the destinations of the daemon, one line each: name, id, `user@host:port`, how it signs in (`agent`,
@@ -41,3 +43,12 @@ and pins the key only when the fingerprint you typed is the one the server shows
 exits `1`. A destination whose key is already pinned, or whose key changed, is refused: run `hostkey forget <target>`
 first, which unpins the key, and confirm again. `forget` pins nothing and takes only the destination. An agent that
 runs these from its shell is asked to confirm, as for the other commands that decide what a host trusts.
+
+`remove <target> --confirm` deletes a destination. Without `--confirm` it refuses and sends nothing. A destination that
+another one goes through as a jump host is refused by the daemon: remove the other one first.
+
+`import apply --alias <name>...` turns the named hosts of `~/.ssh/config` into destinations; read `import preview`
+first and name only the ones you want, at least one and at most 500. It prints one line per name, `imported as <id>` or
+`skipped` with the reason, and exits `1` when any name was skipped (it already exists, it is not in the file, or its
+jump hosts loop). A host that names an `IdentityFile` becomes a key-file destination that uses that path. An agent that
+runs `remove` or `import apply` from its shell is asked to confirm.
