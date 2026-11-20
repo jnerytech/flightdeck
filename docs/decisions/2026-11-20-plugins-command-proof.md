@@ -32,4 +32,4 @@ the check with `FEATURE_APPROVAL_PLUGINS` (`approval-plugins`). With no device e
 ## Not in this slice
 
 `plugins.marketplaceAdd` fetches code from a source the person types and needs a rule for the source the dialog can
-show; it follows in its own slice of #3516.
+show; it is in `2026-11-20-marketplace-command-proof.md`.
