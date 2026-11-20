@@ -472,7 +472,7 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
-            if pt { ("Retomar", "Cancelar") } else { ("Resume", "Cancel") }
+            if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
         }
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
