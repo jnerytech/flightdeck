@@ -14,6 +14,10 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
   CLAUDE.md e os ADRs do projeto, roda as checagens do projeto antes de dizer que terminou, nunca
   faz push). Editar
   uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
+  Os ids do pacote são em inglês (`architect`, `coordinator`, `reviewer`, `security` e os outros). Os
+  quatro que eram em português (`arquiteto`, `coordenador`, `revisor`, `seguranca`) continuam valendo
+  num script, num fluxo ou num arquivo de time: chegam à persona que tem o id novo, a não ser que você
+  tenha criado uma com o id antigo.
 - **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
   você **Confia** antes) e **Globais (deste app)**, guardadas no app.
 - **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. **Editar**

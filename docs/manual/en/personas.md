@@ -13,6 +13,9 @@ suggested model, effort, tools and permission mode, and the instructions of the 
   **Developer**, the one that writes the code: test first, small scoped changes, follows the
   project's CLAUDE.md and ADRs, runs the project's checks before saying done, never pushes). Editing one
   keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
+  The pack's ids are English (`architect`, `coordinator`, `reviewer`, `security`, and so on). The four that
+  were Portuguese (`arquiteto`, `coordenador`, `revisor`, `seguranca`) still work in a script, a workflow
+  or a team file: they reach the persona that has the new id, unless you made one under the old id.
 - **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
   you **Trust** first) and **Global (this app)**, kept in the app.
 - **New persona** and **Edit** open the editor with a **Preview** of what the session gets. **Edit**
