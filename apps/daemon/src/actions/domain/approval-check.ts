@@ -31,8 +31,16 @@ export interface ApprovalRefusal {
   reason: string;
 }
 
-/** The first rule an approval of this waiting request breaks, or null when it may go through. */
-export function approvalRefusal(waiting: Waiting, approval: Approval): ApprovalRefusal | null {
+/**
+ * The first rule an approval of this waiting request breaks, or null when it may go through. With
+ * `byProof` (a host with an enrolled device, #3452) a prod or high-risk request is not held: the caller
+ * checks the device's proof after this, and `heldMs` counts for nothing.
+ */
+export function approvalRefusal(
+  waiting: Waiting,
+  approval: Approval,
+  byProof = false,
+): ApprovalRefusal | null {
   if (waiting.decision !== "ask") {
     return { message: "the request needs no approval", reason: "action_no_approval_needed" };
   }
@@ -43,7 +51,7 @@ export function approvalRefusal(waiting: Waiting, approval: Approval): ApprovalR
         reason: "action_tray_refused",
       };
     }
-    if ((approval.heldMs ?? 0) < HOLD_MS) {
+    if (!byProof && (approval.heldMs ?? 0) < HOLD_MS) {
       return { message: "hold the Approve button for 2 s", reason: "action_hold_needed" };
     }
     // An approval for the session would let the next uses through without the button held.

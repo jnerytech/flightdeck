@@ -119,9 +119,15 @@ export class SecretRequests {
         "action_request_gone",
       );
     }
-    const refusal = approvalRefusal(waiting, approval);
+    const scope = approval.scope ?? "once";
+    // A host with an enrolled device takes its signature for a prod or high-risk request, not the hold (#3452).
+    const gate =
+      waiting.needsHold && this.opts.approval?.enrolled() ? this.opts.approval : undefined;
+    const refusal = approvalRefusal(waiting, approval, gate !== undefined);
     if (refusal) throw invalid(refusal.message, refusal.reason);
-    waiting.approved = { by: approval.via, scope: approval.scope ?? "once" };
+    // After the other rules, so a request refused anyway burns no nonce.
+    gate?.checkVault({ requestId, scope, ...(approval.proof ? { proof: approval.proof } : {}) });
+    waiting.approved = { by: approval.via, scope };
   }
 
   /** Throws unless a delivery for `purpose` may go through: a request that asks has to be approved. */

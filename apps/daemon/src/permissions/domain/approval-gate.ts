@@ -5,6 +5,7 @@ import {
   approvalDigests,
   approvalMessage,
   needsApprovalProof,
+  vaultApproveMessage,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../kernel/index.ts";
 import { requireHold } from "./hold.ts";
@@ -96,15 +97,26 @@ export class ApprovalGate {
 
   /** Whether a device key is enrolled (a prod or high-risk secret use then takes a proof, #3452). */
   enrolled(): boolean {
-    return false;
+    return this.ports.keys().length > 0;
   }
 
-  /** The proof of a secret use: this request, this scope, a live nonce, a signature of an enrolled key (#3452). */
-  checkVault(_input: {
-    requestId: string;
-    scope: "once" | "session";
-    proof?: ApprovalProof;
-  }): void {}
+  /**
+   * The proof of a prod or high-risk secret use (#3452): a signature of an enrolled key over this request,
+   * the scope approved and a live nonce. The caller asks only when a key is enrolled (`enrolled()`).
+   */
+  checkVault(input: { requestId: string; scope: "once" | "session"; proof?: ApprovalProof }): void {
+    const { requestId, scope, proof } = input;
+    const key = proof && this.ports.keys().find((candidate) => candidate.keyId === proof.keyId);
+    if (!proof || !key) throw proofRequired();
+    const message = vaultApproveMessage({
+      keyId: key.keyId,
+      daemonId: this.ports.daemonId(),
+      requestId,
+      nonce: proof.nonce,
+      scope,
+    });
+    this.spend(key, proof, message, requestId);
+  }
 
   check(input: ApprovalCheck): void {
     const { requestId, risk, answer, held, proof } = input;
@@ -126,7 +138,11 @@ export class ApprovalGate {
       inputHash: sha256Hex(digests.input),
       messageHash: sha256Hex(digests.message),
     });
-    // A forged proof cannot burn a nonce: it is used up only by a signature of an enrolled key.
+    this.spend(key, proof, message, requestId);
+  }
+
+  /** A forged proof cannot burn a nonce: it is used up only by a signature of an enrolled key. */
+  private spend(key: EnrolledKey, proof: ApprovalProof, message: string, requestId: string): void {
     if (!verifySignature(key.publicKey, message, proof.signature)) throw proofRequired();
     const taken = this.ports.nonces.take(proof.nonce, "approve", requestId);
     if (taken === "unknown") throw proofRequired();
