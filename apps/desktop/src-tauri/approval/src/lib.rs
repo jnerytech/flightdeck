@@ -22,6 +22,8 @@ pub enum Kind {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Ask {
     pub kind: Kind,
+    /// The host the text is for (its daemon id): the dialog names it, since the webview picks it.
+    pub host: String,
     pub subject: String,
     /// What an allow carries besides the allow itself; the hashes say it, the dialog must too.
     pub also: Also,
@@ -166,7 +168,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     } else {
         Also::default()
     };
-    Ok(Ask { kind, subject: subject.to_string(), also })
+    Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also })
 }
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
@@ -236,6 +238,12 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
     (title.to_string(), body)
+}
+
+/// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
+/// does not add a device.
+pub fn confirm_labels(_kind: Kind, lang: &str) -> (String, String) {
+    if lang == "pt-BR" { ("Permitir".into(), "Cancelar".into()) } else { ("Allow".into(), "Cancel".into()) }
 }
 
 #[cfg(test)]
@@ -312,7 +320,7 @@ mod tests {
         );
         assert_eq!(
             describe(&m, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Approve, subject: "ext-7".into(), also: also_all() }
+            Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: also_all() }
         );
     }
 
@@ -337,7 +345,7 @@ mod tests {
         );
         assert_eq!(
             describe(&rv, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Revoke, subject: "abc123".into(), also: Also::default() }
+            Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "abc123".into(), also: Also::default() }
         );
     }
 
@@ -370,13 +378,13 @@ mod tests {
 
     #[test]
     fn the_confirmation_names_the_action_and_its_subject_in_both_languages() {
-        let approve = Ask { kind: Kind::Approve, subject: "ext-7".into(), also: Also::default() };
+        let approve = Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: Also::default() };
         let (title, body) = confirm_text(&approve, "en");
         assert!(title.contains("Flightdeck"));
         assert!(body.contains("ext-7") && body.contains("just pressed"));
         let (_, body_pt) = confirm_text(&approve, "pt-BR");
         assert!(body_pt.contains("ext-7") && body_pt.contains("acabou de apertar"));
-        let revoke = Ask { kind: Kind::Revoke, subject: "0123456789abcdef".into(), also: Also::default() };
+        let revoke = Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "0123456789abcdef".into(), also: Also::default() };
         assert!(confirm_text(&revoke, "en").1.contains("01234567"));
         assert!(!confirm_text(&revoke, "en").1.contains("0123456789abcdef"));
     }
@@ -384,7 +392,7 @@ mod tests {
     #[test]
     fn an_enrollment_shows_the_fingerprint_of_the_key_not_its_text() {
         let info = public_info(&generate()).unwrap();
-        let first = Ask { kind: Kind::EnrollFirst, subject: info.public_key.clone(), also: Also::default() };
+        let first = Ask { kind: Kind::EnrollFirst, host: DAEMON.into(), subject: info.public_key.clone(), also: Also::default() };
         let body = confirm_text(&first, "en").1;
         assert!(body.contains(&info.key_id[..8]));
         assert!(!body.contains(&info.public_key));
@@ -476,5 +484,36 @@ mod tests {
         assert!(pt.contains(&print), "{pt}");
         assert!(pt.contains("Adicionar o dispositivo"), "{pt}");
         assert!(!en.contains(&id[0..20]), "more than the fingerprint: {en}");
+    }
+
+    #[test]
+    fn the_dialog_of_an_add_names_the_host_it_is_for_and_has_buttons_of_its_own() {
+        let me = own();
+        let other = own();
+        let ask = describe(&add(&me.key_id, DAEMON, &other.public_key), DAEMON, &me).unwrap();
+        assert_eq!(ask.host, DAEMON);
+        assert!(confirm_text(&ask, "en").1.contains("host daemon-0"), "{}", confirm_text(&ask, "en").1);
+        assert!(confirm_text(&ask, "pt-BR").1.contains("host daemon-0"));
+        assert_eq!(confirm_labels(Kind::EnrollAdd, "en"), ("Add device".to_string(), "Cancel".to_string()));
+        assert_eq!(confirm_labels(Kind::EnrollAdd, "pt-BR").0, "Adicionar dispositivo");
+        assert_eq!(confirm_labels(Kind::Approve, "en").0, "Allow");
+        assert_eq!(confirm_labels(Kind::Revoke, "pt-BR").0, "Permitir");
+    }
+
+    #[test]
+    fn this_devices_own_key_in_another_encoding_is_not_added_as_another() {
+        let me = own();
+        let mut der = STANDARD.decode(&me.public_key).unwrap();
+        // The compressed SPKI of the same point: the point's x, and the parity of y in the prefix.
+        let parity = 2 + (der[90] & 1);
+        let x: Vec<u8> = der[27..59].to_vec();
+        der.truncate(26);
+        der[1] = 0x39;
+        der[24] = 0x22;
+        der.push(parity);
+        der.extend(x);
+        let compressed = STANDARD.encode(&der);
+        assert_ne!(compressed, me.public_key);
+        assert!(describe(&add(&me.key_id, DAEMON, &compressed), DAEMON, &me).is_err());
     }
 }
