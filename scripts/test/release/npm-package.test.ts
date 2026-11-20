@@ -88,6 +88,18 @@ describe("npm package: its shape (#3541)", () => {
     ]);
   });
 
+  test("a dependency of any kind, or a bin that points at another file, is refused", () => {
+    expect([
+      ...["peerDependencies", "optionalDependencies", "devDependencies", "bundleDependencies"].map(
+        (field) => npmManifestProblems({ ...GOOD, [field]: { left: "1.0.0" } }, VERSION).length,
+      ),
+      npmManifestProblems(
+        { ...GOOD, bin: { fd: "evil.js", flightdeckd: "flightdeckd.js" } },
+        VERSION,
+      ).length,
+    ]).toEqual([1, 1, 1, 1, 1]);
+  });
+
   test("the launcher's table names exactly the binaries build:daemon makes", () => {
     expect(Object.values(BINARIES).sort()).toEqual(
       DAEMONS.map((path) => path.replace("dist/", "")).sort(),
