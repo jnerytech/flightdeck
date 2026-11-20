@@ -20,15 +20,11 @@ describe("approval-canonical: one byte string for one value, on both sides of th
       "\u0080": "Control",
       ö: "Latin Small Letter O With Diaeresis",
     };
-    expect(Object.keys(JSON.parse(canonicalJson(value)))).toEqual([
-      "\r",
-      "1",
-      "\u0080",
-      "ö",
-      "€",
-      "😀",
-      "דּ",
-    ]);
+    // RFC 8785 section 3.2.3 order, read from the text: a parsed object lists "1" first anyway.
+    const order = ["\r", "1", "\u0080", "\u00f6", "\u20ac", "\ud83d\ude00", "\ufb33"] as const;
+    const at = (key: string) => (value as Record<string, string>)[key];
+    const expected = `{${order.map((key) => `${JSON.stringify(key)}:${JSON.stringify(at(key))}`).join(",")}}`;
+    expect(canonicalJson(value)).toBe(expected);
   });
 
   test("Given nested objects and arrays, Then there are no spaces and an array keeps its order", () => {
