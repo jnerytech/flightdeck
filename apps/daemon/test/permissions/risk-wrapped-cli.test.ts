@@ -104,6 +104,53 @@ describe("risk rules: a wrapped flightdeckd call is rated as the plain one (#349
     expect(wrong).toEqual([]);
   });
 
+  test("a variable that may hold a shell or a runtime hides nothing", () => {
+    const wrong: string[] = [];
+    for (const [rule, args] of Object.entries(VERBS))
+      for (const command of [
+        `$SHELL -c 'fd ${args}'`,
+        `"$SH" -c "fd ${args}"`,
+        `bun $BIN ${args}`,
+        `echo go | $SH`,
+        `fish -c 'fd ${args}'`,
+        `busybox sh -c 'fd ${args}'`,
+        `pwsh -Command 'fd ${args}'`,
+        `case x in a) fd ${args};; esac`,
+        `f() { fd ${args}; }`,
+        `env -S 'fd ${args}'`,
+        `$W fd ${args}`,
+        `>/dev/null fd ${args}`,
+        `2>/dev/null fd ${args}`,
+        `> /dev/null fd ${args}`,
+        `(fd ${args}) > /dev/null`,
+        `cat <(fd ${args})`,
+        `FOO="a b" fd ${args}`,
+        `env X='a b' nice fd ${args}`,
+        `xargs -d ' ' fd ${args}`,
+        `taskset -c 0,1 fd ${args}`,
+        `env --unset X fd ${args}`,
+        `xargs --max-args 1 fd ${args}`,
+        `f"d" ${args}`,
+        `fl"ight"deckd ${args}`,
+        `find . -exec fd ${args} \\;`,
+        `doas fd ${args}`,
+        `su -c "fd ${args}"`,
+        `watch -n1 fd ${args}`,
+        `flock /tmp/x fd ${args}`,
+        `function f { fd ${args}; }`,
+      ])
+        if (!level(command).startsWith("high"))
+          wrong.push(`${rule}: ${command} -> ${level(command)}`);
+    expect(wrong).toEqual([]);
+  });
+
+  test("a word that is only a brace, or a name of the table's own object, is no wrapper nor a crash", () => {
+    expect(() => bash("constructor -x")).not.toThrow();
+    expect(() => bash("__proto__ fd approve r1")).not.toThrow();
+    expect(level("xargs -I{} fd card delete {}")).toBe(level("fd card delete c1"));
+    expect(level("fd card move c1 {}")).toBe(level("fd card move c1 review"));
+  });
+
   test("a wrapper in front of a harmless call, or a verb that is only text, stays an ordinary command", () => {
     expect(
       notHigh([
@@ -118,6 +165,11 @@ describe("risk rules: a wrapped flightdeckd call is rated as the plain one (#349
         "env -i X=1 fd host --json",
         "if true; then fd card list; fi",
         "bash -c 'echo approve'",
+        "command -v fd",
+        "find . -name x -exec echo {} +",
+        'FOO="a b" fd card list',
+        "fd card list > out.txt",
+        "(fd requests) 2>/dev/null",
         "sh -c '$FD card list'",
         'timeout 5 grep "fd card delete" notes.md',
       ]),
