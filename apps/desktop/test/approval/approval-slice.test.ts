@@ -342,6 +342,13 @@ describe("approval: adding a second device (#3478)", () => {
   const text = (over: Partial<Parameters<typeof encodeAdd>[0]> = {}) =>
     encodeAdd({ daemonId: "daemon-1", publicKey: NEW_KEY, name: "Laptop", ...over });
 
+  test("a key made of every byte value comes back from the text it was carried in", () => {
+    for (const start of [0, 91, 165]) {
+      const key = Buffer.from(Array.from({ length: 91 }, (_, i) => start + i)).toString("base64");
+      expect(decodeAdd(text({ publicKey: key }))?.publicKey).toBe(key);
+    }
+  });
+
   test("a new device makes its key and shows a text that carries the key, the host and the name", async () => {
     const { slice, log, keyLog } = approval({
       local: null,
