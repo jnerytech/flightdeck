@@ -3,11 +3,13 @@ import { createHash } from "node:crypto";
 import {
   approvalDigests,
   approvalMessage,
+  enrollAddMessage,
   enrollFirstMessage,
   FEATURE_APPROVAL_PROOF,
   type PermissionUpdate,
   revokeMessage,
 } from "@flightdeck/protocol";
+import { decodeAdd, encodeAdd } from "../../src/features/approval/add-text.ts";
 import { ApprovalSlice } from "../../src/features/approval/index.ts";
 import { refusalText } from "../../src/i18n/errors.ts";
 import { translator } from "../../src/i18n/index.ts";
@@ -15,7 +17,15 @@ import type { HostResult } from "../../src/lib/kernel.ts";
 
 const t = translator("en");
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
-const KEY = { publicKey: "pub-this", keyId: "key-this" };
+const shaBytes = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+/** A P-256 key's SPKI is 91 bytes; these are stand-ins of that size. */
+const spki = (fill: number) => Buffer.alloc(91, fill).toString("base64");
+const KEY = { publicKey: spki(7), keyId: "key-this" };
+const NEW_KEY = spki(9);
+const OTHER_PUBLIC = spki(3);
+/** What both devices show: sixteen characters of the key's id, in groups of four. */
+const printOf = (publicKey: string) =>
+  shaBytes(Buffer.from(publicKey, "base64")).slice(0, 16).replace(/(.{4})(?=.)/g, "$1-");
 const OTHER = { keyId: "key-other", name: "Laptop", client: "app", enrolledAt: "x", address: "a" };
 const THIS = { keyId: "key-this", name: "Phone", client: "app", enrolledAt: "x", address: "a" };
 
@@ -293,5 +303,126 @@ describe("approval: this device's key on a host's page (#3439)", () => {
     const { slice, keyLog } = approval();
     await slice.removeLocalKey("h");
     expect(keyLog).toEqual([{ op: "delete", args: ["daemon-1"] }]);
+  });
+});
+
+describe("approval: adding a second device (#3478)", () => {
+  const text = (over: Partial<Parameters<typeof encodeAdd>[0]> = {}) =>
+    encodeAdd({ daemonId: "daemon-1", publicKey: NEW_KEY, name: "Laptop", ...over });
+
+  test("a new device makes its key and shows a text that carries the key, the host and the name", async () => {
+    const { slice, log, keyLog } = approval({ local: null, list: { protectionOff: false, keys: [OTHER] } });
+    const request = await slice.requestAdd("h", "Laptop");
+    expect(keyLog.map((k) => k.op)).toEqual(["get", "create"]);
+    expect(log.map((l) => l.type)).toEqual(["approval.list"]);
+    expect(decodeAdd(request.text)).toEqual({
+      daemonId: "daemon-1",
+      publicKey: KEY.publicKey,
+      name: "Laptop",
+    });
+    expect(request.fingerprint).toBe(printOf(KEY.publicKey));
+    expect(request.fingerprint).toMatch(/^[0-9a-f]{4}(-[0-9a-f]{4}){3}$/);
+  });
+
+  test("a key the host does not list is the one waiting: it is reused, not replaced", async () => {
+    const { slice, keyLog } = approval({ list: { protectionOff: false, keys: [OTHER] } });
+    const request = await slice.requestAdd("h", "Laptop");
+    expect(keyLog.map((k) => k.op)).toEqual(["get"]);
+    expect(decodeAdd(request.text)?.publicKey).toBe(KEY.publicKey);
+  });
+
+  test("a device the host already lists asks for nothing", async () => {
+    const { slice, keyLog } = approval();
+    await expect(slice.requestAdd("h", "Laptop")).rejects.toThrow(t("approvalDevices.hasKeyHere"));
+    expect(keyLog.filter((k) => k.op === "create")).toEqual([]);
+  });
+
+  test("an enrolled device reads the text and names the key by its fingerprint, signing nothing", async () => {
+    const { slice, log, keyLog } = approval();
+    const offer = await slice.readAdd("h", text());
+    expect(offer).toEqual({
+      name: "Laptop",
+      publicKey: NEW_KEY,
+      fingerprint: printOf(NEW_KEY),
+      host: "daemon-1",
+    });
+    expect(keyLog.filter((k) => k.op === "sign")).toEqual([]);
+    expect(log.map((l) => l.type)).toEqual(["approval.list"]);
+  });
+
+  test("a text that is not fit to sign says why and signs nothing", async () => {
+    const cases: Array<[string, string]> = [
+      ["", t("approvalDevices.addBadText")],
+      ["hello", t("approvalDevices.addBadText")],
+      ["flightdeck-add:%%%", t("approvalDevices.addBadText")],
+      [text({ publicKey: "AAAA" }), t("approvalDevices.addBadText")],
+      [text({ name: "" }), t("approvalDevices.addBadText")],
+      [text({ name: "a\u202eb" }), t("approvalDevices.addBadText")],
+      [text({ name: "x".repeat(65) }), t("approvalDevices.addBadText")],
+      [text({ name: "a\u200bb" }), t("approvalDevices.addBadText")],
+      [text({ name: "3f2a-91bc-07de-44a1" }), t("approvalDevices.addBadText")],
+      [text({ name: "3F2A91BC07DE44A1" }), t("approvalDevices.addBadText")],
+      [text({ daemonId: "daemon-2" }), t("approvalDevices.addOtherHost")],
+      [text({ publicKey: OTHER_PUBLIC }), t("approvalDevices.addAlready")],
+    ];
+    for (const [input, message] of cases) {
+      const { slice, keyLog } = approval({
+        list: { protectionOff: false, keys: [THIS, { ...OTHER, publicKey: OTHER_PUBLIC } as never] },
+      });
+      await expect(slice.readAdd("h", input)).rejects.toThrow(message);
+      expect(keyLog.filter((k) => k.op === "sign")).toEqual([]);
+    }
+  });
+
+  test("a device with no key here reads nothing", async () => {
+    const { slice } = approval({ local: null });
+    await expect(slice.readAdd("h", text())).rejects.toThrow(t("approvalDevices.noKeyHere"));
+  });
+
+  test("confirming signs the add of that key with this device's key and sends it beside the signer", async () => {
+    const { slice, log } = approval();
+    const offer = await slice.readAdd("h", text());
+    log.length = 0;
+    expect(await slice.confirmAdd("h", offer)).toBe("done");
+    const message = enrollAddMessage({
+      keyId: "key-this",
+      daemonId: "daemon-1",
+      nonce: "nonce-1",
+      newPublicKey: NEW_KEY,
+    });
+    expect(log[0]).toEqual({ type: "approval.challenge", payload: { purpose: "enroll" } });
+    expect(log[1]).toEqual({
+      type: "approval.enroll",
+      payload: {
+        publicKey: NEW_KEY,
+        name: "Laptop",
+        nonce: "nonce-1",
+        signature: `sig:${message}`,
+        signerKeyId: "key-this",
+      },
+    });
+  });
+
+  test("a declined dialog sends nothing", async () => {
+    const { slice, log } = approval({ signFails: "declined" });
+    const offer = await slice.readAdd("h", text());
+    log.length = 0;
+    expect(await slice.confirmAdd("h", offer)).toBe("declined");
+    expect(log.map((l) => l.type)).toEqual(["approval.challenge"]);
+  });
+
+  test("a host that refuses the add is an error, and this device keeps its own key", async () => {
+    const { slice, keyLog } = approval({ refuse: "approval.enroll" });
+    const offer = await slice.readAdd("h", text());
+    await expect(slice.confirmAdd("h", offer)).rejects.toThrow();
+    expect(keyLog.filter((k) => k.op === "delete")).toEqual([]);
+  });
+
+  test("a device with no key signs no add", async () => {
+    const { slice, keyLog } = approval({ local: null });
+    await expect(
+      slice.confirmAdd("h", { name: "Laptop", publicKey: NEW_KEY, fingerprint: "x", host: "daemon-1" }),
+    ).rejects.toThrow(t("approvalDevices.noKeyHere"));
+    expect(keyLog.filter((k) => k.op === "sign")).toEqual([]);
   });
 });

@@ -32,5 +32,8 @@ export const approval = {
     noKeyHere:
       "This device has no approving key on this host. Approve from a device that has one, or reset protection at the host's terminal with flightdeckd approvers reset and enroll this device again.",
     hasKeyHere: "This device already has a key for this host.",
+    addBadText: "That is not a text made by another device's Add button. Copy it again, whole.",
+    addOtherHost: "That text was made for another host. Make it again on the device, with this host open.",
+    addAlready: "That device is already enrolled on this host.",
   },
 };

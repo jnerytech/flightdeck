@@ -20,7 +20,9 @@ request posted through the host would let any token holder (a session) post a fa
 It holds no secret: the public key and a name, which the host will list anyway. The enrolled device checks,
 before it shows anything: the prefix, at most 1024 characters, the host's daemon id equals the one of the
 host being edited (a text made for another host is refused), the public key is base64 of 91 bytes, the name
-is 1 to 64 characters without control characters, and the key is not already listed.
+is 1 to 64 characters with no control, format (bidi, zero-width) or line-separator character and does not
+look like a fingerprint (hex groups), and the key is not already listed. The text has no expiry and no secret;
+a stale or swapped text is caught only by the fingerprint.
 
 ### What the person compares
 
@@ -38,16 +40,36 @@ cheap, 2^64 is not.
 `approval_sign` gains one more thing it signs: `flightdeck/enroll-add/v1`, in the shell crate `describe`.
 It refuses what the key must never sign: a text for another host (the daemon id of the command), a text whose
 signer is not this device's key, and an add of this device's own key (that would be an enrollment, not an
-add). The dialog says: "Add the device with key `3f2a-91bc-07de-44a1` as an approver of this host? Continue
-only if the same code is on the other device." The dialog's words come from the parsed message and the
+add). It also refuses a key that is not the 91-byte form the app and the host make, so this device's own key in
+another encoding is not added as a second key. The dialog says: "Add the device with key `3f2a-91bc-07de-44a1`
+as an approver of host `daemon-0`? Continue only if the same code is shown on the other device." It names the
+host by the first 8 characters of its daemon id, from the signed text (the webview picks the host, and with
+two hosts paired the person must see which one), and has its own title and buttons ("Add device", not
+"Allow"), so a habit click on an allow does not add a device. The dialog's words come from the parsed message and the
 webview's language, never from text the webview sends. One dialog at a time stays.
 
 ### The new device's key
 
 The new device uses the same `approval_key_create` as the first enrollment: one key per host, refused when
 one exists. It keeps the key while it waits. The host's list not holding the key yet is the "waiting" state;
-the host's `approval.enrolled` announcement (its own key is not told as a notice) refreshes the panel. The
-person can cancel, which removes the key (`approval_key_delete`), or make a new text.
+the host's `approval.enrolled` announcement refreshes the panel. The app silences only the notice whose key
+id is this device's own key (#3477); every other enrollment, including one made from this device, is told with
+its name, so a script that got one dialog accepted by habit cannot add a key without a notice. The person can
+cancel, which removes the key (`approval_key_delete`), or make a new text.
+
+### A slow comparison
+
+The host's challenge lives 60 seconds and is asked for before the dialog. A person who compares slowly gets
+the host's expired-challenge refusal: the panel shows it, never "added", and the person confirms again, which
+asks for a new challenge and shows a new dialog.
+
+### The name
+
+The name is a label the person types on the new device and is not signed, so it never stands for the key. The
+enrolled device shows it quoted, apart from the fingerprint, and refuses one that has control or format
+characters or that looks like a fingerprint. The daemon stores the name as given (1 to 64 characters, no
+other rule); making the daemon refuse the same names covers every client and is left to a follow-up (it is a
+daemon change, outside this issue).
 
 ### The limit
 

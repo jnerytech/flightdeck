@@ -32,5 +32,8 @@ export const approval = {
     noKeyHere:
       "Este dispositivo não tem chave de aprovação neste host. Aprove por um dispositivo que tenha uma, ou zere a proteção no terminal do host com flightdeckd approvers reset e cadastre este dispositivo de novo.",
     hasKeyHere: "Este dispositivo já tem uma chave para este host.",
+    addBadText: "Isso não é um texto gerado pelo botão de adicionar de outro dispositivo. Copie de novo, inteiro.",
+    addOtherHost: "Esse texto foi feito para outro host. Gere de novo no dispositivo, com este host aberto.",
+    addAlready: "Esse dispositivo já está cadastrado neste host.",
   },
 };

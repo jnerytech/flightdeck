@@ -28,6 +28,21 @@ export interface ApprovalStatus {
   thisKeyId: string | null;
 }
 
+/** What a new device shows for an enrolled one to add it. */
+export interface AddRequest {
+  text: string;
+  fingerprint: string;
+}
+
+/** What an enrolled device read from that text, to show the person before it signs. */
+export interface AddOffer {
+  name: string;
+  publicKey: string;
+  fingerprint: string;
+  /** The first 8 characters of the host's id, as the system's dialog names it. */
+  host: string;
+}
+
 /** What the proof path found: nothing to prove, a proof to send, or the person declined the system's dialog. */
 export type ProofResult =
   | { kind: "none" }
@@ -139,6 +154,24 @@ export class ApprovalSlice {
       if (declined) return "declined";
       throw error;
     }
+  }
+
+  /**
+   * A new device's side of adding it (#3478): its key for the host, and the text to carry to an enrolled
+   * device. A key the host does not list is the one waiting to be added, so it is reused.
+   */
+  async requestAdd(_hostId: string, _name: string): Promise<AddRequest> {
+    return { text: "", fingerprint: "" };
+  }
+
+  /** An enrolled device's side: reads the text, checks it is fit for this host, and says what it would add. */
+  async readAdd(_hostId: string, _text: string): Promise<AddOffer> {
+    return { name: "", publicKey: "", fingerprint: "", host: "" };
+  }
+
+  /** Signs the add of what `readAdd` showed, after the system's dialog, and sends it. */
+  async confirmAdd(_hostId: string, _offer: AddOffer): Promise<"done" | "declined"> {
+    return "declined";
   }
 
   /** Removes `targetKeyId` from the host, signed by this device's key. "declined": the person said no. */
