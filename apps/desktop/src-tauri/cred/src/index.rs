@@ -64,6 +64,7 @@ pub fn write_addresses(store: &dyn Store, hosts: &[HostRef]) -> Result<(), Strin
 /// What the app does each time its host list changes: the addresses into the store first, then the
 /// index, so a name is never listed without its address. The first error, after trying both.
 pub fn sync(dir: &Path, store: &dyn Store, hosts: &[HostRef]) -> Result<(), String> {
-    let _ = (dir, store, hosts);
-    Ok(())
+    let addresses = write_addresses(store, hosts);
+    let index = write(dir, hosts).map_err(|error| error.to_string());
+    addresses.and(index)
 }
