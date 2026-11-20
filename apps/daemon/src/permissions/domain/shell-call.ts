@@ -4,8 +4,44 @@
  */
 import { trimEndOf, trimStartOf } from "../../kernel/index.ts";
 
-/** What may come before the program and is not it. */
-const PREFIXES = new Set(["command", "nohup", "time", "exec", "builtin", "env", "xargs"]);
+/** What may come before the program and is not it, and how many words each takes after its options. */
+interface Wrapper {
+  /** Options that take the next word as their value (`timeout -s KILL`). */
+  valued: readonly string[];
+  /** Words that are not options and still are not the program (`timeout`'s duration). */
+  positional: number;
+}
+const WRAPPERS: Record<string, Wrapper> = {
+  command: { valued: [], positional: 0 },
+  nohup: { valued: [], positional: 0 },
+  time: { valued: ["-f", "-o"], positional: 0 },
+  exec: { valued: ["-a"], positional: 0 },
+  builtin: { valued: [], positional: 0 },
+  setsid: { valued: [], positional: 0 },
+  env: { valued: ["-u", "-C", "-S"], positional: 0 },
+  xargs: { valued: ["-I", "-n", "-P", "-L", "-s", "-d", "-E", "-a"], positional: 0 },
+  timeout: { valued: ["-s", "-k", "--signal", "--kill-after"], positional: 1 },
+  nice: { valued: ["-n", "--adjustment"], positional: 0 },
+  ionice: { valued: ["-c", "-n", "-p", "-P", "-u"], positional: 0 },
+  stdbuf: { valued: ["-i", "-o", "-e"], positional: 0 },
+  chrt: { valued: [], positional: 1 },
+  taskset: { valued: ["-c"], positional: 1 },
+};
+/** Words that start a command and are not it: `then fd ...`, `! fd ...`, `{ fd ...`. */
+const KEYWORDS = new Set([
+  "if",
+  "then",
+  "elif",
+  "else",
+  "do",
+  "while",
+  "until",
+  "!",
+  "{",
+  "}",
+  "(",
+  ")",
+]);
 
 /** A word as a program name: no quotes, no folder, no `\` alias escape, no `.exe`, lowercase. */
 export const program = (word: string) =>
@@ -13,17 +49,61 @@ export const program = (word: string) =>
     .toLowerCase()
     .replace(/\.exe$/, "");
 
-/** The program of a segment and its arguments, past `sudo`, `env X=1` and the like. */
-export function invocation(segment: string[]): { prog: string; args: string[]; sudo: boolean } {
-  let i = 0;
+/** A group or a substitution opens the word (`(fd`, `{`, `$(fd`, a backtick) or closes it (`on)`, `}`). */
+const opened = (word: string) => word.replace(/^(?:\$\(|[({`])+/, "");
+const closed = (word: string) => word.replace(/[)}`]+$/, "");
+
+/** Where the program of a segment starts, past what may come before it: the keywords, groups and wrappers. */
+function programStart(words: string[]): { at: number; sudo: boolean } {
+  let at = 0;
   let sudo = false;
-  while (i < segment.length) {
-    const word = program(segment[i] as string);
-    if (word === "sudo") sudo = true;
-    else if (!PREFIXES.has(word) && !/^\w+=/.test(segment[i] as string)) break;
-    i++;
+  while (at < words.length) {
+    const word = words[at] as string;
+    const name = program(word);
+    if (name === "sudo") sudo = true;
+    else if (KEYWORDS.has(word) || word === "") {
+      // a keyword or a bare group bracket: nothing to skip over
+    } else if (/^\w+=/.test(word)) {
+      // an assignment in front of the command
+    } else if (WRAPPERS[name]) {
+      at = skipWrapper(words, at, WRAPPERS[name] as Wrapper);
+      continue;
+    } else break;
+    at++;
   }
-  return { prog: program(segment[i] ?? ""), args: segment.slice(i + 1), sudo };
+  return { at, sudo };
+}
+
+/** The index past a wrapper at `at`: its options, their values and its own words. */
+function skipWrapper(words: string[], at: number, wrapper: Wrapper): number {
+  let i = at + 1;
+  while (i < words.length) {
+    const word = words[i] as string;
+    if (word === "--") {
+      i++;
+      break;
+    }
+    if (!word.startsWith("-") || word === "-") break;
+    i += wrapper.valued.includes(word) ? 2 : 1;
+  }
+  let positional = wrapper.positional;
+  while (positional > 0 && i < words.length && !/^\w+=/.test(words[i] as string)) {
+    i++;
+    positional--;
+  }
+  return i;
+}
+
+/**
+ * The program of a segment and its arguments, past `sudo`, `env X=1`, `timeout 5`, a subshell or brace
+ * group and the like (#3499). A program that is a variable (`$FD`, `"${BIN}"`) cannot be resolved, so it is
+ * read as the Flightdeck CLI: the verbs after it decide, and any other program is no verb.
+ */
+export function invocation(segment: string[]): { prog: string; args: string[]; sudo: boolean } {
+  const words = segment.map((w, i) => (i === segment.length - 1 ? closed(w) : w)).map(opened);
+  const { at, sudo } = programStart(words);
+  const prog = program(words[at] ?? "");
+  return { prog: prog.includes("$") ? "flightdeckd" : prog, args: words.slice(at + 1), sudo };
 }
 
 /** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */

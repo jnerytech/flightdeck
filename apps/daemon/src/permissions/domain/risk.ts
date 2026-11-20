@@ -381,6 +381,31 @@ function segmentRisks(segment: string[], piped: boolean): Candidate[] {
     if (rule.when(prog, args)) out.push(["high", rule.reason(prog)]);
   }
   if (prog === "git") out.push(...gitRisks(args));
+  // A shell given text (`sh -c '$FD card delete c1'`) runs it as a command line of its own (#3499).
+  const text = shellText(prog, args);
+  if (text !== undefined) out.push(...statementRisks(text));
+  return out;
+}
+
+/** The text a shell is told to run with `-c` (`-lc` and `-ec` too), without its outer quotes; none otherwise. */
+function shellText(prog: string, args: string[]): string | undefined {
+  if (!["sh", "bash", "zsh", "dash", "ksh"].includes(prog)) return undefined;
+  const flag = args.findIndex((a) => /^-[a-z]*c[a-z]*$/i.test(a));
+  if (flag < 0) return undefined;
+  return args
+    .slice(flag + 1)
+    .join(" ")
+    .replace(/^["']|["']$/g, "");
+}
+
+/** What each command of a shell line adds: a pipe hands its output to the next command, so a part knows if it is fed. */
+function statementRisks(command: string): Candidate[] {
+  const out: Candidate[] = [];
+  for (const statement of command.split(/&&|\|\||[;&\n]/)) {
+    statement.split("|").forEach((part, i) => {
+      for (const segment of segments(part)) out.push(...segmentRisks(segment, i > 0));
+    });
+  }
   return out;
 }
 
@@ -478,12 +503,7 @@ export class RiskClassifier {
 
   private shell(command: string, cwd: string): Candidate[] {
     const out: Candidate[] = [["medium", "comando de shell"]];
-    // A pipe hands its output to the next command: split on single pipes to know who is fed.
-    for (const statement of command.split(/&&|\|\||[;&\n]/)) {
-      statement.split("|").forEach((part, i) => {
-        for (const segment of segments(part)) out.push(...segmentRisks(segment, i > 0));
-      });
-    }
+    out.push(...statementRisks(command));
     if (/\$\(|`/.test(command)) out.push(["high", "substituição de comando"]);
     if (/(^|\s)-encodedcommand(\s|$)/i.test(command)) out.push(["high", "-EncodedCommand"]);
     if (/\bbase64\b[^|;&\n]*\s(-d|-D|--decode)\b[^|;&\n]*\|/.test(command)) {
