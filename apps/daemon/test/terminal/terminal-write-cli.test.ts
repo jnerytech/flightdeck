@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { terminalCliArgs } from "../../src/cli/domain/terminal-args.ts";
 import { parseArgs } from "../../src/main.ts";
 import { config, fakeDaemon, type Handlers, stopAll } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
@@ -53,6 +54,27 @@ describe("flightdeckd terminal open (issue #3538)", () => {
       out: [OPENED_LINE],
     });
     expect(sent(daemon, "terminal.open")).toEqual([{ cwd: "/home/pi/app", cols: 80, rows: 24 }]);
+  });
+
+  test("the words after -- the parser read reach the daemon as the program", async () => {
+    const { runTerminalCli } = await import("../../src/terminal/index.ts");
+    const daemon = fakeDaemon(OPEN);
+    const args = parseArgs([
+      "terminal",
+      "open",
+      "--cwd",
+      "/srv",
+      "--",
+      "sh",
+      "--login",
+      "-c",
+      "id",
+    ]);
+    const { code } = await runTerminalCli(terminalCliArgs(args), config(daemon.port));
+    expect(code).toBe(0);
+    expect(sent(daemon, "terminal.open")).toEqual([
+      { cwd: "/srv", cols: 80, rows: 24, command: ["sh", "--login", "-c", "id"] },
+    ]);
   });
 
   test("the program and its arguments go to the daemon as a list, never as one shell line", async () => {
@@ -229,7 +251,12 @@ describe("the arguments of the terminal write verbs (issue #3538)", () => {
         "--persona",
         "p",
       ]),
-    ).toMatchObject({ action: "open", terminalClaude: true, terminalResume: "r1" });
+    ).toMatchObject({
+      action: "open",
+      terminalClaude: true,
+      terminalResume: "r1",
+      terminalPersona: "p",
+    });
   });
 
   test("open needs a folder, and --claude and a program after -- do not go together", () => {
@@ -257,7 +284,9 @@ describe("the arguments of the terminal write verbs (issue #3538)", () => {
       ["--rows", "301"],
       ["--rows", "2e1"],
     ] as const) {
-      expect(refused(["terminal", "open", "--cwd", "/srv", flag, bad])).toContain(flag);
+      expect(refused(["terminal", "open", "--cwd", "/srv", flag, bad])).toStartWith(
+        `${flag}: a whole number from 1 to `,
+      );
     }
   });
 
