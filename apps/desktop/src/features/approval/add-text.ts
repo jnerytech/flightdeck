@@ -32,7 +32,7 @@ export function isDeviceName(name: string): boolean {
 
 function bytesOf(publicKey: string): Uint8Array<ArrayBuffer> | null {
   try {
-    return Uint8Array.from(atob(publicKey), (c) => c.charCodeAt(0));
+    return Uint8Array.from(atob(publicKey), (c) => c.codePointAt(0) ?? 0);
   } catch {
     return null;
   }
@@ -41,7 +41,9 @@ function bytesOf(publicKey: string): Uint8Array<ArrayBuffer> | null {
 /** The short text the new device shows, for the person to carry to an enrolled device. */
 export function encodeAdd(text: AddText): string {
   const json = JSON.stringify({ d: text.daemonId, k: text.publicKey, n: text.name });
-  const binary = Array.from(new TextEncoder().encode(json), (b) => String.fromCharCode(b)).join("");
+  const binary = Array.from(new TextEncoder().encode(json), (b) => String.fromCodePoint(b)).join(
+    "",
+  );
   return PREFIX + btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
@@ -54,7 +56,7 @@ export function decodeAdd(text: string): AddText | null {
     const b64 = trimmed.slice(PREFIX.length).replaceAll("-", "+").replaceAll("_", "/");
     const binary = atob(b64);
     json = new TextDecoder("utf-8", { fatal: true }).decode(
-      Uint8Array.from(binary, (c) => c.charCodeAt(0)),
+      Uint8Array.from(binary, (c) => c.codePointAt(0) ?? 0),
     );
   } catch {
     return null;
@@ -64,7 +66,7 @@ export function decodeAdd(text: string): AddText | null {
   const { d, k, n } = fields;
   const bytes = bytesOf(k);
   // The canonical form only: another spelling of the same bytes is not the key the host would list.
-  if (d === "" || bytes?.length !== KEY_BYTES || btoa(String.fromCharCode(...bytes)) !== k)
+  if (d === "" || bytes?.length !== KEY_BYTES || btoa(String.fromCodePoint(...bytes)) !== k)
     return null;
   if (!isDeviceName(n)) return null;
   return { daemonId: d, publicKey: k, name: n.trim() };
