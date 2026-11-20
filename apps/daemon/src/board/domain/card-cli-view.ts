@@ -183,6 +183,14 @@ export function textOf(args: CardCliArgs): string {
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
+/** What a file's header says about its hunks: why they are not shown, or the lines it adds and removes. */
+function fileDetail(file: CardDiff["files"][number]): string {
+  if (file.secret) return "may hold a credential: not shown";
+  if (file.tooLarge) return `too large: ${file.bytes ?? 0} bytes, not shown`;
+  if (file.binary) return "binary";
+  return `+${file.additions} -${file.deletions}`;
+}
+
 /** The diff of a card as text: a header per file, then its hunks as git prints them. */
 export function diffLines({ base, files }: CardDiff): string[] {
   if (files.length === 0) return [`no changes against ${base}`];
@@ -192,13 +200,7 @@ export function diffLines({ base, files }: CardDiff): string[] {
       const what =
         file.status === "renamed" && file.oldPath ? `renamed from ${file.oldPath}` : file.status;
       const shown = !file.secret && !file.tooLarge && !file.binary;
-      const detail = file.secret
-        ? "may hold a credential: not shown"
-        : file.tooLarge
-          ? `too large: ${file.bytes ?? 0} bytes, not shown`
-          : file.binary
-            ? "binary"
-            : `+${file.additions} -${file.deletions}`;
+      const detail = fileDetail(file);
       return [
         `--- ${file.path} (${what}, ${detail})`,
         // The daemon sends no lines for a file it hides; the reader never relies on that alone.
@@ -229,8 +231,9 @@ export function reviewLines(id: string, review: CardReviewResult): string[] {
     ...(review.cached ? ["cached"] : []),
     ...(review.moved ? ["the card was moved"] : []),
   ];
+  const noted = notes.length ? ` (${notes.join(", ")})` : "";
   return [
-    `review of ${id}: ${review.state}${notes.length ? ` (${notes.join(", ")})` : ""}`,
+    `review of ${id}: ${review.state}${noted}`,
     ...review.summary.split("\n"),
     ...(review.anchored > 0
       ? [
