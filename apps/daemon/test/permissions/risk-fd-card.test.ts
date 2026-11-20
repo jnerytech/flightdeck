@@ -26,6 +26,11 @@ describe("risk rules: a session ending or forcing a card from its shell (#3454)"
         ["fd --host h1 card check-loop c1 on", REASON],
         ["bun run apps/daemon/src/bin.ts card check-loop c1 on", REASON],
         ['bash -c "fd card choose-variant c1 v2 --confirm"', REASON],
+        // An option's value with a space in it is one argument: it hides nothing (#3454).
+        ['fd --config "/x y/c.json" card choose-variant c1 v2 --confirm', REASON],
+        ['fd --config "/x y/c.json" card check-loop c1 on', REASON],
+        ["fd --config '/x y/c.json' card discard c1 --confirm", REASON],
+        ['flightdeckd --project "my project" card merge-local c1 --confirm', REASON],
         ["fd card move c1 review --force", REASON],
         ["fd card move c1 done --position 2 --force --json", REASON],
         ["~/.flightdeck/bin/fd card discard c1 --confirm", REASON],
