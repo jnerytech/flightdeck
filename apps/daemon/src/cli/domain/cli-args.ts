@@ -92,7 +92,8 @@ export interface CliArgs {
     | "remove-member"
     | "dismiss-unblocked"
     | "search"
-    | "tool";
+    | "tool"
+    | "resume";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;

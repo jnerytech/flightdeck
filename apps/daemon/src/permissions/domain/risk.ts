@@ -325,6 +325,28 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
+/**
+ * A resume that skips what the app asks a person (#3461): `history resume --force` starts the session
+ * although the transcript may be running elsewhere, and `--permission-mode` picks the mode the new
+ * session runs in (`bypassPermissions` included). A plain resume takes the host's defaults.
+ */
+function resumesWithPower(prog: string, args: string[]): boolean {
+  const raised = (all: string[]) =>
+    all.some(
+      (w) => w === "--force" || w === "--permission-mode" || w.startsWith("--permission-mode="),
+    );
+  if (["fd", "flightdeckd"].includes(prog)) {
+    const own = shellArguments(args);
+    const [command, action] = flightdeckWords(own);
+    return command === "history" && action === "resume" && raised(own);
+  }
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const runsCli = words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  const resumes = words.some((w, i) => w === "history" && words[i + 1] === "resume");
+  return runsCli && resumes && raised(words);
+}
+
 const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
 const TEAM_CHANGES = [
   "new",
@@ -425,6 +447,11 @@ const DANGEROUS: Array<{
     when: changesAPersona,
     reason: () =>
       "changes what the app asks a person to confirm (flightdeckd persona save, remove, reset, trust or publish-agent)",
+  },
+  {
+    when: resumesWithPower,
+    reason: () =>
+      "does what the app asks a person to confirm (flightdeckd history resume --force, or with a permission mode)",
   },
   {
     when: startsATeam,

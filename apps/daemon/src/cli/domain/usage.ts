@@ -16,6 +16,8 @@ export const USAGE = [
   "     fd history search <text> [--cwd <folder>] [--from <time>] [--to <time>] [--limit <1-200>] [--json] [--config <file>]",
   "     fd history get <session> [--tail] [--limit <1-500>] [--cursor <c>] [--json] [--config <file>]   (the transcript as text; a page ends with the flag that reads the next)",
   "     fd history tool <session> <message> <index> [--json] [--config <file>]   (one tool call of a message, with its result)",
+  "     fd history resume <session> [--name <text>] [--permission-mode <mode>] [--force] [--json] [--config <file>]   (--force: the transcript may be running elsewhere)",
+  "     fd history watch [--json] [--config <file>]   (a line per transcript that grows, until Ctrl-C)",
   "     fd approvers enroll [--json] [--config <file>]   (this host's terminal opens the window that enrolls the first device)",
   "     fd approvers reset [--json] [--config <file>]   (removes every enrolled device)",
   "     fd hooks install|uninstall|status [--config <file>]",
