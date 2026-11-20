@@ -29,6 +29,21 @@ describe("risk rules: a session answering a permission request from its shell (#
     ).toEqual([]);
   });
 
+  test("approvers enroll and reset change who may approve: high, in the same spellings (#3439)", () => {
+    const WHO = "changes the devices that may approve (flightdeckd approvers)";
+    expect(
+      wrongReasons([
+        ["fd approvers reset", WHO],
+        ["flightdeckd approvers enroll --json", WHO],
+        ["flightdeckd --config /x/y.json approvers reset", WHO],
+        ['fd "approvers" reset', WHO],
+        ["bun run apps/daemon/src/bin.ts approvers reset", WHO],
+        ['bash -c "fd approvers enroll"', WHO],
+      ]),
+    ).toEqual([]);
+    expect(notHigh(["echo approvers", 'fd send fd-qa "approvers reset"'])).toEqual([]);
+  });
+
   test("the other commands stay ordinary shell commands, and a word in an argument is not a verb", () => {
     expect(
       notHigh([
