@@ -228,6 +228,11 @@ flightdeckd card list [--project <name or id>] [--json]
 flightdeckd card show <card> [--json]
 flightdeckd card new "<title>" [--project <name or id>] [--description <text>] [--json]
 flightdeckd card start <card> [--workflow <name>] [--json]
+flightdeckd card move <card> <column> [--position <n>] [--force] [--json]
+flightdeckd card update <card> [--title <text>] [--description <text>] [--estimate <hours|none>]
+  [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json]
+flightdeckd card stop <card> [--json]
+flightdeckd card complete|discard|delete <card> --confirm [--json]
 ```
 
 - `list` prints one line per card (project, id, column, title, and why a card waits). Without
@@ -235,7 +240,16 @@ flightdeckd card start <card> [--workflow <name>] [--json]
   no `--project` for `new`.
 - `start` of a card that has to wait says why (a free slot, the plan quota, the host's memory, the
   budget, a paused host, the cards it waits on) and still exits 0: the card is queued.
-- `--json` prints the answer for a script. Discarding and finishing a card stay in the app.
+- `move` takes a column (`backlog`, `in_progress`, `waiting`, `review` or `done`) and, like dragging a
+  card in the app, is refused when the column's contract is not met; `--force` moves it anyway and the
+  card keeps a notice. `--position` is the place in the column, from 0.
+- `update` changes only the fields you pass. `none` clears the estimate, the validation note, the spec
+  path and the blockers; `--blocked-by` takes a comma-separated list of card ids. With no field it
+  refuses, and sends nothing.
+- `stop` stops the card's run. `complete`, `discard` and `delete` cannot be undone, so each needs
+  `--confirm`; without it the command exits 1 and sends nothing. `delete` only removes a card that never
+  started (use `discard` for one that did).
+- `--json` prints the answer for a script.
 - **Exit codes:** 0 done, 1 refused (the reason is on stderr, with the daemon's code), 2 no daemon
   (not running, or silent for 15 s).
 - **The token** comes only from the config file: `--token` is refused and the environment is not

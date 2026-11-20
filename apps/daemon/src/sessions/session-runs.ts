@@ -61,6 +61,8 @@ export interface RunsContext {
   emit(sessionId: string, event: SessionEvent): void;
   setStatus(sessionId: string, status: SessionStatus, reason?: string): void;
   bypassAllowed(): boolean;
+  /** The mode a session starts in when nothing asks for another. */
+  defaultMode(): PermissionMode;
 }
 
 /** A session's agent run (#1595: out of the manager): started, fed its messages, failed. */
@@ -77,7 +79,7 @@ export class SessionRuns {
         "runtime_unavailable",
       );
     }
-    const mode = payload.permissionMode ?? this.ctx.opts.defaultPermissionMode;
+    const mode = payload.permissionMode ?? this.ctx.defaultMode();
     const unsupported = unsupportedOnOpenCode(payload.persona, mode);
     if (unsupported) {
       throw new FlightdeckError(

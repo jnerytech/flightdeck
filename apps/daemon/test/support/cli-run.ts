@@ -15,11 +15,12 @@ export interface CliRun {
   code: number | null;
 }
 
-/** `flightdeckd <argv> --config <file>`, with a config whose daemon is at `port` (or the text `rawConfig`, as the file). */
+/** `flightdeckd <argv> --config <file>`, with a config whose daemon is at `port` (or the text `rawConfig`, as the file; `null` passes no `--config` at all); `extra` adds to the deps (the machine `--host` reads). */
 export async function flightdeckd(
   argv: string[],
   port: number,
-  rawConfig?: string,
+  rawConfig?: string | null,
+  extra: Partial<CliDeps> = {},
 ): Promise<CliRun> {
   const dir = tempDir("fd-cli-run-");
   const file = join(dir, "config.json");
@@ -32,8 +33,12 @@ export async function flightdeckd(
       run.code = code;
     },
     onSignal: () => {},
+    ...extra,
   } as unknown as CliDeps;
-  const handled = await runCommandCli([...argv, "--config", file], deps);
+  const handled = await runCommandCli(
+    rawConfig === null ? argv : [...argv, "--config", file],
+    deps,
+  );
   if (!handled)
     throw new Error(`flightdeckd ${argv.join(" ")} is not a command that asks a daemon`);
   return run;

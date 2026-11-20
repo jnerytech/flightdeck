@@ -234,6 +234,11 @@ flightdeckd card list [--project <nome ou id>] [--json]
 flightdeckd card show <card> [--json]
 flightdeckd card new "<título>" [--project <nome ou id>] [--description <texto>] [--json]
 flightdeckd card start <card> [--workflow <nome>] [--json]
+flightdeckd card move <card> <coluna> [--position <n>] [--force] [--json]
+flightdeckd card update <card> [--title <texto>] [--description <texto>] [--estimate <horas|none>]
+  [--validation-note <texto|none>] [--spec-path <caminho|none>] [--blocked-by <ids|none>] [--json]
+flightdeckd card stop <card> [--json]
+flightdeckd card complete|discard|delete <card> --confirm [--json]
 ```
 
 - `list` imprime uma linha por card (projeto, id, coluna, título e por que um card espera). Sem
@@ -241,7 +246,16 @@ flightdeckd card start <card> [--workflow <nome>] [--json]
   projeto dispensa `--project` no `new`.
 - `start` de um card que precisa esperar diz por quê (vaga livre, cota do plano, memória do host,
   orçamento, host pausado, cards de que ele depende) e sai com 0: o card fica na fila.
-- `--json` imprime a resposta para um script. Descartar e concluir um card ficam no app.
+- `move` recebe uma coluna (`backlog`, `in_progress`, `waiting`, `review` ou `done`) e, como arrastar
+  um card no app, é recusado quando o contrato da coluna não é cumprido; `--force` move assim mesmo e o
+  card guarda um aviso. `--position` é o lugar na coluna, a partir de 0.
+- `update` muda só os campos que você passa. `none` limpa a estimativa, a nota de validação, o caminho
+  da spec e os bloqueios; `--blocked-by` recebe uma lista de ids separados por vírgula. Sem nenhum
+  campo ele recusa e não envia nada.
+- `stop` para a execução do card. `complete`, `discard` e `delete` não têm volta, então cada um exige
+  `--confirm`; sem ele o comando sai com 1 e não envia nada. `delete` só remove um card que nunca
+  começou (use `discard` para um que começou).
+- `--json` imprime a resposta para um script.
 - **Códigos de saída:** 0 feito, 1 recusado (o motivo vai para o stderr, com o código do daemon), 2
   sem daemon (parado, ou mudo por 15 s).
 - **O token** vem só do arquivo de config: `--token` é recusado e o ambiente não é lido. Ele nunca

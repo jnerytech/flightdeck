@@ -1,7 +1,9 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { loadConfig } from "../config.ts";
-import type { CliResult } from "../daemon-client/index.ts";
+import type { CardCliArgs } from "../board/index.ts";
+import { loadConfig, userHome } from "../config.ts";
+import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
+import type { ResolveDeps } from "../remote-hosts/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
@@ -32,8 +34,12 @@ export interface CliDeps extends SetupCommandDeps, MaintenanceCommandDeps {
   mcpTransport?: Transport;
   /** The folder `flightdeckd mcp` runs in; the process's when absent. */
   cwd?: string;
+  /** What `--host` reads (the app's name index and the credential helper); this machine's own when absent. Injected in tests. */
+  remote?: ResolveDeps;
   /** The platform `flightdeckd claude` launches claude on; the process's when absent. Injected in tests. */
   platform?: NodeJS.Platform;
+  /** Whether `flightdeckd claude` runs as root (claude refuses bypass there); the process's when absent. Injected in tests. */
+  root?: boolean;
 }
 
 /** A command that is not the daemon: what it prints and does, and the exit code (null: it stays open). */
@@ -69,12 +75,60 @@ async function localConfig(args: CliArgs) {
 }
 
 /** Prints what a command that asks the local daemon returned, and gives its exit code. */
-const reported = (deps: CliDeps, result: CliResult): Promise<number> =>
+const reported = (deps: CliDeps, result: CliResult, asJson = false): Promise<number> =>
   settled(() => {
     for (const line of result.out) deps.log.log(line);
-    for (const line of result.err) deps.log.error(`flightdeckd: ${line}`);
+    // A script reads the refusal of a command on another host as one JSON line with its stable reason (#3429).
+    for (const line of result.err)
+      deps.log.error(
+        asJson && result.reason !== undefined
+          ? JSON.stringify({ error: line, reason: result.reason })
+          : `flightdeckd: ${line}`,
+      );
     return result.code;
   });
+
+/** What `--host` reads on this machine: the app's index and the credential helper beside the binary. */
+async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
+  if (deps.remote) return deps.remote;
+  const { boundedExec } = await import("../kernel/index.ts");
+  const { HELPER_TIMEOUT_MS } = await import("../remote-hosts/index.ts");
+  return {
+    env: {
+      platform: process.platform,
+      home: userHome(deps.env, process.platform),
+      ...(deps.env.APPDATA ? { appData: deps.env.APPDATA } : {}),
+      ...(deps.env.LOCALAPPDATA ? { localAppData: deps.env.LOCALAPPDATA } : {}),
+      ...(deps.env.XDG_CONFIG_HOME ? { xdgConfigHome: deps.env.XDG_CONFIG_HOME } : {}),
+      execPath: process.execPath,
+    },
+    uid: process.getuid?.() ?? null,
+    exec: boundedExec(HELPER_TIMEOUT_MS),
+  };
+}
+
+/** Where `host` and `sessions` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+async function asking(
+  args: CliArgs,
+  deps: CliDeps,
+  run: (config: LocalConfig, remote?: RemoteTarget) => Promise<CliResult>,
+): Promise<number> {
+  if (args.host === undefined) return reported(deps, await run(await localConfig(args)), args.json);
+  if (args.token !== undefined)
+    throw new Error("the token of this command is read from the config file only: drop --token");
+  if (args.config !== undefined)
+    throw new Error(
+      "--config names the config of this machine, which --host does not use: drop --config",
+    );
+  const { resolveHost } = await import("../remote-hosts/index.ts");
+  const resolved = await resolveHost(args.host, await remoteDeps(deps));
+  if (!resolved.ok) return reported(deps, resolved.result, args.json);
+  // The config of this machine plays no part: the address and the token are the host's.
+  return reported(deps, await run(NO_LOCAL_DAEMON, resolved.target), args.json);
+}
+
+type LocalConfig = { bind: string; port: number; token: string };
+const NO_LOCAL_DAEMON: LocalConfig = { bind: "", port: 0, token: "" };
 
 /** `approve` and `deny`: one answer to one open permission request. */
 async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
@@ -132,7 +186,9 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { daemonCommand } = await import("../service/index.ts");
     // Its own arguments all go to claude, so the config comes from the environment.
     const file = configPath({ ...args, config: deps.env.FLIGHTDECK_CONFIG });
+    const configExisted = await Bun.file(file).exists();
     return runClaude({
+      configExisted,
       args: args.claudeArgs ?? [],
       cwd: deps.cwd ?? process.cwd(),
       config: await loadConfig(file),
@@ -141,6 +197,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       log: deps.log,
       timeoutMs: deps.hookConnectTimeoutMs ?? HOOK_CONNECT_TIMEOUT_MS,
       ...(deps.platform ? { platform: deps.platform } : {}),
+      ...(deps.root === undefined ? {} : { root: deps.root }),
       ...(deps.exec ? { exec: deps.exec } : {}),
     });
   },
@@ -220,12 +277,20 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       deps,
       await runCardCli(
         {
-          action: args.action as "list" | "show" | "new" | "start",
+          action: args.action as CardCliArgs["action"],
           ...(args.project === undefined ? {} : { project: args.project }),
           ...(args.cardId === undefined ? {} : { id: args.cardId }),
           ...(args.cardTitle === undefined ? {} : { title: args.cardTitle }),
           ...(args.description === undefined ? {} : { description: args.description }),
           ...(args.workflow === undefined ? {} : { workflow: args.workflow }),
+          ...(args.column === undefined ? {} : { column: args.column }),
+          ...(args.position === undefined ? {} : { position: args.position }),
+          ...(args.force ? { force: true } : {}),
+          ...(args.confirm ? { confirm: true } : {}),
+          ...(args.estimate === undefined ? {} : { estimate: args.estimate }),
+          ...(args.validationNote === undefined ? {} : { validationNote: args.validationNote }),
+          ...(args.specPath === undefined ? {} : { specPath: args.specPath }),
+          ...(args.blockedBy === undefined ? {} : { blockedBy: args.blockedBy }),
           ...(args.json ? { json: true } : {}),
         },
         config,
@@ -234,13 +299,15 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");
-    const config = await localConfig(args);
-    return reported(deps, await runHostCli(args.json ? { json: true } : {}, config));
+    return asking(args, deps, (config, remote) =>
+      runHostCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
+    );
   },
   sessions: async (args, deps) => {
     const { runSessionsCli } = await import("../sessions/index.ts");
-    const config = await localConfig(args);
-    return reported(deps, await runSessionsCli(args.json ? { json: true } : {}, config));
+    return asking(args, deps, (config, remote) =>
+      runSessionsCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
+    );
   },
   requests: async (args, deps) => {
     const { runRequestsCli } = await import("../permissions/index.ts");

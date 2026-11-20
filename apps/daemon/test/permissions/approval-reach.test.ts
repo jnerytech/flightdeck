@@ -3,6 +3,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { join } from "node:path";
 import { Central } from "../../src/central/central.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
+import { Approvers } from "../../src/permissions/approvers.ts";
 import { keyIdOf } from "../../src/permissions/domain/approval-gate.ts";
 import { RiskClassifier } from "../../src/permissions/domain/risk.ts";
 import { createPermissions } from "../../src/permissions/wiring.ts";
@@ -74,6 +75,54 @@ describe("approval-reach: the permission domain builds the approvers once, for t
       usage: { record: () => undefined },
     });
     expect(again.approvers.daemonId()).toBe(approvers.daemonId());
+  });
+});
+
+describe("approval-reach: the approvers read the real clock and randomness when no one injects them", () => {
+  test("Given no options, Then the daemon id and a challenge's nonce are made, and the two clocks read", () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const approvers = new Approvers(store.db);
+    expect(() => approvers.daemonId()).not.toThrow();
+    expect(approvers.daemonId().length).toBeGreaterThanOrEqual(32);
+    const challenge = approvers.challenge("enroll", undefined, 1);
+    expect(challenge.nonce.length).toBeGreaterThan(0);
+    expect(challenge.expiresInMs).toBe(60_000);
+  });
+
+  test("Given the board's project lookup, Then the automatic approval asks it for the cwd and the card", async () => {
+    const asked: string[] = [];
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const { autoApprove } = createPermissions({
+      db: store.db,
+      runtime: { judgePermission: async () => ({ decision: "ask", reason: "x" }) },
+      config: { allowedRoots: ["/p"], dataDir: "/data", risk: { extraHigh: [] } },
+      home: "/home/u",
+      projectForCwd: (cwd) => {
+        asked.push(cwd);
+        return cwd === "/p/card"
+          ? {
+              project: {
+                id: "p1",
+                autoApprove: { enabled: false, model: "m", lowWithoutAi: false },
+              },
+              card: { id: "c1", description: "d" },
+            }
+          : null;
+      },
+      usage: { record: () => undefined },
+    });
+    const request = {
+      sessionKey: "s",
+      requestId: "r",
+      toolName: "Bash",
+      input: {},
+      risk: { level: "low" as const, reason: "x", network: false },
+    };
+    expect(await autoApprove.decide({ ...request, cwd: "/elsewhere" })).toBeNull();
+    expect(await autoApprove.decide({ ...request, cwd: "/p/card" })).toBeNull();
+    expect(asked).toEqual(["/elsewhere", "/p/card"]);
   });
 });
 

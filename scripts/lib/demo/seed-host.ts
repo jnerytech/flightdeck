@@ -188,6 +188,9 @@ export async function host(work: string, name: string): Promise<HostRun> {
       dataDir: join(base, "data"),
       allowedRoots: [projects],
       runtime: "fake",
+      // The demo asks for permissions (a Bash request, a Write request) and shows the mode chip: the
+      // host keeps the default it had before bypass became the default (#3427).
+      allowBypassPermissions: false,
       // The hooks token and a free port for the OTLP receiver, which listens once hooks are set up.
       hooks: { port: 0, token: crypto.randomUUID().replaceAll("-", "") },
       telemetry: { port: 0 },

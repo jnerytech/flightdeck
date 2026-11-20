@@ -79,6 +79,38 @@ export function personaArgs(
   return out;
 }
 
+/**
+ * The `--permission-mode` a launch adds (#3427): bypass, the host's default, while its switch is on
+ * and the host default is bypass. Nothing is added when the person (or a persona) already chose a
+ * mode, and under root, where claude refuses bypass: the launch then opens in claude's own mode and
+ * says so. `IS_SANDBOX` is never set to get around that refusal.
+ */
+export function bypassArgs(opts: {
+  allowed: boolean;
+  byDefault: string;
+  given: string[];
+  root: boolean;
+  /** The mode the persona asks for, if any: one stricter than bypass is kept. */
+  personaMode?: string | null;
+}): { args: string[]; notice: string | null } {
+  const none = { args: [], notice: null };
+  if (!opts.allowed || opts.byDefault !== "bypassPermissions") return none;
+  if (opts.personaMode && opts.personaMode !== "bypassPermissions") return none;
+  if (
+    passed(opts.given, "--permission-mode") ||
+    passed(opts.given, "--dangerously-skip-permissions")
+  )
+    return none;
+  if (opts.root) {
+    return {
+      args: [],
+      notice:
+        "flightdeckd: this host's default is bypass permissions, but claude refuses it as root; opening claude in its own default mode",
+    };
+  }
+  return { args: ["--permission-mode", "bypassPermissions"], notice: null };
+}
+
 /** The folder name a session is named after: the git toplevel's when there is one, else the launch folder's. */
 export function repoFolder(cwd: string, toplevel: string | null): string {
   const trimmed = (toplevel ?? cwd).replace(/[\\/]+$/, "");

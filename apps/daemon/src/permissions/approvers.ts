@@ -1,6 +1,6 @@
 /** The devices that approve for the person (#3439): challenges, enrollment, revoke and the list. */
 import type { Database } from "bun:sqlite";
-import { timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
   type ApprovalKeyInfo,
   type CommandPayload,
@@ -20,7 +20,7 @@ import {
 } from "./domain/approval-gate.ts";
 import { NONCE_TTL_MS, NonceBook, type NoncePurpose } from "./domain/nonce-book.ts";
 
-export interface ApproversOptions {
+interface ApproversOptions {
   now: () => Date;
   /** A monotonic clock in ms (a nonce's life). */
   mono: () => number;
@@ -59,12 +59,18 @@ export class Approvers {
   readonly gate: ApprovalGate;
   private id: string | undefined;
 
-  constructor(
-    db: Database,
-    private readonly opts: ApproversOptions,
-  ) {
-    this.store = new ApprovalStore(db, opts.random);
-    this.nonces = new NonceBook({ mono: opts.mono, random: opts.random });
+  private readonly opts: ApproversOptions;
+
+  /** The real clock and randomness unless a test (or the CLI's `--now`) injects its own. */
+  constructor(db: Database, opts: Partial<ApproversOptions> = {}) {
+    this.opts = {
+      now: () => new Date(),
+      mono: () => performance.now(),
+      random: () => randomBytes(24).toString("base64url"),
+      ...opts,
+    };
+    this.store = new ApprovalStore(db, this.opts.random);
+    this.nonces = new NonceBook({ mono: this.opts.mono, random: this.opts.random });
     this.gate = new ApprovalGate({
       keys: () => this.keys(),
       daemonId: () => this.daemonId(),

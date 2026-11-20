@@ -258,22 +258,33 @@ o computador quando a última sessão para e quando o daemon sai.
 
 ## Sessões sem pedidos de permissão
 
-Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
-perguntar). Para permitir, abra a página do host e use **Sessões sem pedidos de permissão →
-Permitir sessões sem pedidos**; o app pede confirmação e cita o host. A escolha fica na config do
-host (`allowBypassPermissions`) e vale na hora. Com ela ligada:
+Por padrão um host inicia suas sessões em **Ignorar permissões** (toda ferramenta roda sem
+perguntar): a config de um host novo tem `allowBypassPermissions` ligado e `defaultPermissionMode`
+em `bypassPermissions`. Para voltar a receber os pedidos de permissão, abra a página do host e use
+**Sessões sem pedidos de permissão → Desligar**. A escolha fica na config do host e vale na hora.
+Um host cuja config já dizia desligado mantém isso: nada é mudado por você. Com ela ligada:
 
-- **Sessão nova** oferece "Ignorar permissões: sem pedidos de permissão" na lista de modos. Ao
-  escolher, o app pergunta de novo a cada Criar sessão, citando o host e a pasta.
+- **Sessão nova** começa em "Ignorar permissões: sem pedidos de permissão" e cria a sessão na hora.
+  Se a última sessão que você iniciou escolheu outro modo, esse modo é mantido. Escolher Ignorar
+  permissões à mão, a partir de outro modo, ainda pergunta a cada Criar sessão, citando o host e a
+  pasta.
+- Um membro de time ou um card sem modo de permissão próprio também começa em Ignorar permissões.
+  Um modo que você definiu, ou um modo mais estrito de uma persona, vale mais que o padrão.
 - A lista de modos na caixa de mensagem de uma sessão aberta oferece todos os modos, inclusive
   Ignorar permissões e modos mais soltos que o de início. Mudar para Ignorar permissões pergunta
   a cada vez, citando o host e a sessão.
+- Uma sessão iniciada no terminal com `flightdeckd claude` também recebe `--permission-mode
+  bypassPermissions`, a menos que você passe o seu próprio `--permission-mode` ou
+  `--dangerously-skip-permissions`, ou que o modo da persona seja mais estrito. Como root ele não
+  acrescenta nada e avisa, porque o Claude Code recusa ignorar permissões ali.
 - Sessões iniciadas depois de ligar podem ser mudadas para Ignorar permissões; uma que já rodava
   mantém o que tinha ao começar (o Claude Agent SDK precisa saber disso no início).
 
-Com ela desligada (o padrão) o daemon recusa iniciar uma sessão em Ignorar permissões, e uma
-sessão aberta nunca fica mais permissiva que o modo em que começou. O modo de permissão de uma
-persona continua valendo quando é mais estrito. Desligar não pergunta nada.
+Com ela desligada o daemon recusa iniciar uma sessão em Ignorar permissões, as sessões novas
+começam em Padrão, e uma sessão aberta nunca fica mais permissiva que o modo em que começou. O modo
+de permissão de uma persona continua valendo quando é mais estrito. Desligar não pergunta nada, e é
+o único caminho de volta: não há opção por sessão. A execução de correção de um card do quadro roda
+sem ninguém acompanhando, por isso nunca começa em Ignorar permissões por padrão.
 
 Uma sessão em Ignorar permissões não pede nada: o Claude Code pula o pedido de permissão de toda
 ferramenta, inclusive as que de outro modo sempre perguntam (como descartar um card pelo servidor
