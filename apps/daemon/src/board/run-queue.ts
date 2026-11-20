@@ -110,11 +110,11 @@ export class RunQueue {
             error instanceof Error ? error.message : String(error),
             error,
           );
-        } catch (recording) {
+        } catch (error_) {
           // Recording the failure failed too: an unhandled rejection here would stop the daemon (#3404).
           this.port.opts.log?.(
             `run ${next.id} of card ${next.card_id}: recording its failed launch threw: ${
-              recording instanceof Error ? recording.message : String(recording)
+              error_ instanceof Error ? error_.message : String(error_)
             }`,
           );
           // failRun frees the slot last: a throw before it must not keep the slot taken.

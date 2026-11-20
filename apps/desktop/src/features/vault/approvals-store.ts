@@ -189,15 +189,12 @@ export class VaultApprovalsSlice {
           ? await this.prove(hostId, request.requestId, answer.scope)
           : ({ kind: "none" } as const);
         if (proof.kind === "declined") return "declined";
+        const held = request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {};
         await this.core.dispatch(hostId, "vault.approve", {
           requestId: request.requestId,
           via: answer.via,
           scope: answer.scope,
-          ...(proof.kind === "proof"
-            ? { proof: proof.proof }
-            : request.needsHold
-              ? { heldMs: HIGH_RISK_HOLD_MS }
-              : {}),
+          ...(proof.kind === "proof" ? { proof: proof.proof } : held),
         });
       },
     });
