@@ -197,3 +197,20 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   do meio a abre numa aba nova. A busca e as listas de Host, Projeto e Persona reduzem os cards, e a
   contagem diz "n de m mostradas". Quando uma sessão muda de estado, o card desliza para a outra
   coluna (não com movimento reduzido). O quadro rola dentro de si. O modo simples não tem esta tela.
+
+### Pelo shell
+
+```sh
+fd project trust-state ~/work/api ~/work/web
+fd project stack ~/work/api
+fd project trust-inspect ~/work/api --json
+fd project harness-preview ~/work/api --parts claudeMd,hooks --template web
+```
+
+`fd project` lê o que as telas de projeto do app leem: se uma pasta é confiável e por qual registro
+(`trust-state`, qualquer número de pastas), com o que ela é construída e os comandos para testar, verificar o estilo,
+formatar e compilar (`stack`, só lê e nunca executa), o que os arquivos da própria pasta carregariam numa sessão
+(`trust-inspect`) e o que aplicar as partes do harness acrescentaria (`harness-preview`, que não grava nada). A pasta
+precisa estar dentro das pastas permitidas. `--host <nome>` consulta outro host, e a pasta deve então ser um caminho
+absoluto naquele host. `trust-inspect` mostra comandos de hook e argumentos de servidor por inteiro, então um host só o
+responde a uma pessoa naquele host, e `harness-preview` com `--template` também.
