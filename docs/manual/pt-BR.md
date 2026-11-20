@@ -62,6 +62,14 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [Como funciona](pt-BR/flightdeckd-claude-and-the-channel.md#como-funciona)
 - [Por que a extensão do VS Code fica de fora](pt-BR/flightdeckd-claude-and-the-channel.md#por-que-a-extensão-do-vs-code-fica-de-fora)
 
+## Comandos do flightdeckd: host e sessions
+
+[Ler o capítulo.](pt-BR/flightdeckd-commands.md) Suas seções:
+
+- [O que todos têm em comum](pt-BR/flightdeckd-commands.md#o-que-todos-têm-em-comum)
+- [fd host](pt-BR/flightdeckd-commands.md#fd-host)
+- [fd sessions](pt-BR/flightdeckd-commands.md#fd-sessions)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)
