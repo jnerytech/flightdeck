@@ -9,13 +9,13 @@ import type { PersonaCliArgs } from "../personas/index.ts";
 import type { PluginsCliArgs } from "../plugins/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
-import type { SshCliArgs } from "../ssh/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import type { VaultCliArgs } from "../vault/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
+import { sshCliArgs } from "./domain/ssh-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 
@@ -656,16 +656,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   ssh: async (args, deps) => {
     const { runSshCli } = await import("../ssh/index.ts");
     return asking(args, deps, (config, remote) =>
-      runSshCli(
-        {
-          action: args.action as SshCliArgs["action"],
-          ...(args.sshTarget === undefined ? {} : { target: args.sshTarget }),
-          ...(args.sshFingerprint === undefined ? {} : { fingerprint: args.sshFingerprint }),
-          ...(args.json ? { json: true } : {}),
-        },
-        config,
-        remote ? { remote } : {},
-      ),
+      runSshCli(sshCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   requests: async (args, deps) => {

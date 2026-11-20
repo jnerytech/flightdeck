@@ -417,14 +417,18 @@
   "ssh.hostkey.forget": {
     "cli": "ssh"
   },
-  "ssh.import.apply": {},
+  "ssh.import.apply": {
+    "cli": "ssh"
+  },
   "ssh.import.preview": {
     "cli": "ssh"
   },
   "ssh.list": {
     "cli": "ssh"
   },
-  "ssh.remove": {},
+  "ssh.remove": {
+    "cli": "ssh"
+  },
   "ssh.save": {},
   "ssh.test": {
     "cli": "ssh"

@@ -197,7 +197,7 @@ describe("the arguments of ssh (issue #3537)", () => {
     expect(JSON.stringify(parsed(["ssh"]))).toContain("invalid ssh action");
     expect(JSON.stringify(parsed(["ssh", "bogus"]))).toContain("invalid ssh action");
     expect(JSON.stringify(parsed(["ssh", "import"]))).toContain("invalid ssh import action");
-    expect(JSON.stringify(parsed(["ssh", "import", "apply"]))).toContain(
+    expect(JSON.stringify(parsed(["ssh", "import", "bogus"]))).toContain(
       "invalid ssh import action",
     );
   });
