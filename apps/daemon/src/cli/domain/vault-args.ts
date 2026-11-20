@@ -1,0 +1,106 @@
+/**
+ * Issue #3458: what the `vault` verbs of the CLI take, checked before anything is sent. The parser in
+ * `args.ts` adds the usage text to the problem this names. The words and ranges are the protocol's and
+ * are checked as each flag is read; this is which verb takes which flag, and what a verb needs.
+ */
+import { type ArgReader, operand, subAction } from "./arg-reader.ts";
+import type { CliArgs } from "./cli-args.ts";
+import { USAGE } from "./usage.ts";
+
+/** The parsed arguments this check reads: `CliArgs` fits it. */
+export interface VaultArgs {
+  command: string;
+  action?: string;
+  days?: number;
+  limit?: number;
+  csv?: boolean;
+  requester?: string;
+  purpose?: string;
+  useAction?: string;
+  host?: string;
+  project?: string;
+  session?: string;
+  tags?: string[];
+  risk?: string;
+  approval?: string;
+  at?: number;
+}
+
+/** The value of a flag that is one of `words`, or the refusal that lists them (`a, b or c`). */
+export function oneOf<const T extends string>(flag: string, value: string, words: readonly T[]): T {
+  if ((words as readonly string[]).includes(value)) return value as T;
+  const list = `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+  throw new Error(`${flag}: ${list}, got ${value}\n${USAGE}`);
+}
+
+const PREVIEW = ["preview"] as const;
+
+/** The flags of `vault`, each with the verbs that take it; `shared` ones belong to other commands too, so only `vault` is checked for them. */
+function vaultFlags(args: VaultArgs): Array<[string, unknown, readonly string[], boolean]> {
+  return [
+    ["--days", args.days, ["decisions", "report"], false],
+    ["--csv", args.csv, ["report"], false],
+    ["--requester", args.requester, PREVIEW, false],
+    ["--purpose", args.purpose, PREVIEW, false],
+    ["--action", args.useAction, PREVIEW, false],
+    ["--tag", args.tags, PREVIEW, false],
+    ["--risk", args.risk, PREVIEW, false],
+    ["--approval", args.approval, PREVIEW, false],
+    ["--at", args.at, PREVIEW, false],
+    ["--limit", args.limit, ["decisions"], true],
+    ["--host", args.host, PREVIEW, true],
+    ["--project", args.project, PREVIEW, true],
+    ["--session", args.session, PREVIEW, true],
+  ];
+}
+
+/** `preview` is typed `rules preview`. */
+const typed = (verb: string) => (verb === "preview" ? "rules preview" : verb);
+
+/** What is wrong with the `vault` flags: one of another verb or command, or a use that lacks what the daemon needs. */
+export function vaultProblem(args: VaultArgs): string | undefined {
+  for (const [flag, value, verbs, shared] of vaultFlags(args)) {
+    if (value === undefined || (shared && args.command !== "vault")) continue;
+    // `usage --days` is the quota command's (quota-args.ts), which says so for `quota` too.
+    if (flag === "--days" && (args.command === "usage" || args.command === "quota")) continue;
+    if (args.command !== "vault" || !verbs.includes(args.action as string))
+      return `${flag}: this flag only applies to flightdeckd vault ${verbs.map(typed).join(", ")}`;
+  }
+  if (args.command === "vault" && args.action === "preview") {
+    if (args.requester === undefined) return "--requester: needed, who asks to use the secret";
+    if (args.purpose === undefined) return "--purpose: needed, what the secret is for";
+  }
+  return undefined;
+}
+
+/** `vault <decisions|report|rules>`: the verb, and the secret that `decisions` may name and `rules` always does. */
+export function readVault(args: CliArgs, reader: ArgReader): void {
+  args.command = "vault";
+  const action = subAction(
+    reader,
+    ["decisions", "report", "rules"] as const,
+    "invalid vault action",
+  );
+  args.action = action;
+  const word = reader.peek();
+  if (action === "decisions" && word !== undefined && !word.startsWith("--"))
+    args.secretId = operand(reader, "the secret");
+  if (action === "rules") {
+    // `rules preview <secret>` asks about a use of it.
+    if (word === "preview") {
+      reader.next();
+      args.action = "preview";
+    }
+    args.secretId = operand(reader, "the secret");
+  }
+}
+
+/** `--at`: an ISO time with a zone, in milliseconds. `Date.parse` alone reads "5" as a year and a zone-less time as local. */
+export function atTime(value: string): number {
+  const at = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(value)
+    ? Date.parse(value)
+    : Number.NaN;
+  if (Number.isNaN(at))
+    throw new Error(`--at: a date and time, like 2026-11-20T03:00:00Z, got ${value}\n${USAGE}`);
+  return at;
+}
