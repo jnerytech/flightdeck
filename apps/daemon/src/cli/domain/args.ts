@@ -8,6 +8,7 @@ import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
+import { rulesProblem } from "./rules-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 
@@ -227,8 +228,14 @@ const HANDLERS: Record<string, Handler> = {
     }
   },
   approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
-  rules: withAction("rules", ["list"], "invalid rules action"),
-  autoapprove: withAction("autoapprove", ["list"], "invalid autoapprove action"),
+  rules: (args, reader) => {
+    args.command = "rules";
+    const action = subAction(reader, ["list", "remove"] as const, "invalid rules action");
+    args.action = action;
+    // The rule is the text the project holds, as `rules list` printed it: an operand, never a flag.
+    if (action === "remove") args.rule = operand(reader, "rule");
+  },
+  autoapprove: withAction("autoapprove", ["list", "resume"], "invalid autoapprove action"),
   action: withNamedAction(
     "action",
     ["list", "run"],
@@ -711,6 +718,8 @@ ${USAGE}`,
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
+    // `rules remove` and `autoapprove resume` confirm too; `rulesProblem` checks them below.
+    if (flag === "--confirm" && ["rules", "autoapprove"].includes(args.command)) continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
     // `--confirm` is also `team new`'s, which checks its own flags below.
@@ -731,7 +740,8 @@ ${USAGE}`,
     teamProblem(args) ??
     boardProblem(args) ??
     historyProblem(args) ??
-    quotaProblem(args);
+    quotaProblem(args) ??
+    rulesProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;

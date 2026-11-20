@@ -70,6 +70,7 @@ export interface CliArgs {
     | "subagents"
     | "save"
     | "remove"
+    | "resume"
     | "publish-agent"
     | "trust"
     | "diff"
@@ -167,6 +168,8 @@ export interface CliArgs {
   personaId?: string;
   /** `persona save`: the persona's fields, as flags. */
   personaName?: string;
+  /** `rules remove <rule>`: the rule, as `rules list` printed it. */
+  rule?: string;
   body?: string;
   bodyFile?: string;
   model?: string;
