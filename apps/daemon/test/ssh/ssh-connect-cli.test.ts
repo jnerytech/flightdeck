@@ -215,11 +215,11 @@ describe("the arguments of ssh hostkey check and ssh test (issue #3537)", () => 
     });
   });
 
-  test("a missing target or a verb that is not read-only is refused before anything is sent", () => {
+  test("a missing target or a hostkey verb that does not exist is refused before anything is sent", () => {
     expect(JSON.stringify(parsed(["ssh", "test"]))).toContain("missing the ssh target");
     expect(JSON.stringify(parsed(["ssh", "hostkey", "check"]))).toContain("missing the ssh target");
     expect(JSON.stringify(parsed(["ssh", "hostkey"]))).toContain("invalid ssh hostkey action");
-    expect(JSON.stringify(parsed(["ssh", "hostkey", "forget", "prod"]))).toContain(
+    expect(JSON.stringify(parsed(["ssh", "hostkey", "pin", "prod"]))).toContain(
       "invalid ssh hostkey action",
     );
   });
