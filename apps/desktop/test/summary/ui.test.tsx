@@ -26,10 +26,15 @@ const settle = waiter(4000);
 const SESSION = "eeeeeeee-0000-4000-8000-000000000030";
 
 const line = (value: unknown) => JSON.stringify(value);
+/** A done text longer than the folded line, which cuts it with an ellipsis. */
+const LONG = `${"The retry waits longer after each failure. ".repeat(6)}Done.`;
 /** The daemons the test started, newest last. */
 const daemons: Array<ReturnType<typeof makeDaemon>> = [];
 
-async function online(language: string, options: { legacy?: boolean; plain?: boolean } = {}) {
+async function online(
+  language: string,
+  options: { legacy?: boolean; plain?: boolean; long?: boolean } = {},
+) {
   const mem = memoryPlatform(false, language);
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   store.i18n.start();
@@ -55,7 +60,7 @@ async function online(language: string, options: { legacy?: boolean; plain?: boo
         message: {
           role: "assistant",
           content: [
-            { type: "text", text: "Retry added with backoff." },
+            { type: "text", text: options.long ? LONG : "Retry added with backoff." },
             ...(options.plain
               ? []
               : [
@@ -158,11 +163,31 @@ describe("resumo-ui", () => {
     expect(region().textContent).not.toContain("/r/queue.ts");
     expect(screen.queryByRole("button", { name: "Copy summary" })).toBeNull();
     expect(region().querySelector("[data-slot='recap-preview']")?.className).toContain("truncate");
+    // The line also clips by width, so even a short text gives itself whole as the tooltip.
+    expect(region().querySelector("[data-slot='recap-preview']")?.getAttribute("title")).toBe(
+      "Retry added with backoff.",
+    );
     await expand();
     expect(toggle().getAttribute("aria-expanded")).toBe("true");
     expect(region().textContent).toContain("Asked");
     expect(region().textContent).toContain("Open question");
     expect(region().querySelector("[data-slot='recap-preview']")).toBeNull();
+  });
+
+  test("a folded line gives the whole text as a tooltip, cut by length or clipped by width (#3408)", async () => {
+    const preview = () =>
+      screen
+        .queryByRole("region", { name: "Session summary" })
+        ?.querySelector("[data-slot='recap-preview']") ?? null;
+    const { store } = await online("en", { long: true });
+    await show(store, "Run the test?");
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    // The first time it is open; the second time it is one line.
+    cleanup();
+    await show(store, "Run the test?");
+    await settle(() => preview() !== null);
+    expect(preview()?.textContent?.endsWith("…")).toBe(true);
+    expect(preview()?.getAttribute("title")).toBe(LONG);
   });
 
   test("Copy summary puts the summary as text on the clipboard", async () => {
