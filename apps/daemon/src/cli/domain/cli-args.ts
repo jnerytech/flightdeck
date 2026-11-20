@@ -95,7 +95,8 @@ export interface CliArgs {
     | "pause-at"
     | "dismiss-unblocked"
     | "search"
-    | "tool";
+    | "tool"
+    | "resume";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
