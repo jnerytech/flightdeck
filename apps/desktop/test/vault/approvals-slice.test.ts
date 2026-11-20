@@ -24,7 +24,14 @@ const ACTION: VaultRequestFrame = {
  * A slice over stand-ins: every command sent to a host is written down as `type payload`, every
  * notice as its title, and the outcomes the usage log would get as they come.
  */
-function slice(over: { policy?: VaultPolicy; now?: number; denyFails?: boolean } = {}) {
+function slice(
+  over: {
+    policy?: VaultPolicy;
+    now?: number;
+    denyFails?: boolean;
+    prove?: VaultApprovalsCore["prove"];
+  } = {},
+) {
   let pending: PendingItem[] = [];
   const sent: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const notices: string[] = [];
@@ -46,6 +53,7 @@ function slice(over: { policy?: VaultPolicy; now?: number; denyFails?: boolean }
       return {};
     }) as VaultApprovalsCore["dispatch"],
     optionsPolicy: () => over.policy,
+    prove: over.prove ?? (async () => ({ kind: "none" })),
     now: () => over.now ?? 1_000,
     notify: (title) => {
       notices.push(title);
@@ -154,6 +162,81 @@ describe("vault approvals slice", () => {
     approvals.settle("r1", { scope: "once", via: "app" });
     await done;
     expect(sent.find((c) => c.type === "vault.approve")?.payload.heldMs).toBeGreaterThan(0);
+  });
+
+  test("a request that needs holding, on a host that checks proofs, is approved with the device's proof and no hold", async () => {
+    const asked: unknown[] = [];
+    const proof = { keyId: "k", nonce: "n", signature: "s" };
+    const { approvals, sent } = slice({
+      prove: async (...args) => {
+        asked.push(args);
+        return { kind: "proof", proof };
+      },
+    });
+    const done = approvals.onRequest(HOST, { ...ACTION, needsHold: true });
+    approvals.settle("r1", { scope: "once", via: "app" });
+    await done;
+    expect(asked).toEqual([["h", "r1", "once"]]);
+    const approve = sent.find((c) => c.type === "vault.approve")?.payload;
+    expect(approve).toMatchObject({ requestId: "r1", scope: "once", proof });
+    expect(approve).not.toHaveProperty("heldMs");
+    expect(sent.map((c) => c.type)).toEqual(["vault.approve", "vault.deliver"]);
+  });
+
+  test("when the person declines the device's dialog, the host is told nothing but the denial and nothing is delivered", async () => {
+    const { approvals, sent, recorded } = slice({ prove: async () => ({ kind: "declined" }) });
+    const done = approvals.onRequest(HOST, { ...ACTION, needsHold: true });
+    approvals.settle("r1", { scope: "once", via: "app" });
+    await done;
+    expect(sent.map((c) => c.type)).toEqual(["vault.deny"]);
+    expect(recorded.map((o) => o.delivered)).toEqual([false]);
+  });
+
+  test("when the device cannot sign, the person is told, the host is told no and nothing is delivered", async () => {
+    const { approvals, sent, recorded, notices } = slice({
+      prove: async () => {
+        throw new Error("this device has no key");
+      },
+    });
+    const done = approvals.onRequest(HOST, { ...ACTION, needsHold: true });
+    approvals.settle("r1", { scope: "once", via: "app" });
+    expect(
+      await done.then(
+        () => "resolved",
+        () => "rejected",
+      ),
+    ).toBe("resolved");
+    expect(sent.map((c) => c.type)).toEqual(["vault.deny"]);
+    expect(recorded.map((o) => o.delivered)).toEqual([false]);
+    expect(notices).toContain("vaultApproval.proofFailedTitle");
+  });
+
+  test("a declined device dialog does not leave a grant that delivers the run's next secret unasked", async () => {
+    const { approvals, pending, sent } = slice({ prove: async () => ({ kind: "declined" }) });
+    const first = approvals.onRequest(HOST, { ...ACTION, needsHold: true });
+    approvals.settle("r1", { scope: "once", via: "app" });
+    await first;
+    const second = approvals.onRequest(HOST, { ...ACTION, requestId: "r2", secretId: "s2" });
+    await Promise.resolve();
+    expect(pending().map((item) => item.requestId)).toEqual(["r2"]);
+    expect(sent.map((c) => c.type)).toEqual(["vault.deny"]);
+    approvals.settle("r2", null);
+    await second;
+  });
+
+  test("a request that needs no hold asks for no proof", async () => {
+    const asked: unknown[] = [];
+    const { approvals, sent } = slice({
+      prove: async (...args) => {
+        asked.push(args);
+        return { kind: "none" };
+      },
+    });
+    const done = approvals.onRequest(HOST, ACTION);
+    approvals.settle("r1", { scope: "once", via: "app" });
+    await done;
+    expect(asked).toEqual([]);
+    expect(sent.find((c) => c.type === "vault.approve")?.payload).not.toHaveProperty("proof");
   });
 
   test("the options' policy replaces the queue, and a listener hears each outcome until it stops", async () => {

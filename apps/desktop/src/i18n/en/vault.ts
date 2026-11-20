@@ -144,6 +144,8 @@ export const vault = {
       "A command written by Claude, with the secrets in its environment: it always asks for your approval",
     notifyTitle: "Secret request",
     notifyBody: "{requester} wants to run {what} on {host}",
+    proofFailedTitle: "Your device could not confirm the approval",
+    proofFailedBody: "{reason} The request was denied.",
   },
   vaultRulesUi: {
     open: "Rules of {name}",

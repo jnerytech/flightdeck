@@ -1,4 +1,9 @@
-import type { CommandPayload, CommandResults, VaultRequestFrame } from "@flightdeck/protocol";
+import type {
+  ApprovalProof,
+  CommandPayload,
+  CommandResults,
+  VaultRequestFrame,
+} from "@flightdeck/protocol";
 import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../needs-you/index.ts";
@@ -37,6 +42,16 @@ export interface VaultApprovalsCore {
     type: C,
     payload: CommandPayload<C>,
   ): Promise<CommandResults[C]>;
+  /**
+   * The device's proof of a prod or high-risk secret use (#3452): `none` when the host takes the hold
+   * instead (it checks no proof, or no device is enrolled); `declined` when the person said no to
+   * the device's own dialog.
+   */
+  prove(
+    hostId: string,
+    requestId: string,
+    scope: "once" | "session",
+  ): Promise<{ kind: "none" } | { kind: "proof"; proof: ApprovalProof } | { kind: "declined" }>;
   /** The policy the options chose; the one that puts requests to the person when absent. */
   optionsPolicy(): VaultPolicy | undefined;
   now(): number;
@@ -142,6 +157,25 @@ export class VaultApprovalsSlice {
     for (const listener of this.listeners) listener(outcome);
   }
 
+  /**
+   * The device's proof, or `declined` when the person said no or the device could not sign: the
+   * person is told why in the bell, and the request is denied instead of left to its deadline.
+   */
+  private async prove(hostId: string, requestId: string, scope: "once" | "session") {
+    try {
+      return await this.core.prove(hostId, requestId, scope);
+    } catch (error) {
+      const t = this.core.t();
+      this.core.notify(
+        t("vaultApproval.proofFailedTitle"),
+        t("vaultApproval.proofFailedBody", {
+          reason: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      return { kind: "declined" } as const;
+    }
+  }
+
   /** The policy of the options, or the one that puts action requests to the person. */
   private policy(): VaultPolicy {
     this.defaultPolicy ??= actionPolicy({
@@ -149,11 +183,21 @@ export class VaultApprovalsSlice {
       now: () => this.core.now(),
       // Phase 19: a request the rules made ask is approved on the daemon before the delivery.
       approve: async ({ request, hostId }, answer) => {
+        // A prod or high-risk use is approved by the device's signature where the host checks one
+        // (#3452), otherwise by the hold, as before.
+        const proof = request.needsHold
+          ? await this.prove(hostId, request.requestId, answer.scope)
+          : ({ kind: "none" } as const);
+        if (proof.kind === "declined") return "declined";
         await this.core.dispatch(hostId, "vault.approve", {
           requestId: request.requestId,
           via: answer.via,
           scope: answer.scope,
-          ...(request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {}),
+          ...(proof.kind === "proof"
+            ? { proof: proof.proof }
+            : request.needsHold
+              ? { heldMs: HIGH_RISK_HOLD_MS }
+              : {}),
         });
       },
     });

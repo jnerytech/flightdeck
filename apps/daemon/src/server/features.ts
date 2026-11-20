@@ -4,6 +4,7 @@
  */
 import {
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_VAULT,
   FEATURE_APPROVAL_WATCH,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
@@ -23,6 +24,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.approvers, FEATURE_APPROVAL_PROOF),
     // #3476: a client that sends `approval.watch` hears each device enrolled or revoked (a v0.38.0 host has the proof, not the watch).
     ...when(opts.approvers, FEATURE_APPROVAL_WATCH),
+    // #3452: a prod or high-risk secret use is approved with the signed proof of an enrolled device.
+    ...when(opts.approvers && opts.actions, FEATURE_APPROVAL_VAULT),
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.

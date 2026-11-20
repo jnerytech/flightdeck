@@ -21,6 +21,7 @@ import { type RoiSlice, wireRoi } from "../../features/roi/index.ts";
 import { hubRows } from "../../features/sessions/index.ts";
 import {
   Vault,
+  type VaultApprovalsCore,
   type VaultApprovalsSlice,
   VaultRules,
   type VaultRulesSlice,
@@ -97,6 +98,8 @@ interface VaultDeps {
     claudeSessionId: string,
     extra: { question?: string },
   ) => Promise<SessionRecap | null>;
+  /** The device's proof of a prod or high-risk secret use (#3452). */
+  prove: VaultApprovalsCore["prove"];
   /** Tells the state the ROI settings changed. */
   roiChanged: () => void;
 }
@@ -211,6 +214,7 @@ export function composeVault(kernel: AppKernel<AppState>, deps: VaultDeps): Vaul
     vaultApprovals: wireVaultApprovals(kernel, {
       vault,
       optionsPolicy: () => options.vaultPolicy,
+      prove: deps.prove,
       notify: (title, body) => deps.notify({ title, body, event: "needs-you" }),
       recorded: (outcome) => {
         usage.recordOutcome(outcome);

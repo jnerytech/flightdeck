@@ -11,6 +11,9 @@ export const FEATURE_APPROVAL_PROOF = "approval-proof";
 /** The host announces `approval.enrolled` and `approval.revoked` to a client that sent `approval.watch` (#3476). */
 export const FEATURE_APPROVAL_WATCH = "approval-watch";
 
+/** The host checks a signed proof of the person's device before it approves a prod or high-risk secret use (#3452). */
+export const FEATURE_APPROVAL_VAULT = "approval-vault";
+
 /**
  * RFC 8785 canonical JSON: no spaces, object keys in UTF-16 code unit order (never a locale's), numbers and
  * strings as `JSON.stringify` writes them. A key whose value is `undefined` is left out; a number that is
@@ -122,6 +125,24 @@ export function enrollAddMessage(parts: {
     parts.daemonId,
     parts.nonce,
     parts.newPublicKey,
+  ]);
+}
+
+/** What an enrolled device signs to approve the use of a secret for request `requestId`, for `scope` (#3452). */
+export function vaultApproveMessage(parts: {
+  keyId: string;
+  daemonId: string;
+  requestId: string;
+  nonce: string;
+  scope: "once" | "session";
+}): string {
+  return canonicalJson([
+    "flightdeck/vault-approve/v1",
+    parts.keyId,
+    parts.daemonId,
+    parts.requestId,
+    parts.nonce,
+    parts.scope,
   ]);
 }
 
