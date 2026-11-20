@@ -321,6 +321,20 @@ const changesWhatGuards = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "rules", ["remove"]) ||
   runsCliVerb(prog, args, "autoapprove", ["resume"]);
 
+/**
+ * What a plugin brings into the sessions, changed from a session's shell (#3516): install and update bring
+ * code that runs in sessions, uninstall and the marketplace verbs take away or add what the person set up.
+ * `pin`, `unpin`, `marketplace-update` and the reads stay ordinary. `--confirm-hash` is only a word the caller types.
+ */
+const changesPlugins = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "plugins", [
+    "install",
+    "update",
+    "uninstall",
+    "marketplace-add",
+    "marketplace-remove",
+  ]);
+
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
@@ -404,6 +418,11 @@ const DANGEROUS: Array<{
     when: repricesTheCosts,
     reason: () =>
       "rewrites the recorded cost of every message, so the budgets and the quota guard read other spending than was measured (flightdeckd costs reprice)",
+  },
+  {
+    when: changesPlugins,
+    reason: () =>
+      "brings code that runs in sessions, or takes away what the person set up (flightdeckd plugins install, update, uninstall, marketplace-add or marketplace-remove)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

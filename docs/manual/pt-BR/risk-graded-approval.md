@@ -73,6 +73,11 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   em uma janela do sistema. A janela nomeia a pasta e diz que os hooks e os servidores dela vão rodar sem pedir
   confirmação. Cancele e nada é enviado. Revogar a confiança não pede nada. Um host que ainda não pede o
   dispositivo ao confiar em um projeto mostra um aviso na própria página: atualize-o.
+- **Reativar a aprovação automática.** Com um dispositivo cadastrado, **Reativar** em uma sessão suspensa, em
+  Aprovações automáticas, pede mais uma confirmação em uma janela do sistema. A janela nomeia a sessão e diz
+  que ela volta a aprovar pedidos sem que nenhuma pessoa os veja. Cancele e nada é enviado. O comando
+  `flightdeckd autoapprove resume` do terminal é recusado em um host assim e manda fazer isso no app. Um host
+  que ainda não pede o dispositivo mostra um aviso na própria página: atualize-o.
 - **Um aviso.** Se a proteção estava ligada e o host agora não lista nenhum dispositivo, o painel avisa. Se
   você não zerou no host, alguém com acesso a ele zerou.
 - **O que não cobre.** Protege as aprovações feitas pelo app. Quem tem um terminal no host ainda consegue

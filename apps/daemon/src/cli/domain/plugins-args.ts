@@ -5,6 +5,7 @@
 import { isAbsolute } from "node:path";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
+import { oneOf } from "./vault-args.ts";
 
 /** The parsed arguments this check reads: `CliArgs` fits it. */
 export interface PluginsArgs {
@@ -13,32 +14,94 @@ export interface PluginsArgs {
   plugin?: string;
   pluginDir?: string;
   host?: string;
+  confirm?: true;
+  confirmHash?: string;
+  acceptCommand?: string;
+  pluginScope?: string;
 }
 
-/** What is wrong with the `plugins` words and flags: `--dir` outside a preview, or a preview that names no plugin or two. */
+const INSTALLS = ["install", "update"];
+const WITH_SCOPE = ["install", "uninstall", "marketplace-add"];
+const CONFIRMED = ["uninstall", "marketplace-add", "marketplace-remove"];
+/** The flags that belong to some `plugins` verbs only: the flag, whether it was typed, and the verbs. */
+const flagged = (args: PluginsArgs): Array<[string, boolean, readonly string[]]> => [
+  ["--dir", args.pluginDir !== undefined, ["preview", "install"]],
+  ["--confirm-hash", args.confirmHash !== undefined, INSTALLS],
+  ["--accept-command", args.acceptCommand !== undefined, INSTALLS],
+  ["--plugin-scope", args.pluginScope !== undefined, WITH_SCOPE],
+  ["--confirm", args.confirm === true, CONFIRMED],
+];
+
+/**
+ * What is wrong with the `plugins` words and flags: a flag outside its verbs, a preview or an install that
+ * names no plugin or two, and an install or an update without the hash of the preview the person read.
+ */
 export function pluginsProblem(args: PluginsArgs): string | undefined {
-  const preview = args.command === "plugins" && args.action === "preview";
-  if (args.pluginDir !== undefined && !preview)
-    return "--dir: this flag only applies to flightdeckd plugins preview";
-  if (preview && (args.plugin === undefined) === (args.pluginDir === undefined))
-    return "plugins preview: give a plugin or --dir, one of the two";
+  const plugins = args.command === "plugins";
+  for (const [flag, typed, verbs] of flagged(args)) {
+    if (!typed) continue;
+    // `--confirm` is also the other commands' own, which check it themselves.
+    if (flag === "--confirm" && !plugins) continue;
+    if (!plugins || !verbs.includes(args.action ?? ""))
+      return `${flag}: this flag only applies to flightdeckd plugins ${verbs.join(", ")}`;
+  }
+  if (!plugins) return undefined;
+  const names = args.action === "preview" || args.action === "install";
+  if (names && (args.plugin === undefined) === (args.pluginDir === undefined))
+    return `plugins ${args.action}: give a plugin or --dir, one of the two`;
+  if (INSTALLS.includes(args.action ?? "") && args.confirmHash === undefined)
+    return `plugins ${args.action}: missing --confirm-hash <hash> (the hash \`plugins ${args.action === "install" ? "preview" : "preview-update"}\` printed)`;
   if (args.pluginDir !== undefined && args.host !== undefined && !isAbsolute(args.pluginDir))
     return "--dir: on another host the folder must be an absolute path (it is read there, not here)";
   return undefined;
 }
 
-/** `plugins <list|detail|preview|preview-update>`: the plugin that `detail` and `preview-update` always name, and a `preview` may (or gives `--dir`). */
+const ACTIONS = [
+  "list",
+  "detail",
+  "preview",
+  "preview-update",
+  "install",
+  "update",
+  "uninstall",
+  "pin",
+  "unpin",
+  "marketplace-add",
+  "marketplace-remove",
+  "marketplace-update",
+] as const;
+/** The verbs whose next word is the plugin, always. */
+const PLUGIN_OPERAND = ["detail", "preview-update", "update", "uninstall", "pin", "unpin"];
+
+/** `plugins <verb> ...`: the plugin, source or name the verb names; a preview or an install may give `--dir` instead of a plugin. */
 export function readPlugins(args: CliArgs, reader: ArgReader): void {
   args.command = "plugins";
-  const action = subAction(
-    reader,
-    ["list", "detail", "preview", "preview-update"] as const,
-    "invalid plugins action",
-  );
+  const action = subAction(reader, ACTIONS, "invalid plugins action");
   args.action = action;
-  const word = reader.peek();
-  if (action === "detail" || action === "preview-update")
+  const optional = reader.peek() !== undefined && !(reader.peek() ?? "").startsWith("--");
+  if (PLUGIN_OPERAND.includes(action)) args.plugin = operand(reader, "the plugin");
+  else if ((action === "preview" || action === "install") && optional)
     args.plugin = operand(reader, "the plugin");
-  if (action === "preview" && word !== undefined && !word.startsWith("--"))
-    args.plugin = operand(reader, "the plugin");
+  else if (action === "marketplace-add")
+    args.marketplace = operand(reader, "the marketplace source");
+  else if (action === "marketplace-remove")
+    args.marketplace = operand(reader, "the marketplace name");
+  else if (action === "marketplace-update" && optional)
+    args.marketplace = operand(reader, "the marketplace name");
 }
+
+/** The flags of the plugin writes, for the parser's table of flags. */
+export const PLUGINS_FLAGS: Record<
+  string,
+  (args: CliArgs, reader: unknown, value: () => string) => void
+> = {
+  "--confirm-hash": (args, _reader, value) => {
+    args.confirmHash = value();
+  },
+  "--accept-command": (args, _reader, value) => {
+    args.acceptCommand = value();
+  },
+  "--plugin-scope": (args, _reader, value) => {
+    args.pluginScope = oneOf("--plugin-scope", value(), ["user", "project", "local"]);
+  },
+};

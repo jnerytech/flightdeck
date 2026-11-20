@@ -56,14 +56,27 @@ fd plugins detail deploy-tools@acme
 fd plugins preview deploy-tools@acme --json
 fd plugins preview --dir ~/work/my-plugin
 fd plugins preview-update deploy-tools@acme --host pi
+fd plugins install deploy-tools@acme --confirm-hash <hash do preview>
+fd plugins update deploy-tools@acme --confirm-hash <hash do preview-update>
+fd plugins uninstall deploy-tools@acme --confirm
+fd plugins pin deploy-tools@acme
+fd plugins marketplace-add acme/plugins --confirm
 ```
 
-`fd plugins` lê os mesmos plugins de um terminal. Esta primeira parte só lê: não instala, não atualiza e não remove nada. `<plugin>` é `nome@marketplace`, e `--host <nome>` consulta outro host.
+`fd plugins` lê e muda os mesmos plugins de um terminal. `<plugin>` é `nome@marketplace`, e `--host <nome>` consulta outro host.
 
 - **`list`:** uma linha por plugin: `installed`, a versão, o escopo, `enabled` ou `disabled` e a versão em que está fixado; depois `available` para o que os marketplaces oferecem e as linhas `marketplace`. Um host sem nenhum diz `no plugins`.
 - **`detail <plugin>`:** onde um plugin instalado está, se está fixado, o `hash` do conteúdo, se pede a sua atenção e quantos hooks, monitores, skills, agentes, comandos e servidores MCP ele traz. Um id que não está instalado sai com `1`.
 - **`preview <plugin>`:** o que uma instalação traria, uma linha por hook (os que podem decidir por você ficam marcados), monitor, skill, agente, comando e servidor MCP, e o `hash` desse conteúdo. Um plugin cuja origem não está neste host imprime `not local` e nenhum hash; sai com `0`.
 - **`preview --dir <pasta>`:** o mesmo para uma pasta local, com o resultado da validação. A pasta precisa estar dentro das pastas permitidas do host; fora delas sai com `1` e `forbidden_cwd`. Passe um plugin ou `--dir`, nunca os dois. Uma pasta relativa vale a partir da pasta do seu shell; com `--host` ela precisa ser absoluta.
 - **`preview-update <plugin>`:** a cópia instalada contra a do marketplace (antes atualiza a lista do marketplace, então usa a rede): as duas versões e os dois hashes, e o que entrou ou saiu de cada tipo de conteúdo, ou `unchanged`.
+
+- **`install <plugin>` ou `install --dir <pasta>`:** instala o que o preview mostrou. Pede `--confirm-hash` com o `hash` que o preview imprimiu; se o conteúdo mudou desde então, nada é instalado e a saída é `1`. `--plugin-scope user|project|local` escolhe o escopo. Um plugin que executa um comando antes imprime o comando e o `sha256` dele e não instala nada: leia, depois repita a mesma linha com `--accept-command <sha256>`.
+- **`update <plugin>`:** o mesmo, com o hash que `preview-update` imprimiu. Um plugin fixado fica como está.
+- **`uninstall <plugin>`:** remove; pede `--confirm`. `--plugin-scope` diz qual cópia.
+- **`pin <plugin>`, `unpin <plugin>`:** fixam um plugin na versão dele, ou deixam as atualizações passarem de novo.
+- **`marketplace-add <origem>`, `marketplace-remove <nome>`:** pedem `--confirm`. `marketplace-update [<nome>]` atualiza a lista e não pede nada.
+
+`--confirm` e `--confirm-hash` são só palavras que você digita. Evitam um descuido, não uma sessão: uma sessão que roda `install`, `update`, `uninstall`, `marketplace-add` ou `marketplace-remove` no shell dela é consultada, como um comando de risco alto. Uma mudança sem resposta sai com `2` e diz que pode ou não ter acontecido: `fd plugins list` mostra qual.
 
 Com `--json` cada verbo imprime a resposta do daemon. Um pedido sem resposta sai com `2`.

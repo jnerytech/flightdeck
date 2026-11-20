@@ -377,7 +377,8 @@ fd autoapprove resume --session <chave> --confirm
   sobraram; com `--json`, as regras que sobraram.
 - **`autoapprove resume --session <chave> --confirm`:** liga de novo o aprovador automático de uma sessão
   que foi suspensa depois de receber conteúdo de terceiros. Recusa com saída `1` uma sessão que não está
-  suspensa. Com `--json` imprime as sessões que continuam suspensas.
+  suspensa. Com `--json` imprime as sessões que continuam suspensas. Um host com um dispositivo cadastrado
+  recusa com saída `1`, porque só esse dispositivo pode confirmar: faça isso no app.
 
 Uma mudança que fica sem resposta sai com `2` e avisa que pode ou não ter sido feita: rode `rules list` ou
 `autoapprove list` antes de tentar de novo. Rodados no shell de uma sessão, `rules remove` e

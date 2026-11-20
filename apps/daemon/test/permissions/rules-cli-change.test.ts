@@ -135,6 +135,23 @@ describe("flightdeckd autoapprove resume (issue #3457)", () => {
     expect(daemon.calls.some((c) => c.type === "autoapprove.resume")).toBe(false);
   });
 
+  test("a host with a device enrolled refuses it, and the line says to do it in the app (#3453)", async () => {
+    const daemon = fakeDaemon({
+      ...HANDLERS,
+      "autoapprove.resume": () => ({
+        error: {
+          code: "invalid_state",
+          message: "the signed proof of an enrolled device is needed",
+          reason: "approval_proof_required",
+        },
+      }),
+    });
+    const run = await flightdeckd(RESUME, daemon.port);
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain("do it in the app");
+    expect(run.err.join("\n")).toContain("s7");
+  });
+
   test("without --confirm, or without --session, nothing is sent", async () => {
     const daemon = fakeDaemon(HANDLERS);
     const noConfirm = await flightdeckd(["autoapprove", "resume", "--session", "s7"], daemon.port);

@@ -283,6 +283,32 @@ function pluginsCliArgs(args: CliArgs): PluginsCliArgs {
   if (args.action === "list") return { action: "list", ...printed };
   if (args.action === "detail") return { action: "detail", plugin, ...printed };
   if (args.action === "preview-update") return { action: "preview-update", plugin, ...printed };
+  const scope = args.pluginScope === undefined ? {} : { scope: args.pluginScope };
+  const confirmed = args.confirm ? { confirm: true as const } : {};
+  const hash = {
+    confirmHash: args.confirmHash ?? "",
+    ...(args.acceptCommand === undefined ? {} : { acceptCommand: args.acceptCommand }),
+  };
+  const target = args.marketplace ?? "";
+  if (args.action === "install")
+    return args.pluginDir === undefined
+      ? { action: "install", plugin, ...hash, ...scope, ...printed }
+      : { action: "install", dir: args.pluginDir, ...hash, ...scope, ...printed };
+  if (args.action === "update") return { action: "update", plugin, ...hash, ...printed };
+  if (args.action === "uninstall")
+    return { action: "uninstall", plugin, ...scope, ...confirmed, ...printed };
+  if (args.action === "pin" || args.action === "unpin")
+    return { action: args.action, plugin, ...printed };
+  if (args.action === "marketplace-add")
+    return { action: "marketplace-add", source: target, ...scope, ...confirmed, ...printed };
+  if (args.action === "marketplace-remove")
+    return { action: "marketplace-remove", name: target, ...confirmed, ...printed };
+  if (args.action === "marketplace-update")
+    return {
+      action: "marketplace-update",
+      ...(args.marketplace === undefined ? {} : { name: args.marketplace }),
+      ...printed,
+    };
   if (args.pluginDir !== undefined) return { action: "preview", dir: args.pluginDir, ...printed };
   return { action: "preview", plugin, ...printed };
 }
