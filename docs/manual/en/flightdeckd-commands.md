@@ -186,7 +186,8 @@ fd persona publish-agent architect --project-path ~/work/api --confirm
 - **`save <id>`:** creates or edits a persona. It needs `--scope host|project`, `--name`,
   `--description` and the prompt, from `--body <text>` or `--body-file <path>` (one of the two). It can
   also set `--model`, `--effort low|medium|high|xhigh|max`, `--tools Read,Grep` (only restricts),
-  `--permission-mode` and `--icon`. A project persona needs `--project-path`. The daemon refuses a prompt
+  `--permission-mode` and `--icon`. A save replaces the whole persona: a field you leave out is cleared, so
+  repeat the ones you want to keep. A project persona needs `--project-path`. The daemon refuses a prompt
   that holds a secret, with exit `1`.
 - **`remove <id> --scope host|project`:** deletes the persona of that scope.
 - **`reset <id>`:** puts a pack persona back as it came; the host's edit goes away.

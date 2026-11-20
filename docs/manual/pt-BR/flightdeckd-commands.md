@@ -187,7 +187,8 @@ fd persona publish-agent architect --project-path ~/work/api --confirm
 - **`save <id>`:** cria ou edita uma persona. Exige `--scope host|project`, `--name`, `--description` e o
   prompt, por `--body <texto>` ou `--body-file <caminho>` (um dos dois). Também aceita `--model`,
   `--effort low|medium|high|xhigh|max`, `--tools Read,Grep` (só restringe), `--permission-mode` e
-  `--icon`. Uma persona de projeto exige `--project-path`. O daemon recusa um prompt que contém um
+  `--icon`. Salvar substitui a persona inteira: um campo omitido é apagado, então repita os que quiser
+  manter. Uma persona de projeto exige `--project-path`. O daemon recusa um prompt que contém um
   segredo, com saída `1`.
 - **`remove <id> --scope host|project`:** apaga a persona desse escopo.
 - **`reset <id>`:** devolve uma persona do pacote ao que veio; a edição do host some.

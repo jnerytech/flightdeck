@@ -239,22 +239,24 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
-const PERSONA_CHANGES = ["remove", "reset", "trust", "publish-agent"];
+const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
 
 /**
- * What the app asks the person to confirm, done from a session's shell (#3456): `persona remove` and
- * `reset` throw a persona or its edit away, `trust` lets a project's versioned persona into every
- * session, and `publish-agent` writes a file into the project. `--confirm` is only a flag the caller types.
+ * What the app asks the person to confirm, done from a session's shell (#3456): `persona save` and
+ * `remove` rewrite or drop a persona (a saved one is a system prompt with its own permission mode),
+ * `reset` throws an edit away, `trust` lets a project's versioned persona into every session, and
+ * `publish-agent` writes a file into the project. `--confirm` is only a flag the caller types. The verb
+ * is read as the word after `persona`, since a value flag before it (`--language en`) shifts the words.
  */
 function changesAPersona(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  if (["fd", "flightdeckd"].includes(prog)) {
-    const [command, action] = flightdeckWords(words);
-    return command === "persona" && PERSONA_CHANGES.includes(action ?? "");
-  }
-  if (!RUNNERS.includes(prog)) return false;
-  const runsCli = words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
-  return runsCli && words.includes("persona") && words.some((w) => PERSONA_CHANGES.includes(w));
+  const runsCli = ["fd", "flightdeckd"].includes(prog)
+    ? true
+    : RUNNERS.includes(prog) &&
+      words.some((w) => ["fd", "flightdeckd", "bin.ts"].includes(program(w)));
+  return (
+    runsCli && words.some((w, i) => w === "persona" && PERSONA_CHANGES.includes(words[i + 1] ?? ""))
+  );
 }
 
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
@@ -300,7 +302,7 @@ const DANGEROUS: Array<{
   {
     when: changesAPersona,
     reason: () =>
-      "changes what the app asks a person to confirm (flightdeckd persona remove, reset, trust or publish-agent)",
+      "changes what the app asks a person to confirm (flightdeckd persona save, remove, reset, trust or publish-agent)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {
