@@ -26,6 +26,22 @@ export class DaemonUnreachable extends Error {
   }
 }
 
+/**
+ * The daemon answered and refused. The message is `<code>: <text>`, as it always was; the parts are
+ * kept so a command can word the refusals it knows (issue #3425).
+ */
+export class DaemonRefusal extends Error {
+  constructor(
+    readonly code: string,
+    /** The daemon's own text, without the code. */
+    readonly detail: string,
+    /** The refusal's name when the app words it: `hold_required`, `permission_request_closed`. */
+    readonly reason?: string,
+  ) {
+    super(`${code}: ${detail}`);
+  }
+}
+
 /** The daemon protocol, as any client of the app speaks it: `hello`, then commands and acks. */
 export class DaemonClient {
   private readonly acks = new Map<string, { ok(ack: Ack): void; fail(error: Error): void }>();
@@ -79,7 +95,7 @@ export class DaemonClient {
         ok: (ack) => {
           this.acks.delete(id);
           if (ack.ok) resolve(ack.data as CommandResults[T]);
-          else reject(new Error(`${ack.error.code}: ${ack.error.message}`));
+          else reject(new DaemonRefusal(ack.error.code, ack.error.message, ack.error.reason));
         },
         fail: reject,
       });

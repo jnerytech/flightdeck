@@ -69,13 +69,16 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 - [How it works](en/flightdeckd-claude-and-the-channel.md#how-it-works)
 - [Why the VS Code extension is left out](en/flightdeckd-claude-and-the-channel.md#why-the-vs-code-extension-is-left-out)
 
-## flightdeckd commands: host and sessions
+## flightdeckd commands: host, sessions, requests, approve and send
 
 [Read the chapter.](en/flightdeckd-commands.md) Its sections:
 
 - [What they all share](en/flightdeckd-commands.md#what-they-all-share)
 - [fd host](en/flightdeckd-commands.md#fd-host)
 - [fd sessions](en/flightdeckd-commands.md#fd-sessions)
+- [fd requests](en/flightdeckd-commands.md#fd-requests)
+- [fd approve and fd deny](en/flightdeckd-commands.md#fd-approve-and-fd-deny)
+- [fd send](en/flightdeckd-commands.md#fd-send)
 
 ## Approvals and always allow
 
