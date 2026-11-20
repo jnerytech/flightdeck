@@ -396,7 +396,9 @@
   "teams.close": {},
   "teams.create": {},
   "teams.delete": {},
-  "teams.list": {},
+  "teams.list": {
+    "cli": "team"
+  },
   "teams.message": {},
   "teams.pause": {},
   "teams.remove_member": {},

@@ -284,6 +284,12 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  team: (args, reader) => {
+    args.command = "team";
+    const action = subAction(reader, ["list", "show"], "invalid team action");
+    args.action = action;
+    if (action === "show") args.teamId = operand(reader, "the team");
+  },
   persona: (args, reader) => {
     args.command = "persona";
     const action = subAction(
@@ -504,6 +510,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     args.json &&
     ![
       "card",
+      "team",
       "persona",
       "host",
       "sessions",
@@ -515,7 +522,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, team, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&

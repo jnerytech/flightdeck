@@ -5,6 +5,7 @@ import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
+import type { TeamCliArgs } from "../teams/index.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
@@ -298,6 +299,22 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
         },
         config,
         identityOf(deps.env),
+      ),
+    );
+  },
+  team: async (args, deps) => {
+    const { runTeamCli } = await import("../teams/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runTeamCli(
+        {
+          action: args.action as TeamCliArgs["action"],
+          ...(args.project === undefined ? {} : { project: args.project }),
+          ...(args.teamId === undefined ? {} : { id: args.teamId }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
       ),
     );
   },

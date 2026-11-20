@@ -25,6 +25,7 @@ export interface CliArgs {
     | "snippet"
     | "message"
     | "card"
+    | "team"
     | "persona"
     | "host"
     | "sessions"
@@ -96,6 +97,8 @@ export interface CliArgs {
   last?: number;
   /** `message team <team>`. */
   team?: string;
+  /** `team show <team>`. */
+  teamId?: string;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
