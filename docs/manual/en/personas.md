@@ -31,6 +31,7 @@ Using one:
   instructions go after the system prompt, with the model, effort and tools it suggests. A persona
   only takes away: its tools are a subset of the session's, and its permission mode counts only
   when it is less permissive.
+- From a terminal, `flightdeckd architect|reviewer|security|coordinator` and `flightdeckd new <persona>` open `claude` with a persona ([flightdeckd commands](flightdeckd-commands.md)); the session is named `<repo>-<persona>`.
 - **Claude here** has its own picker and runs `flightdeckd claude --persona <id>` (the host's, the
   project's and the pack's; the app's own have no id on the host).
 - On an open session (managed, or a terminal session you can control), **Apply persona** sends the

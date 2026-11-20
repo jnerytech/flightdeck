@@ -48,3 +48,22 @@ fd sessions --json
 Lista as sessões do daemon, uma por linha: nome, estado e pasta. Com `--json` mostra uma lista de
 objetos com `id`, `name`, `cwd`, `status`, `permissionMode` e `updatedAt`. Sem sessões, a lista é
 vazia.
+
+## fd architect, fd reviewer, fd security, fd coordinator, fd new
+
+```sh
+fd architect
+fd new qa
+fd new qa --model opus
+```
+
+Abre o `claude` com uma persona, igual a `flightdeckd claude --persona <id>`. As quatro palavras são
+atalhos para o arquiteto, o revisor de código, o revisor de segurança e o coordenador do time;
+`new <persona>` recebe o id de qualquer persona do host, do projeto ou do pacote. O que vier depois
+da persona vai para o `claude` como está. Um id que não existe é recusado com código de saída `1`, e
+a mensagem lista os ids que existem.
+
+A sessão se chama `<repo>-<persona>` (por exemplo `flightdeck-qa`), ou só o nome do repo quando não
+há persona. O repo é a pasta de topo do repositório git onde você está; fora de um, é o nome da
+própria pasta. Um nome que você passar (`--name` ou `-n`) vale mais, e uma abertura que retoma uma
+sessão (`--resume`, `--continue`) ou roda em modo print (`-p`) não recebe nome.
