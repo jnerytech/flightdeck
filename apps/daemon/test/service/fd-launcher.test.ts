@@ -143,14 +143,22 @@ describe("fd launcher: what setup tells the person (#3433)", () => {
     );
   });
 
+  test("the first line says where the launcher went and what was done", async () => {
+    const { stable, launcher } = home();
+    const [first] = await setupFdLauncher({ stable, platform, which: found(null) });
+    expect(first).toBe(`fd launcher: ${launcher} (written)`);
+  });
+
   test("when our launcher is the fd the PATH finds, setup says nothing more", async () => {
     const { stable, launcher } = home();
-    expect(await setupFdLauncher({ stable, platform, which: found(launcher) })).toEqual([]);
+    const lines = await setupFdLauncher({ stable, platform, which: found(launcher) });
+    expect(lines.slice(1)).toEqual([]);
   });
 
   test("when no fd is on the PATH yet, setup says nothing more", async () => {
     const { stable } = home();
-    expect(await setupFdLauncher({ stable, platform, which: found(null) })).toEqual([]);
+    const lines = await setupFdLauncher({ stable, platform, which: found(null) });
+    expect(lines.slice(1)).toEqual([]);
   });
 
   test("a foreign fd in our folder is named, kept, and the way to claude is told", async () => {
