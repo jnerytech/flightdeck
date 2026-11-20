@@ -248,6 +248,12 @@ flightdeckd card validation-template <card> [--json]
 flightdeckd card pr-create <card> [--title "<texto>"] [--description "<texto>"] [--json]
 flightdeckd card update-from-base <card> [--json]
 flightdeckd card merge-local <card> --confirm [--squash] [--message "<texto>"] [--json]
+flightdeckd card arena <card> [--json]
+flightdeckd card start-arena <card> --variant <modelo[:esforço[:persona]]> --variant <...> [--variant <...>]
+  [--workflow <nome>] [--json]
+flightdeckd card choose-variant <card> <variante> --confirm [--json]
+flightdeckd card check-loop <card> on|off [--rounds <1 a 10>] [--confirm] [--json]
+flightdeckd card dismiss-unblocked <card> [--json]
 ```
 
 - `list` imprime uma linha por card (projeto, id, coluna, título e por que um card espera). Sem
@@ -285,6 +291,16 @@ flightdeckd card merge-local <card> --confirm [--squash] [--message "<texto>"] [
   commit com `--squash`), remove o worktree e o branch dele e o move para Concluído. Não dá para
   desfazer, então exige `--confirm`; `--message` é a mensagem do commit. O shell de uma sessão que o
   roda fica retido até o sim da pessoa, como no `discard`.
+- `arena` imprime as variantes da arena de um card, uma linha cada: modelo e esforço, estado (ou
+  `queued`), custo, arquivos mudados e algum aviso. `start-arena` inicia o mesmo card em 2 a 4
+  variantes, cada uma como `--variant modelo[:esforço[:persona]]` (a parte vazia usa o padrão);
+  outra quantidade, ou um esforço que não existe, sai com 1 e não envia nada.
+- `choose-variant` mantém uma variante como o trabalho do card e remove os worktrees das outras. Não
+  dá para desfazer, então exige `--confirm`; o shell de uma sessão que o roda fica retido até o sim da
+  pessoa.
+- `check-loop` liga ou desliga o ciclo de checagens do card; `--rounds` limita as rodadas (1 a 10). O
+  daemon diz se ligar exige um sim: passe `--confirm` quando for o caso. O shell de uma sessão que o liga
+  fica retido até o sim da pessoa. `dismiss-unblocked` limpa a marca de "desbloqueado" do card.
 - `--json` imprime a resposta para um script.
 - **Códigos de saída:** 0 feito, 1 recusado (o motivo vai para o stderr, com o código do daemon), 2
   sem daemon (parado, ou mudo por 15 s; 5 minutos no `review`).

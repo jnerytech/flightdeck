@@ -68,9 +68,15 @@
   "budget.set": {},
   "budget.setQuota": {},
   "budget.watch": {},
-  "card.arena": {},
-  "card.checkLoop": {},
-  "card.chooseVariant": {},
+  "card.arena": {
+    "cli": "card"
+  },
+  "card.checkLoop": {
+    "cli": "card"
+  },
+  "card.chooseVariant": {
+    "cli": "card"
+  },
   "card.complete": {
     "cli": "card"
   },
@@ -86,11 +92,15 @@
   "card.discard": {
     "cli": "card"
   },
-  "card.dismissUnblocked": {},
+  "card.dismissUnblocked": {
+    "cli": "card"
+  },
   "card.get": {
     "cli": "card"
   },
-  "card.manage": {},
+  "card.manage": {
+    "cli": "mcp"
+  },
   "card.mergeLocal": {
     "cli": "card"
   },
@@ -103,7 +113,9 @@
   "card.pr.create": {
     "cli": "card"
   },
-  "card.pr.merge": {},
+  "card.pr.merge": {
+    "appOnly": "merging a pull request takes the person's proof, which a terminal cannot give (#3453)"
+  },
   "card.review": {
     "cli": "card"
   },
@@ -113,7 +125,9 @@
   "card.start": {
     "cli": "card"
   },
-  "card.startArena": {},
+  "card.startArena": {
+    "cli": "card"
+  },
   "card.stop": {
     "cli": "card"
   },

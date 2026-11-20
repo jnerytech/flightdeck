@@ -194,6 +194,17 @@ const OPTIONS_WITH_VALUE = [
   "--description",
   "--language",
   "--workflow",
+  "--variant",
+  "--rounds",
+  "--scope",
+  "--name",
+  "--body",
+  "--body-file",
+  "--model",
+  "--effort",
+  "--tools",
+  "--permission-mode",
+  "--icon",
   "--out",
   "--from",
   "--folders",
@@ -208,6 +219,26 @@ const OPTIONS_WITH_VALUE = [
   "--config",
   "--runtime",
 ];
+
+/** The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`), unquoted. */
+function shellArguments(args: string[]): string[] {
+  const out: string[] = [];
+  let open = "";
+  let current = "";
+  for (const arg of args) {
+    current = open ? `${current} ${arg}` : arg;
+    for (const ch of arg) {
+      if (ch === open) open = "";
+      else if (!open && (ch === '"' || ch === "'")) open = ch;
+    }
+    if (!open) {
+      out.push(unquoted(current));
+      current = "";
+    }
+  }
+  if (open) out.push(unquoted(current));
+  return out;
+}
 
 /** The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`). */
 function flightdeckWords(args: string[]): string[] {
@@ -226,7 +257,8 @@ const RUNNERS = ["bun", "bunx", "npx", "node", "sh", "bash", "zsh", "dash", "pws
 /** Whether the command runs `fd`/`flightdeckd` with one of `verbs`, directly or through a runtime or a shell given the text. */
 function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  if (["fd", "flightdeckd"].includes(prog)) return verbs.includes(flightdeckWords(words)[0] ?? "");
+  if (["fd", "flightdeckd"].includes(prog))
+    return verbs.includes(flightdeckWords(shellArguments(args))[0] ?? "");
   if (!RUNNERS.includes(prog)) return false;
   const names = words.map((w) => program(w));
   const runsCli = names.some((n) => ["fd", "flightdeckd", "bin.ts"].includes(n));
@@ -245,22 +277,28 @@ const answersARequest = (prog: string, args: string[]) =>
 const changesApprovers = (prog: string, args: string[]) =>
   runsFlightdeckVerb(prog, args, ["approvers"]);
 
-const CARD_ENDS = ["discard", "complete", "delete", "merge-local"];
+const CARD_ENDS = ["discard", "complete", "delete", "merge-local", "choose-variant"];
 
 /**
  * What the app asks the person to confirm, done from a session's shell (#3454): `card discard`,
  * `complete`, `delete` and `merge-local` end a card (a discard removes its worktree and branch, a
- * merge-local merges it into the base and removes them), and `card move
- * --force` skips a column's contract. `--confirm` is only a flag the caller types, so it proves nothing.
+ * merge-local merges it into the base and removes them), `choose-variant` removes the other
+ * variants' worktrees, `check-loop <card> on` lets the checks run the card's code unasked, and
+ * `card move --force` skips a column's contract. `--confirm` is only a flag the caller types, so it
+ * proves nothing.
  */
 function endsACard(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
+  const loopOn = (all: string[]) => all.includes("check-loop") && all.includes("on");
   if (["fd", "flightdeckd"].includes(prog)) {
-    const [command, action] = flightdeckWords(words);
+    const own = shellArguments(args);
+    const [command, action, , switchTo] = flightdeckWords(own);
     return (
       command === "card" &&
-      (CARD_ENDS.includes(action ?? "") || (action === "move" && words.includes("--force")))
+      (CARD_ENDS.includes(action ?? "") ||
+        (action === "move" && own.includes("--force")) ||
+        (action === "check-loop" && switchTo === "on"))
     );
   }
   if (!RUNNERS.includes(prog)) return false;
@@ -268,7 +306,7 @@ function endsACard(prog: string, args: string[]): boolean {
   return (
     runsCli &&
     words.includes("card") &&
-    (words.some((w) => CARD_ENDS.includes(w)) || forcedMove(words))
+    (words.some((w) => CARD_ENDS.includes(w)) || forcedMove(words) || loopOn(words))
   );
 }
 
@@ -330,7 +368,7 @@ const DANGEROUS: Array<{
   {
     when: endsACard,
     reason: () =>
-      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local or move --force)",
+      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)",
   },
   {
     when: changesAPersona,
