@@ -81,6 +81,8 @@ describe("flightdeckd approve and deny (issue #3425)", () => {
     const text = run.err.join("\n");
     expect(text).toContain("high-risk");
     expect(text).toContain("--hold");
+    expect(text).toContain("the person");
+    expect(text).not.toContain("Add --hold");
     expect(answers(daemon)).toEqual([{ requestId: "r2", decision: "allow" }]);
   });
 
@@ -155,5 +157,29 @@ describe("flightdeckd approve and deny (issue #3425)", () => {
       hold: true,
       answerMessage: "go",
     });
+  });
+
+  test("a flag that takes no value refuses one: --hold=false never asserts the hold (review finding)", () => {
+    expect(() => parseArgs(["approve", "r1", "--hold=false"])).toThrow("--hold needs no value");
+    expect(() => parseArgs(["approve", "r1", "--hold=0"])).toThrow("--hold needs no value");
+    expect(() => parseArgs(["requests", "--json=false"])).toThrow("--json needs no value");
+  });
+
+  test("one command at a time: a second command word is an error, not a replacement (review finding)", () => {
+    expect(() => parseArgs(["deny", "r1", "approve", "r2", "--hold"])).toThrow("one command");
+    expect(() => parseArgs(["requests", "send", "a", "b"])).toThrow("one command");
+  });
+
+  test("--message keeps everything after the first =", () => {
+    expect(parseArgs(["deny", "r1", "--message=use a=b"]).answerMessage).toBe("use a=b");
+  });
+
+  test("--session belongs to requests and message, not to send or the answers (review finding)", () => {
+    expect(() => parseArgs(["send", "alpha", "hello", "--session", "beta"])).toThrow(
+      "only applies to flightdeckd requests",
+    );
+    expect(() => parseArgs(["approve", "r1", "--session", "s"])).toThrow(
+      "only applies to flightdeckd requests",
+    );
   });
 });

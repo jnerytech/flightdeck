@@ -99,8 +99,8 @@ describe("flightdeckd requests (issue #3425)", () => {
     const run = await flightdeckd(["requests"], fakeDaemon(TWO).port);
     expect(run.code).toBe(0);
     expect(run.out).toHaveLength(3);
-    expect(run.out[0]).toBe('r1  api  low  Bash  {"command":"bun test"}');
-    expect(run.out[1]).toContain("r2  web  high  Bash");
+    expect(run.out[0]).toBe('r1  api  low (a test run)  Bash  {"command":"bun test"}');
+    expect(run.out[1]).toContain("r2  web  high (a test run)  Bash");
   });
 
   test("nothing open gives an empty array with --json and a line without it, both exit 0", async () => {
@@ -149,5 +149,26 @@ describe("flightdeckd requests (issue #3425)", () => {
     const run = await flightdeckd(["requests", "--token", "x"], daemon.port);
     expect(run.code).toBe(1);
     expect(daemon.calls).toEqual([]);
+  });
+
+  test("a secret in what a request asks is redacted, in the line and in the JSON (review finding)", async () => {
+    const token = `ghp_${"a1B2c3D4e5".repeat(4)}`;
+    const daemon = fakeDaemon({
+      "sessions.watch": () => ({
+        summaries: [
+          summary("s1", "api", [
+            request("r1", "2026-11-19T09:00:00.000Z", {
+              input: { command: `curl -H "Authorization: Bearer ${token}" https://x.test` },
+            }),
+          ]),
+        ],
+      }),
+    });
+    const human = await flightdeckd(["requests"], daemon.port);
+    const machine = await flightdeckd(["requests", "--json"], daemon.port);
+    expect(human.out.join("\n")).not.toContain(token);
+    expect(human.out.join("\n")).toContain("curl");
+    expect(machine.out.join("\n")).not.toContain(token);
+    expect(machine.out.join("\n")).toContain("[redacted]");
   });
 });

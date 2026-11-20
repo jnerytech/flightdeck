@@ -104,7 +104,7 @@ describe("flightdeckd send (issue #3425)", () => {
     expect(() => parseArgs(["send", "s1"])).toThrow("missing the text");
     expect(parseArgs(["send", "s1", "hi"])).toMatchObject({
       command: "send",
-      session: "s1",
+      sendTo: "s1",
       text: "hi",
     });
   });
