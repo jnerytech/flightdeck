@@ -14,5 +14,7 @@ export {
   type RulesEnv,
   type UseContext,
 } from "./domain/rules.ts";
+export type { VaultCliArgs } from "./domain/vault-cli-view.ts";
 export { VaultRules } from "./rules-store.ts";
 export { isVaultTransport, requireVaultTransport, Vault, vaultActions } from "./vault.ts";
+export { runVaultCli } from "./vault-cli.ts";

@@ -47,9 +47,6 @@ export const BUDGET_FLAGS: Record<string, FlagHandler> = {
   "--window": oneOf("--window", ["five_hour", "seven_day"], (args, v) => {
     args.budgetWindow = v;
   }),
-  "--action": oneOf("--action", ["notify", "queue"], (args, v) => {
-    args.budgetAction = v;
-  }),
   // Plain decimal digits: `Number` would take `0x5`, `1e3` and a padded " 5 ".
   "--limit-usd": (args, _reader, value) => {
     const text = value();
@@ -74,6 +71,15 @@ export const BUDGET_FLAGS: Record<string, FlagHandler> = {
     args.budgetId = id;
   },
 };
+
+/** `--action` is also the use of a vault secret: the parser keeps the word, and a `budget` reads it as its action. */
+export function takeBudgetAction(args: CliArgs): void {
+  if (args.command !== "budget" || args.useAction === undefined) return;
+  if (args.useAction !== "notify" && args.useAction !== "queue")
+    throw refused("--action: notify or queue");
+  args.budgetAction = args.useAction;
+  delete args.useAction;
+}
 
 /** The flags that belong to the verbs of `budget` only, each with the verbs that take it. */
 function budgetFlags(args: BudgetArgs): Array<[string, unknown, readonly string[], string]> {

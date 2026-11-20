@@ -205,6 +205,7 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 [Read the chapter.](en/vault.md) Its sections:
 
 - [Backing up everything](en/vault.md#backing-up-everything)
+- [fd vault: reading the audit, the report and the rules](en/vault.md#fd-vault)
 
 ## Actions: Claude uses a secret without seeing it
 
