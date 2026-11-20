@@ -1,11 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
 import { runCardCli } from "../../src/board/card-cli.ts";
-import {
-  type CardCliArgs,
-  type CardCliResult,
-  isLoopbackHost,
-} from "../../src/board/domain/card-cli-view.ts";
+import type { CardCliArgs } from "../../src/board/domain/card-cli-view.ts";
+import { type CliResult, isLoopbackHost } from "../../src/daemon-client/index.ts";
 import { poll } from "../support/helpers.ts";
 import {
   CLOSE,
@@ -26,7 +23,7 @@ afterEach(stopAll);
 async function run(args: CardCliArgs, daemon: { port: number }, bind?: string, timeoutMs?: number) {
   return runCardCli(args, config(daemon.port, bind), timeoutMs ? { timeoutMs } : {});
 }
-const text = (r: CardCliResult) => [...r.out, ...r.err].join("\n");
+const text = (r: CliResult) => [...r.out, ...r.err].join("\n");
 
 describe("card list (issue #1507)", () => {
   test("lists the cards of every project, one line each, with the project, the column and why a queued one waits", async () => {
