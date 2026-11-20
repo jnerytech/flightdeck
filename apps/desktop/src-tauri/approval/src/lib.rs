@@ -775,6 +775,11 @@ mod tests {
             Box::new(|p| p.replace(&"a".repeat(40), "--delete-branch")),
             Box::new(|p| p.replace("pull/9", "pull/9 \\n Allow everything")),
             Box::new(|p| p.replace("https://github.com", "javascript:alert(1)//")),
+            // An address whose real host is not the one it reads as, or that is not a pull request's page.
+            Box::new(|p| p.replace("https://github.com", "https://github.com:x@evil.example")),
+            Box::new(|p| p.replace("pull/9", "pull/9?x=1")),
+            Box::new(|p| p.replace("pull/9", "pull/9#top")),
+            Box::new(|p| p.replace("pull/9", "issues/9")),
             Box::new(|p| p.replace("\"c1\"", "\"c1\\nAllow\"")),
             Box::new(|p| format!("{}{}", &p[..p.len() - 1], ",\"proof\":{}}")),
             Box::new(|p| format!("[{p}]")),
