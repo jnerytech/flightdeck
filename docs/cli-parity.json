@@ -64,10 +64,10 @@
   "boardsync.status": {},
   "boardsync.syncNow": {},
   "boardsync.unlink": {},
-  "budget.list": {},
-  "budget.remove": {},
-  "budget.set": {},
-  "budget.setQuota": {},
+  "budget.list": { "cli": "budget" },
+  "budget.remove": { "cli": "budget" },
+  "budget.set": { "cli": "budget" },
+  "budget.setQuota": { "cli": "budget" },
   "budget.watch": {},
   "card.arena": {
     "cli": "card"

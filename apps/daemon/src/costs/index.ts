@@ -2,6 +2,7 @@
  * The costs' public entry (#1589): the usage and costs of the host's sessions. Another
  * domain imports from here, never a file inside.
  */
+export { type BudgetCliArgs, runBudgetCli } from "./budget-cli.ts";
 export type { Budgets } from "./budgets.ts";
 export type { Costs } from "./costs.ts";
 export { type CostsCliArgs, runCostsCli } from "./costs-cli.ts";

@@ -425,6 +425,29 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       ),
     );
   },
+  budget: async (args, deps) => {
+    const { runBudgetCli } = await import("../costs/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runBudgetCli(
+        {
+          action: args.action as "list" | "set" | "set-quota" | "remove",
+          ...(args.budgetId === undefined ? {} : { id: args.budgetId }),
+          // `budgetProblem` refuses a scope that is not the host or a project.
+          ...(args.scope === undefined ? {} : { scope: args.scope as "host" | "project" }),
+          ...(args.project === undefined ? {} : { projectKey: args.project }),
+          ...(args.budgetPeriod === undefined ? {} : { period: args.budgetPeriod }),
+          ...(args.budgetWindow === undefined ? {} : { window: args.budgetWindow }),
+          ...(args.limitUsd === undefined ? {} : { limitUsd: args.limitUsd }),
+          ...(args.limitPct === undefined ? {} : { limitPct: args.limitPct }),
+          ...(args.budgetAction === undefined ? {} : { budgetAction: args.budgetAction }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
   usage: async (args, deps) => {
     const { runUsageCli } = await import("../costs/index.ts");
     const config = await localConfig(args);
