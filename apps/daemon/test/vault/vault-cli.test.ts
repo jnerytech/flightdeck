@@ -374,6 +374,13 @@ describe("the arguments of vault (issue #3458)", () => {
         "--approval: always, never or first-per-session",
       ],
       [["--requester", "you", "--purpose", "ssh", "--at", "noon"], "--at: a date and time"],
+      // Loose text that Date.parse reads anyway, or a time with no zone, would give another verdict than meant.
+      [["--requester", "you", "--purpose", "ssh", "--at", "5"], "--at: a date and time"],
+      [["--requester", "you", "--purpose", "ssh", "--at", "2026-11-20"], "--at: a date and time"],
+      [
+        ["--requester", "you", "--purpose", "ssh", "--at", "2026-11-20T03:00"],
+        "--at: a date and time",
+      ],
     ];
     for (const [flags, message] of bad)
       expect(parsed(["vault", "rules", "preview", "s", ...flags])).toMatchObject({
