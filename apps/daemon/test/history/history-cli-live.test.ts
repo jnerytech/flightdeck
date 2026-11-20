@@ -99,6 +99,7 @@ describe("flightdeckd history resume (issue #3461)", () => {
       "history.resume": () => ({
         error: {
           code: "invalid_state",
+          reason: "session_maybe_active",
           message: "session possibly in use elsewhere; send force: true to resume anyway",
         },
       }),
@@ -109,6 +110,8 @@ describe("flightdeckd history resume (issue #3461)", () => {
     );
     expect(result.code).toBe(1);
     expect(result.err.join("\n")).toContain("session possibly in use elsewhere");
+    expect(result.err.join("\n")).toContain("add --force to resume anyway");
+    expect(result.err.join("\n")).not.toContain("force: true");
     expect(daemon.calls.filter((c) => c.type === "history.resume")).toHaveLength(1);
   });
 
