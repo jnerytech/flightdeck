@@ -371,11 +371,8 @@ const HANDLERS: Record<string, Handler> = {
   },
   quota: (args, reader) => {
     args.command = "quota";
-    const action = subAction(
-      reader,
-      ["get", "history", "pause-at", "watch"],
-      "invalid quota action",
-    );
+    const verbs = ["get", "history", "pause-at", "watch"] as const;
+    const action = subAction(reader, verbs, "invalid quota action");
     args.action = action;
     if (action === "history") args.quotaWindow = operand(reader, "the window");
     if (action === "pause-at") {
@@ -762,14 +759,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
-    // `rules remove` and `autoapprove resume` confirm too; `rulesProblem` checks them below.
-    if (flag === "--confirm" && ["rules", "autoapprove"].includes(args.command)) continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `team new`'s, which checks its own flags below.
-    if (flag === "--confirm" && args.command === "team") continue;
-    // `costs reprice` confirms too; `costsProblem` checks it below.
-    if (flag === "--confirm" && args.command === "costs") continue;
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s and `costs reprice`'s, which check their own flags below.
+    if (flag === "--confirm" && ["rules", "autoapprove", "team", "costs"].includes(args.command))
+      continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
