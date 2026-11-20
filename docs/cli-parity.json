@@ -79,14 +79,18 @@
     "cli": "card"
   },
   "card.manage": {},
-  "card.mergeLocal": {},
+  "card.mergeLocal": {
+    "cli": "card"
+  },
   "card.message": {
     "cli": "card"
   },
   "card.move": {
     "cli": "card"
   },
-  "card.pr.create": {},
+  "card.pr.create": {
+    "cli": "card"
+  },
   "card.pr.merge": {},
   "card.review": {
     "cli": "card"
@@ -107,7 +111,9 @@
   "card.update": {
     "cli": "card"
   },
-  "card.updateFromBase": {},
+  "card.updateFromBase": {
+    "cli": "card"
+  },
   "card.validationTemplate": {
     "cli": "card"
   },

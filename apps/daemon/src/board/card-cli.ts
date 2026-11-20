@@ -156,6 +156,38 @@ async function endCard(
   return args.json ? json(card) : said(`${done} ${card.id}  ${card.title}`);
 }
 
+/** Pushes the card's branch and opens its pull request: public, so a write the person cannot take back. */
+async function prOfCard(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  note.wrote = true;
+  const card = await daemon.call("card.pr.create", {
+    cardId: args.id ?? "",
+    ...(args.title === undefined ? {} : { title: args.title }),
+    ...(args.description === undefined ? {} : { description: args.description }),
+  });
+  return args.json
+    ? json(card)
+    : said(`opened the PR of ${card.id}  ${card.prUrl ?? ""}`.trimEnd());
+}
+
+async function rebaseCard(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  note.wrote = true;
+  const card = await daemon.call("card.updateFromBase", { cardId: args.id ?? "" });
+  return args.json ? json(card) : said(`updated ${card.id} from its base branch`);
+}
+
+/** Merges the card into its base and removes its worktree and branch: the daemon asks for the yes, and so does this. */
+async function mergeCard(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  const confirm = confirmed(args);
+  note.wrote = true;
+  const card = await daemon.call("card.mergeLocal", {
+    cardId: args.id ?? "",
+    mode: args.squash ? "squash" : "merge",
+    confirm,
+    ...(args.message === undefined ? {} : { message: args.message }),
+  });
+  return args.json ? json(card) : said(`merged ${card.id}  ${card.title}`);
+}
+
 async function diffCard(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
   const diff = await daemon.call("card.diff", { cardId: args.id ?? "" });
   return args.json ? json(diff) : said(...diffLines(diff));
@@ -243,6 +275,12 @@ function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<C
       return templatesOf(args, daemon);
     case "validation-template":
       return validationOf(args, daemon);
+    case "pr-create":
+      return prOfCard(args, daemon, note);
+    case "update-from-base":
+      return rebaseCard(args, daemon, note);
+    case "merge-local":
+      return mergeCard(args, daemon, note);
   }
 }
 

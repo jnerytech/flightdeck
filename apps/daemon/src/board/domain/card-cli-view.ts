@@ -29,7 +29,10 @@ export interface CardCliArgs {
     | "review"
     | "message"
     | "templates"
-    | "validation-template";
+    | "validation-template"
+    | "pr-create"
+    | "update-from-base"
+    | "merge-local";
   /** `message`: the text; `review --language`. */
   text?: string;
   language?: "en" | "pt-BR";
@@ -46,8 +49,11 @@ export interface CardCliArgs {
   column?: string;
   position?: number;
   force?: boolean;
-  /** `complete|delete|discard --confirm`: the person's yes, which the daemon asks for. */
+  /** `complete|delete|discard|merge-local --confirm`: the person's yes, which the daemon asks for. */
   confirm?: boolean;
+  /** `merge-local`: one commit instead of a merge commit, and the message the person typed for it. */
+  squash?: boolean;
+  message?: string;
   /** `update`: what changes; `none` clears the estimate, the note, the spec path and the blockers. */
   estimate?: string;
   validationNote?: string;
@@ -118,7 +124,7 @@ export function columnOf(wanted: string | undefined): BoardColumn {
   );
 }
 
-/** The yes the daemon asks for in `complete`, `discard` and `delete`: nothing is sent without it. */
+/** The yes the daemon asks for in `complete`, `discard`, `delete` and `merge-local`: nothing is sent without it. */
 export function confirmed(args: CardCliArgs): true {
   if (args.confirm) return true;
   throw new Refusal(
@@ -258,6 +264,12 @@ export function validationLines(found: ValidationTemplate): string[] {
 
 /** What a write that got no answer may have done. */
 export const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
+  "pr-create":
+    "; the pull request may or may not have been opened: check with `card show` before trying again",
+  "update-from-base":
+    "; the card may or may not have been rebased: check with `card show` before trying again",
+  "merge-local":
+    "; the card may or may not have been merged: check with `card show` before trying again",
   new: "; the card may or may not have been created: check with `card list` before trying again",
   start: "; the card may or may not have been started: check with `card show` before trying again",
   move: "; the card may or may not have been moved: check with `card show` before trying again",

@@ -206,11 +206,12 @@ function answersARequest(prog: string, args: string[]): boolean {
   return runsCli && words.some((w) => verbs.includes(w));
 }
 
-const CARD_ENDS = ["discard", "complete", "delete"];
+const CARD_ENDS = ["discard", "complete", "delete", "merge-local"];
 
 /**
  * What the app asks the person to confirm, done from a session's shell (#3454): `card discard`,
- * `complete` and `delete` end a card (a discard removes its worktree and branch), and `card move
+ * `complete`, `delete` and `merge-local` end a card (a discard removes its worktree and branch, a
+ * merge-local merges it into the base and removes them), and `card move
  * --force` skips a column's contract. `--confirm` is only a flag the caller types, so it proves nothing.
  */
 function endsACard(prog: string, args: string[]): boolean {
@@ -266,7 +267,7 @@ const DANGEROUS: Array<{
   {
     when: endsACard,
     reason: () =>
-      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete or move --force)",
+      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local or move --force)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {

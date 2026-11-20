@@ -288,6 +288,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           ...(args.position === undefined ? {} : { position: args.position }),
           ...(args.force ? { force: true } : {}),
           ...(args.confirm ? { confirm: true } : {}),
+          ...(args.squash ? { squash: true } : {}),
+          ...(args.answerMessage === undefined ? {} : { message: args.answerMessage }),
           ...(args.estimate === undefined ? {} : { estimate: args.estimate }),
           ...(args.validationNote === undefined ? {} : { validationNote: args.validationNote }),
           ...(args.specPath === undefined ? {} : { specPath: args.specPath }),
