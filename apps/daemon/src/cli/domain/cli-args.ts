@@ -25,6 +25,7 @@ export interface CliArgs {
     | "snippet"
     | "message"
     | "card"
+    | "team"
     | "persona"
     | "board"
     | "host"
@@ -66,6 +67,7 @@ export interface CliArgs {
     | "save"
     | "remove"
     | "publish-agent"
+    | "trust"
     | "diff"
     | "spec"
     | "review"
@@ -98,6 +100,8 @@ export interface CliArgs {
   last?: number;
   /** `message team <team>`. */
   team?: string;
+  /** `team show <team>`. */
+  teamId?: string;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
@@ -138,6 +142,8 @@ export interface CliArgs {
   tools?: string[];
   permissionMode?: string;
   icon?: string;
+  /** `persona trust --hash`: the start of the hash `persona list` showed. */
+  hash?: string;
   /** `persona list --scope <host|project|all>`. */
   scope?: "host" | "project" | "all";
   /** `action run <name>`. */

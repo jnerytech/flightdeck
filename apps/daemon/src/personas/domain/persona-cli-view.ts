@@ -11,7 +11,7 @@ import type {
 } from "@flightdeck/protocol";
 
 export interface PersonaCliArgs {
-  action: "list" | "show" | "subagents" | "save" | "remove" | "reset" | "publish-agent";
+  action: "list" | "show" | "subagents" | "save" | "remove" | "reset" | "publish-agent" | "trust";
   /** `show`, `save`, `remove`, `reset`, `publish-agent`: the persona's id. */
   id?: string;
   /** `save`: the persona's fields. */
@@ -24,6 +24,8 @@ export interface PersonaCliArgs {
   tools?: string[];
   permissionMode?: PersonaInput["permissionMode"];
   icon?: string;
+  /** `trust --hash`: the start of the hash `persona list` showed. */
+  hash?: string;
   /** `publish-agent --confirm`. */
   confirm?: boolean;
   /** `list --scope`. */
@@ -39,6 +41,13 @@ export interface PersonaCliArgs {
 /** How much of a project persona's hash a line shows: enough to tell two apart. */
 const HASH_SHOWN = 12;
 
+/** The start of a hash, as `persona list` shows it. */
+export const shortHash = (hash: string) => hash.slice(0, HASH_SHOWN);
+
+/** Why a trust is refused when the persona is no longer the one the person looked at. */
+export const hashChanged = (id: string, named: string, now: string) =>
+  `the hash ${named} does not match ${id}, whose hash is ${shortHash(now)}: if the file was edited, read it with persona show ${id} and trust it again`;
+
 /** The lines `persona list` prints: one per persona, then the project files that were left out. */
 export function listLines(answer: {
   personas: Persona[];
@@ -48,7 +57,7 @@ export function listLines(answer: {
     const parts = [persona.id, persona.scope, persona.name];
     if (persona.modified) parts[2] += "  (edited)";
     if (persona.scope === "project") {
-      if (persona.hash !== null) parts.push(persona.hash.slice(0, HASH_SHOWN));
+      if (persona.hash !== null) parts.push(shortHash(persona.hash));
       if (!persona.trusted) parts.push("not trusted");
     }
     return parts.join("  ");

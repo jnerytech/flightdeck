@@ -3,8 +3,9 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
-
+import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
+import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { USAGE } from "./usage.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -287,11 +288,17 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "board";
     args.action = subAction(reader, ["settings", "watch"] as const, "invalid board action");
   },
+  team: (args, reader) => {
+    args.command = "team";
+    const action = subAction(reader, ["list", "show"], "invalid team action");
+    args.action = action;
+    if (action === "show") args.teamId = operand(reader, "the team");
+  },
   persona: (args, reader) => {
     args.command = "persona";
     const action = subAction(
       reader,
-      ["list", "show", "subagents", "save", "remove", "reset", "publish-agent"],
+      ["list", "show", "subagents", "save", "remove", "reset", "publish-agent", "trust"],
       "invalid persona action",
     );
     args.action = action;
@@ -407,6 +414,13 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--permission-mode: ${PERMISSION_MODES.join(", ")}\n${USAGE}`);
     args.permissionMode = v;
   }),
+  "--hash": setValue((args, v) => {
+    if (!/^[0-9a-f]{12,}$/i.test(v))
+      throw new Error(
+        `--hash: at least 12 hex characters of the hash persona list shows\n${USAGE}`,
+      );
+    args.hash = v.toLowerCase();
+  }),
   "--icon": setValue((args, v) => {
     args.icon = v;
   }),
@@ -483,58 +497,6 @@ const HANDLERS: Record<string, Handler> = {
   }),
 };
 
-const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
-const PERMISSION_MODES = ["default", "acceptEdits", "bypassPermissions", "plan", "dontAsk", "auto"];
-
-/** The flags of `persona`, each with the verbs that take it (`--language` is checked by the daemon). */
-function personaFlags(args: CliArgs): Array<[string, unknown, readonly string[]]> {
-  return [
-    ["--scope", args.scope, ["list", "save", "remove"]],
-    ["--name", args.personaName, ["save"]],
-    ["--body", args.body, ["save"]],
-    ["--body-file", args.bodyFile, ["save"]],
-    ["--model", args.model, ["save"]],
-    ["--effort", args.effort, ["save"]],
-    ["--tools", args.tools, ["save"]],
-    ["--permission-mode", args.permissionMode, ["save"]],
-    ["--icon", args.icon, ["save"]],
-    // `--description` and `--confirm` are the card's too: only `persona` is checked here.
-    ...(args.command === "persona"
-      ? ([
-          ["--description", args.description, ["save"]],
-          ["--confirm", args.confirm, ["publish-agent"]],
-        ] as Array<[string, unknown, readonly string[]]>)
-      : []),
-  ];
-}
-
-/** What `persona` verbs need before anything is sent: the flags of the verb, and the ones it cannot do without. */
-function checkPersona(args: CliArgs): void {
-  for (const [flag, value, verbs] of personaFlags(args)) {
-    if (value === undefined) continue;
-    if (args.command !== "persona" || !verbs.includes(args.action as string))
-      throw new Error(
-        `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}\n${USAGE}`,
-      );
-  }
-  if (args.command !== "persona") return;
-  const missing = (flag: string) => new Error(`missing ${flag}\n${USAGE}`);
-  if (args.action === "save" || args.action === "remove") {
-    if (args.scope === undefined) throw missing("--scope");
-    if (args.scope === "all") throw new Error(`--scope: host or project\n${USAGE}`);
-  }
-  if (args.action === "save") {
-    if (args.personaName === undefined) throw missing("--name");
-    if (args.description === undefined) throw missing("--description");
-    if (args.body === undefined && args.bodyFile === undefined)
-      throw missing("--body or --body-file");
-    if (args.body !== undefined && args.bodyFile !== undefined)
-      throw new Error(`--body or --body-file, not both\n${USAGE}`);
-  }
-  if (args.action === "publish-agent" && args.projectPath === undefined)
-    throw missing("--project-path");
-}
-
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { command: "start" };
   const reader = new ArgReader(argv);
@@ -558,6 +520,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ![
       "card",
       "board",
+      "team",
       "persona",
       "host",
       "sessions",
@@ -569,7 +532,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, team, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -629,14 +592,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (args.rounds !== undefined && args.loop === "off")
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
-  checkPersona(args);
-  if (
-    args.maxParallelRuns !== undefined &&
-    !(args.command === "board" && args.action === "settings")
-  )
-    throw new Error(
-      `--max-parallel-runs: this flag only applies to flightdeckd board settings\n${USAGE}`,
-    );
+  const fault = personaProblem(args) ?? boardProblem(args);
+  if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

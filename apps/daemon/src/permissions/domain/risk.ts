@@ -206,6 +206,7 @@ const OPTIONS_WITH_VALUE = [
   "--tools",
   "--permission-mode",
   "--icon",
+  "--hash",
   "--out",
   "--from",
   "--folders",

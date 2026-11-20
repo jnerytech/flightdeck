@@ -125,3 +125,28 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
   recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time
   retoma e avisa.
+
+## O comando flightdeckd team
+
+`flightdeckd team` lê os times deste host de um terminal, de um cron ou de um agente. Ele fala com o
+daemon do mesmo host, com o token do arquivo de config, como o `flightdeckd card`.
+
+```sh
+flightdeckd team list [--project <nome ou id>] [--json]
+flightdeckd team show <time> [--json]
+```
+
+- `list` imprime uma linha por time: id, nome, estado (`active`, `paused by user`, `paused by quota`
+  ou `closed`) e quantos workers ele tem. `--project` recebe o id ou o nome de um projeto e lista só
+  os times dele.
+- `show` imprime o objetivo e o estado do time, quantas mensagens os membros trocaram, o último relato
+  do coordenador (o resultado, marcado como feito ou não) e uma linha por membro: papel, persona,
+  estado da sessão, card, quantas mensagens enviou e recebeu e, abaixo, o último relato dele. Um
+  worker cujo card ainda espera na fila diz "no session".
+- `--json` imprime a resposta do próprio daemon, para um script. O texto que uma sessão escreveu (um
+  relato, um nome) aparece como texto simples, sem caracteres de controle.
+- **Códigos de saída:** 0 feito, 1 recusado (um time ou projeto desconhecido; o motivo vai para o
+  stderr), 2 sem daemon.
+- O token e a regra do loopback são os do `flightdeckd card`: o token vem só do arquivo de config, nunca
+  é impresso, e `--host` não vale aqui. `flightdeckd message team <time>`, dentro de uma sessão, continua
+  respondendo pelo mesmo time, como a sessão que pergunta.

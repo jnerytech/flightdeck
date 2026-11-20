@@ -14,10 +14,12 @@ import {
   said,
 } from "../daemon-client/index.ts";
 import {
+  hashChanged,
   listLines,
   type PersonaCliArgs,
   personaOf,
   publishRefusal,
+  shortHash,
   showLines,
   subagentsLines,
   UNSURE,
@@ -51,6 +53,32 @@ async function save(
     persona: personaOf(args, body),
   });
   return args.json ? json(saved) : said(`saved ${saved.id} (${args.scope})`);
+}
+
+/**
+ * Trusting a project persona lets its versioned text into every session of the project, so the person
+ * names the start of the hash they were shown and this trusts that exact content: a file that changed
+ * since is refused, as the app's button would show the new hash first.
+ */
+async function trust(
+  args: PersonaCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+  projectPath: string,
+): Promise<CliResult> {
+  const { personas } = await daemon.call("personas.list", { scope: "project", projectPath });
+  const found = personas.find((p) => p.scope === "project" && p.id === args.id);
+  if (found === undefined) return failure(1, `no project persona ${args.id} in ${projectPath}`);
+  const named = args.hash ?? "";
+  const hash = found.hash ?? "";
+  if (hash === "")
+    return failure(1, `${found.id} has no hash to trust: save it to a project file first`);
+  if (named === "" || !hash.startsWith(named))
+    return failure(1, hashChanged(found.id, named, hash));
+  if (found.trusted) return args.json ? json(found) : said(`${found.id} is already trusted`);
+  note.wrote = true;
+  const trusted = await daemon.call("personas.trust", { projectPath, id: found.id, hash });
+  return args.json ? json(trusted) : said(`trusted ${trusted.id}  ${shortHash(hash)}`);
 }
 
 export async function runPersonaCli(
@@ -117,6 +145,8 @@ export async function runPersonaCli(
           });
           return args.json ? json(published) : said(`wrote ${published.path}`);
         }
+        case "trust":
+          return trust(args, daemon, note, projectPath ?? "");
       }
     },
   });

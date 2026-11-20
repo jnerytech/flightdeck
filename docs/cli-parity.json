@@ -271,7 +271,9 @@
   "personas.subagents": {
     "cli": "persona"
   },
-  "personas.trust": {},
+  "personas.trust": {
+    "cli": "persona"
+  },
   "plugins.detail": {},
   "plugins.install": {},
   "plugins.list": {},
@@ -394,7 +396,9 @@
   "teams.close": {},
   "teams.create": {},
   "teams.delete": {},
-  "teams.list": {},
+  "teams.list": {
+    "cli": "team"
+  },
   "teams.message": {},
   "teams.pause": {},
   "teams.remove_member": {},

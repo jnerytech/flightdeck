@@ -194,10 +194,11 @@ fd persona save architect --scope host --name Architect --description "Designs m
 fd persona remove architect --scope host
 fd persona reset reviewer
 fd persona publish-agent architect --project-path ~/work/api --confirm
+fd persona trust local --project-path ~/work/api --hash abcdef012345
 ```
 
 `list`, `show` and `subagents` read the personas of this host, as the Personas screen does. `save`,
-`remove`, `reset` and `publish-agent` change them.
+`remove`, `reset`, `publish-agent` and `trust` change them.
 
 - **`list`:** one line per persona: its id, where it lives (`pack`, `host` or `project`), its name,
   `(edited)` for a pack persona this host changed, and, for a project persona, the start of its hash and
@@ -219,6 +220,10 @@ fd persona publish-agent architect --project-path ~/work/api --confirm
 - **`publish-agent <id> --project-path <folder>`:** writes the persona as the project agent
   `.claude/agents/persona-<id>.md`. It changes a file in the project, so it refuses with exit `1` and sends
   nothing until you pass `--confirm`.
+- **`trust <id> --project-path <folder> --hash <hash>`:** trusts a versioned project persona, so its text
+  reaches every session of the project. `--hash` is the start (12 or more hex characters) of the hash
+  `persona list` showed: if the file was edited since, the command refuses with exit `1` and says the new
+  hash, so you read it again. A persona that is already trusted is left as it is.
 
 A change that gets no answer exits `2` and says it may or may not have gone in: run `persona list` before
 trying again.

@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { runBoardCli } from "../../src/board/board-cli.ts";
 import type { CliResult } from "../../src/daemon-client/index.ts";
-import { parseArgs } from "../../src/main.ts";
-import { poll } from "../support/helpers.ts";
-import { config, fakeDaemon, stopAll } from "./card-cli-helpers.ts";
+import { parseArgs, runCli } from "../../src/main.ts";
+import { poll, tempDir } from "../support/helpers.ts";
+import { config, fakeDaemon, stopAll, TOKEN } from "./card-cli-helpers.ts";
 
 setDefaultTimeout(20_000);
 afterEach(stopAll);
@@ -282,5 +284,29 @@ describe("the arguments of board watch (issue #3454)", () => {
     expect(parsed(["board", "watch", "--max-parallel-runs", "3"])).toMatchObject({
       refusedWith: expect.stringContaining("--max-parallel-runs"),
     });
+  });
+});
+
+describe("flightdeckd board settings from the terminal (issue #3454)", () => {
+  test("the command sets the limit, prints it and exits 0", async () => {
+    const daemon = fakeDaemon({ "board.settings": () => ({ maxParallelRuns: 4 }) });
+    const file = join(tempDir(), "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: TOKEN, port: daemon.port, dataDir: join(tempDir(), "data") }),
+    );
+    const out: string[] = [];
+    const exits: number[] = [];
+    await runCli(["board", "settings", "--max-parallel-runs", "4", "--json", "--config", file], {
+      env: {},
+      log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+    });
+    expect(JSON.parse(out.join(""))).toEqual({ maxParallelRuns: 4 });
+    expect(exits).toEqual([0]);
+    expect(daemon.calls.filter((c) => c.type === "board.settings")).toEqual([
+      { type: "board.settings", payload: { maxParallelRuns: 4 } },
+    ]);
   });
 });
