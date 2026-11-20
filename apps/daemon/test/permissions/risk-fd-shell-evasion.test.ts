@@ -169,6 +169,16 @@ describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)"
     expect(notHigh([`${"*".repeat(16)}z persona list`])).toEqual([]);
   });
 
+  test("a program word too long to match against the CLI's names is high, so it cannot be used to stall the rules", () => {
+    expect(
+      wrongReasons([
+        [`f${"[".repeat(300)} persona remove qa`, HIDDEN],
+        [`${"a".repeat(100)}${",".repeat(100)} persona remove qa`, HIDDEN],
+        [`f${"*".repeat(100)}d persona remove qa`, HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a card or history verb the shell expands is high, as a persona verb is", () => {
     expect(
       wrongReasons([
