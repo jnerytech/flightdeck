@@ -5,6 +5,7 @@
 import { RuntimeKind } from "../../config.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
+import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
@@ -204,7 +205,26 @@ const HANDLERS: Record<string, Handler> = {
     ["install", "uninstall", "status"],
     "invalid telemetry action",
   ),
-  history: withAction("history", ["reindex"], "invalid history action"),
+  history: (args, reader) => {
+    args.command = "history";
+    const action = subAction(
+      reader,
+      ["reindex", "list", "search", "get", "tool"] as const,
+      "invalid history action",
+    );
+    args.action = action;
+    if (action === "search") args.query = operand(reader, "the text");
+    if (action === "get" || action === "tool")
+      args.claudeSessionId = operand(reader, "the session");
+    if (action === "tool") {
+      args.uuid = operand(reader, "the message");
+      const word = operand(reader, "the tool call index");
+      const index = /^\d{1,4}$/.test(word) ? Number(word) : -1;
+      if (index < 0 || index > 1000)
+        throw new Error(`history tool: the index is a whole number from 0 to 1000\n${USAGE}`);
+      args.index = index;
+    }
+  },
   approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
   rules: withAction("rules", ["list"], "invalid rules action"),
   autoapprove: withAction("autoapprove", ["list"], "invalid autoapprove action"),
@@ -487,6 +507,27 @@ const HANDLERS: Record<string, Handler> = {
   "--from": setValue((args, v) => {
     args.from = v;
   }),
+  "--to": setValue((args, v) => {
+    args.until = v;
+  }),
+  "--cwd": setValue((args, v) => {
+    args.cwd = v;
+  }),
+  "--project-key": setValue((args, v) => {
+    args.projectKey = v;
+  }),
+  "--origin": setValue((args, v) => {
+    args.origin = v as CliArgs["origin"];
+  }),
+  "--cursor": setValue((args, v) => {
+    args.cursor = v;
+  }),
+  "--hide-automated": setFlag((args) => {
+    args.hideAutomated = true;
+  }),
+  "--tail": setFlag((args) => {
+    args.tail = true;
+  }),
   "--allow-downgrade": setFlag((args) => {
     args.allowDowngrade = true;
   }),
@@ -576,6 +617,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ![
       "card",
       "board",
+      "history",
       "team",
       "persona",
       "host",
@@ -590,7 +632,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, team, persona, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove
+${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -613,8 +656,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests, message and autoapprove\n${USAGE}`,
     );
-  if (args.command !== "autoapprove" && args.limit !== undefined)
-    throw new Error(`--limit: this flag only applies to flightdeckd autoapprove\n${USAGE}`);
+  // `history` checks its own limits (history-args.ts).
+  if (!["autoapprove", "history"].includes(args.command) && args.limit !== undefined)
+    throw new Error(
+      `--limit: this flag only applies to flightdeckd autoapprove and history\n${USAGE}`,
+    );
   // `card new` takes its title as an operand: the flag is the title of an update.
   if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
     args.cardTitle = args.titleFlag;
@@ -656,7 +702,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
   if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
-  const fault = personaProblem(args) ?? teamProblem(args) ?? boardProblem(args);
+  const fault =
+    personaProblem(args) ?? teamProblem(args) ?? boardProblem(args) ?? historyProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
