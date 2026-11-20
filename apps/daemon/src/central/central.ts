@@ -68,7 +68,11 @@ export class Central {
   private token: string | undefined;
 
   constructor(private readonly opts: CentralOptions) {
-    this.permissions = new ExternalPermissions({ risk: opts.risk, auto: opts.autoApprove });
+    this.permissions = new ExternalPermissions({
+      risk: opts.risk,
+      auto: opts.autoApprove,
+      approval: opts.approval,
+    });
     this.keys = opts.keys ?? new ProjectKeys(opts.hostName);
     this.meta = new SessionMetaStore(opts.db);
     this.external = new ExternalSessions({

@@ -93,6 +93,7 @@ export class SessionManager {
       classify: (sessionId, toolName, input) => this.classify(sessionId, toolName, input),
       plain: (sessionId, toolName, input, risk) =>
         this.plainOf(sessionId, toolName, input, risk.level),
+      ...(opts.approval ? { approval: opts.approval } : {}),
       ...(opts.autoApprove
         ? {
             // ADR 39-3: a person answers every question of an OpenCode session.

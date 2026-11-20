@@ -65,6 +65,8 @@ export function createPermissions({
     mono: () => performance.now(),
     random: () => randomBytes(24).toString("base64url"),
   });
-  const module: DomainModule<"autoApprove"> = { server: { autoApprove } };
+  const module: DomainModule<"autoApprove" | "approvers"> = {
+    server: { autoApprove, approvers },
+  };
   return { modules: [module] as const, risk, autoApprove, approvers };
 }
