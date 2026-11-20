@@ -2,6 +2,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { loadConfig } from "../config.ts";
 import type { CliResult } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
+import type { ResolveDeps } from "../remote-hosts/resolve.ts";
 import { configPath } from "./config-path.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
@@ -32,6 +33,8 @@ export interface CliDeps extends SetupCommandDeps, MaintenanceCommandDeps {
   mcpTransport?: Transport;
   /** The folder `flightdeckd mcp` runs in; the process's when absent. */
   cwd?: string;
+  /** What `--host` reads (the app's name index and the credential helper); this machine's own when absent. Injected in tests. */
+  remote?: ResolveDeps;
   /** The platform `flightdeckd claude` launches claude on; the process's when absent. Injected in tests. */
   platform?: NodeJS.Platform;
 }
