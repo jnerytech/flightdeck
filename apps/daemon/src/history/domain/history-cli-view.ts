@@ -10,7 +10,7 @@ import type {
 } from "@flightdeck/protocol";
 
 export interface HistoryCliArgs {
-  action: "list" | "search" | "get" | "tool";
+  action: "list" | "search" | "get" | "tool" | "resume" | "watch";
   query?: string;
   claudeSessionId?: string;
   uuid?: string;
@@ -24,6 +24,10 @@ export interface HistoryCliArgs {
   limit?: number;
   cursor?: string;
   tail?: boolean;
+  /** `resume`: the name of the new session, its permission mode, and the yes for a transcript that may be running. */
+  name?: string;
+  permissionMode?: string;
+  force?: boolean;
   /** `--json`: the daemon's own answer, for a script. */
   json?: boolean;
 }
@@ -67,4 +71,14 @@ export function toolLines(tool: HistoryToolDetail): string[] {
     ...result,
     ...(tool.truncated ? ["(cut: the transcript holds more)"] : []),
   ];
+}
+
+/** One change `history watch` prints. */
+export function watchLine(_change: {
+  claudeSessionId: string;
+  cwd: string;
+  lastTs: string | null;
+  maybeActive: boolean;
+}): string {
+  return "";
 }

@@ -25,7 +25,13 @@ function given<T extends Record<string, unknown>>(fields: T): Partial<T> {
 export async function runHistoryCli(
   args: HistoryCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: {
+    timeoutMs?: number;
+    /** `watch` stops when this aborts (Ctrl-C). */
+    signal?: AbortSignal;
+    /** `watch` writes each line here as it comes. */
+    write?: (line: string) => void;
+  } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
@@ -67,6 +73,7 @@ export async function runHistoryCli(
           : [];
         return said(...page.messages.flatMap(messageLines), ...earlier, ...next);
       }
+      if (args.action === "resume" || args.action === "watch") return said("");
       const { claudeSessionId = "", uuid = "", index = 0 } = args;
       const found = await daemon.call("history.tool", { claudeSessionId, uuid, index });
       if (!found.tool)
