@@ -318,7 +318,7 @@ export const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCas
  * The options of `fd` that take a value, which can stand before the command (`fd --project p card
  * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import.
  */
-const OPTIONS_WITH_VALUE = [
+export const OPTIONS_WITH_VALUE = [
   "--message",
   "--position",
   "--title",
