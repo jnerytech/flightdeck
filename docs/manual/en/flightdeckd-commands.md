@@ -280,9 +280,11 @@ fd rules list --project api
 fd rules list --json
 fd autoapprove list
 fd autoapprove list --project api --session <key> --limit 20 --json
+fd rules remove 'Bash(bun test:*)' --project api --confirm
+fd autoapprove resume --session <key> --confirm
 ```
 
-These read what guards a project's sessions, as the Security screen does. Neither changes anything.
+`list` reads what guards a project's sessions, as the Security screen does; `remove` and `resume` change it.
 
 - **`rules list`:** the permission rules the project allows (`permissions.allow` of its
   `.claude/settings.local.json`), one per line, exactly as the file holds them (they are not redacted, so a rule that holds a secret shows it). `--project` is the name or the id
@@ -294,3 +296,14 @@ These read what guards a project's sessions, as the Security screen does. Neithe
   decisions of one project and `--session` those and the suspension of one session key; `--limit` reads 1 to 1000 decisions. With `--json` it
   prints the daemon's answer, `decisions` and `suspended`. A secret that the approver quoted in a reason
   is cut out.
+- **`rules remove <rule> --confirm`:** removes one rule from the project's `permissions.allow`, keeping the
+  rest of the file. Pass the rule exactly as `rules list` printed it, in quotes. It refuses with exit `1`
+  and sends nothing until you pass `--confirm`, and it refuses a rule the project does not have. It prints
+  how many rules are left; with `--json`, the rules that are left.
+- **`autoapprove resume --session <key> --confirm`:** turns the automatic approver back on for a session
+  that was suspended after it got third-party content. It refuses with exit `1` for a session that is not
+  suspended. With `--json` it prints the sessions that are still suspended.
+
+A change that gets no answer exits `2` and says it may or may not have gone in: run `rules list` or
+`autoapprove list` before trying again. Run from a session's own shell, `rules remove` and
+`autoapprove resume` are classified as high-risk commands.
