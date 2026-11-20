@@ -63,7 +63,7 @@ async function newTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Pro
 }
 
 /**
- * Changes a team, or deletes it. A delete, a removed member and a bypass member are what the app asks the person to
+ * Changes a team, or deletes it. A delete, a close, a removed member and a bypass member are what the app asks the person to
  * confirm: here it is `--confirm` (the daemon has no field for it, so it is not sent).
  */
 async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
@@ -78,6 +78,27 @@ async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): 
     throw new Error(
       "the member runs in bypassPermissions, which skips every permission prompt: pass --confirm to add it",
     );
+  if (args.action === "close" && !args.confirm)
+    throw new Error(
+      `team close needs --confirm: it ends team ${team} for good, and the app asks the person first`,
+    );
+  if (args.action === "pause" || args.action === "resume" || args.action === "close") {
+    note.wrote = true;
+    const changed =
+      args.action === "close"
+        ? await daemon.call("teams.close", { team, confirm: true })
+        : await daemon.call(args.action === "pause" ? "teams.pause" : "teams.resume", { team });
+    return args.json ? json(changed) : said(...changedLines(changed, args.action));
+  }
+  if (args.action === "message") {
+    const body = (args.text ?? "").trim();
+    if (body === "") throw new Error("team message needs a message text");
+    note.wrote = true;
+    const result = await daemon.call("teams.message", { team, text: body });
+    return args.json
+      ? json(result)
+      : said(`message to ${team}: ${result.delivered} delivered, ${result.refused} refused`);
+  }
   if (args.action === "delete") {
     note.wrote = true;
     const deleted = await daemon.call("teams.delete", { team });

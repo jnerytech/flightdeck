@@ -140,6 +140,10 @@ flightdeckd team update <team> [--goal <text>] [--check <command>... | --clear-c
 flightdeckd team add-member <team> [<spec>] [--confirm] [--json]
 flightdeckd team remove-member <team> <member> --confirm [--json]
 flightdeckd team delete <team> --confirm [--json]
+flightdeckd team pause <team> [--json]
+flightdeckd team resume <team> [--json]
+flightdeckd team close <team> --confirm [--json]
+flightdeckd team message <team> <text> [--json]
 ```
 
 - `list` prints one line per team: id, name, state (`active`, `paused by user`, `paused by quota` or
@@ -171,8 +175,17 @@ flightdeckd team delete <team> --confirm [--json]
   session or card; it stops that member's session and tells the worker, so it needs `--confirm`, as the
   app asks you first. The coordinator cannot be
   removed. `delete` removes a closed team with no live member, and needs `--confirm`: it is for good.
-  A session's own `team update`, `delete`, `add-member` or `remove-member` is rated high risk, like `new`.
+  A session's own `team update`, `delete`, `add-member`, `remove-member`, `pause`, `resume`, `close` or
+  `message` is rated high risk, like `new`.
   A change that gets no answer says so, and `team show` tells what it did.
+- `pause` stops a team from starting new work and tells its members; `resume` lets it go on. `close` ends a
+  team and tells its members, and needs `--confirm`, as the app asks you first. All three print the team as
+  it is now, and an unknown or closed team is refused.
+- `message` sends one text (quote it as one argument) to every member of an open team that has a session,
+  as a notice from Flightdeck, and says how many got it and how many refused. It is another way to reach
+  the team than `flightdeckd message send`, which writes to one session as itself. The team's goal, report
+  and a live stream of its changes stay in the app: the coordinator reports as itself, and `team show`
+  reads the state when you ask.
 - `--json` prints the daemon's own answer for a script. The text a session wrote (a report, a name)
   is shown as plain text, without control characters.
 - **Exit codes:** 0 done, 1 refused (an unknown team or project; the reason is on stderr), 2 no daemon.

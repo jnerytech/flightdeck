@@ -395,7 +395,9 @@
   "teams.add_member": {
     "appOnly": "the team's coordinator asks as itself (the request carries its identity, which a terminal has none of); a person adds a member with flightdeckd team add-member"
   },
-  "teams.close": {},
+  "teams.close": {
+    "cli": "team"
+  },
   "teams.create": {
     "cli": "team"
   },
@@ -405,20 +407,30 @@
   "teams.list": {
     "cli": "team"
   },
-  "teams.message": {},
-  "teams.pause": {},
+  "teams.message": {
+    "cli": "team"
+  },
+  "teams.pause": {
+    "cli": "team"
+  },
   "teams.remove_member": {
     "appOnly": "the team's coordinator asks as itself (the request carries its identity, which a terminal has none of); a person removes a member with flightdeckd team remove-member"
   },
-  "teams.report": {},
-  "teams.resume": {},
+  "teams.report": {
+    "appOnly": "only the team's coordinator reports, as itself (the request carries its identity, which a terminal has none of); the coordinator's own MCP tool sends it, and flightdeckd team show prints the report"
+  },
+  "teams.resume": {
+    "cli": "team"
+  },
   "teams.status": {
     "cli": "message"
   },
   "teams.update": {
     "cli": "team"
   },
-  "teams.watch": {},
+  "teams.watch": {
+    "appOnly": "a stream of team changes the app subscribes to; the issue #3455 verbs do not include it, so a script polls flightdeckd team show (a streaming CLI verb exists since board watch, issue #3454, and team watch can follow it)"
+  },
   "telemetry.install": {},
   "telemetry.session": {},
   "telemetry.status": {},

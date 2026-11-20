@@ -14,6 +14,7 @@ export interface TeamArgs {
   teamCoordinator?: string;
   teamChecks?: string[];
   teamGoalFlag?: string;
+  teamText?: string;
   teamMember?: string;
   teamSpec?: string;
   teamPersona?: string;
@@ -37,7 +38,7 @@ function teamFlags(args: TeamArgs): Array<[string, unknown, readonly string[]]> 
     ...(args.command === "team"
       ? ([
           ["--name", args.personaName, ["new"]],
-          ["--confirm", args.confirm, ["new", "delete", "add-member", "remove-member"]],
+          ["--confirm", args.confirm, ["new", "delete", "add-member", "remove-member", "close"]],
         ] as Array<[string, unknown, readonly string[]]>)
       : []),
   ];
