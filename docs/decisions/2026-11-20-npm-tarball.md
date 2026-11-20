@@ -39,8 +39,8 @@ the entry files. The launcher never chmods. The tarball size is printed by the r
 ### Signals
 
 The launcher spawns the binary with inherited stdio and no shell. SIGINT is a no-op in the
-launcher (the terminal already signals the binary's process group); SIGTERM is passed on with
-`child.kill("SIGTERM")`. Ignoring both, as first drafted, would leave a launcher a plain `kill`
+launcher (the terminal already signals the binary's process group); SIGTERM and SIGHUP are passed on with
+`child.kill(signal)`. Ignoring both, as first drafted, would leave a launcher a plain `kill`
 could not end. The exit code is the binary's, or 128 plus the signal number.
 
 ### Workflow layout
@@ -70,6 +70,7 @@ tarball failure stops the release before anything is public. Artifact actions ar
 
 ## Open questions
 
+- A SIGINT sent to the launcher alone (not from the terminal) is swallowed; forwarding it would double-deliver a Ctrl-C. Is that acceptable?
 - Is a self-update of the npm copy wanted (out of scope here)?
 - Does the artifact hand-off from `daemons` to `release` keep file names under 0755 loss? The release
   job only copies, so it does not need the bit.
