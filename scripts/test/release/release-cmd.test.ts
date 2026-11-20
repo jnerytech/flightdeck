@@ -7,8 +7,8 @@ import {
   type ReleaseDeps,
   release,
 } from "../../lib/release/cmd.ts";
+import { PACKAGES } from "../../lib/release/index.ts";
 
-const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"];
 const VERSAO = "apps/daemon/test/core/version.test.ts";
 const BASELINE = "packages/protocol/surface-baseline.txt";
 const PR_OPEN = "api repos/{owner}/{repo}/pulls?head={owner}:release-v0.37.0&state=open";
@@ -374,7 +374,7 @@ describe("release: back to the branch the run started on (#572)", () => {
 
 describe("release: after the PR merged", () => {
   const merged = {
-    main: { "packages/protocol": "0.37.0", "apps/daemon": "0.37.0", "apps/desktop": "0.37.0" },
+    main: Object.fromEntries(PACKAGES.map((p) => [p, "0.37.0"])),
   };
 
   test("checks the surface, tags and closes, in that order, writing nothing", async () => {

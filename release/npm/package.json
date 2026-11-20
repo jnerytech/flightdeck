@@ -1,0 +1,19 @@
+{
+  "name": "flightdeckd",
+  "version": "0.38.1",
+  "private": true,
+  "description": "The Flightdeck daemon and its fd command, from a GitHub release tarball (no download at install time)",
+  "license": "UNLICENSED",
+  "bin": {
+    "fd": "fd.js",
+    "flightdeckd": "flightdeckd.js"
+  },
+  "files": [
+    "fd.js",
+    "flightdeckd.js",
+    "launcher.js",
+    "flightdeckd-linux-x64",
+    "flightdeckd-linux-arm64",
+    "flightdeckd-windows-x64.exe"
+  ]
+}

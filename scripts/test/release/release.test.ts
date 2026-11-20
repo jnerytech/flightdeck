@@ -33,6 +33,7 @@ const COMPLETE = {
   "dist/flightdeckd-linux-x64.sig": "sig-linux",
   "dist/flightdeckd-linux-arm64": "arm",
   "dist/flightdeckd-linux-arm64.sig": "sig-arm",
+  "dist/flightdeckd-0.7.0.tgz": "tarball",
   [`${BUNDLE}/nsis/Flightdeck_0.7.0_x64-setup.exe`]: "nsis",
   [`${BUNDLE}/nsis/Flightdeck_0.7.0_x64-setup.exe.sig`]: "sig-nsis",
   [`${BUNDLE}/msi/Flightdeck_0.7.0_x64_en-US.msi`]: "msi",
@@ -54,7 +55,12 @@ describe("release", () => {
 
   test("as versões do produto vêm dos package.json do protocolo, do daemon e do app", () => {
     const versions = readProductVersions(ROOT);
-    expect(Object.keys(versions)).toEqual(["packages/protocol", "apps/daemon", "apps/desktop"]);
+    expect(Object.keys(versions)).toEqual([
+      "packages/protocol",
+      "apps/daemon",
+      "apps/desktop",
+      "release/npm",
+    ]);
     const desktop = JSON.parse(readFileSync(join(ROOT, "apps/desktop/package.json"), "utf8"));
     expect(versions["apps/desktop"]).toBe(desktop.version);
   });
@@ -68,6 +74,7 @@ describe("release", () => {
       "Flightdeck_0.7.0_x64-setup.exe.sig",
       "Flightdeck_0.7.0_x64_en-US.msi",
       "daemon-latest.json",
+      "flightdeckd-0.7.0.tgz",
       "flightdeckd-linux-arm64",
       "flightdeckd-linux-arm64.sig",
       "flightdeckd-linux-x64",
@@ -79,6 +86,7 @@ describe("release", () => {
     expect(assets.map((a) => a.name)).toEqual(names);
     expect(readdirSync(out).sort()).toEqual([...names, "SHA256SUMS"].sort());
     expect(readFileSync(join(out, "flightdeckd-linux-arm64"), "utf8")).toBe("arm");
+    expect(readFileSync(join(out, "flightdeckd-0.7.0.tgz"), "utf8")).toBe("tarball");
     // The format `sha256sum -c` reads: hash, two spaces, name; it covers signatures and manifests.
     expect(readFileSync(join(out, "SHA256SUMS"), "utf8")).toBe(
       names.map((name) => `${sha256(readFileSync(join(out, name), "utf8"))}  ${name}\n`).join(""),
@@ -98,6 +106,9 @@ describe("release", () => {
       }
     };
     expect(fail(withoutArm)).toContain("dist/flightdeckd-linux-arm64");
+    // The npm tarball is a release file like the daemons (#3541): without it nothing is published.
+    const { "dist/flightdeckd-0.7.0.tgz": _tgz, ...withoutTarball } = COMPLETE;
+    expect(fail(withoutTarball)).toBe("faltam arquivos: dist/flightdeckd-0.7.0.tgz");
     const { [`${BUNDLE}/msi/Flightdeck_0.7.0_x64_en-US.msi`]: _msi, ...withoutMsi } = COMPLETE;
     expect(
       fail({ ...withoutMsi, [`${BUNDLE}/msi/Flightdeck_0.6.0_x64_en-US.msi`]: "velho" }),
