@@ -80,12 +80,15 @@ export function NewSessionForm(
   const [latched, setLatched] = useState(false);
   const optionsId = useId();
   const [name, setName] = useState("");
-  const start = startChoices(prefs?.value);
-  const [mode, setMode] = useState<PermissionMode>(start.mode);
+  const allowBypass = props.host.hostInfo?.allowBypassPermissions === true;
+  const start = startChoices(prefs?.value, allowBypass ? "bypassPermissions" : "default");
+  /** The mode the person picked; until then the form follows what the host starts its sessions in. */
+  const [pickedMode, setPickedMode] = useState<PermissionMode | null>(null);
   const [model, setModel] = useState(start.model);
   /** Phase 39: the agent, offered when the host has OpenCode on; its models come from the host. */
   const [runtime, setRuntime] = useState<Runtime>("claude");
   const opencode = runtime === "opencode";
+  const mode = pickedMode ?? (opencode ? "default" : start.mode);
   // More options is folded, except that it opens by itself for what would otherwise act unseen: a
   // subfolder, OpenCode, or a setting of the screen's own. Once open for that it stays open, so
   // the field being edited never disappears from under the cursor.
@@ -111,21 +114,20 @@ export function NewSessionForm(
   const chooseRuntime = (next: Runtime) => {
     setRuntime(next);
     setModel("");
-    setMode("default");
+    setPickedMode(null);
   };
   const [prompt, setPrompt] = useState(props.prompt ?? "");
   /** A required prompt is still empty; OpenCode sessions are not started in the background. */
   const missingPrompt = promptMissing(props.promptRequired === true, opencode, prompt);
   /** The session is being created: the button is busy and a second press does nothing. */
   const [creating, setCreating] = useState(false);
-  /** Bypass asks again each time the session is created. */
+  /** Bypass picked by hand asks again each time the session is created. */
   const [asking, setAsking] = useState(false);
-  const allowBypass = props.host.hostInfo?.allowBypassPermissions === true;
   const modes = sessionModes(opencode, allowBypass);
   const models = opencode ? openCodeModels : CLAUDE_MODELS;
   const submit = (confirmed = false) => {
     if (!root || creating || missingPrompt) return;
-    if (mode === "bypassPermissions" && !confirmed) {
+    if (pickedMode === "bypassPermissions" && !confirmed) {
       setAsking(true);
       return;
     }
@@ -244,7 +246,7 @@ export function NewSessionForm(
               <NativeSelect
                 {...control}
                 value={mode}
-                onChange={(e) => setMode(e.target.value as PermissionMode)}
+                onChange={(e) => setPickedMode(e.target.value as PermissionMode)}
               >
                 {modes.map((m) => (
                   <option key={m} value={m}>
