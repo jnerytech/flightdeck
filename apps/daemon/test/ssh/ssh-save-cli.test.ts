@@ -130,6 +130,30 @@ describe("flightdeckd ssh add (issue #3537)", () => {
     expect(saves(daemon)).toEqual([]);
   });
 
+  test("a name the daemon would trim into an existing one, or that is another destination's id, is refused", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const spaced = await flightdeckd(
+      ["ssh", "add", " prod ", "--address", "x.internal", "--user", "deploy"],
+      daemon.port,
+    );
+    const asId = await flightdeckd(
+      ["ssh", "add", "t2", "--address", "x.internal", "--user", "deploy"],
+      daemon.port,
+    );
+    expect([spaced.code, asId.code]).toEqual([1, 1]);
+    expect(spaced.err.join("\n")).toContain("a destination is already named prod");
+    expect(asId.err.join("\n")).toContain("t2 is the id of another destination");
+    expect(saves(daemon)).toEqual([]);
+  });
+
+  test("a key reference on a destination that signs in with the agent is refused, never dropped", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const edit = await flightdeckd(["ssh", "edit", "db", "--secret-ref", "/k"], daemon.port);
+    expect(edit.code).toBe(1);
+    expect(edit.err.join("\n")).toContain("--secret-ref: db signs in with the agent");
+    expect(saves(daemon)).toEqual([]);
+  });
+
   test("a jump no destination has is refused and nothing is saved", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd([...ADD, "--jump", "nope"], daemon.port);
@@ -274,6 +298,22 @@ describe("the arguments of ssh add and ssh edit (issue #3537)", () => {
     }
   };
   const refused = (argv: string[]) => JSON.stringify(parsed(argv));
+
+  test("the save flags are refused on any other command, not dropped", () => {
+    expect(refused(["start", "--port", "9"])).toContain("--port: this flag only applies to");
+    expect(refused(["approve", "x", "--user", "bob"])).toContain(
+      "--user: this flag only applies to",
+    );
+  });
+
+  test("--secret-ref with the agent is refused at once", () => {
+    expect(
+      refused(["ssh", "add", "w", "--address", "h", "--user", "u", "--secret-ref", "/k"]),
+    ).toContain("--secret-ref: the agent has no key reference");
+    expect(refused(["ssh", "edit", "prod", "--auth", "agent", "--secret-ref", "/k"])).toContain(
+      "--secret-ref: the agent has no key reference",
+    );
+  });
 
   test("add reads its name and flags; edit reads its target", () => {
     expect(parsed([...ADD, "--port", "2222", "--host", "pi"])).toMatchObject({

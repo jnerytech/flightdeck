@@ -81,6 +81,8 @@ describe("risk rules: a session changing ssh destinations from its shell (#3537)
         ['sh -c "flightdeckd ssh remove prod --confirm"', TARGETS_REASON],
         ["fd ssh add web --address web.internal --user deploy", TARGETS_REASON],
         ["fd ssh edit prod --address evil.example --jump db", TARGETS_REASON],
+        ["fd --user x ssh edit prod --address e", TARGETS_REASON],
+        ["fd --jump x --port 22 ssh add w --address a --user u", TARGETS_REASON],
         ["flightdeckd --host pi ssh edit prod --forward-agent --confirm", TARGETS_REASON],
         [
           "fd --json ssh add web --address a --user u --auth key-file --secret-ref /k",
