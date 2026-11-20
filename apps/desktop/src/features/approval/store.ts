@@ -1,7 +1,9 @@
 import {
+  type ApprovalEnrolled,
   type ApprovalKeyInfo,
   type ApprovalProof,
   type ApprovalResults,
+  type ApprovalRevoked,
   approvalDigests,
   approvalMessage,
   type CommandPayload,
@@ -28,6 +30,15 @@ export interface ApprovalStatus {
   thisKeyId: string | null;
 }
 
+/** A change a host announced about its devices that this app did not make (#3477). */
+export interface ApprovalHeard {
+  kind: "enrolled" | "revoked";
+  /** The name the new device gave; set for "enrolled". */
+  name?: string;
+  /** The key is this device's own. */
+  own: boolean;
+}
+
 /** What the proof path found: nothing to prove, a proof to send, or the person declined the system's dialog. */
 export type ProofResult =
   | { kind: "none" }
@@ -48,7 +59,12 @@ export interface ApprovalCore {
   /** The device's key store; none outside the desktop shell. */
   keys(): Platform["approvalKeys"];
   /** What the host announced at connect. */
-  host(hostId: string): { features?: readonly string[]; daemonId?: string } | undefined;
+  host(
+    hostId: string,
+  ): { features?: readonly string[]; daemonId?: string; name?: string } | undefined;
+  /** A short notice, already translated: `fail` is the loud one (an alert), `success` a quiet one. */
+  success(text: string): void;
+  fail(text: string): void;
   request: AppKernel<object>["hostRequest"];
   /** The app's language ("pt-BR" or "en"), for the system's dialog. */
   lang(): string;
@@ -78,7 +94,19 @@ function isDecline(error: unknown): boolean {
  * the shell: it signs after a system dialog the person answers.
  */
 export class ApprovalSlice {
+  private readonly listeners = new Map<string, Set<(heard: ApprovalHeard) => void>>();
+  /** Keys this app is revoking right now: the host's announcement of them is its own doing. */
+  private readonly revoking = new Set<string>();
+
   constructor(private readonly core: ApprovalCore) {}
+
+  /** Calls `listener` with each change a host announces (the host's page shows it); returns the way to stop. */
+  subscribe(_hostId: string, _listener: (heard: ApprovalHeard) => void): () => void {
+    return () => {};
+  }
+
+  /** A host announced a device enrolled or revoked: tell the page that watches it, or raise a notice. */
+  async onChange(_hostId: string, _change: ApprovalEnrolled | ApprovalRevoked): Promise<void> {}
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
   supported(hostId: string): boolean {

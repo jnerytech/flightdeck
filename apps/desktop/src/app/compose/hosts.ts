@@ -1,8 +1,9 @@
 import type { HistoryChanged, WorkflowRun } from "@flightdeck/protocol";
-import { FEATURE_RESUME_OFFER } from "@flightdeck/protocol";
+import { FEATURE_APPROVAL_WATCH, FEATURE_RESUME_OFFER } from "@flightdeck/protocol";
 import { SystemSlice } from "@/features/shell/system.ts";
 import { type AccountSlice, wireAccount } from "../../features/account/index.ts";
 import type { ActivitySlice } from "../../features/activity/index.ts";
+import type { ApprovalSlice } from "../../features/approval/index.ts";
 import { type BackgroundSlice, wireBackground } from "../../features/background/index.ts";
 import { BoardCardsSlice } from "../../features/board/index.ts";
 import type { BudgetsSlice } from "../../features/costs/index.ts";
@@ -283,6 +284,7 @@ interface LinkSlices
   readonly external: ExternalSessionsSlice;
   readonly sessions: SessionsSlice;
   readonly activity: ActivitySlice;
+  readonly approval: ApprovalSlice;
   readonly vaultApprovals: VaultApprovalsSlice;
   readonly vaultRules: VaultRulesSlice;
   readonly usage: VaultUsageLog;
@@ -362,6 +364,7 @@ export function composeLinkHandlers(
     onRunEnvUpdated: (config, state) => slices().runEnv.updated(config.id, state),
     onQuotaUpdated: (config, state) => slices().quota.updated(config.id, state),
     onAccountUpdated: (config, state) => slices().account.updated(config.id, state),
+    onApproval: (config, change) => void slices().approval.onChange(config.id, change),
     onBudgetUpdated: (config, update) => slices().budgets.onUpdated(config.id, update),
     onTerminal: (config, frame) => slices().terminals.deliver(config.id, frame),
     onHistoryChanged: (config, change) => deps.historyChanged(config.id, change),
@@ -405,6 +408,8 @@ export function composeLinkHandlers(
         slices().messaging.startPeersSync();
       },
     },
+    // #3477: the host says when a device is enrolled or revoked (stub: not asked yet).
+    { gate: FEATURE_APPROVAL_WATCH, run: () => {} },
     // Phase 19: the daemon decides a request with the rules the app hands it.
     { gate: "actions", run: ({ hostId, conn }) => slices().vaultRules.onConnect(hostId, conn) },
     { run: ({ hostId }) => void slices().health.check(hostId) },
