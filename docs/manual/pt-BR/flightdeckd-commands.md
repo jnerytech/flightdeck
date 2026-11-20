@@ -135,8 +135,8 @@ e o daemon confere a assinatura. Estes dois comandos são o único jeito de come
 funcionam só no terminal do host: nenhuma mensagem do app, de uma sessão ou de um script abre o
 cadastro nem remove uma chave.
 
-- **`enroll`:** imprime um código de uso único e abre uma janela de 10 minutos. Digite o código no app
-  (Configurações, este host, cadastrar este dispositivo). A janela fecha quando o primeiro dispositivo
+- **`enroll`:** imprime um código de uso único e abre uma janela de 10 minutos. Digite o código na tela de
+  cadastro de dispositivo do app. A janela fecha quando o primeiro dispositivo
   é cadastrado, quando os 10 minutos passam ou depois de cinco códigos errados, e cada execução gera um
   código novo. Com `--json` imprime `code` e `expiresAt`. É recusado com saída `1` quando já há um
   dispositivo cadastrado: adicione outro pelo app do primeiro, ou rode `reset`.

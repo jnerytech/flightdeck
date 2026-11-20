@@ -135,8 +135,8 @@ the signature. These two commands are the only way to start or undo that, and th
 terminal of the host only: no message from the app, a session or a script can open the enrollment or
 remove a key.
 
-- **`enroll`:** prints a one-time code and opens a window of 10 minutes. Type the code into the app
-  (Settings, this host, enroll this device). The window closes when the first device enrolls, when the
+- **`enroll`:** prints a one-time code and opens a window of 10 minutes. Type the code into the app's
+  device enrollment screen. The window closes when the first device enrolls, when the
   10 minutes pass, or after five wrong codes, and each run makes a new code. With `--json` it prints
   `code` and `expiresAt`. It is refused with exit `1` when a device is enrolled already: add another
   device from the app on the first one, or run `reset`.
