@@ -19,7 +19,7 @@ import {
   ratchetRows,
   shapeShares,
 } from "./lib/arch/arch-report.ts";
-import { parityCheck, protocolCommands } from "./lib/arch/cli-parity.ts";
+import { gapsBaseline, parityCheck, protocolCommands } from "./lib/arch/cli-parity.ts";
 import { type CruiseModule, cycleFiles } from "./lib/arch/cycle-files.ts";
 import { knipCounts } from "./lib/arch/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/guards/src-size.ts";
@@ -107,7 +107,10 @@ const parity = parityCheck({
 const rows = ratchetRows({
   cliParityGaps: {
     today: parity.gaps.length,
-    baseline: json("cli-parity-baseline.json").gaps ?? 0,
+    baseline: gapsBaseline(
+      mergeBase ? git(["show", `${mergeBase}:cli-parity-baseline.json`]) : null,
+      read("cli-parity-baseline.json"),
+    ),
   },
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
   knownHead: read(KNOWN),
