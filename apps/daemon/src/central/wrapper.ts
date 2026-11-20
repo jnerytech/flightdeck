@@ -93,7 +93,13 @@ async function requestedPersona(
   try {
     return await fetchPersona(opts.config, personaId, opts.cwd ?? process.cwd());
   } catch (error) {
-    opts.log.error(`flightdeckd: persona ${personaId}: ${(error as Error).message}`);
+    const message = (error as Error).message;
+    // Not found: say which ids do exist, so the person can correct the word.
+    const known = message.startsWith("not_found")
+      ? await personaIds(opts.config, opts.cwd ?? process.cwd()).catch(() => [])
+      : [];
+    const hint = known.length > 0 ? ` (personas that exist: ${known.join(", ")})` : "";
+    opts.log.error(`flightdeckd: persona ${personaId}: ${message}${hint}`);
     return "failed";
   }
 }
@@ -396,6 +402,17 @@ async function fetchKnowledge(config: Config, cwd: string): Promise<string | nul
     }
   } catch {
     return null;
+  }
+}
+
+/** The ids of the personas this host and the project offer. */
+async function personaIds(config: Config, cwd: string): Promise<string[]> {
+  const daemon = await DaemonClient.connect(daemonUrl(config), config.token, "flightdeckd-claude");
+  try {
+    const { personas } = await daemon.call("personas.list", { projectPath: cwd });
+    return personas.map((persona) => persona.id);
+  } finally {
+    daemon.close();
   }
 }
 
