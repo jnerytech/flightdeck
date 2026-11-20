@@ -242,7 +242,7 @@ describe("flightdeckd watch describe (issue #3539)", () => {
     });
     const run = await flightdeckd(["watch", "describe", "c1"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["Fixes the login."] });
-    expect(run.err).toEqual(["2 lines looked like a secret and were left out"]);
+    expect(run.err).toEqual(["flightdeckd: 2 lines looked like a secret and were left out"]);
   });
 
   test("--json prints the text and the count", async () => {
@@ -384,8 +384,6 @@ describe("the arguments of the watch read verbs (issue #3539)", () => {
     expect(JSON.stringify(parsed(["watch", "settings"]))).toContain("missing the project");
     expect(JSON.stringify(parsed(["watch"]))).toContain("invalid watch action");
     expect(JSON.stringify(parsed(["watch", "set", "c1"]))).toContain("invalid watch action");
-    expect(JSON.stringify(parsed(["watch", "get", "c1", "c2"]))).toContain(
-      "one command at a time: watch, then c2",
-    );
+    expect(JSON.stringify(parsed(["watch", "get", "c1", "c2"]))).toContain("unknown argument: c2");
   });
 });
