@@ -83,7 +83,8 @@ export interface CliArgs {
     | "check-loop"
     | "dismiss-unblocked"
     | "search"
-    | "tool";
+    | "tool"
+    | "resume";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;

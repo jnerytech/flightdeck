@@ -208,12 +208,12 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "history";
     const action = subAction(
       reader,
-      ["reindex", "list", "search", "get", "tool"] as const,
+      ["reindex", "list", "search", "get", "tool", "resume", "watch"] as const,
       "invalid history action",
     );
     args.action = action;
     if (action === "search") args.query = operand(reader, "the text");
-    if (action === "get" || action === "tool")
+    if (action === "get" || action === "tool" || action === "resume")
       args.claudeSessionId = operand(reader, "the session");
     if (action === "tool") {
       args.uuid = operand(reader, "the message");
@@ -631,6 +631,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
+    // `--force` is also `history resume`'s, which checks its own flags.
+    if (flag === "--force" && args.command === "history") continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))

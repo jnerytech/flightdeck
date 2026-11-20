@@ -1,16 +1,26 @@
 /**
- * Issue #3461: `flightdeckd history list|search|get|tool`, the recorded conversations from a
+ * Issue #3461: `flightdeckd history list|search|get|tool|resume|watch`, the recorded conversations from a
  * terminal or a script. It speaks to the local daemon like `flightdeckd card` does (the same
- * `DaemonClient`, the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. Every verb
- * here only reads, so no answer is never "unsure".
+ * `DaemonClient`, the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. `resume` is
+ * the one write (no answer is "unsure"); `watch` is a stream (docs/decisions/2026-11-20-cli-streams.md).
  */
-import { type CliResult, failure, json, runOnLocalDaemon, said } from "../daemon-client/index.ts";
 import {
+  type CliResult,
+  failure,
+  json,
+  runOnLocalDaemon,
+  said,
+  streamFrames,
+} from "../daemon-client/index.ts";
+import {
+  changeJson,
   type HistoryCliArgs,
   hitLine,
   messageLines,
   summaryLine,
   toolLines,
+  UNSURE,
+  watchLine,
 } from "./domain/history-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -37,8 +47,9 @@ export async function runHistoryCli(
     config,
     clientName: "flightdeck-history",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    unsure: "",
-    perform: async (daemon) => {
+    // Only a resume can leave its result unknown; a read has nothing to say.
+    unsure: args.action === "resume" ? UNSURE : "",
+    perform: async (daemon, note, flow) => {
       if (args.action === "list") {
         const { cwd, projectKey, from, to, origin, hideAutomated, limit, cursor } = args;
         const list = await daemon.call(
@@ -73,7 +84,25 @@ export async function runHistoryCli(
           : [];
         return said(...page.messages.flatMap(messageLines), ...earlier, ...next);
       }
-      if (args.action === "resume" || args.action === "watch") return said("");
+      if (args.action === "watch")
+        return streamFrames({
+          daemon,
+          flow,
+          signal: options.signal ?? new AbortController().signal,
+          write: options.write ?? (() => undefined),
+          open: () => daemon.call("history.watch", {}),
+          type: "history.changed",
+          line: (change) => (args.json ? changeJson(change) : watchLine(change)),
+        });
+      if (args.action === "resume") {
+        const { claudeSessionId = "", name, permissionMode, force } = args;
+        note.wrote = true;
+        const created = await daemon.call("history.resume", {
+          claudeSessionId,
+          ...given({ name, permissionMode, force }),
+        });
+        return args.json ? json(created) : said(`resumed as session ${created.sessionId}`);
+      }
       const { claudeSessionId = "", uuid = "", index = 0 } = args;
       const found = await daemon.call("history.tool", { claudeSessionId, uuid, index });
       if (!found.tool)

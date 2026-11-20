@@ -1,5 +1,5 @@
 /**
- * Issue #3461: what `flightdeckd history list|search|get|tool` say, as pure rules over the daemon's
+ * Issue #3461: what `flightdeckd history list|search|get|tool|resume|watch` say, as pure rules over the daemon's
  * answers. The daemon calls and the exit codes stay in `history/history-cli.ts`.
  */
 import type {
@@ -7,6 +7,7 @@ import type {
   HistorySearchHit,
   HistorySessionSummary,
   HistoryToolDetail,
+  PermissionMode,
 } from "@flightdeck/protocol";
 
 export interface HistoryCliArgs {
@@ -26,7 +27,7 @@ export interface HistoryCliArgs {
   tail?: boolean;
   /** `resume`: the name of the new session, its permission mode, and the yes for a transcript that may be running. */
   name?: string;
-  permissionMode?: string;
+  permissionMode?: PermissionMode;
   force?: boolean;
   /** `--json`: the daemon's own answer, for a script. */
   json?: boolean;
@@ -73,12 +74,26 @@ export function toolLines(tool: HistoryToolDetail): string[] {
   ];
 }
 
-/** One change `history watch` prints. */
-export function watchLine(_change: {
+/** One change `history watch` pushes: the session, where it ran and when it last grew. */
+export interface HistoryChange {
   claudeSessionId: string;
   cwd: string;
   lastTs: string | null;
   maybeActive: boolean;
-}): string {
-  return "";
 }
+
+/** The line `history watch` prints for a change: the same columns as `history list`. */
+export function watchLine(change: HistoryChange): string {
+  const running = change.maybeActive ? " [may be running]" : "";
+  return `${change.claudeSessionId}  ${change.lastTs ?? "-"}  ${change.cwd}${running}`;
+}
+
+/** The change as `--json` prints it, without the frame's `type`. */
+export function changeJson(change: HistoryChange): string {
+  const { claudeSessionId, cwd, lastTs, maybeActive } = change;
+  return JSON.stringify({ claudeSessionId, cwd, lastTs, maybeActive });
+}
+
+/** What a resume that got no answer may have done, as text that follows the message. */
+export const UNSURE =
+  "; the session may or may not have been started: check with `sessions` before trying again";
