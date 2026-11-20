@@ -417,6 +417,8 @@ export const hosts = {
     still: "Still offline.",
     hintLinux: "On the host, check that the daemon runs, and that it starts at boot:",
     hintWsl: "On WSL, also turn on systemd in /etc/wsl.conf (then run wsl --shutdown on Windows):",
+    hintWindows:
+      "On the host, in a terminal, check that the daemon runs as a service, and start it if it does not:",
     hintGeneric: "Check that the host is on and reachable, and that the daemon runs there.",
     hintAddress:
       "Or the daemon refused this machine's address: on the host, add its network to allowedNetworks (flightdeckd setup does it for Tailscale).",

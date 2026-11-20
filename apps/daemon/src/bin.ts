@@ -9,6 +9,9 @@ const deps = {
   exit: (code: number) => process.exit(code),
   onSignal: (signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>) =>
     process.on(signal, () => void handler()),
+  // The daemon's end is traced from these (#3403); `as "exit"` only picks one of `on`'s overloads.
+  onProcessEvent: (event: string, handler: (arg: unknown) => void) =>
+    process.on(event as "exit", handler),
 };
 
 // A command that is not the daemon runs here, before main.ts (the whole daemon) is imported (#1692).

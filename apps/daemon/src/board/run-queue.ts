@@ -9,7 +9,7 @@ export interface RunQueuePort {
   db: Database;
   opts: Pick<
     BoardOptions,
-    "maxParallelRuns" | "quota" | "memory" | "pause" | "budgets" | "projectKeys"
+    "maxParallelRuns" | "quota" | "memory" | "pause" | "budgets" | "projectKeys" | "log"
   >;
   project(id: string): Project;
   /** The card changed: the board announces it. */
@@ -103,12 +103,23 @@ export class RunQueue {
       void this.port.launch(next.card_id, next.id).catch((error: unknown) => {
         // After stop() the failure is the shutdown's (a closed database): nothing to record.
         if (this.port.stopped()) return;
-        this.port.failRun(
-          next.card_id,
-          next.id,
-          error instanceof Error ? error.message : String(error),
-          error,
-        );
+        try {
+          this.port.failRun(
+            next.card_id,
+            next.id,
+            error instanceof Error ? error.message : String(error),
+            error,
+          );
+        } catch (recording) {
+          // Recording the failure failed too: an unhandled rejection here would stop the daemon (#3404).
+          this.port.opts.log?.(
+            `run ${next.id} of card ${next.card_id}: recording its failed launch threw: ${
+              recording instanceof Error ? recording.message : String(recording)
+            }`,
+          );
+          // failRun frees the slot last: a throw before it must not keep the slot taken.
+          this.release(next.card_id);
+        }
       });
     }
   }

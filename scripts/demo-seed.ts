@@ -34,7 +34,6 @@ import {
   TRACE_SESSION,
   userLine,
   WORKFLOW,
-  writeHistory,
   writeUserConfig,
 } from "./lib/demo/seed-files.ts";
 import {
@@ -68,8 +67,9 @@ import { realTempDir } from "./test/temp-dir.ts";
 /** The PR the fake gh opens for a workflow template added from the app (issue #1221). */
 const DEMO_TEMPLATE_PR_URL = "https://github.com/acme/flightdeck-web/pull/301";
 
+export { writeHistory } from "./lib/demo/seed-files.ts";
 /** The terminal session that waits for a high-risk Bash (the e2e journey opens it by name). */
-export { DANGER_SESSION, writeHistory };
+export { DANGER_SESSION };
 
 const LONG_TITLE =
   "Migrar a autenticação do painel administrativo para o provedor novo sem derrubar as sessões abertas nem perder os tokens de serviço";

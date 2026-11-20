@@ -1,7 +1,7 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { loadConfig } from "../config.ts";
 import type { CliResult } from "../daemon-client/index.ts";
-import { type Logger, settled } from "../kernel/index.ts";
+import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import { configPath } from "./config-path.ts";
 import type { CliArgs } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
@@ -22,6 +22,8 @@ export interface CliDeps extends SetupCommandDeps, MaintenanceCommandDeps {
   log: Logger;
   exit(code: number): void;
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
+  /** The process's own events, so the daemon's end is traced in its log (#3403); none when absent. */
+  onProcessEvent?: OnProcessEvent;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
