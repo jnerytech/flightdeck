@@ -114,4 +114,69 @@ describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)"
   test("a program that only starts with the same letters is not the CLI", () => {
     expect(notHigh(["flightdeckd-notes persona remove qa", "fdisk persona remove qa"])).toEqual([]);
   });
+
+  test("a shell conditional is a plain command, not a program the shell expands", () => {
+    expect(
+      notHigh([
+        "[ -f x ] && echo y",
+        "[[ -f x ]] && echo y",
+        "if [ -f x ]; then echo y; fi",
+        "[ -d x ] || mkdir x",
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a path in the second word of a command with verbs is not an expansion", () => {
+    expect(notHigh(["fd rules ../x", "fd rules ./a/../b"])).toEqual([]);
+  });
+
+  test("a brace range, a launcher suffix and a backslash inside the program word still reach the CLI", () => {
+    expect(
+      wrongReasons([
+        ["f{d..d} persona remove qa", HIDDEN],
+        ["fd.e* persona remove qa", HIDDEN],
+        ["fd.* persona remove qa", HIDDEN],
+        [String.raw`f\d persona remove qa`, PERSONA],
+        [String.raw`flightdeck\d persona reset qa`, PERSONA],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a runner given the CLI and a verb the shell expands is high, with a reason that says why", () => {
+    expect(
+      wrongReasons([
+        ["bunx fd persona $V qa", HIDDEN],
+        ["bun run apps/daemon/src/bin.ts persona $V qa", HIDDEN],
+        ["npx fd persona rem[o]ve qa", HIDDEN],
+        ["bun run apps/daemon/src/bin.ts persona ${V} qa", HIDDEN],
+      ]),
+    ).toEqual([]);
+    expect(
+      notHigh(["bunx fd persona list $V", "bun test $FILES", "bun run build $TARGET"]),
+    ).toEqual([]);
+  });
+
+  test("a glob with a POSIX class in the program word may still be the CLI", () => {
+    expect(
+      wrongReasons([
+        ["/usr/local/bin/[[:lower:]]lightdeckd persona remove qa", HIDDEN],
+        ["/usr/bin/f[[:alpha:]] persona remove qa", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a program word with many stars is read in time and is no CLI", () => {
+    expect(notHigh([`${"*".repeat(16)}z persona list`])).toEqual([]);
+  });
+
+  test("a card or history verb the shell expands is high, as a persona verb is", () => {
+    expect(
+      wrongReasons([
+        ["fd card mo${x}ve 1 --force", HIDDEN],
+        ["fd card $'discard' 1", HIDDEN],
+        ["fd card ch${x}eck-loop c1 on", HIDDEN],
+        ["fd history $'resume' abc --force", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
 });
