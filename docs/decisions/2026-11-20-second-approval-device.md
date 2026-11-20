@@ -20,8 +20,10 @@ request posted through the host would let any token holder (a session) post a fa
 It holds no secret: the public key and a name, which the host will list anyway. The enrolled device checks,
 before it shows anything: the prefix, at most 1024 characters, the host's daemon id equals the one of the
 host being edited (a text made for another host is refused), the public key is base64 of 91 bytes, the name
-is 1 to 64 characters with no control, format (bidi, zero-width) or line-separator character and does not
-look like a fingerprint (hex groups), and the key is not already listed. The text has no expiry and no secret;
+is 1 to 64 characters with no control, format (bidi, zero-width), private-use, unassigned, separator or
+non-space blank character and has no two groups of four hex characters in it (so it neither passes for a
+fingerprint nor hides beside one), the key is written in its canonical base64 (another spelling of the same
+bytes is refused), and the key is not already listed. The text has no expiry and no secret;
 a stale or swapped text is caught only by the fingerprint.
 
 ### What the person compares
@@ -43,7 +45,7 @@ signer is not this device's key, and an add of this device's own key (that would
 add). It also refuses a key that is not the 91-byte form the app and the host make, so this device's own key in
 another encoding is not added as a second key. The dialog says: "Add the device with key `3f2a-91bc-07de-44a1`
 as an approver of host `daemon-0`? Continue only if the same code is shown on the other device." It names the
-host by the first 8 characters of its daemon id, from the signed text (the webview picks the host, and with
+host by the first 8 characters of its daemon id (the shell refuses a host that is not plain id characters), from the signed text (the webview picks the host, and with
 two hosts paired the person must see which one), and has its own title and buttons ("Add device", not
 "Allow"), so a habit click on an allow does not add a device. The dialog's words come from the parsed message and the
 webview's language, never from text the webview sends. One dialog at a time stays.
@@ -52,9 +54,10 @@ webview's language, never from text the webview sends. One dialog at a time stay
 
 The new device uses the same `approval_key_create` as the first enrollment: one key per host, refused when
 one exists. It keeps the key while it waits. The host's list not holding the key yet is the "waiting" state;
-the host's `approval.enrolled` announcement refreshes the panel. The app silences only the notice whose key
-id is this device's own key (#3477); every other enrollment, including one made from this device, is told with
-its name, so a script that got one dialog accepted by habit cannot add a key without a notice. The person can
+the host's `approval.enrolled` announcement refreshes the panel. The app raises no notice for this
+device's own key (#3477) nor for the key it is adding right now, after the person agreed in the dialog; both only
+make an open page read the list again. Every other enrollment is told with its name, so a key added by
+another device, or one this app added without the person's dialog, is not silent. The person can
 cancel, which removes the key (`approval_key_delete`), or make a new text.
 
 ### A slow comparison
@@ -78,6 +81,9 @@ habit; the dialog is the only control, as for an allow (#3439: "a reduction, not
 than one allow because the new key then approves without the person, which is why the dialog names the key
 and the add is its own signing purpose with its own text. A person who never opens the panel never sees the
 dialog; a dialog the person did not start is the signal to cancel it.
+
+Residuals, accepted: the 8-character host prefix and a 64-bit fingerprint are what a person can compare; the
+shell has no cooldown between add dialogs; the daemon does not validate names (follow-up, above).
 
 ## Not decided here
 

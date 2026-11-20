@@ -54,7 +54,7 @@ export const approval = {
     requestWaiting: "Aguardando o outro dispositivo adicionar este.",
     requestCheck: "Verificar de novo",
     addBadText:
-      "Isso não é um texto gerado pelo botão de adicionar de outro dispositivo. Copie de novo, inteiro.",
+      'Isso não é um texto gerado pelo botão "Mostrar o texto" de outro dispositivo. Copie de novo, inteiro.',
     addOtherHost:
       "Esse texto foi feito para outro host. Gere de novo no dispositivo, com este host aberto.",
     addBadName: "O nome tem de 1 a 64 caracteres, sem caracteres ocultos, e não é um código.",

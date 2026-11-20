@@ -42,6 +42,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [request, setRequest] = useState<AddRequest | null>(null);
   const [addText, setAddText] = useState("");
   const [offer, setOffer] = useState<AddOffer | null>(null);
+  const addBox = useRef<HTMLDivElement>(null);
   // The most devices this panel saw: protection that drops to none after that was not turned off here.
   const seen = useRef(0);
   const reload = useCallback(async () => {
@@ -62,17 +63,28 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     setRequest(null);
     setOffer(null);
     setAddText("");
+    setAddName("");
     setHeard([]);
     void reload();
   }, [reload]);
   useEffect(
     () =>
       store.approval.subscribe(host.id, (change) => {
-        setHeard((before) => [...before, change].slice(-MAX_HEARD));
+        // A device enrolled here, or by this person's agreement, is no news: the list is read again, no more.
+        if (!(change.kind === "enrolled" && change.own)) {
+          setHeard((before) => [...before, change].slice(-MAX_HEARD));
+        }
         void reload();
       }),
     [store, host.id, reload],
   );
+  // The form the person used is swapped for the next step: the focus it lost goes to the new part, not the page's top.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the step changes, which the body does not read
+  useEffect(() => {
+    const box = addBox.current;
+    if (!box || (document.activeElement && document.activeElement !== document.body)) return;
+    box.focus();
+  }, [offer, request]);
   // The host lists this device now: the text did its work.
   useEffect(() => {
     if (!request || view.kind !== "ready") return;
@@ -176,7 +188,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                   date: store.formatDateTime(key.enrolledAt),
                 })}
                 trailing={
-                  hasKey && (
+                  enrolledHere && (
                     <ActionButton
                       variant="outline"
                       aria-label={t("approvalDevices.revokeLabel", { name: key.name })}
@@ -249,138 +261,147 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       )}
       {!status.protectionOff && enrolledHere && (
         <Panel title={t("approvalDevices.addTitle")} slot="approval-add-device">
-          <p className="text-muted-foreground text-xs">{t("approvalDevices.addHint")}</p>
-          {offer ? (
-            <Form
-              variant="panel"
-              aria-label={t("approvalDevices.addOfferTitle")}
-              onSubmit={() =>
-                void change(async () => {
-                  const outcome = await store.approval.confirmAdd(host.id, offer);
-                  if (outcome === "done") setOffer(null);
-                  else setDone(t("approvalDevices.addDeclined"));
-                  return outcome;
-                }, t("approvalDevices.addDone"))
-              }
-            >
-              <h4 className="font-medium text-sm">{t("approvalDevices.addOfferTitle")}</h4>
-              <p className="text-sm">
-                {t("approvalDevices.addOfferFor", { name: offer.name, host: offer.host })}
-              </p>
-              <p className="text-sm">
-                {t("approvalDevices.addOfferCode")}{" "}
-                <code className="font-mono">{offer.fingerprint}</code>
-              </p>
-              <p className="text-muted-foreground text-xs">{t("approvalDevices.addOfferHint")}</p>
-              <FormActions
-                submit={t("approvalDevices.addConfirm")}
-                busy={busy}
-                cancel={t("approvalDevices.addCancel")}
-                onCancel={() => setOffer(null)}
-              />
-            </Form>
-          ) : (
-            <Form
-              variant="panel"
-              aria-label={t("approvalDevices.addTitle")}
-              onSubmit={() =>
-                void change(async () => {
-                  setOffer(await store.approval.readAdd(host.id, addText.trim()));
-                }, null)
-              }
-            >
-              <Field label={t("approvalDevices.addTextLabel")}>
-                {(control) => (
-                  <Input
-                    {...control}
-                    value={addText}
-                    maxLength={1024}
-                    autoComplete="off"
-                    spellCheck={false}
-                    onChange={(event) => setAddText(event.target.value)}
-                  />
-                )}
-              </Field>
-              <FormActions
-                submit={t("approvalDevices.addRead")}
-                disabled={addText.trim() === ""}
-                busy={busy}
-              />
-            </Form>
-          )}
+          <div ref={addBox} tabIndex={-1} data-add-box>
+            <p className="text-muted-foreground text-xs">{t("approvalDevices.addHint")}</p>
+            {offer ? (
+              <Form
+                variant="panel"
+                aria-label={t("approvalDevices.addOfferTitle")}
+                onSubmit={() =>
+                  void change(async () => {
+                    const outcome = await store.approval.confirmAdd(host.id, offer);
+                    if (outcome === "done") {
+                      setOffer(null);
+                      setAddText("");
+                    } else setDone(t("approvalDevices.addDeclined"));
+                    return outcome;
+                  }, t("approvalDevices.addDone"))
+                }
+              >
+                <h4 className="font-medium text-sm">{t("approvalDevices.addOfferTitle")}</h4>
+                <p className="text-sm">
+                  {t("approvalDevices.addOfferFor", { name: offer.name, host: offer.host })}
+                </p>
+                <p className="text-sm">
+                  {t("approvalDevices.addOfferCode")}{" "}
+                  <code className="font-mono">{offer.fingerprint}</code>
+                </p>
+                <p className="text-muted-foreground text-xs">{t("approvalDevices.addOfferHint")}</p>
+                <FormActions
+                  submit={t("approvalDevices.addConfirm")}
+                  busy={busy}
+                  cancel={t("approvalDevices.addCancel")}
+                  onCancel={() => {
+                    setOffer(null);
+                    setAddText("");
+                  }}
+                />
+              </Form>
+            ) : (
+              <Form
+                variant="panel"
+                aria-label={t("approvalDevices.addTitle")}
+                onSubmit={() =>
+                  void change(async () => {
+                    setOffer(await store.approval.readAdd(host.id, addText.trim()));
+                  }, null)
+                }
+              >
+                <Field label={t("approvalDevices.addTextLabel")}>
+                  {(control) => (
+                    <Input
+                      {...control}
+                      value={addText}
+                      maxLength={1024}
+                      autoComplete="off"
+                      spellCheck={false}
+                      onChange={(event) => setAddText(event.target.value)}
+                    />
+                  )}
+                </Field>
+                <FormActions
+                  submit={t("approvalDevices.addRead")}
+                  disabled={addText.trim() === ""}
+                  busy={busy}
+                />
+              </Form>
+            )}
+          </div>
         </Panel>
       )}
       {!status.protectionOff && !enrolledHere && (
         <Panel title={t("approvalDevices.requestTitle")} slot="approval-request-add">
-          <p className="text-muted-foreground text-xs">{t("approvalDevices.requestHint")}</p>
-          {request ? (
-            <Stack gap={2}>
-              <Field label={t("approvalDevices.requestTextLabel")}>
-                {(control) => (
-                  <Input
-                    {...control}
-                    readOnly
-                    value={request.text}
-                    spellCheck={false}
-                    onFocus={(event) => event.currentTarget.select()}
-                  />
-                )}
-              </Field>
-              <p className="text-sm">
-                {t("approvalDevices.addOfferCode")}{" "}
-                <code className="font-mono">{request.fingerprint}</code>
-              </p>
-              <p className="text-sm" role="status">
-                {t("approvalDevices.requestWaiting")}
-              </p>
-              <Inline>
-                <ActionButton variant="outline" onClick={reload}>
-                  {t("approvalDevices.requestCheck")}
-                </ActionButton>
-                <ActionButton
-                  variant="outline"
-                  onClick={() =>
-                    change(async () => {
-                      await store.approval.removeLocalKey(host.id);
-                      setRequest(null);
-                    }, null)
-                  }
-                >
-                  {t("approvalDevices.addCancel")}
-                </ActionButton>
-              </Inline>
-            </Stack>
-          ) : (
-            <Form
-              variant="panel"
-              aria-label={t("approvalDevices.requestTitle")}
-              onSubmit={() =>
-                void change(async () => {
-                  setRequest(await store.approval.requestAdd(host.id, addName.trim()));
-                }, null)
-              }
-            >
-              <Field label={t("approvalDevices.nameLabel")}>
-                {(control) => (
-                  <Input
-                    {...control}
-                    value={addName}
-                    maxLength={64}
-                    autoComplete="off"
-                    onChange={(event) => setAddName(event.target.value)}
-                  />
-                )}
-              </Field>
-              <FormActions
-                submit={t("approvalDevices.requestShow")}
-                disabled={addName.trim() === ""}
-                busy={busy}
-              />
-            </Form>
-          )}
+          <div ref={addBox} tabIndex={-1} data-add-box>
+            <p className="text-muted-foreground text-xs">{t("approvalDevices.requestHint")}</p>
+            {request ? (
+              <Stack gap={2}>
+                <Field label={t("approvalDevices.requestTextLabel")}>
+                  {(control) => (
+                    <Input
+                      {...control}
+                      readOnly
+                      value={request.text}
+                      spellCheck={false}
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                  )}
+                </Field>
+                <p className="text-sm">
+                  {t("approvalDevices.addOfferCode")}{" "}
+                  <code className="font-mono">{request.fingerprint}</code>
+                </p>
+                <p className="text-sm" role="status">
+                  {t("approvalDevices.requestWaiting")}
+                </p>
+                <Inline>
+                  <ActionButton variant="outline" onClick={reload}>
+                    {t("approvalDevices.requestCheck")}
+                  </ActionButton>
+                  <ActionButton
+                    variant="outline"
+                    onClick={() =>
+                      change(async () => {
+                        await store.approval.removeLocalKey(host.id);
+                        setRequest(null);
+                      }, null)
+                    }
+                  >
+                    {t("approvalDevices.addCancel")}
+                  </ActionButton>
+                </Inline>
+              </Stack>
+            ) : (
+              <Form
+                variant="panel"
+                aria-label={t("approvalDevices.requestTitle")}
+                onSubmit={() =>
+                  void change(async () => {
+                    setRequest(await store.approval.requestAdd(host.id, addName.trim()));
+                  }, null)
+                }
+              >
+                <Field label={t("approvalDevices.nameLabel")}>
+                  {(control) => (
+                    <Input
+                      {...control}
+                      value={addName}
+                      maxLength={64}
+                      autoComplete="off"
+                      onChange={(event) => setAddName(event.target.value)}
+                    />
+                  )}
+                </Field>
+                <FormActions
+                  submit={t("approvalDevices.requestShow")}
+                  disabled={addName.trim() === ""}
+                  busy={busy}
+                />
+              </Form>
+            )}
+          </div>
         </Panel>
       )}
-      {hasKey && (
+      {hasKey && !request && (
         <Stack gap={1}>
           <p className="text-muted-foreground text-xs">{t("approvalDevices.removeLocalHint")}</p>
           <Inline>

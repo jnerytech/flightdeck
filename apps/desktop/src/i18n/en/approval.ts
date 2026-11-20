@@ -53,7 +53,8 @@ export const approval = {
     requestTextLabel: "Text for the enrolled device",
     requestWaiting: "Waiting for the other device to add this one.",
     requestCheck: "Check again",
-    addBadText: "That is not a text made by another device's Add button. Copy it again, whole.",
+    addBadText:
+      'That is not a text made by another device\'s "Show the text" button. Copy it again, whole.',
     addOtherHost:
       "That text was made for another host. Make it again on the device, with this host open.",
     addBadName: "A name has 1 to 64 characters, with no hidden characters, and is not a code.",

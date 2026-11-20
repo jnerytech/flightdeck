@@ -14,10 +14,10 @@ const MAX_TEXT = 1024;
 /** The SPKI of a P-256 key, in the uncompressed form the app and the host make. */
 const KEY_BYTES = 91;
 const MAX_NAME = 64;
-/** Control, format (bidi, zero-width) and line or paragraph separator characters: none can be in a name. */
-const HIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
-/** A name that reads as a fingerprint: it could stand in for the one the person compares. */
-const LOOKS_LIKE_CODE = /^[0-9a-f]{4}([ -]?[0-9a-f]{4})+$/i;
+/** Control, format (bidi, zero-width), private-use, unassigned, separator and non-space blank characters: none can be in a name. */
+const HIDDEN = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}]|[^\S ]/u;
+/** A name with two groups of hex characters in it: it could pass for, or hide beside, the fingerprint the person compares. */
+const LOOKS_LIKE_CODE = /[0-9a-f]{4}[\s.\-_/]*[0-9a-f]{4}/i;
 
 /** Whether `name` may label a device: 1 to 64 characters, nothing hidden, not a code. */
 export function isDeviceName(name: string): boolean {
@@ -62,7 +62,11 @@ export function decodeAdd(text: string): AddText | null {
   const fields = parseJsonText(json, FIELDS, null);
   if (!fields) return null;
   const { d, k, n } = fields;
-  if (d === "" || bytesOf(k)?.length !== KEY_BYTES || !isDeviceName(n)) return null;
+  const bytes = bytesOf(k);
+  // The canonical form only: another spelling of the same bytes is not the key the host would list.
+  if (d === "" || bytes?.length !== KEY_BYTES || btoa(String.fromCharCode(...bytes)) !== k)
+    return null;
+  if (!isDeviceName(n)) return null;
   return { daemonId: d, publicKey: k, name: n.trim() };
 }
 

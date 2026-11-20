@@ -134,6 +134,8 @@ export class ApprovalSlice {
   private readonly listeners = new Map<string, Set<(heard: ApprovalHeard) => void>>();
   /** Keys (as `host/keyId`) this app is revoking right now: the host's announcement of them is its own doing. */
   private readonly revoking = new Set<string>();
+  /** The same for a device this app is adding with the person's agreement (#3478). */
+  private readonly adding = new Set<string>();
 
   constructor(private readonly core: ApprovalCore) {}
 
@@ -149,8 +151,8 @@ export class ApprovalSlice {
   }
 
   /**
-   * A host announced a device enrolled or revoked (#3477). This device's own enrollment, and a revoke
-   * this app is making, are the person's own doing and stay quiet. The rest goes to the page that
+   * A host announced a device enrolled or revoked (#3477). This device's own enrollment, a device this
+   * app is adding and a revoke this app is making are the person's own doing and stay quiet. The rest goes to the page that
    * watches the host, or, with none open, to a notice: an alert for a device nobody here made or for
    * this device's own key revoked, a quiet one for another device's.
    */
@@ -158,12 +160,18 @@ export class ApprovalSlice {
     // Before the first await: the revoke's answer may follow the announcement closely.
     if (change.type === "approval.revoked" && this.revoking.has(`${hostId}/${change.keyId}`))
       return;
+    const added =
+      change.type === "approval.enrolled" && this.adding.has(`${hostId}/${change.keyId}`);
     const host = this.core.host(hostId);
     const own = (await this.localKeyId(host?.daemonId)) === change.keyId;
     let heard: ApprovalHeard;
     if (change.type === "approval.enrolled") {
-      if (own) return;
-      heard = { kind: "enrolled", name: change.name, own: false };
+      // Made here, by this device or by the person's agreement: no news, but a watching page reads the list again.
+      heard = { kind: "enrolled", name: change.name, own: own || added };
+      if (heard.own) {
+        for (const listener of [...(this.listeners.get(hostId) ?? [])]) listener(heard);
+        return;
+      }
     } else {
       heard = { kind: "revoked", own };
     }
@@ -311,13 +319,20 @@ export class ApprovalSlice {
       if (isDecline(error)) return "declined";
       throw error;
     }
-    await this.ask(hostId, "approval.enroll", {
-      publicKey: offer.publicKey,
-      name: offer.name,
-      nonce: challenge.nonce,
-      signature,
-      signerKeyId: local.keyId,
-    });
+    // The host announces the add before it answers: the person just agreed to it, so it is not news.
+    const adding = `${hostId}/${await keyIdOf(offer.publicKey)}`;
+    this.adding.add(adding);
+    try {
+      await this.ask(hostId, "approval.enroll", {
+        publicKey: offer.publicKey,
+        name: offer.name,
+        nonce: challenge.nonce,
+        signature,
+        signerKeyId: local.keyId,
+      });
+    } finally {
+      this.adding.delete(adding);
+    }
     return "done";
   }
 
