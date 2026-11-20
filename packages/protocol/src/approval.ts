@@ -4,7 +4,6 @@
 // node:crypto in the daemon).
 import { z } from "zod";
 import { cmd } from "./command.ts";
-import type { RiskLevel } from "./permissions.ts";
 
 /** The host checks a signed proof of the person's device before a high-risk allow (`host.info.features`). */
 export const FEATURE_APPROVAL_PROOF = "approval-proof";
@@ -38,7 +37,8 @@ export function canonicalJson(value: unknown): string {
 
 /** An allow needs the proof of a device when the request is high risk, or when it saves rules. */
 export function needsApprovalProof(
-  risk: RiskLevel,
+  // Written out, not `RiskLevel`: permissions.ts imports this file, and a type import back would be a cycle.
+  risk: "low" | "medium" | "high",
   updatedPermissions: readonly unknown[] | undefined,
 ): boolean {
   return risk === "high" || (updatedPermissions?.length ?? 0) > 0;
