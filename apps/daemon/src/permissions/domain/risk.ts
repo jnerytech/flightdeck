@@ -15,7 +15,7 @@ import {
   program,
   RUNNERS,
   SHELLS,
-  shellArguments,
+  shellReadings,
   stepQuote,
   unquoted,
 } from "./shell-call.ts";
@@ -155,7 +155,8 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
 /** Whether the command runs `fd`/`flightdeckd` with one of `verbs`, directly or through a runtime or a shell given the text. */
 function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  if (isCliProgram(prog)) return verbs.includes(flightdeckWords(shellArguments(args))[0] ?? "");
+  if (isCliProgram(prog))
+    return shellReadings(args).some((own) => verbs.includes(flightdeckWords(own)[0] ?? ""));
   if (!RUNNERS.includes(prog)) return false;
   const names = words.map((w) => program(w));
   const runsCli = names.some((n) => isCliProgram(n));
@@ -189,14 +190,15 @@ function endsACard(prog: string, args: string[]): boolean {
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
   const loopOn = (all: string[]) => all.includes("check-loop") && all.includes("on");
   if (isCliProgram(prog)) {
-    const own = shellArguments(args);
-    const [command, action, , switchTo] = flightdeckWords(own);
-    return (
-      command === "card" &&
-      (CARD_ENDS.includes(action ?? "") ||
-        (action === "move" && own.includes("--force")) ||
-        (action === "check-loop" && switchTo === "on"))
-    );
+    return shellReadings(args).some((own) => {
+      const [command, action, , switchTo] = flightdeckWords(own);
+      return (
+        command === "card" &&
+        (CARD_ENDS.includes(action ?? "") ||
+          (action === "move" && own.includes("--force")) ||
+          (action === "check-loop" && switchTo === "on"))
+      );
+    });
   }
   if (!RUNNERS.includes(prog)) return false;
   const runsCli = words.some((w) => isCliProgram(program(w)));
@@ -218,9 +220,10 @@ function resumesWithPower(prog: string, args: string[]): boolean {
       (w) => w === "--force" || w === "--permission-mode" || w.startsWith("--permission-mode="),
     );
   if (isCliProgram(prog)) {
-    const own = shellArguments(args);
-    const [command, action] = flightdeckWords(own);
-    return command === "history" && action === "resume" && raised(own);
+    return shellReadings(args).some((own) => {
+      const [command, action] = flightdeckWords(own);
+      return command === "history" && action === "resume" && raised(own);
+    });
   }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
@@ -243,12 +246,12 @@ const TEAM_CHANGES = [
 ];
 
 /**
- * A CLI line whose verb the reader cannot see (#3559): a noun or verb the shell expands before it runs. Every
- * rule above and below reads the verb from the words, so a line that hides it would pass as an ordinary shell
- * command; it is high instead. A program that is a variable is left out: it may be anything.
+ * A CLI line whose name, noun or verb the reader cannot see (#3559): the shell expands it before it runs. Every
+ * rule reads the verb from the words, so a line that hides it would pass as an ordinary shell command; it is
+ * high instead.
  */
-const hidesAVerb = (prog: string, args: string[]) =>
-  isCliProgram(prog) && !prog.includes("$") && hidesItsVerb(args);
+const HIDDEN_VERB =
+  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
 
 /**
  * Whether the line runs `<command> <verb>` of the Flightdeck CLI, for one of `verbs`. The verb is read as
@@ -256,8 +259,10 @@ const hidesAVerb = (prog: string, args: string[]) =>
  */
 function runsCliVerb(prog: string, args: string[], command: string, verbs: string[]): boolean {
   if (isCliProgram(prog)) {
-    const [first, verb] = flightdeckWords(shellArguments(args));
-    return first === command && verbs.includes(verb ?? "");
+    return shellReadings(args).some((own) => {
+      const [first, verb] = flightdeckWords(own);
+      return first === command && verbs.includes(verb ?? "");
+    });
   }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
@@ -350,11 +355,6 @@ const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
   reason: (prog: string) => string;
 }> = [
-  {
-    when: hidesAVerb,
-    reason: () =>
-      "runs a flightdeckd command whose noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does",
-  },
   {
     when: (prog, args) => prog === "rm" && hasFlag(args, "r", ["--recursive", "-recurse"]),
     reason: () => "rm recursivo",
@@ -471,9 +471,12 @@ function segmentRisks(segment: string[], piped: boolean): Candidate[] {
   return out;
 }
 
-function invocationRisks({ prog, args, sudo }: Invocation, piped: boolean): Candidate[] {
+function invocationRisks(call: Invocation, piped: boolean): Candidate[] {
+  const { prog, args, sudo } = call;
   const out: Candidate[] = [];
   if (sudo) out.push(["high", "sudo"]);
+  if (call.hidden || (isCliProgram(prog) && hidesItsVerb(args, call.unresolved)))
+    out.push(["high", HIDDEN_VERB]);
   if (piped && SHELLS.has(prog)) out.push(["high", `pipe para ${prog}`]);
   for (const rule of DANGEROUS) {
     if (rule.when(prog, args)) out.push(["high", rule.reason(prog)]);
@@ -618,7 +621,7 @@ export class RiskClassifier {
     if (SHELL_TOOLS.has(toolName)) {
       // A shell tool's command that is there but not text cannot be read, so a person decides.
       if (oddCommand(input)) return [["high", "the command is not text"]];
-      return this.shellCandidates(text("command"), cwd);
+      return this.shellCandidates(text("command"), cwd, toolName === "PowerShell");
     }
     if (toolName === "TodoWrite") return [["low", "lista de tarefas"]];
     const fields = READ_TOOLS[toolName];
@@ -649,10 +652,14 @@ export class RiskClassifier {
   }
 
   /** The command as written, and as a shell that joins continuation lines reads it. */
-  private shellCandidates(command: string, cwd: string): Candidate[] {
+  private shellCandidates(command: string, cwd: string, powershell: boolean): Candidate[] {
     const joined = joinContinuations(command);
     const written = this.shell(command, cwd);
-    return joined === command ? written : [...written, ...this.shell(joined, cwd)];
+    const out = joined === command ? written : [...written, ...this.shell(joined, cwd)];
+    // PowerShell's backslash is a path separator and its escape is the backtick (#3559): the line is read once more
+    // with the two swapped, so `"C:\work\" persona remove qa` does not read as one open string.
+    const swapped = command.replace(/\\/g, "/").replace(/`/g, "\\");
+    return powershell && swapped !== command ? [...out, ...this.shell(swapped, cwd)] : out;
   }
 
   private shell(command: string, cwd: string): Candidate[] {

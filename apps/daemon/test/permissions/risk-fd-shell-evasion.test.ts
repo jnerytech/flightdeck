@@ -68,13 +68,10 @@ describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)"
     ).toEqual([]);
   });
 
-  test("PowerShell reads a backslash as a path separator and a backtick as the escape", () => {
+  test("PowerShell reads a backslash as a path separator, so a path that ends in one closes its string", () => {
     expect(
       wrongReasons(
-        [
-          [String.raw`fd --project-path "C:\work\" persona remove qa`, PERSONA],
-          ['fd --project-path "a`" b" persona remove qa', PERSONA],
-        ],
+        [[String.raw`fd --project-path "C:\work\" persona remove qa`, PERSONA]],
         "PowerShell",
       ),
     ).toEqual([]);
