@@ -10,7 +10,7 @@ afterEach(stopAll);
 const text = (r: { out: string[]; err: string[] }) => [...r.out, ...r.err].join("\n");
 
 describe("flightdeckd costs reprice (issue #3460)", () => {
-  test("it asks the daemon to price every entry again and says how many it changed", async () => {
+  test("it asks the daemon to price every entry again and says how many entries it priced", async () => {
     const daemon = fakeDaemon({ "costs.reprice": () => ({ entries: 1204 }) });
     const result = await runCostsCli({ action: "reprice" }, config(daemon.port));
     expect({ code: result.code, out: result.out }).toEqual({
@@ -91,7 +91,10 @@ describe("costs reprice: the arguments (issue #3460)", () => {
       ["budget", "list", "costs", "reprice", "--confirm"],
       ["costs", "status", "costs", "reprice", "--confirm"],
     ])
-      expect({ argv, refused: JSON.stringify(parsed(argv)).includes("unknown argument") }).toEqual({
+      expect({
+        argv,
+        refused: JSON.stringify(parsed(argv)).includes("one command at a time"),
+      }).toEqual({
         argv,
         refused: true,
       });

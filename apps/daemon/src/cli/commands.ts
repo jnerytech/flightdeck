@@ -78,7 +78,6 @@ async function localConfig(args: CliArgs) {
   }
 }
 
-/** Prints what a command that asks the local daemon returned, and gives its exit code. */
 /**
  * A `watch` runs until Ctrl-C (or a stop of the process) and writes as the changes come. Only the
  * stream listens: elsewhere Ctrl-C keeps its default, which ends the process.
@@ -91,6 +90,7 @@ function watchStop(args: CliArgs, deps: CliDeps): AbortController {
   return stop;
 }
 
+/** Prints what a command that asks the local daemon returned, and gives its exit code. */
 const reported = (deps: CliDeps, result: CliResult, asJson = false): Promise<number> =>
   settled(() => {
     for (const line of result.out) deps.log.log(line);

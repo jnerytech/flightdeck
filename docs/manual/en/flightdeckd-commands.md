@@ -247,7 +247,7 @@ What the sessions cost and what the agents delivered, as the Costs and ROI scree
 - **`costs status`:** how far the transcripts are read, the price date, the models with no price and the
   sessions whose cost differs from the SDK's.
 - **`costs reprice --confirm`:** prices every recorded message again with the price table of the config, and
-  says how many entries it changed. It rewrites every cost, so it needs `--confirm`; without it, it exits `1`
+  says how many entries it priced. It rewrites every cost, so it needs `--confirm`; without it, it exits `1`
   and sends nothing. A reprice that gets no answer exits `2`: run `costs status` before trying again.
 - **`roi`:** each project's cost, cards, merged PRs and estimated hours over `--from` to `--to`, against the
   period of the same length before it. `--project` narrows it.

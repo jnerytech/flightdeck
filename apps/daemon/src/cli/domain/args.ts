@@ -385,11 +385,8 @@ const HANDLERS: Record<string, Handler> = {
   usage: setCommand("usage"),
   costs: (args, reader) => {
     args.command = "costs";
-    const action = subAction(
-      reader,
-      ["summary", "session", "card", "run", "status", "export", "reprice"],
-      "invalid costs action",
-    );
+    const verbs = ["summary", "session", "card", "run", "status", "export", "reprice"] as const;
+    const action = subAction(reader, verbs, "invalid costs action");
     args.action = action;
     if (action === "session") args.costsId = operand(reader, "the session");
     if (action === "card") args.costsId = operand(reader, "the card");
@@ -674,6 +671,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     };
     const handler = Object.hasOwn(HANDLERS, flag) ? HANDLERS[flag] : undefined;
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
+    // A second command word would re-target the parse, past the risk rating of the first (`fd` has its own refusal).
+    if (!flag.startsWith("--") && flag !== "fd" && args.command !== "start")
+      throw new Error(`one command at a time: ${args.command}, then ${flag}\n${USAGE}`);
     if (inline !== undefined && FLAGS.has(handler))
       throw new Error(`${flag} needs no value\n${USAGE}`);
     handler(args, reader, value);

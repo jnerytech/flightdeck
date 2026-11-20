@@ -249,7 +249,7 @@ O que as sessões custam e o que os agentes entregaram, como as telas de Custos 
 - **`costs status`:** até onde os transcripts foram lidos, a data dos preços, os modelos sem preço e as sessões
   cujo custo difere do SDK.
 - **`costs reprice --confirm`:** precifica de novo todas as mensagens gravadas com a tabela de preços da
-  configuração e diz quantas entradas mudou. Reescreve todos os custos, por isso pede `--confirm`; sem ele,
+  configuração e diz quantas entradas precificou. Reescreve todos os custos, por isso pede `--confirm`; sem ele,
   sai com `1` e não envia nada. Um reprice que fica sem resposta sai com `2`: rode `costs status` antes de
   tentar de novo.
 - **`roi`:** custo, cartões, PRs integrados e horas estimadas de cada projeto de `--from` a `--to`, contra o
