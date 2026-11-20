@@ -21,6 +21,7 @@ import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
+import { readWatch } from "./watch-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -364,6 +365,7 @@ const HANDLERS: Record<string, Handler> = {
   sessions: setCommand("sessions"),
   session: readSession,
   ssh: readSsh,
+  watch: readWatch,
   requests: (args) => {
     startCommand(args, "requests");
   },

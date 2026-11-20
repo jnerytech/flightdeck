@@ -7,4 +7,5 @@
 
 export { type CheckOutcome, masked, REMOVED_LINE, runChecks } from "./domain/check-run.ts";
 export type { WatchSettings } from "./settings.ts";
+export { runWatchCli, type WatchCliArgs } from "./watch-cli.ts";
 export { createWatch, type WatchDeps } from "./wiring.ts";

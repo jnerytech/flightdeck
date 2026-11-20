@@ -16,6 +16,7 @@ import { type CliArgs, USAGE } from "./domain/args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
+import { watchCliArgs } from "./domain/watch-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 
@@ -129,7 +130,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `ssh`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `ssh`, `watch`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -657,6 +658,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runSshCli } = await import("../ssh/index.ts");
     return asking(args, deps, (config, remote) =>
       runSshCli(sshCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  watch: async (args, deps) => {
+    const { runWatchCli } = await import("../watch/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runWatchCli(watchCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   requests: async (args, deps) => {
