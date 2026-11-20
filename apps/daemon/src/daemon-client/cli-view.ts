@@ -28,6 +28,7 @@ export class TimedOut extends Error {}
 /** A name or a text comes from the board, an issue, a session or the daemon: it may not drive the terminal or reorder what it reads. */
 const CONTROL =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: matching these characters is the point
+  // biome-ignore lint/suspicious/noMisleadingCharacterClass: each one is replaced on its own, never matched as a sequence
   /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u061c\u00ad\u034f\u180e\ufe00-\ufe0f\ufeff\ufff9-\ufffb\u{e0000}-\u{e007f}]/gu;
 const plain = (text: string) => text.replace(CONTROL, " ");
 
