@@ -154,6 +154,20 @@ describe("flightdeckd persona: the reading verbs (issue #3456)", () => {
     expect(run.out).toEqual(["no personas"]);
   });
 
+  test("list with no persona still names the project files that were left out", async () => {
+    const daemon = fakeDaemon({
+      "personas.list": () => ({
+        personas: [],
+        project: { path: "/w/api/.flightdeck/personas", errors: ["broken.md: no body"] },
+      }),
+    });
+    const run = await flightdeckd(["persona", "list", "--scope", "project"], daemon.port);
+    expect(run.out).toEqual([
+      "no personas",
+      "left out of /w/api/.flightdeck/personas: broken.md: no body",
+    ]);
+  });
+
   test("show asks the daemon to resolve the id and prints the persona", async () => {
     const daemon = fakeDaemon(HANDLERS);
     const run = await flightdeckd(
