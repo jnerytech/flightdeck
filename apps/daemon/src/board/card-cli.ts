@@ -11,7 +11,15 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
-import { type CardCliArgs, pick, UNSURE, waitOf } from "./domain/card-cli-view.ts";
+import {
+  type CardCliArgs,
+  columnOf,
+  confirmed,
+  pick,
+  UNSURE,
+  updateOf,
+  waitOf,
+} from "./domain/card-cli-view.ts";
 
 export interface CardCliOptions {
   /** How long the daemon has to answer before the command gives up (exit 2). */
@@ -92,8 +100,67 @@ async function startCard(args: CardCliArgs, daemon: DaemonClient, note: Note): P
   );
 }
 
+async function moveCard(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  const column = columnOf(args.column);
+  note.wrote = true;
+  const card = await daemon.call("card.move", {
+    cardId: args.id ?? "",
+    column,
+    ...(args.position === undefined ? {} : { position: args.position }),
+    ...(args.force ? { force: true } : {}),
+  });
+  if (args.json) return json(card);
+  return said(
+    `moved ${card.id} to ${card.column}`,
+    ...(card.notice ? [`notice: ${card.notice}`] : []),
+  );
+}
+
+async function updateCard(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  const patch = updateOf(args);
+  note.wrote = true;
+  const card = await daemon.call("card.update", { cardId: args.id ?? "", ...patch });
+  return args.json ? json(card) : said(`updated ${card.id}  ${card.title}`);
+}
+
+async function stopCard(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  note.wrote = true;
+  const card = await daemon.call("card.stop", { cardId: args.id ?? "" });
+  return args.json ? json(card) : said(`stopped ${card.id}  ${card.title}`);
+}
+
+/** `complete`, `discard` and `delete` cannot be undone: the daemon asks for the person's yes, and so does this. */
+async function endCard(
+  args: CardCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+  done: "completed" | "discarded" | "deleted",
+): Promise<CliResult> {
+  const confirm = confirmed(args);
+  const payload = { cardId: args.id ?? "", confirm };
+  note.wrote = true;
+  const card = await (done === "completed"
+    ? daemon.call("card.complete", payload)
+    : done === "discarded"
+      ? daemon.call("card.discard", payload)
+      : daemon.call("card.delete", payload));
+  return args.json ? json(card) : said(`${done} ${card.id}  ${card.title}`);
+}
+
 function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
   switch (args.action) {
+    case "move":
+      return moveCard(args, daemon, note);
+    case "update":
+      return updateCard(args, daemon, note);
+    case "stop":
+      return stopCard(args, daemon, note);
+    case "complete":
+      return endCard(args, daemon, note, "completed");
+    case "discard":
+      return endCard(args, daemon, note, "discarded");
+    case "delete":
+      return endCard(args, daemon, note, "deleted");
     case "list":
       return listCards(args, daemon);
     case "show":

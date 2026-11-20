@@ -1,4 +1,5 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { CardCliArgs } from "../board/index.ts";
 import { loadConfig, userHome } from "../config.ts";
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
@@ -277,12 +278,20 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       deps,
       await runCardCli(
         {
-          action: args.action as "list" | "show" | "new" | "start",
+          action: args.action as CardCliArgs["action"],
           ...(args.project === undefined ? {} : { project: args.project }),
           ...(args.cardId === undefined ? {} : { id: args.cardId }),
           ...(args.cardTitle === undefined ? {} : { title: args.cardTitle }),
           ...(args.description === undefined ? {} : { description: args.description }),
           ...(args.workflow === undefined ? {} : { workflow: args.workflow }),
+          ...(args.column === undefined ? {} : { column: args.column }),
+          ...(args.position === undefined ? {} : { position: args.position }),
+          ...(args.force ? { force: true } : {}),
+          ...(args.confirm ? { confirm: true } : {}),
+          ...(args.estimate === undefined ? {} : { estimate: args.estimate }),
+          ...(args.validationNote === undefined ? {} : { validationNote: args.validationNote }),
+          ...(args.specPath === undefined ? {} : { specPath: args.specPath }),
+          ...(args.blockedBy === undefined ? {} : { blockedBy: args.blockedBy }),
           ...(args.json ? { json: true } : {}),
         },
         config,
