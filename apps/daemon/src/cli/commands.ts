@@ -98,6 +98,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
       platform: process.platform,
       home: userHome(deps.env, process.platform),
       ...(deps.env.APPDATA ? { appData: deps.env.APPDATA } : {}),
+      ...(deps.env.ProgramFiles ? { programFiles: deps.env.ProgramFiles } : {}),
       ...(deps.env.LOCALAPPDATA ? { localAppData: deps.env.LOCALAPPDATA } : {}),
       ...(deps.env.XDG_CONFIG_HOME ? { xdgConfigHome: deps.env.XDG_CONFIG_HOME } : {}),
       execPath: process.execPath,

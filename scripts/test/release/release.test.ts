@@ -168,7 +168,7 @@ describe("release", () => {
       "utf8",
     );
     expect(tauriReleaseConfig(pub)).toEqual({
-      bundle: { createUpdaterArtifacts: true },
+      bundle: { createUpdaterArtifacts: true, externalBin: ["binaries/flightdeck-cred"] },
       plugins: {
         updater: {
           pubkey: pub.trim(),

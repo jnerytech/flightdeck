@@ -21,11 +21,14 @@
      the updater endpoint, and fails if `release/flightdeck.pub` is not a valid public key;
   3. `bun run build:daemon`, which produces the three daemons;
   4. `bun run release:sign`, which signs the daemons;
-  5. `bun run tauri build --bundles nsis,msi` in `apps/desktop`, which produces the installers
-     (with the updater's `.sig` signature);
-  6. `bun run release:assets`, which gathers the files, the signatures and the manifests
+  5. `cargo build -p flightdeck-cred --release --locked`, which builds the credential helper the
+     CLI uses to read a paired host's token, then `bun run release:cred`, which copies it where
+     Tauri reads sidecars (`apps/desktop/src-tauri/binaries/`);
+  6. `bun run tauri build --bundles nsis,msi` in `apps/desktop`, which produces the installers
+     (with the updater's `.sig` signature) and puts `flightdeck-cred.exe` beside the app;
+  7. `bun run release:assets`, which gathers the files, the signatures and the manifests
      (`latest.json`, `daemon-latest.json`) in `release-assets/` with the `SHA256SUMS`;
-  7. `gh release create <tag> --generate-notes`, with those files.
+  8. `gh release create <tag> --generate-notes`, with those files.
 - **Re-running a publication:** through `workflow_dispatch`, passing the tag, which must already
   exist.
 - **Environment:** the job uses the `GITHUB_TOKEN`, with `contents: write`, and the secrets
