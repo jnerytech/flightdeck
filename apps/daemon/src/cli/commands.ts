@@ -659,6 +659,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
         {
           action: args.action as SshCliArgs["action"],
           ...(args.sshTarget === undefined ? {} : { target: args.sshTarget }),
+          ...(args.sshFingerprint === undefined ? {} : { fingerprint: args.sshFingerprint }),
           ...(args.json ? { json: true } : {}),
         },
         config,
