@@ -4,7 +4,7 @@
  * id or its name. Exit codes: 0 done, 1 refused, 2 no daemon (or no answer: the change may or may not
  * have gone in).
  */
-import type { EffortLevel } from "@flightdeck/protocol";
+import { type EffortLevel, SettableMode } from "@flightdeck/protocol";
 import {
   type CliResult,
   type DaemonClient,
@@ -17,7 +17,10 @@ import {
   doneLine,
   effortLine,
   metaLine,
+  modeLine,
   modelLine,
+  personaLeftLine,
+  personaTakenLine,
   sleepLine,
   sleepRefusal,
 } from "./domain/session-act-view.ts";
@@ -64,6 +67,35 @@ export async function performAct(
       const effort = orDefault(args.value) as EffortLevel | null;
       await daemon.call("session.setEffort", { sessionId, effort });
       return out(effortLine(sessionId, effort), { effort });
+    }
+    case "set-mode": {
+      const mode = SettableMode.safeParse(args.value);
+      if (!mode.success)
+        return failure(1, `${args.value} is not a mode a live session can be set to`);
+      await daemon.call("session.setMode", { sessionId, permissionMode: mode.data });
+      return out(modeLine(sessionId, mode.data), { permissionMode: mode.data });
+    }
+    case "apply-persona": {
+      const language = args.start?.language;
+      const persona = { id: args.value ?? "", ...(language ? { language } : {}) };
+      const result = await daemon.call("session.applyPersona", { sessionId, persona });
+      return out(personaTakenLine(sessionId, result.persona, result.delivery), {
+        persona: result.persona,
+        text: result.text,
+        delivery: result.delivery ?? null,
+      });
+    }
+    case "clear-persona": {
+      const language = args.start?.language;
+      const result = await daemon.call("session.clearPersona", {
+        sessionId,
+        ...(language ? { language } : {}),
+      });
+      return out(personaLeftLine(sessionId, result.persona, result.delivery), {
+        persona: result.persona,
+        text: result.text,
+        delivery: result.delivery ?? null,
+      });
     }
     case "sleep": {
       const { result } = await daemon.call("session.sleep", { sessionId });
