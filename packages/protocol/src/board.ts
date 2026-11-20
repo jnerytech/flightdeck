@@ -536,7 +536,10 @@ export const boardCommands = [
           .regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/)
           .optional(),
       })
-      .strict(),
+      .strict()
+      .refine((p) => (p.prUrl === undefined) === (p.headSha === undefined), {
+        message: "prUrl and headSha go together",
+      }),
   ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),

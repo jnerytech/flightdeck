@@ -1,5 +1,5 @@
-import { Command } from "@flightdeck/protocol";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { Command } from "@flightdeck/protocol";
 import { type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { newBoard } from "../support/board-helpers.ts";
 

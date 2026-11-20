@@ -41,10 +41,6 @@ export interface CardPrFlowPort {
   pollPr: (id: string) => Promise<void>;
 }
 
-/**
- * Issue #1523: a card's way out through git: its diff, opening and merging its PR, the PR's review
- * comments and their cache, rebasing on the base, and the local merge of a card without a PR.
- */
 const unsupported = (url: string) =>
   new FlightdeckError(
     "invalid_state",
@@ -62,6 +58,10 @@ const stale = (url: string) =>
     { url },
   );
 
+/**
+ * Issue #1523: a card's way out through git: its diff, opening and merging its PR, the PR's review
+ * comments and their cache, rebasing on the base, and the local merge of a card without a PR.
+ */
 export class CardPrFlow {
   /** Review comments of each card's open PR, from the last poll (phase 11). */
   private readonly commentCache = new Map<string, PrComment[]>();
