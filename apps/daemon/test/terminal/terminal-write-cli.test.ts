@@ -294,7 +294,7 @@ describe("the arguments of the terminal write verbs (issue #3538)", () => {
       "--enable: this flag only applies to flightdeckd terminal settings",
     );
     for (const verb of ["attach", "write", "resize", "ack", "detach"]) {
-      expect(refused(["terminal", verb])).toBe("invalid terminal action: " + verb);
+      expect(refused(["terminal", verb])).toBe(`invalid terminal action: ${verb}`);
     }
   });
 });
