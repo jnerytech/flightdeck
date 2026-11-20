@@ -117,6 +117,20 @@ describe("startChoices", () => {
     });
     expect(startChoices(undefined)).toEqual({ mode: "default", model: "" });
   });
+
+  test("a host that starts sessions in bypass is the form's starting mode; what the last session chose still wins (#3427)", () => {
+    expect(startChoices(undefined, "bypassPermissions")).toEqual({
+      mode: "bypassPermissions",
+      model: "",
+    });
+    expect(startChoices({ mode: "bogus" as never }, "bypassPermissions").mode).toBe(
+      "bypassPermissions",
+    );
+    expect(startChoices({ mode: "plan", model: "haiku" }, "bypassPermissions")).toEqual({
+      mode: "plan",
+      model: "haiku",
+    });
+  });
 });
 
 describe("choicesToKeep", () => {

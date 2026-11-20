@@ -63,7 +63,10 @@ function rememberedOr<T>(value: T | undefined, offered: readonly T[], fallback: 
 }
 
 /** The mode and model the form starts from: what the last session chose, while the form still offers it. */
-export function startChoices(last: { mode?: PermissionMode; model?: string } | undefined): {
+export function startChoices(
+  last: { mode?: PermissionMode; model?: string } | undefined,
+  _hostMode: PermissionMode = "default",
+): {
   mode: PermissionMode;
   model: string;
 } {
