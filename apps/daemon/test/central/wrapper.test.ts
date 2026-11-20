@@ -235,4 +235,17 @@ describe("wrapper", () => {
     ]);
     expect(said).toEqual([false, false, false, true]);
   });
+
+  test("a config file the launch had to create is not a host's choice: no bypass is added (#3427)", async () => {
+    const fake = installFakeClaude([{ do: "exit", code: 0 }]);
+    cleanups.push(fake.restore);
+    // A terminal whose FLIGHTDECK_CONFIG points at nothing: the daemon's file (switch off) is elsewhere.
+    await wrapper(["-c"], join(tempDir(), "missing.json"));
+    expect(
+      fake
+        .events()
+        .filter((e) => e.type === "start")
+        .map((e) => e.args),
+    ).toEqual([["-c"]]);
+  });
 });

@@ -90,6 +90,8 @@ export function bypassArgs(opts: {
   byDefault: string;
   given: string[];
   root: boolean;
+  /** The mode the persona asks for, if any: one stricter than bypass is kept. */
+  personaMode?: string | null;
 }): { args: string[]; notice: string | null } {
   const none = { args: [], notice: null };
   if (!opts.allowed || opts.byDefault !== "bypassPermissions") return none;

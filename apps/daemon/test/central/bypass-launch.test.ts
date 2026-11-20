@@ -30,4 +30,14 @@ describe("flightdeckd claude: bypass by default (#3427)", () => {
     expect(args).toEqual([]);
     expect(notice).toContain("root");
   });
+
+  test("a persona that asks for a mode stricter than bypass keeps it; one that asks for bypass gets it", () => {
+    for (const personaMode of ["plan", "default", "acceptEdits", "dontAsk"]) {
+      expect(added([], { personaMode }), personaMode).toEqual({ args: [], notice: null });
+    }
+    expect(added([], { personaMode: "bypassPermissions" }).args).toEqual([
+      "--permission-mode",
+      "bypassPermissions",
+    ]);
+  });
 });
