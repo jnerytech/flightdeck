@@ -68,7 +68,7 @@ export async function daemonWithProject(
       dataDir: join(dir, "data"),
       hooks: { port: 0 },
       allowedRoots: [dir],
-      ...(options.bypass ? { allowBypassPermissions: true } : {}),
+      allowBypassPermissions: options.bypass === true,
     }),
   );
   // The app asks this daemon for its background sessions (`claude agents`): a fake answers, the

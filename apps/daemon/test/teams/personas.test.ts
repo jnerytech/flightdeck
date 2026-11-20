@@ -131,6 +131,7 @@ describe("times: the permission modes of issue #93 reach the team's sessions", (
         dataDir: join(dir, "data"),
         hooks: { port: 0 },
         allowedRoots: [root],
+        allowBypassPermissions: false,
       }),
     );
     const daemon = await runCli(["--config", file, "--runtime", "fake"], {
@@ -144,7 +145,7 @@ describe("times: the permission modes of issue #93 reach the team's sessions", (
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
     const project = await client.data<{ id: string }>("project.add", { path: repo });
-    // The host does not allow bypass (the default): the team is refused and nothing starts.
+    // The host has the bypass switch off (on by default since #3427): the team is refused and nothing starts.
     expect(
       await client.request("teams.create", {
         projectId: project?.id,
