@@ -87,6 +87,7 @@ export const DAEMON_REASONS = [
   "terminal_open_failed",
   "update_no_binary",
   "update_confirm",
+  "shutdown_confirm",
   "update_manifest_unchecked",
   "update_manifest_no_binary",
   "releases_unavailable",

@@ -30,8 +30,11 @@ function connect(url: string) {
 }
 
 describe("desligar", () => {
-  test("daemon.shutdown é um comando sem payload", () => {
+  test("daemon.shutdown takes only an optional confirm", () => {
     expect(Command.safeParse({ id: "1", type: "daemon.shutdown", payload: {} }).success).toBe(true);
+    expect(
+      Command.safeParse({ id: "1", type: "daemon.shutdown", payload: { confirm: true } }).success,
+    ).toBe(true);
     expect(
       Command.safeParse({ id: "1", type: "daemon.shutdown", payload: { agora: true } }).success,
     ).toBe(false);
@@ -52,7 +55,17 @@ describe("desligar", () => {
     cleanups.push(() => server.stop());
     const client = connect(server.url);
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect(await client.request("daemon.shutdown", {})).toMatchObject({ ok: true });
+    // Without the confirm the host refuses and does not stop (#3507).
+    expect(await client.request("daemon.shutdown", {})).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state", reason: "shutdown_confirm" },
+    });
+    expect(await client.request("daemon.shutdown", { confirm: false })).toMatchObject({
+      ok: false,
+      error: { reason: "shutdown_confirm" },
+    });
+    expect(asked).toBe(0);
+    expect(await client.request("daemon.shutdown", { confirm: true })).toMatchObject({ ok: true });
     await until(() => asked > 0, "pedido de desligamento");
     expect(asked).toBe(1);
 
@@ -60,7 +73,7 @@ describe("desligar", () => {
     cleanups.push(() => without.stop());
     const other = connect(without.url);
     await other.request("hello", { token: TOKEN, client: "t" });
-    expect(await other.request("daemon.shutdown", {})).toMatchObject({
+    expect(await other.request("daemon.shutdown", { confirm: true })).toMatchObject({
       ok: false,
       error: { code: "invalid_state" },
     });
@@ -81,7 +94,7 @@ describe("desligar", () => {
     expect(daemon).not.toBeNull();
     const client = connect(daemon?.url ?? "");
     await client.request("hello", { token: TOKEN, client: "t" });
-    expect(await client.request("daemon.shutdown", {})).toMatchObject({ ok: true });
+    expect(await client.request("daemon.shutdown", { confirm: true })).toMatchObject({ ok: true });
     await until(() => exits.length > 0, "o daemon sair");
     expect(exits).toEqual([0]);
     const lock = await acquireLock(dataDir);

@@ -111,6 +111,7 @@ export const refusals = {
     terminal_open_failed: "The terminal could not be opened: {why}",
     update_no_binary: "There is no daemon binary for {platform}-{arch}.",
     update_confirm: "Updating the daemon needs your confirmation.",
+    shutdown_confirm: "Stopping the daemon needs your confirmation.",
     update_manifest_unchecked:
       "The daemon has not checked for an update yet: try again in a moment.",
     update_manifest_no_binary: "The release {version} has no binary for {key}.",
