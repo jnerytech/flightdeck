@@ -11,6 +11,7 @@ import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
+import { pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { teamProblem } from "./team-args.ts";
@@ -177,6 +178,7 @@ const HANDLERS: Record<string, Handler> = {
     }
   },
   vault: readVault,
+  plugins: readPlugins,
   approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
@@ -630,6 +632,9 @@ const HANDLERS: Record<string, Handler> = {
   "--at": setValue((args, v) => {
     args.at = atTime(v);
   }),
+  "--dir": setValue((args, v) => {
+    args.pluginDir = v;
+  }),
   "--config": setValue((args, v) => {
     args.config = v;
   }),
@@ -679,17 +684,20 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "rules",
       "autoapprove",
       "vault",
+      "plugins",
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove, vault and plugins\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
-    !["host", "sessions", "requests", "send", "approve", "deny", "vault"].includes(args.command)
+    !["host", "sessions", "requests", "send", "approve", "deny", "vault", "plugins"].includes(
+      args.command,
+    )
   )
     throw new Error(
-      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve, deny and vault\n${USAGE}`,
+      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve, deny, vault and plugins\n${USAGE}`,
     );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
@@ -765,6 +773,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     boardProblem(args) ??
     historyProblem(args) ??
     vaultProblem(args) ??
+    pluginsProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
     rulesProblem(args) ??

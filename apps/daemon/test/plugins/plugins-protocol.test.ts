@@ -144,7 +144,7 @@ describe("plugins: protocolo", () => {
   });
 
   test("plugins.preview of a folder reads only inside the allowed roots (#3516)", async () => {
-    const inside = realpathSync(tempDir("fd-roots-"));
+    const inside = realpathSync.native(tempDir("fd-roots-"));
     const folder = join(inside, "mine");
     mkdirSync(join(folder, ".claude-plugin"), { recursive: true });
     writeFileSync(join(folder, ".claude-plugin/plugin.json"), MANIFEST);

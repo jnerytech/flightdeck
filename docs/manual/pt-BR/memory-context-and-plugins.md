@@ -47,3 +47,23 @@ agentes, os comandos e os servidores MCP, e um hash de todo o conteúdo. Hooks e
   for o conteúdo que você viu, o plugin é desinstalado na hora e a decisão fica registrada em
   `plugin-decisions.jsonl`.
 - **Marketplaces** adiciona e remove (cada um depois de uma confirmação) e atualiza.
+
+### Pelo shell
+
+```sh
+fd plugins list
+fd plugins detail deploy-tools@acme
+fd plugins preview deploy-tools@acme --json
+fd plugins preview --dir ~/work/my-plugin
+fd plugins preview-update deploy-tools@acme --host pi
+```
+
+`fd plugins` lê os mesmos plugins de um terminal. Esta primeira parte só lê: não instala, não atualiza e não remove nada. `<plugin>` é `nome@marketplace`, e `--host <nome>` consulta outro host.
+
+- **`list`:** uma linha por plugin: `installed`, a versão, o escopo, `enabled` ou `disabled` e a versão em que está fixado; depois `available` para o que os marketplaces oferecem e as linhas `marketplace`. Um host sem nenhum diz `no plugins`.
+- **`detail <plugin>`:** onde um plugin instalado está, se está fixado, o `hash` do conteúdo, se pede a sua atenção e quantos hooks, monitores, skills, agentes, comandos e servidores MCP ele traz. Um id que não está instalado sai com `1`.
+- **`preview <plugin>`:** o que uma instalação traria, uma linha por hook (os que podem decidir por você ficam marcados), monitor, skill, agente, comando e servidor MCP, e o `hash` desse conteúdo. Um plugin cuja origem não está neste host imprime `not local` e nenhum hash; sai com `0`.
+- **`preview --dir <pasta>`:** o mesmo para uma pasta local, com o resultado da validação. A pasta precisa estar dentro das pastas permitidas do host; fora delas sai com `1` e `forbidden_cwd`. Passe um plugin ou `--dir`, nunca os dois.
+- **`preview-update <plugin>`:** a cópia instalada contra a do marketplace: as duas versões e os dois hashes, e o que entrou ou saiu de cada tipo de conteúdo, ou `unchanged`.
+
+Com `--json` cada verbo imprime a resposta do daemon. Um pedido sem resposta sai com `2`.

@@ -4,13 +4,53 @@
  * `DaemonClient`, the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. Every verb here
  * is a read: what an install would bring, with the hash a later install repeats.
  */
-import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
-import type { PluginsCliArgs } from "./domain/plugins-cli-view.ts";
+import {
+  type CliResult,
+  json,
+  type RemoteTarget,
+  runOnLocalDaemon,
+  said,
+} from "../daemon-client/index.ts";
+import {
+  detailLines,
+  listLines,
+  type PluginsCliArgs,
+  previewLines,
+  updateLines,
+} from "./domain/plugins-cli-view.ts";
+
+/** A folder's preview runs the plugin manager's validation, which takes longer than a read. */
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 export function runPluginsCli(
-  _args: PluginsCliArgs,
-  _config: { bind: string; port: number; token: string },
-  _options: { timeoutMs?: number; remote?: RemoteTarget } = {},
+  args: PluginsCliArgs,
+  config: { bind: string; port: number; token: string },
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
-  return Promise.resolve({ code: 0, out: [], err: [] });
+  return runOnLocalDaemon({
+    config,
+    ...(options.remote ? { remote: options.remote } : {}),
+    clientName: "flightdeck-plugins",
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    unsure: "",
+    perform: async (daemon) => {
+      if (args.action === "list") {
+        const answer = await daemon.call("plugins.list", {});
+        return args.json ? json(answer) : said(...listLines(answer));
+      }
+      if (args.action === "detail") {
+        const answer = await daemon.call("plugins.detail", { plugin: args.plugin });
+        return args.json ? json(answer) : said(...detailLines(answer));
+      }
+      if (args.action === "preview-update") {
+        const answer = await daemon.call("plugins.previewUpdate", { plugin: args.plugin });
+        return args.json ? json(answer) : said(...updateLines(answer));
+      }
+      const answer = await daemon.call(
+        "plugins.preview",
+        "dir" in args ? { dir: args.dir } : { plugin: args.plugin },
+      );
+      return args.json ? json(answer) : said(...previewLines(answer));
+    },
+  });
 }

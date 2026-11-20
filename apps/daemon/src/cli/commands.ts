@@ -6,6 +6,7 @@ import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import type { HistoryCliArgs } from "../history/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
+import type { PluginsCliArgs } from "../plugins/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import type { VaultCliArgs } from "../vault/index.ts";
@@ -260,6 +261,17 @@ function vaultCliArgs(args: CliArgs): VaultCliArgs {
   };
   const present = Object.entries(typed).filter(([, value]) => value !== undefined);
   return { action: args.action, ...Object.fromEntries(present) } as VaultCliArgs;
+}
+
+/** What the person typed for `plugins`, as `runPluginsCli` takes it: a preview names a plugin or a folder, the parser checked which. */
+function pluginsCliArgs(args: CliArgs): PluginsCliArgs {
+  const printed = args.json ? { json: true as const } : {};
+  const plugin = args.plugin ?? "";
+  if (args.action === "list") return { action: "list", ...printed };
+  if (args.action === "detail") return { action: "detail", plugin, ...printed };
+  if (args.action === "preview-update") return { action: "preview-update", plugin, ...printed };
+  if (args.pluginDir !== undefined) return { action: "preview", dir: args.pluginDir, ...printed };
+  return { action: "preview", plugin, ...printed };
 }
 
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
@@ -663,6 +675,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       deps,
       await runVaultCli(vaultCliArgs(args), await localConfig(args)),
       args.json,
+    );
+  },
+  plugins: async (args, deps) => {
+    const { runPluginsCli } = await import("../plugins/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runPluginsCli(pluginsCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   approvers: async (args, deps) => {
