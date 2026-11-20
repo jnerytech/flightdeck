@@ -88,7 +88,8 @@ export const projectHandlers = {
       );
     }
     // #3453: with a device enrolled, the person signs the folder the daemon trusts. A link or a relative path
-    // that resolves elsewhere is refused with the folder it is, so the app asks again with that one.
+    // that resolves elsewhere is refused with the folder it is. The app signs the folder the host reported
+    // for the project, so it meets this only when that report is stale.
     const approvers = server.opts.approvers;
     if (approvers?.needsCommandProof("project.trust.set", payload) && path !== payload.path) {
       throw new FlightdeckError(
