@@ -69,7 +69,12 @@ export interface CliArgs {
     | "validation-template"
     | "pr-create"
     | "update-from-base"
-    | "merge-local";
+    | "merge-local"
+    | "arena"
+    | "start-arena"
+    | "choose-variant"
+    | "check-loop"
+    | "dismiss-unblocked";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -101,6 +106,11 @@ export interface CliArgs {
   force?: true;
   confirm?: true;
   squash?: true;
+  /** `card start-arena --variant ...` (repeats); `card choose-variant <card> <variant>`; `card check-loop <card> on|off --rounds n`. */
+  variants?: string[];
+  variant?: string;
+  loop?: "on" | "off";
+  rounds?: number;
   estimate?: string;
   validationNote?: string;
   specPath?: string;
@@ -190,6 +200,11 @@ export const USAGE = [
   "     fd card pr-create <card> [--title <text>] [--description <text>] [--json] [--config <file>]",
   "     fd card update-from-base <card> [--json] [--config <file>]",
   "     fd card merge-local <card> --confirm [--squash] [--message <text>] [--json] [--config <file>]",
+  "     fd card arena <card> [--json] [--config <file>]",
+  "     fd card start-arena <card> --variant <model[:effort[:persona]]> --variant <...> [--variant <...>] [--workflow <name>] [--json] [--config <file>]   (2 to 4 variants)",
+  "     fd card choose-variant <card> <variant> --confirm [--json] [--config <file>]   (keeps that variant, removes the others)",
+  "     fd card check-loop <card> on|off [--rounds <1 to 10>] [--confirm] [--json] [--config <file>]",
+  "     fd card dismiss-unblocked <card> [--json] [--config <file>]",
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
@@ -453,6 +468,11 @@ const HANDLERS: Record<string, Handler> = {
         "pr-create",
         "update-from-base",
         "merge-local",
+        "arena",
+        "start-arena",
+        "choose-variant",
+        "check-loop",
+        "dismiss-unblocked",
       ],
       "invalid card action",
     );
@@ -460,6 +480,13 @@ const HANDLERS: Record<string, Handler> = {
     // Every action but `list`, `new` and `templates` names the card it works on.
     if (!["list", "new", "templates"].includes(action)) args.cardId = operand(reader, "the card");
     if (action === "move") args.column = operand(reader, "the column");
+    if (action === "choose-variant") args.variant = operand(reader, "the variant");
+    if (action === "check-loop") {
+      const loop = operand(reader, "on or off");
+      if (loop !== "on" && loop !== "off")
+        throw new Error(`card check-loop: on or off, not "${loop}"\n${USAGE}`);
+      args.loop = loop;
+    }
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
@@ -498,6 +525,15 @@ const HANDLERS: Record<string, Handler> = {
     if (v.trim() === "" || !Number.isInteger(position) || position < 0)
       throw new Error(`--position needs a whole number from 0\n${USAGE}`);
     args.position = position;
+  }),
+  "--variant": setValue((args, v) => {
+    args.variants = [...(args.variants ?? []), v];
+  }),
+  "--rounds": setValue((args, v) => {
+    const rounds = Number(v);
+    if (v.trim() === "" || !Number.isInteger(rounds) || rounds < 1 || rounds > 10)
+      throw new Error(`--rounds needs a whole number from 1 to 10\n${USAGE}`);
+    args.rounds = rounds;
   }),
   "--title": setValue((args, v) => {
     args.titleFlag = v;
@@ -651,10 +687,16 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   const flagged: Array<[string, unknown, readonly string[] | null]> = [
     ["--title", args.titleFlag, ["update", "pr-create"]],
     ["--description", args.description, ["new", "update", "pr-create"]],
-    ["--workflow", args.workflow, ["start"]],
+    ["--workflow", args.workflow, ["start", "start-arena"]],
+    ["--variant", args.variants, ["start-arena"]],
+    ["--rounds", args.rounds, ["check-loop"]],
     ["--force", args.force, ["move"]],
     ["--position", args.position, ["move"]],
-    ["--confirm", args.confirm, ["complete", "discard", "delete", "merge-local"]],
+    [
+      "--confirm",
+      args.confirm,
+      ["complete", "discard", "delete", "merge-local", "choose-variant", "check-loop"],
+    ],
     ["--squash", args.squash, ["merge-local"]],
     ["--estimate", args.estimate, ["update"]],
     ["--validation-note", args.validationNote, ["update"]],
