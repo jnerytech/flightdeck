@@ -307,3 +307,10 @@ fd autoapprove resume --session <key> --confirm
 A change that gets no answer exits `2` and says it may or may not have gone in: run `rules list` or
 `autoapprove list` before trying again. Run from a session's own shell, `rules remove` and
 `autoapprove resume` are classified as high-risk commands.
+
+
+## Left in the app
+
+`webhook.send` has no command. Its payload is the webhook URL, a vault secret that only the app
+holds and hands over for one use, so a verb would make the person paste it, and would let a session post a body of
+its choice.

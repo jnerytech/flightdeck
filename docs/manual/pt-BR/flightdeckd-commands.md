@@ -309,3 +309,9 @@ fd autoapprove resume --session <chave> --confirm
 Uma mudança que fica sem resposta sai com `2` e avisa que pode ou não ter sido feita: rode `rules list` ou
 `autoapprove list` antes de tentar de novo. Rodados no shell de uma sessão, `rules remove` e
 `autoapprove resume` são classificados como comandos de risco alto.
+
+
+## Só no app
+
+`webhook.send` não tem comando. O payload é a URL do webhook, um segredo do cofre que só o app guarda e
+entrega para um uso, então um verbo faria a pessoa colá-la e deixaria uma sessão postar um corpo à sua escolha.
