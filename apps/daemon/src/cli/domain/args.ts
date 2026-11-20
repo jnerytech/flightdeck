@@ -4,6 +4,7 @@
  */
 import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
+import { ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
@@ -13,6 +14,7 @@ import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
+import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -25,63 +27,7 @@ const SERVICE_ACTIONS: readonly ServiceAction[] = [
   "start",
 ];
 
-/** Where the parser is in the command line; a handler reads the words after its own through it. */
-class ArgReader {
-  private i = 0;
-  constructor(private readonly argv: readonly string[]) {}
-
-  /** The word the parser is on, or undefined once the line is read. */
-  current(): string | undefined {
-    return this.argv[this.i];
-  }
-
-  advance(): void {
-    this.i++;
-  }
-
-  /** The next word, moving onto it. */
-  next(): string | undefined {
-    return this.argv[++this.i];
-  }
-
-  /** The next word, without moving. */
-  peek(): string | undefined {
-    return this.argv[this.i + 1];
-  }
-
-  /** Everything after the current word, which the caller then owns (the parser stops). */
-  takeRest(): string[] {
-    const rest = this.argv.slice(this.i + 1);
-    this.i = this.argv.length;
-    return rest;
-  }
-}
-
 type Handler = (args: CliArgs, reader: ArgReader, value: () => string) => void;
-
-const invalid = (what: string, got: string | undefined, none = "(none)") =>
-  new Error(`${what}: ${got ?? none}\n${USAGE}`);
-
-/** The word after a command, which must be one of `allowed`. */
-function subAction<T extends string>(
-  reader: ArgReader,
-  allowed: readonly T[],
-  what: string,
-  none?: string,
-): T {
-  const action = reader.next();
-  if (action === undefined || !(allowed as readonly string[]).includes(action)) {
-    throw invalid(what, action, none);
-  }
-  return action as T;
-}
-
-/** A name after an action (`action run <name>`); it cannot be another flag. */
-function operand(reader: ArgReader, what: string): string {
-  const next = reader.next();
-  if (next === undefined || next.startsWith("--")) throw new Error(`missing ${what}\n${USAGE}`);
-  return next;
-}
 
 const setCommand =
   (command: CliArgs["command"]): Handler =>
@@ -229,6 +175,7 @@ const HANDLERS: Record<string, Handler> = {
       args.index = index;
     }
   },
+  vault: readVault,
   approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
@@ -378,9 +325,6 @@ const HANDLERS: Record<string, Handler> = {
   roi: setCommand("roi"),
   "--hours": setValue((args, v) => {
     args.hours = wholeFrom("--hours", v, 720);
-  }),
-  "--days": setValue((args, v) => {
-    args.days = wholeFrom("--days", v, 90);
   }),
   persona: (args, reader) => {
     args.command = "persona";
@@ -631,6 +575,41 @@ const HANDLERS: Record<string, Handler> = {
   "--dry-run": setFlag((args) => {
     args.dryRun = true;
   }),
+  // `usage` keeps at most 90 days; `vault decisions` and `vault report` take up to a year.
+  "--days": setValue((args, v) => {
+    if (args.command === "usage") {
+      args.days = wholeFrom("--days", v, 90);
+      return;
+    }
+    const n = Number(v);
+    if (!/^\d+$/.test(v) || n < 1 || n > 365)
+      throw new Error(`--days: a whole number from 1 to 365, got ${v}\n${USAGE}`);
+    args.days = n;
+  }),
+  "--csv": setFlag((args) => {
+    args.csv = true;
+  }),
+  "--requester": setValue((args, v) => {
+    args.requester = oneOf("--requester", v, ["you", "claude", "automation", "workflow"]);
+  }),
+  "--purpose": setValue((args, v) => {
+    args.purpose = oneOf("--purpose", v, ["ssh", "action", "run_with_secret"]);
+  }),
+  "--action": setValue((args, v) => {
+    args.useAction = v;
+  }),
+  "--tag": setValue((args, v) => {
+    args.tags = [...(args.tags ?? []), v];
+  }),
+  "--risk": setValue((args, v) => {
+    args.risk = oneOf("--risk", v, ["low", "medium", "high"]);
+  }),
+  "--approval": setValue((args, v) => {
+    args.approval = oneOf("--approval", v, ["always", "never", "first-per-session"]);
+  }),
+  "--at": setValue((args, v) => {
+    args.at = atTime(v);
+  }),
   "--config": setValue((args, v) => {
     args.config = v;
   }),
@@ -678,17 +657,18 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "approvers",
       "rules",
       "autoapprove",
+      "vault",
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules, autoapprove and vault\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
-    !["host", "sessions", "requests", "send", "approve", "deny"].includes(args.command)
+    !["host", "sessions", "requests", "send", "approve", "deny", "vault"].includes(args.command)
   )
     throw new Error(
-      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve and deny\n${USAGE}`,
+      `--host: this flag only applies to flightdeckd host, sessions, requests, send, approve, deny and vault\n${USAGE}`,
     );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
@@ -700,14 +680,17 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
     );
-  if (!["requests", "message", "autoapprove"].includes(args.command) && args.session !== undefined)
+  if (
+    !["requests", "message", "autoapprove", "vault"].includes(args.command) &&
+    args.session !== undefined
+  )
     throw new Error(
-      `--session: this flag only applies to flightdeckd requests, message and autoapprove\n${USAGE}`,
+      `--session: this flag only applies to flightdeckd requests, message, autoapprove and vault\n${USAGE}`,
     );
-  // `history` checks its own limits (history-args.ts).
-  if (!["autoapprove", "history"].includes(args.command) && args.limit !== undefined)
+  // `history` and `vault` check their own limits (history-args.ts, vault-args.ts).
+  if (!["autoapprove", "history", "vault"].includes(args.command) && args.limit !== undefined)
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove and history\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history and vault\n${USAGE}`,
     );
   // `card new` takes its title as an operand: the flag is the title of an update.
   if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
@@ -759,6 +742,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     teamProblem(args) ??
     boardProblem(args) ??
     historyProblem(args) ??
+    vaultProblem(args) ??
     quotaProblem(args) ??
     rulesProblem(args) ??
     approversProblem(args) ??
