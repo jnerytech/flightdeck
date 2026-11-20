@@ -26,6 +26,9 @@ no lugar dele em todo canto.
   daemon do host (um pedido já fechado, uma sessão desconhecida) é uma linha simples. Uma escrita (`fd send`,
   `fd approve`, `fd deny`) que não recebe resposta avisa que a mudança pode ter sido feita: olhe
   antes de repetir.
+- **Só no app:** `webhook.send` não tem comando. O payload é a URL do webhook, um segredo do cofre que só o app guarda e
+  entrega para um uso, então um terminal teria de recebê-la como argumento ou pela entrada padrão, onde o histórico do
+  shell ou a transcrição de uma sessão a guardaria.
 - **A config:** `--config <arquivo>`, senão o caminho padrão (não com `--host`).
 
 ## fd host

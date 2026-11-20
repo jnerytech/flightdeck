@@ -25,6 +25,9 @@ works in its place everywhere.
   with a stable reason such as `unknown_host`, `no_store`, `token_refused` or `unreachable`; a refusal
   of the host's own daemon (a closed request, an unknown session) is a plain line. A write (`fd send`, `fd approve`,
   `fd deny`) that gets no answer says the change may have gone out: look before you repeat it.
+- **Only in the app:** `webhook.send` has no command. Its payload is the webhook URL, a vault secret that only the app
+  holds and hands over for one use, so a terminal would have to take it as an argument or from stdin, where shell history
+  or a session transcript would keep it.
 - **The config:** `--config <file>`, else the default path (not with `--host`).
 
 ## fd host

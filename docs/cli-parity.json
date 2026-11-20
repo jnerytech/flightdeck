@@ -478,7 +478,9 @@
   "watch.settings": {},
   "watch.trace": {},
   "watch.watch": {},
-  "webhook.send": {},
+  "webhook.send": {
+    "appOnly": "the payload carries the webhook URL, a vault secret that only the app holds and hands over for one use; a terminal would take it as an argument or from stdin, into shell history or a session transcript (#3459)"
+  },
   "workflow.list": {},
   "workflow.template.add": {},
   "workflow.templates": {},
