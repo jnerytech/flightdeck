@@ -206,3 +206,25 @@ trying again.
 `--project-path` names the project folder (relative to where you run it); without it only the host's
 personas count. `--language en` or `pt-BR` picks the language of the pack personas. With `--json` each
 command prints the daemon's answer as one JSON object.
+
+## fd rules and fd autoapprove
+
+```sh
+fd rules list --project api
+fd rules list --json
+fd autoapprove list
+fd autoapprove list --project api --session <key> --limit 20 --json
+```
+
+These read what guards a project's sessions, as the Security screen does. Neither changes anything.
+
+- **`rules list`:** the permission rules the project allows (`permissions.allow` of its
+  `.claude/settings.local.json`), one per line, as the file holds them. `--project` is the name or the id
+  of the project; a host with one project needs no `--project`. With `--json` it prints the list of rule
+  strings. A project with no rules says so, and `--json` prints an empty list.
+- **`autoapprove list`:** first the sessions whose automatic approval is suspended (they got
+  third-party content), then the decisions of the automatic approver, newest first: the time, `allow` or
+  `ask`, the risk, the tool, the session key, who decided (`rule` or `ai`) and why. `--project` and
+  `--session` keep one project or one session key; `--limit` reads 1 to 1000 decisions. With `--json` it
+  prints the daemon's answer, `decisions` and `suspended`. A secret that the approver quoted in a reason
+  is cut out.
