@@ -478,7 +478,9 @@
   "watch.settings": {},
   "watch.trace": {},
   "watch.watch": {},
-  "webhook.send": {},
+  "webhook.send": {
+    "appOnly": "the payload carries the webhook URL, a vault secret that only the app holds and hands over for one use; a CLI verb would let a session post a body of its choice and would need the person to paste the URL (#3459)"
+  },
   "workflow.list": {},
   "workflow.template.add": {},
   "workflow.templates": {},
