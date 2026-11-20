@@ -125,6 +125,13 @@ export async function setupFdLauncher(options: {
 }): Promise<string[]> {
   const { stable, platform, which } = options;
   const { path, outcome, error } = await installFdLauncher(stable, platform);
-  const notes = fdPathNotes({ launcher: path, platform, outcome, found: which("fd"), error });
+  // A PATH folder that cannot be read must not abort the rest of setup: the lookup is only advice.
+  let found: string | null = null;
+  try {
+    found = which("fd");
+  } catch {
+    found = null;
+  }
+  const notes = fdPathNotes({ launcher: path, platform, outcome, found, error });
   return outcome === "failed" ? notes : [`fd launcher: ${path} (${outcome})`, ...notes];
 }
