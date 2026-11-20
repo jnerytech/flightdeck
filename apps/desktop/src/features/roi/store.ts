@@ -8,7 +8,7 @@ import type { RoiSettings } from "./domain/roi-settings.ts";
 interface RoiHost {
   id: string;
   status: string;
-  hostInfo?: { features?: readonly string[] | undefined } | null | undefined;
+  hostInfo?: { features?: readonly string[] } | null;
 }
 
 /** What the ROI reads and asks through the app's store. */

@@ -18,7 +18,7 @@ import {
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { formatDateTime } from "@/i18n/format";
-import type { Key, T } from "@/i18n/index";
+import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { NativeSelect } from "@/shared/layout/index.ts";

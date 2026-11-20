@@ -3,7 +3,9 @@
 [Back to the manual](../en.md) · [Português (Brasil)](../pt-BR/flightdeckd-commands.md)
 
 Every `flightdeckd` command that asks the daemon of this machine works the same way. Below, `fd` is
-the short name of `flightdeckd` (see #3433); until it ships, type `flightdeckd` in its place.
+the short name of `flightdeckd`: `flightdeckd setup` installs it (see
+[flightdeckd claude and the channel](flightdeckd-claude-and-the-channel.md)), and `flightdeckd`
+works in its place everywhere.
 
 ## What they all share
 

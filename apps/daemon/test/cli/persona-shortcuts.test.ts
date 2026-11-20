@@ -9,24 +9,24 @@ const launch = (argv: string[]) => {
 
 describe("persona shortcuts: one word opens claude with a persona (#3426)", () => {
   test("`flightdeckd architect` reads as `flightdeckd claude --persona <the architect's id>`", () => {
-    expect(launch(["architect"])).toEqual(launch(["claude", "--persona", "arquiteto"]));
+    expect(launch(["architect"])).toEqual(launch(["claude", "--persona", "architect"]));
   });
 
-  test("each of the four words names its own pack persona", () => {
+  test("each of the four words is the id of its pack persona", () => {
     expect(
       ["architect", "reviewer", "security", "coordinator"].map((w) => launch([w]).claudeArgs),
     ).toEqual([
-      ["--persona", "arquiteto"],
-      ["--persona", "revisor"],
-      ["--persona", "seguranca"],
-      ["--persona", "coordenador"],
+      ["--persona", "architect"],
+      ["--persona", "reviewer"],
+      ["--persona", "security"],
+      ["--persona", "coordinator"],
     ]);
   });
 
   test("the arguments after the word go to claude after the persona's, untouched", () => {
     expect(launch(["architect", "-p", "list the files", "--model", "opus"]).claudeArgs).toEqual([
       "--persona",
-      "arquiteto",
+      "architect",
       "-p",
       "list the files",
       "--model",
@@ -37,7 +37,7 @@ describe("persona shortcuts: one word opens claude with a persona (#3426)", () =
   test("an argument that looks like a persona word, after the first, is claude's own text", () => {
     expect(launch(["reviewer", "-p", "architect"]).claudeArgs).toEqual([
       "--persona",
-      "revisor",
+      "reviewer",
       "-p",
       "architect",
     ]);
@@ -58,15 +58,15 @@ describe("persona shortcuts: one word opens claude with a persona (#3426)", () =
   test("the usage lists the four words and `new`", () => {
     const usage = (() => {
       try {
-        parseArgs(["--help"]);
+        parseArgs(["--no-such-flag"]);
       } catch (error) {
         return (error as Error).message;
       }
       return "";
     })();
     expect([
-      usage.includes("flightdeckd architect|reviewer|security|coordinator "),
-      usage.includes("flightdeckd new <persona> "),
+      usage.includes("fd architect|reviewer|security|coordinator "),
+      usage.includes("fd new <persona> "),
     ]).toEqual([true, true]);
   });
 });
