@@ -3,7 +3,7 @@ import type { Budget } from "@flightdeck/protocol";
 import { runBudgetCli } from "../../src/costs/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
-import { poll } from "../support/helpers.ts";
+import { type WatchOptions, watchedCli } from "../support/cli-watch.ts";
 
 setDefaultTimeout(20_000);
 afterEach(stopAll);
@@ -33,23 +33,17 @@ const updated = (over: { threshold?: number | null; removed?: boolean } = {}) =>
 });
 
 /** Runs `budget watch` once the daemon has it, then presses Ctrl-C when `lines` lines came. */
-async function watched(
+const watched = (
   daemon: ReturnType<typeof fakeDaemon>,
-  options: { json?: boolean; timeoutMs?: number; lines?: number; after?: () => unknown } = {},
-) {
-  const lines: string[] = [];
-  const stop = new AbortController();
-  const running = runBudgetCli(
-    { action: "watch", ...(options.json ? { json: true } : {}) },
-    config(daemon.port),
-    { timeoutMs: options.timeoutMs ?? 2000, signal: stop.signal, write: (l) => lines.push(l) },
+  options: WatchOptions & { json?: boolean } = {},
+) =>
+  watchedCli(
+    daemon,
+    "budget.watch",
+    (cfg, run) =>
+      runBudgetCli({ action: "watch", ...(options.json ? { json: true } : {}) }, cfg, run),
+    options,
   );
-  await poll(() => daemon.calls.some((c) => c.type === "budget.watch"));
-  await options.after?.();
-  await poll(() => lines.length >= (options.lines ?? 1));
-  stop.abort();
-  return { result: await running, lines };
-}
 
 describe("flightdeckd budget watch (issue #3460)", () => {
   test("it writes a line for each change, says a crossed threshold and a removal, and Ctrl-C ends it with 0", async () => {

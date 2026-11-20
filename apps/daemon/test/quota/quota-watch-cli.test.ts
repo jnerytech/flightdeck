@@ -3,6 +3,7 @@ import type { QuotaState } from "@flightdeck/protocol";
 import { parseArgs } from "../../src/main.ts";
 import { runQuotaCli } from "../../src/quota/index.ts";
 import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { type WatchOptions, watchedCli } from "../support/cli-watch.ts";
 import { poll } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
@@ -24,23 +25,17 @@ const STATE: QuotaState = {
 const updated = (state: QuotaState = STATE) => ({ type: "quota.updated", ...state });
 
 /** Runs `quota watch` once the daemon has it, then presses Ctrl-C when `lines` lines came. */
-async function watched(
+const watched = (
   daemon: ReturnType<typeof fakeDaemon>,
-  options: { json?: boolean; timeoutMs?: number; lines?: number; after?: () => unknown } = {},
-) {
-  const lines: string[] = [];
-  const stop = new AbortController();
-  const running = runQuotaCli(
-    { action: "watch", ...(options.json ? { json: true } : {}) },
-    config(daemon.port),
-    { timeoutMs: options.timeoutMs ?? 2000, signal: stop.signal, write: (l) => lines.push(l) },
+  options: WatchOptions & { json?: boolean } = {},
+) =>
+  watchedCli(
+    daemon,
+    "quota.watch",
+    (cfg, run) =>
+      runQuotaCli({ action: "watch", ...(options.json ? { json: true } : {}) }, cfg, run),
+    options,
   );
-  await poll(() => daemon.calls.some((c) => c.type === "quota.watch"));
-  await options.after?.();
-  await poll(() => lines.length >= (options.lines ?? 1));
-  stop.abort();
-  return { result: await running, lines };
-}
 
 describe("flightdeckd quota watch (issue #3460)", () => {
   test("it writes one line for each reading the daemon pushes, and Ctrl-C ends it with 0", async () => {
