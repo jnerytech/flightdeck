@@ -1,5 +1,7 @@
+import { randomBytes } from "node:crypto";
 import type { Config } from "../config.ts";
 import type { DomainModule } from "../server/index.ts";
+import { Approvers } from "./approvers.ts";
 import {
   AutoApprover,
   type AutoApproverOptions,
@@ -57,6 +59,12 @@ export function createPermissions({
     },
     usage,
   });
+  // #3439: the devices that sign a high-risk allow; its gate guards both respond paths.
+  const approvers = new Approvers(db, {
+    now: () => new Date(),
+    mono: () => performance.now(),
+    random: () => randomBytes(24).toString("base64url"),
+  });
   const module: DomainModule<"autoApprove"> = { server: { autoApprove } };
-  return { modules: [module] as const, risk, autoApprove };
+  return { modules: [module] as const, risk, autoApprove, approvers };
 }
