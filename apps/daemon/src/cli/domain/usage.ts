@@ -39,6 +39,7 @@ export const USAGE = [
   "     fd board watch [--json] [--config <file>]",
   "     fd team list [--project <name or id>] [--json] [--config <file>]",
   "     fd team show <team> [--json] [--config <file>]",
+  "     fd team new <goal> (--workers <1-8> | --worker <spec>...) [--coordinator <spec>] [--name <text>] [--check <command>...] [--project <name or id>] [--confirm] [--json] [--config <file>]   (a spec is persona[:model[:effort[:mode]]])",
   "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona show <id> [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd persona subagents [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",

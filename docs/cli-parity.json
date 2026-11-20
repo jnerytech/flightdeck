@@ -394,7 +394,9 @@
   "task.results": {},
   "teams.add_member": {},
   "teams.close": {},
-  "teams.create": {},
+  "teams.create": {
+    "cli": "team"
+  },
   "teams.delete": {},
   "teams.list": {
     "cli": "team"
