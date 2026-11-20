@@ -90,7 +90,9 @@ export interface CliArgs {
     | "close"
     | "message"
     | "remove-member"
-    | "dismiss-unblocked";
+    | "dismiss-unblocked"
+    | "search"
+    | "tool";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -165,7 +167,7 @@ export interface CliArgs {
   tools?: string[];
   permissionMode?: string;
   icon?: string;
-  /** `autoapprove list --limit`: how many decisions to read. */
+  /** `autoapprove list --limit` and `history list|search|get --limit`: how many to read. */
   limit?: number;
   /** `persona trust --hash`: the start of the hash `persona list` showed. */
   hash?: string;
@@ -199,9 +201,20 @@ export interface CliArgs {
   out?: string;
   /** `restore <file>`. */
   file?: string;
-  /** `update --from <binary> [--allow-downgrade]`. */
+  /** `update --from <binary> [--allow-downgrade]`; `history list|search --from <time>`. */
   from?: string;
   allowDowngrade?: true;
+  /** `history list|search|get|tool`: what to read (issue #3461); `--to` is `until`, `message send` has a `to` of its own. */
+  cwd?: string;
+  projectKey?: string;
+  until?: string;
+  origin?: "flightdeck" | "external";
+  hideAutomated?: true;
+  cursor?: string;
+  tail?: true;
+  claudeSessionId?: string;
+  uuid?: string;
+  index?: number;
   /** `claude [args]`: everything after `claude` belongs to the real claude. */
   claudeArgs?: string[];
   /** `askpass <prompt...>`: what ssh is asking for. */
