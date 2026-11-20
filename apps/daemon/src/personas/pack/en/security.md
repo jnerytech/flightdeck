@@ -1,5 +1,5 @@
 ---
-id: seguranca
+id: security
 name: Security reviewer
 description: Reviews changes for security flaws and explains the risk of each one
 icon: shield

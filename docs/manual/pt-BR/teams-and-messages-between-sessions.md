@@ -29,13 +29,13 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
 ## Nomes padronizados de sessão
 
 - **Toda sessão ganha um nome** quando aparece: `projeto · persona · número`, por exemplo
-  `flightdeck · revisor · 3`.
+  `flightdeck · reviewer · 3`.
   - Sem persona, a persona é `geral`.
   - A sessão de um card leva o número do card: `flightdeck · autor · card 42`.
   - O app mostra o nome no idioma dele, com o nome da persona: `flightdeck · Revisor de código · 3`.
     O alias não muda.
 - **Toda sessão ganha também um apelido:** `projeto-persona-número`, por exemplo
-  `flightdeck-revisor-3`. O apelido endereça a sessão, sozinho ou como `host/apelido` entre hosts.
+  `flightdeck-reviewer-3`. O apelido endereça a sessão, sozinho ou como `host/apelido` entre hosts.
 - **Um número nunca é reaproveitado**, nem depois que a sessão some.
 - **Renomear uma sessão** troca o nome e acrescenta um apelido. O apelido antigo continua valendo.
 - **Em Sessões:**

@@ -38,12 +38,12 @@ const TIMEOUT_MS = 30_000;
 const ROOT = resolve(import.meta.dir, "..");
 const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 const PACK = [
-  "arquiteto",
-  "seguranca",
+  "architect",
+  "security",
   "qa",
   "sre",
   "performance",
-  "revisor",
+  "reviewer",
   "docs",
   // Issue #1961: the one that turns a request into an issue, right after docs.
   "specifier",
@@ -51,7 +51,7 @@ const PACK = [
   "ux",
   "ui",
   "dba",
-  "coordenador",
+  "coordinator",
   "dev",
 ];
 
@@ -201,7 +201,7 @@ async function checkManagedSession(client: Client, project: string): Promise<voi
   const { sessionId } = await client.call<{ sessionId: string }>("session.create", {
     cwd: project,
     prompt: "[persona] quem é você?",
-    persona: { id: "seguranca" },
+    persona: { id: "security" },
   });
   await client.call("session.subscribe", { sessionId, sinceSeq: 0 });
   await until(
@@ -226,7 +226,7 @@ async function checkManagedSession(client: Client, project: string): Promise<voi
   }>("session.list", {});
   const mine = listed.sessions.find((s) => s.id === sessionId);
   check(
-    mine?.persona?.id === "seguranca" && mine.permissionMode === "plan",
+    mine?.persona?.id === "security" && mine.permissionMode === "plan",
     `selo e modo plan esperados: ${JSON.stringify(mine)}`,
   );
   log(
@@ -342,7 +342,7 @@ async function checkInteractiveWrapper(wrapper: Wrapper, starts: () => FakeStart
   } else {
     const inline = Object.keys(start.agents ?? {});
     check(
-      inline.includes("persona-revisor") && inline.includes("persona-do-projeto"),
+      inline.includes("persona-reviewer") && inline.includes("persona-do-projeto"),
       `faltaram agentes: ${inline.join(",")}`,
     );
   }
@@ -356,7 +356,7 @@ async function checkPrintWrapper(wrapper: Wrapper, starts: () => FakeStart[]): P
   const print = starts()[1];
   const agentNames = Object.keys(print?.agents ?? {});
   check(
-    agentNames.includes("persona-revisor") && agentNames.includes("persona-do-projeto"),
+    agentNames.includes("persona-reviewer") && agentNames.includes("persona-do-projeto"),
     `faltaram agentes: ${agentNames.join(",")}`,
   );
   check(

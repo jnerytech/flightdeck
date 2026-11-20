@@ -12,7 +12,7 @@ vigiam o PR a cada `board.prPollIntervalMs`:
 - só o que **piorou** começa uma rodada: um build que falha, um conflito novo, um comentário novo. A
   primeira olhada conta tudo como novo.
 
-Uma **rodada** abre a sessão do card com a persona `revisor`, com os nomes dos checks que falharam,
+Uma **rodada** abre a sessão do card com a persona `reviewer`, com os nomes dos checks que falharam,
 o fim do log do build (16 KB), o conflito e os comentários. O log e os comentários chegam à sessão
 como dado citado, nunca como instrução. A sessão corrige e faz o commit, os **checks locais** do
 projeto rodam na worktree do card e, só se todos passarem, o host faz o push, para a branch do

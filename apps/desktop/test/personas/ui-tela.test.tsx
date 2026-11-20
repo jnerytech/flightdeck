@@ -138,10 +138,10 @@ describe("personas-ui: the library", () => {
     const { repo } = await open();
     await choose("Projeto", repo);
     await click("Publicar Revisor de segurança como agente do projeto");
-    expect(existsSync(join(repo, ".claude", "agents", "persona-seguranca.md"))).toBe(false);
+    expect(existsSync(join(repo, ".claude", "agents", "persona-security.md"))).toBe(false);
     await click("Publicar");
-    await settle(() => existsSync(join(repo, ".claude", "agents", "persona-seguranca.md")));
-    expect(existsSync(join(repo, ".claude", "agents", "persona-seguranca.md"))).toBe(true);
+    await settle(() => existsSync(join(repo, ".claude", "agents", "persona-security.md")));
+    expect(existsSync(join(repo, ".claude", "agents", "persona-security.md"))).toBe(true);
   });
 
   test("Cancelar keeps everything: the removal, the publication and the editor", async () => {
@@ -157,7 +157,7 @@ describe("personas-ui: the library", () => {
     await choose("Projeto", repo);
     await click("Publicar Revisor de segurança como agente do projeto");
     await click("Cancelar");
-    expect(existsSync(join(repo, ".claude", "agents", "persona-seguranca.md"))).toBe(false);
+    expect(existsSync(join(repo, ".claude", "agents", "persona-security.md"))).toBe(false);
     await click("Nova persona");
     expect(screen.queryByRole("button", { name: "Salvar persona" })).not.toBeNull();
     await click("Cancelar");

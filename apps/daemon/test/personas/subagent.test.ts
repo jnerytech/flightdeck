@@ -29,7 +29,7 @@ describe("personas-subagente: o que vira agente", () => {
     });
     // A persona with no tools or model leaves them out: the agent inherits the session's.
     expect(agents["persona-docs"]).not.toHaveProperty("tools");
-    expect(agents["persona-revisor"]).toMatchObject({
+    expect(agents["persona-reviewer"]).toMatchObject({
       description: expect.stringContaining("Revisa legibilidade"),
       tools: ["Read", "Grep", "Glob", "Bash"],
       model: "claude-sonnet-5-5",
@@ -39,11 +39,11 @@ describe("personas-subagente: o que vira agente", () => {
 
   test("a do projeto vale mais que a do host e a do pacote; sem confiança, fica de fora e é avisada", async () => {
     const { personas, project, writeProject } = setup();
-    const hash = writeProject("revisor", "Revisor do projeto", "Corpo do projeto.");
+    const hash = writeProject("reviewer", "Revisor do projeto", "Corpo do projeto.");
     writeProject("novo", "Novo", "Outro.");
-    await personas.trust(project, "revisor", hash);
+    await personas.trust(project, "reviewer", hash);
     const { agents, untrusted } = await personas.subagents({ projectPath: project });
-    expect(agents["persona-revisor"]?.prompt).toBe("Corpo do projeto.");
+    expect(agents["persona-reviewer"]?.prompt).toBe("Corpo do projeto.");
     expect(agents).not.toHaveProperty("persona-novo");
     expect(untrusted).toEqual(["novo"]);
     // An untrusted project file does not even stand in for the pack's persona of the same id.
@@ -72,9 +72,9 @@ describe("personas-subagente: sessão gerenciada", () => {
     cleanups.push(() => manager.shutdown());
     await start({ cwd: project, prompt: "oi" });
     const names = Object.keys(runtime.starts[0]?.agents ?? {});
-    expect(names).toContain("persona-revisor");
+    expect(names).toContain("persona-reviewer");
     expect(names).toHaveLength(14);
-    expect(runtime.starts[0]?.agents?.["persona-seguranca"]).toMatchObject({
+    expect(runtime.starts[0]?.agents?.["persona-security"]).toMatchObject({
       tools: ["Read", "Grep", "Glob", "Bash"],
       model: "claude-opus-5-5",
     });
@@ -127,20 +127,20 @@ describe("personas-subagente: publicar como agente do projeto", () => {
     });
     expect(
       await codeOf(() =>
-        personas.publishAgent({ id: "seguranca", projectPath: project, confirm: false }),
+        personas.publishAgent({ id: "security", projectPath: project, confirm: false }),
       ),
     ).toBe("invalid_state");
     expect(published).toEqual([]);
     const done = await personas.publishAgent({
-      id: "seguranca",
+      id: "security",
       projectPath: project,
       confirm: true,
     });
-    expect(done.path.endsWith("persona-seguranca.md")).toBe(true);
+    expect(done.path.endsWith("persona-security.md")).toBe(true);
     expect(published).toEqual([
       {
         projectPath: project,
-        name: "persona-seguranca",
+        name: "persona-security",
         description: expect.stringContaining("Revisa mudanças"),
         prompt: expect.stringContaining("Não altere código"),
         tools: ["Read", "Grep", "Glob", "Bash"],

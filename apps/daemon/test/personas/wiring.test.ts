@@ -44,13 +44,13 @@ function setup() {
 describe("personas-wiring: the personas the daemon builds (#1593)", () => {
   test("a new session opens in a pack persona read from the store", async () => {
     const { prepare, project } = setup();
-    const prepared = await prepare({ id: "revisor", language: "en" }, project);
-    expect([prepared.persona?.source, prepared.persona?.persona.id]).toEqual(["pack", "revisor"]);
+    const prepared = await prepare({ id: "reviewer", language: "en" }, project);
+    expect([prepared.persona?.source, prepared.persona?.persona.id]).toEqual(["pack", "reviewer"]);
   });
 
   test("a persona is published through the agent editor given", async () => {
     const { personaStore, project, written } = setup();
-    await personaStore.publishAgent({ id: "revisor", projectPath: project, confirm: true });
-    expect(written).toEqual(["agent project .claude/agents/persona-revisor.md"]);
+    await personaStore.publishAgent({ id: "reviewer", projectPath: project, confirm: true });
+    expect(written).toEqual(["agent project .claude/agents/persona-reviewer.md"]);
   });
 });

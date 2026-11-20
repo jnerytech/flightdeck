@@ -55,7 +55,7 @@ describe("personas-pacote: as catorze", () => {
   });
 
   test("a de segurança é a do exemplo da spec: só lê, em modo plan, com esforço alto", () => {
-    const security = packPersonas("pt-BR").find((p) => p.id === "seguranca");
+    const security = packPersonas("pt-BR").find((p) => p.id === "security");
     expect(security).toMatchObject({
       name: "Revisor de segurança",
       icon: "shield",
@@ -66,14 +66,14 @@ describe("personas-pacote: as catorze", () => {
     });
     expect(security?.body).toMatch(/Não altere código/);
     // The ones that only read have no way to write.
-    for (const id of ["seguranca", "revisor", "dba"]) {
+    for (const id of ["security", "reviewer", "dba"]) {
       const tools = packPersonas("pt-BR").find((p) => p.id === id)?.tools ?? [];
       expect([id, tools.some((tool) => ["Write", "Edit", "NotebookEdit"].includes(tool))]).toEqual([
         id,
         false,
       ]);
     }
-    expect(packPersonas("pt-BR").find((p) => p.id === "arquiteto")?.permissionMode).toBe("plan");
+    expect(packPersonas("pt-BR").find((p) => p.id === "architect")?.permissionMode).toBe("plan");
   });
 
   test("a ux recomenda e não altera código: Opus em esforço alto, só lê, com severidade, heurística, evidência e confiança (#1936)", () => {
@@ -263,7 +263,7 @@ describe("personas-pacote: as catorze", () => {
 
   test("o arquiteto desenha por domínio e responsabilidade única: módulos profundos, núcleo puro, sem ciclos, testes de comportamento (#1589)", () => {
     for (const language of ["pt-BR", "en"] as const) {
-      const body = packPersonas(language).find((p) => p.id === "arquiteto")?.body ?? "";
+      const body = packPersonas(language).find((p) => p.id === "architect")?.body ?? "";
       const must =
         language === "en"
           ? [
@@ -293,7 +293,7 @@ describe("personas-pacote: as catorze", () => {
 
   test("a coordenadora só lê e coordena: confere com o Bash, fala com as executoras pelo MCP do Flightdeck e não implementa", () => {
     for (const language of ["pt-BR", "en"] as const) {
-      const coordinator = packPersonas(language).find((p) => p.id === "coordenador");
+      const coordinator = packPersonas(language).find((p) => p.id === "coordinator");
       expect([language, coordinator?.tools]).toEqual([
         language,
         ["Read", "Grep", "Glob", "Bash", "mcp__flightdeck"],
@@ -307,20 +307,20 @@ describe("personas-pacote: as catorze", () => {
         expect([language, tool, coordinator?.body.includes(tool)]).toEqual([language, tool, true]);
       }
     }
-    const pt = packPersonas("pt-BR").find((p) => p.id === "coordenador");
+    const pt = packPersonas("pt-BR").find((p) => p.id === "coordinator");
     expect(pt?.name).toBe("Coordenador de time");
     expect(pt?.body).toMatch(/Não implemente/);
-    expect(packPersonas("en").find((p) => p.id === "coordenador")?.body).toMatch(
+    expect(packPersonas("en").find((p) => p.id === "coordinator")?.body).toMatch(
       /Do not implement/,
     );
   });
 
   test("a coordenadora editada volta ao original com o restaurar", async () => {
     const { personas } = setup();
-    await personas.save({ scope: "host", persona: edit("coordenador", "Coordene do meu jeito.") });
-    expect((await personas.get("coordenador", {})).modified).toBe(true);
-    expect(personas.reset("coordenador", {})).toMatchObject({
-      id: "coordenador",
+    await personas.save({ scope: "host", persona: edit("coordinator", "Coordene do meu jeito.") });
+    expect((await personas.get("coordinator", {})).modified).toBe(true);
+    expect(personas.reset("coordinator", {})).toMatchObject({
+      id: "coordinator",
       scope: "pack",
       modified: false,
       name: "Coordenador de time",
