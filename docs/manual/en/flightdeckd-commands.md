@@ -20,9 +20,10 @@ works in its place everywhere.
   printed, and `--token` and `--config` are refused with `--host`. A refusal is exit `1`: an unknown
   or ambiguous name (the message lists the known hosts), no credential store (pair from the app),
   a plain `ws://` address outside a private network, or a token the host no longer accepts (pair
-  the host again in the app). A host that does not answer is exit `2`. With `--json` a refusal is
-  one JSON line on stderr, `{"error": "...", "reason": "..."}`, with a stable reason such as
-  `unknown_host`, `no_store`, `token_refused` or `unreachable`. A write (`fd send`, `fd approve`,
+  the host again in the app). A host that does not answer is exit `2`. With `--json`, a refusal
+  that comes from reaching the host is one JSON line on stderr, `{"error": "...", "reason": "..."}`,
+  with a stable reason such as `unknown_host`, `no_store`, `token_refused` or `unreachable`; a refusal
+  of the host's own daemon (a closed request, an unknown session) is a plain line. A write (`fd send`, `fd approve`,
   `fd deny`) that gets no answer says the change may have gone out: look before you repeat it.
 - **The config:** `--config <file>`, else the default path (not with `--host`).
 

@@ -20,9 +20,10 @@ no lugar dele em todo canto.
   impresso, e `--token` e `--config` são recusados com `--host`. Uma recusa é saída `1`: nome
   desconhecido ou ambíguo (a mensagem lista os hosts conhecidos), sem cofre de credenciais (pareie
   pelo app), endereço `ws://` simples fora de rede privada, ou um token que o host não aceita mais
-  (pareie o host de novo no app). Um host que não responde é saída `2`. Com `--json`, uma recusa é
-  uma linha JSON no stderr, `{"error": "...", "reason": "..."}`, com um motivo estável como
-  `unknown_host`, `no_store`, `token_refused` ou `unreachable`. Uma escrita (`fd send`,
+  (pareie o host de novo no app). Um host que não responde é saída `2`. Com `--json`, uma recusa
+  de alcançar o host é uma linha JSON no stderr, `{"error": "...", "reason": "..."}`, com um motivo
+  estável como `unknown_host`, `no_store`, `token_refused` ou `unreachable`; uma recusa do próprio
+  daemon do host (um pedido já fechado, uma sessão desconhecida) é uma linha simples. Uma escrita (`fd send`,
   `fd approve`, `fd deny`) que não recebe resposta avisa que a mudança pode ter sido feita: olhe
   antes de repetir.
 - **A config:** `--config <arquivo>`, senão o caminho padrão (não com `--host`).
