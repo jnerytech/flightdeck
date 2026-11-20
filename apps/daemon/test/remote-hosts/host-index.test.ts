@@ -42,6 +42,17 @@ describe("remote hosts: reading the name index (#3429)", () => {
     expect(await readHostIndex(indexFile().path, (me ?? 0) + 1)).toBeNull();
   });
 
+  test.skipIf(me === null)(
+    "a file that group or others can write to is refused: its names could be swapped",
+    async () => {
+      for (const mode of [0o666, 0o620, 0o602]) {
+        const { path } = indexFile();
+        chmodSync(path, mode);
+        expect({ mode, hosts: await readHostIndex(path, me) }).toEqual({ mode, hosts: null });
+      }
+    },
+  );
+
   test("text that is not the index is no index", async () => {
     expect(await readHostIndex(indexFile("not json").path, me)).toBeNull();
   });

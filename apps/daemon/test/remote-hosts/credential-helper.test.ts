@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { chmodSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { locateHelper, readCredential } from "../../src/remote-hosts/credential-helper.ts";
+import {
+  boundedExec,
+  locateHelper,
+  readCredential,
+} from "../../src/remote-hosts/credential-helper.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const ID = "0b9f3c2e-4f4a-4c53-9d0b-6a7d1e5c8f10";

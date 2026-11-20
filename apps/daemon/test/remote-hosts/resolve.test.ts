@@ -93,6 +93,14 @@ describe.skipIf(me === null)(
       expect(JSON.stringify(bad)).not.toContain("pw@");
     });
 
+    test("the address that is dialled is the parsed one, the one that was judged", async () => {
+      const got = await resolveHost(
+        "server",
+        machine({ url: "WSS://Server.Example.COM:443/v1/ws" }).deps,
+      );
+      expect(got.ok ? got.target.url : null).toBe("wss://server.example.com/v1/ws");
+    });
+
     test("the name a person typed cannot drive the terminal in the message", async () => {
       const got = await refused("\u001b[2Jserver");
       expect(got.err.join(" ")).toContain("server");

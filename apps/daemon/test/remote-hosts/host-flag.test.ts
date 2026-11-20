@@ -105,6 +105,14 @@ describe.skipIf(me === null)(
       expect(run.err.join(" ")).toContain("read from the config file only");
     });
 
+    test("--config is refused here: the config of this machine plays no part with --host", async () => {
+      const { run } = await onHost(["host", "--host", "server", "--config", "/etc/other.json"], {});
+      expect({ code: run.code, err: run.err.join(" ") }).toEqual({
+        code: 1,
+        err: expect.stringContaining("--config"),
+      });
+    });
+
     test("an unknown name is exit 1: plain text, or one JSON line with its reason under --json", async () => {
       const plain = await onHost(["host", "--host", "nope"], {});
       expect({ code: plain.run.code, err: plain.run.err }).toEqual({
