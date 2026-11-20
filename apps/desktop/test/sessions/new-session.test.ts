@@ -131,6 +131,13 @@ describe("startChoices", () => {
       model: "haiku",
     });
   });
+
+  test("a remembered bypass is not the start on a host that does not offer it", () => {
+    expect(startChoices({ mode: "bypassPermissions" }).mode).toBe("default");
+    expect(startChoices({ mode: "bypassPermissions" }, "bypassPermissions").mode).toBe(
+      "bypassPermissions",
+    );
+  });
 });
 
 describe("choicesToKeep", () => {
