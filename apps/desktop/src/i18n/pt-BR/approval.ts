@@ -25,6 +25,8 @@ export const approval = {
     removedLocal: "A chave deste dispositivo foi removida.",
     commandsUnchecked:
       "Este host não pede a confirmação de um dispositivo ao fazer merge: atualize-o para proteger os merges.",
+    bypassUnchecked:
+      "Este host não pede a confirmação de um dispositivo para ligar Ignorar permissões: atualize-o para proteger essa chave.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",
     scope:
       "Isto protege as aprovações feitas pelo app. Quem tem um terminal no host ainda pode zerar.",

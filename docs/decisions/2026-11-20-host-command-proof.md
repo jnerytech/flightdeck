@@ -197,3 +197,17 @@ issue, with `terminal.settings` and `mcp.save` first.
   restarts a busy host.
 - A host with a key that announces the gate protects these three; a host that does not (an older daemon) shows
   the per-command notice that #3453 adds.
+
+## Built: `host.bypass` (#3507, step 1)
+
+- The host announces `approval-bypass` (`FEATURE_APPROVAL_BYPASS`) when it has an approvers store. With a key
+  enrolled, `host.bypass { allow: true, confirm: true }` takes a proof over exactly that payload; `allow: false`
+  stays open. The handler checks `confirm` first, so an unconfirmed request does not burn the challenge.
+- `commandNeedsProof` gains one rule for both narrowing commands: `project.trust.set` is open for
+  `trusted: false`, `host.bypass` for `allow: false`, and a missing or odd value is gated.
+- The Rust signer reads only a confirmed turn-on (exactly `allow` and `confirm`, both `true`); a turn-off is
+  never signed. The dialog names the host and its buttons say "Turn on" and "Cancel".
+- The app proves with `FEATURE_APPROVAL_BYPASS`, not `approval-command`: a host that checks merges but not
+  the switch gets the plain payload, and its page shows a notice (`approvalDevices.bypassUnchecked`).
+- There is no CLI verb for `host.bypass`; the parity row stays as it is. When a verb is added it follows the
+  rule above.

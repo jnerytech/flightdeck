@@ -178,6 +178,11 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
       {!status.protectionOff && store.approval.commandsUnchecked(host.id) && (
         <InlineNotice tone="warn">{t("approvalDevices.commandsUnchecked")}</InlineNotice>
       )}
+      {!status.protectionOff &&
+        !store.approval.commandsUnchecked(host.id) &&
+        store.approval.bypassUnchecked(host.id) && (
+          <InlineNotice tone="warn">{t("approvalDevices.bypassUnchecked")}</InlineNotice>
+        )}
       {status.keys.length > 0 && (
         <Stack as="ul" gap={2} label={t("approvalDevices.listLabel")}>
           {status.keys.map((key) => (

@@ -30,6 +30,14 @@ import { hasFeature } from "../../lib/version.ts";
 import type { Platform } from "../../platform/types.ts";
 import { decodeAdd, encodeAdd, fingerprintOf, isDeviceName, keyIdOf } from "./add-text.ts";
 
+/** The host feature that says it checks the proof of each guarded command. */
+const COMMAND_FEATURE: Record<ProofCommand, string> = {
+  "card.pr.merge": FEATURE_APPROVAL_COMMAND,
+  "project.trust.set": FEATURE_APPROVAL_COMMAND,
+  "autoapprove.resume": FEATURE_APPROVAL_COMMAND,
+  "host.bypass": FEATURE_APPROVAL_BYPASS,
+};
+
 /** The payload of a guarded merge, or the person's no (#3453). */
 type MergePayload = { kind: "payload"; payload: MergeBody } | { kind: "declined" };
 
@@ -245,14 +253,17 @@ export class ApprovalSlice {
     );
   }
 
-  /** Stub (#3507): the payload that turns bypass on. */
-  async bypassPayload(_hostId: string): Promise<BypassPayload> {
-    return { kind: "declined" };
-  }
-
-  /** Stub (#3507): a host that checks proofs but not the bypass switch. */
-  bypassUnchecked(_hostId: string): boolean {
-    return false;
+  /**
+   * The host checks the proof of an allow but not of turning bypass on (#3507): it predates the switch's
+   * guard, so a session could turn it back on with no device. A host the app has no features for is not said to be one.
+   */
+  bypassUnchecked(hostId: string): boolean {
+    const features = this.core.host(hostId)?.features;
+    return (
+      features !== undefined &&
+      hasFeature(features, FEATURE_APPROVAL_PROOF, false) &&
+      !hasFeature(features, FEATURE_APPROVAL_BYPASS, false)
+    );
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
@@ -510,7 +521,7 @@ export class ApprovalSlice {
     command: ProofCommand,
     payload: Record<string, unknown>,
   ): Promise<ProofResult> {
-    const signer = await this.signer(hostId, FEATURE_APPROVAL_COMMAND);
+    const signer = await this.signer(hostId, COMMAND_FEATURE[command]);
     if (!signer) return { kind: "none" };
     const challenge = await this.ask(hostId, "approval.challenge", { purpose: "command", command });
     const digest = commandDigest(payload);
@@ -545,6 +556,21 @@ export class ApprovalSlice {
     return {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...bound, proof: proof.proof } : bound,
+    };
+  }
+
+  /**
+   * The payload that turns bypass on (#3507), with the device's proof over it when the host checks it and has
+   * a device enrolled; a host from before the feature gets the plain payload. Turning it off is open and has
+   * no payload here. `declined`: the person said no in the system's dialog.
+   */
+  async bypassPayload(hostId: string): Promise<BypassPayload> {
+    const plain: BypassBody = { allow: true, confirm: true };
+    const proof = await this.proveCommand(hostId, "host.bypass", { ...plain });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
     };
   }
 

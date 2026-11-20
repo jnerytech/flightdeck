@@ -65,6 +65,10 @@ until then the hold of the Approve button is the only check, as before.
   (merge commit or squash). Cancel it and nothing is sent. If someone pushes to the pull request after the
   app read it, the host refuses the merge and says the pull request changed: look at it again. A host that
   does not yet ask for the device on a merge shows a notice on its page: update it.
+- **Bypass permissions.** With a device enrolled, **Allow sessions without prompts** on the host's page asks
+  you once more in a window of the system, and the window names the host. Cancel it and nothing is sent.
+  **Turn off** asks nothing. A session can no longer turn Bypass back on by itself, because it has no device
+  to sign. A host that does not yet ask for the device here shows a notice on its page: update it.
 - **A warning.** If protection was on and the host now lists no device, the panel says so. If you did not
   reset it at the host, someone with access to it did.
 - **What it does not cover.** It guards approvals made from the app. Anyone with a terminal on the host

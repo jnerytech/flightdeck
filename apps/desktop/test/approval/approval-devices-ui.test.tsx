@@ -39,7 +39,7 @@ function panel(
   statuses: Status[],
   language: "en" | "pt-BR" = "en",
   failures: Error[] = [],
-  opts: { declined?: boolean; gate?: Promise<void>; older?: boolean } = {},
+  opts: { declined?: boolean; gate?: Promise<void>; older?: boolean; bypassOlder?: boolean } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -61,6 +61,7 @@ function panel(
       return opts.declined ? "declined" : "done";
     };
   slice.commandsUnchecked = () => opts.older === true;
+  slice.bypassUnchecked = () => opts.bypassOlder === true;
   slice.enroll = record("enroll");
   slice.revoke = record("revoke");
   slice.removeLocalKey = record("removeLocal");
@@ -183,6 +184,24 @@ describe("approval devices panel: what the person did and what the host said (#3
     expect(
       screen.queryByText(/não pede a confirmação de um dispositivo ao fazer merge/) !== null,
     ).toBe(true);
+  });
+
+  test("a host that checks merges but not the bypass switch says so, in both languages, and not when it has no device enrolled (#3507)", async () => {
+    panel([HERE], "en", [], { bypassOlder: true });
+    await settleMaybe(() => screen.queryByText(/turn on Bypass permissions/) !== null);
+    expect(
+      screen.queryByText(/does not ask for a device to turn on Bypass permissions/) !== null,
+    ).toBe(true);
+    cleanup();
+    panel([HERE], "pt-BR", [], { bypassOlder: true });
+    await settleMaybe(() => screen.queryByText(/para ligar Ignorar permissões/) !== null);
+    expect(
+      screen.queryByText(/não pede a confirmação de um dispositivo para ligar Ignorar/) !== null,
+    ).toBe(true);
+    cleanup();
+    panel([OFF], "en", [], { bypassOlder: true });
+    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
+    expect(screen.queryByText(/turn on Bypass permissions/) === null).toBe(true);
   });
 
   test("a host that checks merges, or has no device enrolled, says nothing of it", async () => {

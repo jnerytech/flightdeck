@@ -27,6 +27,8 @@ pub enum Kind {
 pub enum CommandAsk {
     /// `card.pr.merge`: this pull request, at this head commit, by this method.
     PrMerge { url: String, head: String, method: String },
+    /// `host.bypass` with `allow: true`: sessions of this host may start with every permission check off (#3507).
+    Bypass,
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -266,6 +268,14 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
         }
+        // Only the turn-on is signed (turning it off is open and never asks a key), and only once confirmed.
+        "host.bypass" => {
+            let on = |key: &str| fields.get(key) == Some(&serde_json::Value::Bool(true));
+            if fields.len() != 2 || !on("allow") || !on("confirm") {
+                return Err("a bypass switch is signed only to turn it on, confirmed, with no other field".into());
+            }
+            Ok((CommandAsk::Bypass, "{\"allow\":true,\"confirm\":true}".to_string()))
+        }
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -371,6 +381,14 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
                 short(head)
             ),
+            Some(CommandAsk::Bypass) if pt => format!(
+                "Deixar as sessões do host {} rodarem sem nenhuma verificação de permissão? Continue só se você acabou de ligar isso no Flightdeck.",
+                short(&ask.host)
+            ),
+            Some(CommandAsk::Bypass) => format!(
+                "Let sessions on host {} run with every permission check off? Continue only if you just turned this on in Flightdeck.",
+                short(&ask.host)
+            ),
             None => String::new(),
         },
     };
@@ -380,10 +398,12 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
 
 /// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
 /// does not add a device.
-pub fn confirm_labels(kind: Kind, lang: &str) -> (String, String) {
-    let (yes, no) = match (kind, lang == "pt-BR") {
+pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
+    let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
         (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
+        (Kind::Command, false) if ask.command == Some(CommandAsk::Bypass) => ("Turn on", "Cancel"),
+        (Kind::Command, true) if ask.command == Some(CommandAsk::Bypass) => ("Ligar", "Cancelar"),
         (Kind::Command, false) => ("Merge", "Cancel"),
         (Kind::Command, true) => ("Mesclar", "Cancelar"),
         (_, false) => ("Allow", "Cancel"),
@@ -401,6 +421,11 @@ mod tests {
     use sha2::{Digest, Sha256};
 
     const DAEMON: &str = "daemon-0123456789";
+
+    /// An ask of `kind` with nothing else in it: what the buttons of a kind are read from.
+    fn bare(kind: Kind) -> Ask {
+        Ask { kind, host: DAEMON.into(), subject: "x".into(), also: Also::default(), command: None }
+    }
 
     #[test]
     fn a_key_has_a_32_byte_scalar_and_a_new_one_each_time() {
@@ -649,10 +674,10 @@ mod tests {
         assert_eq!(ask.host, DAEMON);
         assert!(confirm_text(&ask, "en").1.contains("host daemon-0"), "{}", confirm_text(&ask, "en").1);
         assert!(confirm_text(&ask, "pt-BR").1.contains("host daemon-0"));
-        assert_eq!(confirm_labels(Kind::EnrollAdd, "en"), ("Add device".to_string(), "Cancel".to_string()));
-        assert_eq!(confirm_labels(Kind::EnrollAdd, "pt-BR").0, "Adicionar dispositivo");
-        assert_eq!(confirm_labels(Kind::Approve, "en").0, "Allow");
-        assert_eq!(confirm_labels(Kind::Revoke, "pt-BR").0, "Permitir");
+        assert_eq!(confirm_labels(&bare(Kind::EnrollAdd), "en"), ("Add device".to_string(), "Cancel".to_string()));
+        assert_eq!(confirm_labels(&bare(Kind::EnrollAdd), "pt-BR").0, "Adicionar dispositivo");
+        assert_eq!(confirm_labels(&bare(Kind::Approve), "en").0, "Allow");
+        assert_eq!(confirm_labels(&bare(Kind::Revoke), "pt-BR").0, "Permitir");
     }
 
     #[test]
@@ -716,7 +741,7 @@ mod tests {
         assert!(en.contains("secret") && en.contains("act-7") && en.contains("once"), "{en}");
         let (_, pt) = confirm_text(&session, "pt-BR");
         assert!(pt.contains("segredo") && pt.contains("act-7") && pt.contains("sessão"), "{pt}");
-        assert_eq!(confirm_labels(Kind::VaultApprove, "en").0, "Allow");
+        assert_eq!(confirm_labels(&bare(Kind::VaultApprove), "en").0, "Allow");
     }
 
     /// The payload a merge signs, in canonical form, and the hash both sides share (the protocol test asserts the same two literals).
@@ -827,7 +852,58 @@ mod tests {
         assert!(!en.contains(&"a".repeat(40)), "the head is shown short: {en}");
         let (_, pt) = confirm_text(&merge_ask(), "pt-BR");
         assert!(pt.contains("pull/9") && pt.contains("squash") && pt.contains("Flightdeck"), "{pt}");
-        assert_eq!(confirm_labels(Kind::Command, "en").0, "Merge");
-        assert_eq!(confirm_labels(Kind::Command, "pt-BR").0, "Mesclar");
+        assert_eq!(confirm_labels(&merge_ask(), "en").0, "Merge");
+        assert_eq!(confirm_labels(&merge_ask(), "pt-BR").0, "Mesclar");
+    }
+
+    /// The payload a bypass turn-on signs, and the hash both sides share (the protocol test asserts the same canonical text).
+    const BYPASS_PAYLOAD: &str = "{\"allow\":true,\"confirm\":true}";
+    const BYPASS_HASH: &str = "2ce79890e0ec3a64a198f2d1f21fab775c0f33e6bbccb797ed642ba413136f67";
+
+    fn bypass_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "host.bypass".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::Bypass),
+        }
+    }
+
+    #[test]
+    fn a_bypass_turn_on_is_read_from_its_payload_in_any_key_order() {
+        let me = own();
+        assert_eq!(sha256_hex(BYPASS_PAYLOAD), BYPASS_HASH);
+        let text = command(&me, DAEMON, "host.bypass", BYPASS_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(BYPASS_PAYLOAD)), Ok(bypass_ask()));
+        let shuffled = "{\"confirm\":true,\"allow\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(bypass_ask()));
+    }
+
+    #[test]
+    fn a_bypass_payload_that_is_not_a_confirmed_turn_on_is_not_signed() {
+        let me = own();
+        for payload in [
+            "{\"allow\":false,\"confirm\":true}",
+            "{\"allow\":true,\"confirm\":false}",
+            "{\"allow\":true}",
+            "{\"allow\":\"true\",\"confirm\":true}",
+            "{\"allow\":true,\"confirm\":true,\"path\":\"/\"}",
+            "{\"allow\":true,\"confirm\":true,\"proof\":{}}",
+            "[{\"allow\":true,\"confirm\":true}]",
+        ] {
+            let text = command(&me, DAEMON, "host.bypass", payload);
+            assert!(describe_with(&text, DAEMON, &me, Some(payload)).is_err(), "signed: {payload}");
+        }
+    }
+
+    #[test]
+    fn the_dialog_of_a_bypass_turn_on_names_the_host_and_has_its_own_buttons() {
+        let (_, en) = confirm_text(&bypass_ask(), "en");
+        assert!(en.contains("permission check") && en.contains(&DAEMON[..8]), "{en}");
+        let (_, pt) = confirm_text(&bypass_ask(), "pt-BR");
+        assert!(pt.contains("verificação de permissão") && pt.contains("Flightdeck"), "{pt}");
+        assert_eq!(confirm_labels(&bypass_ask(), "en").0, "Turn on");
+        assert_eq!(confirm_labels(&bypass_ask(), "pt-BR").0, "Ligar");
     }
 }

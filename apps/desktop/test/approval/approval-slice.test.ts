@@ -730,7 +730,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
   });
 
   const BYPASS_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_COMMAND, FEATURE_APPROVAL_BYPASS];
-  const ON = { allow: true, confirm: true };
+  const ON = { allow: true, confirm: true } as const;
 
   test("turning bypass on carries the proof over exactly {allow, confirm}, signed with this device's key (#3507)", async () => {
     const { slice, log, keyLog } = approval({ features: BYPASS_HOST });
