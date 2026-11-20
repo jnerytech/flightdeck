@@ -185,6 +185,7 @@ describe("server-registry", () => {
         "card.message",
         "card.move",
         "card.pr.create",
+        "card.pr.head",
         "card.pr.merge",
         "card.review",
         "card.spec",
