@@ -125,7 +125,7 @@ describe("card merge-local (issue #3454)", () => {
     expect(calls).toEqual([
       { type: "card.mergeLocal", payload: { cardId: "c1", mode: "merge", confirm: true } },
     ]);
-    expect(result.out).toEqual(["merged c1  Card c1"]);
+    expect(result.out).toEqual(["merged c1  card c1"]);
   });
 
   test("--squash and --message go to the daemon", async () => {
