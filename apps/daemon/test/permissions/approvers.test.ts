@@ -38,7 +38,7 @@ function setup() {
   const approvers = new Approvers(store.db, {
     now: () => new Date(clock.wall),
     mono: () => clock.mono,
-    random: () => `rnd-${++n}-${"x".repeat(24)}`,
+    random: () => `rnd-${++n}-${"x".repeat(32)}`,
   });
   const open = (code: string, minutes = 10) =>
     approvers.store.openWindow(sha256Hex(code), new Date(clock.wall + minutes * 60_000));

@@ -186,6 +186,8 @@ export const approvalCommands = [
 export interface ApprovalKeyInfo {
   keyId: string;
   name: string;
+  /** The name the app said hello with when it enrolled. */
+  client: string;
   enrolledAt: string;
   /** The address the daemon saw when it enrolled. */
   address: string;

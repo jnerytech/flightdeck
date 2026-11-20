@@ -1,4 +1,4 @@
-import { createHash, createPublicKey, verify } from "node:crypto";
+import { createHash, createPublicKey, type KeyObject, verify } from "node:crypto";
 import {
   type ApprovalAnswer,
   type ApprovalProof,
@@ -33,17 +33,30 @@ export function keyIdOf(publicKey: string): string {
   return createHash("sha256").update(Buffer.from(publicKey, "base64")).digest("hex");
 }
 
-/** ECDSA P-256 over SHA-256, the signature in IEEE P1363 form (base64); false for anything malformed. */
-export function verifySignature(publicKey: string, message: string, signature: string): boolean {
+/** The key behind a base64 SPKI text; undefined unless it is an ECDSA P-256 public key. */
+function p256Key(publicKey: string): KeyObject | undefined {
   try {
     const key = createPublicKey({
       key: Buffer.from(publicKey, "base64"),
       format: "der",
       type: "spki",
     });
-    if (key.asymmetricKeyType !== "ec" || key.asymmetricKeyDetails?.namedCurve !== "prime256v1") {
-      return false;
-    }
+    const isP256 =
+      key.asymmetricKeyType === "ec" && key.asymmetricKeyDetails?.namedCurve === "prime256v1";
+    return isP256 ? key : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Whether the text is a device public key this daemon can verify: base64 SPKI of an ECDSA P-256 key. */
+export const isDevicePublicKey = (publicKey: string): boolean => p256Key(publicKey) !== undefined;
+
+/** ECDSA P-256 over SHA-256, the signature in IEEE P1363 form (base64); false for anything malformed. */
+export function verifySignature(publicKey: string, message: string, signature: string): boolean {
+  const key = p256Key(publicKey);
+  if (!key) return false;
+  try {
     return verify(
       "sha256",
       Buffer.from(message),

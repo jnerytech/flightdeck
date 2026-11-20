@@ -1,9 +1,23 @@
 /** The devices that approve for the person (#3439): challenges, enrollment, revoke and the list. */
 import type { Database } from "bun:sqlite";
-import type { ApprovalKeyInfo, CommandPayload } from "@flightdeck/protocol";
+import { timingSafeEqual } from "node:crypto";
+import {
+  type ApprovalKeyInfo,
+  type CommandPayload,
+  enrollAddMessage,
+  enrollFirstMessage,
+  revokeMessage,
+} from "@flightdeck/protocol";
+import { FlightdeckError } from "../kernel/index.ts";
 import { ApprovalStore } from "./approval-store.ts";
-import type { EnrolledKey } from "./domain/approval-gate.ts";
-import { NonceBook, type NoncePurpose } from "./domain/nonce-book.ts";
+import {
+  type EnrolledKey,
+  isDevicePublicKey,
+  keyIdOf,
+  sha256Hex,
+  verifySignature,
+} from "./domain/approval-gate.ts";
+import { NONCE_TTL_MS, NonceBook, type NoncePurpose } from "./domain/nonce-book.ts";
 
 export interface ApproversOptions {
   now: () => Date;
@@ -20,44 +34,166 @@ export interface Asker {
   client: string;
 }
 
+/** Wrong codes one window takes before it closes. */
+const MAX_WRONG_CODES = 5;
+
+const refuse = (reason: string, message: string) =>
+  new FlightdeckError("invalid_state", message, reason);
+/** One refusal for a missing, unknown or bad proof, signature or code: it never says which. */
+const proofRequired = () =>
+  refuse("approval_proof_required", "the signed proof of an enrolled device is needed");
+
+/**
+ * The enrolled devices. A key is added in two ways: the first with the one-time code the host terminal
+ * printed, inside a window only that terminal opens (`ApprovalStore.openWindow`); every other by a key
+ * already enrolled. No protocol command opens the window or resets: the terminal does, on the store.
+ */
 export class Approvers {
   readonly store: ApprovalStore;
   readonly nonces: NonceBook;
+  private id: string | undefined;
 
-  constructor(db: Database, opts: ApproversOptions) {
+  constructor(
+    db: Database,
+    private readonly opts: ApproversOptions,
+  ) {
     this.store = new ApprovalStore(db, opts.random);
     this.nonces = new NonceBook({ mono: opts.mono, random: opts.random });
   }
 
   daemonId(): string {
-    return "";
+    this.id ??= this.store.daemonId();
+    return this.id;
   }
 
   /** The enrolled keys, read from the store on every call. */
   keys(): EnrolledKey[] {
-    return [{ keyId: "", publicKey: "" }];
+    return this.store.keys().map(({ keyId, publicKey }) => ({ keyId, publicKey }));
   }
 
   list(): { daemonId: string; protectionOff: boolean; keys: ApprovalKeyInfo[] } {
-    return { daemonId: "", protectionOff: false, keys: [] };
+    const keys = this.store.keys().map(({ keyId, name, client, address, enrolledAt }) => ({
+      keyId,
+      name,
+      client,
+      address,
+      enrolledAt,
+    }));
+    return { daemonId: this.daemonId(), protectionOff: keys.length === 0, keys };
   }
 
   challenge(
-    _purpose: NoncePurpose,
-    _requestId: string | undefined,
-    _connection: number,
+    purpose: NoncePurpose,
+    requestId: string | undefined,
+    connection: number,
   ): { nonce: string; daemonId: string; expiresInMs: number } {
-    return { nonce: "", daemonId: "", expiresInMs: 0 };
+    const nonce = this.nonces.issue(purpose, requestId, connection);
+    return { nonce, daemonId: this.daemonId(), expiresInMs: NONCE_TTL_MS };
   }
 
   enroll(
-    _payload: CommandPayload<"approval.enroll">,
-    _asker: Asker,
+    payload: CommandPayload<"approval.enroll">,
+    asker: Asker,
   ): { keyId: string; daemonId: string } {
-    return { keyId: "", daemonId: "" };
+    const keys = this.store.keys();
+    if (keys.length === 0) this.checkFirst(payload);
+    else this.checkAdd(payload, keys);
+    const keyId = keyIdOf(payload.publicKey);
+    this.store.add({
+      keyId,
+      publicKey: payload.publicKey,
+      name: payload.name,
+      client: asker.client,
+      address: asker.address,
+      enrolledAt: this.opts.now().toISOString(),
+    });
+    this.store.closeWindow();
+    return { keyId, daemonId: this.daemonId() };
   }
 
-  revoke(_payload: CommandPayload<"approval.revoke">): { keyId: string } {
-    return { keyId: "" };
+  revoke(payload: CommandPayload<"approval.revoke">): { keyId: string } {
+    const keys = this.store.keys();
+    const signer = keys.find((key) => key.keyId === payload.signerKeyId);
+    if (!signer) throw proofRequired();
+    const message = revokeMessage({
+      keyId: signer.keyId,
+      daemonId: this.daemonId(),
+      nonce: payload.nonce,
+      targetKeyId: payload.targetKeyId,
+    });
+    this.verified(signer.publicKey, message, payload.signature, payload.nonce, "revoke");
+    if (!keys.some((key) => key.keyId === payload.targetKeyId))
+      return { keyId: payload.targetKeyId };
+    if (keys.length === 1) {
+      throw refuse(
+        "approval_last_key",
+        "the last key stays: only `flightdeckd approvers reset` removes it",
+      );
+    }
+    this.store.remove(payload.targetKeyId);
+    return { keyId: payload.targetKeyId };
   }
+
+  /** The first key: the window is open, the key signs its own enrollment, and the code is the one the terminal printed. */
+  private checkFirst(payload: CommandPayload<"approval.enroll">): void {
+    const window = this.store.window();
+    if (!window || window.until.getTime() <= this.opts.now().getTime()) {
+      throw refuse(
+        "approval_enroll_closed",
+        "enrolling is closed: run `flightdeckd approvers enroll` on the host",
+      );
+    }
+    if (!payload.code) throw proofRequired();
+    const codeHash = sha256Hex(payload.code);
+    const message = enrollFirstMessage({
+      daemonId: this.daemonId(),
+      nonce: payload.nonce,
+      publicKey: payload.publicKey,
+      codeHash,
+    });
+    this.verified(payload.publicKey, message, payload.signature, payload.nonce, "enroll");
+    if (!sameHash(codeHash, window.codeHash)) {
+      if (this.store.fail() >= MAX_WRONG_CODES) this.store.closeWindow();
+      throw proofRequired();
+    }
+  }
+
+  /** A later key: an enrolled key signs the new one in. */
+  private checkAdd(
+    payload: CommandPayload<"approval.enroll">,
+    keys: ReadonlyArray<EnrolledKey>,
+  ): void {
+    const signer = keys.find((key) => key.keyId === payload.signerKeyId);
+    if (!signer || !isDevicePublicKey(payload.publicKey)) throw proofRequired();
+    const message = enrollAddMessage({
+      keyId: signer.keyId,
+      daemonId: this.daemonId(),
+      nonce: payload.nonce,
+      newPublicKey: payload.publicKey,
+    });
+    this.verified(signer.publicKey, message, payload.signature, payload.nonce, "enroll");
+  }
+
+  /** The signature holds and its nonce was live: a forged signature never uses a nonce up. */
+  private verified(
+    publicKey: string,
+    message: string,
+    signature: string,
+    nonce: string,
+    purpose: NoncePurpose,
+  ): void {
+    if (!verifySignature(publicKey, message, signature)) throw proofRequired();
+    const taken = this.nonces.take(nonce, purpose);
+    if (taken === "unknown") throw proofRequired();
+    if (taken === "expired") {
+      throw refuse("approval_challenge_expired", "the challenge expired: try again");
+    }
+  }
+}
+
+/** Two hex digests equal, compared in constant time. */
+function sameHash(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
 }
