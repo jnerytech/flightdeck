@@ -64,7 +64,7 @@ describe("flightdeckd terminal list (issue #3538)", () => {
   });
 
   test("a folder that carries terminal controls is printed without them, in the text and in --json", async () => {
-    const hostile = { ...RUNNING, cwd: "/tmp/ok\u001b[2Jgone‮x" };
+    const hostile = { ...RUNNING, cwd: "/tmp/ok\u001b[2Jgone\u202ex" };
     const daemon = fakeDaemon({ "terminal.list": () => ({ terminals: [hostile] }) });
     const text = await flightdeckd(["terminal", "list"], daemon.port);
     expect(text.out.join("\n")).toContain("/tmp/ok [2Jgone x  80x24");
