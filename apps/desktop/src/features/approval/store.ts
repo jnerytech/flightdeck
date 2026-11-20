@@ -41,6 +41,21 @@ type RootsPayload =
   | { kind: "payload"; payload: { path: string; confirm: true; proof?: ApprovalProof } }
   | { kind: "declined" };
 
+/** The payload of `project.harness.apply`, or the person's no (#3507). */
+type HarnessPayload =
+  | { kind: "payload"; payload: HarnessBody & { proof?: ApprovalProof } }
+  | { kind: "declined" };
+
+/** What `project.harness.apply` asks for: the folder, the parts, the preview's digests and the options. */
+export interface HarnessBody {
+  path: string;
+  parts: string[];
+  digests: Record<string, string>;
+  confirm: true;
+  reformat?: true;
+  template?: string;
+}
+
 /** The payload of `host.bypass` that turns bypass on, or the person's no (#3507). */
 type BypassPayload = { kind: "payload"; payload: BypassBody } | { kind: "declined" };
 
@@ -95,7 +110,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand = "merge" | "trust" | "bypass" | "resume" | "roots";
+export type UncheckedCommand = "merge" | "trust" | "bypass" | "resume" | "roots" | "harness";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -616,6 +631,15 @@ export class ApprovalSlice {
       kind: "payload",
       payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
     };
+  }
+
+  /**
+   * The payload that writes a project's Claude Code setup (#3507), with the device's proof over the whole
+   * request when the host checks it and has a device enrolled; a host from before the feature gets the plain
+   * payload. `declined`: the person said no in the system's dialog.
+   */
+  async harnessPayload(_hostId: string, body: HarnessBody): Promise<HarnessPayload> {
+    return { kind: "payload", payload: body };
   }
 
   /**

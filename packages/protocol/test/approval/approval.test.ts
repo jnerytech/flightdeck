@@ -375,6 +375,31 @@ describe("command-approve: a device signs the command and a hash of what it carr
     );
   });
 
+  test("Given the project.harness.apply payload the Rust crate also reads, Then its digest and hash are the shared literals", () => {
+    const digest = commandDigest({
+      path: "/work/api",
+      parts: ["claudeMd", "hooks"],
+      digests: { "CLAUDE.md": "d-claude", ".claude/settings.json": "d-settings" },
+      confirm: true,
+      reformat: true,
+      template: "shop",
+    });
+    expect(digest).toBe(
+      '{"confirm":true,"digests":{".claude/settings.json":"d-settings","CLAUDE.md":"d-claude"},"parts":["claudeMd","hooks"],"path":"/work/api","reformat":true,"template":"shop"}',
+    );
+    expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(
+      "0292c9b1e82f6513b3e80cb1b62d9cc667079b39ea1ad2650303d318379718bf",
+    );
+  });
+
+  test("Given project.harness.apply, Then every payload of it needs the proof, and a challenge for it is one of the gate's", () => {
+    expect([
+      commandNeedsProof("project.harness.apply", { path: "/work/api", confirm: true }),
+      commandNeedsProof("project.harness.apply", {}),
+      challenge({ purpose: "command", command: "project.harness.apply" }),
+    ]).toEqual([true, true, true]);
+  });
+
   test("Given a challenge for roots.add, Then it is one of the gate's commands", () => {
     expect(challenge({ purpose: "command", command: "roots.add" })).toBe(true);
   });

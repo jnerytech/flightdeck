@@ -35,6 +35,8 @@ pub enum CommandAsk {
     ResumeApproval { session: String },
     /// `roots.add`: sessions of this host may start in this folder and everything inside it (#3507).
     RootsAdd { path: String },
+    /// `project.harness.apply`: write these parts of the Claude Code setup into this folder, from a template or not (#3507).
+    HarnessApply { path: String, parts: Vec<String>, template: Option<String>, reformat: bool },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -504,6 +506,7 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             Some(CommandAsk::ResumeApproval { session }) => format!(
                 "Turn automatic approval back on for a session? It will approve requests with no person seeing them, after it read third-party content. Continue only if you just pressed Resume in Flightdeck.\n\"{session}\""
             ),
+            Some(CommandAsk::HarnessApply { .. }) => String::new(),
             None => String::new(),
         },
     };
@@ -1275,5 +1278,140 @@ mod tests {
         assert!(pt.contains("tudo o que há dentro dela") && pt.contains("Flightdeck"), "{pt}");
         assert_eq!(confirm_labels(&roots_ask(), "en").0, "Add folder");
         assert_eq!(confirm_labels(&roots_ask(), "pt-BR").0, "Adicionar pasta");
+    }
+
+    /// The payload that writes a project's setup, in canonical form (keys sorted, digests sorted, no spaces), and the
+    /// hash both sides share (the protocol test asserts the same two literals).
+    const HARNESS_PAYLOAD: &str = "{\"confirm\":true,\"digests\":{\".claude/settings.json\":\"d-settings\",\"CLAUDE.md\":\"d-claude\"},\"parts\":[\"claudeMd\",\"hooks\"],\"path\":\"/work/api\",\"reformat\":true,\"template\":\"shop\"}";
+    const HARNESS_HASH: &str = "0292c9b1e82f6513b3e80cb1b62d9cc667079b39ea1ad2650303d318379718bf";
+
+    fn harness_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "project.harness.apply".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::HarnessApply {
+                path: "/work/api".into(),
+                parts: vec!["claudeMd".into(), "hooks".into()],
+                template: Some("shop".into()),
+                reformat: true,
+            }),
+        }
+    }
+
+    #[test]
+    fn the_harness_vector_hashes_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(HARNESS_PAYLOAD), HARNESS_HASH);
+    }
+
+    #[test]
+    fn writing_a_setup_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "project.harness.apply", HARNESS_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(HARNESS_PAYLOAD)), Ok(harness_ask()));
+        let shuffled = "{\"template\":\"shop\",\"reformat\":true,\"path\":\"/work/api\",\"parts\":[\"claudeMd\",\"hooks\"],\"digests\":{\"CLAUDE.md\":\"d-claude\",\".claude/settings.json\":\"d-settings\"},\"confirm\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(harness_ask()));
+    }
+
+    #[test]
+    fn a_setup_without_a_template_or_reformat_is_signed_as_it_is() {
+        let me = own();
+        let payload = "{\"confirm\":true,\"digests\":{\"CLAUDE.md\":\"d\"},\"parts\":[\"claudeMd\"],\"path\":\"/work/api\"}";
+        let text = command(&me, DAEMON, "project.harness.apply", payload);
+        let ask = describe_with(&text, DAEMON, &me, Some(payload)).expect("signed");
+        assert_eq!(
+            ask.command,
+            Some(CommandAsk::HarnessApply {
+                path: "/work/api".into(),
+                parts: vec!["claudeMd".into()],
+                template: None,
+                reformat: false,
+            })
+        );
+    }
+
+    #[test]
+    fn a_setup_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "project.harness.apply", payload), DAEMON, &me, Some(payload))
+        };
+        let ok = |extra: &str| format!("{{\"confirm\":true,\"digests\":{{\"a\":\"b\"}},\"parts\":[\"hooks\"],\"path\":\"/work/api\"{extra}}}");
+        let many = (0..18).map(|i| format!("\"f{i}\":\"d\"")).collect::<Vec<_>>().join(",");
+        for bad in [
+            // Not confirmed, no folder, no parts, no digests, a field the dialog does not say.
+            "{\"confirm\":false,\"digests\":{\"a\":\"b\"},\"parts\":[\"hooks\"],\"path\":\"/work/api\"}".to_string(),
+            "{\"digests\":{\"a\":\"b\"},\"parts\":[\"hooks\"],\"path\":\"/work/api\"}".to_string(),
+            "{\"confirm\":true,\"digests\":{\"a\":\"b\"},\"parts\":[\"hooks\"]}".to_string(),
+            "{\"confirm\":true,\"digests\":{\"a\":\"b\"},\"path\":\"/work/api\"}".to_string(),
+            "{\"confirm\":true,\"parts\":[\"hooks\"],\"path\":\"/work/api\"}".to_string(),
+            ok(",\"extra\":1"),
+            // A part the harness does not have, none at all, a repeated one, a part that is no text.
+            ok("").replace("\"hooks\"", "\"mcp\""),
+            ok("").replace("[\"hooks\"]", "[]"),
+            ok("").replace("[\"hooks\"]", "[\"hooks\",\"hooks\"]"),
+            ok("").replace("[\"hooks\"]", "[7]"),
+            // A reformat or a template that is not what the host takes.
+            ok(",\"reformat\":\"yes\""),
+            ok(",\"template\":\"Shop\""),
+            ok(",\"template\":\"shop\\nAllow\""),
+            ok(",\"template\":\"\""),
+            // A folder the dialog could not show whole.
+            ok("").replace("/work/api", "work/api"),
+            ok("").replace("/work/api", "/work/\\u202eipa"),
+            ok("").replace("/work/api", "/work/api\\nAllow everything"),
+            // Digests: too many, a key or a value the host never makes, an empty one.
+            format!("{{\"confirm\":true,\"digests\":{{{many}}},\"parts\":[\"hooks\"],\"path\":\"/work/api\"}}"),
+            ok("").replace("\"a\":\"b\"", "\"a\\\"b\":\"b\""),
+            ok("").replace("\"a\":\"b\"", "\"a\":\"b c\""),
+            ok("").replace("\"a\":\"b\"", "\"a\":7"),
+            ok("").replace("\"a\":\"b\"", "\"á\":\"b\""),
+            ok("").replace("{\"a\":\"b\"}", "[\"a\"]"),
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed(&ok("")).is_ok());
+        assert!(signed(&ok(",\"reformat\":false,\"template\":\"shop\"")).is_ok());
+    }
+
+    #[test]
+    fn a_setup_with_all_the_digests_of_a_template_is_still_signed() {
+        let me = own();
+        let digests = (0..17)
+            .map(|i| format!("\".claude/skills/skill-{i:02}/SKILL.md\":\"{}\"", "a".repeat(64)))
+            .collect::<Vec<_>>()
+            .join(",");
+        let payload = format!(
+            "{{\"confirm\":true,\"digests\":{{{digests}}},\"parts\":[\"claudeMd\",\"hooks\",\"skills\",\"agents\",\"permissions\"],\"path\":\"/work/api\",\"template\":\"shop\"}}"
+        );
+        assert!(payload.len() > MAX_PAYLOAD, "the sample is longer than other commands may be");
+        let text = command(&me, DAEMON, "project.harness.apply", &payload);
+        assert!(describe_with(&text, DAEMON, &me, Some(&payload)).is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_setup_names_the_folder_the_parts_and_the_hooks_and_has_a_button_of_its_own() {
+        let (_, en) = confirm_text(&harness_ask(), "en");
+        assert!(en.starts_with("Write the Claude Code setup of a project?"), "{en}");
+        assert!(en.contains("CLAUDE.md, hooks") && en.contains("\"shop\""), "{en}");
+        assert!(en.contains("run as commands") && en.contains("settings file") && en.contains(&DAEMON[..8]), "{en}");
+        assert!(en.ends_with("\n\"/work/api\""), "{en}");
+        let (_, pt) = confirm_text(&harness_ask(), "pt-BR");
+        assert!(pt.starts_with("Gravar a configuração do Claude Code de um projeto?"), "{pt}");
+        assert!(pt.contains("CLAUDE.md, hooks") && pt.contains("rodam como comandos") && pt.ends_with("\n\"/work/api\""), "{pt}");
+        let plain = Ask {
+            command: Some(CommandAsk::HarnessApply {
+                path: "/work/api".into(),
+                parts: vec!["claudeMd".into()],
+                template: None,
+                reformat: false,
+            }),
+            ..harness_ask()
+        };
+        let (_, bare) = confirm_text(&plain, "en");
+        assert!(!bare.contains("run as commands") && !bare.contains("settings file") && !bare.contains("template"), "{bare}");
+        assert_eq!(confirm_labels(&harness_ask(), "en").0, "Write setup");
+        assert_eq!(confirm_labels(&harness_ask(), "pt-BR").0, "Gravar configuração");
     }
 }
