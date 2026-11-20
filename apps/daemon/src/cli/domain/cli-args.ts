@@ -122,6 +122,8 @@ export interface CliArgs {
     | "preview"
     | "interrupted"
     | "import-preview"
+    | "hostkey-check"
+    | "test"
     | "files"
     | "interrupt"
     | "close"
@@ -153,6 +155,8 @@ export interface CliArgs {
   host?: string;
   /** `send <session> <text>`: the session that gets the text, its name or its id. */
   sendTo?: string;
+  /** `ssh hostkey check|test <target>`: the destination, its name or its id. */
+  sshTarget?: string;
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */

@@ -81,6 +81,12 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   aplicar. Cancele e nada é gravado. Se a configuração mudou no host depois da prévia, o host recusa: veja a prévia
   de novo e confirme de novo. Um host que ainda não pede o dispositivo aí mostra um aviso na própria página:
   atualize-o.
+- **Instalar ou atualizar um plugin.** Com um dispositivo cadastrado, **Instalar** e **Atualizar** pedem sua
+  confirmação mais uma vez numa janela do sistema. A janela diz o plugin (ou a pasta de onde ele vem), onde ele será
+  instalado e que um plugin roda código neste computador. Ela não lista o que o plugin contém: leia isso na
+  prévia antes de confirmar. Cancele e nada é instalado. Se o plugin mudou depois da prévia, o host recusa: veja a
+  prévia de novo. Quando o marketplace declara um comando, a janela abre uma segunda vez no passo que o aceita. Um
+  host que ainda não pede o dispositivo aqui mostra um aviso na página dele: atualize-o.
 - **Confiar em um projeto.** Com um dispositivo cadastrado, **Confiar neste projeto** pede mais uma confirmação
   em uma janela do sistema. A janela nomeia a pasta e diz que os hooks e os servidores dela vão rodar sem pedir
   confirmação. Cancele e nada é enviado. Revogar a confiança não pede nada. Um host que ainda não pede o
