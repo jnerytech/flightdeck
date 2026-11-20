@@ -37,7 +37,7 @@ const callsOf = (daemon: ReturnType<typeof fakeDaemon>, type: string) =>
   daemon.calls.filter((c) => c.type === type).map((c) => c.payload);
 
 const writesOf = (daemon: ReturnType<typeof fakeDaemon>) =>
-  daemon.calls.filter((c) => c.type !== "session.list");
+  daemon.calls.filter((c) => c.type !== "session.list" && c.type !== "hello");
 
 /** One verb of one session: what it types, what it asks the daemon, what it says and what --json prints. */
 const VERBS: Array<{

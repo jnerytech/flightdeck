@@ -12,30 +12,12 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
+import type { SessionCliArgs } from "./domain/session-cli-args.ts";
 import { filesLines, interruptedLines, recapLines } from "./domain/session-read-view.ts";
-
-export interface SessionCliArgs {
-  action:
-    | "interrupted"
-    | "summary"
-    | "files"
-    | "interrupt"
-    | "close"
-    | "resume"
-    | "sleep"
-    | "set-model"
-    | "set-effort"
-    | "meta-set";
-  /** Every verb but `interrupted`: the id or the name of the session. */
-  session?: string;
-  /** `set-model` and `set-effort`: the value, or `default` for the model's own. */
-  value?: string;
-  /** `meta-set`: the fields to change. */
-  meta?: { name?: string | null; pinned?: boolean; archived?: boolean };
-  json?: boolean;
-}
+import { ACT_UNSURE, performAct } from "./session-act-cli.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+const READS = ["interrupted", "summary", "files"];
 
 export function runSessionCli(
   args: SessionCliArgs,
@@ -47,7 +29,9 @@ export function runSessionCli(
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-session",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    perform: async (daemon) => {
+    unsure: ACT_UNSURE,
+    perform: async (daemon, note) => {
+      if (!READS.includes(args.action)) return performAct(daemon, note, args);
       if (args.action === "interrupted") {
         const result = await daemon.call("session.interrupted", {});
         return args.json ? json(result) : said(...interruptedLines(result.sessions));

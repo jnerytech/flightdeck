@@ -341,28 +341,42 @@
   "service.install": {},
   "session.applyPersona": {},
   "session.clearPersona": {},
-  "session.close": {},
+  "session.close": {
+    "cli": "session"
+  },
   "session.create": {},
   "session.files": {
     "cli": "session"
   },
   "session.fork": {},
-  "session.interrupt": {},
+  "session.interrupt": {
+    "cli": "session"
+  },
   "session.interrupted": {
     "cli": "session"
   },
   "session.list": {
     "cli": "sessions"
   },
-  "session.meta.set": {},
-  "session.resume": {},
+  "session.meta.set": {
+    "cli": "session"
+  },
+  "session.resume": {
+    "cli": "session"
+  },
   "session.send": {
     "cli": "send"
   },
-  "session.setEffort": {},
+  "session.setEffort": {
+    "cli": "session"
+  },
   "session.setMode": {},
-  "session.setModel": {},
-  "session.sleep": {},
+  "session.setModel": {
+    "cli": "session"
+  },
+  "session.sleep": {
+    "cli": "session"
+  },
   "session.subscribe": {},
   "session.summary": {
     "cli": "session"
