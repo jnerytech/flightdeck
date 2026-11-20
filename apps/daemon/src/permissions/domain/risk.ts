@@ -174,6 +174,37 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
   return { sub: args[i] ?? "", rest: args.slice(i + 1) };
 }
 
+/** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */
+const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCase();
+
+/** The subcommand of `fd` or `flightdeckd`, past its options (`--config <file>`, `--json`). */
+function flightdeckVerb(args: string[]): string {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i] as string;
+    if (arg === "--config") i++;
+    else if (!arg.startsWith("-")) return arg;
+  }
+  return "";
+}
+
+/** The programs that can run the CLI for a session: itself, a runtime or a shell given the text. */
+const RUNNERS = ["bun", "bunx", "npx", "node", "sh", "bash", "zsh", "dash", "pwsh", "powershell"];
+
+/**
+ * The person's answer to a permission request is theirs: a session that runs `fd approve --hold` from
+ * its own shell, directly or through a runtime or a shell, would answer for them (#3425). This is a
+ * heuristic over the command text: the daemon cannot tell who holds the shell.
+ */
+function answersARequest(prog: string, args: string[]): boolean {
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const verbs = ["approve", "deny"];
+  if (["fd", "flightdeckd"].includes(prog)) return verbs.includes(flightdeckVerb(words));
+  if (!RUNNERS.includes(prog)) return false;
+  const names = words.map((w) => program(w));
+  const runsCli = names.some((n) => ["fd", "flightdeckd", "bin.ts"].includes(n));
+  return runsCli && words.some((w) => verbs.includes(w));
+}
+
 /** A dangerous command: when it applies to a program and its arguments, and what to call it. */
 const DANGEROUS: Array<{
   when: (prog: string, args: string[]) => boolean;
@@ -200,6 +231,10 @@ const DANGEROUS: Array<{
     when: (prog, args) =>
       ["remove-item", "ri"].includes(prog) && args.some((a) => /^-r(ec\w*)?$/i.test(a)),
     reason: () => "Remove-Item -Recurse",
+  },
+  {
+    when: answersARequest,
+    reason: () => "answers a permission request (flightdeckd approve or deny)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {
