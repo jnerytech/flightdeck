@@ -36,6 +36,7 @@ export const USAGE = [
   "     fd card stop <card> [--json] [--config <file>]",
   "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
   "     fd board settings [--max-parallel-runs <n>] [--json] [--config <file>]",
+  "     fd board watch [--json] [--config <file>]",
   "     fd team list [--project <name or id>] [--json] [--config <file>]",
   "     fd team show <team> [--json] [--config <file>]",
   "     fd team new <goal> (--workers <1-8> | --worker <spec>...) [--coordinator <spec>] [--name <text>] [--check <command>...] [--project <name or id>] [--confirm] [--json] [--config <file>]   (a spec is persona[:model[:effort[:mode]]])",

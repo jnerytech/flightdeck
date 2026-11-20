@@ -287,7 +287,7 @@ const HANDLERS: Record<string, Handler> = {
   },
   board: (args, reader) => {
     args.command = "board";
-    args.action = subAction(reader, ["settings"] as const, "invalid board action");
+    args.action = subAction(reader, ["settings", "watch"] as const, "invalid board action");
   },
   team: (args, reader) => {
     args.command = "team";

@@ -40,7 +40,7 @@ const HIDDEN = [
 ];
 // Built from a list: a literal class would pair a combining mark with its neighbour (S5868).
 const CONTROL = new RegExp(`[${HIDDEN.join("")}]`, "gu");
-const plain = (text: string) => text.replace(CONTROL, " ");
+export const plain = (text: string) => text.replace(CONTROL, " ");
 
 export const json = (value: unknown): CliResult => ({
   code: 0,
