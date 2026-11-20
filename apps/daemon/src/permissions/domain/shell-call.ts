@@ -270,6 +270,12 @@ const OPTIONS_WITH_VALUE = [
   "--param",
   "--config",
   "--runtime",
+  "--period",
+  "--window",
+  "--action",
+  "--limit-usd",
+  "--limit-pct",
+  "--id",
 ];
 
 /** The arguments as the shell hands them over: words inside an open quote are one argument (`--config "/x y/c.json"`), unquoted. */
