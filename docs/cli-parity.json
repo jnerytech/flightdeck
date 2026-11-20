@@ -297,16 +297,16 @@
   "project.harness.commit": {},
   "project.harness.draft": {},
   "project.harness.export": {},
-  "project.harness.preview": {},
-  "project.harness.stack": {},
+  "project.harness.preview": { "cli": "project" },
+  "project.harness.stack": { "cli": "project" },
   "project.list": {
     "cli": "card"
   },
-  "project.trust.inspect": {},
+  "project.trust.inspect": { "cli": "project" },
   "project.trust.set": {
     "appOnly": "trusting a folder takes the person's proof, which a terminal cannot give (#3453)"
   },
-  "project.trust.state": {},
+  "project.trust.state": { "cli": "project" },
   "project.update": {},
   "projects.clone": {},
   "projects.scan": {},
@@ -411,16 +411,24 @@
   "ssh.hostkey.check": {
     "cli": "ssh"
   },
-  "ssh.hostkey.confirm": {},
-  "ssh.hostkey.forget": {},
-  "ssh.import.apply": {},
+  "ssh.hostkey.confirm": {
+    "cli": "ssh"
+  },
+  "ssh.hostkey.forget": {
+    "cli": "ssh"
+  },
+  "ssh.import.apply": {
+    "cli": "ssh"
+  },
   "ssh.import.preview": {
     "cli": "ssh"
   },
   "ssh.list": {
     "cli": "ssh"
   },
-  "ssh.remove": {},
+  "ssh.remove": {
+    "cli": "ssh"
+  },
   "ssh.save": {},
   "ssh.test": {
     "cli": "ssh"

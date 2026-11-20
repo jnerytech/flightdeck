@@ -13,8 +13,19 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
-import { hostKeyLine, testLine } from "./domain/ssh-connect-view.ts";
-import { importLines, targetLines } from "./domain/ssh-read-view.ts";
+import {
+  confirmDecision,
+  hostKeyForgottenLine,
+  hostKeyLine,
+  hostKeyPinnedLine,
+  testLine,
+} from "./domain/ssh-connect-view.ts";
+import {
+  importLines,
+  importResultLines,
+  removedLine,
+  targetLines,
+} from "./domain/ssh-read-view.ts";
 import { resolveSshTarget } from "./domain/target-ref.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -22,9 +33,23 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const CONNECT_TIMEOUT_MS = 60_000;
 
 export interface SshCliArgs {
-  action: "list" | "import-preview" | "hostkey-check" | "test";
-  /** The destination, its name or its id, for `hostkey-check` and `test`. */
+  action:
+    | "list"
+    | "import-preview"
+    | "hostkey-check"
+    | "hostkey-confirm"
+    | "hostkey-forget"
+    | "test"
+    | "remove"
+    | "import-apply";
+  /** The destination, its name or its id, for every action but `list` and the two imports. */
   target?: string;
+  /** The fingerprint the person accepts, for `hostkey-confirm`. */
+  fingerprint?: string;
+  /** The `~/.ssh/config` names `import-apply` turns into destinations. */
+  aliases?: string[];
+  /** The person's word that `remove` deletes the destination. */
+  confirm?: boolean;
   json?: boolean;
 }
 
@@ -39,15 +64,44 @@ export function runSshCli(
     clientName: "flightdeck-ssh",
     timeoutMs:
       options.timeoutMs ??
-      (args.action === "hostkey-check" || args.action === "test"
+      (args.action === "hostkey-check" ||
+      args.action === "hostkey-confirm" ||
+      args.action === "test"
         ? CONNECT_TIMEOUT_MS
         : DEFAULT_TIMEOUT_MS),
     perform: async (daemon) => {
-      if (args.action === "hostkey-check" || args.action === "test") {
+      if (
+        args.action === "hostkey-check" ||
+        args.action === "hostkey-confirm" ||
+        args.action === "hostkey-forget" ||
+        args.action === "remove" ||
+        args.action === "test"
+      ) {
         const { targets } = await daemon.call("ssh.list", {});
         const found = resolveSshTarget(targets, args.target ?? "");
         if ("problem" in found) return failure(1, found.problem);
         const { id, name, auth } = found.target;
+        if (args.action === "remove") {
+          // The daemon refuses it too, and it also refuses a destination another one goes through.
+          await daemon.call("ssh.remove", { id, confirm: args.confirm === true });
+          return args.json ? json({ id, name, removed: true }) : said(removedLine(name));
+        }
+        if (args.action === "hostkey-forget") {
+          const forgotten = await daemon.call("ssh.hostkey.forget", { targetId: id });
+          return args.json ? json(forgotten) : said(hostKeyForgottenLine(name));
+        }
+        if (args.action === "hostkey-confirm") {
+          const typed = args.fingerprint ?? "";
+          // A fresh scan arms the daemon's five minutes, and shows what the server presents right now.
+          const check = await daemon.call("ssh.hostkey.check", { targetId: id });
+          const decision = confirmDecision(name, check, typed);
+          if (!decision.send) return failure(1, decision.message, decision.reason);
+          const pinned = await daemon.call("ssh.hostkey.confirm", {
+            targetId: id,
+            fingerprint: typed,
+          });
+          return args.json ? json(pinned) : said(hostKeyPinnedLine(name, typed));
+        }
         if (args.action === "hostkey-check") {
           const check = await daemon.call("ssh.hostkey.check", { targetId: id });
           const shown = hostKeyLine(name, check);
@@ -70,6 +124,12 @@ export function runSshCli(
       if (args.action === "list") {
         const result = await daemon.call("ssh.list", {});
         return args.json ? json(result) : said(...targetLines(result.targets));
+      }
+      if (args.action === "import-apply") {
+        const result = await daemon.call("ssh.import.apply", { aliases: args.aliases ?? [] });
+        const base = args.json ? json(result) : said(...importResultLines(result));
+        // A name that was not imported is a part of the work not done: a script sees it.
+        return { ...base, code: result.skipped.length > 0 ? 1 : 0 };
       }
       const result = await daemon.call("ssh.import.preview", {});
       return args.json ? json(result) : said(...importLines(result.entries));

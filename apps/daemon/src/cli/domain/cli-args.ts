@@ -15,6 +15,7 @@ export interface CliArgs {
     | "history"
     | "vault"
     | "plugins"
+    | "project"
     | "approvers"
     | "rules"
     | "autoapprove"
@@ -123,6 +124,9 @@ export interface CliArgs {
     | "interrupted"
     | "import-preview"
     | "hostkey-check"
+    | "hostkey-confirm"
+    | "hostkey-forget"
+    | "import-apply"
     | "test"
     | "files"
     | "interrupt"
@@ -145,7 +149,12 @@ export interface CliArgs {
     | "unpin"
     | "marketplace-add"
     | "marketplace-remove"
-    | "marketplace-update";
+    | "marketplace-update"
+    // `project` (#3515)
+    | "trust-state"
+    | "stack"
+    | "trust-inspect"
+    | "harness-preview";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -157,6 +166,10 @@ export interface CliArgs {
   sendTo?: string;
   /** `ssh hostkey check|test <target>`: the destination, its name or its id. */
   sshTarget?: string;
+  /** `ssh hostkey confirm <target> --fingerprint <SHA256:...>`: the fingerprint the person read and accepts. */
+  sshFingerprint?: string;
+  /** `ssh import apply --alias <name>...`: the `~/.ssh/config` names to turn into destinations. */
+  sshAliases?: string[];
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */
@@ -307,6 +320,10 @@ export interface CliArgs {
   /** `plugins detail|preview|preview-update <plugin>`, `plugins preview --dir <folder>` (#3516). */
   plugin?: string;
   pluginDir?: string;
+  /** `project <verb> <folder>...`, `project harness-preview --parts a,b [--template id]` (#3515). */
+  projectPaths?: string[];
+  projectParts?: string[];
+  projectTemplate?: string;
   hideAutomated?: true;
   cursor?: string;
   tail?: true;

@@ -12,10 +12,11 @@ import { costsProblem } from "./costs-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
+import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
-import { readSsh } from "./ssh-args.ts";
+import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
@@ -181,6 +182,7 @@ const HANDLERS: Record<string, Handler> = {
   },
   vault: readVault,
   plugins: readPlugins,
+  project: readProject,
   approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
@@ -583,6 +585,8 @@ const HANDLERS: Record<string, Handler> = {
   }),
   ...BUDGET_FLAGS,
   ...PLUGINS_FLAGS,
+  ...SSH_FLAGS,
+  ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -659,12 +663,11 @@ const HANDLERS: Record<string, Handler> = {
 
 /** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
 const JSON_COMMANDS =
-  "card board history team persona quota usage budget costs roi host sessions session ssh requests send approve deny approvers rules autoapprove vault plugins".split(
+  "card board history team persona quota usage budget costs roi host sessions session ssh requests send approve deny approvers rules autoapprove vault plugins project".split(
     " ",
   );
-const HOST_COMMANDS = "host sessions session ssh requests send approve deny vault plugins".split(
-  " ",
-);
+const HOST_COMMANDS =
+  "host sessions session ssh requests send approve deny vault plugins project".split(" ");
 
 function refuseOutside(flag: string, commands: readonly string[], command: string): void {
   if (commands.includes(command)) return;
@@ -748,10 +751,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s and `plugins`', which check their own flags below.
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s and `plugins`', which check their own flags below.
     if (
       flag === "--confirm" &&
-      ["rules", "autoapprove", "team", "costs", "plugins"].includes(args.command)
+      ["rules", "autoapprove", "team", "costs", "plugins", "ssh"].includes(args.command)
     )
       continue;
     if (args.command !== "card")
@@ -774,6 +777,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     historyProblem(args) ??
     vaultProblem(args) ??
     pluginsProblem(args) ??
+    sshProblem(args) ??
+    projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
     rulesProblem(args) ??
