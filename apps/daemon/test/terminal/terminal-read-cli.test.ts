@@ -74,11 +74,13 @@ describe("flightdeckd terminal list (issue #3538)", () => {
 
   test("the daemon's refusal is one line on stderr, exit 1", async () => {
     const daemon = fakeDaemon({
-      "terminal.list": () => ({ error: { code: "feature_off", message: "terminals are off" } }),
+      "terminal.list": () => ({
+        error: { code: "terminal_disabled", message: "the terminal is off on this host" },
+      }),
     });
     const run = await flightdeckd(["terminal", "list"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
-    expect(run.err.join("\n")).toContain("terminals are off");
+    expect(run.err.join("\n")).toContain("the terminal is off on this host");
   });
 
   test("a read with no answer exits 2 and never says it may have changed something", async () => {
