@@ -1,0 +1,21 @@
+/**
+ * Issue #3454: what `flightdeckd board settings` says, as pure rules over the daemon's answer. The
+ * daemon call and the exit codes stay in `board/board-cli.ts`.
+ */
+import type { BoardSettings } from "@flightdeck/protocol";
+
+export interface BoardCliArgs {
+  action: "settings";
+  /** `settings --max-parallel-runs`: the new limit; without it `settings` only reads. */
+  maxParallelRuns?: number;
+  /** `--json`: the daemon's own answer, for a script. */
+  json?: boolean;
+}
+
+/** What a write that got no answer may have done, as text that follows the message. */
+export const UNSURE = "";
+
+/** The line `settings` prints. */
+export function settingsLine(_settings: BoardSettings): string {
+  return "";
+}
