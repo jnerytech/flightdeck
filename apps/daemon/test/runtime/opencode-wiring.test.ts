@@ -110,7 +110,12 @@ describe("opencode-wiring", () => {
     const { fake, project, url } = await daemon({ enabled: true });
     const { ask, events } = await client(url);
     const created = dataOf(
-      await ask("session.create", { cwd: project, prompt: "run: echo hi", runtime: "opencode" }),
+      await ask("session.create", {
+        cwd: project,
+        prompt: "run: echo hi",
+        runtime: "opencode",
+        permissionMode: "default",
+      }),
     );
     const sessionId = String(created.sessionId);
     await ask("session.subscribe", { sessionId });
