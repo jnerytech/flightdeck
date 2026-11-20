@@ -113,8 +113,6 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
   };
 
   const apply = async (seen: HarnessPreview, reformat: boolean) => {
-    leavePreview();
-    setShown(null);
     setBusy(true);
     // #3507: a host that checks it asks an enrolled device to sign the whole request; a no writes nothing.
     let made: Awaited<ReturnType<typeof store.approval.harnessPayload>>;
@@ -136,6 +134,8 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
       setBusy(false);
       return;
     }
+    leavePreview();
+    setShown(null);
     const result = await store
       .hostRequest(hostId, "project.harness.apply", made.payload)
       .finally(() => setBusy(false));

@@ -428,7 +428,7 @@ fn read_harness_apply(
         let value = value.as_str().ok_or("a digest of a setup is text")?;
         let key_ok = !key.is_empty()
             && key.len() <= 256
-            && key.chars().all(|c| c.is_ascii_alphanumeric() || "._/-".contains(c));
+            && key.chars().all(|c| c.is_ascii_alphanumeric() || "._/-@+".contains(c));
         let value_ok = !value.is_empty()
             && value.len() <= 128
             && value.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
@@ -1521,6 +1521,8 @@ mod tests {
         }
         assert!(signed(&ok("")).is_ok());
         assert!(signed(&ok(",\"reformat\":false,\"template\":\"shop\"")).is_ok());
+        // The host names a file of a template with `@` and `+` too (plainName).
+        assert!(signed(&ok("").replace("\"a\":\"b\"", "\"skills/my+skill/a@b.md\":\"b\"")).is_ok());
     }
 
     #[test]

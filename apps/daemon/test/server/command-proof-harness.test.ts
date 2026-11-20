@@ -161,12 +161,12 @@ describe("command-proof-harness: writing a project's setup with a device enrolle
     ]);
   });
 
-  test("a folder outside the allowed roots is refused as before, and the challenge it holds is not used up", async () => {
+  test("a folder outside the allowed roots is refused as before, before any proof is checked", async () => {
     const t = await host();
-    const proof = await t.prove(request("/elsewhere"));
+    // A proof the host would refuse (a signature of nothing) shows which check ran first.
     const ack = await t.client.request("project.harness.apply", {
       ...request("/elsewhere"),
-      proof,
+      proof: { keyId: "none", nonce: "none", signature: "none" },
     });
     expect([failure(ack).includes("cwd_outside_roots"), t.applied.length]).toEqual([true, 0]);
   });
