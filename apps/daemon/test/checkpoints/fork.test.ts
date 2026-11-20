@@ -26,7 +26,7 @@ function setup() {
   const { repo } = gitRepo();
   const { manager } = newManager({ store, runtime, allowedRoots: [dirname(repo)] });
   const snapshots = new Snapshots({ db: store.db });
-  const rewinder = new Rewinder({ snapshots, sessions: manager });
+  const rewinder = new Rewinder({ snapshots, sessions: manager, allowedRoots: [dirname(repo)] });
   const forker = new Forker({ runtime, manager, rewinder, allowedRoots: [dirname(repo)] });
   return { store, runtime, manager, repo, snapshots, forker };
 }
@@ -65,6 +65,35 @@ describe("bifurcar", () => {
     const turn = "row" in before ? before.row.n : -1;
     await forker.fork({ claudeSessionId: "orig-1", cwd: repo, open: "terminal", rewindTurn: turn });
     expect(existsSync(join(repo, "depois.txt"))).toBe(false);
+  });
+
+  test("a rewind into a repository outside the roots is refused before any fork is made (#3554)", async () => {
+    const { store, runtime, manager, snapshots, repo } = setup();
+    const before = await snapshots.take({ cwd: repo, claudeSessionId: "orig-1", kind: "before" });
+    writeFileSync(join(repo, "depois.txt"), "criado no turno\n");
+    const turn = "row" in before ? before.row.n : -1;
+    const strict = new Forker({
+      runtime,
+      manager,
+      rewinder: new Rewinder({
+        snapshots,
+        sessions: manager,
+        allowedRoots: [tempDir("fd-fork-other-root-")],
+      }),
+      allowedRoots: [dirname(repo)],
+    });
+    const refused = await strict
+      .fork({ claudeSessionId: "orig-1", cwd: repo, open: "terminal", rewindTurn: turn })
+      .then(
+        () => "forked",
+        (error: { reason?: string }) => error.reason,
+      );
+    expect([refused, runtime.forks.length, existsSync(join(repo, "depois.txt"))]).toEqual([
+      "cwd_outside_roots",
+      0,
+      true,
+    ]);
+    store.close();
   });
 
   test("runtime sem forkSession recusa", async () => {

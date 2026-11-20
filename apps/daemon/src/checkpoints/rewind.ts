@@ -32,7 +32,14 @@ export interface RewindPreview {
 }
 
 export class Rewinder {
-  constructor(private readonly opts: { snapshots: Snapshots; sessions: RewindSessions }) {}
+  constructor(
+    private readonly opts: {
+      snapshots: Snapshots;
+      sessions: RewindSessions;
+      /** The folders a rewind may write into, as for `create` (#3554). */
+      allowedRoots: readonly string[];
+    },
+  ) {}
 
   async preview(claudeSessionId: string, turn: number): Promise<RewindPreview> {
     const target = this.turn(claudeSessionId, turn);
