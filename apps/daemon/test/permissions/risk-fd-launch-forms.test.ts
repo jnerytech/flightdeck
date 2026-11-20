@@ -119,6 +119,16 @@ describe("risk rules: the CLI reached without its name in the line (#3566)", () 
   });
 });
 
+describe("a line with many CLI starts (#3566)", () => {
+  test("a runner's text of thousands of starts is rated in well under a second", () => {
+    // A bound 30 times what it takes, to catch a quadratic walk (5 s on 2000 starts) and not a slow machine.
+    const started = performance.now();
+    const got = bash(`sh -c '${"run start ".repeat(2000)}'`);
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(got.level).toBe("medium");
+  });
+});
+
 describe("the option list of the shell rules (#3566)", () => {
   test("it holds exactly the options of the parser that take a value, each once", () => {
     expect([...new Set(OPTIONS_WITH_VALUE)].sort()).toEqual([...VALUE_FLAGS].sort());
