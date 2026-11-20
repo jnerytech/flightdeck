@@ -147,7 +147,10 @@ describe("persona ids that were Portuguese, in a database (#3413)", () => {
     const snapshot = (store: EventStore) => ({
       personas: rows(store, "SELECT id, data FROM personas ORDER BY id"),
       sessions: rows(store, "SELECT id, persona, applied_persona FROM sessions ORDER BY id"),
-      external: rows(store, "SELECT persona_open, persona_applied FROM external_sessions"),
+      external: rows(
+        store,
+        "SELECT persona_open, persona_applied FROM external_sessions ORDER BY claude_session_id",
+      ),
       column: rows(store, "SELECT persona_by_column FROM projects"),
       start: rows(store, "SELECT start_persona FROM cards"),
       runs: rows(store, "SELECT id, persona FROM card_runs ORDER BY id"),

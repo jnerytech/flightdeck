@@ -15,13 +15,19 @@ in English (CLAUDE.md, Conventions).
   answering after the stored ids moved. A persona the person made under an old id is therefore
   never hidden. `save` does not apply the alias; `reset` refuses an old id that is the person's own.
 - A store migration renames the ids it holds: the host personas table (and the JSON id inside),
-  the persona of managed and external sessions, the card runs, the cards' start persona and the
-  projects' persona per column. A pair whose new id the person already made is left as it was,
-  references included. A project persona's snapshot (it has a hash) keeps its id. The migration
-  cannot read project files: a reference that names a project's own persona with an old id moves
-  to the new id, and the project's file still answers for it through the alias above.
-- Sessions numbering (`session_names`) and trust rows (`persona_trust`) are left alone: they are
-  keys of their own, not references.
+  the persona of managed and external sessions, the card runs, the cards' start persona, the
+  projects' persona per column, the personas of a team's members and the watch settings' persona.
+  A pair whose new id the person already made is left as it was, references and session
+  snapshots included. A project persona's snapshot (it has a hash) keeps its id, and so does the
+  badge of the same session. The migration cannot read project files: a reference that names a
+  project's own persona with an old id moves to the new id, and the project's file still answers
+  for it through the alias above (an untrusted file answers with `persona_untrusted`, as it did
+  for the old id before). The badge of an external session has no snapshot to tell it apart.
+  The migration's rename list is a frozen copy, not the domain's `RENAMED`.
+- Left as they are: the sessions numbering (`session_names`) and trust rows (`persona_trust`),
+  which are keys of their own, and the `persona-<id>` subagent names of a session: a new session
+  offers `persona-reviewer`, and a published `persona-revisor.md` stays in the project until it is
+  published again or removed.
 
 ## Discarded
 
