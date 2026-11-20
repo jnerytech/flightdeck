@@ -3,6 +3,7 @@
 //! forwarding, the terminal of "Abrir no terminal", and the official plugins (notifications,
 //! deep links, opener).
 
+mod approval;
 mod assistant;
 mod backup_folder;
 mod log;
@@ -605,6 +606,10 @@ pub fn run() {
             token_get,
             token_set,
             token_delete,
+            approval::approval_key_get,
+            approval::approval_key_create,
+            approval::approval_key_delete,
+            approval::approval_sign,
             vault::vault_get,
             vault::vault_set,
             vault::vault_delete,
