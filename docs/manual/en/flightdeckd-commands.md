@@ -164,14 +164,21 @@ device is enrolled, nothing changes for you.
 fd board settings
 fd board settings --max-parallel-runs 4
 fd board settings --json
+fd board watch
+fd board watch --json
 ```
 
-`settings` shows the host-wide board settings, as the Projects screen does.
+`settings` shows the host-wide board settings, as the Projects screen does. `watch` follows the board.
 
 - **`settings`:** prints `max parallel runs: <n>`, how many card runs the board starts at once on this
   host. With `--json` it prints the daemon's answer.
 - **`settings --max-parallel-runs <n>`:** sets that limit (a whole number, 1 or more) and prints the new
   one. A value that is not a whole number of 1 or more exits `1` and sends nothing.
+
+- **`watch`:** stays connected and prints a line each time a card changes, in the words of `card list`
+  (`<id>  <column>  <title>`, with why it waits, if it does). It runs until you press Ctrl-C, which exits
+  `0`. With `--json` it prints one card per line, as JSON, for a script. The 15 s limit covers only the
+  connection; if the daemon goes away while you watch, it exits `2`.
 
 A change that gets no answer exits `2` and says it may or may not have gone in: run `board settings`
 before trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.

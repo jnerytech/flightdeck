@@ -54,7 +54,7 @@
     "cli": "card"
   },
   "board.settings": { "cli": "board" },
-  "board.watch": {},
+  "board.watch": { "cli": "board" },
   "boardsync.boards": {},
   "boardsync.link": {},
   "boardsync.log": {},

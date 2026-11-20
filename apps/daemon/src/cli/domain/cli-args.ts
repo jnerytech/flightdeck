@@ -62,6 +62,7 @@ export interface CliArgs {
     | "delete"
     | "discard"
     | "settings"
+    | "watch"
     | "subagents"
     | "save"
     | "remove"
