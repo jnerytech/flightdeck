@@ -1,4 +1,4 @@
-import { constants } from "node:fs";
+import { appendFileSync, closeSync, constants, lstatSync, openSync } from "node:fs";
 import { lstat, mkdir, open, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { type SecretScanner, scrubHome } from "@flightdeck/protocol";
@@ -24,6 +24,8 @@ const MAX_TAIL = 500;
 const TAIL_BYTES = 256 * 1024;
 /** Never through a link; `0` where the system has no such flag (the link is then checked by hand). */
 const NO_FOLLOW = constants.O_NOFOLLOW ?? 0;
+/** `0` where the system has no such flag. */
+const NON_BLOCK = constants.O_NONBLOCK ?? 0;
 
 /**
  * The daemon's log file: every line redacted before it is queued, one file that rotates into
@@ -54,16 +56,53 @@ export class FileLog {
   }
 
   write(level: "info" | "error", message: string): void {
-    let line: string;
+    const made = this.format(level, message);
+    if (made === null) return;
+    this.queue = this.queue.then(() => this.append(made.line));
+  }
+
+  /**
+   * One line written at once, for a process that is ending: its `exit` listeners are synchronous
+   * and no async write finishes after them, so this is the one blocking write in the log. It
+   * makes the same line (redacted, one row, cut) and keeps the same rules (never through a link,
+   * private to the user); it does not rotate or make the folder (a daemon that is ending has
+   * written there already), and a failure is ignored as everywhere here. It returns the text it
+   * wrote (redacted, one row), or "" when none could be made, for whoever also says it elsewhere.
+   */
+  writeAtExit(level: "info" | "error", message: string): string {
+    const made = this.format(level, message);
+    if (made === null) return "";
+    const { line, text } = made;
+    try {
+      if (lstatSync(this.path(), { throwIfNoEntry: false })?.isSymbolicLink()) return text;
+      // O_NONBLOCK: a pipe planted at the log path fails the open instead of holding the exit.
+      const fd = openSync(
+        this.path(),
+        constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | NO_FOLLOW | NON_BLOCK,
+        0o600,
+      );
+      try {
+        appendFileSync(fd, line);
+      } finally {
+        closeSync(fd);
+      }
+    } catch {
+      // A log that cannot be written is not worth stopping for.
+    }
+    return text;
+  }
+
+  /** The row for one message (secrets and the user's name out, one line, cut) and its text; null when it cannot be made. */
+  private format(level: "info" | "error", message: string): { line: string; text: string } | null {
     try {
       const text = this.clean(message)
         .replace(/[\r\n]+/g, " ")
         .slice(0, MAX_LINE);
-      line = `${new Date(this.now()).toISOString()} ${level === "error" ? "ERROR" : "INFO"} ${text}\n`;
+      const line = `${new Date(this.now()).toISOString()} ${level === "error" ? "ERROR" : "INFO"} ${text}\n`;
+      return { line, text };
     } catch {
-      return;
+      return null;
     }
-    this.queue = this.queue.then(() => this.append(line));
   }
 
   /** Secrets out, then the user's name out of the paths. */

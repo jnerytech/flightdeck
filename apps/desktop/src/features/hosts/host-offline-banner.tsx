@@ -12,6 +12,8 @@ const COMMAND = "rounded bg-muted px-1 font-mono text-xs";
 const CHECK_DAEMON = "systemctl --user status flightdeckd";
 const ENABLE_LINGER = "sudo loginctl enable-linger $USER";
 const WSL_SYSTEMD = "systemd=true";
+const SERVICE_STATUS = "flightdeckd service status";
+const SERVICE_START = "flightdeckd service start";
 
 /**
  * At the top of the host page while the host is not online: the state, what failed in plain words,
@@ -120,6 +122,13 @@ export function HostOfflineBanner(
             <code className={COMMAND}>{ENABLE_LINGER}</code>
             <p>{t("hostOffline.hintWsl")}</p>
             <code className={COMMAND}>{WSL_SYSTEMD}</code>
+          </Stack>
+        )}
+        {hint === "windows" && (
+          <Stack gap={1}>
+            <p>{t("hostOffline.hintWindows")}</p>
+            <code className={COMMAND}>{SERVICE_STATUS}</code>
+            <code className={COMMAND}>{SERVICE_START}</code>
           </Stack>
         )}
         {hint === "generic" && <p>{t("hostOffline.hintGeneric")}</p>}

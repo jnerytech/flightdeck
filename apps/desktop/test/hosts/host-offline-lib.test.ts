@@ -17,14 +17,22 @@ describe("host-offline", () => {
     expect(offlineHint("refused", "ws://127.0.0.1:7430/v1/ws", null)).toBe("linux");
     expect(offlineHint("refused", "ws://localhost:7430/v1/ws", null)).toBe("linux");
     expect(offlineHint("refused", "ws://100.64.0.9:7430/v1/ws", "linux")).toBe("linux");
-    expect(offlineHint("refused", "ws://100.64.0.9:7430/v1/ws", "win32")).toBe("generic");
+    expect(offlineHint("refused", "ws://100.64.0.9:7430/v1/ws", "darwin")).toBe("generic");
     expect(offlineHint("timeout", "ws://127.0.0.1:7430/v1/ws", "linux")).toBe("generic");
     expect(offlineHint("lost", "ws://127.0.0.1:7430/v1/ws", "linux")).toBe("generic");
   });
 
+  test("a Windows host gets the Windows hint, on a loopback address or not, and a macOS host never the Linux one (#3403)", () => {
+    expect(offlineHint("refused", "ws://127.0.0.1:7420/v1/ws", "win32")).toBe("windows");
+    expect(offlineHint("refused", "ws://localhost:7420/v1/ws", "win32")).toBe("windows");
+    expect(offlineHint("refused", "ws://100.64.0.9:7420/v1/ws", "win32")).toBe("windows");
+    expect(offlineHint("refused", "ws://127.0.0.1:7420/v1/ws", "darwin")).toBe("generic");
+    expect(offlineHint("timeout", "ws://127.0.0.1:7420/v1/ws", "win32")).toBe("generic");
+  });
+
   test("an address that does not parse falls back on the OS the host last reported", () => {
     expect(offlineHint("refused", "not an address", "linux")).toBe("linux");
-    expect(offlineHint("refused", "not an address", "win32")).toBe("generic");
+    expect(offlineHint("refused", "not an address", "win32")).toBe("windows");
     expect(offlineHint("refused", "not an address", null)).toBe("generic");
   });
 

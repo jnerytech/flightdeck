@@ -425,6 +425,8 @@ export const hosts = {
     hintLinux: "No host, confira se o daemon está rodando e se ele sobe no boot:",
     hintWsl:
       "No WSL, ligue também o systemd em /etc/wsl.conf (depois rode wsl --shutdown no Windows):",
+    hintWindows:
+      "No host, em um terminal, confira se o daemon roda como serviço e inicie-o se não estiver:",
     hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
     hintAddress:
       "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
