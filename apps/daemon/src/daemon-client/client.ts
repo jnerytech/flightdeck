@@ -57,10 +57,26 @@ export class DaemonClient {
   private seq = 0;
   /** The close code, once the socket closed: a stream waits on it to know the daemon went away. */
   readonly closed: Promise<number>;
+  /** Rejects when the daemon sent a frame this version cannot read (a newer daemon, say). */
+  readonly unreadable: Promise<never>;
+  private reject!: (error: Error) => void;
 
   private constructor(private readonly ws: WebSocket) {
+    this.unreadable = new Promise<never>((_, reject) => {
+      this.reject = reject;
+    });
+    this.unreadable.catch(() => undefined); // only a stream reads it: no unhandled rejection otherwise
     ws.addEventListener("message", (msg) => {
-      const frame = parseServerMessage(String(msg.data));
+      let frame: ServerMessage;
+      try {
+        frame = parseServerMessage(String(msg.data));
+      } catch {
+        const error = new Error("could not read a frame from the daemon: is it a newer version?");
+        for (const pending of this.acks.values()) pending.fail(error);
+        this.acks.clear();
+        this.reject(error);
+        return;
+      }
       if (frame.type === "ping") ws.send(JSON.stringify({ type: "pong", id: frame.id }));
       if (frame.type === "ack") this.acks.get(frame.id)?.ok(frame);
       for (const listener of this.listeners) listener(frame);

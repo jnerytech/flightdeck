@@ -24,20 +24,32 @@ async function watch(
   signal: AbortSignal,
   write: (line: string) => void,
 ): Promise<CliResult> {
-  const off = daemon.onFrame("card.updated", ({ card }) =>
-    write(plain(flow.hide(args.json ? JSON.stringify(card) : watchLine(card)))),
-  );
+  const stopped = new Promise<void>((resolve) => {
+    if (signal.aborted) resolve();
+    signal.addEventListener("abort", () => resolve(), { once: true });
+  });
+  // A terminal that cannot be written to (a closed pipe) ends the stream, it does not crash the socket handler.
+  let unwritable!: (error: unknown) => void;
+  const broken = new Promise<never>((_, reject) => {
+    unwritable = reject;
+  });
+  const off = daemon.onFrame("card.updated", ({ card }) => {
+    try {
+      write(plain(flow.hide(args.json ? JSON.stringify(card) : watchLine(card))));
+    } catch (error) {
+      unwritable(error);
+    }
+  });
   try {
-    await daemon.call("board.watch", {});
-    flow.started();
-    const stopped = new Promise<void>((resolve) => {
-      if (signal.aborted) resolve();
-      signal.addEventListener("abort", () => resolve(), { once: true });
-    });
-    const gone = daemon.closed.then(() => {
-      throw new Error("connection closed");
-    });
-    await Promise.race([stopped, gone]);
+    // Ctrl-C counts from the first moment, also while the daemon has not answered yet.
+    await Promise.race([daemon.call("board.watch", {}), stopped, broken, daemon.unreadable]);
+    if (!signal.aborted) {
+      flow.started();
+      const gone = daemon.closed.then(() => {
+        throw new Error("connection closed");
+      });
+      await Promise.race([stopped, gone, broken, daemon.unreadable]);
+    }
     return { code: 0, out: [], err: [] };
   } finally {
     off();
