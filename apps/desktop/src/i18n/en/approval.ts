@@ -32,6 +32,33 @@ export const approval = {
     noKeyHere:
       "This device has no approving key on this host. Approve from a device that has one, or reset protection at the host's terminal with flightdeckd approvers reset and enroll this device again.",
     hasKeyHere: "This device already has a key for this host.",
+    addTitle: "Add another device",
+    addHint:
+      "On the new device, open this host's page, choose “Show the text” and paste what it shows here. A system dialog then asks you to confirm.",
+    addTextLabel: "Text from the new device",
+    addRead: "Read",
+    addOfferTitle: "Add this device?",
+    addOfferFor: "Device “{name}”, for host {host}.",
+    addOfferCode: "Code:",
+    addOfferHint:
+      "Add it only if the new device shows the same code. The name is only a label; the code is what shows it is the same device.",
+    addConfirm: "Add this device",
+    addCancel: "Cancel",
+    addDone: "The device was added.",
+    addDeclined: "Nothing was changed.",
+    requestTitle: "Add this device to this host",
+    requestHint:
+      "Make a text here and paste it on a device that is already enrolled, in this host's page. That device shows the same code before it adds this one.",
+    requestShow: "Show the text",
+    requestTextLabel: "Text for the enrolled device",
+    requestWaiting: "Waiting for the other device to add this one.",
+    requestCheck: "Check again",
+    addBadText:
+      'That is not a text made by another device\'s "Show the text" button. Copy it again, whole.',
+    addOtherHost:
+      "That text was made for another host. Make it again on the device, with this host open.",
+    addBadName: "A name has 1 to 64 characters, with no hidden characters, and is not a code.",
+    addAlready: "That device is already enrolled on this host.",
     heardEnrolled:
       "A device named “{name}” was enrolled on {host}. If it was not you, revoke it on the host's page.",
     heardRevoked: "A device was revoked on {host}.",

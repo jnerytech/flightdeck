@@ -4,8 +4,8 @@
 //! text to be signed so the native confirmation says what the key is about to do.
 
 use base64::{engine::general_purpose::STANDARD, Engine};
-use p256::ecdsa::{signature::Signer, Signature, SigningKey};
-use p256::pkcs8::EncodePublicKey;
+use p256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
+use p256::pkcs8::{DecodePublicKey, EncodePublicKey};
 use sha2::{Digest, Sha256};
 
 /// What a signed text asks for.
@@ -13,6 +13,8 @@ use sha2::{Digest, Sha256};
 pub enum Kind {
     Approve,
     EnrollFirst,
+    /// An enrolled device adds another one (#3478).
+    EnrollAdd,
     Revoke,
 }
 
@@ -20,6 +22,8 @@ pub enum Kind {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Ask {
     pub kind: Kind,
+    /// The host the text is for (its daemon id): the dialog names it, since the webview picks it.
+    pub host: String,
     pub subject: String,
     /// What an allow carries besides the allow itself; the hashes say it, the dialog must too.
     pub also: Also,
@@ -44,6 +48,7 @@ pub struct PublicInfo {
 
 const TAG_APPROVAL: &str = "flightdeck/approval/v1";
 const TAG_ENROLL_FIRST: &str = "flightdeck/enroll-first/v1";
+const TAG_ENROLL_ADD: &str = "flightdeck/enroll-add/v1";
 const TAG_REVOKE: &str = "flightdeck/revoke/v1";
 
 /// The longest text the protocol builds is about 600 bytes; anything past this is not one of them.
@@ -56,6 +61,16 @@ fn sha256_hex(text: &str) -> String {
 /// A new key: the base64 of its 32-byte scalar.
 pub fn generate() -> String {
     STANDARD.encode(SigningKey::random(&mut rand_core::OsRng).to_bytes())
+}
+
+/// Whether the text is the base64 SPKI of an ECDSA P-256 public key, the form the daemon enrolls.
+fn is_p256_public_key(public_key: &str) -> bool {
+    // 91 bytes is the uncompressed form the app and the host make; a compressed encoding of the same
+    // point (59 bytes) would pass for another key beside the one it repeats.
+    STANDARD
+        .decode(public_key)
+        .ok()
+        .is_some_and(|der| der.len() == 91 && VerifyingKey::from_public_key_der(&der).is_ok())
 }
 
 fn signing_key(secret: &str) -> Result<SigningKey, String> {
@@ -121,6 +136,14 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
             }
             (Kind::EnrollFirst, part(1), None, part(3))
         }
+        TAG_ENROLL_ADD => {
+            shape(5)?;
+            // Another key than this one, and one the daemon can verify: an add of anything else is no add.
+            if part(4) == own.public_key || !is_p256_public_key(part(4)) {
+                return Err("an add of this key, or of something that is not a device key, is not signed".into());
+            }
+            (Kind::EnrollAdd, part(2), Some(part(1)), part(4))
+        }
         TAG_REVOKE => {
             shape(5)?;
             (Kind::Revoke, part(2), Some(part(1)), part(4))
@@ -133,12 +156,17 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     if key.is_some_and(|k| k != own.key_id) {
         return Err("the text is made for another key".into());
     }
-    // The subject goes into the dialog: only the characters of an id, so it cannot pad or fake a line.
-    let plain = !subject.is_empty()
-        && subject.len() <= 64
-        && subject.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
-    if kind != Kind::EnrollFirst && !plain {
+    // The subject and the host go into the dialog: only the characters of an id, so they cannot pad or fake a line.
+    let plain = |text: &str| {
+        !text.is_empty()
+            && text.len() <= 64
+            && text.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
+    };
+    if matches!(kind, Kind::Approve | Kind::Revoke) && !plain(subject) {
         return Err("the text to sign names an id that is not one".into());
+    }
+    if kind == Kind::EnrollAdd && !plain(host) {
+        return Err("the text to sign names a host that is not an id".into());
     }
     // What the allow carries besides the allow: the hashes of nothing say it carries nothing.
     let none = |index: usize, empty: &str| part(index) != sha256_hex(empty);
@@ -147,7 +175,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     } else {
         Also::default()
     };
-    Ok(Ask { kind, subject: subject.to_string(), also })
+    Ok(Ask { kind, host: host.to_string(), subject: subject.to_string(), also })
 }
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
@@ -155,6 +183,12 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
 pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
     let pt = lang == "pt-BR";
     let short = |id: &str| id.chars().take(8).collect::<String>();
+    // The fingerprint a person compares across two devices: 16 characters of the key id, in groups of four.
+    let fingerprint = |public_key: &str| {
+        let der = STANDARD.decode(public_key).unwrap_or_default();
+        let id: String = Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect();
+        id.chars().take(16).collect::<Vec<_>>().chunks(4).map(|c| c.iter().collect::<String>()).collect::<Vec<_>>().join("-")
+    };
     // A key is shown by the id the device list shows: the SHA-256 of its public form, 8 characters.
     let print = |public_key: &str| {
         let der = STANDARD.decode(public_key).unwrap_or_default();
@@ -192,6 +226,16 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             "Cadastrar este dispositivo (chave {}) como aprovador deste host? Continue só se você acabou de iniciar isso no Flightdeck.",
             print(&ask.subject)
         ),
+        (Kind::EnrollAdd, false) => format!(
+            "Add the device with key {} as an approver of host {}? Continue only if the same code is shown on the other device.",
+            fingerprint(&ask.subject),
+            short(&ask.host)
+        ),
+        (Kind::EnrollAdd, true) => format!(
+            "Adicionar o dispositivo com a chave {} como aprovador do host {}? Continue só se o mesmo código aparece no outro dispositivo.",
+            fingerprint(&ask.subject),
+            short(&ask.host)
+        ),
         (Kind::Revoke, false) => format!(
             "Remove the device with key {} from the approvers of this host? Continue only if you just asked for it in Flightdeck.",
             short(&ask.subject)
@@ -203,6 +247,18 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
     (title.to_string(), body)
+}
+
+/// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
+/// does not add a device.
+pub fn confirm_labels(kind: Kind, lang: &str) -> (String, String) {
+    let (yes, no) = match (kind, lang == "pt-BR") {
+        (Kind::EnrollAdd, false) => ("Add device", "Cancel"),
+        (Kind::EnrollAdd, true) => ("Adicionar dispositivo", "Cancelar"),
+        (_, false) => ("Allow", "Cancel"),
+        (_, true) => ("Permitir", "Cancelar"),
+    };
+    (yes.to_string(), no.to_string())
 }
 
 #[cfg(test)]
@@ -279,7 +335,7 @@ mod tests {
         );
         assert_eq!(
             describe(&m, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Approve, subject: "ext-7".into(), also: also_all() }
+            Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: also_all() }
         );
     }
 
@@ -304,7 +360,7 @@ mod tests {
         );
         assert_eq!(
             describe(&rv, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Revoke, subject: "abc123".into(), also: Also::default() }
+            Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "abc123".into(), also: Also::default() }
         );
     }
 
@@ -337,13 +393,13 @@ mod tests {
 
     #[test]
     fn the_confirmation_names_the_action_and_its_subject_in_both_languages() {
-        let approve = Ask { kind: Kind::Approve, subject: "ext-7".into(), also: Also::default() };
+        let approve = Ask { kind: Kind::Approve, host: DAEMON.into(), subject: "ext-7".into(), also: Also::default() };
         let (title, body) = confirm_text(&approve, "en");
         assert!(title.contains("Flightdeck"));
         assert!(body.contains("ext-7") && body.contains("just pressed"));
         let (_, body_pt) = confirm_text(&approve, "pt-BR");
         assert!(body_pt.contains("ext-7") && body_pt.contains("acabou de apertar"));
-        let revoke = Ask { kind: Kind::Revoke, subject: "0123456789abcdef".into(), also: Also::default() };
+        let revoke = Ask { kind: Kind::Revoke, host: DAEMON.into(), subject: "0123456789abcdef".into(), also: Also::default() };
         assert!(confirm_text(&revoke, "en").1.contains("01234567"));
         assert!(!confirm_text(&revoke, "en").1.contains("0123456789abcdef"));
     }
@@ -351,7 +407,7 @@ mod tests {
     #[test]
     fn an_enrollment_shows_the_fingerprint_of_the_key_not_its_text() {
         let info = public_info(&generate()).unwrap();
-        let first = Ask { kind: Kind::EnrollFirst, subject: info.public_key.clone(), also: Also::default() };
+        let first = Ask { kind: Kind::EnrollFirst, host: DAEMON.into(), subject: info.public_key.clone(), also: Also::default() };
         let body = confirm_text(&first, "en").1;
         assert!(body.contains(&info.key_id[..8]));
         assert!(!body.contains(&info.public_key));
@@ -394,14 +450,94 @@ mod tests {
         assert!(describe(&padded, DAEMON, &me).is_err());
     }
 
+    /// The text an enrolled device signs to add `new`.
+    fn add(signer: &str, host: &str, new: &str) -> String {
+        serde_json::to_string(&["flightdeck/enroll-add/v1", signer, host, "n", new]).unwrap()
+    }
+
     #[test]
-    fn adding_a_device_is_not_signed_because_the_app_never_asks_for_it() {
+    fn an_enrolled_device_signs_the_add_of_another_key_for_this_host() {
         let me = own();
-        let add = format!(
-            "[\"flightdeck/enroll-add/v1\",\"{}\",\"{DAEMON}\",\"n\",\"{}\"]",
-            me.key_id,
-            own().public_key
-        );
-        assert!(describe(&add, DAEMON, &me).is_err());
+        let other = own();
+        let asked = describe(&add(&me.key_id, DAEMON, &other.public_key), DAEMON, &me);
+        assert!(asked.is_ok(), "an add by this device is signed: {asked:?}");
+        let ask = asked.unwrap();
+        assert_eq!(ask.kind, Kind::EnrollAdd);
+        assert_eq!(ask.subject, other.public_key);
+    }
+
+    #[test]
+    fn an_add_for_another_host_another_signer_or_this_key_is_not_signed() {
+        let me = own();
+        let other = own();
+        assert!(describe(&add(&me.key_id, "daemon-other-host", &other.public_key), DAEMON, &me).is_err());
+        assert!(describe(&add(&other.key_id, DAEMON, &other.public_key), DAEMON, &me).is_err());
+        assert!(describe(&add(&me.key_id, DAEMON, &me.public_key), DAEMON, &me).is_err());
+    }
+
+    #[test]
+    fn an_add_for_a_host_id_that_could_fake_a_dialog_line_is_not_signed() {
+        let me = own();
+        let other = own();
+        for host in ["line\nbreak-host", "\u{202e}evil-host", "spaced host", ""] {
+            assert!(describe(&add(&me.key_id, host, &other.public_key), host, &me).is_err(), "signed: {host:?}");
+        }
+    }
+
+    #[test]
+    fn an_add_of_something_that_is_not_a_p256_key_is_not_signed() {
+        let me = own();
+        for new in ["", "AAAA", "not base64 at all", &"A".repeat(200)] {
+            assert!(describe(&add(&me.key_id, DAEMON, new), DAEMON, &me).is_err(), "signed: {new:?}");
+        }
+    }
+
+    #[test]
+    fn the_dialog_of_an_add_names_the_new_key_by_sixteen_characters_in_groups() {
+        let me = own();
+        let other = own();
+        let asked = describe(&add(&me.key_id, DAEMON, &other.public_key), DAEMON, &me);
+        assert!(asked.is_ok(), "an add by this device is signed: {asked:?}");
+        let ask = asked.unwrap();
+        let id = &other.key_id;
+        let print = format!("{}-{}-{}-{}", &id[0..4], &id[4..8], &id[8..12], &id[12..16]);
+        let en = confirm_text(&ask, "en").1;
+        assert!(en.contains(&print), "{en}");
+        assert!(en.contains("Add the device"), "{en}");
+        let pt = confirm_text(&ask, "pt-BR").1;
+        assert!(pt.contains(&print), "{pt}");
+        assert!(pt.contains("Adicionar o dispositivo"), "{pt}");
+        assert!(!en.contains(&id[0..20]), "more than the fingerprint: {en}");
+    }
+
+    #[test]
+    fn the_dialog_of_an_add_names_the_host_it_is_for_and_has_buttons_of_its_own() {
+        let me = own();
+        let other = own();
+        let ask = describe(&add(&me.key_id, DAEMON, &other.public_key), DAEMON, &me).unwrap();
+        assert_eq!(ask.host, DAEMON);
+        assert!(confirm_text(&ask, "en").1.contains("host daemon-0"), "{}", confirm_text(&ask, "en").1);
+        assert!(confirm_text(&ask, "pt-BR").1.contains("host daemon-0"));
+        assert_eq!(confirm_labels(Kind::EnrollAdd, "en"), ("Add device".to_string(), "Cancel".to_string()));
+        assert_eq!(confirm_labels(Kind::EnrollAdd, "pt-BR").0, "Adicionar dispositivo");
+        assert_eq!(confirm_labels(Kind::Approve, "en").0, "Allow");
+        assert_eq!(confirm_labels(Kind::Revoke, "pt-BR").0, "Permitir");
+    }
+
+    #[test]
+    fn this_devices_own_key_in_another_encoding_is_not_added_as_another() {
+        let me = own();
+        let mut der = STANDARD.decode(&me.public_key).unwrap();
+        // The compressed SPKI of the same point: the point's x, and the parity of y in the prefix.
+        let parity = 2 + (der[90] & 1);
+        let x: Vec<u8> = der[27..59].to_vec();
+        der.truncate(26);
+        der[1] = 0x39;
+        der[24] = 0x22;
+        der.push(parity);
+        der.extend(x);
+        let compressed = STANDARD.encode(&der);
+        assert_ne!(compressed, me.public_key);
+        assert!(describe(&add(&me.key_id, DAEMON, &compressed), DAEMON, &me).is_err());
     }
 }
