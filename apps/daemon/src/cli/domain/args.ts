@@ -29,6 +29,7 @@ export interface CliArgs {
     | "host"
     | "sessions"
     | "requests"
+    | "send"
     | "approve"
     | "deny"
     | "version"
@@ -136,6 +137,7 @@ const USAGE = [
   "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
   "     flightdeckd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
   "     flightdeckd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
+  "     flightdeckd send <session> <text> [--json] [--config <file>]   (the session is its name or its id)",
   "     flightdeckd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (--hold: you mean to allow a high-risk request; it is your own assertion)",
   "     flightdeckd deny <request> [--message <text>] [--json] [--config <file>]",
   "     flightdeckd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
@@ -337,6 +339,11 @@ const HANDLERS: Record<string, Handler> = {
   host: setCommand("host"),
   sessions: setCommand("sessions"),
   requests: setCommand("requests"),
+  send: (args, reader) => {
+    args.command = "send";
+    args.session = operand(reader, "the session");
+    args.text = operand(reader, "the text");
+  },
   approve: (args, reader) => {
     args.command = "approve";
     args.requestId = operand(reader, "the request");
@@ -440,16 +447,16 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (
     args.json &&
-    !["card", "host", "sessions", "requests", "approve", "deny"].includes(args.command)
+    !["card", "host", "sessions", "requests", "send", "approve", "deny"].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host, sessions, requests, approve and deny\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve and deny\n${USAGE}`,
     );
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (args.answerMessage !== undefined && !["approve", "deny"].includes(args.command))
     throw new Error(`--message: this flag only applies to flightdeckd approve and deny\n${USAGE}`);
-  if (args.command !== "requests" && args.session !== undefined && args.command !== "message")
+  if (!["requests", "message", "send"].includes(args.command) && args.session !== undefined)
     throw new Error(`--session: this flag only applies to flightdeckd requests\n${USAGE}`);
   if (args.command !== "card" && (args.description !== undefined || args.workflow !== undefined))
     throw new Error(

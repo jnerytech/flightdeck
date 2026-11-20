@@ -243,6 +243,21 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       ),
     );
   },
+  send: async (args, deps) => {
+    const { runSendCli } = await import("../sessions/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runSendCli(
+        {
+          session: args.session ?? "",
+          text: args.text ?? "",
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
   approve: async (args, deps) => answered("allow", args, deps),
   deny: async (args, deps) => answered("deny", args, deps),
   action: async (args, deps) => {

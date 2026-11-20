@@ -5,4 +5,5 @@
  */
 
 export { runSessionsCli, type SessionsCliArgs } from "./cli.ts";
+export { runSendCli } from "./send-cli.ts";
 export type { SessionManager } from "./session-manager.ts";
