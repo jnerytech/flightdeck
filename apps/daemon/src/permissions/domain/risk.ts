@@ -231,6 +231,24 @@ function changesSshDestinations(prog: string, args: string[]): boolean {
 }
 
 /**
+ * Opening a terminal, or turning the host's terminals on (#3538): `terminal open` and `open-session`
+ * start a shell the session then drives, on the host and with its environment, and `settings --enable`
+ * is the switch that allows any terminal at all. `list`, `close` and `settings --disable` only read or
+ * shrink what is open, so they stay ordinary commands.
+ */
+function opensATerminal(prog: string, args: string[]): boolean {
+  return runsFlightdeckWords(prog, args, ([command, action]) => {
+    return command === "terminal" && (action === "open" || action === "open-session");
+  });
+}
+
+function enablesTerminals(prog: string, args: string[]): boolean {
+  return runsFlightdeckWords(prog, args, ([command, action], own) => {
+    return command === "terminal" && action === "settings" && own.includes("--enable");
+  });
+}
+
+/**
  * Whether a command line runs the CLI with words that `matches` accepts, as the CLI itself, or under a
  * runtime or a shell (`bun bin.ts`, `bash -c`). Each CLI program in the text starts its own command: a
  * word of another command is no verb of it, so `fd send fd-qa "ssh remove"` is not one.
@@ -238,13 +256,17 @@ function changesSshDestinations(prog: string, args: string[]): boolean {
 function runsFlightdeckWords(
   prog: string,
   args: string[],
-  matches: (words: string[]) => boolean,
+  matches: (words: string[], own: string[]) => boolean,
 ): boolean {
-  if (isCliProgram(prog)) return matches(flightdeckWords(shellArguments(args)));
+  if (isCliProgram(prog)) {
+    const own = shellArguments(args);
+    return matches(flightdeckWords(own), own);
+  }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   return words.some(
-    (w, i) => isCliProgram(program(w)) && matches(flightdeckWords(words.slice(i + 1))),
+    (w, i) =>
+      isCliProgram(program(w)) && matches(flightdeckWords(words.slice(i + 1)), words.slice(i + 1)),
   );
 }
 
@@ -427,6 +449,16 @@ const DANGEROUS: Array<{
     when: changesSshDestinations,
     reason: () =>
       "removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh remove or import apply)",
+  },
+  {
+    when: opensATerminal,
+    reason: () =>
+      "opens a terminal on the host, a shell that runs what is typed into it, without the person opening it in the app (flightdeckd terminal open or open-session)",
+  },
+  {
+    when: enablesTerminals,
+    reason: () =>
+      "turns the host's terminals on, a full shell for whoever reaches the daemon, without the person choosing it in the app (flightdeckd terminal settings --enable)",
   },
   {
     when: changesWhatGuards,
