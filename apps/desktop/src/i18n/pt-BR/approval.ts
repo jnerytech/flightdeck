@@ -2,7 +2,7 @@
 export const approval = {
   approvalDevices: {
     title: "Dispositivos que aprovam",
-    hint: "Uma permissão de risco alto, ou que salva uma regra, é assinada por um dispositivo cadastrado aqui. Sem nenhum, segurar o botão é a única checagem.",
+    hint: "Uma permissão de risco alto, que salva uma regra, ou o uso de um segredo de produção ou de risco alto é assinada por um dispositivo cadastrado aqui. Sem nenhum, segurar o botão é a única checagem.",
     off: "Proteção desligada: nenhum dispositivo cadastrado neste host.",
     on: "Proteção ligada: estes dispositivos podem aprovar.",
     listLabel: "Dispositivos cadastrados",
