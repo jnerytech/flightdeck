@@ -4,6 +4,7 @@
  */
 import type {
   InstalledPlugin,
+  PluginChange,
   PluginList,
   PluginPreview,
   PluginUpdatePreview,
@@ -15,9 +16,26 @@ interface Printed {
 }
 export type PluginsCliArgs =
   | (Printed & { action: "list" })
-  | (Printed & { action: "detail" | "preview-update"; plugin: string })
+  | (Printed & { action: "detail"; plugin: string })
+  | (Printed & { action: "preview-update"; plugin: string })
   | (Printed & { action: "preview"; plugin: string })
-  | (Printed & { action: "preview"; dir: string });
+  | (Printed & { action: "preview"; dir: string })
+  | (Printed & InstallArgs & { action: "install" })
+  | (Printed & { action: "update"; plugin: string; confirmHash: string; acceptCommand?: string })
+  | (Printed & { action: "uninstall"; plugin: string; scope?: PluginScope; confirm?: true })
+  | (Printed & { action: "pin"; plugin: string })
+  | (Printed & { action: "unpin"; plugin: string })
+  | (Printed & { action: "marketplace-add"; source: string; scope?: PluginScope; confirm?: true })
+  | (Printed & { action: "marketplace-remove"; name: string; confirm?: true })
+  | (Printed & { action: "marketplace-update"; name?: string });
+
+type PluginScope = "user" | "project" | "local";
+/** An install names an installed-from marketplace plugin or a folder, and repeats the hash of its preview. */
+type InstallArgs = ({ plugin: string } | { dir: string }) & {
+  confirmHash: string;
+  scope?: PluginScope;
+  acceptCommand?: string;
+};
 
 /** The plural line of a count: `hooks: 2`, and how many of them can decide for the person. */
 const count = (label: string, n: number, extra = "") => `${label}: ${n}${extra}`;
@@ -25,6 +43,31 @@ const count = (label: string, n: number, extra = "") => `${label}: ${n}${extra}`
 /** A marketplace added by a URL may carry `user:token@` in it; the line shows the URL without it. */
 function withoutUserinfo(source: string): string {
   return source.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@\s]*@/i, "$1");
+}
+
+/**
+ * Text the plugin manager or a marketplace wrote may name a URL with `user:token@` in it (a git error does):
+ * the userinfo is cut, as `plugins list` does for a marketplace's source. Control characters are the printer's
+ * to remove (`said`), and JSON escapes them.
+ */
+const plain = (text: string): string => text.replace(/([a-z][a-z0-9+.-]*:\/\/)[^/@\s]*@/gi, "$1");
+
+/** A change with the URLs of the text the daemon relayed cut of their userinfo; the outcome and the hash are left as they are. */
+export function plainChange(change: PluginChange): PluginChange {
+  const { shownCommand } = change;
+  return {
+    ...change,
+    message: plain(change.message),
+    ...(shownCommand
+      ? {
+          shownCommand: {
+            ...shownCommand,
+            ...(shownCommand.command === undefined ? {} : { command: plain(shownCommand.command) }),
+            ...(shownCommand.plugin === undefined ? {} : { plugin: plain(shownCommand.plugin) }),
+          },
+        }
+      : {}),
+  };
 }
 
 /** The lines of `plugins list`: the installed ones first, then what the marketplaces offer and the marketplaces. */
@@ -136,4 +179,27 @@ export function updateLines(update: PluginUpdatePreview): string[] {
     ...moved,
     ...(update.unchanged ? ["unchanged: the marketplace's copy is the installed one"] : []),
   ];
+}
+
+/**
+ * What a write said, as lines and an exit code: `ok` and `unchanged` are done (0); a failed or rolled back
+ * change is refused (1); a command the marketplace declares waits for the person, who reads it here and
+ * repeats its sha256 with `--accept-command` (1, nothing was installed).
+ */
+export function changeLines(change: PluginChange): { code: 0 | 1; lines: string[] } {
+  if (change.outcome === "ok" || change.outcome === "unchanged")
+    return { code: 0, lines: [change.message] };
+  const { shownCommand } = change;
+  if (change.outcome !== "needs-command-confirmation" || shownCommand === undefined)
+    return { code: 1, lines: [change.message] };
+  return {
+    code: 1,
+    lines: [
+      change.message,
+      ...(shownCommand.plugin ? [`plugin: ${shownCommand.plugin}`] : []),
+      ...(shownCommand.command ? [`command: ${shownCommand.command}`] : []),
+      `sha256: ${shownCommand.sha256}`,
+      `Nothing was installed. After reading the command, repeat the same line with --accept-command ${shownCommand.sha256}`,
+    ],
+  };
 }
