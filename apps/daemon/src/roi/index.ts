@@ -5,4 +5,5 @@
  * in a cycle; `main.ts`, outside any domain, takes `createRoi` from it.
  */
 export { type DoneVia, forgetDone, recordDone } from "./done-log.ts";
+export { type RoiCliArgs, runRoiCli } from "./roi-cli.ts";
 export { RoiSummarizer, roiPeriod } from "./summary.ts";
