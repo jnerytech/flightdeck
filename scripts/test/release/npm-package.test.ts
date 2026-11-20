@@ -30,7 +30,7 @@ const ROOT = resolve(import.meta.dir, "../../..");
 const VERSION = "0.7.0";
 const manifest = () =>
   JSON.parse(readFileSync(join(ROOT, NPM_DIR, "package.json"), "utf8")) as Record<string, unknown>;
-const GOOD = { ...manifest(), version: VERSION };
+const GOOD: Record<string, unknown> = { ...manifest(), version: VERSION };
 
 /** A checkout after `build:daemon`: the three binaries in `dist/`, written 0644 the way an artifact download leaves them. */
 function built() {
