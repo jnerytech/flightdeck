@@ -243,6 +243,23 @@ describe("command-approve: a device signs the command and a hash of what it carr
     );
   });
 
+  test("Given the merge payload the Rust crate also reads, Then its digest and hash are the shared literals", () => {
+    const payload = {
+      prUrl: "https://github.com/acme/repo/pull/9",
+      method: "squash",
+      headSha: "a".repeat(40),
+      confirm: true,
+      cardId: "c1",
+    };
+    const digest = commandDigest(payload);
+    expect(digest).toBe(
+      '{"cardId":"c1","confirm":true,"headSha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","method":"squash","prUrl":"https://github.com/acme/repo/pull/9"}',
+    );
+    expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(
+      "ab4ff38dd49488370b26c6082bcce7b9c06e7126faaf113cc562ef156d7c1e8e",
+    );
+  });
+
   test("Given any one part changed, Then the signed text changes", () => {
     const base = commandMessage(parts);
     for (const key of ["keyId", "daemonId", "command", "nonce", "payloadHash"] as const) {
