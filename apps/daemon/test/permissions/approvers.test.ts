@@ -320,6 +320,20 @@ describe("approvers: a listener hears the devices enrolled and revoked (#3476)",
     expect(heard).toEqual([]);
   });
 
+  test("Given a device that signs in a key that is enrolled already, Then the store keeps the old row and the listener hears nothing", () => {
+    const { approvers, open, enrollFirst, enrollAdd } = setup();
+    const phone = device();
+    const laptop = device();
+    open("the-code");
+    approvers.enroll(enrollFirst(phone, "the-code"), ASKER);
+    approvers.enroll(enrollAdd(phone, laptop), ASKER);
+    const heard: unknown[] = [];
+    approvers.onChange((change) => heard.push(change));
+    approvers.enroll(enrollAdd(phone, laptop), ASKER);
+    expect(approvers.keys().length).toBe(2);
+    expect(heard).toEqual([]);
+  });
+
   test("Given a listener that stopped, Then it hears nothing; a listener that throws does not undo the enroll or silence the next", () => {
     const { approvers, open, enrollFirst, enrollAdd } = setup();
     const phone = device();
