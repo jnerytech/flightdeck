@@ -211,6 +211,7 @@ export class AppStore {
         notify: (...args) => this.inbox.notify(...args),
         webhookFeed: () => this.webhookFeed,
         rememberTeam: (hostId, team) => this.summaries.rememberTeam(hostId, team),
+        rootsPayload: (hostId, path) => this.approval.rootsPayload(hostId, path),
         describeError,
         daemonUpdateTimeoutMs: options.daemonUpdateTimeoutMs,
         peersSyncMs: options.peersSyncMs,

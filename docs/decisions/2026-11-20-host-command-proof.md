@@ -214,3 +214,26 @@ issue, with `terminal.settings` and `mcp.save` first.
 - The gate guards the protocol path only. A host whose config file already says bypass is on (the default), or
   a person or process that edits the config file and restarts the daemon, gets bypass without a device: the
   proof stops a session from turning back on, over the protocol, what the person turned off.
+
+## Built: `roots.add` (#3507, step 2)
+
+- The host announces `approval-roots` (`FEATURE_APPROVAL_ROOTS`) when it has an approvers store. With a key
+  enrolled, `roots.add { path, confirm: true }` takes a proof over exactly that payload. There is no value that
+  lowers risk, so every payload is gated.
+- `addAllowedRoot` takes an optional `guard(real)` that runs once the folder exists, is no system folder and
+  was confirmed, and before anything is added. A refusal for a missing folder, a system folder or a missing
+  `confirm` therefore does not use up the challenge. The handler passes the proof check as the guard.
+- The person signs the folder the host stores. If `path` resolves to another folder (a link, a relative path,
+  a trailing difference), the host refuses with `root_path_differs` and names the real folder, as
+  `trust_path_differs` does for trust. The app shows the folder the person typed.
+- The Rust signer reads only a confirmed add (exactly `path` and `confirm: true`, `path` one the dialog can
+  show whole). The dialog names the host and the folder, and its buttons say "Add folder" and "Cancel".
+- The app proves with `FEATURE_APPROVAL_ROOTS`: a host that does not check it gets the plain payload, and its
+  page shows a notice (`approvalDevices.rootsUnchecked`).
+- Residual risk: the string the host stores is the resolved folder, and the guard refuses unless it equals the
+  string the person signed, so the signature binds what is stored. What it cannot bind is the disk: a person or
+  process that replaces the signed folder with a link after the add changes where sessions run, as for any
+  allowed-folder list that stores a path. The window between the check and the add is small but not zero (one
+  more `realpath` of the existing roots runs between them); it can only make the add fail the cover check,
+  never store a folder other than the signed one.
+- No CLI verb for `roots.add` exists; the parity row stays. A verb added later follows the rule above.

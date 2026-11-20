@@ -32,6 +32,8 @@ export const approval = {
       "This host does not ask for a device to turn on Bypass permissions: update it to protect that switch.",
     resumeUnchecked:
       "This host does not ask for a device to confirm turning automatic approval back on: update it to protect it.",
+    rootsUnchecked:
+      "This host does not ask for a device to add an allowed folder: update it to protect the list of folders.",
     scope:
       "This guards approvals made from the app. Anyone with a terminal on the host can still reset it.",
     loading: "Reading the host's devices…",

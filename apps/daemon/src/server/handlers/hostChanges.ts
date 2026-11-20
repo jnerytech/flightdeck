@@ -21,12 +21,28 @@ export const hostChangesHandlers = {
     const { opts } = server;
     requireVaultTransport(ws.data.origin, "roots.add", opts.log);
     const { path, confirm } = payload;
+    // #3507: with a device enrolled, the person signs the folder the host stores. The proof is checked once
+    // the folder is known to exist, is no system folder and was confirmed, so a refusal for those does not use
+    // up a challenge; a link or a relative path that resolves elsewhere is refused with the folder it is.
+    const approvers = opts.approvers;
+    const guard = (real: string) => {
+      if (approvers?.needsCommandProof("roots.add", payload) && real !== path) {
+        throw new FlightdeckError(
+          "invalid_state",
+          "the folder is another one than the folder named",
+          "root_path_differs",
+          { path: real },
+        );
+      }
+      approvers?.requireCommandProof("roots.add", payload, ["path"]);
+    };
     const allowedRoots = await addAllowedRoot(
       opts.allowedRoots as string[],
       path,
       confirm === true,
       opts.roots?.persist,
       opts.roots?.platform,
+      guard,
     );
     // The trust's view of the roots (which one is a project of its own) is a snapshot: read it
     // again, so the gates that read it without asking do not use the old list (#1738).

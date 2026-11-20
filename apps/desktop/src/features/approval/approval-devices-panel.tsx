@@ -20,6 +20,7 @@ const UNCHECKED_TEXT = {
   trust: "approvalDevices.trustUnchecked",
   bypass: "approvalDevices.bypassUnchecked",
   resume: "approvalDevices.resumeUnchecked",
+  roots: "approvalDevices.rootsUnchecked",
 } as const satisfies Record<UncheckedCommand, string>;
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };

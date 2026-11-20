@@ -165,6 +165,7 @@ const REASONS = [
   "root_confirm",
   "root_missing",
   "root_system",
+  "root_path_differs",
   "session_not_found",
   "teleport_busy",
   "teleport_team",

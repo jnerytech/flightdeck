@@ -346,6 +346,39 @@ describe("command-approve: a device signs the command and a hash of what it carr
     );
   });
 
+  test("Given a folder added to a host's allowed folders (#3507), Then every payload of roots.add needs the proof: there is no narrowing value", () => {
+    expect([
+      commandNeedsProof("roots.add", { path: "/work", confirm: true }),
+      commandNeedsProof("roots.add", { path: "/work" }),
+      commandNeedsProof("roots.add", {}),
+      commandNeedsProof("roots.add", null),
+    ]).toEqual([true, true, true, true]);
+  });
+
+  test("Given roots.add with a proof, Then the payload keeps it; a proof that lacks its signature is refused", () => {
+    const proof = { keyId: "k1", nonce: "n1", signature: "sig" };
+    const parse = (payload: unknown) => Command.safeParse({ id: "1", type: "roots.add", payload });
+    const parsed = parse({ path: "/work", confirm: true, proof });
+    expect(
+      parsed.success && "proof" in parsed.data.payload ? parsed.data.payload.proof : null,
+    ).toEqual(proof);
+    expect(
+      parse({ path: "/work", confirm: true, proof: { keyId: "k1", nonce: "n1" } }).success,
+    ).toBe(false);
+  });
+
+  test("Given the roots.add payload the Rust crate also reads, Then its digest and hash are the shared literals", () => {
+    const digest = commandDigest({ path: "C:\\Users\\José\\código", confirm: true });
+    expect(digest).toBe('{"confirm":true,"path":"C:\\\\Users\\\\José\\\\código"}');
+    expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(
+      "33ef725f8a057e6ba6c4a7a90ef156230c763669d969fb952c2e86b020f2ff8c",
+    );
+  });
+
+  test("Given a challenge for roots.add, Then it is one of the gate's commands", () => {
+    expect(challenge({ purpose: "command", command: "roots.add" })).toBe(true);
+  });
+
   test("Given a challenge for a command, Then it names a command of the gate; any other is refused", () => {
     expect([
       challenge({ purpose: "command", command: "card.pr.merge" }),

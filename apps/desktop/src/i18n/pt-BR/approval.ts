@@ -29,6 +29,8 @@ export const approval = {
       "Este host não pede a confirmação de um dispositivo ao confiar em uma pasta: atualize-o para proteger a confiança.",
     bypassUnchecked:
       "Este host não pede a confirmação de um dispositivo para ligar Ignorar permissões: atualize-o para proteger essa chave.",
+    rootsUnchecked:
+      "Este host não pede a confirmação de um dispositivo para adicionar uma pasta permitida: atualize-o para proteger a lista de pastas.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",
     resumeUnchecked:
       "Este host não pede a confirmação de um dispositivo ao reativar a aprovação automática: atualize-o para protegê-la.",

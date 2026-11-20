@@ -25,6 +25,8 @@ const currentPlatform = (): PlatformInfo => ({
  * it with `persist`. A folder already covered by an allowed one changes nothing. Returns the list
  * after the call. `platform` is what decides the system folders (the process's own by default; a
  * test gives its own, since a CI runner keeps its temp folders inside the user's AppData).
+ * `guard` runs once the folder is known to exist and is no system folder, with the folder as the host
+ * resolved it and before anything is added: it throws to refuse (the device's proof, #3507).
  */
 export async function addAllowedRoot(
   roots: string[],
@@ -32,6 +34,7 @@ export async function addAllowedRoot(
   confirm: boolean,
   persist?: (roots: readonly string[]) => void | Promise<void>,
   platform: PlatformInfo = currentPlatform(),
+  guard?: (real: string) => void,
 ): Promise<string[]> {
   if (!confirm) {
     throw new FlightdeckError(
@@ -51,6 +54,7 @@ export async function addAllowedRoot(
       path: real,
     });
   }
+  guard?.(real);
   const realRoots = await Promise.all(roots.map(realFolder));
   const covered = realRoots.some((realRoot) => realRoot !== null && isInside(realRoot, real));
   if (!covered) {

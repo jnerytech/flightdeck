@@ -12,6 +12,7 @@ import {
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
+  FEATURE_APPROVAL_ROOTS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   type PermissionUpdate,
@@ -766,18 +767,73 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
     await expect(keyless.slice.bypassPayload("h")).rejects.toThrow(t("approvalDevices.noKeyHere"));
   });
 
+  const ROOTS_HOST = [...BYPASS_HOST, FEATURE_APPROVAL_ROOTS];
+  const FOLDER = { path: "/work/app", confirm: true } as const;
+
+  test("adding an allowed folder carries the proof over exactly {path, confirm}, signed with this device's key (#3507)", async () => {
+    const { slice, log, keyLog } = approval({ features: ROOTS_HOST });
+    const made = await slice.rootsPayload("h", FOLDER.path);
+    const payload = made.kind === "payload" ? made.payload : {};
+    const { proof, ...bound } = payload as typeof FOLDER & { proof: unknown };
+    expect(bound).toEqual(FOLDER);
+    expect(proof).toEqual({
+      keyId: "key-this",
+      nonce: "nonce-1",
+      signature: expect.stringContaining("sig:"),
+    });
+    expect(log.map((l) => l.type)).toEqual(["approval.list", "approval.challenge"]);
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "roots.add" });
+    expect(keyLog.find((k) => k.op === "sign")?.args[3]).toBe(commandDigest(FOLDER));
+    expect(Command.safeParse({ id: "1", type: "roots.add", payload }).success).toBe(true);
+  });
+
+  test("a host that does not announce the roots proof gets the plain payload and no challenge; no device enrolled, the same", async () => {
+    const old = approval({ features: BYPASS_HOST });
+    expect(await old.slice.rootsPayload("h", FOLDER.path)).toEqual({
+      kind: "payload",
+      payload: FOLDER,
+    });
+    expect(old.log).toEqual([]);
+    const off = approval({ features: ROOTS_HOST, list: { protectionOff: true, keys: [] } });
+    expect(await off.slice.rootsPayload("h", FOLDER.path)).toEqual({
+      kind: "payload",
+      payload: FOLDER,
+    });
+  });
+
+  test("a no in the system's dialog stops adding a folder; a device with no key here is told so", async () => {
+    const declined = approval({ features: ROOTS_HOST, signFails: "declined" });
+    expect(await declined.slice.rootsPayload("h", FOLDER.path)).toEqual({ kind: "declined" });
+    const keyless = approval({ features: ROOTS_HOST, local: null });
+    await expect(keyless.slice.rootsPayload("h", FOLDER.path)).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
+    );
+  });
+
   test("a host that checks proofs but not a command is one the app says so of, for each command; one that checks all, or one not known, is not", () => {
     const unchecked = (features: string[]) => approval({ features }).slice.uncheckedCommands("h");
-    expect(unchecked([FEATURE_APPROVAL_PROOF])).toEqual(["merge", "trust", "bypass", "resume"]);
-    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "bypass", "resume"]);
+    expect(unchecked([FEATURE_APPROVAL_PROOF])).toEqual([
+      "merge",
+      "trust",
+      "bypass",
+      "resume",
+      "roots",
+    ]);
+    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "bypass", "resume", "roots"]);
     expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual([
       "merge",
       "bypass",
       "resume",
+      "roots",
     ]);
-    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual(["bypass", "resume"]);
+    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual([
+      "bypass",
+      "resume",
+      "roots",
+    ]);
     expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST, FEATURE_APPROVAL_BYPASS])).toEqual([
       "resume",
+      "roots",
     ]);
     expect(
       unchecked([
@@ -785,6 +841,7 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
         FEATURE_APPROVAL_TRUST,
         FEATURE_APPROVAL_BYPASS,
         FEATURE_APPROVAL_RESUME,
+        FEATURE_APPROVAL_ROOTS,
       ]),
     ).toEqual([]);
     expect(unchecked([])).toEqual([]);

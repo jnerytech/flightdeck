@@ -33,6 +33,8 @@ pub enum CommandAsk {
     TrustProject { path: String },
     /// `autoapprove.resume`: the automatic approver answers this session's requests again with no person.
     ResumeApproval { session: String },
+    /// `roots.add`: sessions of this host may start in this folder and everything inside it (#3507).
+    RootsAdd { path: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -325,6 +327,25 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
             );
             Ok((CommandAsk::ResumeApproval { session: key.into() }, canonical))
         }
+        // Every payload of the command is signed: adding a folder has no value that lowers risk. Only a confirmed
+        // add of a path the dialog can show whole is.
+        "roots.add" => {
+            if fields.len() != 2 || fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+                return Err("a folder is signed only confirmed, with a path and no other field".into());
+            }
+            let path = fields
+                .get("path")
+                .and_then(serde_json::Value::as_str)
+                .ok_or("the folder payload has no text for path")?;
+            if !is_shown_path(path) {
+                return Err("the folder is not a path the dialog can show".into());
+            }
+            let canonical = format!(
+                "{{\"confirm\":true,\"path\":{}}}",
+                serde_json::to_string(path).unwrap_or_default()
+            );
+            Ok((CommandAsk::RootsAdd { path: path.into() }, canonical))
+        }
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -469,6 +490,14 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             Some(CommandAsk::TrustProject { path }) => format!(
                 "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
             ),
+            Some(CommandAsk::RootsAdd { path }) if pt => format!(
+                "Permitir sessões em uma pasta? Sessões do host {} poderão rodar nela e em tudo o que há dentro dela. Continue só se você acabou de apertar Adicionar às pastas permitidas no Flightdeck.\n\"{path}\"",
+                short(&ask.host)
+            ),
+            Some(CommandAsk::RootsAdd { path }) => format!(
+                "Allow sessions in a folder? Sessions on host {} will be able to run in it and in everything inside it. Continue only if you just pressed Add to allowed folders in Flightdeck.\n\"{path}\"",
+                short(&ask.host)
+            ),
             Some(CommandAsk::ResumeApproval { session }) if pt => format!(
                 "Reativar a aprovação automática de uma sessão? Ela volta a aprovar pedidos sem que nenhuma pessoa os veja, depois de ter lido conteúdo de terceiros. Continue só se você acabou de apertar Reativar no Flightdeck.\n\"{session}\""
             ),
@@ -488,6 +517,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::RootsAdd { .. })) => {
+            if pt { ("Adicionar pasta", "Cancelar") } else { ("Add folder", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
             if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
@@ -1171,5 +1203,77 @@ mod tests {
         assert!(pt.starts_with("Reativar a aprovação automática") && pt.ends_with("\n\"card:c1\""), "{pt}");
         assert_eq!(confirm_labels(&resume_ask(), "en").0, "Resume");
         assert_eq!(confirm_labels(&resume_ask(), "pt-BR").0, "Reativar");
+    }
+
+    /// The payload that adds an allowed folder, in canonical form (`confirm` before `path`) with a path of the
+    /// characters a real one holds, and the hash both sides share (the protocol test asserts the same two literals).
+    const ROOTS_PAYLOAD: &str = "{\"confirm\":true,\"path\":\"C:\\\\Users\\\\José\\\\código\"}";
+    const ROOTS_HASH: &str = "33ef725f8a057e6ba6c4a7a90ef156230c763669d969fb952c2e86b020f2ff8c";
+
+    fn roots_ask() -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "roots.add".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::RootsAdd { path: "C:\\Users\\José\\código".into() }),
+        }
+    }
+
+    #[test]
+    fn the_roots_vector_hashes_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(ROOTS_PAYLOAD), ROOTS_HASH);
+    }
+
+    #[test]
+    fn adding_a_folder_is_read_from_its_payload_after_the_hash_matches() {
+        let me = own();
+        let text = command(&me, DAEMON, "roots.add", ROOTS_PAYLOAD);
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(ROOTS_PAYLOAD)), Ok(roots_ask()));
+        let shuffled = "{\"path\":\"C:\\\\Users\\\\José\\\\código\",\"confirm\":true}";
+        assert_eq!(describe_with(&text, DAEMON, &me, Some(shuffled)), Ok(roots_ask()));
+    }
+
+    #[test]
+    fn a_roots_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "roots.add", payload), DAEMON, &me, Some(payload))
+        };
+        let long = format!("{{\"confirm\":true,\"path\":\"/{}\"}}", "a".repeat(900));
+        for bad in [
+            // Not confirmed, a field the dialog does not say, no path, an empty path, a path that is no text.
+            "{\"confirm\":false,\"path\":\"/work/app\"}".to_string(),
+            "{\"path\":\"/work/app\"}".to_string(),
+            "{\"confirm\":true,\"path\":\"/work/app\",\"trusted\":true}".to_string(),
+            "{\"confirm\":true}".to_string(),
+            "{\"confirm\":true,\"path\":\"\"}".to_string(),
+            "{\"confirm\":true,\"path\":7}".to_string(),
+            // A line break or a text-direction mark could pad or reorder what the dialog says.
+            "{\"confirm\":true,\"path\":\"/work/app\\nAllow everything\"}".to_string(),
+            "{\"confirm\":true,\"path\":\"/work/\\u202eppa\"}".to_string(),
+            "{\"confirm\":true,\"path\":\"/work/\\u200bapp\"}".to_string(),
+            // A run of spaces, a path that is not absolute.
+            "{\"confirm\":true,\"path\":\"/work/app  Nothing will run\"}".to_string(),
+            "{\"confirm\":true,\"path\":\"work/app\"}".to_string(),
+            long,
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed("{\"confirm\":true,\"path\":\"/work/app\"}").is_ok());
+        assert!(signed("{\"confirm\":true,\"path\":\"\\\\\\\\host\\\\share\\\\app\"}").is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_an_allowed_folder_names_the_folder_and_what_it_opens_and_has_a_button_of_its_own() {
+        let (_, en) = confirm_text(&roots_ask(), "en");
+        assert!(en.starts_with("Allow sessions in a folder?"), "{en}");
+        assert!(en.contains("everything inside it") && en.contains(&DAEMON[..8]), "{en}");
+        assert!(en.ends_with("\n\"C:\\Users\\José\\código\""), "{en}");
+        let (_, pt) = confirm_text(&roots_ask(), "pt-BR");
+        assert!(pt.starts_with("Permitir sessões em uma pasta?"), "{pt}");
+        assert!(pt.contains("tudo o que há dentro dela") && pt.contains("Flightdeck"), "{pt}");
+        assert_eq!(confirm_labels(&roots_ask(), "en").0, "Add folder");
+        assert_eq!(confirm_labels(&roots_ask(), "pt-BR").0, "Adicionar pasta");
     }
 }
