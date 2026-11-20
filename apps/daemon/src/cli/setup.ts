@@ -6,7 +6,7 @@ import { stat } from "node:fs/promises";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { type Config, loadConfig } from "../config.ts";
 import { createHostChecks, type DepsEnv, doctorExitCode, formatDeps } from "../deps/index.ts";
-import { DAEMON_VERSION, type Exec, linesOf, spawnExec } from "../kernel/index.ts";
+import { DAEMON_VERSION, type Exec, linesOf, spawnExec, whichOnPath } from "../kernel/index.ts";
 import {
   loopbackOnly,
   pairingAddress,
@@ -27,6 +27,7 @@ import {
   refusedAddress,
   runSetup,
   serviceCommand,
+  setupFdLauncher,
   stableBinPath,
   waitHealthy,
 } from "../service/index.ts";
@@ -178,6 +179,8 @@ export async function runSetupCommand(args: CliArgs, deps: SetupCommandDeps): Pr
           deps.log.log(`flightdeckd ${DAEMON_VERSION} copied to ${stable}`);
         }
         deps.log.log(`The service will run ${stable} (flightdeckd ${running})`);
+        const fd = { stable, platform: base.platform, which: whichOnPath };
+        for (const line of await setupFdLauncher(fd)) deps.log.log(line);
         return true;
       },
       addToPath: async () => {

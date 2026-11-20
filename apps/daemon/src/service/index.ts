@@ -20,6 +20,7 @@ export {
 export { lingerState } from "./domain/linger.ts";
 export { addToUserPath, binDir, removeFromUserPath } from "./domain/user-path.ts";
 export { compareVersions, stableBinPath } from "./domain/version.ts";
+export { setupFdLauncher } from "./fd-launcher.ts";
 export { killProcess, osServiceContext, processPath } from "./os.ts";
 export { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 export {

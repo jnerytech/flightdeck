@@ -5,15 +5,24 @@
 ## Como funciona
 
 ```sh
-flightdeckd claude [argumentos do claude]
-# sugestão: alias fd="flightdeckd claude"
+fd [argumentos do claude]
+# a forma longa, a mesma: flightdeckd claude [argumentos do claude]
 ```
 
-`flightdeckd claude` (alias sugerido `fd`) abre o `claude` de verdade no mesmo terminal, com os
+`fd` (o nome curto de `flightdeckd claude`) abre o `claude` de verdade no mesmo terminal, com os
 mesmos argumentos e o mesmo código de saída, e acrescenta o canal do Flightdeck. O canal é um
 servidor MCP (`flightdeckd channel`) que deixa o app mandar mensagens para essa sessão como se
 você as digitasse.
 
+- **O comando `fd`:** o `flightdeckd setup` coloca um pequeno lançador chamado `fd` em
+  `~/.flightdeck/bin`, ao lado do `flightdeckd` (`fd.cmd` no Windows). Um subcomando depois de `fd`
+  é esse subcomando do `flightdeckd` (`fd host`, `fd sessions`); qualquer outra coisa vai para o
+  `claude`. Um prompt que começa com uma palavra de subcomando, como `update` ou `doctor`, vai para
+  o `claude` como `fd claude update the readme`. `fd --version` e `fd --help` respondem pelo
+  Flightdeck.
+- **Um arquivo chamado `fd` que não é nosso:** o setup nunca o substitui. Ele avisa e deixa
+  `flightdeckd claude` como o caminho. Quando outro `fd` vem antes no PATH, o setup o nomeia e
+  mostra a linha que põe `~/.flightdeck/bin` na frente.
 - **Argumentos:** o wrapper acrescenta `--mcp-config` (arquivo temporário) e
   `--dangerously-load-development-channels server:flightdeck` e define `FLIGHTDECK_LAUNCH_ID`. O
   `.mcp.json` do projeto não é tocado.
