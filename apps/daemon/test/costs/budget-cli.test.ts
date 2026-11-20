@@ -97,6 +97,15 @@ describe("budget list (issue #3460)", () => {
     expect(result.out).toEqual(["b3  host  five_hour  spent 0% of 0.1% (0%)  notify"]);
   });
 
+  test("a share of a tenth of a percent and a half keeps both decimals", async () => {
+    const odd: Budget = { ...WINDOW, id: "b4", limitPct: 0.0015, spentPct: 0, fraction: 0 };
+    const daemon = fakeDaemon({ "budget.list": () => ({ budgets: [odd] }) });
+    const result = await budget({ action: "list" }, daemon);
+    expect(result.out).toEqual([
+      "b4  project flightdeck  five_hour  spent ~0% of 0.15% (0%)  notify",
+    ]);
+  });
+
   test("--json prints the daemon's answer", async () => {
     const result = await budget({ action: "list", json: true }, fakeDaemon(HANDLERS));
     expect(result.out).toEqual([JSON.stringify({ budgets: [DAY, WINDOW] }, null, 2)]);
@@ -404,6 +413,11 @@ describe("the arguments of budget (issue #3460)", () => {
     [
       "a limit of zero",
       [...without(SET, "--limit-usd"), "--limit-usd", "0"],
+      "--limit-usd: a positive amount",
+    ],
+    [
+      "a limit under a cent, which the list could not show",
+      [...without(SET, "--limit-usd"), "--limit-usd", "0.001"],
       "--limit-usd: a positive amount",
     ],
     [
