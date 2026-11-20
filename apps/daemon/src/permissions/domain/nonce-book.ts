@@ -39,7 +39,11 @@ export class NonceBook {
   issue(purpose: NoncePurpose, requestId: string | undefined, connection: number): string {
     const bucket = bucketOf(purpose);
     const cap = this.opts.caps?.[bucket] ?? DEFAULT_CAPS[bucket];
-    const quota = Math.max(1, this.opts.perConnection ?? DEFAULT_PER_CONNECTION);
+    // At most half a bucket per connection, so a second connection always finds room.
+    const quota = Math.max(
+      1,
+      Math.min(this.opts.perConnection ?? DEFAULT_PER_CONNECTION, Math.floor(cap / 2)),
+    );
     const now = this.opts.mono();
     const inBucket = () => [...this.live].filter(([, n]) => bucketOf(n.purpose) === bucket);
     const mine = () => inBucket().filter(([, n]) => n.connection === connection);
