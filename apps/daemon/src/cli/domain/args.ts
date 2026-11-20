@@ -28,6 +28,7 @@ export interface CliArgs {
     | "snippet"
     | "message"
     | "card"
+    | "persona"
     | "host"
     | "sessions"
     | "requests"
@@ -61,6 +62,7 @@ export interface CliArgs {
     | "complete"
     | "delete"
     | "discard"
+    | "subagents"
     | "diff"
     | "spec"
     | "review"
@@ -107,8 +109,13 @@ export interface CliArgs {
   blockedBy?: string;
   description?: string;
   workflow?: string;
+  /** `card review` and `persona list|show|subagents`: the language of the text. */
   language?: "en" | "pt-BR";
   json?: true;
+  /** `persona show <id>`. */
+  personaId?: string;
+  /** `persona list --scope <host|project|all>`. */
+  scope?: "host" | "project" | "all";
   /** `action run <name>`. */
   actionName?: string;
   /** `snippet get <name>` (phase 18). */
@@ -181,6 +188,9 @@ export const USAGE = [
   "     fd card update <card> [--title <text>] [--description <text>] [--estimate <hours|none>] [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json] [--config <file>]",
   "     fd card stop <card> [--json] [--config <file>]",
   "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
+  "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd persona show <id> [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd persona subagents [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd card diff <card> [--json] [--config <file>]",
   "     fd card spec <card> [--json] [--config <file>]",
   "     fd card review <card> [--language en|pt-BR] [--json] [--config <file>]",
@@ -463,6 +473,12 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  persona: (args, reader) => {
+    args.command = "persona";
+    const action = subAction(reader, ["list", "show", "subagents"], "invalid persona action");
+    args.action = action;
+    if (action === "show") args.personaId = operand(reader, "the persona");
+  },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
   requests: (args) => {
@@ -572,6 +588,11 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--last needs a positive integer\n${USAGE}`);
     args.last = last;
   }),
+  "--scope": setValue((args, v) => {
+    if (v !== "host" && v !== "project" && v !== "all")
+      throw new Error(`--scope: host, project or all, got ${v}\n${USAGE}`);
+    args.scope = v;
+  }),
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -617,12 +638,20 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (
     args.json &&
-    !["card", "host", "sessions", "requests", "send", "approve", "deny", "approvers"].includes(
-      args.command,
-    )
+    ![
+      "card",
+      "persona",
+      "host",
+      "sessions",
+      "requests",
+      "send",
+      "approve",
+      "deny",
+      "approvers",
+    ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -664,6 +693,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   ];
   for (const [flag, value, actions] of flagged) {
     if (value === undefined) continue;
+    // `--language` also belongs to `persona`, which checks its own flags below.
+    if (flag === "--language" && args.command === "persona") continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -671,6 +702,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
+  if (args.scope !== undefined && (args.command !== "persona" || args.action !== "list"))
+    throw new Error(`--scope: this flag only applies to flightdeckd persona list\n${USAGE}`);
   delete args.titleFlag;
   return args;
 }

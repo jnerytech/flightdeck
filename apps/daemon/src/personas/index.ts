@@ -3,6 +3,7 @@
  * never a file inside.
  */
 
+export type { PersonaCliArgs } from "./domain/persona-cli-view.ts";
 export {
   type Prepare,
   type PreparedPersonas,
@@ -12,4 +13,5 @@ export {
 export { type PersonaSnapshot, snapshotOf } from "./domain/snapshot.ts";
 export { OpenSessionPersonas } from "./open-session.ts";
 export { packPersonas } from "./pack.ts";
+export { runPersonaCli } from "./persona-cli.ts";
 export type { Personas } from "./store.ts";
