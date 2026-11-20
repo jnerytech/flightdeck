@@ -255,7 +255,7 @@ export class SessionManager {
     // persona leaves no session. The manager reads no persona file itself.
     const resolved = extra.prepared?.persona ?? null;
     if (payload.persona && !resolved) throw personasUnavailable();
-    const asked = payload.permissionMode ?? this.defaultMode();
+    const asked = payload.permissionMode ?? this.defaultMode(extra.unattended === true);
     if (asked === "bypassPermissions" && !this.bypassAllowed()) throw bypassNotAllowed();
     // A persona only suggests: it counts when it is less permissive than what was asked for.
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
@@ -582,11 +582,15 @@ export class SessionManager {
 
   /**
    * The mode a session starts in when nothing asks for another (#3427). A host that turned the
-   * bypass switch off never defaults to it: only an explicit ask for bypass is refused.
+   * bypass switch off never defaults to it: only an explicit ask for bypass is refused. A session
+   * Flightdeck opens by itself (`unattended`) does not default to it either: in bypass the tool
+   * request that denies `run_with_secret` there is never made, so only a card that names bypass
+   * gets it.
    */
-  private defaultMode(): PermissionMode {
+  private defaultMode(unattended = false): PermissionMode {
     const configured = this.opts.defaultPermissionMode;
-    return configured === "bypassPermissions" && !this.bypassAllowed() ? "default" : configured;
+    const held = unattended || !this.bypassAllowed();
+    return configured === "bypassPermissions" && held ? "default" : configured;
   }
 
   /** Changes the permission mode of a live managed session, for its next tool requests. */

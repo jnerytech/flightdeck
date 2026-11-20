@@ -14,15 +14,22 @@ reverses the default of #1711 and keeps its guard rails.
   `"bypassPermissions"` (`apps/daemon/src/config.ts`). A session that nothing asks to run in another
   mode starts in bypass.
 - **A config file that says otherwise keeps its value.** `loadConfig` writes the full parsed config
-  when it creates the file, so every host that already has a file holds `allowBypassPermissions: false`
-  and `defaultPermissionMode: "default"` explicitly and does not change. Only a new host, or a file
-  without those keys, gets the new defaults. There is no migration: rewriting a person's explicit
-  choice would be a second reversal that nobody asked for. A person who wants the new default on an
-  existing host turns the switch on (host page or `host.bypass`).
+  only when the file is new or holds no token, so a host whose file was created by a daemon that knew
+  the keys holds `allowBypassPermissions: false` and `defaultPermissionMode: "default"` explicitly and
+  does not change. A file that lacks a key (written before the key existed, or by hand, with a token)
+  gets the new default for that key: that host changes without anyone editing it. There is no
+  migration: rewriting a person's explicit choice would be a second reversal that nobody asked for. A
+  person who wants the old behavior on such a host turns the switch off (host page or `host.bypass`);
+  one who wants the new default on a host that holds `false` turns it on.
 - **A host with the switch off never defaults to bypass.** With the switch off, a `session.create`
   that names no mode starts in `default` (the session manager reads the configured default through
   one rule: bypass only while the switch is on). Asking for `bypassPermissions` on such a host is
   still refused with `bypass_not_allowed`, exactly as in #1711.
+- **A session Flightdeck opens by itself does not default to bypass.** A board fix-run (`unattended`)
+  with no mode starts in `default`. The daemon denies `run_with_secret` there in the tool request, and
+  a session in bypass never makes that request, so the default would silently drop that guard for a run
+  that reads text from outside (a pull request). A card whose own mode is bypass still gets it, as
+  before.
 - **Slices of #3427.** This one is the daemon's config and managed sessions. The wrapper
   (`flightdeckd claude` adds `--permission-mode bypassPermissions` unless the person passed a mode) and
   the app and manuals follow in their own PRs. A card or a team that sets its own mode keeps it; one
@@ -55,7 +62,7 @@ reverses the default of #1711 and keeps its guard rails.
 
 - New hosts run every unspecified session without permission prompts. The risk graded approval of
   sessions that are not in bypass is unchanged and reached only when a mode is chosen.
-- Existing hosts do not change until the person turns the switch on. The slices that follow state the
-  new default in the app and the manuals.
+- Hosts whose file holds the keys do not change; hosts whose file lacks them do. The slices that
+  follow state the new default in the app and the manuals.
 - The check loop's per-card default (decision `2026-11-09-check-loop.md`) follows the card's mode, so
   a card that starts in bypass starts with the loop as that record says; the app slice reads it.
