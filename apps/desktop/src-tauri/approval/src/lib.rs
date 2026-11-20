@@ -13,6 +13,8 @@ use sha2::{Digest, Sha256};
 pub enum Kind {
     Approve,
     EnrollFirst,
+    /// An enrolled device adds another one (#3478).
+    EnrollAdd,
     Revoke,
 }
 
@@ -192,6 +194,7 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             "Cadastrar este dispositivo (chave {}) como aprovador deste host? Continue só se você acabou de iniciar isso no Flightdeck.",
             print(&ask.subject)
         ),
+        (Kind::EnrollAdd, _) => String::new(),
         (Kind::Revoke, false) => format!(
             "Remove the device with key {} from the approvers of this host? Continue only if you just asked for it in Flightdeck.",
             short(&ask.subject)
@@ -394,14 +397,54 @@ mod tests {
         assert!(describe(&padded, DAEMON, &me).is_err());
     }
 
+    /// The text an enrolled device signs to add `new`.
+    fn add(signer: &str, host: &str, new: &str) -> String {
+        serde_json::to_string(&["flightdeck/enroll-add/v1", signer, host, "n", new]).unwrap()
+    }
+
     #[test]
-    fn adding_a_device_is_not_signed_because_the_app_never_asks_for_it() {
+    fn an_enrolled_device_signs_the_add_of_another_key_for_this_host() {
         let me = own();
-        let add = format!(
-            "[\"flightdeck/enroll-add/v1\",\"{}\",\"{DAEMON}\",\"n\",\"{}\"]",
-            me.key_id,
-            own().public_key
-        );
-        assert!(describe(&add, DAEMON, &me).is_err());
+        let other = own();
+        let asked = describe(&add(&me.key_id, DAEMON, &other.public_key), DAEMON, &me);
+        assert!(asked.is_ok(), "an add by this device is signed: {asked:?}");
+        let ask = asked.unwrap();
+        assert_eq!(ask.kind, Kind::EnrollAdd);
+        assert_eq!(ask.subject, other.public_key);
+    }
+
+    #[test]
+    fn an_add_for_another_host_another_signer_or_this_key_is_not_signed() {
+        let me = own();
+        let other = own();
+        assert!(describe(&add(&me.key_id, "daemon-other-host", &other.public_key), DAEMON, &me).is_err());
+        assert!(describe(&add(&other.key_id, DAEMON, &other.public_key), DAEMON, &me).is_err());
+        assert!(describe(&add(&me.key_id, DAEMON, &me.public_key), DAEMON, &me).is_err());
+    }
+
+    #[test]
+    fn an_add_of_something_that_is_not_a_p256_key_is_not_signed() {
+        let me = own();
+        for new in ["", "AAAA", "not base64 at all", &"A".repeat(200)] {
+            assert!(describe(&add(&me.key_id, DAEMON, new), DAEMON, &me).is_err(), "signed: {new:?}");
+        }
+    }
+
+    #[test]
+    fn the_dialog_of_an_add_names_the_new_key_by_sixteen_characters_in_groups() {
+        let me = own();
+        let other = own();
+        let asked = describe(&add(&me.key_id, DAEMON, &other.public_key), DAEMON, &me);
+        assert!(asked.is_ok(), "an add by this device is signed: {asked:?}");
+        let ask = asked.unwrap();
+        let id = &other.key_id;
+        let print = format!("{}-{}-{}-{}", &id[0..4], &id[4..8], &id[8..12], &id[12..16]);
+        let en = confirm_text(&ask, "en").1;
+        assert!(en.contains(&print), "{en}");
+        assert!(en.contains("Add the device"), "{en}");
+        let pt = confirm_text(&ask, "pt-BR").1;
+        assert!(pt.contains(&print), "{pt}");
+        assert!(pt.contains("Adicionar o dispositivo"), "{pt}");
+        assert!(!en.contains(&id[0..20]), "more than the fingerprint: {en}");
     }
 }
