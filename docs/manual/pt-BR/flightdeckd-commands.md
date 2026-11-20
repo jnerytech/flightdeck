@@ -158,3 +158,28 @@ cadastro nem remove uma chave.
 
 Os dois leem a pasta de dados do arquivo de configuração e funcionam com o daemon rodando ou parado.
 Enquanto nenhum dispositivo estiver cadastrado, nada muda para você.
+
+## fd persona
+
+```sh
+fd persona list
+fd persona list --scope project --project-path ~/work/api --language en
+fd persona show architect
+fd persona subagents --project-path ~/work/api --json
+```
+
+Lê as personas deste host, como a tela Personas faz. Nada aqui altera uma persona.
+
+- **`list`:** uma linha por persona: o id, onde ela mora (`pack`, `host` ou `project`), o nome,
+  `(edited)` para uma persona do pacote que este host alterou e, para uma persona de projeto, o começo do
+  hash e `not trusted` até o hash ser confiado. Uma última linha nomeia os arquivos do projeto que ficaram
+  de fora e o motivo. `--scope` mantém só `host`, `project` ou `all` (o padrão).
+- **`show <id>`:** a persona com a descrição, o modelo, o esforço, as ferramentas e o modo de permissão
+  que ela define, e o seu prompt. Diz de onde a persona veio. Um id que o daemon não conhece é recusado
+  com saída `1`.
+- **`subagents`:** os agentes que uma sessão do projeto recebe (`persona-<id>`) e as personas de projeto
+  deixadas de fora porque ninguém confiou nelas ainda.
+
+`--project-path` indica a pasta do projeto (relativa a onde você roda); sem ele só contam as personas do
+host. `--language en` ou `pt-BR` escolhe o idioma das personas do pacote. Com `--json` cada comando
+imprime a resposta do daemon como um objeto JSON.
