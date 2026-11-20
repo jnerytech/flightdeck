@@ -157,6 +157,25 @@ export class VaultApprovalsSlice {
     for (const listener of this.listeners) listener(outcome);
   }
 
+  /**
+   * The device's proof, or `declined` when the person said no or the device could not sign: the
+   * person is told why in the bell, and the request is denied instead of left to its deadline.
+   */
+  private async prove(hostId: string, requestId: string, scope: "once" | "session") {
+    try {
+      return await this.core.prove(hostId, requestId, scope);
+    } catch (error) {
+      const t = this.core.t();
+      this.core.notify(
+        t("vaultApproval.proofFailedTitle"),
+        t("vaultApproval.proofFailedBody", {
+          reason: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      return { kind: "declined" } as const;
+    }
+  }
+
   /** The policy of the options, or the one that puts action requests to the person. */
   private policy(): VaultPolicy {
     this.defaultPolicy ??= actionPolicy({
@@ -167,7 +186,7 @@ export class VaultApprovalsSlice {
         // A prod or high-risk use is approved by the device's signature where the host checks one
         // (#3452), otherwise by the hold, as before.
         const proof = request.needsHold
-          ? await this.core.prove(hostId, request.requestId, answer.scope)
+          ? await this.prove(hostId, request.requestId, answer.scope)
           : ({ kind: "none" } as const);
         if (proof.kind === "declined") return "declined";
         await this.core.dispatch(hostId, "vault.approve", {

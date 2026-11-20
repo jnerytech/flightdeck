@@ -32,6 +32,9 @@ off").
   for a proof only on a host that announces it.
 - **App.** Approve of a request that needs the hold asks for the challenge when the person presses Approve,
   and the system's dialog confirms; Cancel denies the request and delivers nothing.
+  A device that cannot sign (no key for this host, the host unreachable) tells the person in the bell and denies
+  the request, so the run does not wait for its deadline. The card still asks for the 2 s hold first (the app's
+  own check, as for a permission); the host no longer reads it.
 
 ## What an older app does against an enrolled host
 
@@ -41,6 +44,10 @@ The person has to update the app, or `fd approvers reset` at the host terminal t
 that needs no hold still works. A new app against a host without `approval-vault` sends the old fields.
 
 ## Left as it was
+
+The signed text and the dialog name the request id and the scope, not the secret or the action; the card
+beside it shows the details. The audit records `via` from the caller, not the key that signed. A second approve
+of an already approved request with a fresh proof is not refused (it only overwrites the same `once` grant).
 
 No-hold requests stay on the caller's word: a session can approve its own low-risk secret use. #3453 covers the
 other commands that need a proof.
