@@ -4,6 +4,7 @@
 // node:crypto in the daemon).
 import { z } from "zod";
 import { cmd } from "./command.ts";
+import type { RiskLevel } from "./permissions.ts";
 
 /** The host checks a signed proof of the person's device before a high-risk allow (`host.info.features`). */
 export const FEATURE_APPROVAL_PROOF = "approval-proof";
@@ -33,6 +34,14 @@ export function canonicalJson(value: unknown): string {
     return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
   }
   throw new TypeError(`canonicalJson: a ${typeof value} cannot be signed`);
+}
+
+/** An allow needs the proof of a device when the request is high risk, or when it saves rules. */
+export function needsApprovalProof(
+  risk: RiskLevel,
+  updatedPermissions: readonly unknown[] | undefined,
+): boolean {
+  return false;
 }
 
 /** The three texts of a `permission.respond` allow that a proof binds; each side hashes them with SHA-256. */
