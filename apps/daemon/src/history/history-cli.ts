@@ -6,6 +6,7 @@
  */
 import {
   type CliResult,
+  DaemonRefusal,
   failure,
   json,
   runOnLocalDaemon,
@@ -97,11 +98,22 @@ export async function runHistoryCli(
       if (args.action === "resume") {
         const { claudeSessionId = "", name, permissionMode, force } = args;
         note.wrote = true;
-        const created = await daemon.call("history.resume", {
-          claudeSessionId,
-          ...given({ name, permissionMode, force }),
-        });
-        return args.json ? json(created) : said(`resumed as session ${created.sessionId}`);
+        try {
+          const created = await daemon.call("history.resume", {
+            claudeSessionId,
+            ...given({ name, permissionMode, force }),
+          });
+          return args.json ? json(created) : said(`resumed as session ${created.sessionId}`);
+        } catch (error) {
+          // The daemon words this for the protocol (`force: true`); a terminal types `--force`.
+          if (error instanceof DaemonRefusal && error.reason === "session_maybe_active")
+            return failure(
+              1,
+              "session possibly in use elsewhere; add --force to resume anyway",
+              error.reason,
+            );
+          throw error;
+        }
       }
       const { claudeSessionId = "", uuid = "", index = 0 } = args;
       const found = await daemon.call("history.tool", { claudeSessionId, uuid, index });

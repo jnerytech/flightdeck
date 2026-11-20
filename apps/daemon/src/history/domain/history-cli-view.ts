@@ -3,6 +3,7 @@
  * answers. The daemon calls and the exit codes stay in `history/history-cli.ts`.
  */
 import type {
+  HistoryChanged,
   HistoryMessage,
   HistorySearchHit,
   HistorySessionSummary,
@@ -75,12 +76,7 @@ export function toolLines(tool: HistoryToolDetail): string[] {
 }
 
 /** One change `history watch` pushes: the session, where it ran and when it last grew. */
-export interface HistoryChange {
-  claudeSessionId: string;
-  cwd: string;
-  lastTs: string | null;
-  maybeActive: boolean;
-}
+export type HistoryChange = Omit<HistoryChanged, "type">;
 
 /** The line `history watch` prints for a change: the same columns as `history list`. */
 export function watchLine(change: HistoryChange): string {
