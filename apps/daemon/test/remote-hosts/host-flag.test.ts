@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { parseArgs } from "../../src/main.ts";
-import { fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { CLOSE, fakeDaemon, REVOKE, stopAll } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
 import { machine, me, type Setup, TOKEN } from "./machine.ts";
 
@@ -47,19 +47,25 @@ async function onHost(argv: string[], setup: Setup, daemon: { port: number } | n
 }
 
 describe("--host on the command line (#3429)", () => {
-  test("it is accepted on host and sessions only, and needs a name", () => {
-    expect(parseArgs(["host", "--host", "server"])).toMatchObject({
-      command: "host",
-      host: "server",
-    });
-    expect(parseArgs(["sessions", "--host=server", "--json"])).toMatchObject({ host: "server" });
+  test("it is accepted on the commands that ask a daemon, and needs a name", () => {
     for (const argv of [
+      ["host", "--host", "server"],
+      ["sessions", "--host=server", "--json"],
+      ["requests", "--host", "server", "--session", "api"],
+      ["send", "api", "hello", "--host", "server"],
       ["approve", "r-1", "--host", "server"],
+      ["deny", "r-1", "--host", "server", "--message", "no"],
+    ]) {
+      expect(() => parseArgs(argv)).not.toThrow();
+      expect(parseArgs(argv)).toMatchObject({ host: "server" });
+    }
+    for (const argv of [
       ["doctor", "--host", "server"],
       ["start", "--host", "server"],
+      ["card", "list", "--host", "server"],
     ])
       expect(() => parseArgs(argv)).toThrow(
-        "--host: this flag only applies to flightdeckd host and sessions",
+        "--host: this flag only applies to flightdeckd host, sessions, requests, send, approve and deny",
       );
     expect(() => parseArgs(["host", "--host"])).toThrow("--host needs a value");
   });
@@ -146,6 +152,135 @@ describe.skipIf(me === null)(
       });
     });
 
+    test("requests lists the open requests of that host, and --session picks one of its sessions", async () => {
+      const summary = (sessionId: string, name: string, id: string) => ({
+        sessionId,
+        name,
+        cwd: `/work/${name}`,
+        status: "awaiting_permission",
+        updatedAt: "2026-11-19T09:30:00.000Z",
+        pendingPermissions: [
+          {
+            requestId: id,
+            toolName: "Bash",
+            createdAt: "2026-11-19T09:00:00.000Z",
+            input: { command: "bun test" },
+            risk: "low",
+            riskReason: "a test run",
+          },
+        ],
+      });
+      const handlers = {
+        "sessions.watch": () => ({
+          summaries: [summary("s1", "api", "r1"), summary("s2", "web", "r2")],
+        }),
+      };
+      const all = await onHost(
+        ["requests", "--host", "server", "--json"],
+        {},
+        fakeDaemon(handlers, TOKEN),
+      );
+      expect(all.run.code).toBe(0);
+      expect((JSON.parse(all.run.out.join("\n")) as { id: string }[]).map((r) => r.id)).toEqual([
+        "r1",
+        "r2",
+      ]);
+      const one = await onHost(
+        ["requests", "--host", "server", "--session", "web", "--json"],
+        {},
+        fakeDaemon(handlers, TOKEN),
+      );
+      expect((JSON.parse(one.run.out.join("\n")) as { id: string }[]).map((r) => r.id)).toEqual([
+        "r2",
+      ]);
+    });
+
+    test("send puts the text into a session of that host, once", async () => {
+      const daemon = fakeDaemon({ ...HANDLERS, "session.send": () => ({ queued: false }) }, TOKEN);
+      const { run } = await onHost(
+        ["send", "api", "run the tests", "--host", "server", "--json"],
+        {},
+        daemon,
+      );
+      expect(run.code).toBe(0);
+      expect(daemon.calls.filter((c) => c.type === "session.send").map((c) => c.payload)).toEqual([
+        { sessionId: "s-1", text: "run the tests" },
+      ]);
+    });
+
+    test("approve and deny answer a request of that host with what the person said", async () => {
+      const daemon = fakeDaemon({ "permission.respond": () => ({}) }, TOKEN);
+      const allowed = await onHost(["approve", "r1", "--host", "server", "--json"], {}, daemon);
+      const denied = await onHost(
+        ["deny", "r2", "--host", "server", "--message", "not now"],
+        {},
+        daemon,
+      );
+      expect([allowed.run.code, denied.run.code]).toEqual([0, 0]);
+      expect(
+        daemon.calls.filter((c) => c.type === "permission.respond").map((c) => c.payload),
+      ).toEqual([
+        { requestId: "r1", decision: "allow" },
+        { requestId: "r2", decision: "deny", message: "not now" },
+      ]);
+    });
+
+    test("a write that got no answer from that host says it may have gone out, and never shows the token", async () => {
+      const daemon = fakeDaemon({ "permission.respond": () => CLOSE }, TOKEN);
+      const { run, text } = await onHost(
+        ["approve", "r1", "--host", "server", "--json"],
+        {},
+        daemon,
+      );
+      expect(run.code).toBe(2);
+      expect(JSON.parse(run.err.join("\n"))).toMatchObject({ reason: "unreachable" });
+      expect(text).toContain("may or may not have been recorded");
+      expect(text).not.toContain(TOKEN);
+    });
+
+    test("a token revoked after a write was sent is still a refusal, and says the write may have gone out", async () => {
+      const daemon = fakeDaemon({ "permission.respond": () => REVOKE }, TOKEN);
+      const { run, text } = await onHost(["deny", "r1", "--host", "server", "--json"], {}, daemon);
+      expect(run.code).toBe(1);
+      expect(JSON.parse(run.err.join("\n"))).toMatchObject({ reason: "token_refused" });
+      expect(text).toContain("may or may not have been recorded");
+    });
+
+    test("--token and --config are refused on the four new commands too, before anything is sent", async () => {
+      const daemon = fakeDaemon(HANDLERS, TOKEN);
+      for (const [argv, flag] of [
+        [["requests", "--host", "server", "--token", "abc"], "--token"],
+        [["send", "api", "hi", "--host", "server", "--token", "abc"], "--token"],
+        [["approve", "r1", "--host", "server", "--config", "/etc/other.json"], "--config"],
+        [["deny", "r1", "--host", "server", "--config", "/etc/other.json"], "--config"],
+      ] as const) {
+        const { run } = await onHost([...argv], {}, daemon);
+        expect({ argv, code: run.code, names: run.err.join(" ").includes(flag) }).toEqual({
+          argv,
+          code: 1,
+          names: true,
+        });
+      }
+      expect(daemon.calls).toEqual([]);
+    });
+
+    test("a refusal of that host's daemon is exit 1 with its own words: a closed request, an unknown session", async () => {
+      const closed = {
+        error: {
+          code: "not_found",
+          message: "request r9 is not open",
+          reason: "permission_request_closed",
+        },
+      };
+      const daemon = fakeDaemon({ ...HANDLERS, "permission.respond": () => closed }, TOKEN);
+      const approve = await onHost(["approve", "r9", "--host", "server"], {}, daemon);
+      const send = await onHost(["send", "nobody", "hi", "--host", "server"], {}, daemon);
+      expect([approve.run.code, send.run.code]).toEqual([1, 1]);
+      expect(send.text).toContain("nobody");
+      expect(daemon.calls.some((c) => c.type === "session.send")).toBe(false);
+      expect(approve.text + send.text).not.toContain(TOKEN);
+    });
+
     test("the token is in no output of any path: success, refused, unreachable, unknown, no store, cleartext", async () => {
       const good = fakeDaemon(HANDLERS, TOKEN);
       const cases: Array<[string[], Setup, { port: number } | null]> = [
@@ -155,6 +290,14 @@ describe.skipIf(me === null)(
         [["sessions", "--host", "nope", "--json"], {}, null],
         [["host", "--host", "server"], { helper: false }, null],
         [["host", "--host", "server", "--json"], { url: "ws://server.example.com/v1/ws" }, null],
+        [
+          ["requests", "--host", "server"],
+          {},
+          fakeDaemon({ "sessions.watch": () => ({ summaries: [] }) }, "another"),
+        ],
+        [["send", "api", "hi", "--host", "server"], {}, null],
+        [["approve", "r1", "--host", "server", "--json"], {}, null],
+        [["deny", "r1", "--host", "nope"], {}, null],
       ];
       for (const [argv, setup, daemon] of cases) {
         const { text } = await onHost(argv, setup, daemon);

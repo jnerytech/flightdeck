@@ -72,7 +72,8 @@ function explainRemote(
   if (tokenRefused(error))
     return failure(
       1,
-      `the token for ${name} was refused: pair this host again in the app`,
+      // A close after the write was sent leaves its result unknown; an `unauthorized` ack is a certain no.
+      `the token for ${name} was refused: pair this host again in the app${error instanceof ConnectionClosed ? context.unsure : ""}`,
       "token_refused",
     );
   if (error instanceof TimedOut) {
