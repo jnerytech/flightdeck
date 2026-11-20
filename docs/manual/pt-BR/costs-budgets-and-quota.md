@@ -241,6 +241,7 @@ fd budget set --scope project --project flightdeck --period month --limit-usd 40
 fd budget set-quota --scope host --window five_hour --limit-pct 0.5 --action notify
 fd budget set --scope host --period day --limit-usd 40 --action queue --id <orçamento>
 fd budget remove <orçamento>
+fd budget watch
 ```
 
 Os limites de custo deste host, como a tela de Custos mostra. Todos aceitam `--json` para a resposta do
@@ -258,6 +259,9 @@ daemon.
 - **`budget set-quota`:** o mesmo, como parte de uma janela da cota em vez de dólares: `--window` é
   `five_hour` ou `seven_day`, `--limit-pct` uma parte de `0.001` a `1`. Um host sem a cota do plano recusa.
 - **`budget remove <orçamento>`:** apaga um orçamento.
+- **`budget watch`:** uma linha para cada mudança de um orçamento, até Ctrl-C: o orçamento como `budget list`
+  o diz, depois `crossed 80%` quando passou de um limiar ou `removed` quando foi apagado. Com `--json`, um
+  objeto `{ budget, threshold, removed }` por linha.
 
 Uma flag de outro verbo, um escopo de projeto sem `--project` ou um valor fora do limite sai com `1` e não
 envia nada. Uma escrita que fica sem resposta sai com `2` e diz que pode ou não ter sido feita: rode

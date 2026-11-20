@@ -243,6 +243,7 @@ fd budget set --scope project --project flightdeck --period month --limit-usd 40
 fd budget set-quota --scope host --window five_hour --limit-pct 0.5 --action notify
 fd budget set --scope host --period day --limit-usd 40 --action queue --id <budget>
 fd budget remove <budget>
+fd budget watch
 ```
 
 The cost limits of this host, as the Costs screen shows them. Each takes `--json` for the daemon's answer.
@@ -259,6 +260,9 @@ The cost limits of this host, as the Costs screen shows them. Each takes `--json
   `five_hour` or `seven_day`, `--limit-pct` a share from `0.001` to `1`. A host without the plan quota
   refuses it.
 - **`budget remove <budget>`:** drops a budget.
+- **`budget watch`:** a line for each change to a budget, until Ctrl-C: the budget as `budget list` says it,
+  then `crossed 80%` when it crossed a threshold or `removed` when it was dropped. With `--json`, one
+  `{ budget, threshold, removed }` object per line.
 
 A flag that belongs to another verb, a project scope without `--project`, or a value out of range exits `1`
 and sends nothing. A write that gets no answer exits `2` and says it may or may not have gone in: run

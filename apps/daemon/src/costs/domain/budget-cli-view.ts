@@ -2,7 +2,7 @@
 import type { Budget } from "@flightdeck/protocol";
 
 export interface BudgetCliArgs {
-  action: "list" | "set" | "set-quota" | "remove";
+  action: "list" | "set" | "set-quota" | "remove" | "watch";
   /** `remove`: the budget to drop; `set` and `set-quota`: the budget to change (a new one when absent). */
   id?: string;
   scope?: "host" | "project";
@@ -36,6 +36,20 @@ export function budgetLine(budget: Budget): string {
       ? `${dollars(budget.spentUsd)} of ${dollars(budget.limitUsd)}`
       : `${budget.estimated ? "~" : ""}${percent(budget.spentPct ?? 0)} of ${percent(budget.limitPct)}`;
   return `${budget.id}  ${scope}  ${budget.period}  spent ${spent} (${percent(budget.fraction)})  ${budget.action}`;
+}
+
+/** The line `watch` prints for a change: the budget as `budget list` says it, then the threshold it crossed or its removal. */
+export function watchLine(change: {
+  budget: Budget;
+  threshold: number | null;
+  removed: boolean;
+}): string {
+  const note = change.removed
+    ? "  removed"
+    : change.threshold === null
+      ? ""
+      : `  crossed ${percent(change.threshold)}`;
+  return `${budgetLine(change.budget)}${note}`;
 }
 
 /** One line per budget, or a sentence when there is none. */

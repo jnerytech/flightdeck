@@ -68,7 +68,7 @@
   "budget.remove": { "cli": "budget" },
   "budget.set": { "cli": "budget" },
   "budget.setQuota": { "cli": "budget" },
-  "budget.watch": {},
+  "budget.watch": { "cli": "budget" },
   "card.arena": {
     "cli": "card"
   },
@@ -156,7 +156,7 @@
   "changes.watch": {},
   "costs.card": { "cli": "costs" },
   "costs.export": { "cli": "costs" },
-  "costs.reprice": {},
+  "costs.reprice": { "cli": "costs" },
   "costs.run": { "cli": "costs" },
   "costs.session": { "cli": "costs" },
   "costs.sessions": {},
@@ -311,7 +311,7 @@
   "quota.get": { "cli": "quota" },
   "quota.history": { "cli": "quota" },
   "quota.setPauseAt": { "cli": "quota" },
-  "quota.watch": {},
+  "quota.watch": { "cli": "quota" },
   "releases.list": {},
   "resources.endOrphan": {},
   "resources.get": {},
