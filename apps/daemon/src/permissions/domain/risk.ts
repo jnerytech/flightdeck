@@ -194,6 +194,8 @@ const OPTIONS_WITH_VALUE = [
   "--description",
   "--language",
   "--workflow",
+  "--variant",
+  "--rounds",
   "--out",
   "--from",
   "--folders",
@@ -245,22 +247,27 @@ const answersARequest = (prog: string, args: string[]) =>
 const changesApprovers = (prog: string, args: string[]) =>
   runsFlightdeckVerb(prog, args, ["approvers"]);
 
-const CARD_ENDS = ["discard", "complete", "delete", "merge-local"];
+const CARD_ENDS = ["discard", "complete", "delete", "merge-local", "choose-variant"];
 
 /**
  * What the app asks the person to confirm, done from a session's shell (#3454): `card discard`,
  * `complete`, `delete` and `merge-local` end a card (a discard removes its worktree and branch, a
- * merge-local merges it into the base and removes them), and `card move
- * --force` skips a column's contract. `--confirm` is only a flag the caller types, so it proves nothing.
+ * merge-local merges it into the base and removes them), `choose-variant` removes the other
+ * variants' worktrees, `check-loop <card> on` lets the checks run the card's code unasked, and
+ * `card move --force` skips a column's contract. `--confirm` is only a flag the caller types, so it
+ * proves nothing.
  */
 function endsACard(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const forcedMove = (all: string[]) => all.includes("move") && all.includes("--force");
+  const loopOn = (all: string[]) => all.includes("check-loop") && all.includes("on");
   if (["fd", "flightdeckd"].includes(prog)) {
-    const [command, action] = flightdeckWords(words);
+    const [command, action, , switchTo] = flightdeckWords(words);
     return (
       command === "card" &&
-      (CARD_ENDS.includes(action ?? "") || (action === "move" && words.includes("--force")))
+      (CARD_ENDS.includes(action ?? "") ||
+        (action === "move" && words.includes("--force")) ||
+        (action === "check-loop" && switchTo === "on"))
     );
   }
   if (!RUNNERS.includes(prog)) return false;
@@ -268,7 +275,7 @@ function endsACard(prog: string, args: string[]): boolean {
   return (
     runsCli &&
     words.includes("card") &&
-    (words.some((w) => CARD_ENDS.includes(w)) || forcedMove(words))
+    (words.some((w) => CARD_ENDS.includes(w)) || forcedMove(words) || loopOn(words))
   );
 }
 
@@ -310,7 +317,7 @@ const DANGEROUS: Array<{
   {
     when: endsACard,
     reason: () =>
-      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local or move --force)",
+      "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {
