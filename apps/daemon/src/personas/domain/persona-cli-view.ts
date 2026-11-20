@@ -41,6 +41,13 @@ export interface PersonaCliArgs {
 /** How much of a project persona's hash a line shows: enough to tell two apart. */
 const HASH_SHOWN = 12;
 
+/** The start of a hash, as `persona list` shows it. */
+export const shortHash = (hash: string) => hash.slice(0, HASH_SHOWN);
+
+/** Why a trust is refused when the persona is no longer the one the person looked at. */
+export const hashChanged = (id: string, named: string, now: string) =>
+  `${id} is not the persona you looked at: its hash is ${shortHash(now)} now, not ${named}; read it with persona show ${id} and trust it again`;
+
 /** The lines `persona list` prints: one per persona, then the project files that were left out. */
 export function listLines(answer: {
   personas: Persona[];
@@ -50,7 +57,7 @@ export function listLines(answer: {
     const parts = [persona.id, persona.scope, persona.name];
     if (persona.modified) parts[2] += "  (edited)";
     if (persona.scope === "project") {
-      if (persona.hash !== null) parts.push(persona.hash.slice(0, HASH_SHOWN));
+      if (persona.hash !== null) parts.push(shortHash(persona.hash));
       if (!persona.trusted) parts.push("not trusted");
     }
     return parts.join("  ");

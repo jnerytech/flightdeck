@@ -711,7 +711,10 @@ function checkPersona(args: CliArgs): void {
     if (args.body !== undefined && args.bodyFile !== undefined)
       throw new Error(`--body or --body-file, not both\n${USAGE}`);
   }
-  if ((args.action === "publish-agent" || args.action === "trust") && args.projectPath === undefined)
+  if (
+    (args.action === "publish-agent" || args.action === "trust") &&
+    args.projectPath === undefined
+  )
     throw missing("--project-path");
   if (args.action === "trust" && args.hash === undefined) throw missing("--hash");
 }
