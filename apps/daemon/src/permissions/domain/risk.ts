@@ -205,6 +205,29 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
+const HOSTKEY_WRITES = ["confirm", "forget"];
+
+/**
+ * Which server keys a host trusts is the person's call (#3537): `ssh hostkey confirm` pins a key, and
+ * `ssh hostkey forget` unpins one so the next confirm can pin another. The reads (`ssh hostkey check`,
+ * `ssh test`, `ssh list`) stay ordinary commands. The three words are matched together, so a word in an
+ * argument (`fd send fd-qa "ssh hostkey confirm"`, `echo ssh hostkey forget`) is no verb.
+ */
+function changesTrustedHostKeys(prog: string, args: string[]): boolean {
+  const spelled = (words: string[]) =>
+    words.some(
+      (w, i) =>
+        w === "ssh" && words[i + 1] === "hostkey" && HOSTKEY_WRITES.includes(words[i + 2] ?? ""),
+    );
+  if (isCliProgram(prog)) {
+    const [command, action, verb] = flightdeckWords(shellArguments(args));
+    return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.includes(verb ?? "");
+  }
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  return words.some((w) => isCliProgram(program(w))) && spelled(words);
+}
+
 /**
  * A resume that skips what the app asks a person (#3461): `history resume --force` starts the session
  * although the transcript may be running elsewhere, and `--permission-mode` picks the mode the new
@@ -374,6 +397,11 @@ const DANGEROUS: Array<{
     when: endsACard,
     reason: () =>
       "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)",
+  },
+  {
+    when: changesTrustedHostKeys,
+    reason: () =>
+      "changes which server keys a host trusts, without the person confirming it in the app (flightdeckd ssh hostkey confirm or forget)",
   },
   {
     when: changesWhatGuards,
