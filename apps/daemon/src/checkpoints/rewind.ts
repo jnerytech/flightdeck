@@ -8,7 +8,7 @@ import { lstat, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { gitBytes } from "../git/index.ts";
-import { FlightdeckError } from "../kernel/index.ts";
+import { FlightdeckError, resolveAllowedCwd } from "../kernel/index.ts";
 import type { RewindFilesResult } from "../runtime/index.ts";
 import { previewOf } from "./domain/rewind-preview.ts";
 import type { SnapshotRow, Snapshots } from "./snapshots.ts";
@@ -49,7 +49,7 @@ export class Rewinder {
 
   async apply(claudeSessionId: string, turn: number, confirm: boolean): Promise<RewindPreview> {
     this.allowed(claudeSessionId, confirm);
-    const target = this.turn(claudeSessionId, turn);
+    const target = await this.inRoots(this.turn(claudeSessionId, turn));
     await this.safety(claudeSessionId, target.repo);
     const sdk = await this.sdk(claudeSessionId, target, false);
     return sdk ?? (await this.restore(target));
@@ -64,7 +64,16 @@ export class Rewinder {
       .find((s) => s.kind === "safety");
     if (!safety)
       throw new FlightdeckError("not_found", "no rewind to undo in this session", "rewind_nothing");
-    return this.restore(safety);
+    return this.restore(await this.inRoots(safety));
+  }
+
+  /**
+   * The row with its repository as the real path inside `allowedRoots`, or a refusal before anything is
+   * written: a snapshot row outlives the roots it was taken under, and the repository's top folder may sit
+   * above the session's folder (#3554).
+   */
+  private async inRoots(row: SnapshotRow): Promise<SnapshotRow> {
+    return { ...row, repo: await resolveAllowedCwd(row.repo, this.opts.allowedRoots) };
   }
 
   private allowed(claudeSessionId: string, confirm: boolean): void {
