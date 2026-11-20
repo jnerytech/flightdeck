@@ -153,6 +153,30 @@ async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps
 const stdioTransport = async (): Promise<Transport> =>
   new (await import("@modelcontextprotocol/sdk/server/stdio.js")).StdioServerTransport();
 
+/** What the person typed for `card`, as `runCardCli` takes it: what they left out stays out. */
+function cardCliArgs(args: CliArgs): CardCliArgs {
+  const typed: Record<string, unknown> = {
+    project: args.project,
+    id: args.cardId,
+    title: args.cardTitle,
+    description: args.description,
+    workflow: args.workflow,
+    column: args.column,
+    position: args.position,
+    force: args.force || undefined,
+    confirm: args.confirm || undefined,
+    estimate: args.estimate,
+    validationNote: args.validationNote,
+    specPath: args.specPath,
+    blockedBy: args.blockedBy,
+    text: args.text,
+    language: args.language,
+    json: args.json || undefined,
+  };
+  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
+  return { action: args.action, ...Object.fromEntries(present) } as CardCliArgs;
+}
+
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   backup: done(async (args, deps) => (await import("./maintenance.ts")).runBackup(args, deps)),
   restore: done(async (args, deps) => (await import("./maintenance.ts")).runRestore(args, deps)),
@@ -274,31 +298,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   card: async (args, deps) => {
     const { runCardCli } = await import("../board/index.ts");
     const config = await localConfig(args);
-    return reported(
-      deps,
-      await runCardCli(
-        {
-          action: args.action as CardCliArgs["action"],
-          ...(args.project === undefined ? {} : { project: args.project }),
-          ...(args.cardId === undefined ? {} : { id: args.cardId }),
-          ...(args.cardTitle === undefined ? {} : { title: args.cardTitle }),
-          ...(args.description === undefined ? {} : { description: args.description }),
-          ...(args.workflow === undefined ? {} : { workflow: args.workflow }),
-          ...(args.column === undefined ? {} : { column: args.column }),
-          ...(args.position === undefined ? {} : { position: args.position }),
-          ...(args.force ? { force: true } : {}),
-          ...(args.confirm ? { confirm: true } : {}),
-          ...(args.estimate === undefined ? {} : { estimate: args.estimate }),
-          ...(args.validationNote === undefined ? {} : { validationNote: args.validationNote }),
-          ...(args.specPath === undefined ? {} : { specPath: args.specPath }),
-          ...(args.blockedBy === undefined ? {} : { blockedBy: args.blockedBy }),
-          ...(args.text === undefined ? {} : { text: args.text }),
-          ...(args.language === undefined ? {} : { language: args.language }),
-          ...(args.json ? { json: true } : {}),
-        },
-        config,
-      ),
-    );
+    return reported(deps, await runCardCli(cardCliArgs(args), config));
   },
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");
