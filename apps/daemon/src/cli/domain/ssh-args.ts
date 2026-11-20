@@ -2,6 +2,8 @@
  * Issue #3537: `flightdeckd ssh <verb>`, the ssh destinations of a host. The parser in `args.ts` reads
  * the words after `ssh` here; the flags are checked there, with the usage text.
  */
+
+import type { SshCliArgs } from "../../ssh/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 
@@ -69,4 +71,16 @@ export function sshProblem(args: CliArgs): string | undefined {
   if (!/^SHA256:\S+$/.test(args.sshFingerprint))
     return `--fingerprint: a SHA256 fingerprint, like SHA256:abc..., got ${args.sshFingerprint}`;
   return undefined;
+}
+
+/** What the ssh runner takes from the parsed arguments: each field only when the person gave it. */
+export function sshCliArgs(args: CliArgs): SshCliArgs {
+  return {
+    action: args.action as SshCliArgs["action"],
+    ...(args.sshTarget === undefined ? {} : { target: args.sshTarget }),
+    ...(args.sshFingerprint === undefined ? {} : { fingerprint: args.sshFingerprint }),
+    ...(args.sshAliases === undefined ? {} : { aliases: args.sshAliases }),
+    ...(args.confirm ? { confirm: true } : {}),
+    ...(args.json ? { json: true } : {}),
+  };
 }
