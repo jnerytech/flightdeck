@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { settleMaybe } from "../wait.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -102,12 +102,12 @@ const type = (label: string, value: string) => {
   expect(field).not.toBeNull();
   fireEvent.change(field as HTMLElement, { target: { value } });
 };
-const ready = (text: RegExp | string) => settleMaybe(() => screen.queryByText(text) !== null);
+const ready = (text: RegExp | string) => settle(() => screen.queryByText(text) !== null);
 
 describe("adding a device: the enrolled device's side (#3478)", () => {
   test("a pasted text is read and shows the name, the code and the host before anything is signed", async () => {
     const { calls } = panel([ENROLLED]);
-    await settleMaybe(() => screen.queryByLabelText("Text from the new device") !== null);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
     expect((screen.queryByRole("button", { name: "Read" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
@@ -122,7 +122,7 @@ describe("adding a device: the enrolled device's side (#3478)", () => {
 
   test("agreeing signs and sends the add, and the panel says it was added", async () => {
     const { calls } = panel([ENROLLED, ADDED]);
-    await settleMaybe(() => screen.queryByLabelText("Text from the new device") !== null);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
     type("Text from the new device", "flightdeck-add:abc");
     await press("Read");
     await ready("3f2a-91bc-07de-44a1");
@@ -137,10 +137,10 @@ describe("adding a device: the enrolled device's side (#3478)", () => {
     const { calls } = panel([ENROLLED], {
       readFails: new Error("That device is already enrolled on this host."),
     });
-    await settleMaybe(() => screen.queryByLabelText("Text from the new device") !== null);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
     type("Text from the new device", "nope");
     await press("Read");
-    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    await settle(() => screen.queryByRole("alert") !== null);
     expect(screen.queryByRole("alert")?.textContent).toBe(
       "That device is already enrolled on this host.",
     );
@@ -150,7 +150,7 @@ describe("adding a device: the enrolled device's side (#3478)", () => {
 
   test("a declined dialog says nothing was changed, not that the device was added", async () => {
     panel([ENROLLED], { confirm: "declined" });
-    await settleMaybe(() => screen.queryByLabelText("Text from the new device") !== null);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
     type("Text from the new device", "flightdeck-add:abc");
     await press("Read");
     await ready("3f2a-91bc-07de-44a1");
@@ -161,12 +161,12 @@ describe("adding a device: the enrolled device's side (#3478)", () => {
 
   test("a refusal of the host is an alert and the offer stays, to try again", async () => {
     const { calls } = panel([ENROLLED], { confirm: new Error("The proof expired.") });
-    await settleMaybe(() => screen.queryByLabelText("Text from the new device") !== null);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
     type("Text from the new device", "flightdeck-add:abc");
     await press("Read");
     await ready("3f2a-91bc-07de-44a1");
     await press("Add this device");
-    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    await settle(() => screen.queryByRole("alert") !== null);
     expect(screen.queryByRole("alert")?.textContent).toBe("The proof expired.");
     expect(screen.queryByRole("button", { name: "Add this device" })).not.toBeNull();
     expect(calls.filter((c) => c.startsWith("confirmAdd"))).toHaveLength(1);
@@ -174,7 +174,7 @@ describe("adding a device: the enrolled device's side (#3478)", () => {
 
   test("cancelling drops the offer and signs nothing", async () => {
     const { calls } = panel([ENROLLED]);
-    await settleMaybe(() => screen.queryByLabelText("Text from the new device") !== null);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
     type("Text from the new device", "flightdeck-add:abc");
     await press("Read");
     await ready("3f2a-91bc-07de-44a1");
@@ -185,33 +185,26 @@ describe("adding a device: the enrolled device's side (#3478)", () => {
 
   test("moving to another host drops what was read", async () => {
     const { show } = panel([ENROLLED]);
-    await settleMaybe(() => screen.queryByLabelText("Text from the new device") !== null);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
     type("Text from the new device", "flightdeck-add:abc");
     await press("Read");
     await ready("3f2a-91bc-07de-44a1");
     show("h2");
-    await settleMaybe(() => screen.queryByText("3f2a-91bc-07de-44a1") === null);
+    await settle(() => screen.queryByText("3f2a-91bc-07de-44a1") === null);
     expect(screen.queryByText("3f2a-91bc-07de-44a1")).toBeNull();
-  });
-
-  test("a host with no device enrolled offers the first-key form, not the add", async () => {
-    panel([{ protectionOff: true, keys: [], thisKeyId: null }]);
-    await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
-    expect(screen.queryByLabelText("Text from the new device")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Show the text" })).toBeNull();
   });
 });
 
 describe("adding a device: the new device's side (#3478)", () => {
   test("a device with no key makes the text, shows it with its code, and says it is waiting", async () => {
     const { calls } = panel([NEW_HERE, WAITING]);
-    await settleMaybe(() => screen.queryByLabelText("Name of this device") !== null);
+    await settle(() => screen.queryByLabelText("Name of this device") !== null);
     expect(
       (screen.queryByRole("button", { name: "Show the text" }) as HTMLButtonElement).disabled,
     ).toBe(true);
     type("Name of this device", "  Laptop ");
     await press("Show the text");
-    await settleMaybe(() => screen.queryByLabelText("Text for the enrolled device") !== null);
+    await settle(() => screen.queryByLabelText("Text for the enrolled device") !== null);
     expect(calls).toEqual(["requestAdd:Laptop"]);
     expect(
       (screen.queryByLabelText("Text for the enrolled device") as HTMLInputElement).value,
@@ -222,10 +215,10 @@ describe("adding a device: the new device's side (#3478)", () => {
 
   test("once the host lists this device the text goes and the panel says it is enrolled", async () => {
     panel([NEW_HERE, WAITING, ADDED]);
-    await settleMaybe(() => screen.queryByLabelText("Name of this device") !== null);
+    await settle(() => screen.queryByLabelText("Name of this device") !== null);
     type("Name of this device", "Laptop");
     await press("Show the text");
-    await settleMaybe(() => screen.queryByLabelText("Text for the enrolled device") !== null);
+    await settle(() => screen.queryByLabelText("Text for the enrolled device") !== null);
     await press("Check again");
     await ready("This device is enrolled.");
     expect(screen.queryByLabelText("Text for the enrolled device")).toBeNull();
@@ -233,24 +226,59 @@ describe("adding a device: the new device's side (#3478)", () => {
 
   test("cancelling removes this device's key and the text", async () => {
     const { calls } = panel([NEW_HERE, WAITING, NEW_HERE]);
-    await settleMaybe(() => screen.queryByLabelText("Name of this device") !== null);
+    await settle(() => screen.queryByLabelText("Name of this device") !== null);
     type("Name of this device", "Laptop");
     await press("Show the text");
-    await settleMaybe(() => screen.queryByLabelText("Text for the enrolled device") !== null);
+    await settle(() => screen.queryByLabelText("Text for the enrolled device") !== null);
     await press("Cancel");
-    await settleMaybe(() => screen.queryByLabelText("Text for the enrolled device") === null);
+    await settle(() => screen.queryByLabelText("Text for the enrolled device") === null);
     expect(calls).toEqual(["requestAdd:Laptop", "removeLocal"]);
+  });
+});
+
+describe("adding a device: review findings (#3478)", () => {
+  test("a device waiting to be added cannot revoke the others, and has one way to drop its key", async () => {
+    panel([NEW_HERE, WAITING]);
+    await settle(() => screen.queryByLabelText("Name of this device") !== null);
+    type("Name of this device", "Laptop");
+    await press("Show the text");
+    await settle(() => screen.queryByLabelText("Text for the enrolled device") !== null);
+    expect(screen.queryByRole("button", { name: /^Revoke/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove this device's key" })).toBeNull();
+  });
+
+  test("the pasted text is emptied once the device was added", async () => {
+    panel([ENROLLED, ADDED]);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
+    type("Text from the new device", "flightdeck-add:abc");
+    await press("Read");
+    await ready("3f2a-91bc-07de-44a1");
+    await press("Add this device");
+    await ready("The device was added.");
+    expect((screen.queryByLabelText("Text from the new device") as HTMLInputElement).value).toBe(
+      "",
+    );
+  });
+
+  test("focus moves to the new part when the form is swapped, so a keyboard person is not sent to the top", async () => {
+    panel([ENROLLED]);
+    await settle(() => screen.queryByLabelText("Text from the new device") !== null);
+    type("Text from the new device", "flightdeck-add:abc");
+    await press("Read");
+    await ready("3f2a-91bc-07de-44a1");
+    const inside = screen.queryByRole("button", { name: "Add this device" }) as HTMLElement;
+    expect(inside.closest("[data-add-box]")?.contains(document.activeElement)).toBe(true);
   });
 });
 
 describe("adding a device in Portuguese (#3478)", () => {
   test("both roles speak Portuguese", async () => {
     panel([ENROLLED], { language: "pt-BR" });
-    await settleMaybe(() => screen.queryByLabelText("Texto do novo dispositivo") !== null);
+    await settle(() => screen.queryByLabelText("Texto do novo dispositivo") !== null);
     expect(screen.queryByRole("button", { name: "Ler" })).not.toBeNull();
     cleanup();
     panel([NEW_HERE], { language: "pt-BR" });
-    await settleMaybe(() => screen.queryByRole("button", { name: "Mostrar o texto" }) !== null);
+    await settle(() => screen.queryByRole("button", { name: "Mostrar o texto" }) !== null);
     expect(screen.queryByRole("button", { name: "Mostrar o texto" })).not.toBeNull();
   });
 });

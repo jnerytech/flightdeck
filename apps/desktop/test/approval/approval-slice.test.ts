@@ -42,6 +42,8 @@ function approval(
     signFails?: string;
     /** Runs while the host handles `approval.revoke`: the announcement arrives before the answer. */
     onRevoke?: (slice: ApprovalSlice) => unknown;
+    /** Runs while the host handles `approval.enroll`: the announcement arrives before the answer. */
+    onEnroll?: (slice: ApprovalSlice) => unknown;
   } = {},
 ) {
   const log: Array<{ type: string; payload?: unknown }> = [];
@@ -80,6 +82,7 @@ function approval(
     request: (async (_hostId: string, type: string, payload: unknown) => {
       log.push({ type, payload });
       if (type === "approval.revoke") await over.onRevoke?.(slice);
+      if (type === "approval.enroll") await over.onEnroll?.(slice);
       if (over.refuse === type) {
         return { ok: false, code: "refused", message: "no", reason: "approval_last_key" };
       }
@@ -366,7 +369,8 @@ describe("approval: adding a second device (#3478)", () => {
     expect(offer).toEqual({
       name: "Laptop",
       publicKey: NEW_KEY,
-      fingerprint: printOf(NEW_KEY),
+      // A literal, so a change to the rule shows here and not only on one side of a shared formula.
+      fingerprint: "8492-e7ba-b6df-ae8a",
       host: "daemon-1",
     });
     expect(keyLog.filter((k) => k.op === "sign")).toEqual([]);
@@ -385,6 +389,11 @@ describe("approval: adding a second device (#3478)", () => {
       [text({ name: "a\u200bb" }), t("approvalDevices.addBadText")],
       [text({ name: "3f2a-91bc-07de-44a1" }), t("approvalDevices.addBadText")],
       [text({ name: "3F2A91BC07DE44A1" }), t("approvalDevices.addBadText")],
+      [text({ name: "Laptop 3f2a-91bc-07de-44a1" }), t("approvalDevices.addBadText")],
+      [text({ name: "Laptop 3f2a.91bc.07de.44a1" }), t("approvalDevices.addBadText")],
+      [text({ name: "a\u00a0b" }), t("approvalDevices.addBadText")],
+      [text({ name: "a\ue000b" }), t("approvalDevices.addBadText")],
+      [text({ publicKey: NEW_KEY.replace(/=+$/, "") }), t("approvalDevices.addBadText")],
       [text({ daemonId: "daemon-2" }), t("approvalDevices.addOtherHost")],
       [text({ publicKey: OTHER_PUBLIC }), t("approvalDevices.addAlready")],
     ];
@@ -478,13 +487,29 @@ describe("approval: what a host announces about its devices (#3477)", () => {
     expect(notices[0]?.text).toContain("pi");
   });
 
-  test("this device's own enrollment raises nothing", async () => {
+  test("this device's own enrollment raises nothing, and a watching page is told only to read the list again", async () => {
     const { slice, notices } = approval();
-    let heard = 0;
-    slice.subscribe("h", () => heard++);
+    const heard: unknown[] = [];
+    slice.subscribe("h", (change) => heard.push(change));
     await slice.onChange("h", ENROLLED("key-this", "Phone"));
     expect(notices).toEqual([]);
-    expect(heard).toBe(0);
+    expect(heard).toEqual([{ kind: "enrolled", name: "Phone", own: true }]);
+  });
+
+  test("a device this app is adding is not news to the person who just agreed to add it", async () => {
+    const newId = createHash("sha256").update(Buffer.from(NEW_KEY, "base64")).digest("hex");
+    const { slice, notices } = approval({
+      onEnroll: (s) => s.onChange("h", ENROLLED(newId, "Laptop")),
+    });
+    const heard: unknown[] = [];
+    slice.subscribe("h", (change) => heard.push(change));
+    const offer = await slice.readAdd(
+      "h",
+      encodeAdd({ daemonId: "daemon-1", publicKey: NEW_KEY, name: "Laptop" }),
+    );
+    await slice.confirmAdd("h", offer);
+    expect(notices).toEqual([]);
+    expect(heard).toEqual([{ kind: "enrolled", name: "Laptop", own: true }]);
   });
 
   test("a page that watches the host gets the change and the app raises no notice of its own", async () => {
