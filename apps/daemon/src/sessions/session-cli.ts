@@ -15,6 +15,7 @@ import {
 import type { SessionCliArgs } from "./domain/session-cli-args.ts";
 import { filesLines, interruptedLines, recapLines } from "./domain/session-read-view.ts";
 import { ACT_UNSURE, performAct } from "./session-act-cli.ts";
+import { performStart, START_UNSURE } from "./session-start-cli.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const READS = ["interrupted", "summary", "files"];
@@ -24,13 +25,15 @@ export function runSessionCli(
   config: { bind: string; port: number; token: string },
   options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
+  const starts = args.action === "create" || args.action === "fork";
   return runOnLocalDaemon({
     config,
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-session",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    unsure: ACT_UNSURE,
+    unsure: starts ? START_UNSURE : ACT_UNSURE,
     perform: async (daemon, note) => {
+      if (starts) return performStart(daemon, note, args);
       if (!READS.includes(args.action)) return performAct(daemon, note, args);
       if (args.action === "interrupted") {
         const result = await daemon.call("session.interrupted", {});

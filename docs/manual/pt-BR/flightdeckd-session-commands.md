@@ -43,3 +43,24 @@ mensagem esperando, tem motivo para ficar de pé ou alguém a observa. `set-mode
 Claude é recusada. Um nome que duas sessões dividem é recusado com os ids. Se o daemon não responde, o comando
 sai com `2` e diz que a mudança pode ou não ter chegado: olhe a sessão antes de repetir. Com `--json` cada um
 imprime `{"session": ..., "action": ...}` mais o novo valor. `--host <nome>` alcança um host pareado.
+
+```sh
+fd session create --cwd ~/repos/app --prompt "corrija o build" --permission-mode plan
+fd session fork 7c1e... --cwd ~/repos/app --up-to 3f9a... --open terminal
+fd session set-mode fd-qa plan
+fd session apply-persona fd-qa reviewer --language pt-BR
+fd session clear-persona fd-qa
+```
+
+Inicia ou remodela uma sessão. `create` inicia uma sessão nova em `--cwd` (uma pasta sob uma raiz permitida; senão
+o daemon recusa) e imprime o id; `--prompt`, `--name`, `--model`, `--effort`, `--permission-mode` e `--persona`
+(com `--language`) são os campos do formulário de nova sessão. `fork` inicia uma cópia de uma sessão do Claude,
+até `--up-to <id da mensagem>` quando dado: `--open flightdeck` (o padrão) a inicia como sessão do daemon, e
+`--open terminal` imprime o comando que a abre (`flightdeckd claude --resume <id>`), sem abrir nada.
+`set-mode <sessão> <default|acceptEdits|plan|bypassPermissions>` muda o que uma sessão ativa pode fazer sem
+perguntar; um host que não permite `bypassPermissions` a recusa. `apply-persona` dá uma persona a uma sessão e
+`clear-persona` a tira; cada um manda uma mensagem à sessão e diz se ela entrou, espera a vez ou foi para uma
+sessão de terminal. `create`, `fork`, `set-mode` e `apply-persona` têm risco alto quando uma sessão os roda do
+próprio shell, então o pedido de permissão pergunta à pessoa. Se o daemon não responde, `create` e `fork` dizem
+que uma sessão pode ou não ter sido iniciada: rode `fd sessions` antes de repetir.
+

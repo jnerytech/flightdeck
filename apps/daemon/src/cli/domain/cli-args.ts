@@ -1,6 +1,7 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
 import type { VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
+import type { SessionStartOptions } from "../../sessions/index.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 
@@ -126,6 +127,11 @@ export interface CliArgs {
     | "set-model"
     | "set-effort"
     | "meta-set"
+    | "create"
+    | "set-mode"
+    | "fork"
+    | "apply-persona"
+    | "clear-persona"
     | "detail"
     | "preview-update"
     | "install"
@@ -151,6 +157,8 @@ export interface CliArgs {
   sessionValue?: string;
   /** `session meta set <session> name=... pinned=... archived=...`: the fields to change. */
   sessionMeta?: { name?: string | null; pinned?: boolean; archived?: boolean };
+  /** `session create|fork|apply-persona|clear-persona`: the options of the verb. */
+  sessionStart?: SessionStartOptions;
   /** `approve|deny <request>`: the id of the permission request. */
   requestId?: string;
   /** `approve|deny --message`: what the answer tells Claude. */

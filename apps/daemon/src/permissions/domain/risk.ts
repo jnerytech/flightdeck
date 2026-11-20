@@ -304,6 +304,15 @@ const endsASession = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "session", ["close"]);
 
 /**
+ * `session create` and `fork` start a session with a folder, a prompt, a model and a permission mode of
+ * their own (up to `bypassPermissions`), spending the plan; `set-mode` and `apply-persona` change what a
+ * live session may do without asking (a persona carries its own permission mode and instructions). The app
+ * has the person fill a form or press a button; from a shell, any session could widen its own reach.
+ */
+const startsOrReshapesASession = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "session", ["create", "fork", "set-mode", "apply-persona"]);
+
+/**
  * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
  * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
  * session that got third-party content. `--confirm` is only a flag the caller types.
@@ -389,6 +398,11 @@ const DANGEROUS: Array<{
     when: endsASession,
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
+  },
+  {
+    when: startsOrReshapesASession,
+    reason: () =>
+      "starts a session, or changes what a live one may do or the persona it follows, without the person confirming it in the app (flightdeckd session create, set-mode, fork or apply-persona)",
   },
   {
     when: movesTheQuotaGuard,
@@ -483,12 +497,58 @@ function shellText(prog: string, args: string[]): string | undefined {
 /** What each command of a shell line adds: a pipe hands its output to the next command, so a part knows if it is fed. */
 function statementRisks(command: string): Candidate[] {
   const out: Candidate[] = [];
-  for (const statement of command.split(/&&|\|\||[;&\n]/)) {
-    statement.split("|").forEach((part, i) => {
-      for (const segment of segments(part)) out.push(...segmentRisks(segment, i > 0));
-    });
-  }
+  const read = (
+    statements: string[],
+    pipes: (statement: string) => string[],
+    cut: (part: string) => string[][],
+  ) => {
+    for (const statement of statements) {
+      pipes(statement).forEach((part, i) => {
+        for (const segment of cut(part)) out.push(...segmentRisks(segment, i > 0));
+      });
+    }
+  };
+  // Read twice: cut at every separator, which cannot miss a command that follows one, and cut only outside
+  // quotes, which keeps a quoted value that holds a separator (`fd --prompt "a;b" session create`) from
+  // cutting the verb off its program (#3514).
+  read(command.split(/&&|\|\||[;&\n]/), (statement) => statement.split("|"), segments);
+  read(
+    splitOutsideQuotes(command, ["&&", "||", ";", "&", "\n"]),
+    (statement) => splitOutsideQuotes(statement, ["|"]),
+    (part) =>
+      [
+        part
+          .trim()
+          .split(/\s+/)
+          .filter((w) => w !== ""),
+      ].filter((s) => s.length > 0),
+  );
   return out;
+}
+
+/** `text` cut at each of `separators` (the longest first) that sits outside single and double quotes. */
+function splitOutsideQuotes(text: string, separators: string[]): string[] {
+  const parts: string[] = [];
+  let quote = "";
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (quote !== "") {
+      if (c === quote) quote = "";
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      continue;
+    }
+    const separator = separators.find((s) => text.startsWith(s, i));
+    if (separator === undefined) continue;
+    parts.push(text.slice(from, i));
+    i += separator.length - 1;
+    from = i + 1;
+  }
+  parts.push(text.slice(from));
+  return parts;
 }
 
 /** An MCP tool from any server: a free command with a secret and a discarded card are high risk. */

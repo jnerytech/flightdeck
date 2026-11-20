@@ -341,16 +341,16 @@
   "runenv.watch": {},
   "runtime.models": {},
   "service.install": {},
-  "session.applyPersona": {},
-  "session.clearPersona": {},
+  "session.applyPersona": { "cli": "session" },
+  "session.clearPersona": { "cli": "session" },
   "session.close": {
     "cli": "session"
   },
-  "session.create": {},
+  "session.create": { "cli": "session" },
   "session.files": {
     "cli": "session"
   },
-  "session.fork": {},
+  "session.fork": { "cli": "session" },
   "session.interrupt": {
     "cli": "session"
   },
@@ -372,18 +372,22 @@
   "session.setEffort": {
     "cli": "session"
   },
-  "session.setMode": {},
+  "session.setMode": { "cli": "session" },
   "session.setModel": {
     "cli": "session"
   },
   "session.sleep": {
     "cli": "session"
   },
-  "session.subscribe": {},
+  "session.subscribe": {
+    "appOnly": "the app asks the daemon to push one session's stream to its open window, and a command that ends has no window to push to"
+  },
   "session.summary": {
     "cli": "session"
   },
-  "session.unsubscribe": {},
+  "session.unsubscribe": {
+    "appOnly": "the app asks the daemon to push one session's stream to its open window, and a command that ends has no window to push to"
+  },
   "sessions.watch": {
     "cli": "requests"
   },
