@@ -486,7 +486,10 @@ export class Teams {
       this.notify(this.get(row.id), text, (m) => m.role === "coordinator");
 
     // Before anything changes: a refused worker leaves the team as it was.
-    if (patch.addMember) this.checkPermissions([patch.addMember.permission]);
+    if (patch.addMember) {
+      this.checkPermissions([patch.addMember.permission]);
+      refuseFull(row, info.members.filter((m) => m.role === "worker").length, MAX_WORKERS);
+    }
     if (patch.goal !== undefined) {
       this.store.update(row.id, { goal: patch.goal });
       tellCoordinator(goalChanged(patch.goal));

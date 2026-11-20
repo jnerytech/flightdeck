@@ -30,8 +30,16 @@ export interface LocalCommand {
   clientName: string;
   /** How long the daemon has to answer before the command gives up (exit 2). */
   timeoutMs: number;
-  /** What the command asks; `note.wrote` is set before it sends a write. */
-  perform: (daemon: DaemonClient, note: { wrote: boolean }) => Promise<CliResult>;
+  /**
+   * What the command asks; `note.wrote` is set before it sends a write. A stream (#3454) calls
+   * `flow.started()` once the daemon accepted it: from then on the time limit no longer runs, and each
+   * line it writes goes through `flow.hide`, the same token scrub the final lines get.
+   */
+  perform: (
+    daemon: DaemonClient,
+    note: { wrote: boolean },
+    flow: { started(): void; hide(text: string): string },
+  ) => Promise<CliResult>;
   /** What a write that got no answer may have done, as text that follows the message; "" for a read. */
   unsure?: string;
 }
@@ -107,7 +115,7 @@ export async function runOnLocalDaemon(command: LocalCommand): Promise<CliResult
   const work = async () => {
     daemon = await DaemonClient.connect(url, token, command.clientName, giveUp.signal);
     if (giveUp.signal.aborted) throw new TimedOut();
-    return command.perform(daemon, note);
+    return command.perform(daemon, note, { started: () => clearTimeout(timer), hide });
   };
   const clock = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {

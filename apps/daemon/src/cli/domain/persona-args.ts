@@ -59,6 +59,8 @@ function personaFlags(args: PersonaArgs): Array<[string, unknown, readonly strin
 export function personaProblem(args: PersonaArgs): string | undefined {
   for (const [flag, value, verbs] of personaFlags(args)) {
     if (value === undefined) continue;
+    // `team new --name` is the team's name, checked by `teamProblem`.
+    if (flag === "--name" && args.command === "team") continue;
     if (args.command !== "persona" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}`;
   }
