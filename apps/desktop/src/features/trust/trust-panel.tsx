@@ -65,6 +65,19 @@ export function TrustPanel(
     await read();
   };
 
+  // Trusting is signed by an enrolled device over the folder the host reports for the project, which is the
+  // folder it will trust (#3453); a no in the device's dialog sends nothing.
+  const trust = async (target: string) => {
+    try {
+      const made = await store.approval.trustPayload(hostId, target);
+      if (made.kind === "payload")
+        await store.hostCommand(hostId, "project.trust.set", made.payload);
+    } catch (error) {
+      store.reportError(error instanceof Error ? error.message : String(error));
+    }
+    await read();
+  };
+
   if (loaded === null) return null;
   if (loaded === "failed") {
     return (
@@ -185,7 +198,7 @@ export function TrustPanel(
             onCancel={() => setAsking(false)}
             onConfirm={() => {
               setAsking(false);
-              void decide(path, true);
+              void trust(state.path);
             }}
           />
         )}

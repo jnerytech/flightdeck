@@ -13,6 +13,7 @@ import {
   enrollFirstMessage,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   needsApprovalProof,
   PermissionRespondPayload,
@@ -53,6 +54,14 @@ type TrustPayload =
       };
     }
   | { kind: "declined" };
+
+/** The feature a host announces for each command it guards (#3453). */
+const COMMAND_FEATURE: Record<ProofCommand, string> = {
+  "card.pr.merge": FEATURE_APPROVAL_COMMAND,
+  "project.trust.set": FEATURE_APPROVAL_TRUST,
+  // Announced by the change that guards it; until then no host has it.
+  "autoapprove.resume": "approval-resume",
+};
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
 export type UncheckedCommand = "merge" | "trust";
@@ -243,7 +252,10 @@ export class ApprovalSlice {
   uncheckedCommands(hostId: string): UncheckedCommand[] {
     const features = this.core.host(hostId)?.features;
     if (features === undefined || !hasFeature(features, FEATURE_APPROVAL_PROOF, false)) return [];
-    return hasFeature(features, FEATURE_APPROVAL_COMMAND, false) ? [] : ["merge"];
+    const unchecked: UncheckedCommand[] = [];
+    if (!hasFeature(features, FEATURE_APPROVAL_COMMAND, false)) unchecked.push("merge");
+    if (!hasFeature(features, FEATURE_APPROVAL_TRUST, false)) unchecked.push("trust");
+    return unchecked;
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
@@ -501,7 +513,7 @@ export class ApprovalSlice {
     command: ProofCommand,
     payload: Record<string, unknown>,
   ): Promise<ProofResult> {
-    const signer = await this.signer(hostId, FEATURE_APPROVAL_COMMAND);
+    const signer = await this.signer(hostId, COMMAND_FEATURE[command]);
     if (!signer) return { kind: "none" };
     const challenge = await this.ask(hostId, "approval.challenge", { purpose: "command", command });
     const digest = commandDigest(payload);
@@ -539,9 +551,19 @@ export class ApprovalSlice {
     };
   }
 
-  /** The payload that trusts `path` for a host that checks it (#3453). */
+  /**
+   * The payload that trusts `path`, signed by the device when the host checks it and a device is enrolled
+   * (#3453). `path` is the folder the host reports for the project, which is the folder it will trust.
+   * `declined`: the person said no in the system's dialog.
+   */
   async trustPayload(hostId: string, path: string): Promise<TrustPayload> {
-    return await Promise.resolve({ kind: "payload", payload: { path, trusted: true } });
+    const plain = { path, trusted: true };
+    const proof = await this.proveCommand(hostId, "project.trust.set", plain);
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
+    };
   }
 
   /**
