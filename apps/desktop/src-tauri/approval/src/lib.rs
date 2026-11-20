@@ -22,6 +22,16 @@ pub enum Kind {
 pub struct Ask {
     pub kind: Kind,
     pub subject: String,
+    /// What an allow carries besides the allow itself; the hashes say it, the dialog must too.
+    pub also: Also,
+}
+
+/// What a signed allow also does: saves permission rules, rewrites the tool's input, adds a message.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub struct Also {
+    pub rules: bool,
+    pub input: bool,
+    pub message: bool,
 }
 
 /// The two public forms the daemon knows a key by.
@@ -119,7 +129,7 @@ pub fn describe(message: &str, daemon_id: &str, own: &PublicInfo) -> Result<Ask,
     if key.is_some_and(|k| k != own.key_id) {
         return Err("the text is made for another key".into());
     }
-    Ok(Ask { kind, subject: subject.to_string() })
+    Ok(Ask { kind, subject: subject.to_string(), also: Also::default() })
 }
 
 /// The words of the system's confirmation: its title and its text, in `lang` ("pt-BR" or English
@@ -222,6 +232,23 @@ mod tests {
         public_info(&generate()).unwrap()
     }
 
+    fn also_all() -> Also {
+        Also { rules: true, input: true, message: true }
+    }
+
+    fn hex(text: &str) -> String {
+        Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    /// An approval text for `id`, carrying the hashes of the saved rules, the input and the message.
+    fn approval(me: &PublicInfo, id: &str, rules: &str, input: &str, message: &str) -> String {
+        serde_json::to_string(&[
+            "flightdeck/approval/v1", &me.key_id, DAEMON, id, "n", "allow", &hex(rules), &hex(input),
+            &hex(message),
+        ])
+        .unwrap()
+    }
+
     #[test]
     fn an_approval_names_its_request() {
         let me = own();
@@ -231,7 +258,7 @@ mod tests {
         );
         assert_eq!(
             describe(&m, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Approve, subject: "ext-7".into() }
+            Ask { kind: Kind::Approve, subject: "ext-7".into(), also: also_all() }
         );
     }
 
@@ -248,23 +275,15 @@ mod tests {
     }
 
     #[test]
-    fn adding_and_revoking_name_the_other_key() {
+    fn revoking_names_the_other_key() {
         let me = own();
-        let add = format!(
-            "[\"flightdeck/enroll-add/v1\",\"{}\",\"{DAEMON}\",\"n\",\"NEWKEY\"]",
-            me.key_id
-        );
-        assert_eq!(
-            describe(&add, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::EnrollAdd, subject: "NEWKEY".into() }
-        );
         let rv = format!(
             "[\"flightdeck/revoke/v1\",\"{}\",\"{DAEMON}\",\"n\",\"abc123\"]",
             me.key_id
         );
         assert_eq!(
             describe(&rv, DAEMON, &me).unwrap(),
-            Ask { kind: Kind::Revoke, subject: "abc123".into() }
+            Ask { kind: Kind::Revoke, subject: "abc123".into(), also: Also::default() }
         );
     }
 
@@ -297,13 +316,13 @@ mod tests {
 
     #[test]
     fn the_confirmation_names_the_action_and_its_subject_in_both_languages() {
-        let approve = Ask { kind: Kind::Approve, subject: "ext-7".into() };
+        let approve = Ask { kind: Kind::Approve, subject: "ext-7".into(), also: Also::default() };
         let (title, body) = confirm_text(&approve, "en");
         assert!(title.contains("Flightdeck"));
         assert!(body.contains("ext-7") && body.contains("just pressed"));
         let (_, body_pt) = confirm_text(&approve, "pt-BR");
         assert!(body_pt.contains("ext-7") && body_pt.contains("acabou de apertar"));
-        let revoke = Ask { kind: Kind::Revoke, subject: "0123456789abcdef".into() };
+        let revoke = Ask { kind: Kind::Revoke, subject: "0123456789abcdef".into(), also: Also::default() };
         assert!(confirm_text(&revoke, "en").1.contains("01234567"));
         assert!(!confirm_text(&revoke, "en").1.contains("0123456789abcdef"));
     }
@@ -311,11 +330,59 @@ mod tests {
     #[test]
     fn an_enrollment_shows_the_fingerprint_of_the_key_not_its_text() {
         let info = public_info(&generate()).unwrap();
-        let first = Ask { kind: Kind::EnrollFirst, subject: info.public_key.clone() };
+        let first = Ask { kind: Kind::EnrollFirst, subject: info.public_key.clone(), also: Also::default() };
         let body = confirm_text(&first, "en").1;
         assert!(body.contains(&info.key_id[..8]));
         assert!(!body.contains(&info.public_key));
-        let add = Ask { kind: Kind::EnrollAdd, subject: info.public_key.clone() };
+        let add = Ask { kind: Kind::EnrollAdd, subject: info.public_key.clone(), also: Also::default() };
         assert!(confirm_text(&add, "pt-BR").1.contains(&info.key_id[..8]));
+    }
+
+    #[test]
+    fn an_allow_that_saves_rules_or_rewrites_the_input_says_so_in_the_dialog() {
+        let me = own();
+        let plain = approval(&me, "ext-7", "[]", "null", "");
+        let ask = describe(&plain, DAEMON, &me).unwrap();
+        assert_eq!(ask.also, Also::default());
+        assert!(!confirm_text(&ask, "en").1.contains("also"));
+        let rules = describe(&approval(&me, "ext-7", "[{\"a\":1}]", "null", ""), DAEMON, &me).unwrap();
+        assert_eq!(rules.also, Also { rules: true, input: false, message: false });
+        assert!(confirm_text(&rules, "en").1.contains("saves permission rules"));
+        assert!(confirm_text(&rules, "pt-BR").1.contains("salva regras de permissão"));
+        let input = describe(&approval(&me, "ext-7", "[]", "{\"c\":\"x\"}", "hi"), DAEMON, &me).unwrap();
+        assert_eq!(input.also, Also { rules: false, input: true, message: true });
+        let body = confirm_text(&input, "en").1;
+        assert!(body.contains("changes the tool's input") && body.contains("adds a message"));
+    }
+
+    #[test]
+    fn a_request_id_that_could_pad_or_fake_the_dialog_is_refused() {
+        let me = own();
+        for id in ["", "ext 7", "ext-7\nVerified safe", &"r".repeat(65), "ext-7;"] {
+            assert!(describe(&approval(&me, id, "[]", "null", ""), DAEMON, &me).is_err(), "signed: {id:?}");
+        }
+        assert!(describe(&approval(&me, "ext-7:a.b_c", "[]", "null", ""), DAEMON, &me).is_ok());
+    }
+
+    #[test]
+    fn a_text_far_longer_than_any_the_protocol_builds_is_refused() {
+        let me = own();
+        let padded = format!(
+            "[\"flightdeck/approval/v1\",\"{}\",\"{DAEMON}\",\"ext-7\",\"{}\",\"allow\",\"a\",\"b\",\"c\"]",
+            me.key_id,
+            "n".repeat(5000)
+        );
+        assert!(describe(&padded, DAEMON, &me).is_err());
+    }
+
+    #[test]
+    fn adding_a_device_is_not_signed_because_the_app_never_asks_for_it() {
+        let me = own();
+        let add = format!(
+            "[\"flightdeck/enroll-add/v1\",\"{}\",\"{DAEMON}\",\"n\",\"{}\"]",
+            me.key_id,
+            own().public_key
+        );
+        assert!(describe(&add, DAEMON, &me).is_err());
     }
 }
