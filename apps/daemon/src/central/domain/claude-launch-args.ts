@@ -85,13 +85,27 @@ export function personaArgs(
  * mode, and under root, where claude refuses bypass: the launch then opens in claude's own mode and
  * says so. `IS_SANDBOX` is never set to get around that refusal.
  */
-export function bypassArgs(_opts: {
+export function bypassArgs(opts: {
   allowed: boolean;
   byDefault: string;
   given: string[];
   root: boolean;
 }): { args: string[]; notice: string | null } {
-  return { args: [], notice: null };
+  const none = { args: [], notice: null };
+  if (!opts.allowed || opts.byDefault !== "bypassPermissions") return none;
+  if (
+    passed(opts.given, "--permission-mode") ||
+    passed(opts.given, "--dangerously-skip-permissions")
+  )
+    return none;
+  if (opts.root) {
+    return {
+      args: [],
+      notice:
+        "flightdeckd: this host's default is bypass permissions, but claude refuses it as root; opening claude in its own default mode",
+    };
+  }
+  return { args: ["--permission-mode", "bypassPermissions"], notice: null };
 }
 
 /** The folder name a session is named after: the git toplevel's when there is one, else the launch folder's. */

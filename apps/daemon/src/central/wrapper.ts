@@ -19,6 +19,7 @@ import { gitToplevel } from "./adapters/git-toplevel.ts";
 import {
   ACCOUNT,
   buildClaudeLaunch,
+  bypassArgs,
   interactiveAgents,
   localBase,
   nameArgs,
@@ -84,6 +85,8 @@ export interface RunClaudeOptions {
   timeoutMs: number;
   /** The platform claude runs on; the process's when absent. Injected in tests. */
   platform?: NodeJS.Platform;
+  /** Whether the process runs as root, where claude refuses bypass; the process's when absent. Injected in tests. */
+  root?: boolean;
   /** Runs `icacls` for the folder that holds the channel config on Windows; the real one when absent. */
   exec?: Exec;
 }
@@ -353,6 +356,15 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
             platform: opts.platform ?? process.platform,
           })),
     );
+    // The host's default mode (#3427); a persona's `plan` or the person's own mode (both in `given`) wins.
+    const bypass = bypassArgs({
+      allowed: opts.config.allowBypassPermissions,
+      byDefault: opts.config.defaultPermissionMode,
+      given: [...added, ...args],
+      root: opts.root ?? process.getuid?.() === 0,
+    });
+    if (bypass.notice) opts.log.error(bypass.notice);
+    added.push(...bypass.args);
     return await launchClaude(
       buildClaudeLaunch({
         claude,
