@@ -16,7 +16,8 @@ export async function streamFrames<T extends ServerMessage["type"]>(opts: {
   write: (line: string) => void;
   /** The request that opens the stream: it resolves when the daemon acks it. */
   open: () => Promise<unknown>;
-  type: T;
+  /** The frame type, or the types, this stream prints (an `approval.watch` pushes two). */
+  type: T | readonly T[];
   /** The line a frame prints. */
   line: (frame: Extract<ServerMessage, { type: T }>) => string;
 }): Promise<CliResult> {
@@ -30,13 +31,15 @@ export async function streamFrames<T extends ServerMessage["type"]>(opts: {
   const broken = new Promise<never>((_, reject) => {
     unwritable = reject;
   });
-  const off = daemon.onFrame(opts.type, (frame) => {
-    try {
-      write(plain(flow.hide(opts.line(frame))));
-    } catch (error) {
-      unwritable(error);
-    }
-  });
+  const offs = (Array.isArray(opts.type) ? opts.type : [opts.type]).map((type: T) =>
+    daemon.onFrame(type, (frame) => {
+      try {
+        write(plain(flow.hide(opts.line(frame))));
+      } catch (error) {
+        unwritable(error);
+      }
+    }),
+  );
   try {
     // Ctrl-C counts from the first moment, also while the daemon has not answered yet.
     await Promise.race([opts.open(), stopped, broken, daemon.unreadable]);
@@ -49,6 +52,6 @@ export async function streamFrames<T extends ServerMessage["type"]>(opts: {
     }
     return { code: 0, out: [], err: [] };
   } finally {
-    off();
+    for (const off of offs) off();
   }
 }

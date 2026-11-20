@@ -8,6 +8,9 @@ import { cmd } from "./command.ts";
 /** The host checks a signed proof of the person's device before a high-risk allow (`host.info.features`). */
 export const FEATURE_APPROVAL_PROOF = "approval-proof";
 
+/** The host announces `approval.enrolled` and `approval.revoked` to a client that sent `approval.watch` (#3476). */
+export const FEATURE_APPROVAL_WATCH = "approval-watch";
+
 /**
  * RFC 8785 canonical JSON: no spaces, object keys in UTF-16 code unit order (never a locale's), numbers and
  * strings as `JSON.stringify` writes them. A key whose value is `undefined` is left out; a number that is
@@ -190,6 +193,8 @@ export const approvalCommands = [
       .strict(),
   ),
   cmd("approval.list", z.object({}).strict()),
+  /** Streams `approval.enrolled` and `approval.revoked` from now on, until the connection closes (#3476). */
+  cmd("approval.watch", z.object({}).strict()),
 ] as const;
 
 export interface ApprovalKeyInfo {
@@ -213,4 +218,23 @@ export interface ApprovalResults {
     protectionOff: boolean;
     keys: ApprovalKeyInfo[];
   };
+  "approval.watch": undefined;
 }
+
+/** Sent after `approval.watch` when a device is enrolled: who it is and where it came from, never a key, a nonce or a code. */
+export const ApprovalEnrolled = z.object({
+  type: z.literal("approval.enrolled"),
+  keyId: z.string(),
+  name: z.string(),
+  client: z.string(),
+  address: z.string(),
+  enrolledAt: z.string(),
+});
+export type ApprovalEnrolled = z.infer<typeof ApprovalEnrolled>;
+
+/** Sent after `approval.watch` when a device is revoked. */
+export const ApprovalRevoked = z.object({
+  type: z.literal("approval.revoked"),
+  keyId: z.string(),
+});
+export type ApprovalRevoked = z.infer<typeof ApprovalRevoked>;

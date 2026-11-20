@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { type ActivityResults, activityCommands } from "./activity.ts";
 import { type AgentSetupResults, agentSetupCommands } from "./agent-setup.ts";
-import { type ApprovalResults, approvalCommands } from "./approval.ts";
+import {
+  ApprovalEnrolled,
+  type ApprovalResults,
+  ApprovalRevoked,
+  approvalCommands,
+} from "./approval.ts";
 import { type AssistantResults, assistantCommands } from "./assistant.ts";
 import { type AutomationsResults, automationsCommands } from "./automations.ts";
 import { type BoardResults, boardCommands, CardUpdated } from "./board.ts";
@@ -443,6 +448,8 @@ export const ServerMessage = z.union([
   EventEnvelope,
   Ping,
   HistoryChanged,
+  ApprovalEnrolled,
+  ApprovalRevoked,
   CardUpdated,
   ExternalUpdated,
   ExternalPermissionFrame,

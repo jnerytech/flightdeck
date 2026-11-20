@@ -9,16 +9,25 @@ import { type ApprovalCore, ApprovalSlice } from "./store.ts";
  */
 export function wireApproval(
   kernel: AppKernel<{
-    hosts: Array<{ id: string; hostInfo: { features?: string[]; daemonId?: string } | null }>;
+    hosts: Array<{
+      id: string;
+      name: string;
+      hostInfo: { features?: string[]; daemonId?: string } | null;
+    }>;
   }>,
   deps: { platform: Pick<Platform, "approvalKeys">; lang: () => string },
 ): ApprovalSlice {
   return new ApprovalSlice({
     keys: () => deps.platform.approvalKeys,
     host: (hostId) => {
-      const info = kernel.state().hosts.find((h) => h.id === hostId)?.hostInfo;
-      return info ? { features: info.features, daemonId: info.daemonId } : undefined;
+      const host = kernel.state().hosts.find((h) => h.id === hostId);
+      const info = host?.hostInfo;
+      return info
+        ? { features: info.features, daemonId: info.daemonId, name: host.name }
+        : undefined;
     },
+    success: (text) => kernel.success(text),
+    fail: (text) => kernel.fail(new Error(text), text),
     request: (hostId, type, payload) => kernel.hostRequest(hostId, type, payload),
     lang: deps.lang,
     t: () => kernel.t(),

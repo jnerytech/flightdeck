@@ -28,10 +28,13 @@ function approval(
     list?: { protectionOff: boolean; keys: Array<typeof THIS> };
     refuse?: string;
     signFails?: string;
+    /** Runs while the host handles `approval.revoke`: the announcement arrives before the answer. */
+    onRevoke?: (slice: ApprovalSlice) => unknown;
   } = {},
 ) {
   const log: Array<{ type: string; payload?: unknown }> = [];
   const keyLog: Array<{ op: string; args: unknown[] }> = [];
+  const notices: Array<{ kind: "success" | "fail"; text: string }> = [];
   let local = over.local === undefined ? KEY : over.local;
   const slice = new ApprovalSlice({
     keys: () =>
@@ -57,9 +60,14 @@ function approval(
               return `sig:${message}`;
             },
           },
-    host: () => ({ features: over.features ?? [FEATURE_APPROVAL_PROOF], daemonId: "daemon-1" }),
+    host: () => ({
+      features: over.features ?? [FEATURE_APPROVAL_PROOF],
+      daemonId: "daemon-1",
+      name: "pi",
+    }),
     request: (async (_hostId: string, type: string, payload: unknown) => {
       log.push({ type, payload });
+      if (type === "approval.revoke") await over.onRevoke?.(slice);
       if (over.refuse === type) {
         return { ok: false, code: "refused", message: "no", reason: "approval_last_key" };
       }
@@ -76,8 +84,10 @@ function approval(
     }) as never as () => Promise<HostResult<never>>,
     lang: () => "en",
     t: () => t,
+    success: (text) => notices.push({ kind: "success", text }),
+    fail: (text) => notices.push({ kind: "fail", text }),
   });
-  return { slice, log, keyLog };
+  return { slice, log, keyLog, notices };
 }
 
 const rule: PermissionUpdate = {
@@ -295,3 +305,80 @@ describe("approval: this device's key on a host's page (#3439)", () => {
     expect(keyLog).toEqual([{ op: "delete", args: ["daemon-1"] }]);
   });
 });
+
+const ENROLLED = (keyId: string, name: string) =>
+  ({
+    type: "approval.enrolled",
+    keyId,
+    name,
+    client: "app",
+    address: "a",
+    enrolledAt: "x",
+  }) as const;
+
+describe("approval: what a host announces about its devices (#3477)", () => {
+  test("a device this one did not make is an alert that names it and the host", async () => {
+    const { slice, notices } = approval();
+    await slice.onChange("h", ENROLLED("key-new", "Unknown tablet"));
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.kind).toBe("fail");
+    expect(notices[0]?.text).toContain("Unknown tablet");
+    expect(notices[0]?.text).toContain("pi");
+  });
+
+  test("this device's own enrollment raises nothing", async () => {
+    const { slice, notices } = approval();
+    let heard = 0;
+    slice.subscribe("h", () => heard++);
+    await slice.onChange("h", ENROLLED("key-this", "Phone"));
+    expect(notices).toEqual([]);
+    expect(heard).toBe(0);
+  });
+
+  test("a page that watches the host gets the change and the app raises no notice of its own", async () => {
+    const { slice, notices } = approval();
+    const heard: unknown[] = [];
+    slice.subscribe("h", (change) => heard.push(change));
+    await slice.onChange("h", ENROLLED("key-new", "Unknown tablet"));
+    expect(heard).toEqual([{ kind: "enrolled", name: "Unknown tablet", own: false }]);
+    expect(notices).toEqual([]);
+  });
+
+  test("a page that stopped watching gets nothing", async () => {
+    const { slice, notices } = approval();
+    let heard = 0;
+    slice.subscribe("h", () => heard++)();
+    await slice.onChange("h", ENROLLED("key-new", "Unknown tablet"));
+    expect(heard).toBe(0);
+    expect(notices).toHaveLength(1);
+  });
+
+  test("another device revoked this device's key: an alert that says so", async () => {
+    const { slice, notices } = approval();
+    await slice.onChange("h", { type: "approval.revoked", keyId: "key-this" });
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.kind).toBe("fail");
+    expect(notices[0]?.text).toContain("This device");
+  });
+
+  test("another device's key revoked is a quiet notice", async () => {
+    const { slice, notices } = approval();
+    await slice.onChange("h", { type: "approval.revoked", keyId: "key-other" });
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.kind).toBe("success");
+  });
+
+  test("a revoke this app is making is not announced back to the person", async () => {
+    const { slice, notices } = approval({ onRevoke: (s) => s.onChange("h", REVOKED_OTHER) });
+    await slice.revoke("h", "key-other");
+    expect(notices).toEqual([]);
+  });
+
+  test("a host without a key store here still announces: no key is this device's", async () => {
+    const { slice, notices } = approval({ keys: "none" });
+    await slice.onChange("h", ENROLLED("key-this", "Phone"));
+    expect(notices.map((n) => n.kind)).toEqual(["fail"]);
+  });
+});
+
+const REVOKED_OTHER = { type: "approval.revoked", keyId: "key-other" } as const;

@@ -3,6 +3,7 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
+import { approversProblem } from "./approvers-args.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { costsProblem } from "./costs-args.ts";
@@ -228,7 +229,7 @@ const HANDLERS: Record<string, Handler> = {
       args.index = index;
     }
   },
-  approvers: withAction("approvers", ["enroll", "reset"], "invalid approvers action"),
+  approvers: withAction("approvers", ["enroll", "reset", "watch"], "invalid approvers action"),
   rules: (args, reader) => {
     args.command = "rules";
     const action = subAction(reader, ["list", "remove"] as const, "invalid rules action");
@@ -486,6 +487,9 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--session": setValue((args, v) => {
     args.session = v;
+  }),
+  "--follow": setFlag((args) => {
+    args.follow = true;
   }),
   "--json": setFlag((args) => {
     args.json = true;
@@ -757,6 +761,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     historyProblem(args) ??
     quotaProblem(args) ??
     rulesProblem(args) ??
+    approversProblem(args) ??
     costsProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
