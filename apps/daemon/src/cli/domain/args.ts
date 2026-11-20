@@ -5,6 +5,7 @@
 import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { boardProblem } from "./board-args.ts";
+import { BUDGET_FLAGS, budgetProblem } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
@@ -349,6 +350,16 @@ const HANDLERS: Record<string, Handler> = {
       if (next && !next.startsWith("--")) args.teamSpec = reader.next();
     }
   },
+  budget: (args, reader) => {
+    args.command = "budget";
+    const action = subAction(
+      reader,
+      ["list", "set", "set-quota", "remove"],
+      "invalid budget action",
+    );
+    args.action = action;
+    if (action === "remove") args.budgetId = operand(reader, "the budget");
+  },
   quota: (args, reader) => {
     args.command = "quota";
     const action = subAction(reader, ["get", "history", "pause-at"], "invalid quota action");
@@ -600,6 +611,7 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--limit: a whole number from 1 to 1000, got ${v}\n${USAGE}`);
     args.limit = n;
   }),
+  ...BUDGET_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -653,6 +665,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "persona",
       "quota",
       "usage",
+      "budget",
       "host",
       "sessions",
       "requests",
@@ -665,7 +678,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove
+      `--json: this flag only applies to flightdeckd card, board, history, team, persona, quota, usage, budget, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove
 ${USAGE}`,
     );
   if (
@@ -745,6 +758,7 @@ ${USAGE}`,
     boardProblem(args) ??
     historyProblem(args) ??
     quotaProblem(args) ??
+    budgetProblem(args) ??
     rulesProblem(args) ??
     approversProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);

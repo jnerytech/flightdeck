@@ -69,6 +69,7 @@ window resets.
 
 - **From a shell:** `fd quota get` prints the windows and the guard, and `fd quota pause-at 0.8` (or `off`)
   sets the guard, as **New cards wait from** does. See [flightdeckd commands](flightdeckd-commands.md#fd-quota-and-fd-usage).
+- **Budgets from a shell:** `fd budget list`, `set`, `set-quota` and `remove` do what the budget form does. See [flightdeckd commands](flightdeckd-commands.md#fd-budget).
 
 ## The status bar
 

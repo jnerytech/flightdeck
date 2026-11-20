@@ -49,7 +49,7 @@ const HANDLERS: Handlers = {
   "budget.list": () => ({ budgets: [DAY, WINDOW] }),
   "budget.set": () => DAY,
   "budget.setQuota": () => WINDOW,
-  "budget.remove": () => undefined,
+  "budget.remove": () => ({}),
 };
 
 const text = (r: { out: string[]; err: string[] }) => [...r.out, ...r.err].join("\n");
@@ -195,9 +195,9 @@ describe("budget set and set-quota (issue #3460)", () => {
 
   test("a refusal of the daemon is exit 1, and says nothing of an unknown result", async () => {
     const daemon = fakeDaemon({
-      "budget.setQuota": () => {
-        throw new Error("quotaBudgets is off on this host");
-      },
+      "budget.setQuota": () => ({
+        error: { code: "featureOff", message: "quotaBudgets is off on this host" },
+      }),
     });
     const result = await budget(
       {
@@ -246,9 +246,7 @@ describe("budget remove (issue #3460)", () => {
 
   test("a budget the daemon does not know is exit 1", async () => {
     const daemon = fakeDaemon({
-      "budget.remove": () => {
-        throw new Error("no budget b9");
-      },
+      "budget.remove": () => ({ error: { code: "notFound", message: "no budget b9" } }),
     });
     const result = await budget({ action: "remove", id: "b9" }, daemon);
     expect({ code: result.code, said: text(result).includes("no budget b9") }).toEqual({
@@ -369,8 +367,8 @@ describe("the arguments of budget (issue #3460)", () => {
   };
 
   test.each<[string, string[], string]>([
-    ["no action", ["budget"], "invalid budget action"],
-    ["an unknown action", ["budget", "reprice"], "invalid budget action"],
+    ["no action", ["budget"], "invalid budget action: (none)"],
+    ["an unknown action", ["budget", "reprice"], "invalid budget action: reprice"],
     ["set without the scope", without(SET, "--scope"), "missing --scope"],
     ["set without the period", without(SET, "--period"), "missing --period"],
     ["set without the limit", without(SET, "--limit-usd"), "missing --limit-usd"],
@@ -468,6 +466,16 @@ describe("the arguments of budget (issue #3460)", () => {
       "--limit-pct on set",
       [...SET, "--limit-pct", "0.5"],
       "--limit-pct: this flag only applies to flightdeckd budget set-quota",
+    ],
+    [
+      "--project on a list",
+      ["budget", "list", "--project", "p"],
+      "--project: this flag only applies to flightdeckd budget set and set-quota",
+    ],
+    [
+      "--project on a remove",
+      ["budget", "remove", "b1", "--project", "p"],
+      "--project: this flag only applies to flightdeckd budget set and set-quota",
     ],
     [
       "--action on a list",

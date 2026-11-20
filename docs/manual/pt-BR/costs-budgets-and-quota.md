@@ -68,6 +68,7 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
 
 - **Pelo terminal:** `fd quota get` imprime as janelas e a trava, e `fd quota pause-at 0.8` (ou `off`) define
   a trava, como **Cartões novos esperam a partir de** faz. Veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-quota-e-fd-usage).
+- **Orçamentos pelo terminal:** `fd budget list`, `set`, `set-quota` e `remove` fazem o que o formulário de orçamento faz. Veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-budget).
 
 ## A barra de status
 

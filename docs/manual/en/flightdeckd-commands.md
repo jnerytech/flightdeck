@@ -219,6 +219,37 @@ for the daemon's answer.
 A `pause-at` that gets no answer exits `2` and says it may or may not have changed: run `quota get` before
 trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
+## fd budget
+
+```sh
+fd budget list
+fd budget set --scope host --period day --limit-usd 25 --action queue
+fd budget set --scope project --project flightdeck --period month --limit-usd 400 --action notify
+fd budget set-quota --scope host --window five_hour --limit-pct 0.5 --action notify
+fd budget set --scope host --period day --limit-usd 40 --action queue --id <budget>
+fd budget remove <budget>
+```
+
+The cost limits of this host, as the Costs screen shows them. Each takes `--json` for the daemon's answer.
+
+- **`budget list`:** one line per budget: its id, its scope (`host` or `project <key>`), its period, what it
+  has spent of its limit, and what it does at the limit. A limit in dollars reads `spent $1.20 of $5.00
+  (24%)`; a share of a quota window reads `spent ~12% of 20% (60%)`, the `~` marking a project's share as an
+  estimate. With no budget it says `no budget yet`.
+- **`budget set`:** makes a limit in dollars for the host, or for one project with `--scope project --project
+  <key>`. `--period` is `day` or `month`, `--limit-usd` a positive amount in plain digits (`12.50`), and
+  `--action` is `notify` (say so at the limit) or `queue` (new cards of the scope wait at 100%; a session
+  that is running is never held). `--id <budget>` changes an existing budget instead of making a new one.
+- **`budget set-quota`:** the same, as a share of a quota window instead of dollars: `--window` is
+  `five_hour` or `seven_day`, `--limit-pct` a share from `0.001` to `1`. A host without the plan quota
+  refuses it.
+- **`budget remove <budget>`:** drops a budget.
+
+A flag that belongs to another verb, a project scope without `--project`, or a value out of range exits `1`
+and sends nothing. A write that gets no answer exits `2` and says it may or may not have gone in: run
+`budget list` before trying again. Exit codes are the same as the other commands: `0` done, `1` refused,
+`2` no daemon.
+
 ## fd history
 
 ```sh

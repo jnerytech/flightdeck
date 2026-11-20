@@ -214,6 +214,12 @@ const OPTIONS_WITH_VALUE = [
   "--icon",
   "--hash",
   "--limit",
+  "--period",
+  "--window",
+  "--action",
+  "--limit-usd",
+  "--limit-pct",
+  "--id",
   "--out",
   "--from",
   "--to",
@@ -401,6 +407,14 @@ const movesTheQuotaGuard = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "quota", ["pause-at"]);
 
 /**
+ * A spend limit changed or dropped from a session's shell (#3460): `budget set` and `set-quota` raise or
+ * make a limit that holds new cards back, `budget remove` drops one. A session that raises its own
+ * limit spends past what the person set. Every value is rated, since the text cannot tell a raise from a lowering.
+ */
+const changesASpendLimit = (prog: string, args: string[]) =>
+  runsCliVerb(prog, args, "budget", ["set", "set-quota", "remove"]);
+
+/**
  * What guards a project's sessions, changed from a session's shell (#3457): `rules remove` drops a
  * permission rule the person saved, `autoapprove resume` turns the automatic approver back on for a
  * session that got third-party content. `--confirm` is only a flag the caller types.
@@ -472,6 +486,11 @@ const DANGEROUS: Array<{
     when: movesTheQuotaGuard,
     reason: () =>
       "moves or turns off the plan-quota guard that holds new cards back, so sessions can spend past the plan the person set (flightdeckd quota pause-at)",
+  },
+  {
+    when: changesASpendLimit,
+    reason: () =>
+      "raises, moves or drops a cost limit that holds new cards back, so sessions can spend past what the person set (flightdeckd budget set, set-quota or remove)",
   },
   { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
   {
