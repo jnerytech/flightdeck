@@ -16,6 +16,7 @@ import {
   RUNNERS,
   SHELLS,
   shellReadings,
+  startsCli,
   stepQuote,
   unquoted,
 } from "./shell-call.ts";
@@ -158,8 +159,7 @@ function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string
   if (isCliProgram(prog))
     return shellReadings(args).some((own) => verbs.includes(flightdeckWords(own)[0] ?? ""));
   if (!RUNNERS.includes(prog)) return false;
-  const names = words.map((w) => program(w));
-  const runsCli = names.some((n) => isCliProgram(n));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   return runsCli && words.some((w) => verbs.includes(w));
 }
 
@@ -201,7 +201,7 @@ function endsACard(prog: string, args: string[]): boolean {
     });
   }
   if (!RUNNERS.includes(prog)) return false;
-  const runsCli = words.some((w) => isCliProgram(program(w)));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   return (
     runsCli &&
     words.includes("card") &&
@@ -247,9 +247,7 @@ function runsFlightdeckWords(
   if (isCliProgram(prog)) return shellReadings(args).some((own) => matches(flightdeckWords(own)));
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  return words.some(
-    (w, i) => isCliProgram(program(w)) && matches(flightdeckWords(words.slice(i + 1))),
-  );
+  return words.some((_, i) => startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1))));
 }
 
 /**
@@ -270,7 +268,7 @@ function resumesWithPower(prog: string, args: string[]): boolean {
   }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((w) => isCliProgram(program(w)));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   const resumes = words.some((w, i) => w === "history" && words[i + 1] === "resume");
   return runsCli && resumes && raised(words);
 }
@@ -292,7 +290,7 @@ const TEAM_CHANGES = [
 const runnerHidesAVerb = (prog: string, args: string[]) => {
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const at = words.findIndex((w) => isCliProgram(program(w)) && !program(w).includes("$"));
+  const at = words.findIndex((w, i) => startsCli(words, i) && !program(w).includes("$"));
   // Only a noun that has verbs: what follows `bin.ts` in `bun build bin.ts --outfile $OUT` is no command.
   return at >= 0 && hidesItsVerb(words.slice(at + 1), true);
 };
@@ -318,7 +316,7 @@ function runsCliVerb(prog: string, args: string[], command: string, verbs: strin
   }
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((w) => isCliProgram(program(w)));
+  const runsCli = words.some((_, i) => startsCli(words, i));
   return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
 }
 

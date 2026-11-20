@@ -368,7 +368,6 @@ export const OPTIONS_WITH_VALUE = [
   "--project-key",
   "--origin",
   "--cursor",
-  "--limit",
   "--folders",
   "--launch",
   "--url",
@@ -392,7 +391,6 @@ export const OPTIONS_WITH_VALUE = [
   "--runtime",
   "--period",
   "--window",
-  "--action",
   "--limit-usd",
   "--limit-pct",
   "--id",
@@ -514,7 +512,11 @@ export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
   });
 }
 
-/** The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`). */
+/**
+ * The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`).
+ * The parser reads `flightdeckd fd <command>` as `flightdeckd <command>`, so one leading `fd` is no word (#3566); a
+ * second one stays, since the parser sends `fd fd` to claude, and a later one is an argument.
+ */
 export function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -522,8 +524,15 @@ export function flightdeckWords(args: string[]): string[] {
     if (OPTIONS_WITH_VALUE.includes(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
   }
-  return words;
+  return words[0] === "fd" ? words.slice(1) : words;
 }
+
+/**
+ * Whether the word at `i` of a runner's text starts the CLI: its name, or `bun run start`, the script of
+ * `apps/daemon/package.json` that runs `bin.ts` (#3566).
+ */
+export const startsCli = (words: string[], i: number) =>
+  isCliProgram(program(words[i] ?? "")) || (words[i] === "start" && words[i - 1] === "run");
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
