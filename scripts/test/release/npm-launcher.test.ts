@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
-import { BINARIES, binaryFor, exitCodeOf, launch } from "../../../release/npm/launcher.js";
+import { BINARIES, binaryFor, exitCodeOf, launch, main } from "../../../release/npm/launcher.js";
 
 /**
  * Issue #3541: the launcher the npm tarball puts on the PATH as `fd` and `flightdeckd`. It picks the
@@ -155,5 +155,43 @@ describe("npm launcher: how it ends (#3541)", () => {
       [`flightdeckd: cannot run ${join(DIR, "flightdeckd-linux-x64")}: spawn ENOENT`],
       [1],
     ]);
+  });
+});
+
+describe("npm-launcher: the entry point wires the real process (#3541)", () => {
+  test("main with the real process and no binary beside the launcher prints one line and exits 1", async () => {
+    // This repository folder holds the launcher but no binary: the real spawn fails the way a damaged
+    // install would. Only the process's exit and stderr are held back, and the signal listeners the
+    // launcher adds are taken off again, so the test runner keeps its own.
+    const before = new Map(
+      ["SIGINT", "SIGTERM", "SIGHUP"].map((s) => [s, process.listeners(s as never)]),
+    );
+    const exits: number[] = [];
+    const lines: string[] = [];
+    let ended: () => void = () => undefined;
+    const done = new Promise<void>((resolve) => {
+      ended = resolve;
+    });
+    const exit = spyOn(process, "exit").mockImplementation(((code?: number) => {
+      exits.push(code ?? 0);
+      ended();
+    }) as never);
+    const write = spyOn(process.stderr, "write").mockImplementation(((line: string) => {
+      lines.push(line);
+      return true;
+    }) as never);
+    try {
+      main("flightdeckd");
+      await done;
+    } finally {
+      exit.mockRestore();
+      write.mockRestore();
+      for (const [signal, kept] of before) {
+        for (const listener of process.listeners(signal as never)) {
+          if (!kept.includes(listener)) process.off(signal as never, listener as never);
+        }
+      }
+    }
+    expect([exits, lines.length, lines[0]?.startsWith("flightdeckd: ")]).toEqual([[1], 1, true]);
   });
 });
