@@ -534,11 +534,12 @@ export function flightdeckWords(args: string[]): string[] {
 }
 
 /**
- * Whether the word at `i` of a runner's text starts the CLI: its name, or `bun run start`, the script of
+ * Whether the word at `i` of a runner's text starts the CLI: its name, or `bun start` or `bun run [options] start`, the script of
  * `apps/daemon/package.json` that runs `bin.ts` (#3566).
  */
 export const startsCli = (words: string[], i: number) =>
-  isCliProgram(program(words[i] ?? "")) || (words[i] === "start" && words[i - 1] === "run");
+  isCliProgram(program(words[i] ?? "")) ||
+  (words[i] === "start" && (i === 0 || words.slice(0, i).includes("run")));
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
