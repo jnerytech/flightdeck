@@ -163,9 +163,9 @@ describe("resumo-ui", () => {
     expect(region().textContent).not.toContain("/r/queue.ts");
     expect(screen.queryByRole("button", { name: "Copy summary" })).toBeNull();
     expect(region().querySelector("[data-slot='recap-preview']")?.className).toContain("truncate");
-    // Nothing was cut, so there is nothing to add in a tooltip.
-    expect(region().querySelector("[data-slot='recap-preview']")?.hasAttribute("title")).toBe(
-      false,
+    // The line also clips by width, so even a short text gives itself whole as the tooltip.
+    expect(region().querySelector("[data-slot='recap-preview']")?.getAttribute("title")).toBe(
+      "Retry added with backoff.",
     );
     await expand();
     expect(toggle().getAttribute("aria-expanded")).toBe("true");
@@ -174,7 +174,7 @@ describe("resumo-ui", () => {
     expect(region().querySelector("[data-slot='recap-preview']")).toBeNull();
   });
 
-  test("a folded line that cuts the text gives the whole of it as a tooltip, and one that cuts nothing gives none (#3408)", async () => {
+  test("a folded line gives the whole text as a tooltip, cut by length or clipped by width (#3408)", async () => {
     const preview = () =>
       screen
         .queryByRole("region", { name: "Session summary" })
