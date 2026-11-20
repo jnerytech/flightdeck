@@ -170,6 +170,21 @@ describe("flightdeckd autoapprove list (issue #3457)", () => {
     ]);
   });
 
+  test("--session keeps only that session's suspension, in the line and in the JSON", async () => {
+    const other = { ...SUSPENDED, sessionKey: "s9" };
+    const daemon = fakeDaemon({
+      "autoapprove.list": () => ({ decisions: [], suspended: [SUSPENDED, other] }),
+    });
+    const machine = await flightdeckd(
+      ["autoapprove", "list", "--session", "s9", "--json"],
+      daemon.port,
+    );
+    expect(JSON.parse(machine.out.join("\n")).suspended).toEqual([other]);
+    const human = await flightdeckd(["autoapprove", "list", "--session", "s9"], daemon.port);
+    expect(human.out.join("\n")).toContain("suspended  s9");
+    expect(human.out.join("\n")).not.toContain("s7");
+  });
+
   test("nothing decided and nothing suspended says so, and --json gives empty arrays", async () => {
     const daemon = fakeDaemon({ "autoapprove.list": () => ({ decisions: [], suspended: [] }) });
     const human = await flightdeckd(["autoapprove", "list"], daemon.port);
