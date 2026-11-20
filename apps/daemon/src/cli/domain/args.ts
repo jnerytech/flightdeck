@@ -287,10 +287,19 @@ const HANDLERS: Record<string, Handler> = {
   },
   team: (args, reader) => {
     args.command = "team";
-    const action = subAction(reader, ["list", "show", "new"], "invalid team action");
+    const action = subAction(
+      reader,
+      ["list", "show", "new", "update", "delete", "add-member", "remove-member"],
+      "invalid team action",
+    );
     args.action = action;
-    if (action === "show") args.teamId = operand(reader, "the team");
+    if (action !== "list" && action !== "new") args.teamId = operand(reader, "the team");
     if (action === "new") args.teamGoal = operand(reader, "the goal");
+    if (action === "remove-member") args.teamMember = operand(reader, "the member");
+    if (action === "add-member") {
+      const next = reader.peek();
+      if (next && !next.startsWith("--")) args.teamSpec = reader.next();
+    }
   },
   persona: (args, reader) => {
     args.command = "persona";
@@ -351,6 +360,17 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--check": setValue((args, v) => {
     args.teamChecks = [...(args.teamChecks ?? []), v];
+  }),
+  "--goal": setValue((args, v) => {
+    if (args.command === "team" && args.action === "new")
+      throw new Error(`--goal: team new takes the goal as its operand\n${USAGE}`);
+    args.teamGoal = v;
+  }),
+  "--persona": setValue((args, v) => {
+    args.teamPersona = v;
+  }),
+  "--clear-checks": setFlag((args) => {
+    args.teamClearChecks = true;
   }),
   "--variant": setValue((args, v) => {
     args.variants = [...(args.variants ?? []), v];
