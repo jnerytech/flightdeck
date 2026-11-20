@@ -11,6 +11,7 @@ import {
   FEATURE_APPROVAL_BYPASS,
   FEATURE_APPROVAL_COMMAND,
   FEATURE_APPROVAL_PROOF,
+  FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   type PermissionUpdate,
   revokeMessage,
@@ -764,17 +765,73 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
     await expect(keyless.slice.bypassPayload("h")).rejects.toThrow(t("approvalDevices.noKeyHere"));
   });
 
-  test("a host that checks proofs but not the bypass switch is one the app says so of; the others are not (#3507)", () => {
-    expect(approval({ features: COMMAND_HOST }).slice.bypassUnchecked("h")).toBe(true);
-    expect(approval({ features: BYPASS_HOST }).slice.bypassUnchecked("h")).toBe(false);
-    expect(approval({ features: [] }).slice.bypassUnchecked("h")).toBe(false);
+  test("a host that checks proofs but not a command is one the app says so of, for each command; one that checks all, or one not known, is not", () => {
+    const unchecked = (features: string[]) => approval({ features }).slice.uncheckedCommands("h");
+    expect(unchecked([FEATURE_APPROVAL_PROOF])).toEqual(["merge", "trust", "bypass"]);
+    expect(unchecked(COMMAND_HOST)).toEqual(["trust", "bypass"]);
+    expect(unchecked([FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST])).toEqual([
+      "merge",
+      "bypass",
+    ]);
+    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST])).toEqual(["bypass"]);
+    expect(unchecked([...COMMAND_HOST, FEATURE_APPROVAL_TRUST, FEATURE_APPROVAL_BYPASS])).toEqual(
+      [],
+    );
+    expect(unchecked([])).toEqual([]);
   });
 
-  test("a host that checks proofs but not commands is one the app says so of; one that checks both, or one not known, is not", () => {
-    expect(approval({ features: [FEATURE_APPROVAL_PROOF] }).slice.commandsUnchecked("h")).toBe(
-      true,
+  const TRUST_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_TRUST];
+  const TRUST = { path: "/work/api", trusted: true };
+
+  test("trusting a folder on a host that checks it is signed over the folder, in the dialog that names it", async () => {
+    const { slice, log, keyLog } = approval({ features: TRUST_HOST });
+    const made = await slice.trustPayload("h", "/work/api");
+    const digest = commandDigest(TRUST);
+    const message = commandMessage({
+      keyId: "key-this",
+      daemonId: "daemon-1",
+      command: "project.trust.set",
+      nonce: "nonce-1",
+      payloadHash: sha(digest),
+    });
+    expect(made).toEqual({
+      kind: "payload",
+      payload: {
+        ...TRUST,
+        proof: { keyId: "key-this", nonce: "nonce-1", signature: `sig:${message}` },
+      },
+    });
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "project.trust.set" });
+    expect(keyLog.find((k) => k.op === "sign")?.args).toEqual(["daemon-1", message, "en", digest]);
+    expect(
+      Command.safeParse({
+        id: "1",
+        type: "project.trust.set",
+        payload: made.kind === "payload" ? made.payload : {},
+      }).success,
+    ).toBe(true);
+  });
+
+  test("a host that does not announce the trust proof, or has no device enrolled, gets the plain payload and is asked for no signature", async () => {
+    for (const setup of [
+      approval({ features: COMMAND_HOST }),
+      approval({ features: TRUST_HOST, list: { protectionOff: true, keys: [] } }),
+      approval({ features: TRUST_HOST, keys: "none" }),
+    ]) {
+      expect(await setup.slice.trustPayload("h", "/work/api")).toEqual({
+        kind: "payload",
+        payload: TRUST,
+      });
+      expect(setup.keyLog.filter((k) => k.op === "sign")).toEqual([]);
+    }
+  });
+
+  test("a no in the dialog of a trust sends nothing, and a device with no key for this host is told so", async () => {
+    const declined = approval({ features: TRUST_HOST, signFails: "declined" });
+    expect(await declined.slice.trustPayload("h", "/work/api")).toEqual({ kind: "declined" });
+    const keyless = approval({ features: TRUST_HOST, local: null });
+    await expect(keyless.slice.trustPayload("h", "/work/api")).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
     );
-    expect(approval({ features: COMMAND_HOST }).slice.commandsUnchecked("h")).toBe(false);
-    expect(approval({ features: [] }).slice.commandsUnchecked("h")).toBe(false);
   });
 });

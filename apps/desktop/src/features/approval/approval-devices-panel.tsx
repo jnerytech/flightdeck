@@ -11,7 +11,15 @@ import {
   type ApprovalStatus,
   heardText,
   heardTone,
+  type UncheckedCommand,
 } from "./store.ts";
+
+/** The notice for each command a host does not guard. */
+const UNCHECKED_TEXT = {
+  merge: "approvalDevices.commandsUnchecked",
+  trust: "approvalDevices.trustUnchecked",
+  bypass: "approvalDevices.bypassUnchecked",
+} as const satisfies Record<UncheckedCommand, string>;
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };
 
@@ -175,14 +183,12 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
         {t(status.protectionOff ? "approvalDevices.off" : "approvalDevices.on")}
       </p>
       {lost && <InlineNotice tone="warn">{t("approvalDevices.lost")}</InlineNotice>}
-      {!status.protectionOff && store.approval.commandsUnchecked(host.id) && (
-        <InlineNotice tone="warn">{t("approvalDevices.commandsUnchecked")}</InlineNotice>
-      )}
       {!status.protectionOff &&
-        !store.approval.commandsUnchecked(host.id) &&
-        store.approval.bypassUnchecked(host.id) && (
-          <InlineNotice tone="warn">{t("approvalDevices.bypassUnchecked")}</InlineNotice>
-        )}
+        store.approval.uncheckedCommands(host.id).map((command) => (
+          <InlineNotice key={command} tone="warn">
+            {t(UNCHECKED_TEXT[command])}
+          </InlineNotice>
+        ))}
       {status.keys.length > 0 && (
         <Stack as="ul" gap={2} label={t("approvalDevices.listLabel")}>
           {status.keys.map((key) => (

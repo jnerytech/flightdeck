@@ -26,6 +26,8 @@ export const approval = {
     lost: "Protection was on and the host now lists no device. If you did not reset it at the host, someone with access to it did.",
     commandsUnchecked:
       "This host does not ask for a device to confirm a merge: update it to protect merges.",
+    trustUnchecked:
+      "This host does not ask for a device to confirm trusting a folder: update it to protect trust.",
     bypassUnchecked:
       "This host does not ask for a device to turn on Bypass permissions: update it to protect that switch.",
     scope:

@@ -39,7 +39,12 @@ function panel(
   statuses: Status[],
   language: "en" | "pt-BR" = "en",
   failures: Error[] = [],
-  opts: { declined?: boolean; gate?: Promise<void>; older?: boolean; bypassOlder?: boolean } = {},
+  opts: {
+    declined?: boolean;
+    gate?: Promise<void>;
+    older?: boolean;
+    unchecked?: Array<"merge" | "trust" | "bypass">;
+  } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -60,8 +65,7 @@ function panel(
       await opts.gate;
       return opts.declined ? "declined" : "done";
     };
-  slice.commandsUnchecked = () => opts.older === true;
-  slice.bypassUnchecked = () => opts.bypassOlder === true;
+  slice.uncheckedCommands = () => opts.unchecked ?? (opts.older === true ? ["merge"] : []);
   slice.enroll = record("enroll");
   slice.revoke = record("revoke");
   slice.removeLocalKey = record("removeLocal");
@@ -187,21 +191,38 @@ describe("approval devices panel: what the person did and what the host said (#3
   });
 
   test("a host that checks merges but not the bypass switch says so, in both languages, and not when it has no device enrolled (#3507)", async () => {
-    panel([HERE], "en", [], { bypassOlder: true });
+    panel([HERE], "en", [], { unchecked: ["bypass"] });
     await settleMaybe(() => screen.queryByText(/turn on Bypass permissions/) !== null);
     expect(
       screen.queryByText(/does not ask for a device to turn on Bypass permissions/) !== null,
     ).toBe(true);
     cleanup();
-    panel([HERE], "pt-BR", [], { bypassOlder: true });
+    panel([HERE], "pt-BR", [], { unchecked: ["bypass"] });
     await settleMaybe(() => screen.queryByText(/para ligar Ignorar permissões/) !== null);
     expect(
       screen.queryByText(/não pede a confirmação de um dispositivo para ligar Ignorar/) !== null,
     ).toBe(true);
     cleanup();
-    panel([OFF], "en", [], { bypassOlder: true });
+    panel([OFF], "en", [], { unchecked: ["bypass"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
     expect(screen.queryByText(/turn on Bypass permissions/) === null).toBe(true);
+  });
+
+  test("a host that does not ask for a device to trust a folder says so, in both languages, and only for that", async () => {
+    panel([HERE], "en", [], { unchecked: ["trust"] });
+    await settleMaybe(() => screen.queryByText(/to confirm trusting a folder/) !== null);
+    expect(
+      screen.queryByText(/does not ask for a device to confirm trusting a folder/) !== null,
+    ).toBe(true);
+    expect(screen.queryByText(/to confirm a merge/) === null).toBe(true);
+    cleanup();
+    panel([HERE], "pt-BR", [], { unchecked: ["merge", "trust"] });
+    await settleMaybe(() => screen.queryByText(/confiar em uma pasta/) !== null);
+    expect(
+      screen.queryByText(/não pede a confirmação de um dispositivo ao confiar em uma pasta/) !==
+        null,
+    ).toBe(true);
+    expect(screen.queryByText(/ao fazer merge/) !== null).toBe(true);
   });
 
   test("a host that checks merges, or has no device enrolled, says nothing of it", async () => {
