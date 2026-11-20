@@ -2,7 +2,15 @@
  * Issue #1507: what `flightdeckd card` says and refuses, as pure rules over the cards, the projects and
  * the address of the config. The daemon calls and the timer stay in `board/card-cli.ts`.
  */
-import { BoardColumn, type Card, type Project } from "@flightdeck/protocol";
+import {
+  BoardColumn,
+  type Card,
+  type CardDiff,
+  type CardReviewResult,
+  type CardTemplates,
+  type Project,
+  type ValidationTemplate,
+} from "@flightdeck/protocol";
 
 export interface CardCliArgs {
   action:
@@ -15,7 +23,16 @@ export interface CardCliArgs {
     | "stop"
     | "complete"
     | "delete"
-    | "discard";
+    | "discard"
+    | "diff"
+    | "spec"
+    | "review"
+    | "message"
+    | "templates"
+    | "validation-template";
+  /** `message`: the text; `review --language`. */
+  text?: string;
+  language?: "en" | "pt-BR";
   /** `--project`: an id or a name; without it, the only project of the host. */
   project?: string;
   /** `show` and `start`: the card. */
@@ -152,6 +169,96 @@ export function updateOf(args: CardCliArgs) {
   return patch;
 }
 
+/** `message`: the text, which the daemon refuses when empty; nothing is sent then. */
+export function textOf(args: CardCliArgs): string {
+  if (args.text?.trim()) return args.text;
+  throw new Refusal("card message: the text is empty");
+}
+
+const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
+
+/** What a file's header says about its hunks: why they are not shown, or the lines it adds and removes. */
+function fileDetail(file: CardDiff["files"][number]): string {
+  if (file.secret) return "may hold a credential: not shown";
+  if (file.tooLarge) return `too large: ${file.bytes ?? 0} bytes, not shown`;
+  if (file.binary) return "binary";
+  return `+${file.additions} -${file.deletions}`;
+}
+
+/** The diff of a card as text: a header per file, then its hunks as git prints them. */
+export function diffLines({ base, files }: CardDiff): string[] {
+  if (files.length === 0) return [`no changes against ${base}`];
+  return [
+    `diff against ${base}`,
+    ...files.flatMap((file) => {
+      const what =
+        file.status === "renamed" && file.oldPath ? `renamed from ${file.oldPath}` : file.status;
+      const shown = !file.secret && !file.tooLarge && !file.binary;
+      const detail = fileDetail(file);
+      return [
+        `--- ${file.path} (${what}, ${detail})`,
+        // The daemon sends no lines for a file it hides; the reader never relies on that alone.
+        ...(shown ? file.hunks : []).flatMap((hunk) => [
+          hunk.header,
+          ...hunk.lines.map((line) => `${line.op}${line.text}`),
+        ]),
+      ];
+    }),
+  ];
+}
+
+/** What the card's spec file is, after the daemon looked at it again. */
+export function specLines(card: Card): string[] {
+  const spec = card.specState;
+  if (!spec) return [`${card.id}  has no spec file`];
+  if (!spec.found) return [`${card.id}  spec ${spec.path}: file not found`];
+  return [
+    `${card.id}  spec ${spec.path}`,
+    ...(spec.heading ? [`heading: ${spec.heading}`] : []),
+    ...(spec.draft ? ["draft: yes"] : []),
+  ];
+}
+
+/** A review in words: what the reviewer said, and the findings that sit on no changed line. */
+export function reviewLines(id: string, review: CardReviewResult): string[] {
+  const notes = [
+    ...(review.cached ? ["cached"] : []),
+    ...(review.moved ? ["the card was moved"] : []),
+  ];
+  const noted = notes.length ? ` (${notes.join(", ")})` : "";
+  return [
+    `review of ${id}: ${review.state}${noted}`,
+    ...review.summary.split("\n"),
+    ...(review.anchored > 0
+      ? [
+          `${review.anchored} ${plural(review.anchored, "finding", "findings")} anchored to the diff as a review comment`,
+        ]
+      : []),
+    ...review.loose.map((f) => `${f.severity}  ${f.path}:${f.line}  ${f.body}`),
+  ];
+}
+
+/** The card templates of a project, and what the host left out of its file. */
+export function templatesLines(project: Project, found: CardTemplates): string[] {
+  const lines = [
+    ...found.templates.map((template) => `${template.id}  ${template.name}`),
+    ...(found.dropped > 0
+      ? [
+          `${found.dropped} ${plural(found.dropped, "entry", "entries")} of the templates file ${plural(found.dropped, "was", "were")} left out`,
+        ]
+      : []),
+    ...(found.ignored ? [`the templates file was not used: ${found.ignored}`] : []),
+  ];
+  return lines.length > 0 ? lines : [`no card templates in ${project.name}`];
+}
+
+/** The project's own shape for a validation note, or why it was not used. */
+export function validationLines(found: ValidationTemplate): string[] {
+  if (found.text !== null) return found.text.split("\n");
+  if (found.ignored) return [`the project's validation template was not used: ${found.ignored}`];
+  return ["the project has no validation template"];
+}
+
 /** What a write that got no answer may have done. */
 export const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
   new: "; the card may or may not have been created: check with `card list` before trying again",
@@ -164,4 +271,8 @@ export const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
   discard:
     "; the card may or may not have been discarded: check with `card list` before trying again",
   delete: "; the card may or may not have been deleted: check with `card list` before trying again",
+  review:
+    "; the review may or may not have been done, and the card may have moved: check with `card show` before trying again",
+  message:
+    "; the message may or may not have been sent: check with `card show` before trying again",
 };

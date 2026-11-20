@@ -80,7 +80,9 @@
   "card.delete": {
     "cli": "card"
   },
-  "card.diff": {},
+  "card.diff": {
+    "cli": "card"
+  },
   "card.discard": {
     "cli": "card"
   },
@@ -90,14 +92,20 @@
   },
   "card.manage": {},
   "card.mergeLocal": {},
-  "card.message": {},
+  "card.message": {
+    "cli": "card"
+  },
   "card.move": {
     "cli": "card"
   },
   "card.pr.create": {},
   "card.pr.merge": {},
-  "card.review": {},
-  "card.spec": {},
+  "card.review": {
+    "cli": "card"
+  },
+  "card.spec": {
+    "cli": "card"
+  },
   "card.start": {
     "cli": "card"
   },
@@ -105,12 +113,16 @@
   "card.stop": {
     "cli": "card"
   },
-  "card.templates": {},
+  "card.templates": {
+    "cli": "card"
+  },
   "card.update": {
     "cli": "card"
   },
   "card.updateFromBase": {},
-  "card.validationTemplate": {},
+  "card.validationTemplate": {
+    "cli": "card"
+  },
   "changes.commit": {},
   "changes.get": {},
   "changes.pr": {},
