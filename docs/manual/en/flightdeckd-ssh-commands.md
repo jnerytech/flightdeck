@@ -58,7 +58,7 @@ jump hosts loop). A host that names an `IdentityFile` becomes a key-file destina
 runs `add`, `edit`, `remove` or `import apply` from its shell is asked to confirm.
 
 `add <name> --address <host> --user <name>` creates a destination and prints `<name>: added as <id>`. Optional: `--port`
-(1 to 65535), `--auth agent|key-file|vault-key|password`, `--secret-ref <path or vault item>` and `--jump <target>`,
+(1 to 65535), `--auth agent|key-file|vault-key|password`, `--secret-ref <key path or vault item name>` (a name, never the secret itself; the agent has none) and `--jump <target>`,
 the destination it goes through (a name or an id). It refuses a name that already exists and points to `edit`.
 `edit <target>` changes the fields you name and keeps the rest; it needs at least one of `--address`, `--user`,
 `--port`, `--auth`, `--secret-ref`, `--jump`, `--no-jump`, `--forward-agent` and `--no-forward-agent`. A new `--auth`

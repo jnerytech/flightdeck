@@ -59,7 +59,7 @@ formam um ciclo). Um host com `IdentityFile` vira um destino de chave em arquivo
 roda `add`, `edit`, `remove` ou `import apply` do próprio shell precisa de confirmação.
 
 `add <nome> --address <host> --user <nome>` cria um destino e imprime `<nome>: added as <id>`. Opcionais: `--port`
-(1 a 65535), `--auth agent|key-file|vault-key|password`, `--secret-ref <caminho ou item do cofre>` e `--jump <destino>`,
+(1 a 65535), `--auth agent|key-file|vault-key|password`, `--secret-ref <caminho da chave ou nome do item do cofre>` (um nome, nunca o segredo em si; o agente não tem) e `--jump <destino>`,
 o destino pelo qual ele passa (um nome ou um id). Recusa um nome que já existe e aponta para `edit`.
 `edit <destino>` muda os campos que você nomeia e mantém o resto; exige ao menos um entre `--address`, `--user`,
 `--port`, `--auth`, `--secret-ref`, `--jump`, `--no-jump`, `--forward-agent` e `--no-forward-agent`. Um `--auth` novo
