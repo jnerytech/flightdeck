@@ -1,3 +1,4 @@
+import type { UsageOrigin } from "@flightdeck/protocol";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CardCliArgs } from "../board/index.ts";
 import { loadConfig, userHome } from "../config.ts";
@@ -380,6 +381,42 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       await runUsageCli(
         {
           ...(args.days === undefined ? {} : { days: args.days }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
+  costs: async (args, deps) => {
+    const { runCostsCli } = await import("../costs/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runCostsCli(
+        {
+          action: args.action as "summary" | "session" | "card" | "run" | "status" | "export",
+          ...(args.costsId === undefined ? {} : { id: args.costsId }),
+          ...(args.from === undefined ? {} : { from: args.from }),
+          ...(args.dateTo === undefined ? {} : { to: args.dateTo }),
+          ...(args.project === undefined ? {} : { projectKey: args.project }),
+          ...(args.model === undefined ? {} : { model: args.model }),
+          ...(args.origin === undefined ? {} : { origin: args.origin as UsageOrigin }),
+          ...(args.json ? { json: true } : {}),
+        },
+        config,
+      ),
+    );
+  },
+  roi: async (args, deps) => {
+    const { runRoiCli } = await import("../roi/index.ts");
+    const config = await localConfig(args);
+    return reported(
+      deps,
+      await runRoiCli(
+        {
+          from: args.from ?? "",
+          to: args.dateTo ?? "",
+          ...(args.project === undefined ? {} : { projectKey: args.project }),
           ...(args.json ? { json: true } : {}),
         },
         config,

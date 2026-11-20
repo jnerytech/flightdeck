@@ -209,6 +209,35 @@ for the daemon's answer.
 A `pause-at` that gets no answer exits `2` and says it may or may not have changed: run `quota get` before
 trying again. Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.
 
+## fd costs and fd roi
+
+```sh
+fd costs summary --from 2026-11-01 --to 2026-11-20 --project flightdeck --origin card
+fd costs export --from 2026-11-01 --to 2026-11-20 > costs.csv
+fd costs session <claude-session-id>
+fd costs card <card>
+fd costs run <run>
+fd costs status
+fd roi --from 2026-11-01 --to 2026-11-20
+```
+
+What the sessions cost and what the agents delivered, as the Costs and ROI screens show them. Each takes
+`--json` for the daemon's answer. They only read.
+
+- **`costs summary`:** the totals (cost, messages and those without a price, tokens, what the cache saved), then
+  one line per project, model, origin, persona and top session. `--from` and `--to` are both needed, as
+  `YYYY-MM-DD`. `--project`, `--model` and `--origin` (`terminal`, `app`, `card`, `workflow`, `subagent`,
+  `auto-approve`, `assistant`) narrow it.
+- **`costs export`:** the same days and filters as CSV on the standard output.
+- **`costs session|card|run <id>`:** one cost; a session also says the part its subagents spent and each model.
+- **`costs status`:** how far the transcripts are read, the price date, the models with no price and the
+  sessions whose cost differs from the SDK's.
+- **`roi`:** each project's cost, cards, merged PRs and estimated hours over `--from` to `--to`, against the
+  period of the same length before it. `--project` narrows it.
+
+A day that is not `YYYY-MM-DD` or not on the calendar exits `1` and sends nothing. Exit codes are the same as the
+other commands: `0` done, `1` refused, `2` no daemon.
+
 ## fd persona
 
 ```sh

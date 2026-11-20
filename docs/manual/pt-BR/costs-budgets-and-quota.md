@@ -129,7 +129,7 @@ tokens e turnos.
   "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
 
-- **Pelo terminal:** `fd usage --days 30` imprime as mesmas linhas, uma por dia e projeto.
+- **Pelo terminal:** `fd usage --days 30` imprime as mesmas linhas, uma por dia e projeto; `fd costs summary --from <dia> --to <dia>` imprime os totais e os grupos (veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-costs-e-fd-roi)).
 
 ## Custos
 

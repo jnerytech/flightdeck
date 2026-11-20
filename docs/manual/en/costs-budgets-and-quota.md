@@ -128,7 +128,7 @@ estimated cost, tokens and turns.
   above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
 
-- **From a shell:** `fd usage --days 30` prints the same rows, one line per day and project.
+- **From a shell:** `fd usage --days 30` prints the same rows, one line per day and project; `fd costs summary --from <day> --to <day>` prints the totals and the groups (see [flightdeckd commands](flightdeckd-commands.md#fd-costs-and-fd-roi)).
 
 ## Costs
 

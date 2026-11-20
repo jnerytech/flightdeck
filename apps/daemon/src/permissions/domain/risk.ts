@@ -223,6 +223,8 @@ const OPTIONS_WITH_VALUE = [
   "--last",
   "--hours",
   "--days",
+  "--to",
+  "--origin",
   "--project",
   "--project-path",
   "--query",

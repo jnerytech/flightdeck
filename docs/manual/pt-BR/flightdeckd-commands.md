@@ -211,6 +211,35 @@ A cota do plano deste host e o que as sessões dele custam, como a tela de Custo
 Um `pause-at` que fica sem resposta sai com `2` e diz que pode ou não ter mudado: rode `quota get` antes de
 tentar de novo. Os códigos de saída são os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
 
+## fd costs e fd roi
+
+```sh
+fd costs summary --from 2026-11-01 --to 2026-11-20 --project flightdeck --origin card
+fd costs export --from 2026-11-01 --to 2026-11-20 > costs.csv
+fd costs session <id-da-sessao-claude>
+fd costs card <cartao>
+fd costs run <execucao>
+fd costs status
+fd roi --from 2026-11-01 --to 2026-11-20
+```
+
+O que as sessões custam e o que os agentes entregaram, como as telas de Custos e ROI mostram. Todos aceitam
+`--json` para a resposta do daemon. Só leem.
+
+- **`costs summary`:** os totais (custo, mensagens e as sem preço, tokens, o que o cache economizou), depois
+  uma linha por projeto, modelo, origem, persona e sessão mais cara. `--from` e `--to` são obrigatórios, como
+  `YYYY-MM-DD`. `--project`, `--model` e `--origin` (`terminal`, `app`, `card`, `workflow`, `subagent`,
+  `auto-approve`, `assistant`) filtram.
+- **`costs export`:** os mesmos dias e filtros em CSV na saída padrão.
+- **`costs session|card|run <id>`:** um custo; a sessão diz também a parte gasta pelos subagentes e cada modelo.
+- **`costs status`:** até onde os transcripts foram lidos, a data dos preços, os modelos sem preço e as sessões
+  cujo custo difere do SDK.
+- **`roi`:** custo, cartões, PRs integrados e horas estimadas de cada projeto de `--from` a `--to`, contra o
+  período do mesmo tamanho antes dele. `--project` filtra.
+
+Um dia que não é `YYYY-MM-DD` ou não existe no calendário sai com `1` e não envia nada. Os códigos de saída são
+os dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.
+
 ## fd persona
 
 ```sh

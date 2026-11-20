@@ -5,6 +5,7 @@
 import { RuntimeKind } from "../../config.ts";
 import { boardProblem } from "./board-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
+import { costsProblem } from "./costs-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { teamProblem } from "./team-args.ts";
@@ -334,6 +335,25 @@ const HANDLERS: Record<string, Handler> = {
     }
   },
   usage: setCommand("usage"),
+  costs: (args, reader) => {
+    args.command = "costs";
+    const action = subAction(
+      reader,
+      ["summary", "session", "card", "run", "status", "export"],
+      "invalid costs action",
+    );
+    args.action = action;
+    if (action === "session") args.costsId = operand(reader, "the session");
+    if (action === "card") args.costsId = operand(reader, "the card");
+    if (action === "run") args.costsId = operand(reader, "the run");
+  },
+  roi: setCommand("roi"),
+  "--to": setValue((args, v) => {
+    args.dateTo = v;
+  }),
+  "--origin": setValue((args, v) => {
+    args.origin = v;
+  }),
   "--hours": setValue((args, v) => {
     args.hours = wholeFrom("--hours", v, 720);
   }),
@@ -600,6 +620,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       "persona",
       "quota",
       "usage",
+      "costs",
+      "roi",
       "host",
       "sessions",
       "requests",
@@ -612,7 +634,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, board, team, persona, quota, usage, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, board, team, persona, quota, usage, costs, roi, host, sessions, requests, send, approve, deny, approvers, rules and autoapprove\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
@@ -679,7 +701,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.
   if (args.command === "team" && args.action === "update") args.teamGoal = args.teamGoalFlag;
   const fault =
-    personaProblem(args) ?? teamProblem(args) ?? boardProblem(args) ?? quotaProblem(args);
+    personaProblem(args) ??
+    teamProblem(args) ??
+    boardProblem(args) ??
+    quotaProblem(args) ??
+    costsProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
