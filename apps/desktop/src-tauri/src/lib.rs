@@ -56,13 +56,16 @@ async fn token_set(host_id: String, token: String) -> Result<(), String> {
 #[tauri::command]
 async fn token_delete(host_id: String) -> Result<(), String> {
     spawn_blocking_result(move || {
-        // The address kept beside the token goes with it (issue #3429).
-        let delete = |account: &str| match entry(account)?.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-            Err(e) => Err(e.to_string()),
-        };
-        let token = delete(&host_id);
-        token.and(delete(&flightdeck_cred::url_account(&host_id)))
+        // Not while a sync writes the addresses: it would put this one back (issue #3429).
+        flightdeck_cred::index::exclusive(|| {
+            // The address kept beside the token goes with it.
+            let delete = |account: &str| match entry(account)?.delete_credential() {
+                Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+                Err(e) => Err(e.to_string()),
+            };
+            let token = delete(&host_id);
+            token.and(delete(&flightdeck_cred::url_account(&host_id)))
+        })
     })
     .await
 }
