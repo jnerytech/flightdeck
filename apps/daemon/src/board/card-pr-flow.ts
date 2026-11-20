@@ -41,6 +41,23 @@ export interface CardPrFlowPort {
   pollPr: (id: string) => Promise<void>;
 }
 
+const unsupported = (url: string) =>
+  new FlightdeckError(
+    "invalid_state",
+    "this PR provider cannot merge from Flightdeck",
+    "card_pr_merge_unsupported",
+    { url },
+  );
+
+/** #3453: the PR or its head is not what the person saw. */
+const stale = (url: string) =>
+  new FlightdeckError(
+    "invalid_state",
+    "the PR changed since it was shown: look at it again",
+    "card_pr_stale",
+    { url },
+  );
+
 /**
  * Issue #1523: a card's way out through git: its diff, opening and merging its PR, the PR's review
  * comments and their cache, rebasing on the base, and the local merge of a card without a PR.
@@ -118,7 +135,12 @@ export class CardPrFlow {
   }
 
   /** #1196: merges the card's open PR on its provider, then reads it again so the card moves to Done. */
-  async mergePr(id: string, method: "merge" | "squash", confirm: boolean): Promise<Card> {
+  async mergePr(
+    id: string,
+    method: "merge" | "squash",
+    confirm: boolean,
+    expect?: { prUrl: string; headSha: string },
+  ): Promise<Card> {
     if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
     const card = this.port.card(id);
     if (!card.prUrl) throw new FlightdeckError("invalid_state", "the card has no PR", "card_no_pr");
@@ -144,7 +166,20 @@ export class CardPrFlow {
       );
     }
     // From the main repository, as the poll: a cwd inside the worktree would lock it when it goes.
-    await provider.merge({ cwd: project.path, url: card.prUrl, method });
+    const cwd = project.path;
+    // #3453: the merge is bound to the PR and the head commit the person saw.
+    if (expect) {
+      if (expect.prUrl !== card.prUrl) throw stale(card.prUrl);
+      if (!provider.head) throw unsupported(card.prUrl);
+      if ((await provider.head({ cwd, url: card.prUrl })) !== expect.headSha)
+        throw stale(card.prUrl);
+    }
+    await provider.merge({
+      cwd,
+      url: card.prUrl,
+      method,
+      ...(expect ? { headSha: expect.headSha } : {}),
+    });
     // Read again at once: the card moves to Done and its worktree goes, as for any merged PR.
     // A read that began before the merge landed may answer "open": let it end, then read again.
     await this.port.readInFlight(id)?.catch(() => {});
@@ -154,6 +189,17 @@ export class CardPrFlow {
         this.port.setNotice(id, error instanceof Error ? error.message : String(error), error);
     });
     return this.port.card(id);
+  }
+
+  /** The card's PR address and its head commit, read from the provider now. */
+  async prHead(id: string): Promise<{ prUrl: string; headSha: string }> {
+    const card = this.port.card(id);
+    if (!card.prUrl) throw new FlightdeckError("invalid_state", "the card has no PR", "card_no_pr");
+    const project = this.port.project(card.projectId);
+    const provider = (this.port.opts.prProvider ?? prProvider)(project.prProvider);
+    if (!provider?.head) throw unsupported(card.prUrl);
+    const headSha = await provider.head({ cwd: project.path, url: card.prUrl });
+    return { prUrl: card.prUrl, headSha };
   }
 
   /** The review comments of the card's PR, as last fetched (fetched now when there are none). */

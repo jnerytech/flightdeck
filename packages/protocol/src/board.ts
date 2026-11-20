@@ -529,8 +529,17 @@ export const boardCommands = [
         cardId: z.string(),
         method: z.enum(["merge", "squash"]),
         confirm: z.boolean().optional(),
+        /** #3453: the PR and head commit the person saw; the merge is bound to them. */
+        prUrl: z.string().optional(),
+        headSha: z
+          .string()
+          .regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/)
+          .optional(),
       })
-      .strict(),
+      .strict()
+      .refine((p) => (p.prUrl === undefined) === (p.headSha === undefined), {
+        message: "prUrl and headSha go together",
+      }),
   ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),

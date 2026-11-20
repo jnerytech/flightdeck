@@ -625,8 +625,17 @@ export class Board {
   }
 
   /** #1196: merges the card's open PR on its provider, then reads it again so the card moves to Done. */
-  mergePr(id: string, method: "merge" | "squash", confirm: boolean): Promise<Card> {
-    return this.prFlow.mergePr(id, method, confirm);
+  mergePr(
+    id: string,
+    method: "merge" | "squash",
+    confirm: boolean,
+    expect?: { prUrl: string; headSha: string },
+  ): Promise<Card> {
+    return this.prFlow.mergePr(id, method, confirm, expect);
+  }
+
+  prHead(id: string): Promise<{ prUrl: string; headSha: string }> {
+    return this.prFlow.prHead(id);
   }
 
   /** The review comments of the card's PR, as last fetched (fetched now when there are none). */

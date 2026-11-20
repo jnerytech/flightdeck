@@ -16,6 +16,7 @@ import {
 } from "../../pr/index.ts";
 import {
   GhCommentPages,
+  GhHead,
   GhMergeable,
   GhMergeState,
   GhPrStatus,
@@ -83,14 +84,18 @@ export class GithubCli extends CliProvider implements PrProvider {
     cwd,
     url,
     method,
+    headSha,
   }: {
     cwd: string;
     url: string;
     method: "merge" | "squash";
+    headSha?: string;
   }): Promise<void> {
     // Rebuilt from its parts: the stored address never reaches gh as it is.
     const { prUrl } = ghParts(url);
-    const result = await this.call("gh", ["pr", "merge", prUrl, `--${method}`], cwd);
+    // #3453: GitHub itself refuses when the head moved between our read and the merge.
+    const bound = headSha ? ["--match-head-commit", headSha] : [];
+    const result = await this.call("gh", ["pr", "merge", prUrl, `--${method}`, ...bound], cwd);
     if (result.code === 0) return;
     const reason = await this.whyNotMergeable(cwd, prUrl);
     // gh's words travel as the detail of the unknown refusal only, never the message, and without tokens.
@@ -99,6 +104,18 @@ export class GithubCli extends CliProvider implements PrProvider {
       url: prUrl,
       ...(reason === "card_pr_merge_failed" ? { detail } : {}),
     });
+  }
+
+  /** #3453: the commit the PR's head is at now, read from `gh pr view`. */
+  async head({ cwd, url }: { cwd: string; url: string }): Promise<string> {
+    const { prUrl } = ghParts(url);
+    const { headRefOid } = await this.jsonWith(
+      GhHead,
+      "gh",
+      ["pr", "view", prUrl, "--json", "headRefOid"],
+      cwd,
+    );
+    return headRefOid;
   }
 
   /** Why GitHub holds the PR back, from its merge state, its review decision and its checks. */

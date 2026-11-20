@@ -81,7 +81,15 @@ export interface PrProvider {
   /** Phase 22: the end of the log of what failed in a build, at most 16 KB. */
   buildLog(opts: { cwd: string; url: string; buildId: string }): Promise<string>;
   /** #1196: merges the open PR (a merge commit or a squash); a provider without it cannot. */
-  merge?(opts: { cwd: string; url: string; method: "merge" | "squash" }): Promise<void>;
+  merge?(opts: {
+    cwd: string;
+    url: string;
+    method: "merge" | "squash";
+    /** #3453: merge only when the PR's head is this commit. */
+    headSha?: string;
+  }): Promise<void>;
+  /** #3453: the commit the PR's head is at now; a provider without it cannot bind a merge to a head. */
+  head?(opts: { cwd: string; url: string }): Promise<string>;
 }
 
 /** Starts a program that was found: runCommand, or a stand-in that starts nothing. */

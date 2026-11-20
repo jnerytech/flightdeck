@@ -522,6 +522,7 @@ const REASONS = [
   "update_needs_service",
   "update_signature_failed",
   "card_pr_not_open",
+  "card_pr_stale",
   "card_pr_merge_unsupported",
   "card_pr_checks_failing",
   "card_pr_review_required",
