@@ -44,6 +44,8 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   dispositivo (ou este, mas nunca o último: só `flightdeckd approvers reset` no host faz isso).
   **Remover a chave deste dispositivo** apaga a chave guardada aqui; o host segue listando o dispositivo até
   que outro o revogue.
+- **Um aviso de mudança.** Um terminal vê as mesmas mudanças: `flightdeckd approvers watch --follow`
+  imprime uma linha a cada dispositivo cadastrado ou revogado no host.
 - **Um aviso.** Se a proteção estava ligada e o host agora não lista nenhum dispositivo, o painel avisa. Se
   você não zerou no host, alguém com acesso a ele zerou.
 - **O que não cobre.** Protege as aprovações feitas pelo app. Quem tem um terminal no host ainda consegue

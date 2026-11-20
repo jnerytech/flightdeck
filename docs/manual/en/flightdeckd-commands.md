@@ -138,6 +138,8 @@ text may or may not have gone in: look at the session before you send it again.
 fd approvers enroll
 fd approvers enroll --json
 fd approvers reset
+fd approvers watch
+fd approvers watch --follow --json
 ```
 
 A high-risk request, or an allow that saves a rule, is approved only with the signed proof of a device
@@ -155,8 +157,16 @@ remove a key.
   before the first device: a high-risk allow needs only the hold of the Approve button. Prints how many
   devices went; with `--json`, `removed`. The host keeps its identity.
 
-Both read the data folder from the config file and work with the daemon running or stopped. Until a
-device is enrolled, nothing changes for you.
+- **`watch`:** asks the running daemon which devices can approve and prints one line per device: key id,
+  name, app, address and the time it enrolled (or `no device enrolled: protection is off`). With
+  `--follow` it stays open and prints a line `enrolled ...` or `revoked <key id>` each time a device is
+  enrolled or revoked, until Ctrl-C (exit `0`); with `--follow --json` each change is one JSON object per
+  line. It needs the daemon: exit `2` when none runs, `1` when the host does not offer the watch (an
+  older version). It never prints a key, a nonce or a code. A `reset` at the terminal sends no line: run
+  `watch` again to see the empty list.
+
+`enroll` and `reset` read the data folder from the config file and work with the daemon running or
+stopped. Until a device is enrolled, nothing changes for you.
 
 ## fd board
 

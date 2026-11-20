@@ -15,16 +15,22 @@ export interface ApproversCliArgs {
 export type ApprovalChangeFrame = ApprovalEnrolled | ApprovalRevoked;
 
 /** The lines of `approvers watch` without `--follow`: the devices that can approve, or the way protection is off. */
-export function deviceLines(_list: { keys: ApprovalKeyInfo[] }): string[] {
-  return [];
+export function deviceLines(list: { keys: ApprovalKeyInfo[] }): string[] {
+  if (list.keys.length === 0) return ["no device enrolled: protection is off"];
+  return list.keys.map((k) => `${k.keyId}  ${k.name}  ${k.client}  ${k.address}  ${k.enrolledAt}`);
 }
 
 /** The line `--follow` prints for a change. */
-export function changeLine(_change: ApprovalChangeFrame): string {
-  return "";
+export function changeLine(change: ApprovalChangeFrame): string {
+  if (change.type === "approval.revoked") return `revoked  ${change.keyId}`;
+  const { keyId, name, client, address, enrolledAt } = change;
+  return `enrolled  ${keyId}  ${name}  ${client}  ${address}  ${enrolledAt}`;
 }
 
-/** The change as `--follow --json` prints it: one object, the frame's own fields. */
-export function changeJson(_change: ApprovalChangeFrame): string {
-  return "";
+/** The change as `--follow --json` prints it: one object with the event's own fields, whatever else the frame carried. */
+export function changeJson(change: ApprovalChangeFrame): string {
+  if (change.type === "approval.revoked")
+    return JSON.stringify({ type: change.type, keyId: change.keyId });
+  const { type, keyId, name, client, address, enrolledAt } = change;
+  return JSON.stringify({ type, keyId, name, client, address, enrolledAt });
 }
