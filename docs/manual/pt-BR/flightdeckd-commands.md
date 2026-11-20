@@ -91,18 +91,18 @@ mão não aparece, mas `fd approve` e `fd deny` ainda podem respondê-lo se voc�
 ```sh
 fd approve <pedido>
 fd approve <pedido> --message "só desta vez"
-fd approve <pedido> --hold
 fd deny <pedido> --message "amplo demais"
 ```
 
 Respondem um pedido aberto pelo id, como os botões Aprovar e Negar. `--message` é o que o Claude
 recebe junto com a resposta. Imprime `allowed <id>` ou `denied <id>`; com `--json`, um objeto com
-`id`, `decision` e, quando dados, `message` e `held`.
+`id`, `decision` e, quando dada, `message`.
 
-Um pedido que o daemon julga de **risco alto** é recusado, a menos que você use `--hold` no
-`approve`. `--hold` quer dizer que você olhou o pedido e pretende permitir. É a sua palavra: o daemon
-não a confere, então um agente que roda `fd approve --hold` decide por conta própria. O `deny` nunca
-precisa dele.
+Um pedido que o daemon julga de **risco alto**, ou uma permissão que salva uma regra, não é para a
+linha de comando: `fd approve` é recusado com saída `1` e manda aprovar no app. O app assina a resposta
+com a chave do seu dispositivo (veja `fd approvers`), e um script ou um agente não tem essa chave. O
+`deny` nunca precisa dela. `--hold` ainda é aceito para os scripts antigos continuarem rodando, e não
+faz nada.
 
 Um pedido que não está aberto (já respondido, ou que nunca existiu) é recusado com saída `1` e
 `no such request`. Se o daemon cair antes de responder, a saída é `2` e a resposta pode ou não ter
@@ -120,3 +120,29 @@ sessões compartilham é recusado, e o erro lista os ids. Imprime `sent to <id>`
 quando a sessão está ocupada e o texto espera o fim do turno. Com `--json` imprime `session` e
 `queued`. Se o daemon cair depois que o texto saiu, a saída é `2` e o texto pode ou não ter entrado:
 olhe a sessão antes de enviar de novo.
+
+## fd approvers
+
+```sh
+fd approvers enroll
+fd approvers enroll --json
+fd approvers reset
+```
+
+Um pedido de risco alto, ou uma permissão que salva uma regra, só é aprovado com a prova assinada de
+um dispositivo que você cadastrou: o app assina a resposta com uma chave que nunca sai do dispositivo,
+e o daemon confere a assinatura. Estes dois comandos são o único jeito de começar ou desfazer isso, e
+funcionam só no terminal do host: nenhuma mensagem do app, de uma sessão ou de um script abre o
+cadastro nem remove uma chave.
+
+- **`enroll`:** imprime um código de uso único e abre uma janela de 10 minutos. Digite o código no app
+  (Configurações, este host, cadastrar este dispositivo). A janela fecha quando o primeiro dispositivo
+  é cadastrado, quando os 10 minutos passam ou depois de cinco códigos errados, e cada execução gera um
+  código novo. Com `--json` imprime `code` e `expiresAt`. É recusado com saída `1` quando já há um
+  dispositivo cadastrado: adicione outro pelo app do primeiro, ou rode `reset`.
+- **`reset`:** remove todos os dispositivos cadastrados e fecha a janela. O host volta a ser como era
+  antes do primeiro dispositivo: uma permissão de risco alto exige só o botão Aprovar segurado. Imprime
+  quantos dispositivos saíram; com `--json`, `removed`. O host mantém a sua identidade.
+
+Os dois leem a pasta de dados do arquivo de configuração e funcionam com o daemon rodando ou parado.
+Enquanto nenhum dispositivo estiver cadastrado, nada muda para você.
