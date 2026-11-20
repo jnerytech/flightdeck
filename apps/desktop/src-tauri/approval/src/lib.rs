@@ -372,6 +372,9 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         // contains is the preview in the app; the hash ties the install to that preview.
         "plugins.install" => read_plugin(fields, true),
         "plugins.update" => read_plugin(fields, false),
+        // The one payload with a boolean: `confirm` is the JSON `true` the person's press stands for. The dialog says
+        // the source and the scope, so the source must be one it can show whole.
+        "plugins.marketplaceAdd" => read_marketplace(fields),
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -555,6 +558,67 @@ fn read_plugin(
         CommandAsk::PluginUpdate { plugin: plugin.unwrap_or_default().to_string() }
     };
     Ok((ask, canonical))
+}
+
+/// `plugins.marketplaceAdd`: `confirm` is the boolean `true`, `source` one of three plain forms and `scope` optional.
+fn read_marketplace(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.keys().any(|key| !["confirm", "scope", "source"].contains(&key.as_str())) {
+        return Err("the marketplace payload has the wrong fields".into());
+    }
+    if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+        return Err("the marketplace payload is not confirmed".into());
+    }
+    let text = |key: &str| match fields.get(key) {
+        None => Ok(None),
+        Some(value) => value
+            .as_str()
+            .map(Some)
+            .ok_or_else(|| format!("the marketplace payload has no text for {key}")),
+    };
+    let source = text("source")?.ok_or("the marketplace payload has no source")?;
+    if !is_shown_source(source) {
+        return Err("the marketplace source is not one the dialog can show".into());
+    }
+    let scope = text("scope")?;
+    if scope.is_some_and(|value| !["user", "project", "local"].contains(&value)) {
+        return Err("the scope of a marketplace is user, project or local".into());
+    }
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let mut canonical = String::from("{\"confirm\":true");
+    if let Some(scope) = scope {
+        canonical.push_str(&format!(",\"scope\":{}", quoted(scope)));
+    }
+    canonical.push_str(&format!(",\"source\":{}}}", quoted(source)));
+    Ok((CommandAsk::MarketplaceAdd { source: source.to_string(), scope: scope.map(String::from) }, canonical))
+}
+
+/// A marketplace source the dialog can show whole, one of three plain forms: `owner/repo`, an `https://host/path`
+/// with no userinfo, port, query, fragment or escape that could hide the real host, or an absolute folder path.
+/// Anything else (`git@host:o/r`, `github:o/r`, `http://`) is refused: the person adds it with a form this key can show.
+fn is_shown_source(source: &str) -> bool {
+    let name = |part: &str| {
+        !part.is_empty()
+            && part != "."
+            && part != ".."
+            && !part.starts_with('-')
+            && part.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
+    };
+    if source.len() > 256 && !source.starts_with('/') && !source.starts_with('\\') {
+        return false;
+    }
+    if let Some(rest) = source.strip_prefix("https://") {
+        let mut parts = rest.split('/');
+        let host = parts.next().unwrap_or_default();
+        let path: Vec<&str> = parts.collect();
+        return host.contains('.') && name(host) && !path.is_empty() && path.iter().all(|part| name(part));
+    }
+    let owner_repo: Vec<&str> = source.split('/').collect();
+    if let [owner, repo] = owner_repo.as_slice() {
+        return name(owner) && name(repo);
+    }
+    is_shown_path(source)
 }
 
 /// A folder path the dialog can show whole: an absolute path (`/…`, `X:\…` or `\\host\…`), not long, with no
@@ -752,15 +816,7 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 }
             }
             Some(CommandAsk::PluginInstall { plugin, dir, scope }) => {
-                let scope = match (scope.as_str(), pt) {
-                    ("user", true) => "para você",
-                    ("project", true) => "para o projeto",
-                    ("local", true) => "só para este projeto, neste computador",
-                    ("user", false) => "for you",
-                    ("project", false) => "for the project",
-                    (_, false) => "for this project on this computer only",
-                    (_, true) => "só para este projeto, neste computador",
-                };
+                let scope = plugin_scope_words(scope, pt);
                 match (plugin, dir, pt) {
                     (Some(name), _, true) => format!(
                         "Instalar um plugin? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar \"{name}\" {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.",
@@ -790,12 +846,37 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
                 "Update a plugin? The plugin \"{plugin}\" will change to the content you saw, and a plugin runs code on this computer, in your sessions. Host {} makes the change. Continue only if you just pressed Update in Flightdeck.",
                 short(&ask.host)
             ),
-            Some(CommandAsk::MarketplaceAdd { .. }) => String::new(),
+            Some(CommandAsk::MarketplaceAdd { source, scope }) => {
+                let scope = plugin_scope_words(scope.as_deref().unwrap_or("user"), pt);
+                if pt {
+                    format!(
+                        "Adicionar um marketplace de plugins? Os plugins dele passam a poder ser instalados, e um plugin roda código neste computador, em suas sessões. O host {} vai adicionar o marketplace {scope}. Continue só se você acabou de apertar Adicionar marketplace no Flightdeck.\n\"{source}\"",
+                        short(&ask.host)
+                    )
+                } else {
+                    format!(
+                        "Add a plugin marketplace? Its plugins become installable, and a plugin runs code on this computer, in your sessions. Host {} will add the marketplace {scope}. Continue only if you just pressed Add marketplace in Flightdeck.\n\"{source}\"",
+                        short(&ask.host)
+                    )
+                }
+            }
             None => String::new(),
         },
     };
     let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
     (title.to_string(), body)
+}
+
+/// Where a plugin or a marketplace is kept, in words (the scope the daemon takes: user, project or local).
+fn plugin_scope_words(scope: &str, pt: bool) -> &'static str {
+    match (scope, pt) {
+        ("user", true) => "para você",
+        ("project", true) => "para o projeto",
+        ("user", false) => "for you",
+        ("project", false) => "for the project",
+        (_, false) => "for this project on this computer only",
+        (_, true) => "só para este projeto, neste computador",
+    }
 }
 
 /// The two buttons of the confirmation: the add of a device has its own, so a habit click on "Allow"
@@ -816,6 +897,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::PluginUpdate { .. })) => {
             if pt { ("Atualizar", "Cancelar") } else { ("Update", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::MarketplaceAdd { .. })) => {
+            if pt { ("Adicionar marketplace", "Cancelar") } else { ("Add marketplace", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::ResumeApproval { .. })) => {
             if pt { ("Reativar", "Cancelar") } else { ("Resume", "Cancel") }
