@@ -61,19 +61,6 @@ async fn token_delete(host_id: String) -> Result<(), String> {
     .await
 }
 
-#[cfg(test)]
-mod badge_tests {
-    use super::*;
-
-    #[test]
-    fn the_badge_is_nothing_or_exactly_32_by_32_rgba() {
-        assert!(badge_image_ok(0));
-        assert!(badge_image_ok(32 * 32 * 4));
-        assert!(!badge_image_ok(1));
-        assert!(!badge_image_ok(32 * 32 * 3));
-        assert!(!badge_image_ok(32 * 32 * 4 + 1));
-    }
-}
 /// Opens the system folder dialog; `None` when it is cancelled. The folder is only a suggestion:
 /// the daemon checks it against its allowed roots before anything uses it.
 #[tauri::command]
@@ -656,4 +643,18 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Flightdeck");
+}
+
+#[cfg(test)]
+mod badge_tests {
+    use super::*;
+
+    #[test]
+    fn the_badge_is_nothing_or_exactly_32_by_32_rgba() {
+        assert!(badge_image_ok(0));
+        assert!(badge_image_ok(32 * 32 * 4));
+        assert!(!badge_image_ok(1));
+        assert!(!badge_image_ok(32 * 32 * 3));
+        assert!(!badge_image_ok(32 * 32 * 4 + 1));
+    }
 }
