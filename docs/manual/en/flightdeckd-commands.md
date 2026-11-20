@@ -374,7 +374,8 @@ fd autoapprove resume --session <key> --confirm
   how many rules are left; with `--json`, the rules that are left.
 - **`autoapprove resume --session <key> --confirm`:** turns the automatic approver back on for a session
   that was suspended after it got third-party content. It refuses with exit `1` for a session that is not
-  suspended. With `--json` it prints the sessions that are still suspended.
+  suspended. With `--json` it prints the sessions that are still suspended. A host with a device enrolled
+  refuses it with exit `1`, because only that device can confirm it: do it in the app.
 
 A change that gets no answer exits `2` and says it may or may not have gone in: run `rules list` or
 `autoapprove list` before trying again. Run from a session's own shell, `rules remove` and

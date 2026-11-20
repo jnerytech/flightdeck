@@ -69,6 +69,11 @@ until then the hold of the Approve button is the only check, as before.
   system. The window names the folder and says that its hooks and servers will then run with no prompt. Cancel it
   and nothing is sent. Revoking trust asks for nothing. A host that does not yet ask for the device when you
   trust a project shows a notice on its page: update it.
+- **Turning automatic approval back on.** With a device enrolled, **Resume** on a suspended session in
+  Automatic approvals asks you once more in a window of the system. The window names the session and says that
+  it will approve requests again with no person seeing them. Cancel it and nothing is sent. The terminal
+  command `flightdeckd autoapprove resume` is refused on such a host and tells you to do it in the app. A host
+  that does not yet ask for the device shows a notice on its page: update it.
 - **A warning.** If protection was on and the host now lists no device, the panel says so. If you did not
   reset it at the host, someone with access to it did.
 - **What it does not cover.** It guards approvals made from the app. Anyone with a terminal on the host

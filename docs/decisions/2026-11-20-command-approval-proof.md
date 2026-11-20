@@ -242,6 +242,18 @@ the device with `flightdeckd approvers`.
 - **A fix to the merge PR's note above.** The PR of `card.pr.merge` did not mark `project.trust.set` app-only; this
   one does.
 
+## Divergences found while building the resume of the automatic approver (#3453)
+
+- **A strict schema.** `autoapprove.resume` had a loose payload that dropped unknown fields; it is now strict
+  with an optional `proof`, so the signed payload and the stored one cannot differ by a field the host ignores.
+  The app sends the proof only to a host that announces `approval-resume`.
+- **The terminal cannot sign.** `flightdeckd autoapprove resume` has no key, so on a host with a device enrolled
+  it is refused with `approval_proof_required` and prints a line that says to do it in the app. This is the
+  same trade the answer command made (#3439): the person's device is the only way to resume there.
+- **The signer shows the session.** The shell reads `{sessionKey, confirm: true}` and nothing else, and refuses
+  a key that is empty, over 128 bytes, or has a character outside letters, digits and `._:-`, which the keys the
+  daemon makes (a session id, or `card:` and a card id) all use; it names the session in its dialog and says that the approver acts with no person seeing it.
+
 ## Order of work
 
 1. This record, with `security-reviewer` on it before any code (this PR). The three PRs below do not wait for
