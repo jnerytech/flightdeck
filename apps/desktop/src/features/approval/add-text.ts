@@ -26,7 +26,7 @@ export function isDeviceName(name: string): boolean {
   );
 }
 
-function bytesOf(publicKey: string): Uint8Array | null {
+function bytesOf(publicKey: string): Uint8Array<ArrayBuffer> | null {
   try {
     return Uint8Array.from(atob(publicKey), (c) => c.charCodeAt(0));
   } catch {
