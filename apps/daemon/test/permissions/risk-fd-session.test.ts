@@ -81,4 +81,18 @@ describe("risk rules: a session started or reshaped from its shell (#3514)", () 
       ]),
     ).toEqual([]);
   });
+
+  test("a separator inside a quoted value before the verb does not hide the verb", () => {
+    expect(
+      wrongReasons([
+        ['fd --prompt "a;b" session create --cwd /w', REASON_STARTS],
+        ["fd --prompt 'a | b' session fork c-1 --cwd /w", REASON_STARTS],
+        ['fd --prompt "a && b" session set-mode s1 bypassPermissions', REASON_STARTS],
+        ['fd --name "x;y" session close s1', REASON],
+      ]),
+    ).toEqual([]);
+    expect(
+      notHigh(['echo "a;b" && fd session interrupt s1', 'fd --prompt "a;b" session interrupt s1']),
+    ).toEqual([]);
+  });
 });
