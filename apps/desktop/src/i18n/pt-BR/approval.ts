@@ -30,7 +30,7 @@ export const approval = {
     retry: "Tentar de novo",
     loadFailed: "Não foi possível ler os dispositivos do host.",
     noKeyHere:
-      "Este dispositivo não tem chave de aprovação neste host. Cadastre-o na página do host, ou aprove no host.",
+      "Este dispositivo não tem chave de aprovação neste host. Aprove por um dispositivo que tenha uma, ou zere a proteção no terminal do host com flightdeckd approvers reset e cadastre este dispositivo de novo.",
     hasKeyHere: "Este dispositivo já tem uma chave para este host.",
   },
 };

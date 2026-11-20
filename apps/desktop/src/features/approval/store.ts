@@ -96,11 +96,22 @@ export class ApprovalSlice {
     return { protectionOff: list.protectionOff, keys: list.keys, thisKeyId: local?.keyId ?? null };
   }
 
-  /** Makes this device's key for the host and enrolls it with the code the host's terminal printed. */
-  async enroll(hostId: string, name: string, code: string): Promise<void> {
+  /**
+   * Makes this device's key for the host and enrolls it with the code the host's terminal printed.
+   * "declined" is the person saying no to the system's dialog: nothing was sent and the key is dropped.
+   */
+  async enroll(hostId: string, name: string, code: string): Promise<"done" | "declined"> {
     const keys = this.keyStore();
     const daemonId = this.daemonOf(hostId);
-    if (await keys.get(daemonId)) throw new Error(this.core.t()("approvalDevices.hasKeyHere"));
+    const listed = await this.ask(hostId, "approval.list", {});
+    const existing = await keys.get(daemonId);
+    if (existing) {
+      if (listed.keys.some((key) => key.keyId === existing.keyId)) {
+        throw new Error(this.core.t()("approvalDevices.hasKeyHere"));
+      }
+      // A key the host does not list is left over (a reset at the host): replace it.
+      await keys.delete(daemonId);
+    }
     const key = await keys.create(daemonId);
     try {
       const challenge = await this.ask(hostId, "approval.challenge", { purpose: "enroll" });
@@ -118,15 +129,20 @@ export class ApprovalSlice {
         signature,
         code,
       });
+      return "done";
     } catch (error) {
-      await keys.delete(daemonId);
-      if (isDecline(error)) return;
+      // A decline sent nothing, so the key goes. Any other error can come after the host took the key
+      // (a timeout, a dropped socket): dropping the private half then would lock the person out of
+      // high-risk approvals, so it stays when the host lists it, or when that cannot be told.
+      const declined = isDecline(error);
+      if (declined || !(await this.hostTrusts(hostId, key.keyId))) await keys.delete(daemonId);
+      if (declined) return "declined";
       throw error;
     }
   }
 
-  /** Removes `targetKeyId` from the host, signed by this device's key. */
-  async revoke(hostId: string, targetKeyId: string): Promise<void> {
+  /** Removes `targetKeyId` from the host, signed by this device's key. "declined": the person said no. */
+  async revoke(hostId: string, targetKeyId: string): Promise<"done" | "declined"> {
     const keys = this.keyStore();
     const daemonId = this.daemonOf(hostId);
     const local = await keys.get(daemonId);
@@ -142,7 +158,7 @@ export class ApprovalSlice {
     try {
       signature = await keys.sign(daemonId, message, this.core.lang());
     } catch (error) {
-      if (isDecline(error)) return;
+      if (isDecline(error)) return "declined";
       throw error;
     }
     await this.ask(hostId, "approval.revoke", {
@@ -151,6 +167,7 @@ export class ApprovalSlice {
       nonce: challenge.nonce,
       signature,
     });
+    return "done";
   }
 
   /** Forgets this device's key for the host; the host keeps it listed until another device revokes it. */
@@ -168,9 +185,10 @@ export class ApprovalSlice {
     answer: ProofAnswer,
     risk: RiskLevel | undefined,
   ): Promise<ProofResult> {
+    // A risk the app could not read is treated as high: on a protected host that asks for the proof.
     if (
       answer.decision !== "allow" ||
-      !needsApprovalProof(risk ?? "low", answer.updatedPermissions)
+      !needsApprovalProof(risk ?? "high", answer.updatedPermissions)
     ) {
       return { kind: "none" };
     }
@@ -205,6 +223,16 @@ export class ApprovalSlice {
     } catch (error) {
       if (isDecline(error)) return { kind: "declined" };
       throw error;
+    }
+  }
+
+  /** The host lists `keyId`, or its list cannot be read (then the key is kept, never guessed gone). */
+  private async hostTrusts(hostId: string, keyId: string): Promise<boolean> {
+    try {
+      const listed = await this.ask(hostId, "approval.list", {});
+      return listed.keys.some((key) => key.keyId === keyId);
+    } catch {
+      return true;
     }
   }
 

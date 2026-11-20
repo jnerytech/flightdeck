@@ -20,6 +20,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
   const [view, setView] = useState<View>({ kind: "loading" });
   const [done, setDone] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   // The most devices this panel saw: protection that drops to none after that was not turned off here.
@@ -34,20 +35,36 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     }
   }, [store, host.id]);
   useEffect(() => {
+    // Another host: what was seen on the last one says nothing about this one.
+    seen.current = 0;
+    setView({ kind: "loading" });
+    setDone(null);
+    setProblem(null);
     void reload();
   }, [reload]);
-  /** Runs one change: its refusal is shown here, its success is said once, and the list is read again. */
-  const change = async (work: () => Promise<void>, success: string) => {
+  /**
+   * Runs one change, one at a time: its refusal is shown here, its success is said once (not when the
+   * person declined the system's dialog), and the list is read again.
+   */
+  const change = async (work: () => Promise<unknown>, success: string) => {
+    if (busy) return;
+    setBusy(true);
     setDone(null);
     setProblem(null);
     try {
-      await work();
-      setDone(success);
+      if ((await work()) !== "declined") setDone(success);
     } catch (error) {
       setProblem(error instanceof Error ? error.message : String(error));
     }
     await reload();
+    setBusy(false);
   };
+  const notices = (
+    <>
+      {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
+      {done && <InlineNotice tone="info">{done}</InlineNotice>}
+    </>
+  );
   const hint = <p className="text-muted-foreground text-xs">{t("approvalDevices.hint")}</p>;
   if (view.kind !== "ready") {
     return (
@@ -63,12 +80,13 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
             </ActionButton>
           </Inline>
         )}
+        {notices}
       </Panel>
     );
   }
   const { status } = view;
   const lost = status.protectionOff && seen.current > 0;
-  const enrolling = status.thisKeyId === null;
+  const hasKey = status.thisKeyId !== null;
   return (
     <Panel title={t("approvalDevices.title")} slot="host-section-approval">
       {hint}
@@ -89,7 +107,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
                   date: store.formatDateTime(key.enrolledAt),
                 })}
                 trailing={
-                  status.thisKeyId !== null && (
+                  hasKey && (
                     <ActionButton
                       variant="outline"
                       aria-label={t("approvalDevices.revokeLabel", { name: key.name })}
@@ -109,14 +127,22 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
           ))}
         </Stack>
       )}
-      {enrolling && status.protectionOff && (
+      {!status.protectionOff && !hasKey && (
+        <p className="text-sm" role="status">
+          {t("approvalDevices.noKeyHere")}
+        </p>
+      )}
+      {status.protectionOff && (
         <Form
           variant="panel"
           aria-label={t("approvalDevices.enrollTitle")}
           onSubmit={() =>
             void change(
               () =>
-                store.approval.enroll(host.id, name.trim(), code.trim()).then(() => setCode("")),
+                store.approval.enroll(host.id, name.trim(), code.trim()).then((outcome) => {
+                  if (outcome === "done") setCode("");
+                  return outcome;
+                }),
               t("approvalDevices.enrolled"),
             )
           }
@@ -148,10 +174,11 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
           <FormActions
             submit={t("approvalDevices.enroll")}
             disabled={name.trim() === "" || code.trim() === ""}
+            busy={busy}
           />
         </Form>
       )}
-      {!enrolling && (
+      {hasKey && (
         <Stack gap={1}>
           <p className="text-muted-foreground text-xs">{t("approvalDevices.removeLocalHint")}</p>
           <Inline>
@@ -169,8 +196,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
           </Inline>
         </Stack>
       )}
-      {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
-      {done && <InlineNotice tone="info">{done}</InlineNotice>}
+      {notices}
       <p className="text-muted-foreground text-xs">{t("approvalDevices.scope")}</p>
     </Panel>
   );

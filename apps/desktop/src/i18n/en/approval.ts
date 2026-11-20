@@ -30,7 +30,7 @@ export const approval = {
     retry: "Try again",
     loadFailed: "The host's devices could not be read.",
     noKeyHere:
-      "This device has no approving key on this host. Enroll it on the host's page, or approve at the host.",
+      "This device has no approving key on this host. Approve from a device that has one, or reset protection at the host's terminal with flightdeckd approvers reset and enroll this device again.",
     hasKeyHere: "This device already has a key for this host.",
   },
 };
