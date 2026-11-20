@@ -15,6 +15,18 @@
   "agentcfg.read": {},
   "agentcfg.write": {},
   "alert.list": {},
+  "approval.challenge": {
+    "appOnly": "a device signs the nonce with a key that never leaves it; a terminal has no such key"
+  },
+  "approval.enroll": {
+    "appOnly": "the device sends its own public key; the host terminal opens the window with flightdeckd approvers enroll"
+  },
+  "approval.list": {
+    "appOnly": "shows the person the devices that can approve, in the app; the host terminal manages them with flightdeckd approvers"
+  },
+  "approval.revoke": {
+    "appOnly": "a device signs the removal with its own key; the host terminal clears all keys with flightdeckd approvers reset"
+  },
   "askpass.answer": {},
   "askpass.ask": {},
   "askpass.watch": {},

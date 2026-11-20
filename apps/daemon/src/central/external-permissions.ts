@@ -6,8 +6,8 @@ import type {
 } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { ulid } from "../kernel/index.ts";
-import type { ApprovalGate } from "../permissions/domain/approval-gate.ts";
 import {
+  type ApprovalGate,
   type AutoApprover,
   bindInput,
   checkUpdates,
