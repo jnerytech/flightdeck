@@ -358,7 +358,10 @@ const HANDLERS: Record<string, Handler> = {
       "invalid budget action",
     );
     args.action = action;
-    if (action === "remove") args.budgetId = operand(reader, "the budget");
+    if (action === "remove") {
+      args.budgetId = operand(reader, "the budget");
+      if (args.budgetId.trim() === "") throw new Error(`missing the budget\n${USAGE}`);
+    }
   },
   quota: (args, reader) => {
     args.command = "quota";

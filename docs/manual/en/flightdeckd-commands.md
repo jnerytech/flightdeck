@@ -237,7 +237,7 @@ The cost limits of this host, as the Costs screen shows them. Each takes `--json
   (24%)`; a share of a quota window reads `spent ~12% of 20% (60%)`, the `~` marking a project's share as an
   estimate. With no budget it says `no budget yet`.
 - **`budget set`:** makes a limit in dollars for the host, or for one project with `--scope project --project
-  <key>`. `--period` is `day` or `month`, `--limit-usd` a positive amount in plain digits (`12.50`), and
+  <key>`. `--period` is `day` or `month`, `--limit-usd` an amount of at least 0.01 in plain digits (`12.50`), and
   `--action` is `notify` (say so at the limit) or `queue` (new cards of the scope wait at 100%; a session
   that is running is never held). `--id <budget>` changes an existing budget instead of making a new one.
 - **`budget set-quota`:** the same, as a share of a quota window instead of dollars: `--window` is

@@ -23,8 +23,8 @@ export interface BudgetCliArgs {
 export const UNSURE_BUDGET =
   "; the budget may or may not have changed: check with `budget list` before trying again";
 
-/** A share as a percentage, with a decimal only when it has one (`0.001` is `0.1%`, `0.2` is `20%`). */
-const percent = (share: number): string => `${Number((share * 100).toFixed(1))}%`;
+/** A share as a percentage, with decimals only when it has them (`0.001` is `0.1%`, `0.0015` is `0.15%`, `0.2` is `20%`). */
+const percent = (share: number): string => `${Number((share * 100).toFixed(2))}%`;
 
 const dollars = (usd: number): string => `$${usd.toFixed(2)}`;
 

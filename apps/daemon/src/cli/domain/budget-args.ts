@@ -54,7 +54,8 @@ export const BUDGET_FLAGS: Record<string, FlagHandler> = {
   "--limit-usd": (args, _reader, value) => {
     const text = value();
     const usd = /^\d+(\.\d+)?$/.test(text) ? Number(text) : Number.NaN;
-    if (!Number.isFinite(usd) || usd <= 0) throw refused("--limit-usd: a positive amount");
+    // A cent is the least the list can show.
+    if (!Number.isFinite(usd) || usd < 0.01) throw refused("--limit-usd: a positive amount");
     args.limitUsd = usd;
   },
   "--limit-pct": (args, _reader, value) => {
@@ -67,7 +68,10 @@ export const BUDGET_FLAGS: Record<string, FlagHandler> = {
   "--id": (args, _reader, value) => {
     if (args.command === "budget" && args.action === "remove")
       throw refused("--id: this flag only applies to flightdeckd budget set and set-quota");
-    args.budgetId = value();
+    const id = value();
+    // An empty id would reach the daemon as "no id" and make a new budget instead of changing one.
+    if (id.trim() === "") throw refused("--id: a budget id");
+    args.budgetId = id;
   },
 };
 

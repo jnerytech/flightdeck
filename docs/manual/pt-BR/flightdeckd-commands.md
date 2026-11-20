@@ -240,7 +240,7 @@ daemon.
   (24%)`; uma parte de uma janela da cota aparece como `spent ~12% of 20% (60%)`, e o `~` marca a parte de um
   projeto como estimativa. Sem orçamento, diz `no budget yet`.
 - **`budget set`:** cria um limite em dólares para o host, ou para um projeto com `--scope project --project
-  <chave>`. `--period` é `day` ou `month`, `--limit-usd` um valor positivo em dígitos simples (`12.50`) e
+  <chave>`. `--period` é `day` ou `month`, `--limit-usd` um valor de pelo menos 0.01 em dígitos simples (`12.50`) e
   `--action` é `notify` (avisa no limite) ou `queue` (os cartões novos do escopo esperam aos 100%; uma
   sessão que já está rodando nunca é segurada). `--id <orçamento>` altera um orçamento existente em vez de
   criar outro.
