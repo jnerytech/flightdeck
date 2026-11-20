@@ -105,7 +105,10 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
         made = await store.approval.marketplaceAddPayload(hostId, { source: source.trim() });
       } catch (error) {
         const why = error instanceof Error ? error.message : String(error);
-        store.reportError(`${why} ${t("pluginsUi.addSigningHint")}`);
+        // The forms hint belongs to the signer's refusal of the source, not to a failed challenge or an offline host.
+        store.reportError(
+          why.includes("the dialog can show") ? `${why} ${t("pluginsUi.addSigningHint")}` : why,
+        );
         return;
       }
       if (made.kind === "declined") return;
