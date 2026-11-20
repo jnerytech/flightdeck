@@ -341,6 +341,16 @@ describe("the arguments of the arena and loop verbs (issue #3454)", () => {
     });
   });
 
+  test("--rounds is a plain whole number and belongs to a loop that is on", () => {
+    for (const rounds of ["1e1", "0x5", " 3 ", "2.0"])
+      expect(parsed(["card", "check-loop", "c1", "on", "--rounds", rounds])).toMatchObject({
+        refusedWith: expect.stringContaining("--rounds needs a whole number"),
+      });
+    expect(parsed(["card", "check-loop", "c1", "off", "--rounds", "3"])).toMatchObject({
+      refusedWith: expect.stringContaining("--rounds: only with check-loop on"),
+    });
+  });
+
   test("arena and dismiss-unblocked take the card", () => {
     expect(parsed(["card", "arena", "c1", "--json"])).toMatchObject({
       action: "arena",
