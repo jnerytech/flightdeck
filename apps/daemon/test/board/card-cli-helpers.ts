@@ -19,6 +19,8 @@ export async function stopAll(): Promise<void> {
 /** A daemon of this test: `hello` checks the token, every other command is a handler or silent. */
 /** A handler that answers with this closes the connection instead (a daemon that dies mid-command). */
 export const CLOSE = Symbol("close");
+/** A handler that answers with this closes with 4401, as a daemon does when the token is revoked mid-command. */
+export const REVOKE = Symbol("revoke");
 
 export function fakeDaemon(
   handlers: Handlers,
@@ -51,6 +53,7 @@ export function fakeDaemon(
               : { error: { code: "unauthorized", message: `bad token ${String(payload.token)}` } }
             : await handlers[type]?.(payload);
         if (answer === CLOSE) return void ws.close();
+        if (answer === REVOKE) return void ws.close(4401);
         if (answer === undefined && type !== "hello") return; // a daemon that never answers
         const error = (answer as { error?: unknown } | undefined)?.error;
         ws.send(

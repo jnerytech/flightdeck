@@ -6,6 +6,7 @@ import type { T } from "../i18n/index.ts";
 export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
+  | `approval.${string}`
   | `runenv.${string}`
   | "roots.add"
   | "history.get"

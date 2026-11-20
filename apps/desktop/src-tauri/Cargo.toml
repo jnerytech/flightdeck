@@ -14,11 +14,13 @@ tauri-build = { version = "2", features = [] }
 
 [workspace]
 # Phase 40 (ADR 40-3): the assistant's crate builds and tests without Tauri.
-members = [".", "assistant"]
-default-members = [".", "assistant"]
+members = [".", "assistant", "approval", "cred"]
+default-members = [".", "assistant", "approval", "cred"]
 
 [dependencies]
 flightdeck-assistant = { path = "assistant" }
+flightdeck-approval = { path = "approval" }
+flightdeck-cred = { path = "cred" }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-notification = "2"
 tauri-plugin-deep-link = "2"

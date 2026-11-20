@@ -1,7 +1,7 @@
 /**
  * Issue #3425: `flightdeckd approve|deny <request>`, one answer to one open permission request of the
  * local daemon. It sends what the person said and nothing more: the daemon decides, so a high-risk
- * allow without `--hold` is refused there, and `--hold` is the person's own assertion, not a proof.
+ * allow is refused there. `--hold` is still accepted but sends nothing: a terminal cannot hold a button or sign (#3439).
  * Exit codes: 0 done, 1 refused, 2 no daemon (or no answer: the request may or may not be answered).
  */
 import {
@@ -9,6 +9,7 @@ import {
   DaemonRefusal,
   failure,
   json,
+  type RemoteTarget,
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
@@ -20,8 +21,6 @@ export interface AnswerCliArgs {
   request: string;
   /** What the answer tells Claude. */
   message?: string;
-  /** `--hold`: the person's own assertion that the Approve was held; a high-risk allow needs it. */
-  hold?: boolean;
   json?: boolean;
 }
 
@@ -33,10 +32,11 @@ const UNSURE =
 export function runAnswerCli(
   args: AnswerCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
+    ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-answer",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,

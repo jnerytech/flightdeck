@@ -1,5 +1,6 @@
 import type { Config } from "../config.ts";
 import type { DomainModule } from "../server/index.ts";
+import { Approvers } from "./approvers.ts";
 import {
   AutoApprover,
   type AutoApproverOptions,
@@ -57,6 +58,10 @@ export function createPermissions({
     },
     usage,
   });
-  const module: DomainModule<"autoApprove"> = { server: { autoApprove } };
-  return { modules: [module] as const, risk, autoApprove };
+  // #3439: the devices that sign a high-risk allow; its gate guards both respond paths.
+  const approvers = new Approvers(db);
+  const module: DomainModule<"autoApprove" | "approvers"> = {
+    server: { autoApprove, approvers },
+  };
+  return { modules: [module] as const, risk, autoApprove, approvers };
 }

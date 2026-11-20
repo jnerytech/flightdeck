@@ -244,4 +244,20 @@ export const ISSUES: readonly string[] = [
   `;
     }).join(""),
   ),
+  // Issue #3439: the public keys of the devices that may approve a high-risk request, and the daemon's
+  // own id and enrollment window (`daemon_id`, `window_until`, `code_hash`, `failed_attempts`).
+  `
+  CREATE TABLE approval_keys (
+    key_id      TEXT PRIMARY KEY,
+    public_key  TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    client      TEXT NOT NULL,
+    address     TEXT NOT NULL,
+    enrolled_at TEXT NOT NULL
+  );
+  CREATE TABLE approval_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
 ];

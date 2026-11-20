@@ -10,6 +10,9 @@ import {
 import { basename, join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { parsePublicKey } from "../../../apps/daemon/src/updates/domain/signature.ts";
+import { SIDECAR_ENTRY } from "./cred-sidecar.ts";
+
+export * from "./cred-sidecar.ts";
 
 /** The packages that carry the product version (`tauri.conf.json` reads the desktop's). */
 export const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"] as const;
@@ -167,7 +170,7 @@ export function tauriReleaseConfig(publicKey: string) {
     );
   }
   return {
-    bundle: { createUpdaterArtifacts: true },
+    bundle: { createUpdaterArtifacts: true, externalBin: [SIDECAR_ENTRY] },
     plugins: { updater: { pubkey: publicKey.trim(), endpoints: [LATEST_JSON] } },
   };
 }

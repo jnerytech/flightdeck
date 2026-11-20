@@ -40,5 +40,5 @@ criteria.
 Other `package.json` scripts: `bun run coverage`, `bun run format` (Biome with `--write`),
 `bun run ui:lock` (writes `apps/desktop/components.lock.json`, the hash of each shadcn/ui
 component as the CLI generated it), `bun run release:version`, `bun run release:assets`,
-`bun run release:tauri-config` and `bun run release:sign` (the last four are used by the
-[release](releases.md#releases)).
+`bun run release:tauri-config`, `bun run release:cred` and `bun run release:sign` (the last five are used by the
+[release](releases.md#releases)). A local `bun run tauri build` makes an installer without `flightdeck-cred`: only the release config bundles it.

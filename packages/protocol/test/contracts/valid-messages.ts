@@ -44,6 +44,10 @@ export const validCommands: Record<CommandType, unknown> = {
   "session.subscribe": { sessionId: "s", sinceSeq: 3 },
   "session.unsubscribe": { sessionId: "s" },
   "permission.respond": { requestId: "r", decision: "allow", updatedInput: { a: 1 } },
+  "approval.challenge": { purpose: "approve", requestId: "r" },
+  "approval.enroll": { publicKey: "p", name: "phone", nonce: "n", signature: "s", code: "c" },
+  "approval.revoke": { targetKeyId: "t", signerKeyId: "k", nonce: "n", signature: "s" },
+  "approval.list": {},
   "sessions.watch": {},
   "host.info": {},
   "history.list": {

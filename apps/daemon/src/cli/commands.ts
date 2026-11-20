@@ -98,6 +98,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
       platform: process.platform,
       home: userHome(deps.env, process.platform),
       ...(deps.env.APPDATA ? { appData: deps.env.APPDATA } : {}),
+      ...(deps.env.ProgramFiles ? { programFiles: deps.env.ProgramFiles } : {}),
       ...(deps.env.LOCALAPPDATA ? { localAppData: deps.env.LOCALAPPDATA } : {}),
       ...(deps.env.XDG_CONFIG_HOME ? { xdgConfigHome: deps.env.XDG_CONFIG_HOME } : {}),
       execPath: process.execPath,
@@ -107,7 +108,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host` and `sessions` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -133,18 +134,16 @@ const NO_LOCAL_DAEMON: LocalConfig = { bind: "", port: 0, token: "" };
 /** `approve` and `deny`: one answer to one open permission request. */
 async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
   const { runAnswerCli } = await import("../permissions/index.ts");
-  const config = await localConfig(args);
-  return reported(
-    deps,
-    await runAnswerCli(
+  return asking(args, deps, (config, remote) =>
+    runAnswerCli(
       {
         decision,
         request: args.requestId ?? "",
         ...(args.answerMessage === undefined ? {} : { message: args.answerMessage }),
-        ...(args.hold ? { hold: true } : {}),
         ...(args.json ? { json: true } : {}),
       },
       config,
+      remote ? { remote } : {},
     ),
   );
 }
@@ -316,30 +315,28 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   requests: async (args, deps) => {
     const { runRequestsCli } = await import("../permissions/index.ts");
-    const config = await localConfig(args);
-    return reported(
-      deps,
-      await runRequestsCli(
+    return asking(args, deps, (config, remote) =>
+      runRequestsCli(
         {
           ...(args.session === undefined ? {} : { session: args.session }),
           ...(args.json ? { json: true } : {}),
         },
         config,
+        remote ? { remote } : {},
       ),
     );
   },
   send: async (args, deps) => {
     const { runSendCli } = await import("../sessions/index.ts");
-    const config = await localConfig(args);
-    return reported(
-      deps,
-      await runSendCli(
+    return asking(args, deps, (config, remote) =>
+      runSendCli(
         {
           session: args.sendTo ?? "",
           text: args.text ?? "",
           ...(args.json ? { json: true } : {}),
         },
         config,
+        remote ? { remote } : {},
       ),
     );
   },
@@ -382,6 +379,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     (await import("./claude-settings.ts")).runTelemetry(args, deps),
   ),
   history: done(async (args, deps) => (await import("./history.ts")).runReindex(args, deps)),
+  approvers: async (args, deps) => (await import("./approvers.ts")).runApprovers(args, deps),
   doctor: async (args, deps) => (await import("./setup.ts")).runDoctorCommand(args, deps),
   setup: done(async (args, deps) => (await import("./setup.ts")).runSetupCommand(args, deps)),
   pair: done(async (args, deps) => (await import("./setup.ts")).runPair(args, deps)),

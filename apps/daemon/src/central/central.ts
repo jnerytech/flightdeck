@@ -5,7 +5,7 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { type SnapshotInput, snapshotForHook } from "../checkpoints/index.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { FlightdeckError, writeFileAtomic } from "../kernel/index.ts";
-import type { AutoApprover, RiskClassifier } from "../permissions/index.ts";
+import type { ApprovalGate, AutoApprover, RiskClassifier } from "../permissions/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { HookTarget } from "./domain/hook-entries.ts";
 import { ExternalSessions } from "./external.ts";
@@ -24,6 +24,8 @@ export interface CentralOptions {
   risk?: RiskClassifier;
   /** Phase 13: the projects' automatic approval, for the terminal sessions too. */
   autoApprove?: Pick<AutoApprover, "decide">;
+  /** #3439: the guard of a high-risk allow, which a signed proof of an enrolled device satisfies. */
+  approval?: ApprovalGate;
   /** Phase 12: terminal sessions' turns become git snapshots. */
   snapshots?: { enqueue(input: SnapshotInput): void };
   db: Database;
@@ -66,7 +68,11 @@ export class Central {
   private token: string | undefined;
 
   constructor(private readonly opts: CentralOptions) {
-    this.permissions = new ExternalPermissions({ risk: opts.risk, auto: opts.autoApprove });
+    this.permissions = new ExternalPermissions({
+      risk: opts.risk,
+      auto: opts.autoApprove,
+      approval: opts.approval,
+    });
     this.keys = opts.keys ?? new ProjectKeys(opts.hostName);
     this.meta = new SessionMetaStore(opts.db);
     this.external = new ExternalSessions({

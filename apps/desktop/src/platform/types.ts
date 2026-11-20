@@ -79,6 +79,12 @@ export interface WebhookResponse {
   retryAfterMs: number | null;
 }
 
+/** The public half of a device's approval key: its SPKI DER in base64 and the SHA-256 hex of that DER. */
+export interface DeviceKey {
+  publicKey: string;
+  keyId: string;
+}
+
 /** Phase 16: an ssh-keygen result; the private key is kept in the vault and the files are gone. */
 export interface GeneratedKey {
   privateKey: string;
@@ -139,6 +145,14 @@ export interface Platform {
     delete(id: string): Promise<void>;
   };
   /**
+   * Issue #3429: keeps what the `flightdeckd` CLI reads for `--host` in step with the host list: each
+   * host's address in the credential store beside its token, and the index of names in the app's
+   * config folder. Absent where there is no such store (a browser). No token goes through it.
+   */
+  hostIndex?: {
+    sync(hosts: Array<{ id: string; name: string; url: string }>): Promise<void>;
+  };
+  /**
    * Phase 16: the vault's values (service `flightdeck-vault`, account = the secret id), apart from
    * the host tokens in `secrets`. The metadata lives in `storage` and never holds a value.
    */
@@ -154,6 +168,19 @@ export interface Platform {
     pickFile(): Promise<PickedFile | null>;
     /** Deletes a file the user picked and asked to remove. */
     removeFile(path: string): Promise<void>;
+  };
+  /**
+   * The key of this device that approves for the person (#3439), one per host (its daemon id). The
+   * private half lives in the shell and never reaches the page: `sign` asks the person in a system
+   * dialog first, naming what the message does, and gives the signature or refuses. Absent where
+   * there is no shell (a browser): the app then asks nothing it cannot sign.
+   */
+  approvalKeys?: {
+    get(daemonId: string): Promise<DeviceKey | null>;
+    create(daemonId: string): Promise<DeviceKey>;
+    delete(daemonId: string): Promise<void>;
+    /** Base64 IEEE P1363 ECDSA signature of `message`; rejects when the person declines in the dialog. */
+    sign(daemonId: string, message: string, lang: string): Promise<string>;
   };
   /** Whether the system showed it (false: notifications are blocked for the app). */
   notify(notification: Notification): Promise<boolean>;

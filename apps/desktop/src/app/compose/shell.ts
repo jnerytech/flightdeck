@@ -186,6 +186,8 @@ interface ShellDeps {
   later: SummariesDeps["later"];
   /** Answers a permission request of a host from the tray or a toast. */
   respondTo: Parameters<typeof wireTray>[1]["answer"];
+  /** The proof of this device an allow needs, from the approval slice (#3439). */
+  prove: Parameters<typeof wirePermissions>[1]["prove"];
 }
 
 /**
@@ -302,6 +304,7 @@ function composeSessions(
       commands.onSelected((conn) => conn.request("permission.respond", response)),
     showWindow: () => void platform.showMainWindow(),
     act: (action) => tray.act(action),
+    prove: deps.prove,
   });
   const finished = wireFinished(kernel, {
     storage: platform.storage,

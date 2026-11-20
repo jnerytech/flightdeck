@@ -5,6 +5,7 @@
 import type { Handlers } from "../domain/handler.ts";
 import { activityHandlers } from "./activity.ts";
 import { agentsHandlers } from "./agents.ts";
+import { approvalHandlers } from "./approvals.ts";
 import { assistantHandlers } from "./assistant.ts";
 import { boardHandlers } from "./board.ts";
 import { cardHandlers } from "./card.ts";
@@ -32,6 +33,7 @@ import { worktreesHandlers } from "./worktrees.ts";
 /** The domains, by name; no command may sit in two of them (a spread would let the last win). */
 export const DOMAINS: Record<string, Partial<Handlers>> = {
   security: securityHandlers,
+  approvals: approvalHandlers,
   agents: agentsHandlers,
   messaging: messagingHandlers,
   terminal: terminalHandlers,

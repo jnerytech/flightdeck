@@ -1,5 +1,6 @@
 import { account } from "./pt-BR/account.ts";
 import { agent } from "./pt-BR/agent.ts";
+import { approval } from "./pt-BR/approval.ts";
 import { assistant } from "./pt-BR/assistant.ts";
 import { automations } from "./pt-BR/automations.ts";
 import { backup } from "./pt-BR/backup.ts";
@@ -204,6 +205,7 @@ export const ptBR = {
   ...automations,
   ...watch,
   ...refusals,
+  ...approval,
   ...assistant,
   common: {
     cancel: "Cancelar",

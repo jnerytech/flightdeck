@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ApprovalDevicesPanel } from "@/features/approval/ui.ts";
 import { HarnessTemplatesSection } from "@/features/harness/ui.ts";
 import { useT } from "@/i18n/context";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
@@ -45,6 +46,9 @@ export function HostSettingsPanel(
     <Stack gap={4}>
       <AllowedFolders store={store} host={host} />
       <BypassSwitch store={store} host={host} />
+      {host.status === "online" && store.approval.supported(host.id) && (
+        <ApprovalDevicesPanel store={store} host={host} />
+      )}
       <SleepSetting store={store} host={host} />
       <SimpleModePanel store={store} host={host} />
       <KeepAwakePanel store={store} host={host} />

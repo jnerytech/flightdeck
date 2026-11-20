@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { type ActivityResults, activityCommands } from "./activity.ts";
 import { type AgentSetupResults, agentSetupCommands } from "./agent-setup.ts";
+import { type ApprovalResults, approvalCommands } from "./approval.ts";
 import { type AssistantResults, assistantCommands } from "./assistant.ts";
 import { type AutomationsResults, automationsCommands } from "./automations.ts";
 import { type BoardResults, boardCommands, CardUpdated } from "./board.ts";
@@ -246,6 +247,7 @@ export const Command = z.discriminatedUnion("type", [
   ...snippetsCommands,
   ...agentSetupCommands,
   ...permissionsCommands,
+  ...approvalCommands,
   ...hostCommands,
   ...teleportCommands,
   ...reviewCommands,
@@ -303,6 +305,7 @@ export interface CommandResults
     SnippetsResults,
     AgentSetupResults,
     PermissionsResults,
+    ApprovalResults,
     HostResults,
     TeleportResults,
     ReviewResults,
@@ -472,6 +475,7 @@ export function parseServerMessage(raw: string): ServerMessage {
 
 export * from "./activity.ts";
 export * from "./agent-setup.ts";
+export * from "./approval.ts";
 export * from "./assistant.ts";
 export * from "./assistant-prompts.ts";
 export * from "./automations.ts";

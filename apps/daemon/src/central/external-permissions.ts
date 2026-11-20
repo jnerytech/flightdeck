@@ -1,7 +1,13 @@
-import type { AutoApproval, ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
+import type {
+  AutoApproval,
+  CommandPayload,
+  ExternalPermissionFrame,
+  PermissionUpdate,
+} from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { ulid } from "../kernel/index.ts";
 import {
+  type ApprovalGate,
   type AutoApprover,
   bindInput,
   checkUpdates,
@@ -29,6 +35,12 @@ interface Held {
   resolve(body: string): void;
 }
 
+/** What an app answers an external request with: the fields of `permission.respond` after the id and the decision. */
+export type ExternalAnswer = Pick<
+  CommandPayload<"permission.respond">,
+  "message" | "updatedPermissions" | "updatedInput" | "held" | "proof"
+>;
+
 /** A text field of a hook payload: a string as it is; anything else, which Claude Code does not send, is empty. */
 const textOf = (value: unknown): string => (typeof value === "string" ? value : "");
 
@@ -42,14 +54,23 @@ export class ExternalPermissions {
 
   private readonly risk: RiskClassifier;
   private readonly auto: Pick<AutoApprover, "decide"> | undefined;
+  private readonly approval: ApprovalGate | undefined;
 
   /**
    * `risk`: the classifier of the daemon's config, built-in rules alone when absent. `auto`:
    * the projects' automatic approval (phase 13).
    */
-  constructor(opts: { risk?: RiskClassifier; auto?: Pick<AutoApprover, "decide"> } = {}) {
+  constructor(
+    opts: {
+      risk?: RiskClassifier;
+      auto?: Pick<AutoApprover, "decide">;
+      /** #3439: the signed proof a high-risk allow needs once a device is enrolled. */
+      approval?: ApprovalGate;
+    } = {},
+  ) {
     this.risk = opts.risk ?? new RiskClassifier({ allowedRoots: [], home: userHome() });
     this.auto = opts.auto;
+    this.approval = opts.approval;
   }
 
   /**
@@ -113,36 +134,44 @@ export class ExternalPermissions {
   respond(
     requestId: string,
     decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions: PermissionUpdate[] = [],
-    updatedInput?: Record<string, unknown>,
-    holdProof?: boolean,
+    answer: ExternalAnswer = {},
     disk: DiskView = {},
   ): boolean {
+    const { message, updatedInput, held: holdProof, proof } = answer;
+    const updatedPermissions = answer.updatedPermissions ?? [];
     const held = this.held.get(requestId);
     if (!held) return false;
     if (decision === "allow") {
-      // The frame carries the risk the daemon judged: a high one needs the hold, and stays held.
-      requireHold(held.frame.risk ?? "low", holdProof);
+      // The frame carries the risk the daemon judged: a high one needs the hold (or, with the approval
+      // gate, the device's proof once the rules are known, below), and stays held.
+      const risk = held.frame.risk ?? "low";
+      if (!this.approval) requireHold(risk, holdProof);
       // Refused updates leave the hook held, before anything is answered.
       const { toolName, suggestions = [] } = held.frame;
       bindInput(toolName, held.input, updatedInput);
       checkUpdates(updatedPermissions, {
         toolName,
         suggestions,
-        risk: held.frame.risk ?? "low",
+        risk,
         classify: (tool, input) => this.risk.classify(tool, input, held.cwd).level,
         ...disk,
+      });
+      this.approval?.check({
+        requestId,
+        risk,
+        answer: { updatedPermissions, updatedInput, message },
+        held: holdProof,
+        proof,
       });
     }
     const updates = updatedPermissions.length > 0 ? { updatedPermissions } : {};
     const input = updatedInput ? { updatedInput } : {};
-    const answer =
+    const hookAnswer =
       decision === "allow"
         ? { behavior: "allow", ...input, ...updates }
         : { behavior: "deny", message };
     const body = JSON.stringify({
-      hookSpecificOutput: { hookEventName: "PermissionRequest", decision: answer },
+      hookSpecificOutput: { hookEventName: "PermissionRequest", decision: hookAnswer },
     });
     this.close(requestId, decision, body);
     return true;

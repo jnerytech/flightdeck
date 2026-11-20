@@ -3,6 +3,7 @@
  * its own, so the server context reads them without importing the `host.info` handler.
  */
 import {
+  FEATURE_APPROVAL_PROOF,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
   FEATURE_SERVICE_INSTALL,
@@ -17,6 +18,8 @@ export function featuresOf(opts: ServerOptions): string[] {
   return [
     // A high-risk permission allow needs `held: true` (issue #251).
     FEATURE_HOLD_PROOF,
+    // #3439: an allow of a high-risk request carries the signed proof of an enrolled device.
+    ...when(opts.approvers, FEATURE_APPROVAL_PROOF),
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.

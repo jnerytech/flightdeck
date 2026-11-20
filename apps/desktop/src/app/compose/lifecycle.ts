@@ -2,7 +2,12 @@ import { inSequence } from "@flightdeck/protocol";
 import { initialAccountState } from "../../features/account/index.ts";
 import type { AssistantController } from "../../features/assistant/index.ts";
 import { hubHostScope } from "../../features/costs/index.ts";
-import { type HostLink, initialHealthState, loadHosts } from "../../features/hosts/index.ts";
+import {
+  type HostLink,
+  initialHealthState,
+  loadHosts,
+  syncHostIndex,
+} from "../../features/hosts/index.ts";
 import type { InboxSlice } from "../../features/inbox/index.ts";
 import { initialQuotaState } from "../../features/quota/index.ts";
 import { takeHubHost } from "../../features/sessions/index.ts";
@@ -114,6 +119,8 @@ export function composeLifecycle(kernel: AppKernel<AppState>, deps: LifecycleDep
       if (token) link.connect(config, token);
     });
     kernel.update({ hostsLoaded: true });
+    // The CLI's host names and addresses, also for a host paired before it could read them (#3429).
+    syncHostIndex(platform.hostIndex, kernel.state().hosts);
     // #126 slice 2: the hub's own host filter (a name) becomes the data scope once, unless one
     // was chosen already; either way it leaves the hub, which now follows the scope.
     const hubHost = takeHubHost(platform.storage);
