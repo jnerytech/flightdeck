@@ -366,6 +366,8 @@ export const refusals = {
       "This only works over a near connection: this computer (loopback) or Tailscale, which WireGuard encrypts. For a WSL host, add it as ws://localhost:<port> (WSL forwards the port) or by its Tailscale address.",
     trust_root_refused:
       "This folder is an allowed folder that holds several projects, or a folder above one: trust the project's own folder instead.",
+    trust_path_differs:
+      "That folder is really {path}: the device confirms the folder the host trusts, so open that one and try again.",
     harness_stale:
       "The project changed since the preview, or the preview was not of these parts: preview again.",
     harness_confirm: "Changing the Claude Code setup needs your confirmation.",

@@ -87,6 +87,18 @@ export const projectHandlers = {
         "trust_root_refused",
       );
     }
+    // #3453: with a device enrolled, the person signs the folder the daemon trusts. A link or a relative path
+    // that resolves elsewhere is refused with the folder it is, so the app asks again with that one.
+    const approvers = server.opts.approvers;
+    if (approvers?.needsCommandProof("project.trust.set", payload) && path !== payload.path) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the folder is another one than the folder named",
+        "trust_path_differs",
+        { path },
+      );
+    }
+    approvers?.requireCommandProof("project.trust.set", payload, ["path"]);
     await trust.refresh();
     const done = trust.set(path, payload.trusted);
     // The boundary read before the record existed (a `state` call on a nested clone) would make the

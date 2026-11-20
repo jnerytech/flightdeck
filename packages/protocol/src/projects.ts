@@ -11,6 +11,7 @@ import {
   type HarnessStack,
   type HarnessTemplateInfo,
 } from "./agent-setup.ts";
+import { ApprovalProof } from "./approval.ts";
 import { Card, IssuesConfig, PrProviderKind } from "./board.ts";
 import { BoardColumn, ColumnContract } from "./board-contracts.ts";
 import { cmd } from "./command.ts";
@@ -283,7 +284,14 @@ export const projectsCommands = [
   ),
   cmd(
     "project.trust.set",
-    z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        trusted: z.boolean(),
+        /** The signed proof of an enrolled device, for a trust that lowers a guard (#3453). */
+        proof: ApprovalProof.optional(),
+      })
+      .strict(),
   ),
   cmd("board.get", z.object({ projectId: z.string() })),
   /** Host-wide board settings; without fields it only reads them. */

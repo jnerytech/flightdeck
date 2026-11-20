@@ -159,8 +159,13 @@ export class Approvers {
     payload: Record<string, unknown>,
     mustCarry: readonly string[] = [],
   ): void {
-    if (!this.gate.enrolled() || !commandNeedsProof(command, payload)) return;
+    if (!this.needsCommandProof(command, payload)) return;
     this.gate.checkCommand(command, payload, mustCarry);
+  }
+
+  /** A device is enrolled and this payload of `command` is one it must sign (what `requireCommandProof` asks first). */
+  needsCommandProof(command: ProofCommand, payload: Record<string, unknown>): boolean {
+    return this.gate.enrolled() && commandNeedsProof(command, payload);
   }
 
   enroll(

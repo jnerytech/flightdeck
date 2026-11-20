@@ -371,6 +371,8 @@ export const refusals = {
       "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
     trust_root_refused:
       "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
+    trust_path_differs:
+      "Essa pasta na verdade é {path}: o dispositivo confirma a pasta em que o host confia, então abra essa e tente de novo.",
     harness_stale:
       "O projeto mudou desde a prévia, ou a prévia não era destas partes: faça a prévia de novo.",
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
