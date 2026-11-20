@@ -463,6 +463,7 @@ export const refusals = {
     column_unknown: "The column {column} does not exist.",
     persona_id_invalid: "A persona id is not valid.",
     repo_not_git: "{path} is not a git repository.",
+    repo_has_no_commit: "{path} has no commit yet: make one before starting a card.",
     search_busy: "Too many searches are running: try again in a moment.",
     search_superseded: "That search was replaced by a newer one.",
     project_exists: "{path} is already a project.",
