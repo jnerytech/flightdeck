@@ -28,6 +28,7 @@ export interface CliArgs {
     | "snippet"
     | "message"
     | "card"
+    | "persona"
     | "host"
     | "sessions"
     | "requests"
@@ -60,7 +61,8 @@ export interface CliArgs {
     | "stop"
     | "complete"
     | "delete"
-    | "discard";
+    | "discard"
+    | "subagents";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -98,6 +100,12 @@ export interface CliArgs {
   description?: string;
   workflow?: string;
   json?: true;
+  /** `persona show <id>`. */
+  personaId?: string;
+  /** `persona list|show|subagents --language <pt-BR|en>`: the language of the pack personas. */
+  language?: "pt-BR" | "en";
+  /** `persona list --scope <host|project|all>`. */
+  scope?: "host" | "project" | "all";
   /** `action run <name>`. */
   actionName?: string;
   /** `snippet get <name>` (phase 18). */
@@ -170,6 +178,9 @@ export const USAGE = [
   "     fd card update <card> [--title <text>] [--description <text>] [--estimate <hours|none>] [--validation-note <text|none>] [--spec-path <path|none>] [--blocked-by <ids|none>] [--json] [--config <file>]",
   "     fd card stop <card> [--json] [--config <file>]",
   "     fd card complete|discard|delete <card> --confirm [--json] [--config <file>]   (they cannot be undone)",
+  "     fd persona list [--scope host|project|all] [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd persona show <id> [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
+  "     fd persona subagents [--project-path <folder>] [--language en|pt-BR] [--json] [--config <file>]",
   "     fd host [--host <name>] [--json] [--config <file>]   (what a daemon reports about itself: this host's, or a paired host's)",
   "     fd sessions [--host <name>] [--json] [--config <file>]   (the sessions of a daemon: this host's, or a paired host's)",
   "     fd send <session> <text> [--host <name>] [--json] [--config <file>]   (the session is its name or its id)",
@@ -422,6 +433,13 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "move") args.column = operand(reader, "the column");
     if (action === "new") args.cardTitle = operand(reader, "the title");
   },
+  persona: (args, reader) => {
+    args.command = "persona";
+    const action = subAction(reader, ["list", "show", "subagents"], "invalid persona action");
+    args.action = action;
+    if (action === "show") args.personaId = "";
+    if (action === "show") operand(reader, "the persona");
+  },
   host: setCommand("host"),
   sessions: setCommand("sessions"),
   requests: (args) => {
@@ -524,6 +542,8 @@ const HANDLERS: Record<string, Handler> = {
       throw new Error(`--last needs a positive integer\n${USAGE}`);
     args.last = last;
   }),
+  "--language": setValue(() => {}),
+  "--scope": setValue(() => {}),
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -569,12 +589,20 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   }
   if (
     args.json &&
-    !["card", "host", "sessions", "requests", "send", "approve", "deny", "approvers"].includes(
-      args.command,
-    )
+    ![
+      "card",
+      "persona",
+      "host",
+      "sessions",
+      "requests",
+      "send",
+      "approve",
+      "deny",
+      "approvers",
+    ].includes(args.command)
   )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, persona, host, sessions, requests, send, approve, deny and approvers\n${USAGE}`,
     );
   if (
     args.host !== undefined &&
