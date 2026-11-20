@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { runHistoryCli } from "../../src/history/index.ts";
-import { parseArgs } from "../../src/main.ts";
-import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { parseArgs, runCli } from "../../src/main.ts";
+import { config, fakeDaemon, stopAll, TOKEN } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
-import { poll } from "../support/helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 afterEach(stopAll);
@@ -89,7 +91,7 @@ describe("flightdeckd history resume (issue #3461)", () => {
       { action: "resume", claudeSessionId: "abc", json: true },
       config(daemon.port),
     );
-    expect(result.out).toEqual(['{"sessionId":"s3"}']);
+    expect(result.out).toEqual([JSON.stringify({ sessionId: "s3" }, null, 2)]);
   });
 
   test("a transcript that may be running elsewhere is refused with 1 and says how to go on", async () => {
@@ -273,15 +275,26 @@ describe("history resume and watch through the command line (issue #3461)", () =
 
   test("watch runs through flightdeckd until its Ctrl-C handler runs", async () => {
     const daemon = fakeDaemon({ "history.watch": () => ({}) });
-    const handlers: Array<() => unknown> = [];
-    const running = flightdeckd(["history", "watch"], daemon.port, undefined, {
-      onSignal: (_signal: string, handler: () => unknown) => handlers.push(handler),
-    } as never);
+    const file = join(tempDir(), "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: TOKEN, port: daemon.port, dataDir: join(tempDir(), "data") }),
+    );
+    const out: string[] = [];
+    const exits: number[] = [];
+    const handlers: Array<() => Promise<void>> = [];
+    const running = runCli(["history", "watch", "--config", file], {
+      env: {},
+      log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+      exit: (code) => exits.push(code),
+      onSignal: (_signal, handler) => handlers.push(handler),
+    });
     await poll(() => daemon.calls.some((c) => c.type === "history.watch"));
     daemon.push(changed());
-    await poll(() => handlers.length > 0);
-    for (const handler of handlers) await handler();
-    const run = await running;
-    expect(run.out).toEqual(["abc  2026-11-20T10:00:00.000Z  /work/app"]);
+    await poll(() => out.length === 1);
+    await handlers[0]?.();
+    await running;
+    expect(out).toEqual(["abc  2026-11-20T10:00:00.000Z  /work/app"]);
+    expect(exits).toEqual([0]);
   });
 });
