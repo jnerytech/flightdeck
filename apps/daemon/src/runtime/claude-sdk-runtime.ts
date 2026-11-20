@@ -9,7 +9,7 @@ import {
   query as sdkQuery,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { EffortLevel, PermissionMode } from "@flightdeck/protocol";
-import { AsyncQueue, type UsageTokens, whichOnPath } from "../kernel/index.ts";
+import { AsyncQueue, whichOnPath } from "../kernel/index.ts";
 import { ClaudeOneShot } from "./claude-one-shot.ts";
 import { describeCommands, type SdkSlashCommand } from "./domain/commands.ts";
 import type { FlightdeckMcpServer } from "./domain/flightdeck-mcp.ts";

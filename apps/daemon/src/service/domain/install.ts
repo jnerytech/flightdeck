@@ -78,7 +78,7 @@ function windowsQuote(arg: string): string {
       slashes++;
       continue;
     }
-    out += char === '"' ? "\\".repeat(slashes * 2) + '\\"' : "\\".repeat(slashes) + char;
+    out += char === '"' ? "\\".repeat(slashes * 2) + String.raw`\"` : "\\".repeat(slashes) + char;
     slashes = 0;
   }
   return `${out}${"\\".repeat(slashes * 2)}"`;
