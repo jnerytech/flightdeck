@@ -195,6 +195,13 @@ describe("flightdeckd session sleep, by what the daemon answers (issue #3514)", 
     });
   }
 
+  test("an answer this CLI does not know is not taken for a sleep: exit 1, and it says what came", async () => {
+    const daemon = fakeDaemon(sleeping("busy_card"));
+    const run = await flightdeckd(["session", "sleep", "s1"], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
+    expect(run.err.join("\n")).toContain("s1 was not put to sleep: the daemon answered busy_card");
+  });
+
   test("--json of a refused sleep prints nothing on stdout and the reason on stderr", async () => {
     const daemon = fakeDaemon(sleeping("not_idle"));
     const run = await flightdeckd(["session", "sleep", "s1", "--json"], daemon.port);
@@ -242,6 +249,23 @@ describe("flightdeckd session, what the daemon refuses (issue #3514)", () => {
     expect(run.code).toBe(1);
     expect(run.err.join("\n")).toContain("no such session: nobody");
     expect(writesOf(daemon)).toEqual([]);
+  });
+
+  test("meta set says what the daemon kept, not what was asked", async () => {
+    const daemon = fakeDaemon({
+      ...OPEN,
+      "session.meta.set": () => ({
+        claudeSessionId: "c-111",
+        name: "Kept",
+        pinned: true,
+        archived: false,
+      }),
+    });
+    const run = await flightdeckd(["session", "meta", "set", "s1", "name=Asked"], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({
+      code: 0,
+      out: ["s1 updated: name Kept"],
+    });
   });
 
   test("meta set with an empty name clears it, and says so", async () => {
