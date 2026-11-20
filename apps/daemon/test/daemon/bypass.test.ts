@@ -80,6 +80,24 @@ describe("bypass-daemon", () => {
     expect(store.listSessions()[0]?.permissionMode).toBe("bypassPermissions");
   });
 
+  test("a session Flightdeck opens by itself with no mode starts in the default mode, so run_with_secret stays denied there (#3427)", async () => {
+    const { manager, store, project } = newManager({
+      allowBypass: () => true,
+      defaultPermissionMode: "bypassPermissions",
+    });
+    await manager.create({ cwd: project, prompt: "go" }, { unattended: true });
+    await manager.create(
+      { cwd: project, prompt: "go", permissionMode: "bypassPermissions" },
+      { unattended: true },
+    );
+    expect(
+      store
+        .listSessions()
+        .map((session) => session.permissionMode)
+        .sort((a, b) => a.localeCompare(b)),
+    ).toEqual(["bypassPermissions", "default"]);
+  });
+
   test("with the switch off a session with no mode starts in the default mode, and asking for bypass is still refused (#3427)", async () => {
     const { manager, store, project } = newManager({
       allowBypass: () => false,
