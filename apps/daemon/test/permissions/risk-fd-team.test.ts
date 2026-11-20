@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { bash, MEDIUM, notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
 const REASON =
-  "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member or remove-member)";
+  "starts or drops sessions the person has not approved one by one, some perhaps without permission prompts (flightdeckd team new, update, delete, add-member, remove-member, pause, resume, close or message)";
 
 describe("risk rules: a session creating or changing a team from its shell (#3455)", () => {
   test("team new is high, however the CLI is reached and wherever its value flags sit", () => {
@@ -20,6 +20,19 @@ describe("risk rules: a session creating or changing a team from its shell (#345
         ["fd team list && fd team new goal --workers 2", REASON],
         ['bash -c "fd team new goal --workers 2"', REASON],
         ["bunx flightdeckd team new goal --workers 2", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("pausing, resuming or closing a team and messaging its members are high too", () => {
+    expect(
+      wrongReasons([
+        ["fd team pause t1", REASON],
+        ["fd team resume t1", REASON],
+        ["fd team close t1 --confirm", REASON],
+        ["fd team message t1 'stop and report'", REASON],
+        ["fd --json team message t1 hi", REASON],
+        ["flightdeckd --config /x/y.json team close t1 --confirm", REASON],
       ]),
     ).toEqual([]);
   });
