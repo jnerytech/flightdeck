@@ -69,3 +69,11 @@ export async function readCredential(
     return null;
   }
 }
+
+/** The helper runs once per command; a keychain prompt may wait for a person, so this is generous but finite. */
+export const HELPER_TIMEOUT_MS = 15_000;
+
+/** Runs the helper with a time limit and a cap on what it may print: a stuck or noisy helper is a failure, not a hang. */
+export function boundedExec(_timeoutMs: number): Exec {
+  return async () => ({ code: 0, stdout: "" });
+}

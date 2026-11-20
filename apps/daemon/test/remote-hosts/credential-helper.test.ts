@@ -128,3 +128,37 @@ describe("remote hosts: what the helper is asked and what it gives (#3429)", () 
     expect(await readCredential(broken, "/h", ID)).toBeNull();
   });
 });
+
+/** A shell script as the helper. */
+function script(body: string) {
+  const dir = tempDir("fd-helper-script-");
+  const file = join(dir, "flightdeck-cred");
+  writeFileSync(file, `#!/bin/sh\n${body}\n`);
+  chmodSync(file, 0o755);
+  return file;
+}
+
+describe.skipIf(process.platform === "win32")(
+  "remote hosts: a helper that hangs or floods is a failure (#3429)",
+  () => {
+    test("what it prints and its exit code come back", async () => {
+      expect(await boundedExec(5000)([script("echo abc")])).toEqual({ code: 0, stdout: "abc\n" });
+      expect((await boundedExec(5000)([script("exit 3")])).code).toBe(3);
+    });
+
+    test("a helper that does not return is stopped at the time limit, with a failing code", async () => {
+      const got = await boundedExec(300)([script("exec sleep 30")]);
+      expect(got.code).not.toBe(0);
+    });
+
+    test("a helper that prints without end is cut, and fails", async () => {
+      const got = await boundedExec(5000)([
+        script("exec yes aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+      ]);
+      expect({ failed: got.code !== 0, small: got.stdout.length <= 16_384 }).toEqual({
+        failed: true,
+        small: true,
+      });
+    });
+  },
+);
