@@ -3,7 +3,7 @@ import { VALUE_FLAGS } from "../../src/cli/domain/args.ts";
 import { bash, MEDIUM, notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
 const REASON =
-  "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local or move --force)";
+  "does what the app asks a person to confirm (flightdeckd card discard, complete, delete, merge-local, choose-variant, check-loop on or move --force)";
 
 describe("risk rules: a session ending or forcing a card from its shell (#3454)", () => {
   test("discard, complete, delete and a forced move are high, however the CLI is reached", () => {
@@ -19,6 +19,13 @@ describe("risk rules: a session ending or forcing a card from its shell (#3454)"
         ["bun run apps/daemon/src/bin.ts card merge-local c1 --confirm", REASON],
         ["fd --project p card merge-local c1 --confirm", REASON],
         ["flightdeckd --host h1 card complete c1", REASON],
+        ["fd card choose-variant c1 v2 --confirm", REASON],
+        ["fd --project p card choose-variant c1 v2 --confirm", REASON],
+        ["fd card check-loop c1 on", REASON],
+        ["fd card check-loop c1 on --rounds 3 --confirm --json", REASON],
+        ["fd --host h1 card check-loop c1 on", REASON],
+        ["bun run apps/daemon/src/bin.ts card check-loop c1 on", REASON],
+        ['bash -c "fd card choose-variant c1 v2 --confirm"', REASON],
         ["fd card move c1 review --force", REASON],
         ["fd card move c1 done --position 2 --force --json", REASON],
         ["~/.flightdeck/bin/fd card discard c1 --confirm", REASON],
@@ -52,6 +59,13 @@ describe("risk rules: a session ending or forcing a card from its shell (#3454)"
         "fd card diff c1",
         "fd card pr-create c1 --title 'merge-local notes'",
         "fd card update-from-base c1",
+        // Turning the loop off, reading an arena and starting one stay ordinary (#3454).
+        "fd card check-loop c1 off",
+        "fd card arena c1",
+        "fd card start-arena c1 --variant opus --variant sonnet",
+        "fd card dismiss-unblocked c1",
+        "fd card message c1 'please check-loop c1 on'",
+        "fd card update c1 --title 'card check-loop c1 on'",
         // What follows the verb is text, whatever it says (#3454).
         "fd card new 'fix card delete flow'",
         "fd card message c1 'remember to card complete it'",
