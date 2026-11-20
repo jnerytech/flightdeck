@@ -2,6 +2,8 @@
  * The permission domain's public entry (#1589): permission requests, risk, auto-approval and the
  * rules behind them. Another domain imports from here, never a file inside.
  */
+
+export { runAnswerCli } from "./answer-cli.ts";
 export { type AutoApproveRequest, type AutoApprover, historyExcludes } from "./auto-approve.ts";
 export { bindInput, summarizeInput } from "./domain/bind-input.ts";
 export type { PermissionDecision } from "./domain/decision.ts";

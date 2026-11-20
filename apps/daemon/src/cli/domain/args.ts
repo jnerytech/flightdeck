@@ -29,6 +29,8 @@ export interface CliArgs {
     | "host"
     | "sessions"
     | "requests"
+    | "approve"
+    | "deny"
     | "version"
     | "db"
     | "backup"
@@ -51,8 +53,14 @@ export interface CliArgs {
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
-  /** `message idle|read <session>`, with `--last N` for read. */
+  /** `message idle|read <session>`, with `--last N` for read; `requests --session`. */
   session?: string;
+  /** `approve|deny <request>`: the id of the permission request. */
+  requestId?: string;
+  /** `approve|deny --message`: what the answer tells Claude. */
+  answerMessage?: string;
+  /** `approve --hold`: the Approve was held, the proof a high-risk request needs. */
+  hold?: boolean;
   last?: number;
   /** `message team <team>`. */
   team?: string;
@@ -128,6 +136,8 @@ const USAGE = [
   "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
   "     flightdeckd host [--json] [--config <file>]   (what this host's daemon reports about itself)",
   "     flightdeckd sessions [--json] [--config <file>]   (the sessions of this host's daemon)",
+  "     flightdeckd approve <request> [--message <text>] [--hold] [--json] [--config <file>]   (--hold: you mean to allow a high-risk request; it is your own assertion)",
+  "     flightdeckd deny <request> [--message <text>] [--json] [--config <file>]",
   "     flightdeckd requests [--session <session>] [--json] [--config <file>]   (the open permission requests, oldest first)",
   "     flightdeckd action list [--project <id>] [--config <file>]",
   "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
@@ -327,6 +337,20 @@ const HANDLERS: Record<string, Handler> = {
   host: setCommand("host"),
   sessions: setCommand("sessions"),
   requests: setCommand("requests"),
+  approve: (args, reader) => {
+    args.command = "approve";
+    args.requestId = operand(reader, "the request");
+  },
+  deny: (args, reader) => {
+    args.command = "deny";
+    args.requestId = operand(reader, "the request");
+  },
+  "--message": setValue((args, v) => {
+    args.answerMessage = v;
+  }),
+  "--hold": setFlag((args) => {
+    args.hold = true;
+  }),
   "--session": setValue((args, v) => {
     args.session = v;
   }),
@@ -414,10 +438,19 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
     handler(args, reader, value);
   }
-  if (args.json && !["card", "host", "sessions", "requests"].includes(args.command))
+  if (
+    args.json &&
+    !["card", "host", "sessions", "requests", "approve", "deny"].includes(args.command)
+  )
     throw new Error(
-      `--json: this flag only applies to flightdeckd card, host, sessions and requests\n${USAGE}`,
+      `--json: this flag only applies to flightdeckd card, host, sessions, requests, approve and deny\n${USAGE}`,
     );
+  if (args.hold && args.command !== "approve")
+    throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
+  if (args.answerMessage !== undefined && !["approve", "deny"].includes(args.command))
+    throw new Error(`--message: this flag only applies to flightdeckd approve and deny\n${USAGE}`);
+  if (args.command !== "requests" && args.session !== undefined && args.command !== "message")
+    throw new Error(`--session: this flag only applies to flightdeckd requests\n${USAGE}`);
   if (args.command !== "card" && (args.description !== undefined || args.workflow !== undefined))
     throw new Error(
       `--description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
