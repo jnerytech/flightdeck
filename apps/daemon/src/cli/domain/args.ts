@@ -14,7 +14,7 @@ import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
-import { readSession } from "./session-args.ts";
+import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { teamProblem } from "./team-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
@@ -641,6 +641,17 @@ const HANDLERS: Record<string, Handler> = {
   "--runtime": setValue((args, v) => {
     args.runtime = RuntimeKind.parse(v);
   }),
+  "--prompt": setValue((args, v) => {
+    args.sessionStart = { ...args.sessionStart, prompt: v };
+  }),
+  "--up-to": setValue((args, v) => {
+    args.sessionStart = { ...args.sessionStart, upToMessageId: v };
+  }),
+  "--open": setValue((args, v) => {
+    if (v !== "flightdeck" && v !== "terminal")
+      throw new Error(`--open: flightdeck or terminal\n${USAGE}`);
+    args.sessionStart = { ...args.sessionStart, open: v };
+  }),
 };
 
 /** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
@@ -704,6 +715,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   // `card new` takes its title as an operand: the flag is the title of an update.
   if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
     args.cardTitle = args.titleFlag;
+  takeSessionFlags(args);
   const flagged: Array<[string, unknown, readonly string[] | null]> = [
     ["--title", args.titleFlag, ["update", "pr-create"]],
     ["--description", args.description, ["new", "update", "pr-create"]],
@@ -748,6 +760,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   takeBudgetAction(args);
   const fault =
     personaProblem(args) ??
+    sessionProblem(args) ??
     teamProblem(args) ??
     boardProblem(args) ??
     historyProblem(args) ??

@@ -40,6 +40,41 @@ export const metaLine = (
   return `${session} updated: ${parts.join(", ")}`;
 };
 
+export const modeLine = (session: string, mode: string): string =>
+  `${session} runs in ${mode} mode`;
+
+const DELIVERY: Record<string, string> = {
+  sent: "the message went into the session",
+  queued: "the message waits for the session's turn",
+  terminal: "the message went to the terminal session",
+};
+
+/** What became of the message a persona change sends; nothing when an older host does not say. */
+const deliveryNote = (delivery: string | undefined): string =>
+  delivery !== undefined && Object.hasOwn(DELIVERY, delivery) ? `: ${DELIVERY[delivery]}` : "";
+
+export const personaTakenLine = (
+  session: string,
+  persona: { id: string; name: string },
+  delivery: string | undefined,
+): string => `${session} took the persona ${persona.name} (${persona.id})${deliveryNote(delivery)}`;
+
+export const personaLeftLine = (
+  session: string,
+  persona: { name: string },
+  delivery: string | undefined,
+): string => `${session} left the persona ${persona.name}${deliveryNote(delivery)}`;
+
+/** `forked c-1 as session s2` when the app opened it, with the command that opens it when it is for a terminal. */
+export const forkLine = (
+  from: string,
+  result: { claudeSessionId: string; sessionId?: string; command?: string },
+): string => {
+  if (result.sessionId !== undefined) return `forked ${from} as session ${result.sessionId}`;
+  const made = `forked ${from} as ${result.claudeSessionId}`;
+  return result.command === undefined ? made : `${made}; open it with: ${result.command}`;
+};
+
 const DONE: Record<string, string> = {
   interrupt: "interrupted",
   close: "closed",

@@ -616,6 +616,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
           ...(args.sessionRef === undefined ? {} : { session: args.sessionRef }),
           ...(args.sessionValue === undefined ? {} : { value: args.sessionValue }),
           ...(args.sessionMeta === undefined ? {} : { meta: args.sessionMeta }),
+          ...(args.claudeSessionId === undefined ? {} : { claudeSessionId: args.claudeSessionId }),
+          ...(args.sessionStart === undefined ? {} : { start: args.sessionStart }),
           ...(args.json ? { json: true } : {}),
         },
         config,

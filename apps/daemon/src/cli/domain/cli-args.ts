@@ -1,7 +1,7 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
 import type { VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
-import type { SessionStartOptions } from "../../sessions/domain/session-cli-args.ts";
+import type { SessionStartOptions } from "../../sessions/index.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 

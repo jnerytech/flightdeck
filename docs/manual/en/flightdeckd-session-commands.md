@@ -44,3 +44,24 @@ yet is refused. A name two sessions share is refused with the ids. If the daemon
 exits `2` and says the change may or may not have gone in: look at the session before you repeat it. With
 `--json` each prints `{"session": ..., "action": ...}` plus the new value. `--host <name>` reaches a paired
 host.
+
+```sh
+fd session create --cwd ~/repos/app --prompt "fix the build" --permission-mode plan
+fd session fork 7c1e... --cwd ~/repos/app --up-to 3f9a... --open terminal
+fd session set-mode fd-qa plan
+fd session apply-persona fd-qa reviewer --language en
+fd session clear-persona fd-qa
+```
+
+Starts or reshapes a session. `create` starts a new session in `--cwd` (a folder under an allowed root, or the
+daemon refuses it) and prints its id; `--prompt`, `--name`, `--model`, `--effort`, `--permission-mode` and
+`--persona` (with `--language`) are the fields of the new-session form. `fork` starts a copy of a Claude session,
+up to `--up-to <message id>` when given: `--open flightdeck` (the default) starts it as a session of the daemon,
+and `--open terminal` prints the command that opens it (`flightdeckd claude --resume <id>`) without opening
+anything. `set-mode <session> <default|acceptEdits|plan|bypassPermissions>` changes what a live session may do
+without asking; a host that does not allow `bypassPermissions` refuses it. `apply-persona` gives a session a
+persona and `clear-persona` takes it away; each sends the session a message and says whether it went in, waits for
+the turn or went to a terminal session. `create`, `fork`, `set-mode` and `apply-persona` are rated high-risk when a
+session runs them from its own shell, so its permission prompt asks the person. If the daemon does not answer,
+`create` and `fork` say a session may or may not have been started: run `fd sessions` before you repeat them.
+

@@ -1,4 +1,6 @@
 /** Issue #3514: what the verbs of `flightdeckd session` are given. */
+import type { EffortLevel, PermissionMode } from "@flightdeck/protocol";
+
 export interface SessionCliArgs {
   action:
     | "interrupted"
@@ -35,8 +37,8 @@ export interface SessionStartOptions {
   prompt?: string;
   name?: string;
   model?: string;
-  effort?: string;
-  permissionMode?: string;
+  effort?: EffortLevel;
+  permissionMode?: PermissionMode;
   persona?: string;
   language?: "en" | "pt-BR";
   upToMessageId?: string;

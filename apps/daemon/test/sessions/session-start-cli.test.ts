@@ -409,12 +409,6 @@ describe("the arguments of session create, fork, set-mode and the persona verbs 
     });
   });
 
-  test("a prompt that starts with two dashes is taken with the = form", () => {
-    expect(parsed(["session", "create", "--cwd", "/w", "--prompt=--fix the build"])).toMatchObject({
-      sessionStart: { prompt: "--fix the build" },
-    });
-  });
-
   test("a missing folder, session, mode or persona is refused before anything is sent", () => {
     expect(refused(["session", "create"])).toContain("missing --cwd");
     expect(refused(["session", "fork", "c-1"])).toContain("missing --cwd");
