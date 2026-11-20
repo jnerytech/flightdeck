@@ -2,7 +2,7 @@
  * Issue #248: the agents domain: personas, plugins, MCP servers, project memory, agent files, and
  * snippets.
  */
-import { FlightdeckError } from "../../kernel/index.ts";
+import { FlightdeckError, resolveAllowedCwd } from "../../kernel/index.ts";
 import type { Handlers } from "../domain/handler.ts";
 
 export const agentsHandlers = {
@@ -72,9 +72,14 @@ export const agentsHandlers = {
   },
   "plugins.preview": async (payload, { server }) => {
     const { plugin, dir } = payload;
+    // A folder is read like any path a caller gives the daemon: inside the allowed roots (#3516).
     return await server
       .needIn("agentSetup", "plugins")
-      .preview(dir !== undefined ? { dir } : { plugin: plugin as string });
+      .preview(
+        dir !== undefined
+          ? { dir: await resolveAllowedCwd(dir, server.opts.allowedRoots) }
+          : { plugin: plugin as string },
+      );
   },
   "plugins.previewUpdate": async (payload, { server }) => {
     return await server.needIn("agentSetup", "plugins").previewUpdate(payload.plugin);
