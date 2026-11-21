@@ -21,3 +21,15 @@ export const setFlag = (set: (args: CliArgs) => void): Handler => {
   FLAGS.add(handler);
   return handler;
 };
+
+/** The commands that take `--confirm` and check it themselves; any other command refuses it as a card flag. */
+export const OWN_CONFIRM: ReadonlySet<string> = new Set([
+  "rules",
+  "autoapprove",
+  "team",
+  "costs",
+  "plugins",
+  "ssh",
+  "project",
+  "runenv",
+]);

@@ -11,7 +11,7 @@ import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts"
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
-import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
+import { type Handler, OWN_CONFIRM, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
@@ -737,13 +737,7 @@ function refuseCardFlags(args: CliArgs): void {
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
     // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s and `project harness-apply`'s, which check their own flags below.
-    if (
-      flag === "--confirm" &&
-      ["rules", "autoapprove", "team", "costs", "plugins", "ssh", "project", "runenv"].includes(
-        args.command,
-      )
-    )
-      continue;
+    if (flag === "--confirm" && OWN_CONFIRM.has(args.command)) continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
