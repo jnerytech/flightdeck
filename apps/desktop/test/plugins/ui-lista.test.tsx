@@ -70,7 +70,11 @@ describe("plugins-ui: a tela", () => {
     const text = row?.textContent ?? "";
     expect(text).toContain("deploy-tools");
     expect(text).toContain("1.2.0");
-    expect(text).toContain("user");
+    expect(text).toContain("Usuário");
+    const badge = row?.querySelector('[title*="todos os projetos"]');
+    expect(badge?.firstChild?.textContent).toBe("Usuário");
+    expect(row?.querySelector('[title*="todos os projetos"]')).not.toBeNull();
+    expect(text).toContain("Instalado para você");
     expect(text).toContain("Ativo");
     expect(text).toContain("Atenção: hooks sensíveis");
   });

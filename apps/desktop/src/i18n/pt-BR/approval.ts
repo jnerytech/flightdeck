@@ -35,6 +35,8 @@ export const approval = {
       "Este host não pede a confirmação de um dispositivo para instalar ou atualizar um plugin: atualize-o para proteger o código que as sessões dele rodam.",
     marketplaceUnchecked:
       "Este host não pede a confirmação de um dispositivo para adicionar um marketplace de plugins: atualize-o para proteger os plugins que as sessões dele podem instalar.",
+    snippetsUnchecked:
+      "Este host não pede a confirmação de um dispositivo para confiar no arquivo de snippets de um projeto: atualize-o para proteger os comandos que as sessões dele podem rodar a partir desse arquivo.",
     harnessUnchecked:
       "Este host não pede a confirmação de um dispositivo para gravar a configuração do Claude Code de um projeto: atualize-o para proteger o que roda nas sessões dele.",
     lost: "A proteção estava ligada e o host agora não lista nenhum dispositivo. Se você não zerou no host, alguém com acesso a ele zerou.",

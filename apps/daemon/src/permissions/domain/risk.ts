@@ -9,7 +9,7 @@ import { AGENTCFG_RULES } from "./agentcfg-risk.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
-import { runsAProjectEnvironment } from "./runenv-risk.ts";
+import { RUNENV_RULES } from "./runenv-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -31,6 +31,7 @@ import {
   startsCli,
   unquoted,
 } from "./shell-call.ts";
+import { SNIPPET_RULES } from "./snippet-risk.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
 import { changesAWatch } from "./watch-risk.ts";
 
@@ -437,11 +438,6 @@ const DANGEROUS: Array<{
       "turns the host's terminals on, a full shell for whoever reaches the daemon, without the person choosing it in the app (flightdeckd terminal settings --enable)",
   },
   {
-    when: runsAProjectEnvironment,
-    reason: () =>
-      "trusts a project's run.yaml or runs its commands, without the person choosing it in the app (flightdeckd runenv trust or start)",
-  },
-  {
     when: changesAWatch,
     reason: () =>
       "changes what a card's PR watch does on its own, which sessions it wakes and what it spends, without the person choosing it in the app (flightdeckd watch set, extend, resolve-held or settings with a flag)",
@@ -473,6 +469,8 @@ const DANGEROUS: Array<{
   ...PROJECT_RULES,
   ...AGENTCFG_RULES,
   ...BOARDSYNC_RULES,
+  ...RUNENV_RULES,
+  ...SNIPPET_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>

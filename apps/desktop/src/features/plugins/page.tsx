@@ -23,6 +23,7 @@ import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/ui.ts";
 import { InstallDialog, type InstallSource } from "./install-dialog.tsx";
 import { InventoryView } from "./inventory-view.tsx";
+import { isScope, scopeHint, scopeName } from "./scope.ts";
 import { UpdateDialog } from "./update-dialog.tsx";
 
 const PLUGINSPAGE_KEYS = ["hosts"] as const;
@@ -54,6 +55,18 @@ function askingWords(asking: Asking, source: string, t: ReturnType<typeof useT>)
  * on the machine, so each one shows what it installs, and the hooks that can decide for the user
  * carry a mark.
  */
+/** The scope of an installed plugin: its name in the app's language, and what it means. */
+function ScopeBadge({ scope }: { scope: string }) {
+  const t = useT();
+  const hint = scopeHint(t, scope);
+  return (
+    <Badge variant="outline" title={hint}>
+      {scopeName(t, scope)}
+      {hint && <span className="sr-only">: {hint}</span>}
+    </Badge>
+  );
+}
+
 export const PluginsPage = memo(function PluginsPage(props: { store: AppStore }) {
   const t = useT();
   const { store } = props;
@@ -84,9 +97,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
     await reload();
   };
   const removePlugin = async (id: string, plugin: InstalledPlugin) => {
-    const scope = ["user", "project", "local"].includes(plugin.scope)
-      ? (plugin.scope as "user" | "project" | "local")
-      : undefined;
+    const scope = isScope(plugin.scope) ? plugin.scope : undefined;
     const result = await store.hostCommand(id, "plugins.uninstall", {
       plugin: plugin.id,
       ...(scope ? { scope } : {}),
@@ -198,7 +209,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
                           {plugin.name}
                         </span>
                         <Badge variant="secondary">{plugin.version}</Badge>
-                        <Badge variant="outline">{plugin.scope}</Badge>
+                        <ScopeBadge scope={plugin.scope} />
                         <Badge variant="outline">
                           {plugin.enabled ? t("pluginsUi.enabled") : t("pluginsUi.disabled")}
                         </Badge>

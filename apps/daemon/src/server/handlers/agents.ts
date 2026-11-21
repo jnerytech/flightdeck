@@ -192,7 +192,26 @@ export const agentsHandlers = {
     await server.needIn("snippets", "library").remove(payload.id);
   },
   "snippets.trust": async (payload, { server }) => {
-    return await server.needIn("snippets", "library").trust(payload.projectPath, payload.hash);
+    const approvers = server.opts.approvers;
+    // #3647: with a device enrolled, the person signs the project and the file's hash. The folder is the one the
+    // host trusts: a link or a relative path that resolves elsewhere is refused with the folder it is, and the
+    // proof is checked last, once the file is the file shown, so a refused request does not spend the challenge.
+    return await server
+      .needIn("snippets", "library")
+      .trust(payload.projectPath, payload.hash, (project) => {
+        if (
+          approvers?.needsCommandProof("snippets.trust", payload) &&
+          project !== payload.projectPath
+        ) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "the folder is another one than the folder named",
+            "trust_path_differs",
+            { path: project },
+          );
+        }
+        approvers?.requireCommandProof("snippets.trust", payload, ["projectPath", "hash"]);
+      });
   },
   "snippets.favorite": async (payload, { server }) => {
     return await server.needIn("snippets", "library").favorite(payload.id, payload.favorite);

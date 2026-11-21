@@ -19,6 +19,7 @@ import {
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
+  FEATURE_APPROVAL_SNIPPETS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   needsApprovalProof,
@@ -47,6 +48,7 @@ import type {
   PluginPayload,
   ResumePayload,
   RootsPayload,
+  SnippetTrustPayload,
   TrustPayload,
 } from "./payloads.ts";
 
@@ -61,6 +63,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "plugins.install": FEATURE_APPROVAL_PLUGINS,
   "plugins.update": FEATURE_APPROVAL_PLUGINS,
   "plugins.marketplaceAdd": FEATURE_APPROVAL_MARKETPLACE,
+  "snippets.trust": FEATURE_APPROVAL_SNIPPETS,
 };
 
 /** A command a host from before its proof does not guard: the devices panel says so for each. */
@@ -72,7 +75,8 @@ export type UncheckedCommand =
   | "roots"
   | "harness"
   | "plugins"
-  | "marketplace";
+  | "marketplace"
+  | "snippets";
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -271,6 +275,12 @@ export class ApprovalSlice {
     if (!hasFeature(features, FEATURE_APPROVAL_HARNESS, false)) unchecked.push("harness");
     if (!hasFeature(features, FEATURE_APPROVAL_PLUGINS, false)) unchecked.push("plugins");
     if (!hasFeature(features, FEATURE_APPROVAL_MARKETPLACE, false)) unchecked.push("marketplace");
+    // Only a host that keeps snippets has a trust to guard (#3647).
+    if (
+      hasFeature(features, "snippets", false) &&
+      !hasFeature(features, FEATURE_APPROVAL_SNIPPETS, false)
+    )
+      unchecked.push("snippets");
     return unchecked;
   }
 
@@ -636,6 +646,25 @@ export class ApprovalSlice {
   ): Promise<MarketplacePayload> {
     const plain = { ...body, confirm: true } as const;
     const proof = await this.proveCommand(hostId, "plugins.marketplaceAdd", { ...plain });
+    if (proof.kind === "declined") return proof;
+    return {
+      kind: "payload",
+      payload: proof.kind === "proof" ? { ...plain, proof: proof.proof } : plain,
+    };
+  }
+
+  /**
+   * The payload of `snippets.trust` (#3647), with the device's proof over the folder and the file's hash when the
+   * host checks it and has a device enrolled; a host from before the feature gets the plain payload.
+   * `declined`: the person said no in the system's dialog.
+   */
+  async snippetTrustPayload(
+    hostId: string,
+    projectPath: string,
+    hash: string,
+  ): Promise<SnippetTrustPayload> {
+    const plain = { projectPath, hash };
+    const proof = await this.proveCommand(hostId, "snippets.trust", { ...plain });
     if (proof.kind === "declined") return proof;
     return {
       kind: "payload",

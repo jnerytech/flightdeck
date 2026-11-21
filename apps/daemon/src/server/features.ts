@@ -11,6 +11,7 @@ import {
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
+  FEATURE_APPROVAL_SNIPPETS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   FEATURE_APPROVAL_WATCH,
@@ -45,6 +46,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     // #3516: installing or updating a plugin takes the proof of an enrolled device.
     ...when(opts.approvers && opts.agentSetup?.plugins, FEATURE_APPROVAL_PLUGINS),
     ...when(opts.approvers && opts.agentSetup?.plugins, FEATURE_APPROVAL_MARKETPLACE),
+    // #3647: trusting a project's snippet file with `snippets.trust` takes the proof of an enrolled device.
+    ...when(opts.approvers && opts.snippets?.library, FEATURE_APPROVAL_SNIPPETS),
     // #3453: trusting a project folder takes the proof of an enrolled device (its own feature: a host can gate one command and not the other).
     ...when(opts.approvers && opts.projects?.trust, FEATURE_APPROVAL_TRUST),
     // #3453: turning a session's automatic approver back on takes the proof of an enrolled device (its own feature).

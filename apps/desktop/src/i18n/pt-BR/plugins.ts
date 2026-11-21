@@ -65,6 +65,15 @@ export const plugins = {
       mcpServers: "MCP",
     },
     pinned: "Fixado em {version}",
+    scope: {
+      user: "Usuário",
+      project: "Projeto",
+      local: "Local",
+      userHint: "Instalado para você: vale em todos os projetos desta máquina.",
+      projectHint:
+        "Instalado no projeto e compartilhado com a equipe pelas configurações do projeto.",
+      localHint: "Instalado só neste projeto, nesta máquina: não é compartilhado.",
+    },
     pin: "Fixar versão {name}",
     pinShort: "Fixar versão",
     unpin: "Soltar versão {name}",
