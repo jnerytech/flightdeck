@@ -81,7 +81,7 @@ describe("leitor", () => {
     scrolled.length = 0;
     await setup();
     await openHit();
-    const log = screen.queryByRole("log", { name: "Transcript" });
+    const log = screen.queryByRole("log", { name: "Transcrição" });
     expect(log).not.toBeNull();
     // The search dialog closed; the first page starts at the hit.
     expect(screen.queryByRole("dialog", { name: "Busca global" })).toBeNull();
@@ -116,8 +116,8 @@ describe("leitor", () => {
     await setup();
     await openHit();
     await settle(() => shown().length === 50);
-    expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
-    const log = screen.queryByRole("log", { name: "Transcript" }) as HTMLElement;
+    expect(screen.queryByRole("log", { name: "Transcrição" })).not.toBeNull();
+    const log = screen.queryByRole("log", { name: "Transcrição" }) as HTMLElement;
     // happy-dom has no layout: give the log a size and scroll it.
     Object.defineProperty(log, "clientHeight", { configurable: true, value: 200 });
     Object.defineProperty(log, "scrollHeight", { configurable: true, value: 1000 });
@@ -165,7 +165,7 @@ describe("leitor", () => {
         target: { hostId, claudeSessionId: "com-resumo" },
       });
     });
-    const log = () => screen.queryByRole("log", { name: "Transcript" }) as HTMLElement;
+    const log = () => screen.queryByRole("log", { name: "Transcrição" }) as HTMLElement;
     await settle(() => log() !== null && within(log()).queryByText("Resumo da conversa") !== null);
     const note = within(log()).queryByText("Resumo da conversa");
     expect(note).not.toBeNull();

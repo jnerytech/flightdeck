@@ -85,6 +85,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd ssh](pt-BR/flightdeckd-ssh-commands.md#fd-ssh)
 
+## Comandos do flightdeckd: arquivos de configuração de agentes
+
+[Ler o capítulo.](pt-BR/flightdeckd-agentcfg-commands.md) Suas seções:
+
+- [fd agentcfg](pt-BR/flightdeckd-agentcfg-commands.md#fd-agentcfg)
+
 ## Comandos do flightdeckd: terminais
 
 [Ler o capítulo.](pt-BR/flightdeckd-terminal-commands.md) Suas seções:

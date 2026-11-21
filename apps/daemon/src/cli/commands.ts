@@ -10,6 +10,7 @@ import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import { configPath } from "./config-path.ts";
+import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
@@ -134,7 +135,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `watch`, `boardsync`, `review`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -629,6 +630,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runTerminalCli } = await import("../terminal/index.ts");
     return asking(args, deps, (config, remote) =>
       runTerminalCli(terminalCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  agentcfg: async (args, deps) => {
+    const { runAgentcfgCli } = await import("../agentcfg/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runAgentcfgCli(agentcfgCliArgs(args), config, { remote, stdin: deps.stdin }),
     );
   },
   requests: async (args, deps) => {
