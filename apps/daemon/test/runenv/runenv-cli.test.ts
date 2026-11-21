@@ -366,6 +366,6 @@ describe("flightdeckd runenv words (issue #3621)", () => {
     expect(JSON.stringify(argsOf(["runenv", "get"]))).toContain("missing the card");
     expect(JSON.stringify(argsOf(["runenv", "config"]))).toContain("missing the project");
     expect(JSON.stringify(argsOf(["runenv", "watch", "c1"]))).toContain("unknown argument: c1");
-    expect(JSON.stringify(argsOf(["runenv", "start", "c1"]))).toContain("invalid runenv action");
+    expect(JSON.stringify(argsOf(["runenv", "restart", "c1"]))).toContain("invalid runenv action");
   });
 });
