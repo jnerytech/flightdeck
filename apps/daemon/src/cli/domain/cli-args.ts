@@ -37,6 +37,8 @@ export interface CliArgs {
     | "knowledge"
     | "statusline"
     | "action"
+    | "external"
+    | "names"
     | "snippet"
     | "message"
     | "card"
@@ -211,6 +213,8 @@ export interface CliArgs {
     | "harness-export"
     | "harness-apply"
     | "harness-commit";
+  /** `external message <session> --text <text>`: the Claude session id of a terminal. */
+  externalSession?: string;
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;

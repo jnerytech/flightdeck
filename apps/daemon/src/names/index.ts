@@ -5,3 +5,4 @@
 export { slug } from "./domain/format.ts";
 export { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./domain/track.ts";
 export type { Names } from "./names.ts";
+export { type NamesCliArgs, runNamesCli } from "./names-cli.ts";
