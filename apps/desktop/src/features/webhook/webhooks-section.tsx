@@ -93,6 +93,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "webhook", false),
   );
   const editing = targets.find((target) => target.id === draft.id);
+  const secretKeepKey = draft.type === "ntfy" ? "webhooks.tokenKeep" : "webhooks.signingKeep";
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const complete =
     draft.name.trim() !== "" && draft.kinds.length > 0 && (editing || draft.url.trim() !== "");
@@ -355,11 +356,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
             {takesSecret(draft.type) && (
               <Field
                 label={draft.type === "ntfy" ? t("webhooks.token") : t("webhooks.signing")}
-                help={
-                  editing
-                    ? t(draft.type === "ntfy" ? "webhooks.tokenKeep" : "webhooks.signingKeep")
-                    : undefined
-                }
+                help={editing ? t(secretKeepKey) : undefined}
               >
                 {(control) => (
                   <Input
