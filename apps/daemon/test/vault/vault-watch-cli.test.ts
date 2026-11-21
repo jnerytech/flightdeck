@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { runVaultCli } from "../../src/vault/index.ts";
-import { CLOSE, config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { CLOSE, config, EMPTY_ACK, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
 import { poll } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
@@ -225,6 +225,16 @@ describe("flightdeckd vault deny (issue #3753)", () => {
     const daemon = fakeDaemon({ "vault.deny": () => ({}) });
     const result = await runVaultCli({ action: "deny", requestId: "q1" }, config(daemon.port));
     expect({ code: result.code, out: result.out }).toEqual({ code: 0, out: ["denied q1"] });
+  });
+
+  test("a daemon that acks with no data at all is taken at its word too", async () => {
+    const daemon = fakeDaemon({ "vault.deny": () => EMPTY_ACK });
+    const result = await runVaultCli({ action: "deny", requestId: "q1" }, config(daemon.port));
+    expect({ code: result.code, out: result.out, err: result.err }).toEqual({
+      code: 0,
+      out: ["denied q1"],
+      err: [],
+    });
   });
 
   test("--json prints the request and whether it was denied", async () => {
