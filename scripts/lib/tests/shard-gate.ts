@@ -207,7 +207,10 @@ function functionsOf(
 export function shardGate(input: GateInput): GateResult {
   const { shards, problems: closed } = collect(input);
   if (closed.length > 0) return { problems: closed, lcov: "", closed: true, covered: [] };
-  const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))];
+  // An entry point stays waived once a test imports it, as in isCoverageSource: neither its counts nor its shards' disagreement close the gate.
+  const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))].filter(
+    (p) => !ENTRY_POINTS.has(p),
+  );
   const problems: string[] = [];
   const report = new Map<string, FileCoverage>();
   const records: string[] = [];
@@ -246,9 +249,9 @@ export function shardGate(input: GateInput): GateResult {
     ? problems.filter((p) => judged.has(p.slice(0, p.indexOf(":"))))
     : problems;
   const unsettled = new Set(problems.map((p) => p.slice(0, p.indexOf(":"))));
-  // The whole suite judges every loaded file, but an entry point stays waived once a test imports it, as in isCoverageSource.
-  const loaded = judged ? [] : [...report.keys()].filter((p) => !ENTRY_POINTS.has(p));
-  const checked = [...new Set([...input.sources, ...loaded])].filter((p) => !unsettled.has(p));
+  const checked = [...new Set([...input.sources, ...(judged ? [] : report.keys())])].filter(
+    (p) => !unsettled.has(p),
+  );
   const all = [...ownProblems, ...checkCoverage(report, checked)].sort((a, b) =>
     a.localeCompare(b, "en"),
   );

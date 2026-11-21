@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { ENTRY_POINTS } from "../../lib/coverage-gate/check.ts";
 import {
   failedCount,
   type GateInput,
@@ -7,7 +8,6 @@ import {
   type ShardJob,
   shardRun,
 } from "../../lib/tests/shard-gate.ts";
-import { ENTRY_POINTS } from "../../lib/coverage-gate/check.ts";
 import { importsOf } from "../../lib/tests/test-related.ts";
 import { bun, functions, gate, healthy, ist, marker, record, TESTS } from "./shard-gate-setup.ts";
 
@@ -91,8 +91,7 @@ describe("shard-gate: the merged 80% gate (#296, #1002)", () => {
 
   test("a loaded entry point is waived as in the full suite: the gate does not judge it", () => {
     // A print-table file the prints run in a browser; a test that imports it must not close the gate.
-    const entry = "scripts/lib/shots/table-hosts.ts";
-    expect(ENTRY_POINTS.has(entry)).toBe(true);
+    const entry = [...ENTRY_POINTS][0] as string;
     const jobs = healthy();
     jobs[0] = bun(
       1,
@@ -105,7 +104,13 @@ describe("shard-gate: the merged 80% gate (#296, #1002)", () => {
         ],
       )}\n${record(entry, [2, 34], [[4, 0]])}`,
     );
+    // The shards also disagree on its lines: waived too.
+    jobs[1] = bun(2, `${jobs[1]?.data}\n${record(entry, [2, 34], [[5, 0]])}`);
     expect(gate(jobs).problems).toEqual([]);
+    // A source next to it is still judged.
+    expect(gate(jobs, { sources: ["a.ts", "b.ts"] }).problems).toEqual([
+      "b.ts: nenhum teste carrega este arquivo",
+    ]);
   });
 
   test("a file istanbul did not instrument falls back to Bun's counts, and counts that cannot settle it fail", () => {
