@@ -241,6 +241,28 @@ describe("flightdeckd template start (issue #3738)", () => {
     ]);
   });
 
+  test("a folder or file field given as a relative path is refused before anything starts, since the daemon has another folder", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const run = await flightdeckd(
+      ["template", "start", "summarize", "--field", "folder=./docs", "--field", "tone=formal"],
+      daemon.port,
+    );
+    expect([run.code, run.err.join("\n")]).toEqual([
+      1,
+      expect.stringContaining("folder: give an absolute path"),
+    ]);
+    expect(sent(daemon, "template.start")).toEqual([]);
+  });
+
+  test("a relative path in a field that is not a path is sent as it is", async () => {
+    const daemon = fakeDaemon(OPEN);
+    await flightdeckd(
+      ["template", "start", "summarize", "--field", "folder=/w/docs", "--field", "tone=./x"],
+      daemon.port,
+    );
+    expect(sent(daemon, "template.start")).toHaveLength(1);
+  });
+
   test("the language defaults to en and --language pt-BR is sent; no name is not sent", async () => {
     const daemon = fakeDaemon(OPEN);
     await flightdeckd(["template", "start", "summarize", "--language", "pt-BR"], daemon.port);
@@ -312,6 +334,13 @@ describe("flightdeckd task results and preview (issue #3738)", () => {
     const run = await flightdeckd(["task", "results", "nobody"], daemon.port);
     expect([run.code, run.err.join("\n")]).toEqual([1, "flightdeckd: no such session: nobody"]);
     expect(sent(daemon, "task.results")).toEqual([]);
+  });
+
+  test("preview refuses a relative path before any connection", () => {
+    expect(parsed(["task", "preview", "docs-task", "./notes.txt"])).toHaveProperty(
+      "refusal",
+      expect.stringContaining("absolute"),
+    );
   });
 
   test("preview prints the text as it is, line by line, and sends the path whole", async () => {
