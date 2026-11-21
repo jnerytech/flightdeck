@@ -117,6 +117,20 @@ describe("describeDefinition: what the person reads in the request (#3752)", () 
     expect(shown.length).toBeLessThan(700);
   });
 
+  test("a run line that was cut tells the person to deny unless they know the rest", () => {
+    const shown = describeDefinition(
+      "d.json",
+      JSON.stringify({ name: "a", run: ["sh", "-c", "a".repeat(500)], env: {} }),
+    );
+    expect(shown).toContain("the rest of run was not shown: deny it unless you know what it holds");
+  });
+
+  test("a run line that fits has no such warning", () => {
+    expect(describeDefinition("d.json", JSON.stringify({ run: ["x"] }))).not.toContain(
+      "the rest of run",
+    );
+  });
+
   test("the cut count is the exact rest of the run line", () => {
     const run = ["sh", "-c", "b".repeat(400)];
     const whole = JSON.stringify(run);

@@ -30,7 +30,7 @@ describe("actionSaveNote: the request to save an action carries what the file ho
     const note = await actionSaveNote("fd action save --definition-file d.json", CWD, fake.read);
     expect(fake.asked).toEqual([resolve(CWD, "d.json")]);
     expect(note).toBe(
-      'saves d.json: name "deploy"; run ["deploy.sh"]; cwd "/srv"; env T; secrets tok',
+      `saves d.json (read in ${CWD}): name "deploy"; run ["deploy.sh"]; cwd "/srv"; env T; secrets tok`,
     );
   });
 
@@ -38,6 +38,30 @@ describe("actionSaveNote: the request to save an action carries what the file ho
     const fake = files({ [resolve("/tmp/x.json")]: DEFINITION });
     await actionSaveNote("fd action save --definition-file /tmp/x.json", CWD, fake.read);
     expect(fake.asked).toEqual([resolve("/tmp/x.json")]);
+  });
+
+  test("an absolute path says no folder, since the folder does not matter for it", async () => {
+    const fake = files({ [resolve("/tmp/x.json")]: DEFINITION });
+    const note = await actionSaveNote(
+      "fd action save --definition-file /tmp/x.json",
+      CWD,
+      fake.read,
+    );
+    expect(note?.startsWith("saves /tmp/x.json: ")).toBe(true);
+  });
+
+  test("a step before the save that may change the file is said, and a lone save has no such word", async () => {
+    const fake = files({ [resolve(CWD, "d.json")]: DEFINITION });
+    const [lone, other] = await Promise.all([
+      actionSaveNote("fd action save --definition-file d.json", CWD, fake.read),
+      actionSaveNote(
+        "cp evil.json d.json && fd action save --definition-file d.json",
+        CWD,
+        fake.read,
+      ),
+    ]);
+    expect([lone?.includes("other steps"), other?.includes("other steps")]).toEqual([false, true]);
+    expect(other).toContain("deny it unless you know what they do");
   });
 
   test("a file that cannot be read still gets a note that says so", async () => {
