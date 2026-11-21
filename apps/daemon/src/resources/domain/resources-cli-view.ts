@@ -39,12 +39,27 @@ const rowLine = (row: ResourceRow): string =>
 const orphanLine = (orphan: ResourceOrphan): string =>
   `orphan  pid ${orphan.pid}  start-ticks ${orphan.startTicks}  ${orphan.name}  ${mib(orphan.rssBytes)} MiB  age ${orphan.ageSec}s`;
 
-/** The guard that holds new cards when memory runs short: its share, and whether it holds now. */
+/** The guard that holds new cards when memory runs short: its share, or off. */
+export const guardLine = (share: number | null | undefined): string =>
+  share === null || share === undefined
+    ? "pause  off"
+    : `pause  new cards wait from ${Math.round(share * 100)}% of memory`;
+
+/** The guard as the read prints it: its share, and whether it holds now. */
 function pauseLine(snapshot: ResourcesSnapshot): string {
-  if (snapshot.memoryPauseAt === null || snapshot.memoryPauseAt === undefined) return "pause  off";
-  const share = `pause  new cards wait from ${Math.round(snapshot.memoryPauseAt * 100)}% of memory`;
-  return snapshot.memoryHolding === true ? `${share}  (holding now)` : share;
+  const share = guardLine(snapshot.memoryPauseAt);
+  return snapshot.memoryPauseAt != null && snapshot.memoryHolding === true
+    ? `${share}  (holding now)`
+    : share;
 }
+
+/** What the person is told when an orphan was ended: the pid names it. */
+export const endedLine = (pid: number): string => `ended  pid ${pid}`;
+
+export const UNSURE_ORPHAN =
+  "; the process may or may not have been ended: read `resources` to see if it is still listed";
+export const UNSURE_GUARD =
+  "; the guard may or may not have changed: read `resources` to see it before trying again";
 
 export const resourcesLines = (snapshot: ResourcesSnapshot): string[] => [
   usage("memory", snapshot.memory),

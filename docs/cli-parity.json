@@ -219,14 +219,14 @@
   "hooks.uninstall": {
     "cli": "hooks"
   },
-  "host.bypass": {},
+  "host.bypass": { "cli": "host" },
   "host.info": {
     "cli": "host"
   },
-  "host.keepAwake": {},
-  "host.pause": {},
-  "host.sleep": {},
-  "host.updates.set": {},
+  "host.keepAwake": { "cli": "host" },
+  "host.pause": { "cli": "host" },
+  "host.sleep": { "cli": "host" },
+  "host.updates.set": { "cli": "host" },
   "idle.subscribe": {
     "cli": "message"
   },
@@ -353,9 +353,9 @@
   "quota.setPauseAt": { "cli": "quota" },
   "quota.watch": { "cli": "quota" },
   "releases.list": { "cli": "releases" },
-  "resources.endOrphan": {},
+  "resources.endOrphan": { "cli": "resources" },
   "resources.get": { "cli": "resources" },
-  "resources.setPauseAt": {},
+  "resources.setPauseAt": { "cli": "resources" },
   "review.add": { "cli": "review" },
   "review.list": { "cli": "review" },
   "review.remove": { "cli": "review" },
