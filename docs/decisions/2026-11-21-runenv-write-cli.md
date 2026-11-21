@@ -7,8 +7,9 @@ Slice 2 of the `runenv` noun, after [the read side](2026-11-21-runenv-read-cli.m
 host run them, and starting a card runs them. So the two verbs that open that door are the app's decision and carry
 two guards, and the one that closes it does not.
 
-- `trust` takes the hash of the file the person reviewed (`--hash`, the one `runenv config` prints, at least 12 hex
-  characters as `persona trust` has it). The daemon refuses a hash that is no longer the file's, so a file that
+- `trust` takes the hash of the file the person reviewed (`--hash`, the whole 64-character sha256 that `runenv config`
+  prints, never a prefix: the daemon compares it for equality, so a prefix would read as "the run.yaml changed", and a
+  short prefix would weaken the check). The daemon refuses a hash that is no longer the file's, so a file that
   changed after it was read is never trusted unseen. `--confirm` is required, with a refusal that says what trusting
   does. The answer is the project's `run.yaml`, as `config` prints it.
 - `start` runs the setup and the processes of the card's run and needs `--confirm`. `stop` ends them and needs
@@ -20,9 +21,10 @@ two guards, and the one that closes it does not.
 - A daemon that does not answer after one of the three was sent leaves its result unknown: exit `2`, and the
   message says to check with `runenv config` (for `trust`) or `runenv get` (for `start` and `stop`) before trying
   again.
-- `--hash` is the flag `persona trust` already has, so its 12-hex-character rule is shared and its refusal text names
-  the persona list: a known wording gap, not changed here. `--confirm` and `--hash` each belong to their verbs and
-  are refused on the others (`runenvProblem`).
+- `--hash` is the flag `persona trust` already has, so the parser's 12-hex-character rule and its refusal text (which
+  names the persona list) still run first; `runenvProblem` then requires the full 64 characters and says so. A hash
+  that is too short or not hex fails with the persona wording: a known gap, not changed here. `--confirm` and `--hash`
+  each belong to their verbs and are refused on the others (`runenvProblem`).
 - Not in this slice, and a gap to report: nothing stops a token holder from `trust` or `start` over the wire (the
   daemon takes both from any paired client, as the app does), and the proof of the person's approval of #3439 does not
   cover them.

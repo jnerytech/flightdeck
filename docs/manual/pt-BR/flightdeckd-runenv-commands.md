@@ -14,7 +14,7 @@ fd runenv config api
 fd runenv config api --json
 fd runenv get card-1
 fd runenv watch
-fd runenv trust api --hash 9f3a1c4e7b2d5a60 --confirm
+fd runenv trust api --hash 9f3a1c4e7b2d5a60c81e3f7a2b94d0e6a1c5f8b37d2e4a96b0c3d7e1f5a8b2c4 --confirm
 fd runenv start card-1 --confirm
 fd runenv stop card-1
 ```
@@ -30,7 +30,7 @@ recusado com saída `1`.
 
 `watch` imprime a execução de cada cartão a cada mudança, uma linha para cada, até Ctrl-C.
 
-`trust <projeto> --hash <hash> --confirm` deixa o host executar os comandos do `run.yaml` do projeto. Passe o hash
+`trust <projeto> --hash <hash> --confirm` deixa o host executar os comandos do `run.yaml` do projeto. Passe o hash inteiro, de 64 caracteres,
 que o `config` imprimiu depois de você ler o arquivo: se o arquivo mudou desde então, o host recusa e nada é aceito.
 Imprime o arquivo como o `config`. `start <cartão> --confirm` executa a preparação e os processos do cartão e imprime
 a execução como o `get`. Os dois exigem `--confirm`, porque fazem o host executar comandos. `stop <cartão>` os

@@ -23,6 +23,8 @@ export function readRunenv(args: CliArgs, reader: ArgReader): void {
     args.runenvTarget = operand(reader, "the card");
 }
 
+const FULL_HASH = 64;
+
 /** What is wrong with the runenv flags, or undefined: `--hash` and `--confirm` each belong to their verbs. */
 export function runenvProblem(args: CliArgs): string | undefined {
   if (args.command !== "runenv") return undefined;
@@ -33,6 +35,9 @@ export function runenvProblem(args: CliArgs): string | undefined {
   if (args.hash !== undefined && !trust)
     return "--hash: this flag only applies to flightdeckd runenv trust";
   if (trust && args.hash === undefined) return "missing --hash";
+  // The daemon compares the whole sha256, so a prefix would always read as "the run.yaml changed".
+  if (trust && args.hash?.length !== FULL_HASH)
+    return "--hash: the 64 hex characters that runenv config prints";
   if (trust && args.confirm === undefined)
     return "runenv trust lets the project's run.yaml run: pass --confirm";
   if (start && args.confirm === undefined)
