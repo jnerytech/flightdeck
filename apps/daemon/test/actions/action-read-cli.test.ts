@@ -188,6 +188,32 @@ describe("flightdeckd action list --json and --plain (issue #3629)", () => {
     expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["no actions"] });
   });
 
+  test("what is wrong with the actions file is shown, not hidden behind an empty list", async () => {
+    const broken = {
+      actions: [],
+      errors: ["actions.yaml: line 3 is not valid"],
+      issues: [{ path: "actions.0.run", code: "required" }],
+    };
+    const daemon = fakeDaemon({ ...OPEN, "actions.list": () => broken });
+    const json = await flightdeckd(["action", "list", "--json"], daemon.port);
+    const plain = await flightdeckd(["action", "list", "--plain"], daemon.port);
+    expect(printed(json.out)).toEqual({
+      actions: [],
+      errors: broken.errors,
+      issues: broken.issues,
+    });
+    expect(plain.out).toEqual(["no actions", "error: actions.yaml: line 3 is not valid"]);
+  });
+
+  test("an action with no description prints no empty field", async () => {
+    const daemon = fakeDaemon({
+      ...OPEN,
+      "actions.list": () => ({ actions: [action("quiet", { description: "" })], errors: [] }),
+    });
+    const run = await flightdeckd(["action", "list", "--plain"], daemon.port);
+    expect(run.out).toEqual(["quiet: trusted, approval always, hash hash-quiet"]);
+  });
+
   test("with no flag the list is today's raw JSON: only the trusted actions, name, description, approval, params", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(["action", "list", "--project", "p1"], daemon.port);
