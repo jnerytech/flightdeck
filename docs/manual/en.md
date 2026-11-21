@@ -116,6 +116,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd boardsync](en/flightdeckd-boardsync-commands.md#fd-boardsync)
 
+## flightdeckd commands: the review comments
+
+[Read the chapter.](en/flightdeckd-review-commands.md) Its sections:
+
+- [fd review](en/flightdeckd-review-commands.md#fd-review)
+
 ## flightdeckd commands: the run environment of a card
 
 [Read the chapter.](en/flightdeckd-runenv-commands.md) Its sections:

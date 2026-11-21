@@ -19,6 +19,7 @@ import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
+import { readReview } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readRunenv } from "./runenv-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
@@ -354,6 +355,7 @@ const HANDLERS: Record<string, Handler> = {
   ssh: readSsh,
   watch: readWatch,
   boardsync: readBoardsync,
+  review: readReview,
   runenv: readRunenv,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
