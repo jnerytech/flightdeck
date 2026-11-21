@@ -15,18 +15,19 @@ export interface RulesArgs {
   confirm?: boolean;
 }
 
-/** The first thing wrong with the arguments of `rules` or `autoapprove`, or undefined when there is none. */
-export function rulesProblem(args: RulesArgs): string | undefined {
-  if (args.command === "rules") {
-    if (args.action === "list")
-      return args.confirm
-        ? "--confirm: this flag only applies to flightdeckd rules remove"
-        : undefined;
+/** `rules list` takes no `--confirm`; `rules remove` cannot go without it. */
+function rulesCommandProblem(args: RulesArgs): string | undefined {
+  if (args.action === "list")
     return args.confirm
-      ? undefined
-      : `rules remove cannot be undone: pass --confirm to do it (the rule is ${args.rule ?? ""})`;
-  }
-  if (args.command !== "autoapprove") return undefined;
+      ? "--confirm: this flag only applies to flightdeckd rules remove"
+      : undefined;
+  return args.confirm
+    ? undefined
+    : `rules remove cannot be undone: pass --confirm to do it (the rule is ${args.rule ?? ""})`;
+}
+
+/** `autoapprove list` takes no `--confirm`; `autoapprove resume` needs its session and `--confirm`. */
+function autoapproveProblem(args: RulesArgs): string | undefined {
   if (args.action === "list")
     return args.confirm
       ? "--confirm: this flag only applies to flightdeckd autoapprove resume"
@@ -39,4 +40,11 @@ export function rulesProblem(args: RulesArgs): string | undefined {
   return args.confirm
     ? undefined
     : `autoapprove resume cannot be undone: pass --confirm to do it (the session is ${args.session})`;
+}
+
+/** The first thing wrong with the arguments of `rules` or `autoapprove`, or undefined when there is none. */
+export function rulesProblem(args: RulesArgs): string | undefined {
+  if (args.command === "rules") return rulesCommandProblem(args);
+  if (args.command === "autoapprove") return autoapproveProblem(args);
+  return undefined;
 }

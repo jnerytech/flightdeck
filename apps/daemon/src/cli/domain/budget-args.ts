@@ -95,9 +95,8 @@ function budgetFlags(args: BudgetArgs): Array<[string, unknown, readonly string[
   ];
 }
 
-/** What is wrong with the flags of `budget`: a flag of another verb, or one the verb cannot do without. */
-export function budgetProblem(args: BudgetArgs): string | undefined {
-  const budget = args.command === "budget";
+/** A flag of another verb, or `--id` on a verb that takes none. */
+function budgetStrayFlag(args: BudgetArgs, budget: boolean): string | undefined {
   for (const [flag, value, verbs, text] of budgetFlags(args)) {
     if (value === undefined) continue;
     // `--scope` is `persona`'s and `--project` the board's: only `budget` is checked here.
@@ -107,7 +106,11 @@ export function budgetProblem(args: BudgetArgs): string | undefined {
   }
   if (args.budgetId !== undefined && !(budget && args.action !== "list" && args.action !== "watch"))
     return "--id: this flag only applies to flightdeckd budget set and set-quota";
-  if (!budget || (args.action !== "set" && args.action !== "set-quota")) return undefined;
+  return undefined;
+}
+
+/** What `budget set` and `set-quota` cannot do without: a scope, its project, the limit and the action. */
+function budgetSetMissing(args: BudgetArgs): string | undefined {
   if (args.scope === undefined) return "missing --scope";
   if (args.scope === "all") return "--scope: host or project";
   if (args.scope === "project" && args.project === undefined)
@@ -123,4 +126,13 @@ export function budgetProblem(args: BudgetArgs): string | undefined {
   }
   if (args.budgetAction === undefined) return "missing --action";
   return undefined;
+}
+
+/** What is wrong with the flags of `budget`: a flag of another verb, or one the verb cannot do without. */
+export function budgetProblem(args: BudgetArgs): string | undefined {
+  const budget = args.command === "budget";
+  const stray = budgetStrayFlag(args, budget);
+  if (stray !== undefined) return stray;
+  if (!budget || (args.action !== "set" && args.action !== "set-quota")) return undefined;
+  return budgetSetMissing(args);
 }
