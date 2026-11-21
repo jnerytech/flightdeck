@@ -16,6 +16,7 @@ import {
   FEATURE_APPROVAL_PROOF,
   FEATURE_APPROVAL_RESUME,
   FEATURE_APPROVAL_ROOTS,
+  FEATURE_APPROVAL_SNIPPETS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
   type PermissionUpdate,
@@ -1150,6 +1151,71 @@ describe("approval: the proof of a command that moves code or trust (#3453)", ()
       t("approvalDevices.noKeyHere"),
     );
   });
+  const SNIPPETS_HOST = [FEATURE_APPROVAL_PROOF, "snippets", FEATURE_APPROVAL_SNIPPETS];
+  const HASH = "ab".repeat(32);
+  const SNIPPET_TRUST = { projectPath: "/work/api", hash: HASH };
+
+  test("trusting a snippet file on a host that checks it is signed over the folder and the hash, in the dialog of that command (#3647)", async () => {
+    const { slice, log, keyLog } = approval({ features: SNIPPETS_HOST });
+    const made = await slice.snippetTrustPayload("h", "/work/api", HASH);
+    const digest = commandDigest(SNIPPET_TRUST);
+    const message = commandMessage({
+      keyId: "key-this",
+      daemonId: "daemon-1",
+      command: "snippets.trust",
+      nonce: "nonce-1",
+      payloadHash: sha(digest),
+    });
+    expect(made).toEqual({
+      kind: "payload",
+      payload: {
+        ...SNIPPET_TRUST,
+        proof: { keyId: "key-this", nonce: "nonce-1", signature: `sig:${message}` },
+      },
+    });
+    expect(log[1]?.payload).toEqual({ purpose: "command", command: "snippets.trust" });
+    expect(keyLog.find((k) => k.op === "sign")?.args).toEqual(["daemon-1", message, "en", digest]);
+    expect(
+      Command.safeParse({
+        id: "1",
+        type: "snippets.trust",
+        payload: made.kind === "payload" ? made.payload : {},
+      }).success,
+    ).toBe(true);
+  });
+
+  test("a host that does not announce the snippets proof, or has no device enrolled, gets the plain payload and is asked for no signature", async () => {
+    for (const setup of [
+      approval({ features: [FEATURE_APPROVAL_PROOF, "snippets"] }),
+      approval({ features: SNIPPETS_HOST, list: { protectionOff: true, keys: [] } }),
+      approval({ features: SNIPPETS_HOST, keys: "none" }),
+    ]) {
+      expect(await setup.slice.snippetTrustPayload("h", "/work/api", HASH)).toEqual({
+        kind: "payload",
+        payload: SNIPPET_TRUST,
+      });
+      expect(setup.keyLog.filter((k) => k.op === "sign")).toEqual([]);
+    }
+  });
+
+  test("a no in the dialog of a snippet trust sends nothing, and a device with no key for this host is told so", async () => {
+    const declined = approval({ features: SNIPPETS_HOST, signFails: "declined" });
+    expect(await declined.slice.snippetTrustPayload("h", "/work/api", HASH)).toEqual({
+      kind: "declined",
+    });
+    const keyless = approval({ features: SNIPPETS_HOST, local: null });
+    await expect(keyless.slice.snippetTrustPayload("h", "/work/api", HASH)).rejects.toThrow(
+      t("approvalDevices.noKeyHere"),
+    );
+  });
+
+  test("a host with snippets that checks proofs but not a snippet trust is one the app says so of; a host with no snippets is not", () => {
+    const unchecked = (features: string[]) => approval({ features }).slice.uncheckedCommands("h");
+    expect(unchecked([...COMMAND_HOST, "snippets"])).toContain("snippets");
+    expect(unchecked(SNIPPETS_HOST)).not.toContain("snippets");
+    expect(unchecked(COMMAND_HOST)).not.toContain("snippets");
+  });
+
   const RESUME_HOST = [FEATURE_APPROVAL_PROOF, FEATURE_APPROVAL_RESUME];
   const RESUME = { sessionKey: "card:c1", confirm: true };
 
