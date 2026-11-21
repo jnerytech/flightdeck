@@ -38,6 +38,23 @@ export type ProjectCliArgs =
   | (Printed & { action: "detect-provider"; project: string })
   | (Printed & { action: "add"; path: string; fields: ProjectFields })
   | (Printed & { action: "update"; project: string; fields: ProjectFields })
+  | (Printed & {
+      action: "harness-apply";
+      path: string;
+      parts: HarnessPart[];
+      /** The saved `harness-preview --json` answer whose digests the apply sends back. */
+      digestsFile: string;
+      template?: string;
+      reformat?: true;
+      confirm: true;
+    })
+  | (Printed & {
+      action: "harness-commit";
+      path: string;
+      /** The saved `harness-apply --json` answer: the digests of the files it wrote. */
+      digestsFile: string;
+      confirm: true;
+    })
   | (Printed & { action: "harness-draft"; path: string })
   | (Printed & { action: "harness-export"; path: string; id: string; title: string })
   | (Printed & { action: "trust-state"; paths: string[] })

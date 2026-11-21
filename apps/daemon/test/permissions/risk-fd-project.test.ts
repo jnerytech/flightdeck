@@ -4,7 +4,32 @@ import { notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 const REASON =
   "sets what a project runs or allows without the person confirming it in the app: its setup script, its auto-approval, or the instructions it exports to the shared store, and a drafted CLAUDE.md is a model call (flightdeckd project add, update, harness-draft or harness-export)";
 
+const SETUP_REASON =
+  "writes hooks, deny rules and instructions into a project's own files, or commits them on a new branch, which the app has the person read and confirm first; a typed --confirm is not the person (flightdeckd project harness-apply or harness-commit)";
+
 describe("risk rules: a session changing a project's setup from its shell (#3515)", () => {
+  test("project harness-apply and harness-commit are high, however the CLI is reached", () => {
+    expect(
+      wrongReasons([
+        [
+          "fd project harness-apply /srv/api --parts hooks --digests p.json --confirm",
+          SETUP_REASON,
+        ],
+        ["flightdeckd project harness-commit /srv/api --digests a.json --confirm", SETUP_REASON],
+        [
+          "fd --json project harness-apply /srv/api --parts claudeMd --digests p.json",
+          SETUP_REASON,
+        ],
+        ["bunx flightdeckd project harness-commit /srv/api --digests a.json", SETUP_REASON],
+        [
+          "fd project harness-preview /srv/api --parts hooks && fd project harness-apply /srv/api",
+          SETUP_REASON,
+        ],
+        ['bash -c "fd project harness-apply /srv/api --parts hooks"', SETUP_REASON],
+      ]),
+    ).toEqual([]);
+  });
+
   test("project add, update, harness-draft and harness-export are high, however the CLI is reached", () => {
     expect(
       wrongReasons([

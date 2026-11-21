@@ -88,6 +88,9 @@ export function runProjectCli(
         });
         return args.json ? json(answer) : said(...exportLines(answer));
       }
+      if (args.action === "harness-apply" || args.action === "harness-commit") {
+        return said("not implemented");
+      }
       if (args.action === "trust-state") {
         const answer = await daemon.call("project.trust.state", { paths: args.paths.map(folder) });
         return args.json ? json(answer) : said(...trustLines(answer));
