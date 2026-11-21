@@ -133,6 +133,10 @@ quando a sessão está ocupada e o texto espera o fim do turno. Com `--json` imp
 `queued`. Se o daemon cair depois que o texto saiu, a saída é `2` e o texto pode ou não ter entrado:
 olhe a sessão antes de enviar de novo.
 
+O shell de uma sessão do próprio Flightdeck pergunta à pessoa antes: a sessão que recebe o texto o lê como se fosse da
+pessoa, então `fd send` no shell de uma sessão é um comando de risco alto. As sessões conversam entre si com
+`fd message send`.
+
 ## fd approvers
 
 ```sh

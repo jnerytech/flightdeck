@@ -181,6 +181,17 @@ function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string
 const answersARequest = (prog: string, args: string[]) =>
   runsFlightdeckVerb(prog, args, ["approve", "deny"]);
 
+/**
+ * `flightdeckd send <session> <text>` puts the text into the session as the input box does: the session reads it
+ * as the person, it may run with `bypassPermissions`, the card's check loop counts it as the person's turn, and
+ * `--host` reaches other hosts (#3762). A session that must talk to another has `message send`, under the rules of
+ * which sessions may message each other. `send` is a common word, so it counts only as the command's own first
+ * word, not anywhere in a runner's text (`review send`, `message send`). Like `approve`, this reads the command
+ * text: the daemon cannot tell who holds the shell.
+ */
+const writesAsThePerson = (prog: string, args: string[]) =>
+  runsFlightdeckWords(prog, args, ([first]) => first === "send");
+
 /** `approvers enroll|reset` decide which devices may approve (#3439): a session must not run them for the person. */
 const changesApprovers = (prog: string, args: string[]) =>
   runsFlightdeckVerb(prog, args, ["approvers"]);
@@ -403,6 +414,11 @@ const DANGEROUS: Array<{
   {
     when: answersARequest,
     reason: () => "answers a permission request (flightdeckd approve or deny)",
+  },
+  {
+    when: writesAsThePerson,
+    reason: () =>
+      "puts a text into a session as the person's own input, and steps the card's check loop aside (flightdeckd send)",
   },
   {
     when: changesApprovers,
