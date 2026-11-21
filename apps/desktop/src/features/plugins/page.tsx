@@ -57,7 +57,7 @@ function askingWords(asking: Asking, source: string, t: ReturnType<typeof useT>)
  * carry a mark.
  */
 /** The scope of an installed plugin: its name in the app's language, and what it means. */
-function ScopeBadge({ scope }: { scope: string }) {
+function ScopeBadge({ scope }: Readonly<{ scope: string }>) {
   const t = useT();
   const hint = scopeHint(t, scope);
   return (
