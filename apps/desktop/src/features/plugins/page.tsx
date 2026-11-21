@@ -23,6 +23,7 @@ import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/ui.ts";
 import { InstallDialog, type InstallSource } from "./install-dialog.tsx";
 import { InventoryView } from "./inventory-view.tsx";
+import { scopeHint, scopeName } from "./scope.ts";
 import { UpdateDialog } from "./update-dialog.tsx";
 
 const PLUGINSPAGE_KEYS = ["hosts"] as const;
@@ -198,7 +199,12 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
                           {plugin.name}
                         </span>
                         <Badge variant="secondary">{plugin.version}</Badge>
-                        <Badge variant="outline">{plugin.scope}</Badge>
+                        <Badge variant="outline" title={scopeHint(t, plugin.scope)}>
+                          {scopeName(t, plugin.scope)}
+                          {scopeHint(t, plugin.scope) && (
+                            <span className="sr-only">: {scopeHint(t, plugin.scope)}</span>
+                          )}
+                        </Badge>
                         <Badge variant="outline">
                           {plugin.enabled ? t("pluginsUi.enabled") : t("pluginsUi.disabled")}
                         </Badge>
