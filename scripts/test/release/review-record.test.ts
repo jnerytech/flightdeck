@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { parseReviewLog, type ReviewGit, reviewProblem } from "../../lib/pr/review-record.ts";
+import { realTempDir } from "../temp-dir.ts";
 
 describe("review record (#1707)", () => {
   test("reads the sha each value of a review trailer names, from the commits of the branch log", () => {
@@ -114,5 +117,61 @@ describe("review record: a merge of the base brings no new review (#3731)", () =
       await reviewProblem("b", "main", noBase.git),
       await reviewProblem("b", "main", noMerge.git),
     ]).toEqual([expect.stringContaining("missing"), expect.stringContaining("missing")]);
+  });
+});
+
+describe("review record: a real repository (#3731)", () => {
+  const run = (cwd: string, ...args: string[]) => {
+    const proc = Bun.spawnSync(["git", ...args], { cwd, stderr: "pipe" });
+    if (proc.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${proc.stderr.toString()}`);
+    return proc.stdout.toString().trim();
+  };
+  const realGit =
+    (cwd: string): ReviewGit =>
+    async (args) => {
+      const proc = Bun.spawnSync(["git", ...args], { cwd, stderr: "pipe" });
+      return { code: proc.exitCode ?? 1, stdout: proc.stdout.toString() };
+    };
+
+  test("a branch reviewed, then merged with a main that moved on, keeps its record; one more branch edit loses it", async () => {
+    const root = realTempDir("fd-review-record-");
+    const put = (file: string, text: string, message: string) => {
+      writeFileSync(join(root, file), text);
+      run(root, "add", file);
+      run(root, "commit", "-q", "-m", message);
+    };
+    run(root, "init", "-q", "-b", "main");
+    for (const [key, value] of [
+      ["user.email", "t@t"],
+      ["user.name", "t"],
+      ["commit.gpgsign", "false"],
+    ] as const)
+      run(root, "config", key, value);
+    put("f.txt", "a\nb\nc\n", "base");
+    run(root, "checkout", "-q", "-b", "b");
+    put("f.txt", "a\nb\nc\nbranch\n", "branch");
+    const reviewed = run(root, "rev-parse", "--short=9", "HEAD");
+    run(
+      root,
+      "commit",
+      "-q",
+      "--allow-empty",
+      "-m",
+      "record",
+      "--trailer",
+      `Code-Review: ${reviewed} ok`,
+      "--trailer",
+      `Security-Review: ${reviewed} ok`,
+    );
+    run(root, "checkout", "-q", "main");
+    put("g.txt", "main moved\n", "main");
+    run(root, "update-ref", "refs/remotes/origin/main", "main");
+    run(root, "checkout", "-q", "b");
+    run(root, "merge", "-q", "--no-edit", "main");
+    run(root, "update-ref", "refs/remotes/origin/b", "b");
+    expect(await reviewProblem("b", "main", realGit(root))).toBeNull();
+    put("f.txt", "a\nb\nc\nbranch\nmore\n", "edit after the record");
+    run(root, "update-ref", "refs/remotes/origin/b", "b");
+    expect(await reviewProblem("b", "main", realGit(root))).toContain("missing");
   });
 });
