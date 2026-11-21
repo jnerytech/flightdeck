@@ -108,6 +108,9 @@ export function BudgetsSection(
   // last 30 days and those a budget already uses.
   useEffect(() => {
     let live = true;
+    setLookupFailed(null);
+    setDone(null);
+    setFocus(null);
     void (async () => {
       let result: HostResult<{ byProject: { projectKey: string }[] }>;
       try {
@@ -137,7 +140,11 @@ export function BudgetsSection(
   useEffect(() => {
     if (!focus) return;
     const target = focusTarget(rootRef.current, focus, visible);
-    if (!target) return;
+    if (!target) {
+      // A row the list does not show will not appear later: drop the request. A removed row may still be leaving.
+      if (focus.kind !== "gone") setFocus(null);
+      return;
+    }
     const timer = setTimeout(() => {
       target.focus();
       setFocus(null);
@@ -432,7 +439,8 @@ export function BudgetsSection(
             setRemoving(null);
             if (!(await store.budgets.remove(hostId, gone))) return;
             const at = visible.findIndex((b) => b.id === gone.id);
-            const next = visible[at + 1] ?? visible[at - 1];
+            // A budget the list does not show (the client changed meanwhile) leaves the focus where it is.
+            const next = at < 0 ? undefined : (visible[at + 1] ?? visible[at - 1]);
             setDone(t("budgetsUi.done.removed", { label: budgetLabel(gone, t) }));
             setFocus({ kind: "gone", id: gone.id, next: next?.id ?? null });
           }}
