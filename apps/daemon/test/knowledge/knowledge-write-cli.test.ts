@@ -202,6 +202,14 @@ describe("flightdeckd knowledge create (issue #3623)", () => {
       1,
       expect.stringContaining("cannot read the body file"),
     ]);
+    const folder = await flightdeckd(
+      ["knowledge", "create", "api", "adr", "T", "--body-file", dir],
+      daemon.port,
+    );
+    expect([folder.code, folder.err.join("\n")]).toEqual([
+      1,
+      expect.stringContaining("cannot read the body file"),
+    ]);
     const big = join(dir, "big.md");
     writeFileSync(big, "x".repeat(100_001));
     const long = await flightdeckd(
@@ -266,7 +274,23 @@ describe("flightdeckd knowledge write words and flags (issue #3623)", () => {
     ).toContain("--status");
   });
 
+  test("set-status takes the full hash list printed, not a prefix of it", () => {
+    expect(
+      refused([
+        "knowledge",
+        "set-status",
+        "api",
+        "a.md",
+        "--status",
+        "valid",
+        "--hash",
+        "b".repeat(12),
+      ]),
+    ).toContain("64");
+  });
+
   test("create needs a kind the templates have and a title", () => {
+    expect(refused(["knowledge", "create", "api", "adr", ""])).toContain("title");
     expect(refused(["knowledge", "create", "api"])).toContain("missing the kind");
     expect(refused(["knowledge", "create", "api", "spec", "T"])).toContain("adr, rfc, prd");
     expect(refused(["knowledge", "create", "api", "adr"])).toContain("missing the title");
