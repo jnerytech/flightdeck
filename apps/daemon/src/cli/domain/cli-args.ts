@@ -154,6 +154,8 @@ export interface CliArgs {
     | "reprice"
     | "dismiss-unblocked"
     | "pr-comments"
+    | "pr-comments-send"
+    | "create-card"
     | "search"
     | "tool"
     | "decisions"
@@ -298,11 +300,13 @@ export interface CliArgs {
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
   memoryName?: string;
-  /** `worktree list [<project>]`: the project, by name or id. */
+  /** `worktree list [<project>]` and `worktree remove <project> <path>...`: the project, by name or id. */
   worktreeProject?: string;
+  /** `worktree remove <project> <path>...`: the folders to remove. */
+  worktreePaths?: string[];
   /** `issues list|get <project>`: the project, by name or id. */
   issuesProject?: string;
-  /** `issues get <project> <id>`: the issue's id. */
+  /** `issues get <project> <id>` and `issues create-card <project> <ref>`: the issue's id or reference. */
   issuesId?: string;
   /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
   changesOperand?: string;
@@ -432,6 +436,8 @@ export interface CliArgs {
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
   cardId?: string;
   cardTitle?: string;
+  /** `card pr-comments-send <card> <comment-id>...`: the comments to send to the card's session. */
+  commentIds?: string[];
   /** `card move <card> <column> [--position n] [--force]`, `card complete|discard|delete --confirm`, `card update --estimate ... --blocked-by ...`. */
   column?: string;
   /** `--title`, until the end of the arguments says whether the action takes it. */

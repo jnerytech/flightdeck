@@ -1,5 +1,5 @@
 /** Issue #3702: what `flightdeckd worktree list` says, as lines. Paths and names come from disk and the board: the printer cleans them. */
-import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
+import type { WorktreeItem, WorktreeRemoveResult, WorktreesResult } from "@flightdeck/protocol";
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 
@@ -41,4 +41,36 @@ export function worktreeLines(result: WorktreesResult): string[] {
         `disk ${names.get(disk.projectId) ?? disk.projectId}: ${sizeText(disk.freeBytes)} free of ${sizeText(disk.totalBytes)}`,
     ),
   ];
+}
+
+/** What a removal did, one line per path: the ones that went, with what they freed and the branch that stayed, then the ones the daemon kept and why. */
+export function removeLines(result: WorktreeRemoveResult): string[] {
+  return [
+    ...result.removed.map((one) =>
+      [
+        `removed ${one.path}`,
+        one.freedBytes === null ? "size unknown" : `freed ${sizeText(one.freedBytes)}`,
+        ...(one.branchKept ? ["branch kept"] : []),
+      ].join("  "),
+    ),
+    ...result.kept.map(
+      (one) => `kept ${one.path}  ${one.detail ? `${one.reason}: ${one.detail}` : one.reason}`,
+    ),
+  ];
+}
+
+/** `--json` of a removal with every key of every entry: the ones the daemon left out are `null`. */
+export function removeJson(result: WorktreeRemoveResult) {
+  return {
+    removed: result.removed.map((one) => ({
+      path: one.path,
+      freedBytes: one.freedBytes,
+      branchKept: one.branchKept ?? null,
+    })),
+    kept: result.kept.map((one) => ({
+      path: one.path,
+      reason: one.reason,
+      detail: one.detail ?? null,
+    })),
+  };
 }

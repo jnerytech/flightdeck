@@ -115,6 +115,7 @@ export const CONFIRM_OWNERS = [
   "snippet",
   "ssh",
   "team",
+  "worktree",
 ];
 
 export function refuseOutside(flag: string, commands: readonly string[], command: string): void {

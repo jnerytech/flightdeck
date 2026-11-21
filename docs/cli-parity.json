@@ -230,7 +230,7 @@
   "idle.subscribe": {
     "cli": "message"
   },
-  "issues.createCard": {},
+  "issues.createCard": { "cli": "issues" },
   "issues.get": { "cli": "issues" },
   "issues.list": { "cli": "issues" },
   "knowledge.create": { "cli": "knowledge" },
@@ -328,7 +328,7 @@
   "plugins.uninstall": { "cli": "plugins" },
   "plugins.update": { "cli": "plugins" },
   "pr.comments": { "cli": "card" },
-  "pr.comments.send": {},
+  "pr.comments.send": { "cli": "card" },
   "project.add": { "cli": "project" },
   "project.detectProvider": { "cli": "project" },
   "project.harness.apply": { "cli": "project" },
@@ -615,5 +615,5 @@
   "workflow.trust": {},
   "workflow.validate": { "cli": "workflow" },
   "worktree.list": { "cli": "worktree" },
-  "worktree.remove": {}
+  "worktree.remove": { "cli": "worktree" }
 }

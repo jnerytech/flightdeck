@@ -19,6 +19,7 @@ export const VERB_NOUNS = new Set([
   "external",
   "file",
   "history",
+  "issues",
   "knowledge",
   "mcp",
   "memory",
@@ -36,4 +37,5 @@ export const VERB_NOUNS = new Set([
   "ssh",
   "team",
   "watch",
+  "worktree",
 ]);
