@@ -34,6 +34,7 @@ export interface CliArgs {
     | "help"
     | "askpass"
     | "mcp"
+    | "knowledge"
     | "statusline"
     | "action"
     | "snippet"
@@ -76,6 +77,8 @@ export interface CliArgs {
   action?:
     | ServiceAction
     | "reindex"
+    | "index"
+    | "feed"
     | "enable"
     | "disable"
     | "enroll"
@@ -233,6 +236,8 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
+  /** `knowledge list|index|feed <project>` (#3623): a project's name or id, or its folder. */
+  knowledgeProject?: string;
   /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
   mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */
