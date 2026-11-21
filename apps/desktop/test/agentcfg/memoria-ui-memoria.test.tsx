@@ -148,6 +148,7 @@ describe("memoria-ui: a memória do projeto", () => {
       `${ROLE}Minha edição.\n`,
     );
     await click("Recarregar");
+    await click("Descartar");
     expect((screen.queryByLabelText("Conteúdo de user_role.md") as HTMLTextAreaElement).value).toBe(
       `${ROLE}Mudou por fora.\n`,
     );
@@ -257,7 +258,9 @@ describe("memoria-ui: o nome de uma memória nova (#3708)", () => {
     await open(SEEDED);
     await settle(() => names().length === 3);
     await click("Nova memória");
-    expect(screen.queryByText("Letras, números, espaço, _ e -. O .md é acrescentado.")).not.toBeNull();
+    expect(
+      screen.queryByText("Letras, números, espaço, _ e -. O .md é acrescentado."),
+    ).not.toBeNull();
     const create = () => screen.queryByRole("button", { name: "Criar" }) as HTMLButtonElement;
     await fill("Nome do arquivo", "a/b");
     expect(screen.queryByText("Use só letras, números, espaço, _ e -.")).not.toBeNull();
