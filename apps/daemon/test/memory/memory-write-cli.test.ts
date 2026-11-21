@@ -298,6 +298,19 @@ describe("flightdeckd memory write and delete arguments (issue #3618)", () => {
       expect(() => parseArgs(["memory", action, "api"])).toThrow("the file name");
   });
 
+  test("--kind and --path, which are agentcfg's, stay refused on every memory verb", () => {
+    for (const flag of [
+      ["--kind", "x"],
+      ["--path", "x"],
+    ])
+      for (const verb of [
+        ["list", "api"],
+        ["read", "api", "tdd.md"],
+        ["suggest", "api"],
+      ])
+        expect(() => parseArgs(["memory", ...verb, ...flag])).toThrow("agentcfg");
+  });
+
   test("--confirm, --file, --expected-hash and --new are refused on a verb that does not write", () => {
     for (const flag of [["--confirm"], ["--file", "x"], ["--expected-hash", HASH_A], ["--new"]])
       for (const verb of [
