@@ -65,6 +65,15 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 - [fd memory](flightdeckd-memory-commands.md#fd-memory)
 - [Changing a note](flightdeckd-memory-commands.md#changing-a-note)
 
+## flightdeckd commands: the log, the releases, the alerts and the activity of a host
+
+[Read the chapter.](flightdeckd-feed-commands.md) Its sections:
+
+- [fd logs](flightdeckd-feed-commands.md#fd-logs)
+- [fd releases](flightdeckd-feed-commands.md#fd-releases)
+- [fd alert](flightdeckd-feed-commands.md#fd-alert)
+- [fd activity](flightdeckd-feed-commands.md#fd-activity)
+
 ## flightdeckd commands: the run environment of a card
 
 [Read the chapter.](flightdeckd-runenv-commands.md) Its sections:

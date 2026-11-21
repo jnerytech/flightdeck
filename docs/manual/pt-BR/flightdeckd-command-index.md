@@ -65,6 +65,15 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 - [fd memory](flightdeckd-memory-commands.md#fd-memory)
 - [Mudar uma nota](flightdeckd-memory-commands.md#mudar-uma-nota)
 
+## Comandos do flightdeckd: o log, os releases, os alertas e a atividade de um host
+
+[Ler o capítulo.](flightdeckd-feed-commands.md) Suas seções:
+
+- [fd logs](flightdeckd-feed-commands.md#fd-logs)
+- [fd releases](flightdeckd-feed-commands.md#fd-releases)
+- [fd alert](flightdeckd-feed-commands.md#fd-alert)
+- [fd activity](flightdeckd-feed-commands.md#fd-activity)
+
 ## Comandos do flightdeckd: o ambiente de execução de um cartão
 
 [Ler o capítulo.](flightdeckd-runenv-commands.md) Suas seções:
