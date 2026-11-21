@@ -53,7 +53,7 @@ fd snippet import-history --reveal --json
 
 - `render <nome ou id>` imprime o texto que o snippet geraria, com cada `--value campo=texto` preenchido. Não cola nem
   roda nada. Um campo sem valor é recusado com o motivo do daemon e saída `1`. `--project-path` soma os snippets desse
-  projeto à busca pelo nome. Com `--json` imprime `{"id", "name", "text", "fields"}`.
+  projeto à busca pelo nome. Controles de terminal e tabulações no texto saem como espaços; `--json` (`{"id", "name", "text", "fields"}`) mantém o texto exato, então use-o para encadear um comando.
 - `parse <arquivo>` envia ao daemon o texto de uma lista YAML ou JSON e imprime uma linha por snippet lido (nome, tipo e
   etiquetas); `-` lê o texto do stdin. Não guarda nada. Uma entrada que o daemon deixou de fora aparece no stderr; um
   texto sem nenhum snippet sai com `1`. Um texto acima de 1000000 caracteres é recusado antes de ser enviado.

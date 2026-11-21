@@ -13,7 +13,14 @@ export function parseLines(snippets: SnippetInput[]): string[] {
 
 /** One line per candidate, or a sentence when there is none; a command the secret scan hid shows what it found, never the value. */
 export function historyLines(result: SnippetHistoryResult): string[] {
-  if (result.candidates.length === 0) return ["no shell history found"];
+  if (result.candidates.length === 0) {
+    const read = result.sources.filter((s) => s.found).map((s) => s.shell);
+    return [
+      read.length
+        ? `no commands to import from the ${read.join(", ")} history`
+        : "no shell history found",
+    ];
+  }
   return result.candidates.map((c) => {
     const what =
       c.command === null

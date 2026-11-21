@@ -48,6 +48,8 @@ export function snippetProblem(args: CliArgs): string | undefined {
   if (args.snippetReveal !== undefined && action !== "import-history")
     return only("--reveal", "flightdeckd snippet import-history");
   if (!snippet) return undefined;
+  if (args.projectPath !== undefined && !["list", "get", "render"].includes(action))
+    return only("--project-path", "flightdeckd snippet list, get and render");
   const newVerbs = "flightdeckd snippet render, parse and import-history";
   if (args.host !== undefined && !NEW_VERBS.includes(action)) return only("--host", newVerbs);
   if (args.json && !NEW_VERBS.includes(action)) return only("--json", newVerbs);
