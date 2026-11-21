@@ -128,6 +128,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd mcp](pt-BR/flightdeckd-mcp-commands.md#fd-mcp)
 
+## Comandos do flightdeckd: a biblioteca de documentos de um projeto
+
+[Ler o capítulo.](pt-BR/flightdeckd-knowledge-commands.md) Suas seções:
+
+- [fd knowledge](pt-BR/flightdeckd-knowledge-commands.md#fd-knowledge)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)

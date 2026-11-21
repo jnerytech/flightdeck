@@ -135,6 +135,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd mcp](en/flightdeckd-mcp-commands.md#fd-mcp)
 
+## flightdeckd commands: the document library of a project
+
+[Read the chapter.](en/flightdeckd-knowledge-commands.md) Its sections:
+
+- [fd knowledge](en/flightdeckd-knowledge-commands.md#fd-knowledge)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)
