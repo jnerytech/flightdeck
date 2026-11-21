@@ -3,6 +3,7 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
+import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
@@ -357,6 +358,7 @@ const HANDLERS: Record<string, Handler> = {
   ssh: readSsh,
   watch: readWatch,
   terminal: readTerminal,
+  agentcfg: readAgentcfg,
   requests: (args) => {
     startCommand(args, "requests");
   },
@@ -582,6 +584,7 @@ const HANDLERS: Record<string, Handler> = {
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
   ...PROJECT_FLAGS,
+  ...AGENTCFG_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -738,7 +741,9 @@ function refuseCardFlags(args: CliArgs): void {
     // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`' and `project harness-apply`'s, which check their own flags below.
     if (
       flag === "--confirm" &&
-      ["rules", "autoapprove", "team", "costs", "plugins", "ssh", "project"].includes(args.command)
+      ["rules", "autoapprove", "team", "costs", "plugins", "ssh", "project", "agentcfg"].includes(
+        args.command,
+      )
     )
       continue;
     if (args.command !== "card")
@@ -776,6 +781,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     pluginsProblem(args) ??
     sshProblem(args) ??
     terminalProblem(args) ??
+    agentcfgProblem(args) ??
     watchProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
