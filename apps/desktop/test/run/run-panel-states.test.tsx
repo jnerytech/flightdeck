@@ -130,4 +130,33 @@ describe("the run panel tells what happened to each process and what was pressed
     expect(screen.queryByRole("status")?.textContent).toBe("Running");
     expect(screen.queryByRole("alert") !== null).toBe(false);
   });
+
+  test("when the host reports the run before it answers, the other button starts fresh, not busy", async () => {
+    const { store } = await panel("en", run({}));
+    await click("Run");
+    await act(async () => store.runEnv.updated("h", run({ status: "running" })));
+    expect(screen.queryByRole("button", { name: "Stop" })?.getAttribute("aria-busy")).not.toBe(
+      "true",
+    );
+    expect(screen.queryByRole("button", { name: "Stop" })?.hasAttribute("disabled")).toBe(false);
+  });
+
+  test("a process the person stopped is not shown as a crash, but a crash after the next Run is", async () => {
+    const { store, answers } = await panel(
+      "en",
+      run({ status: "running", processes: [proc({ status: "running", exitCode: null })] }),
+    );
+    await click("Stop");
+    await act(async () => answers[0]?.());
+    await act(async () =>
+      store.runEnv.updated("h", run({ status: "ended", processes: [proc({ exitCode: 137 })] })),
+    );
+    const cls = () => screen.queryByText("ended (code 137)")?.className ?? "";
+    expect(cls().includes("text-status-error")).toBe(false);
+    await click("Run");
+    await act(async () =>
+      store.runEnv.updated("h", run({ status: "ended", processes: [proc({ exitCode: 137 })] })),
+    );
+    expect(cls().includes("text-status-error")).toBe(true);
+  });
 });
