@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { projectCliArgs } from "../../src/cli/domain/project-args.ts";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { type ProjectCliArgs, runProjectCli } from "../../src/projects/index.ts";
 import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 
@@ -18,7 +18,7 @@ afterEach(async () => {
 
 /** A saved answer on disk, as the person keeps it between two verbs. */
 function saved(answer: unknown, raw?: string): string {
-  const folder = mkdtempSync(join(tmpdir(), "harness-cli-"));
+  const folder = tempDir("harness-cli-");
   folders.push(folder);
   const file = join(folder, "answer.json");
   writeFileSync(file, raw ?? JSON.stringify(answer));
@@ -305,7 +305,7 @@ function parsed(argv: string[]): unknown {
 /** What the runner would take, or what the parser refused with. */
 function runnerArgs(argv: string[]): unknown {
   try {
-    return runnerArgs(argv);
+    return projectCliArgs(parseArgs(argv));
   } catch (error) {
     return { refusedWith: firstLine(error) };
   }

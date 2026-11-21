@@ -165,7 +165,9 @@ export interface CliArgs {
     | "harness-preview"
     | "detect-provider"
     | "harness-draft"
-    | "harness-export";
+    | "harness-export"
+    | "harness-apply"
+    | "harness-commit";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -371,6 +373,9 @@ export interface CliArgs {
   projectPaths?: string[];
   projectParts?: string[];
   projectTemplate?: string;
+  /** `project harness-apply|harness-commit --digests <file> [--reformat]` (#3515). */
+  projectDigests?: string;
+  projectReformat?: true;
   /** `project update|detect-provider <name or id>`. */
   projectRef?: string;
   /** Every word of `project <verb>` before the first flag, whichever verb takes it as what. */

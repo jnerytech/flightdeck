@@ -2,16 +2,22 @@
  * Issue #3515: what `flightdeckd project trust-state|stack|trust-inspect|harness-preview` say, as pure rules
  * over the daemon's answers. The daemon calls and the exit codes stay in `projects/project-cli.ts`.
  */
-import type {
-  HarnessDraft,
-  HarnessPreview,
-  HarnessStack,
-  HarnessTemplateInfo,
-  Project,
-  ProjectDetectResult,
-  ProjectLoad,
-  ProjectTrustStates,
+import {
+  HARNESS_DIGESTS_MAX,
+  type HarnessApplied,
+  HarnessApplied as HarnessAppliedAnswer,
+  type HarnessCommitted,
+  type HarnessDraft,
+  type HarnessPreview,
+  HarnessPreview as HarnessPreviewAnswer,
+  type HarnessStack,
+  type HarnessTemplateInfo,
+  type Project,
+  type ProjectDetectResult,
+  type ProjectLoad,
+  type ProjectTrustStates,
 } from "@flightdeck/protocol";
+import { parseJsonText } from "../../kernel/index.ts";
 
 /** The parts a harness preview may name: the protocol's own list. */
 export type HarnessPart = "claudeMd" | "hooks" | "skills" | "agents" | "permissions";
@@ -208,4 +214,70 @@ export const draftLines = (draft: HarnessDraft): string[] => [
 export const exportLines = (info: HarnessTemplateInfo): string[] => [
   `exported ${info.id}  ${info.title}  ${info.files.length} ${info.files.length === 1 ? "file" : "files"}, ${info.bytes} bytes`,
   ...info.files.map((file) => `  ${file}`),
+];
+
+/** The digests a request sends back, or what is wrong with the file they come from. */
+export type SavedDigests = { digests: Record<string, string> } | { problem: string };
+
+const parsedJson = (text: string): unknown => {
+  try {
+    return parseJsonText(text);
+  } catch {
+    return undefined;
+  }
+};
+
+const tooMany = (file: string, count: number): SavedDigests | undefined =>
+  count > HARNESS_DIGESTS_MAX
+    ? { problem: `${file}: ${count} digests, and a request takes at most ${HARNESS_DIGESTS_MAX}` }
+    : undefined;
+
+/**
+ * What `project harness-apply` sends back: each proposal's digest, by path, from a saved `harness-preview --json`
+ * answer. The host makes the proposals again and refuses when one differs, so the file never carries content.
+ */
+export function previewDigests(file: string, text: string): SavedDigests {
+  const json = parsedJson(text);
+  if (json === undefined)
+    return { problem: `${file}: not JSON; save the answer of fd project harness-preview --json` };
+  const answer = HarnessPreviewAnswer.safeParse(json);
+  if (!answer.success)
+    return { problem: `${file}: not the answer of fd project harness-preview --json` };
+  const { settings, files } = answer.data;
+  const digests = {
+    ...(settings ? { [settings.path]: settings.digest } : {}),
+    ...Object.fromEntries(files.map((item) => [item.path, item.digest])),
+  };
+  const count = Object.keys(digests).length;
+  if (count === 0) return { problem: `${file}: the preview has nothing to apply` };
+  return tooMany(file, count) ?? { digests };
+}
+
+/** What `project harness-commit` sends back: the digests of the files a saved `harness-apply --json` answer says it wrote. */
+export function appliedDigests(file: string, text: string): SavedDigests {
+  const json = parsedJson(text);
+  if (json === undefined)
+    return { problem: `${file}: not JSON; save the answer of fd project harness-apply --json` };
+  const answer = HarnessAppliedAnswer.safeParse(json);
+  const digests = answer.success ? answer.data.digests : undefined;
+  const count = Object.keys(digests ?? {}).length;
+  if (digests === undefined || count === 0)
+    return {
+      problem: `${file}: no digests in it; save the answer of fd project harness-apply --json (a host from before the commit verb does not give them)`,
+    };
+  return tooMany(file, count) ?? { digests };
+}
+
+const filesLine = (count: number) => `${count} ${count === 1 ? "file" : "files"}`;
+
+/** The files an apply wrote, in the order the host wrote them. */
+export const appliedLines = (answer: HarnessApplied): string[] => [
+  answer.written.length > 0 ? `wrote ${filesLine(answer.written.length)}` : "wrote nothing",
+  ...answer.written.map((file) => `  ${file}`),
+];
+
+/** The branch a commit made, its short hash, and the files it holds. */
+export const committedLines = (answer: HarnessCommitted): string[] => [
+  `committed ${filesLine(answer.files.length)} on ${answer.branch}  ${answer.commit.slice(0, 12)}`,
+  ...answer.files.map((file) => `  ${file}`),
 ];

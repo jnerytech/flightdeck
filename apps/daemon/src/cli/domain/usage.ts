@@ -27,6 +27,8 @@ export const USAGE = [
   "     fd project detect-provider <name or id> [--host <h>] [--json] [--config <file>]   (reads the origin remote and sets the PR provider when it is GitHub or Azure DevOps)",
   "     fd project harness-draft <folder> [--host <h>] [--json] [--config <file>]   (drafts a CLAUDE.md for the folder with a model; writes nothing)",
   "     fd project harness-export <folder> <template id> <title> [--host <h>] [--json] [--config <file>]   (saves the folder's agent setup as a template on this host)",
+  "     fd project harness-apply <folder> --parts claudeMd,hooks,skills,agents,permissions --digests <preview.json> [--template <id>] [--reformat] --confirm [--host <h>] [--json] [--config <file>]   (writes what a saved `harness-preview --json` showed; a host with a device enrolled wants the person in the app)",
+  "     fd project harness-commit <folder> --digests <applied.json> --confirm [--host <h>] [--json] [--config <file>]   (commits the files a saved `harness-apply --json` wrote on a new branch)",
   "     fd project trust-state <folder>... [--host <h>] [--json] [--config <file>]   (whether each folder is trusted to bring its own hooks, servers and settings, and through which record)",
   "     fd project stack <folder> [--host <h>] [--json] [--config <file>]   (what the folder is built with and the commands to test, lint, format and build it; read, never run)",
   "     fd project trust-inspect <folder> [--host <h>] [--json] [--config <file>]   (what the folder's own files would load into a session: hook commands, servers, programs, redirects, rules)",

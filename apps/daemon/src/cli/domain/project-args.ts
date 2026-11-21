@@ -13,6 +13,7 @@ import {
 import type { HarnessPart, ProjectCliArgs, ProjectFields } from "../../projects/index.ts";
 import { type ArgReader, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
+import { type Handler, setFlag } from "./flag-handlers.ts";
 import { USAGE } from "./usage.ts";
 import { oneOf } from "./vault-args.ts";
 
@@ -28,6 +29,9 @@ export interface ProjectArgs {
   personaName?: string;
   projectParts?: string[];
   projectTemplate?: string;
+  projectDigests?: string;
+  projectReformat?: true;
+  confirm?: true;
   host?: string;
 }
 
@@ -41,6 +45,8 @@ const ACTIONS = [
   "update",
   "harness-draft",
   "harness-export",
+  "harness-apply",
+  "harness-commit",
 ] as const;
 
 /** The verbs that name a project rather than a folder. */
@@ -77,10 +83,13 @@ const fieldsOf = (args: CliArgs): ProjectFields => {
 };
 
 /** The flags of `project harness-preview`, for the parser's table of flags. */
-export const PROJECT_FLAGS: Record<
-  string,
-  (args: CliArgs, reader: unknown, value: () => string) => void
-> = {
+export const PROJECT_FLAGS: Record<string, Handler> = {
+  "--digests": (args, _reader, value) => {
+    args.projectDigests = value();
+  },
+  "--reformat": setFlag((args) => {
+    args.projectReformat = true;
+  }),
   "--parts": (args, _reader, value) => {
     args.projectParts = value().split(",");
   },
@@ -123,8 +132,11 @@ export const PROJECT_FLAGS: Record<
 
 /** What each flag of `project` is for: the verbs that take it. `--name` is the persona's and the team's too. */
 const FLAG_VERBS: Array<[flag: string, typed: (args: ProjectArgs) => boolean, verbs: string[]]> = [
-  ["--parts", (a) => a.projectParts !== undefined, ["harness-preview"]],
-  ["--template", (a) => a.projectTemplate !== undefined, ["harness-preview"]],
+  ["--parts", (a) => a.projectParts !== undefined, ["harness-preview", "harness-apply"]],
+  ["--template", (a) => a.projectTemplate !== undefined, ["harness-preview", "harness-apply"]],
+  ["--digests", (a) => a.projectDigests !== undefined, ["harness-apply", "harness-commit"]],
+  ["--reformat", (a) => a.projectReformat !== undefined, ["harness-apply"]],
+  ["--confirm", (a) => a.confirm !== undefined, ["harness-apply", "harness-commit"]],
   ["--name", (a) => a.personaName !== undefined, ["add", "update"]],
   ["--base-branch", (a) => a.projectFields?.baseBranch !== undefined, ["add", "update"]],
   ["--pr-provider", (a) => a.projectFields?.prProvider !== undefined, ["add", "update"]],
@@ -144,7 +156,12 @@ const FOLDERS: Record<string, number> = {
   add: 1,
   "harness-draft": 1,
   "harness-export": 1,
+  "harness-apply": 1,
+  "harness-commit": 1,
 };
+
+/** The flags other commands read too: outside `project` they are theirs, so only a `project` verb checks them. */
+const SHARED_FLAGS = ["--name", "--confirm"];
 
 /** What is wrong with the operands of a `project` verb: a missing or extra folder, project, id or title. */
 function operandProblem(args: ProjectArgs): string | undefined {
@@ -177,16 +194,16 @@ function strayFlag(args: ProjectArgs, project: boolean): string | undefined {
     if (
       typed(args) &&
       !(project && verbs.includes(args.action ?? "")) &&
-      (project || flag !== "--name")
+      (project || !SHARED_FLAGS.includes(flag))
     )
       return `${flag}: this flag only applies to flightdeckd project ${verbs.join(" or ")}`;
   return undefined;
 }
 
-/** What is wrong with the parts and the template of `project harness-preview`. */
+/** What is wrong with the parts and the template of `project harness-preview` and `harness-apply`. */
 function previewProblem(args: ProjectArgs): string | undefined {
   const parts = args.projectParts ?? [];
-  if (parts.length === 0) return "project harness-preview: missing --parts <part,part>";
+  if (parts.length === 0) return `project ${args.action}: missing --parts <part,part>`;
   const valid = parts.every(
     (part, index) =>
       (HARNESS_PREVIEW_PARTS as readonly string[]).includes(part) && parts.indexOf(part) === index,
@@ -194,6 +211,21 @@ function previewProblem(args: ProjectArgs): string | undefined {
   if (!valid) return `--parts: invalid part, each of ${HARNESS_PREVIEW_PARTS.join(", ")} once`;
   if (args.projectTemplate !== undefined && !HARNESS_TEMPLATE_ID.test(args.projectTemplate))
     return "--template: a template id is lower case letters, digits and dashes (up to 40)";
+  return undefined;
+}
+
+/**
+ * What `project harness-apply` and `harness-commit` need besides the folder: the saved answer whose digests they
+ * send back, and the typed `--confirm`. The typed flag stands for the person's word, which a terminal cannot prove:
+ * a host with a device enrolled still asks for that device's signature (#3453).
+ */
+function writeProblem(args: ProjectArgs): string | undefined {
+  if (args.action !== "harness-apply" && args.action !== "harness-commit") return undefined;
+  const verb = `project ${args.action}`;
+  const saved = args.action === "harness-apply" ? "harness-preview" : "harness-apply";
+  if (args.projectDigests === undefined)
+    return `${verb}: missing --digests <file>, the answer of fd project ${saved} --json saved to a file`;
+  if (args.confirm !== true) return `${verb}: needs --confirm, since it writes the project's files`;
   return undefined;
 }
 
@@ -209,8 +241,12 @@ export function projectProblem(args: ProjectArgs): string | undefined {
   if (!project) return undefined;
   const operands = operandProblem(args);
   if (operands) return operands;
-  const preview = args.action === "harness-preview" ? previewProblem(args) : undefined;
+  const preview = ["harness-preview", "harness-apply"].includes(args.action ?? "")
+    ? previewProblem(args)
+    : undefined;
   if (preview !== undefined) return preview;
+  const written = writeProblem(args);
+  if (written !== undefined) return written;
   if (args.personaName !== undefined && args.personaName.trim() === "")
     return "--name: the project's name is blank";
   if (args.action === "update" && Object.keys(projectFields(args)).length === 0)
@@ -257,6 +293,25 @@ export function projectCliArgs(args: CliArgs): ProjectCliArgs {
       path,
       id: args.projectExport?.id ?? "",
       title: args.projectExport?.title ?? "",
+      ...printed,
+    };
+  if (args.action === "harness-apply")
+    return {
+      action: "harness-apply",
+      path,
+      parts: (args.projectParts ?? []) as HarnessPart[],
+      digestsFile: args.projectDigests ?? "",
+      ...(args.projectTemplate === undefined ? {} : { template: args.projectTemplate }),
+      ...(args.projectReformat === undefined ? {} : { reformat: true as const }),
+      confirm: true,
+      ...printed,
+    };
+  if (args.action === "harness-commit")
+    return {
+      action: "harness-commit",
+      path,
+      digestsFile: args.projectDigests ?? "",
+      confirm: true,
       ...printed,
     };
   return {

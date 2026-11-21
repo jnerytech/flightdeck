@@ -735,10 +735,10 @@ function refuseCardFlags(args: CliArgs): void {
       continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s and `plugins`', which check their own flags below.
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`' and `project harness-apply`'s, which check their own flags below.
     if (
       flag === "--confirm" &&
-      ["rules", "autoapprove", "team", "costs", "plugins", "ssh"].includes(args.command)
+      ["rules", "autoapprove", "team", "costs", "plugins", "ssh", "project"].includes(args.command)
     )
       continue;
     if (args.command !== "card")

@@ -7,6 +7,8 @@
 import { resolve } from "node:path";
 import {
   type CliResult,
+  DaemonRefusal,
+  failure,
   json,
   type RemoteTarget,
   resolveProject,
@@ -14,13 +16,18 @@ import {
   said,
 } from "../daemon-client/index.ts";
 import {
+  appliedDigests,
+  appliedLines,
+  committedLines,
   detectLines,
   draftLines,
   exportLines,
   inspectLines,
   type ProjectCliArgs,
+  previewDigests,
   previewLines,
   projectLines,
+  type SavedDigests,
   stackLines,
   trustLines,
 } from "./domain/project-cli-view.ts";
@@ -31,6 +38,26 @@ const UNSURE =
 
 /** A preview reads the folder's files and a template's, which takes longer than a lookup. */
 const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** The file the person saved an earlier answer in, read as text, or the line that says it cannot be. */
+async function readSaved(file: string): Promise<string | CliResult> {
+  try {
+    return await Bun.file(file).text();
+  } catch {
+    return failure(1, `${file}: cannot read it`);
+  }
+}
+
+/**
+ * A host with a device enrolled wants that device's signature, which a terminal cannot give (#3453), and a
+ * layout change wants `--reformat` here, not the protocol's field: both are said in the CLI's own words.
+ */
+const REFUSALS: Record<string, string> = {
+  approval_proof_required:
+    "this host has a device enrolled, which confirms what is written to a project's files, so do it in the app",
+  harness_reformat:
+    "writing the settings back would change their layout: run it again with --reformat if the person accepts that",
+};
 
 export function runProjectCli(
   args: ProjectCliArgs,
@@ -89,7 +116,37 @@ export function runProjectCli(
         return args.json ? json(answer) : said(...exportLines(answer));
       }
       if (args.action === "harness-apply" || args.action === "harness-commit") {
-        return said("not implemented");
+        const read = await readSaved(args.digestsFile);
+        if (typeof read !== "string") return read;
+        const saved: SavedDigests =
+          args.action === "harness-apply"
+            ? previewDigests(args.digestsFile, read)
+            : appliedDigests(args.digestsFile, read);
+        if ("problem" in saved) return failure(1, saved.problem);
+        note.wrote = true;
+        try {
+          if (args.action === "harness-commit") {
+            const answer = await daemon.call("project.harness.commit", {
+              path: folder(args.path),
+              digests: saved.digests,
+              confirm: true,
+            });
+            return args.json ? json(answer) : said(...committedLines(answer));
+          }
+          const answer = await daemon.call("project.harness.apply", {
+            path: folder(args.path),
+            parts: args.parts,
+            digests: saved.digests,
+            confirm: true,
+            ...(args.reformat ? { reformat: true } : {}),
+            ...(args.template === undefined ? {} : { template: args.template }),
+          });
+          return args.json ? json(answer) : said(...appliedLines(answer));
+        } catch (error) {
+          const said = error instanceof DaemonRefusal ? REFUSALS[error.reason ?? ""] : undefined;
+          if (said === undefined) throw error;
+          return failure(1, `${args.path} ${said}`);
+        }
       }
       if (args.action === "trust-state") {
         const answer = await daemon.call("project.trust.state", { paths: args.paths.map(folder) });

@@ -224,3 +224,13 @@ mostra um CLAUDE.md rascunhado (uma chamada ao modelo; não grava nada), e `fd p
 salva a configuração de agentes da pasta como um modelo naquele host. Um script de preparação roda em todo card e
 `--auto-approve` muda o que é aprovado sem perguntar, então uma sessão que executa isso pelo shell para até você
 aprovar.
+
+Para gravar o harness por um terminal, salve a prévia (`fd project harness-preview <pasta> --parts claudeMd,hooks
+--json > preview.json`), leia-a e rode `fd project harness-apply <pasta> --parts claudeMd,hooks --digests preview.json
+--confirm` (acrescente `--template <id>`, e `--reformat` quando a prévia disser que as configurações seriam reescritas
+com outro formato). O host refaz as propostas e recusa com `harness_stale` se algo mudou desde a prévia. Salve a
+resposta de `harness-apply --json` e rode `fd project harness-commit <pasta> --digests applied.json --confirm` para
+fazer o commit dos arquivos gravados em uma branch nova; sua branch, seu índice e seus arquivos ficam como estão.
+`--confirm` é só uma opção digitada, não a sua aprovação: um host com dispositivo cadastrado recusa `harness-apply` pelo
+terminal e diz para fazer no app, e uma sessão que executa qualquer um dos dois pelo shell para até você aprovar.
+Confiar numa pasta (`project.trust.set`) continua só no app.

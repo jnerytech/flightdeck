@@ -216,3 +216,13 @@ reads the origin remote and sets the PR provider when it is GitHub or Azure DevO
 prints a drafted CLAUDE.md (a model call; it writes nothing), and `fd project harness-export <folder> <id> <title>`
 saves the folder's agent setup as a template on that host. A setup script runs in every card and `--auto-approve`
 changes what is approved without asking, so a session that runs these from its shell is stopped for your approval.
+
+To write the harness from a terminal, save the preview (`fd project harness-preview <folder> --parts claudeMd,hooks
+--json > preview.json`), read it, then run `fd project harness-apply <folder> --parts claudeMd,hooks --digests
+preview.json --confirm` (add `--template <id>`, and `--reformat` when the preview says the settings would be rewritten
+with another layout). The host makes the proposals again and refuses with `harness_stale` when anything changed since
+the preview. Save the answer of `harness-apply --json` and run `fd project harness-commit <folder> --digests
+applied.json --confirm` to commit the files it wrote on a new branch; your own branch, index and files stay as they are.
+`--confirm` is a typed flag, not your approval: a host with a device enrolled refuses `harness-apply` from a terminal and
+says to do it in the app, and a session that runs either verb from its shell is stopped for your approval. Trusting a
+folder (`project.trust.set`) stays in the app.
