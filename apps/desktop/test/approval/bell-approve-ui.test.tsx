@@ -109,8 +109,11 @@ const open = async () => {
   await settleMaybe(() => screen.queryByRole("dialog") !== null);
   return screen.getByRole("dialog");
 };
+// A row's mark control also names its row, so a title finds the row's own button, not that one.
 const panelButton = (name: string | RegExp) =>
-  within(screen.getByRole("dialog")).queryByRole("button", { name });
+  within(screen.getByRole("dialog"))
+    .queryAllByRole("button", { name })
+    .find((button) => button.closest(".inbox-mark") === null) ?? null;
 const press = async (name: string | RegExp) => {
   const button = panelButton(name);
   expect(button === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff

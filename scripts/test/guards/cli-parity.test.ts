@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { gapsBaseline, parityCheck, protocolCommands } from "../../lib/arch/cli-parity.ts";
+import { newGaps, parityCheck, protocolCommands } from "../../lib/arch/cli-parity.ts";
 
 const table = (rows: Record<string, unknown>) => JSON.stringify(rows);
 
@@ -107,16 +107,34 @@ describe("parityCheck rows that are not a row (#3428)", () => {
   });
 });
 
-describe("gapsBaseline (#3428)", () => {
-  const file = (gaps: number) => JSON.stringify({ gaps });
-
-  test("a PR cannot raise it: the lower of main's file and its own", () => {
-    expect(gapsBaseline(file(341), file(351))).toBe(341);
-    expect(gapsBaseline(file(341), file(300))).toBe(300);
+describe("newGaps: the ratchet reads the table at the merge base, not a baseline file (#3759)", () => {
+  const base = table({
+    "session.list": { cli: "sessions" },
+    "session.send": {},
+    "window.focus": { appOnly: "it moves the app window" },
   });
 
-  test("with no file on main yet, the branch's own is the baseline; with neither, 0", () => {
-    expect(gapsBaseline(null, file(341))).toBe(341);
-    expect(gapsBaseline(null, null)).toBe(0);
+  test("a gap the merge base already had is not new", () => {
+    expect(newGaps(base, ["session.send"])).toEqual([]);
+  });
+
+  test("a gap closed since the merge base is not new, and nothing else is either", () => {
+    expect(newGaps(base, [])).toEqual([]);
+  });
+
+  test("a command with no row at the merge base that is a gap now is new", () => {
+    expect(newGaps(base, ["session.send", "session.stop"])).toEqual(["session.stop"]);
+  });
+
+  test("a covered row set back to an empty one is new", () => {
+    expect(newGaps(base, ["session.list", "window.focus"])).toEqual([
+      "session.list",
+      "window.focus",
+    ]);
+  });
+
+  test("with no table at the merge base, or one that is not readable, nothing is compared", () => {
+    expect(newGaps(null, ["session.send"])).toEqual([]);
+    expect(newGaps("{not json", ["session.send"])).toEqual([]);
   });
 });

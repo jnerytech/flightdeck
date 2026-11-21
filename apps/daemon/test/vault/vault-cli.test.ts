@@ -443,7 +443,9 @@ describe("the arguments of vault (issue #3458)", () => {
     expect(parsed(["autoapprove", "list", "--limit", "5"])).toMatchObject({ limit: 5 });
     expect(parsed(["history", "list", "--limit", "5", "--json"])).toMatchObject({ json: true });
     expect(parsed(["card", "list", "--host", "pi"])).toMatchObject({
-      refusedWith: expect.stringContaining("--host: this flag only applies to flightdeckd host"),
+      refusedWith: expect.stringContaining(
+        "--host: this flag only applies to flightdeckd action, agentcfg,",
+      ),
     });
   });
 });
