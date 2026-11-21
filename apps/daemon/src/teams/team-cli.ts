@@ -68,20 +68,8 @@ async function newTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Pro
  */
 async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
   const team = args.id ?? "";
-  if (args.action === "delete" && !args.confirm)
-    throw new Error(`team delete needs --confirm: it removes team ${team} and its record for good`);
-  if (args.action === "remove-member" && !args.confirm)
-    throw new Error(
-      `team remove-member needs --confirm: it stops the session of ${args.member ?? "the member"}`,
-    );
-  if (args.action === "add-member" && addsBypass(args) && !args.confirm)
-    throw new Error(
-      "the member runs in bypassPermissions, which skips every permission prompt: pass --confirm to add it",
-    );
-  if (args.action === "close" && !args.confirm)
-    throw new Error(
-      `team close needs --confirm: it ends team ${team} for good, and the app asks the person first`,
-    );
+  const unconfirmed = confirmationProblem(args, team);
+  if (unconfirmed !== undefined) throw new Error(unconfirmed);
   if (args.action === "pause" || args.action === "resume" || args.action === "close") {
     note.wrote = true;
     const changed =
@@ -113,6 +101,25 @@ async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): 
   note.wrote = true;
   const changed = await daemon.call("teams.update", payload);
   return args.json ? json(changed) : said(...changedLines(changed, args.action));
+}
+
+/** What the person is told when the verb needs `--confirm` and did not get it, or nothing when it may go on. */
+function confirmationProblem(args: TeamCliArgs, team: string): string | undefined {
+  if (args.confirm) return undefined;
+  switch (args.action) {
+    case "delete":
+      return `team delete needs --confirm: it removes team ${team} and its record for good`;
+    case "remove-member":
+      return `team remove-member needs --confirm: it stops the session of ${args.member ?? "the member"}`;
+    case "add-member":
+      return addsBypass(args)
+        ? "the member runs in bypassPermissions, which skips every permission prompt: pass --confirm to add it"
+        : undefined;
+    case "close":
+      return `team close needs --confirm: it ends team ${team} for good, and the app asks the person first`;
+    default:
+      return undefined;
+  }
 }
 
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */

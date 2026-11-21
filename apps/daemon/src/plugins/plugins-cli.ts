@@ -11,10 +11,12 @@ import { resolve } from "node:path";
 import type { PluginChange } from "@flightdeck/protocol";
 import {
   type CliResult,
+  type DaemonClient,
   json,
   type RemoteTarget,
   runOnLocalDaemon,
   said,
+  shown,
 } from "../daemon-client/index.ts";
 import {
   changeLines,
@@ -31,8 +33,8 @@ function written(change0: PluginChange, asJson: boolean | undefined): CliResult 
   const change = plainChange(change0);
   const { code, lines } = changeLines(change);
   if (code === 0) return asJson ? json(change) : said(...lines);
-  const shown = asJson ? json(change) : { out: [], err: said(...lines).out };
-  return { ...shown, code, reason: change.outcome };
+  const printed = asJson ? json(change) : { out: [], err: said(...lines).out };
+  return { ...printed, code, reason: change.outcome };
 }
 
 /** What a write that got no answer may have done: the daemon installs and removes code, so the person checks before repeating it. */
@@ -54,86 +56,108 @@ export function runPluginsCli(
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
     perform: async (daemon, note) => {
-      if (args.action === "list") {
-        const answer = await daemon.call("plugins.list", {});
-        return args.json ? json(answer) : said(...listLines(answer));
+      switch (args.action) {
+        case "list":
+          return shown(args.json, await daemon.call("plugins.list", {}), listLines);
+        case "detail":
+          return shown(
+            args.json,
+            await daemon.call("plugins.detail", { plugin: args.plugin }),
+            detailLines,
+          );
+        case "preview-update":
+          return shown(
+            args.json,
+            await daemon.call("plugins.previewUpdate", { plugin: args.plugin }),
+            updateLines,
+          );
+        case "preview":
+          return shown(
+            args.json,
+            await daemon.call("plugins.preview", targetOf(args, options.remote)),
+            previewLines,
+          );
+        default:
+          note.wrote = true;
+          return writeVerb(args, daemon, options.remote);
       }
-      if (args.action === "detail") {
-        const answer = await daemon.call("plugins.detail", { plugin: args.plugin });
-        return args.json ? json(answer) : said(...detailLines(answer));
-      }
-      if (args.action === "preview-update") {
-        const answer = await daemon.call("plugins.previewUpdate", { plugin: args.plugin });
-        return args.json ? json(answer) : said(...updateLines(answer));
-      }
-      // A relative folder means the shell's, so it is made absolute here; the daemon's own folder is another one.
-      const folder = (dir: string) => ({ dir: options.remote ? dir : resolve(dir) });
-      if (args.action === "preview") {
-        const where = "dir" in args ? folder(args.dir) : { plugin: args.plugin };
-        const answer = await daemon.call("plugins.preview", where);
-        return args.json ? json(answer) : said(...previewLines(answer));
-      }
-      note.wrote = true;
-      if (args.action === "install") {
-        const { confirmHash, scope, acceptCommand } = args;
-        const what = "dir" in args ? folder(args.dir) : { plugin: args.plugin };
-        return written(
-          await daemon.call("plugins.install", {
-            ...what,
-            confirmHash,
-            ...(scope === undefined ? {} : { scope }),
-            ...(acceptCommand === undefined ? {} : { acceptCommand }),
-          }),
-          args.json,
-        );
-      }
-      if (args.action === "update") {
-        const { plugin, confirmHash, acceptCommand } = args;
-        return written(
-          await daemon.call("plugins.update", {
-            plugin,
-            confirmHash,
-            ...(acceptCommand === undefined ? {} : { acceptCommand }),
-          }),
-          args.json,
-        );
-      }
-      if (args.action === "uninstall") {
-        const { plugin, scope, confirm } = args;
-        return written(
-          await daemon.call("plugins.uninstall", {
-            plugin,
-            ...(scope === undefined ? {} : { scope }),
-            ...(confirm ? { confirm } : {}),
-          }),
-          args.json,
-        );
-      }
-      if (args.action === "pin" || args.action === "unpin") {
-        const answer = await daemon.call("plugins.pin", {
+    },
+  });
+}
+
+/** A relative folder means the shell's, so it is made absolute here; the daemon's own folder is another one. */
+function targetOf(
+  args: Extract<PluginsCliArgs, { action: "preview" | "install" }>,
+  remote: RemoteTarget | undefined,
+) {
+  return "dir" in args ? { dir: remote ? args.dir : resolve(args.dir) } : { plugin: args.plugin };
+}
+
+const scoped = <T>(scope: T | undefined) => (scope === undefined ? {} : { scope });
+const confirmed = (confirm: boolean | undefined) => (confirm ? { confirm } : {});
+const accepted = (acceptCommand: string | undefined) =>
+  acceptCommand === undefined ? {} : { acceptCommand };
+
+/** The verbs that change the host's plugins: the daemon installs, updates and removes code. */
+async function writeVerb(
+  args: Exclude<PluginsCliArgs, { action: "list" | "detail" | "preview-update" | "preview" }>,
+  daemon: DaemonClient,
+  remote: RemoteTarget | undefined,
+): Promise<CliResult> {
+  switch (args.action) {
+    case "install":
+      return written(
+        await daemon.call("plugins.install", {
+          ...targetOf(args, remote),
+          confirmHash: args.confirmHash,
+          ...scoped(args.scope),
+          ...accepted(args.acceptCommand),
+        }),
+        args.json,
+      );
+    case "update":
+      return written(
+        await daemon.call("plugins.update", {
           plugin: args.plugin,
-          pinned: args.action === "pin",
-        });
-        return args.json ? json(answer) : said(...detailLines(answer));
-      }
-      if (args.action === "marketplace-add") {
-        const { source, scope, confirm } = args;
-        return written(
-          await daemon.call("plugins.marketplaceAdd", {
-            source,
-            ...(scope === undefined ? {} : { scope }),
-            ...(confirm ? { confirm } : {}),
-          }),
-          args.json,
-        );
-      }
-      if (args.action === "marketplace-remove") {
-        const { name, confirm } = args;
-        return written(
-          await daemon.call("plugins.marketplaceRemove", { name, ...(confirm ? { confirm } : {}) }),
-          args.json,
-        );
-      }
+          confirmHash: args.confirmHash,
+          ...accepted(args.acceptCommand),
+        }),
+        args.json,
+      );
+    case "uninstall":
+      return written(
+        await daemon.call("plugins.uninstall", {
+          plugin: args.plugin,
+          ...scoped(args.scope),
+          ...confirmed(args.confirm),
+        }),
+        args.json,
+      );
+    case "pin":
+    case "unpin":
+      return shown(
+        args.json,
+        await daemon.call("plugins.pin", { plugin: args.plugin, pinned: args.action === "pin" }),
+        detailLines,
+      );
+    case "marketplace-add":
+      return written(
+        await daemon.call("plugins.marketplaceAdd", {
+          source: args.source,
+          ...scoped(args.scope),
+          ...confirmed(args.confirm),
+        }),
+        args.json,
+      );
+    case "marketplace-remove":
+      return written(
+        await daemon.call("plugins.marketplaceRemove", {
+          name: args.name,
+          ...confirmed(args.confirm),
+        }),
+        args.json,
+      );
+    case "marketplace-update":
       return written(
         await daemon.call(
           "plugins.marketplaceUpdate",
@@ -141,6 +165,5 @@ export function runPluginsCli(
         ),
         args.json,
       );
-    },
-  });
+  }
 }

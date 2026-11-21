@@ -7,11 +7,12 @@
 import { resolve } from "node:path";
 import {
   type CliResult,
-  json,
+  type DaemonClient,
   type RemoteTarget,
   resolveProject,
   runOnLocalDaemon,
   said,
+  shown,
 } from "../daemon-client/index.ts";
 import {
   detectLines,
@@ -46,67 +47,88 @@ export function runProjectCli(
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
     perform: async (daemon, note) => {
-      if (args.action === "add") {
-        note.wrote = true;
-        const answer = await daemon.call("project.add", {
-          path: folder(args.path),
-          ...args.fields,
-        });
-        return args.json ? json(answer) : said(...projectLines("added", answer, args.fields));
-      }
-      if (args.action === "update" || args.action === "detect-provider") {
-        const { projects } = await daemon.call("project.list", {});
-        const found = resolveProject(projects, args.project);
-        if ("refusal" in found) return found.refusal;
-        note.wrote = true;
-        if (args.action === "detect-provider") {
-          const answer = await daemon.call("project.detectProvider", { projectId: found.id });
-          return args.json ? json(answer) : said(...detectLines(found.name, answer));
+      switch (args.action) {
+        case "add": {
+          note.wrote = true;
+          const answer = await daemon.call("project.add", {
+            path: folder(args.path),
+            ...args.fields,
+          });
+          return shown(args.json, answer, (added) => projectLines("added", added, args.fields));
         }
-        // The daemon fills a missing model or low-risk rule of the patch with its default, so the
-        // project's own values go along with the switch.
-        const current = projects.find((p) => p.id === found.id)?.autoApprove;
-        const fields = args.fields.autoApprove
-          ? { ...args.fields, autoApprove: { ...current, ...args.fields.autoApprove } }
-          : args.fields;
-        const answer = await daemon.call("project.update", { projectId: found.id, ...fields });
-        return args.json ? json(answer) : said(...projectLines("updated", answer, args.fields));
+        case "update":
+        case "detect-provider":
+          return changeProject(args, daemon, note);
+        case "harness-draft":
+          return shown(
+            args.json,
+            await daemon.call("project.harness.draft", {
+              path: folder(args.path),
+              part: "claudeMd",
+            }),
+            draftLines,
+          );
+        case "harness-export": {
+          note.wrote = true;
+          const answer = await daemon.call("project.harness.export", {
+            path: folder(args.path),
+            id: args.id,
+            title: args.title,
+          });
+          return shown(args.json, answer, exportLines);
+        }
+        case "trust-state":
+          return shown(
+            args.json,
+            await daemon.call("project.trust.state", { paths: args.paths.map(folder) }),
+            trustLines,
+          );
+        case "stack":
+          return shown(
+            args.json,
+            await daemon.call("project.harness.stack", { path: folder(args.path) }),
+            stackLines,
+          );
+        case "trust-inspect":
+          return shown(
+            args.json,
+            await daemon.call("project.trust.inspect", { path: folder(args.path) }),
+            inspectLines,
+          );
+        default: {
+          const { parts, template } = args;
+          const answer = await daemon.call("project.harness.preview", {
+            path: folder(args.path),
+            parts,
+            ...(template === undefined ? {} : { template }),
+          });
+          return shown(args.json, answer, previewLines);
+        }
       }
-      if (args.action === "harness-draft") {
-        const answer = await daemon.call("project.harness.draft", {
-          path: folder(args.path),
-          part: "claudeMd",
-        });
-        return args.json ? json(answer) : said(...draftLines(answer));
-      }
-      if (args.action === "harness-export") {
-        note.wrote = true;
-        const answer = await daemon.call("project.harness.export", {
-          path: folder(args.path),
-          id: args.id,
-          title: args.title,
-        });
-        return args.json ? json(answer) : said(...exportLines(answer));
-      }
-      if (args.action === "trust-state") {
-        const answer = await daemon.call("project.trust.state", { paths: args.paths.map(folder) });
-        return args.json ? json(answer) : said(...trustLines(answer));
-      }
-      if (args.action === "stack") {
-        const answer = await daemon.call("project.harness.stack", { path: folder(args.path) });
-        return args.json ? json(answer) : said(...stackLines(answer));
-      }
-      if (args.action === "trust-inspect") {
-        const answer = await daemon.call("project.trust.inspect", { path: folder(args.path) });
-        return args.json ? json(answer) : said(...inspectLines(answer));
-      }
-      const { parts, template } = args;
-      const answer = await daemon.call("project.harness.preview", {
-        path: folder(args.path),
-        parts,
-        ...(template === undefined ? {} : { template }),
-      });
-      return args.json ? json(answer) : said(...previewLines(answer));
     },
   });
+}
+
+/** A project the person names (its name or its id): `update` changes it, `detect-provider` asks which host it is on. */
+async function changeProject(
+  args: Extract<ProjectCliArgs, { action: "update" | "detect-provider" }>,
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+): Promise<CliResult> {
+  const { projects } = await daemon.call("project.list", {});
+  const found = resolveProject(projects, args.project);
+  if ("refusal" in found) return found.refusal;
+  note.wrote = true;
+  if (args.action === "detect-provider") {
+    const answer = await daemon.call("project.detectProvider", { projectId: found.id });
+    return shown(args.json, answer, (detected) => detectLines(found.name, detected));
+  }
+  // The daemon fills a missing model or low-risk rule of the patch with its default, so the
+  // project's own values go along with the switch.
+  const current = projects.find((p) => p.id === found.id)?.autoApprove;
+  const fields = args.fields.autoApprove
+    ? { ...args.fields, autoApprove: { ...current, ...args.fields.autoApprove } }
+    : args.fields;
+  const answer = await daemon.call("project.update", { projectId: found.id, ...fields });
+  return shown(args.json, answer, (updated) => projectLines("updated", updated, args.fields));
 }
