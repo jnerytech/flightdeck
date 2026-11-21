@@ -23,12 +23,14 @@ export function configLines(project: string, info: RunConfigInfo): string[] {
   ];
   const file = info.config;
   if (!file) return lines;
-  lines.push(`exclusive: ${file.exclusive ? "yes" : "no"}`);
-  lines.push(`ports: ${file.ports.length === 0 ? "none" : file.ports.join(", ")}`);
-  lines.push(
-    ...(file.setup && file.setup.length > 0
+  const setup =
+    file.setup && file.setup.length > 0
       ? ["setup:", ...file.setup.map((c) => `  ${c}`)]
-      : ["setup: none"]),
+      : ["setup: none"];
+  lines.push(
+    `exclusive: ${file.exclusive ? "yes" : "no"}`,
+    `ports: ${file.ports.length === 0 ? "none" : file.ports.join(", ")}`,
+    ...setup,
   );
   if (file.run.length === 0) return lines;
   lines.push("processes:");
@@ -56,22 +58,18 @@ export const stateJson = (state: RunState) => ({
 const READY = { none: "no ready check", waiting: "waiting", ready: "ready", timeout: "timeout" };
 
 function processLine(process: RunProcessState): string {
-  const status =
-    process.status === "running"
-      ? "running"
-      : `exited${process.exitCode == null ? "" : ` with code ${process.exitCode}`}`;
+  const code = process.exitCode == null ? "" : ` with code ${process.exitCode}`;
+  const status = process.status === "running" ? "running" : `exited${code}`;
   const url = process.url ? `, ${process.url}` : "";
   return `  ${process.name} (${process.terminalId}): ${status}, ${READY[process.ready]}${url}`;
 }
 
 /** The card's run: its state, its ports, one line a process with the terminal it runs in, and what went wrong. */
 export function stateLines(state: RunState): string[] {
-  const ports = Object.entries(state.ports);
+  const ports = Object.entries(state.ports).map(([name, port]) => `${name} ${port}`);
   return [
     `${state.cardId}: ${state.status}, setup ${state.setup}`,
-    ...(ports.length > 0
-      ? [`ports: ${ports.map(([name, port]) => `${name} ${port}`).join(", ")}`]
-      : []),
+    ...(ports.length > 0 ? [`ports: ${ports.join(", ")}`] : []),
     ...state.processes.map(processLine),
     ...(state.error ? [`error: ${state.error}`] : []),
   ];
