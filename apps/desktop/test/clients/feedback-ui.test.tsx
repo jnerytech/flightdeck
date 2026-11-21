@@ -123,6 +123,16 @@ describe("clients: a change to the month limit says what happened and keeps the 
     expect(focusedOn(limitField())).toBe(true);
   });
 
+  test("the saved-line goes away when the next edit starts, and clearing the field is not an error", async () => {
+    await open(acme([], { acme: 500 }));
+    await type("600");
+    await press("Salvar orçamento");
+    expect(said()).toBe("Orçamento salvo: US$ 600,00");
+    await type("");
+    expect(said()).toBeNull();
+    expect(within(acmeItem()).queryByText("Informe um limite maior que zero.")).toBeNull();
+  });
+
   test("removing the limit moves the focus to the limit field, now empty, and says so", async () => {
     const { store } = await open(acme([], { acme: 500 }));
     await press("Remover orçamento de Acme");

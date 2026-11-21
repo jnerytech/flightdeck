@@ -82,7 +82,9 @@ export function ClientBudget(
         <Field
           label={t("clients.budgetLabel")}
           help={t("clients.budgetHelp")}
-          error={typed !== null && !valid ? t("clients.budgetNeeded") : undefined}
+          error={
+            typed !== null && text.trim() !== "" && !valid ? t("clients.budgetNeeded") : undefined
+          }
         >
           {(control) => (
             <Input
@@ -92,7 +94,10 @@ export function ClientBudget(
               step="any"
               ref={field}
               value={text}
-              onChange={(e) => setTyped(e.target.value)}
+              onChange={(e) => {
+                setTyped(e.target.value);
+                setDone(null);
+              }}
             />
           )}
         </Field>
