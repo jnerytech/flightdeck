@@ -50,6 +50,7 @@ export interface CliArgs {
     | "agentcfg"
     | "watch"
     | "boardsync"
+    | "runenv"
     | "requests"
     | "send"
     | "approve"
@@ -77,6 +78,7 @@ export interface CliArgs {
     | "new"
     | "move"
     | "update"
+    | "config"
     | "complete"
     | "delete"
     | "discard"
@@ -222,6 +224,8 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
+  /** `runenv config <project>` or `runenv get <card>`: the operand. */
+  runenvTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
   boardsyncTarget?: string;
   /** `boardsync link <project> <board>`: the board's id. */

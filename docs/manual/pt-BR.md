@@ -109,6 +109,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd boardsync](pt-BR/flightdeckd-boardsync-commands.md#fd-boardsync)
 
+## Comandos do flightdeckd: o ambiente de execução de um cartão
+
+[Ler o capítulo.](pt-BR/flightdeckd-runenv-commands.md) Suas seções:
+
+- [fd runenv](pt-BR/flightdeckd-runenv-commands.md#fd-runenv)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)
