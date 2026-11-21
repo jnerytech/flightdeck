@@ -660,14 +660,15 @@ export function hidesItsVerb(args: string[], unresolved: boolean, fed = false): 
     const [command, verb] = flightdeckWords(own);
     // Behind `xargs` the words its input gives follow the ones written: a line that stops short of its verb is
     // finished by them (`echo persona remove qa | xargs fd`), or raised by a flag (`echo --force | xargs fd history resume s`,
-    // `echo --confirm | xargs fd mcp test p s`, `echo --confirm | xargs fd workflow resume r`).
+    // `echo --confirm | xargs fd mcp test p s`, `echo --confirm | xargs fd workflow resume r`, `echo delete t --confirm | xargs fd harness templates`).
     const unfinished =
       fed &&
       (command === undefined ||
         (VERB_NOUNS.has(command) && verb === undefined) ||
         (command === "history" && verb === "resume") ||
         (command === "mcp" && verb === "test") ||
-        (command === "workflow" && verb === "resume"));
+        (command === "workflow" && verb === "resume") ||
+        (command === "harness" && verb === "templates"));
     return (
       unfinished ||
       (!unresolved && isExpanded(command)) ||
