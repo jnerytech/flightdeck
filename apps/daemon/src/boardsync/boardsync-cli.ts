@@ -24,10 +24,23 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 export type BoardsyncCliArgs =
   | { action: "boards"; json?: boolean }
   | {
-      action: "status" | "log" /** A project (its name or its id) or a card id, by the action. */;
+      action:
+        | "status"
+        | "log"
+        | "unlink"
+        | "sync-now" /** A project (its name or its id) or a card id, by the action. */;
       target: string;
       json?: boolean;
-    };
+    }
+  | {
+      action: "link";
+      target: string;
+      boardId: string;
+      columnMap?: Record<string, string>;
+      json?: boolean;
+    }
+  | { action: "set-map"; target: string; columnMap: Record<string, string>; json?: boolean }
+  | { action: "set-push"; target: string; push: boolean; confirm?: boolean; json?: boolean };
 
 export function runBoardsyncCli(
   args: BoardsyncCliArgs,

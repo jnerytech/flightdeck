@@ -7,7 +7,16 @@ import type { BoardsyncCliArgs } from "../../boardsync/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 
-const BOARDSYNC_ACTIONS = ["boards", "status", "log"] as const;
+const BOARDSYNC_ACTIONS = [
+  "boards",
+  "status",
+  "log",
+  "link",
+  "unlink",
+  "set-map",
+  "set-push",
+  "sync-now",
+] as const;
 
 /** `boardsync boards`, `boardsync status <project>` or `boardsync log <card>`. */
 export function readBoardsync(args: CliArgs, reader: ArgReader): void {
@@ -22,7 +31,7 @@ export function readBoardsync(args: CliArgs, reader: ArgReader): void {
 /** What the boardsync runner takes from the parsed arguments. */
 export function boardsyncCliArgs(args: CliArgs): BoardsyncCliArgs {
   const json = args.json ? { json: true as const } : {};
-  const action = args.action as BoardsyncCliArgs["action"];
+  const action = args.action as "boards" | "status" | "log";
   return action === "boards"
     ? { action, ...json }
     : { action, target: args.boardsyncTarget ?? "", ...json };

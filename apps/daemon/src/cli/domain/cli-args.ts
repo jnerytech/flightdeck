@@ -128,6 +128,11 @@ export interface CliArgs {
     | "by-url"
     | "boards"
     | "log"
+    | "link"
+    | "unlink"
+    | "set-map"
+    | "set-push"
+    | "sync-now"
     | "extend"
     | "resolve-held"
     | "follow"
@@ -207,6 +212,12 @@ export interface CliArgs {
   watchTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
   boardsyncTarget?: string;
+  /** `boardsync link <project> <board>`: the board's id. */
+  boardsyncBoard?: string;
+  /** `boardsync link|set-map --map <status>=<column>`, each pair once. */
+  boardsyncMap?: Record<string, string>;
+  /** `boardsync set-push --on|--off`. */
+  boardsyncPush?: boolean;
   /** `watch resolve-held <card> <round>`: the round. */
   watchRound?: string;
   /** `watch set|settings`: `--enable` is true, `--disable` false and `--default` (set only) null. */
