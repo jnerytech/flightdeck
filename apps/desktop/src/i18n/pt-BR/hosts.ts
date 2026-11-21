@@ -478,7 +478,7 @@ export const hosts = {
     latency: "latência: {value}",
     unavailable: "O host ainda não informou seus detalhes.",
     unavailableIncompatible:
-      "Os detalhes não estão disponíveis: o daemon deste host fala outra versão que a do app.",
+      "Os detalhes não estão disponíveis: o daemon deste host fala uma versão diferente da do app.",
     unavailableUnauthorized: "Os detalhes não estão disponíveis: o host recusou o token.",
     offlineInfo: "Os detalhes do host aparecem aqui quando ele responder.",
     hooks: "Hooks do Claude Code",
