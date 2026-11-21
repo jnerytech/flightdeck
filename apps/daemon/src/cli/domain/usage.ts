@@ -162,6 +162,7 @@ export const USAGE = [
   "     fd action list [--project <id>] [--config <file>]   (raw JSON of the trusted actions, what the flightdeck mod reads)",
   "     fd action list --json|--plain [--project <name or id>] [--host <name>] [--config <file>]   (every action, trusted or not, with the hash `trust` takes and what changed; never the command, the environment or a secret)",
   "     fd action runs [<action>] [--project <name or id>] [--limit <1-500>] [--host <name>] [--json] [--config <file>]   (the runs of the actions, newest first, with the masked output; it changes nothing)",
+  "     fd action save --definition-file <file> [--secret-ids <a,b>] | trust <name> --hash <64 hex> | remove <name> [--project <name or id>] [--host <name>] [--json] [--config <file>]   (save declares a command that runs with secrets and the host trusts it as it is saved; trust lets a versioned one run; remove deletes one)",
   "     fd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
   "     fd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
   "     fd snippet get <name> [--project-path <folder>] [--config <file>]",
