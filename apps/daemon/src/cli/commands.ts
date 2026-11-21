@@ -3,7 +3,6 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CardCliArgs } from "../board/index.ts";
 import { loadConfig, userHome } from "../config.ts";
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
-import type { HistoryCliArgs } from "../history/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
@@ -12,8 +11,12 @@ import type { TeamCliArgs } from "../teams/index.ts";
 import { configPath } from "./config-path.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
+import { automationCliArgs } from "./domain/automation-args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
+import { changesCliArgs } from "./domain/changes-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
+import { historyCliArgs } from "./domain/history-args.ts";
+import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
 import { memoryCliArgs } from "./domain/memory-args.ts";
 import { messageAdminCliArgs } from "./domain/message-args.ts";
@@ -26,10 +29,11 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
-import { watchStop } from "./watch-stop.ts";
+import { liveStream, watchStop } from "./watch-stop.ts";
 
 /**
  * The commands of `flightdeckd` that are not the daemon (issue #1593): what each prints and does.
@@ -129,7 +133,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `mcp` (its verbs), `message` (history, watch and rules), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `mcp` (its verbs), `knowledge`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -152,15 +156,17 @@ async function asking(
 type LocalConfig = { bind: string; port: number; token: string };
 const NO_LOCAL_DAEMON: LocalConfig = { bind: "", port: 0, token: "" };
 
-type RunOptions = { remote?: RemoteTarget; stdin?: CliDeps["stdin"] };
 /** A command that asks a daemon with the arguments its noun reads off the command line: `asking` for the usual runner. */
+type Asked = { remote?: RemoteTarget; stdin?: CliDeps["stdin"] };
 const askingWith = <A>(
   args: CliArgs,
-  d: CliDeps,
+  deps: CliDeps,
   toArgs: (args: CliArgs) => A,
-  run: (a: A, config: LocalConfig, options: RunOptions) => Promise<CliResult>,
+  run: (a: A, config: LocalConfig, options: Asked) => Promise<CliResult>,
 ): Promise<number> =>
-  asking(args, d, (c, r) => run(toArgs(args), c, { ...(r && { remote: r }), stdin: d.stdin }));
+  asking(args, deps, (config, remote) =>
+    run(toArgs(args), config, { ...(remote ? { remote } : {}), stdin: deps.stdin }),
+  );
 
 /** `approve` and `deny`: one answer to one open permission request. */
 async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
@@ -264,31 +270,6 @@ function cardCliArgs(args: CliArgs): CardCliArgs {
   return { action: args.action, ...Object.fromEntries(present) } as CardCliArgs;
 }
 
-/** What the person typed for `history list|search|get|tool|resume|watch`, as `runHistoryCli` takes it: what they left out stays out. */
-function historyCliArgs(args: CliArgs): HistoryCliArgs {
-  const typed: Record<string, unknown> = {
-    query: args.query,
-    claudeSessionId: args.claudeSessionId,
-    uuid: args.uuid,
-    index: args.index,
-    cwd: args.cwd,
-    projectKey: args.projectKey,
-    from: args.from,
-    to: args.until,
-    origin: args.origin,
-    hideAutomated: args.hideAutomated,
-    limit: args.limit,
-    cursor: args.cursor,
-    tail: args.tail,
-    name: args.personaName,
-    permissionMode: args.permissionMode,
-    force: args.force,
-    json: args.json || undefined,
-  };
-  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
-  return { action: args.action, ...Object.fromEntries(present) } as HistoryCliArgs;
-}
-
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   backup: done(async (args, deps) => (await import("./maintenance.ts")).runBackup(args, deps)),
   restore: done(async (args, deps) => (await import("./maintenance.ts")).runRestore(args, deps)),
@@ -377,12 +358,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     // A verb asks a daemon; a bare `mcp` is the stdio server.
     if (args.action !== undefined) {
       const { runMcpCli } = await import("../agentcfg/index.ts");
-      return asking(args, deps, (config, remote) =>
-        runMcpCli(mcpCliArgs(args), config, {
-          ...(remote ? { remote } : {}),
-          stdin: deps.stdin,
-        }),
-      );
+      return askingWith(args, deps, mcpCliArgs, runMcpCli);
     }
     const { daemonUrl } = await import("../daemon-client/index.ts");
     const { identityOf, startMcp } = await import("../mcp/index.ts");
@@ -584,15 +560,11 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   autoapprove: async (args, deps) => rulesCli("autoapprove", args, deps),
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runHostCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runHostCli);
   },
   sessions: async (args, deps) => {
     const { runSessionsCli } = await import("../sessions/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runSessionsCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runSessionsCli);
   },
   session: async (args, deps) => {
     const { runSessionCli } = await import("../sessions/index.ts");
@@ -618,24 +590,34 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   watch: async (args, deps) => {
     const { runWatchCli } = await import("../watch/index.ts");
-    const stop = watchStop(args, deps);
+    const live = liveStream(args, deps);
     return asking(args, deps, (config, remote) =>
-      runWatchCli(watchCliArgs(args), config, {
-        ...(remote ? { remote } : {}),
-        signal: stop.signal,
-        write: (line) => deps.log.log(line),
-      }),
+      runWatchCli(watchCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
+  },
+  knowledge: async (args, deps) => {
+    const { runKnowledgeCli } = await import("../knowledge/index.ts");
+    return askingWith(args, deps, knowledgeCliArgs, runKnowledgeCli);
   },
   runenv: async (args, deps) => {
     const { runRunenvCli } = await import("../runenv/index.ts");
-    const stop = watchStop(args, deps);
+    const live = liveStream(args, deps);
     return asking(args, deps, (config, remote) =>
-      runRunenvCli(runenvCliArgs(args), config, {
-        ...(remote ? { remote } : {}),
-        signal: stop.signal,
-        write: (line) => deps.log.log(line),
-      }),
+      runRunenvCli(runenvCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
+    );
+  },
+  changes: async (args, deps) => {
+    const { runChangesCli } = await import("../review/index.ts");
+    const live = liveStream(args, deps);
+    return asking(args, deps, (config, remote) =>
+      runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
+    );
+  },
+  file: (args, deps) => asking(args, deps, fileRun(args, deps.stdin)),
+  automation: async (args, deps) => {
+    const { runAutomationCli } = await import("../automations/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runAutomationCli(automationCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   boardsync: async (args, deps) => {

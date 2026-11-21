@@ -376,6 +376,9 @@ export const sessions = {
     filter: "Tool",
     allTools: "All",
     replay: "Replay",
+    loadFailed: "Could not load the trace.",
+    retry: "Try again",
+    closeReplay: "Close replay",
     replayRegion: "Session replay",
     step: "Step {n} of {total}",
     previous: "Previous",
@@ -593,6 +596,8 @@ export const sessions = {
     description:
       "Each turn of this conversation and what it changed in the files. Rewinding files undoes repository files only: external commands (database, network, git push) are not undone.",
     loading: "Loading the turns…",
+    loadFailed: "Could not load the turns of this session.",
+    retry: "Try again",
     empty:
       "There are no turns with a snapshot in this session yet. Snapshots only exist in folders of a git repository.",
     list: "Turns",
@@ -626,6 +631,8 @@ export const sessions = {
     },
     nothing: "Nothing to rewind: the files are already as in this turn.",
     previewing: "Working out what changes…",
+    previewFailed: "Could not work out what the rewind changes.",
+    applyFailed: "Could not rewind the files: {reason}",
     nothingToRewind: "Nothing to rewind: the files are already as they were at this turn.",
     rewindConfirm: "Rewind files",
     rewound: "Files rewound to turn {n}.",
@@ -640,6 +647,8 @@ export const sessions = {
     forkFilesNote:
       "Before opening, the files go back to the state of this turn. You can undo it later, from the timeline.",
     forkConfirm: "Fork",
+    forkNeedsPreview:
+      "Fork needs the list of files above first. Untick “Also rewind the files” to fork without it.",
     forkCommand: "Conversation forked. To open it in the terminal, run:",
   },
 };

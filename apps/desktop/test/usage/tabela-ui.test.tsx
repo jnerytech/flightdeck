@@ -81,6 +81,34 @@ describe("uso-tabela-ui: the host's usage table", () => {
   });
 });
 
+describe("uso-tabela-ui: the day button says its project and where it leads (#3689)", () => {
+  test("its accessible name holds the visible day, the project and that it opens History, in both languages", async () => {
+    const view = await panel();
+    expect(
+      view.queryByRole("button", { name: "Open History for entrevista on 2026-10-15" }),
+    ).not.toBeNull();
+    expect(
+      view.queryByRole("button", { name: "Open History for repo on 2026-10-15" }),
+    ).not.toBeNull();
+    view.unmount();
+    const pt = render(
+      <TContext.Provider value={translator("pt-BR")}>
+        <UsagePanel store={fakeStore()} hostId="h" online costs onOpenHistory={() => {}} />
+      </TContext.Provider>,
+    );
+    await waitFor(() => expect(pt.container.querySelector("table")).not.toBeNull());
+    expect(
+      pt.queryByRole("button", { name: "Abrir o Histórico de entrevista em 2026-10-15" }),
+    ).not.toBeNull();
+  });
+
+  test("a keyboard user sees which day has the focus", async () => {
+    const view = await panel();
+    const button = view.container.querySelector("tbody button") as HTMLElement;
+    expect(button.className).toContain("focus-visible:ring-2");
+  });
+});
+
 describe("uso-tabela-ui: the history list opened from a usage row", () => {
   test("it starts filtered by the folder and the day", async () => {
     const asked: unknown[] = [];

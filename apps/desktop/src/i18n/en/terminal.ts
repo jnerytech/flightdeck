@@ -71,6 +71,10 @@ export const terminal = {
     menu: "Move to another host…",
     title: "Move to another host",
     host: "Host",
+    noTarget:
+      "No other connected host can receive a session. Connect a host that has teleport, then try again.",
+    pickHostReason: "Pick the host to move the session to.",
+    repoReason: "Type the repository on that host.",
     pickHost: "Pick a host",
     repo: "Repository on that host",
     next: "Continue",

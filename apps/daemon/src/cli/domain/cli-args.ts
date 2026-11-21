@@ -34,6 +34,7 @@ export interface CliArgs {
     | "help"
     | "askpass"
     | "mcp"
+    | "knowledge"
     | "statusline"
     | "action"
     | "snippet"
@@ -58,6 +59,9 @@ export interface CliArgs {
     | "review"
     | "memory"
     | "runenv"
+    | "changes"
+    | "file"
+    | "automation"
     | "requests"
     | "send"
     | "approve"
@@ -71,6 +75,10 @@ export interface CliArgs {
   action?:
     | ServiceAction
     | "reindex"
+    | "index"
+    | "feed"
+    | "enable"
+    | "disable"
     | "enroll"
     | "reset"
     | "list"
@@ -86,6 +94,7 @@ export interface CliArgs {
     | "move"
     | "update"
     | "config"
+    | "runs"
     | "complete"
     | "delete"
     | "discard"
@@ -134,6 +143,7 @@ export interface CliArgs {
     | "decisions"
     | "report"
     | "rules"
+    | "rules-set"
     | "preview"
     | "interrupted"
     | "import-preview"
@@ -148,6 +158,7 @@ export interface CliArgs {
     | "boards"
     | "log"
     | "link"
+    | "sessions"
     | "unlink"
     | "set-map"
     | "set-push"
@@ -155,6 +166,10 @@ export interface CliArgs {
     | "extend"
     | "resolve-held"
     | "follow"
+    | "revert"
+    | "undo-revert"
+    | "commit"
+    | "pr"
     | "hostkey-check"
     | "hostkey-confirm"
     | "hostkey-forget"
@@ -163,6 +178,7 @@ export interface CliArgs {
     | "edit"
     | "test"
     | "files"
+    | "dirs"
     | "interrupt"
     | "sleep"
     | "set-model"
@@ -220,6 +236,8 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
+  /** `knowledge list|index|feed <project>` (#3623): a project's name or id, or its folder. */
+  knowledgeProject?: string;
   /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
   mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */
@@ -245,6 +263,37 @@ export interface CliArgs {
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
   memoryName?: string;
+  /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
+  changesOperand?: string;
+  /** `changes revert|undo-revert <target> <file>`: the file. */
+  changesPath?: string;
+  /** `changes commit`: each `--digest <path>=<digest>` the person saw, in the order typed. */
+  changesDigests?: Array<[string, string]>;
+  changesBranch?: string;
+  changesRemote?: string;
+  /** `changes commit --message`, `changes pr --title` and `--body`, `--confirm` of the writes. */
+  changesMessage?: string;
+  changesTitle?: string;
+  changesBody?: string;
+  changesConfirm?: true;
+  /** `file list|read|search <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  fileTarget?: string;
+  /** `file read <target> <path>`, `file dirs [<path>]` and `file files <path>`: the path. */
+  filePath?: string;
+  /** `file list --dir`: the folder of the repository, "" for its root. */
+  fileDir?: string;
+  /** `file search --query`, `--mode` and `--limit`. */
+  fileQuery?: string;
+  fileMode?: "name" | "content";
+  fileLimit?: number;
+  /** `file dirs|files --hidden`. */
+  fileHidden?: true;
+  /** `file write --file`: the new text's file, or `-` for standard input. */
+  fileText?: string;
+  /** `file write --hash`: the sha256 `file read` printed, the version the write replaces. */
+  fileHash?: string;
+  /** `file write --confirm`. */
+  fileConfirm?: true;
   /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
   /** `review update|remove <comment>`: the comment's id. */
@@ -255,6 +304,16 @@ export interface CliArgs {
   reviewLines?: { start: number; end: number };
   /** `runenv config <project>` or `runenv get <card>`: the operand. */
   runenvTarget?: string;
+  /** `automation list|save <project>` or `automation runs|enable|disable|remove <automation>`: the operand. */
+  automationTarget?: string;
+  /** `automation save --automation <id>`: the automation to change; `--name` is `personaName`. */
+  automationId?: string;
+  /** `automation save --max-runs <n>`. */
+  maxRuns?: number;
+  /** `automation save --external-authors on|off`. */
+  externalAuthors?: boolean;
+  /** `automation save --definition-file <file>`: the JSON of the trigger and the action. */
+  definitionFile?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
   boardsyncTarget?: string;
   /** `boardsync link <project> <board>`: the board's id. */
@@ -296,6 +355,8 @@ export interface CliArgs {
   messageTeam?: string;
   withHost?: string;
   messageStatus?: MessageStatus;
+  policyFile?: string;
+  unpause?: string[];
   /** `team show <team>`. */
   teamId?: string;
   /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */

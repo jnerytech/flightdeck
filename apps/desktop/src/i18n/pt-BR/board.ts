@@ -215,6 +215,7 @@ export const board = {
     },
     procRunning: "rodando",
     procExited: "encerrado (código {code})",
+    procEndedNoCode: "encerrado sem código de saída",
     ports: "Portas: {ports}",
     viewLog: "Ver log de {name}",
     openPreview: "Abrir preview de {name}",

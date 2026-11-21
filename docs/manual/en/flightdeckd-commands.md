@@ -381,7 +381,7 @@ A change that gets no answer exits `2` and says it may or may not have gone in: 
 `autoapprove list` before trying again. Run from a session's own shell, `rules remove` and
 `autoapprove resume` are classified as high-risk commands.
 
-## fd message history, watch and rules
+## fd message history, watch, rules and rules-set
 
 ```sh
 fd message history --team core --status refused --days 3
@@ -390,7 +390,8 @@ fd message history --team core --status refused --days 3
 `history` lists the messages between sessions, newest first: id, time, `from to to`, status (and a reason, when it has one)
 and the text. Narrow it with `--team`, `--session`, `--with-host`, `--status`, `--days`, `--limit`.
 `watch` prints a line per message, relay, loop alert and idle notice until Ctrl-C; `rules` prints the policy in force
-and the paused pairs. All take `--host` and `--json`; a refusal exits `1`.
+and the paused pairs. `rules-set --policy-file <path|-> --confirm [--unpause <pair>]...` replaces the policy and frees pairs; a
+refused policy exits `1` and changes nothing. A session's shell gets a high-risk request for it. All take `--host` and `--json`.
 
 ## Left in the app
 

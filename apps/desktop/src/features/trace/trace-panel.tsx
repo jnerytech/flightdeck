@@ -1,10 +1,11 @@
 import type { SessionTrace, TraceNode } from "@flightdeck/protocol";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import {
   Bar,
   EmptyState,
+  ErrorState,
   Inline,
   LoadingState,
   NativeSelect,
@@ -82,11 +83,36 @@ export function TracePanel(
   const [withContent, setWithContent] = useState(false);
   const [hidden, setHidden] = useState<number | null>(null);
 
-  useEffect(() => {
-    void store.hostCommand(hostId, "trace.get", { claudeSessionId }).then(setTrace);
+  // The load was refused: the tab says so and Try again asks the host once more.
+  const [failed, setFailed] = useState(false);
+
+  const load = useCallback(async () => {
+    setFailed(false);
+    // The tab has its own Try again, so the toast offers none that would throw the answer away.
+    const result = await store.hostCommand(
+      hostId,
+      "trace.get",
+      { claudeSessionId },
+      { retry: false },
+    );
+    setTrace(result);
+    setFailed(result === null);
   }, [store, hostId, claudeSessionId]);
 
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   const shown = useMemo(() => (trace ? onlyTool(trace.turns, tool) : []), [trace, tool]);
+  if (trace === null && failed) {
+    return (
+      <ErrorState
+        message={t("trace.loadFailed")}
+        retryLabel={t("trace.retry")}
+        onRetry={() => void load()}
+      />
+    );
+  }
   if (trace === null) return <LoadingState label={t("states.loading")} />;
   if (trace.turns.length === 0) return <EmptyState title={t("trace.empty")} />;
 
@@ -126,8 +152,13 @@ export function TracePanel(
               </option>
             ))}
           </NativeSelect>
-          <Button variant="outline" size="sm" onClick={() => setReplaying((on) => !on)}>
-            {t("trace.replay")}
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={replaying}
+            onClick={() => setReplaying((on) => !on)}
+          >
+            {t(replaying ? "trace.closeReplay" : "trace.replay")}
           </Button>
         </Inline>
         {replaying && (
