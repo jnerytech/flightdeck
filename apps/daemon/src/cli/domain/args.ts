@@ -20,6 +20,7 @@ import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
 import { knowledgeFlags, knowledgeProblem, readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
+import { readMemory } from "./memory-args.ts";
 import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
@@ -344,6 +345,7 @@ const HANDLERS: Record<string, Handler> = {
   watch: readWatch,
   boardsync: readBoardsync,
   review: readReview,
+  memory: readMemory,
   runenv: readRunenv,
   changes: readChanges,
   file: readFile,
