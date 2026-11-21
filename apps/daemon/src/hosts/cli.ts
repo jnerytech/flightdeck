@@ -25,6 +25,12 @@ export interface HostCliOptions {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+/** What the host says about bypass permissions: `unknown` for an older daemon that does not say. */
+function bypassText(allowed: boolean | null): string {
+  if (allowed === null) return "unknown";
+  return allowed ? "allowed" : "not allowed";
+}
+
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */
 export function runHostCli(
   args: HostCliArgs,
@@ -51,12 +57,7 @@ export function runHostCli(
         allowBypassPermissions: info.allowBypassPermissions ?? null,
       };
       if (args.json) return json(facts);
-      const bypass =
-        facts.allowBypassPermissions === null
-          ? "unknown"
-          : facts.allowBypassPermissions
-            ? "allowed"
-            : "not allowed";
+      const bypass = bypassText(facts.allowBypassPermissions);
       return said(
         `host  ${facts.hostName}`,
         `daemon  ${facts.daemonVersion}`,

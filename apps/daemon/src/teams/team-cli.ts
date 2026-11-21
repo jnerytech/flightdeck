@@ -72,10 +72,7 @@ async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): 
   if (unconfirmed !== undefined) throw new Error(unconfirmed);
   if (args.action === "pause" || args.action === "resume" || args.action === "close") {
     note.wrote = true;
-    const changed =
-      args.action === "close"
-        ? await daemon.call("teams.close", { team, confirm: true })
-        : await daemon.call(args.action === "pause" ? "teams.pause" : "teams.resume", { team });
+    const changed = await stateCall(daemon, args.action, team);
     return args.json ? json(changed) : said(...changedLines(changed, args.action));
   }
   if (args.action === "message") {
@@ -92,15 +89,24 @@ async function changeTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): 
     const deleted = await daemon.call("teams.delete", { team });
     return args.json ? json(deleted) : said(...changedLines(deleted, args.action));
   }
-  const payload: CommandPayload<"teams.update"> =
-    args.action === "update"
-      ? updatePayload(args)
-      : args.action === "add-member"
-        ? addMemberPayload(args)
-        : { team, removeMember: args.member ?? "" };
+  const payload = updateCallPayload(args, team);
   note.wrote = true;
   const changed = await daemon.call("teams.update", payload);
   return args.json ? json(changed) : said(...changedLines(changed, args.action));
+}
+
+/** `close` is confirmed by `--confirm` already, so the daemon is told yes; `pause` and `resume` take only the team. */
+function stateCall(daemon: DaemonClient, action: "pause" | "resume" | "close", team: string) {
+  if (action === "close") return daemon.call("teams.close", { team, confirm: true });
+  if (action === "pause") return daemon.call("teams.pause", { team });
+  return daemon.call("teams.resume", { team });
+}
+
+/** What `teams.update` takes for `update`, `add-member` and `remove-member`. */
+function updateCallPayload(args: TeamCliArgs, team: string): CommandPayload<"teams.update"> {
+  if (args.action === "update") return updatePayload(args);
+  if (args.action === "add-member") return addMemberPayload(args);
+  return { team, removeMember: args.member ?? "" };
 }
 
 /** What the person is told when the verb needs `--confirm` and did not get it, or nothing when it may go on. */
@@ -132,19 +138,27 @@ export function runTeamCli(
     config,
     clientName: "flightdeck-team",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    perform: (daemon, note) =>
-      args.action === "list"
-        ? listTeams(args, daemon)
-        : args.action === "new"
-          ? newTeam(args, daemon, note)
-          : args.action === "show"
-            ? showTeam(args, daemon)
-            : changeTeam(args, daemon, note),
-    unsure:
-      args.action === "new"
-        ? UNSURE_NEW
-        : args.action === "list" || args.action === "show"
-          ? undefined
-          : UNSURE_CHANGE[args.action],
+    perform: (daemon, note) => performTeam(args, daemon, note),
+    unsure: unsureOf(args),
   });
+}
+
+function performTeam(args: TeamCliArgs, daemon: DaemonClient, note: Note): Promise<CliResult> {
+  switch (args.action) {
+    case "list":
+      return listTeams(args, daemon);
+    case "new":
+      return newTeam(args, daemon, note);
+    case "show":
+      return showTeam(args, daemon);
+    default:
+      return changeTeam(args, daemon, note);
+  }
+}
+
+/** What a write that got no answer may have done; a read has nothing to say. */
+function unsureOf(args: TeamCliArgs): string | undefined {
+  if (args.action === "new") return UNSURE_NEW;
+  if (args.action === "list" || args.action === "show") return undefined;
+  return UNSURE_CHANGE[args.action];
 }

@@ -21,14 +21,15 @@ const dollars = (usd: number) => `$${usd.toFixed(2)}`;
 
 /** One fixing round; the id is what a later `watch resolve-held` takes. */
 function roundLine(round: FixRoundInfo): string {
-  const outside = round.drift?.outside.length ?? 0;
-  const tail =
-    round.status === "held" && outside > 0
-      ? `, ${outside} files outside the PR`
-      : round.summary
-        ? `: ${round.summary}`
-        : "";
+  const tail = roundTail(round);
   return `  round ${round.n} (${round.id}): ${round.status}, ${dollars(round.costUsd)}, ${round.turns} turns${tail}`;
+}
+
+/** What follows a round's counts: the files a held round changed outside its PR, else its summary. */
+function roundTail(round: FixRoundInfo): string {
+  const outside = round.drift?.outside.length ?? 0;
+  if (round.status === "held" && outside > 0) return `, ${outside} files outside the PR`;
+  return round.summary ? `: ${round.summary}` : "";
 }
 
 /** The watch as the protocol returns it, with the fields an older daemon leaves out as `null`. */
@@ -54,12 +55,15 @@ export function byUrlJson(found: UrlTraceInfo) {
   return { ...found, trace: found.trace ? traceJson(found.trace) : null };
 }
 
+function watchState(info: WatchInfo): string {
+  if (!info.enabled) return "watch off";
+  if (info.status !== "needs_you") return "watching";
+  const why = info.reason ? `: ${info.reason}` : "";
+  return `needs you${why}`;
+}
+
 export function watchLines(info: WatchInfo): string[] {
-  const state = !info.enabled
-    ? "watch off"
-    : info.status === "needs_you"
-      ? `needs you${info.reason ? `: ${info.reason}` : ""}`
-      : "watching";
+  const state = watchState(info);
   const used =
     info.roundsUsed !== undefined && info.maxRounds !== undefined
       ? `, ${info.roundsUsed} of ${info.maxRounds} rounds used`
@@ -103,14 +107,19 @@ export function describeParts(result: { text: string; redacted: number }): {
   lines: string[];
   notice: string | null;
 } {
-  const n = result.redacted;
   return {
     lines: result.text.replace(/\n$/, "").split("\n"),
-    notice:
-      n > 0
-        ? `${n} ${n === 1 ? "line looked" : "lines looked"} like a secret and ${n === 1 ? "was" : "were"} left out`
-        : null,
+    notice: redactedNotice(result.redacted),
   };
+}
+
+function redactedNotice(n: number): string | null {
+  if (n > 0) {
+    const lines = n === 1 ? "line looked" : "lines looked";
+    const verb = n === 1 ? "was" : "were";
+    return `${n} ${lines} like a secret and ${verb} left out`;
+  }
+  return null;
 }
 
 /** The settings as the protocol returns them, with the fields an older daemon leaves out as `null`. */
@@ -124,7 +133,8 @@ export function settingsJson(settings: WatchSettings) {
   };
 }
 
-const shown = (value: unknown): string => {
+/** A setting is a flag, a number, a name, a list of them, or nothing: never an object. */
+const shown = (value: boolean | number | string | string[] | null | undefined): string => {
   if (value === undefined) return "unknown";
   if (value === null) return "none";
   if (Array.isArray(value)) return value.length === 0 ? "none" : value.join(", ");

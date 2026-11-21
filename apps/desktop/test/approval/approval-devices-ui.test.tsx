@@ -220,8 +220,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     expect(
       screen.queryByText(
         /não pede a confirmação de um dispositivo para adicionar uma pasta permitida/,
-      ) !== null,
-    ).toBe(true);
+      ),
+    ).not.toBeNull();
     cleanup();
     panel([OFF], "en", [], { unchecked: ["roots"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
@@ -234,8 +234,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     expect(
       screen.queryByText(
         /does not ask for a device to confirm writing a project's Claude Code setup/,
-      ) !== null,
-    ).toBe(true);
+      ),
+    ).not.toBeNull();
     cleanup();
     panel([HERE], "pt-BR", [], { unchecked: ["harness"] });
     await settleMaybe(
@@ -244,8 +244,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     expect(
       screen.queryByText(
         /não pede a confirmação de um dispositivo para gravar a configuração do Claude Code de um projeto/,
-      ) !== null,
-    ).toBe(true);
+      ),
+    ).not.toBeNull();
     cleanup();
     panel([OFF], "en", [], { unchecked: ["harness"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
@@ -256,9 +256,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([HERE], "en", [], { unchecked: ["plugins"] });
     await settleMaybe(() => screen.queryByText(/installing or updating a plugin/) !== null);
     expect(
-      screen.queryByText(/does not ask for a device to confirm installing or updating a plugin/) !==
-        null,
-    ).toBe(true);
+      screen.queryByText(/does not ask for a device to confirm installing or updating a plugin/),
+    ).not.toBeNull();
     cleanup();
     panel([OFF], "en", [], { unchecked: ["plugins"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
@@ -269,9 +268,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([HERE], "en", [], { unchecked: ["marketplace"] });
     await settleMaybe(() => screen.queryByText(/adding a plugin marketplace/) !== null);
     expect(
-      screen.queryByText(/does not ask for a device to confirm adding a plugin marketplace/) !==
-        null,
-    ).toBe(true);
+      screen.queryByText(/does not ask for a device to confirm adding a plugin marketplace/),
+    ).not.toBeNull();
     cleanup();
     panel([OFF], "en", [], { unchecked: ["marketplace"] });
     await settleMaybe(() => screen.queryByLabelText("One-time code") !== null);
@@ -284,8 +282,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     expect(
       screen.queryByText(
         /não pede a confirmação de um dispositivo para adicionar um marketplace de plugins/,
-      ) !== null,
-    ).toBe(true);
+      ),
+    ).not.toBeNull();
   });
 
   test("a host that does not ask for a device to install or update a plugin says so in Portuguese (#3516)", async () => {
@@ -294,8 +292,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     expect(
       screen.queryByText(
         /não pede a confirmação de um dispositivo para instalar ou atualizar um plugin/,
-      ) !== null,
-    ).toBe(true);
+      ),
+    ).not.toBeNull();
   });
 
   test("a host that does not ask for a device to trust a folder says so, in both languages, and only for that", async () => {
@@ -309,9 +307,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([HERE], "pt-BR", [], { unchecked: ["merge", "trust"] });
     await settleMaybe(() => screen.queryByText(/confiar em uma pasta/) !== null);
     expect(
-      screen.queryByText(/não pede a confirmação de um dispositivo ao confiar em uma pasta/) !==
-        null,
-    ).toBe(true);
+      screen.queryByText(/não pede a confirmação de um dispositivo ao confiar em uma pasta/),
+    ).not.toBeNull();
     expect(screen.queryByText(/ao fazer merge/)).not.toBeNull();
   });
 
@@ -319,10 +316,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     panel([HERE], "en", [], { unchecked: ["resume"] });
     await settleMaybe(() => screen.queryByText(/to confirm turning automatic approval/) !== null);
     expect(
-      screen.queryByText(
-        /does not ask for a device to confirm turning automatic approval back on/,
-      ) !== null,
-    ).toBe(true);
+      screen.queryByText(/does not ask for a device to confirm turning automatic approval back on/),
+    ).not.toBeNull();
     expect(screen.queryByText(/to confirm a merge/) === null).toBe(true); // NOSONAR: a failed toBeNull() prints the whole DOM node
     cleanup();
     panel([HERE], "pt-BR", [], { unchecked: ["resume"] });
@@ -330,8 +325,8 @@ describe("approval devices panel: what the person did and what the host said (#3
     expect(
       screen.queryByText(
         /não pede a confirmação de um dispositivo ao reativar a aprovação automática/,
-      ) !== null,
-    ).toBe(true);
+      ),
+    ).not.toBeNull();
     expect(screen.queryByText(/ao fazer merge/) === null).toBe(true); // NOSONAR: a failed toBeNull() prints the whole DOM node
   });
 

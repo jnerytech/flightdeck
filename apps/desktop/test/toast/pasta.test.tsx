@@ -127,7 +127,7 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
     });
     expect(asked).toEqual([`${hostId}:${vault}`]);
     expect(store.getState().hosts[0]?.info?.allowedRoots).toEqual([d.root]);
-    expect(screen.queryAllByRole("alert").length).toBe(0);
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
   });
 
   test("a device that cannot sign here stops the add and says why in a toast (#3507)", async () => {
