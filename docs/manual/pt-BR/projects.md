@@ -172,7 +172,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   (checks falhando, conflito, mudanças pedidas, ou uma vigia que precisa de você). Cada linha diz o card, o host e o projeto, os
   checks, se **Vigiar e consertar** está desligado, vigiando ou precisa de você, e um link para o
   PR. **Fazer merge do PR** pergunta antes, com a mesma confirmação da página do card, e só aparece
-  quando o host faz merge e os checks não estão falhando; **Atualizar com a base** faz o rebase da
+  quando o host faz merge e os checks não estão falhando (uma linha com checks falhando diz que o
+  merge fica desligado até passarem); **Atualizar com a base** faz o rebase da
   branch do card, e um conflito fica na tela com os arquivos. Com dois ou mais PRs que podem ser
   atualizados (com branch, e sem estar rodando), **Atualizar N com a base** acima da lista atualiza
   todos, um de cada vez, cada um no seu host, como a barra de seleção do board: um PR que já está na

@@ -127,6 +127,9 @@ export function PrRow(
             {t("pullRequests.heldHint", { why: t(`pullRequests.heldWhy.${stance.why}` as Key) })}
           </p>
         )}
+        {props.canMerge && card.checksState === "failing" && (
+          <p className="text-muted-foreground text-xs">{t("pullRequests.checksFailingHint")}</p>
+        )}
         {stance.kind === "conflict" && !card.worktreePath && (
           <p className="text-muted-foreground text-xs">{t("pullRequests.conflictHint")}</p>
         )}
