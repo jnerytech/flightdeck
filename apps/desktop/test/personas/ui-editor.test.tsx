@@ -86,9 +86,9 @@ describe("personas-ui: the editor", () => {
     await pickTools("Read", "Grep");
     await fill("Modo de permissão sugerido", "plan");
     expect(preview()).toContain("claude-sonnet-5-5");
-    expect(preview()).toContain("high");
+    expect(preview()).toContain("Esforço: Alto");
     expect(preview()).toContain("Ferramentas: só Read, Grep, e nenhuma que a sessão não tenha");
-    expect(preview()).toContain("Modo: plan, se for mais restrito que o da sessão");
+    expect(preview()).toContain("Modo: Planejar, se for mais restrito que o da sessão");
   });
 
   test("a new persona goes to the host, with what was typed", async () => {

@@ -108,13 +108,23 @@ export function PersonaEditor(
   const idBad = persona === null && pid.trim() !== "" && !PERSONA_ID_PATTERN.test(pid.trim());
   const iconBad = icon.trim() !== "" && !PERSONA_ICON_PATTERN.test(icon.trim());
   const problems = [
-    ...(pid.trim() === "" || idBad ? [t("personas.editor.id")] : []),
+    ...((persona === null && pid.trim() === "") || idBad ? [t("personas.editor.id")] : []),
     ...(name.trim() === "" ? [t("personas.editor.name")] : []),
     ...(description.trim() === "" ? [t("personas.editor.description")] : []),
     ...(body.trim() === "" ? [t("personas.editor.body")] : []),
     ...(iconBad ? [t("personas.editor.icon")] : []),
   ];
   const ready = problems.length === 0;
+
+  /** A level or mode the picker offers is shown by its name; any other value stays as stored. */
+  const effortName = (value: string) =>
+    (EFFORTS as readonly string[]).includes(value)
+      ? t(`efforts.${value as (typeof EFFORTS)[number]}.name`)
+      : value || null;
+  const modeName = (value: string) =>
+    (MODES as readonly string[]).includes(value)
+      ? t(`modes.${value as (typeof MODES)[number]}.name`)
+      : value;
 
   const refused = (
     code: string,
@@ -162,6 +172,8 @@ export function PersonaEditor(
     <Form
       variant="panel"
       onSubmit={() => {
+        // A refused Enter says why on the fields, not only under Save.
+        setLeft({ id: true, icon: true });
         if (ready) saving.run(save);
       }}
     >
@@ -174,7 +186,7 @@ export function PersonaEditor(
           <Input
             {...control}
             ref={persona === null ? firstField : undefined}
-            aria-required
+            aria-required={persona === null}
             value={pid}
             disabled={persona !== null}
             onChange={(e) => setPid(e.target.value)}
@@ -267,7 +279,7 @@ export function PersonaEditor(
             <option value="">{t("personas.editor.none")}</option>
             {EFFORTS.map((e) => (
               <option key={e} value={e}>
-                {t(`personas.editor.efforts.${e}`)}
+                {t(`efforts.${e}.name`)}
               </option>
             ))}
           </NativeSelect>
@@ -365,7 +377,7 @@ export function PersonaEditor(
         <p>
           {t("personas.editor.modelLine", {
             model: model.trim() || t("personas.editor.sessionDefault"),
-            effort: effort || t("personas.editor.sessionDefault"),
+            effort: effortName(effort) ?? t("personas.editor.sessionDefault"),
           })}
         </p>
         <p>
@@ -373,7 +385,7 @@ export function PersonaEditor(
             ? t("personas.editor.toolsOnly", { tools: toolList.join(", ") })
             : t("personas.editor.toolsAll")}
         </p>
-        {mode && <p>{t("personas.editor.modeLine", { mode })}</p>}
+        {mode && <p>{t("personas.editor.modeLine", { mode: modeName(mode) })}</p>}
       </section>
       {error && (
         <p role="alert" className="text-destructive text-sm">

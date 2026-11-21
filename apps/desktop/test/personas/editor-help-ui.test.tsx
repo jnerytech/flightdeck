@@ -185,7 +185,7 @@ describe("editor help: the options have names (#3632)", () => {
     const form = setup("pt-BR");
     const effort = options(form.control("effort"));
     const mode = options(form.control("mode"));
-    expect(effort).toContainEqual(["Extra alto", "xhigh"]);
+    expect(effort).toContainEqual(["Muito alto", "xhigh"]);
     expect(mode).toContainEqual(["Aceitar edições", "acceptEdits"]);
     expect(mode).toContainEqual(["Só o permitido", "dontAsk"]);
     expect(mode).toContainEqual(["Automático", "auto"]);
@@ -196,12 +196,28 @@ describe("editor help: the options have names (#3632)", () => {
     expect(options(form.control("effort"))).toContainEqual(["Extra high", "xhigh"]);
     expect(options(form.control("mode"))).toContainEqual(["Allowed only", "dontAsk"]);
   });
+});
 
-  test("every control is a shared field, so each has the same help slot", () => {
+describe("editor help: review findings (#3632)", () => {
+  test("Enter on a bad id says why on the field, and the preview names the effort and mode", async () => {
     const form = setup("pt-BR");
-    const natives = ["effort", "mode", "place"].map((key) =>
-      form.control(key as keyof typeof LABELS.en)?.getAttribute("data-slot"),
-    );
-    expect(natives).toEqual(["native-select", "native-select", "native-select"]);
+    await form.fillAll();
+    await form.type("id", "Meu Persona");
+    await act(async () => {
+      fireEvent.submit(form.control("id")?.closest("form") as HTMLElement);
+    });
+    await uiIdle();
+    expect(form.control("id")?.getAttribute("aria-invalid")).toBe("true");
+    await act(async () => {
+      fireEvent.change(form.control("effort") as HTMLElement, { target: { value: "xhigh" } });
+      fireEvent.change(form.control("mode") as HTMLElement, { target: { value: "acceptEdits" } });
+    });
+    await uiIdle();
+    const preview =
+      within(document.body).queryByRole("region", { name: "Prévia" })?.textContent ?? "";
+    expect([
+      preview.includes("Esforço: Muito alto"),
+      preview.includes("Modo: Aceitar edições"),
+    ]).toEqual([true, true]);
   });
 });

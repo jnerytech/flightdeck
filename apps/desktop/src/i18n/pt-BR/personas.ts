@@ -69,7 +69,6 @@ export const personas = {
       iconHelp: "Opcional. Letras minúsculas, dígitos e hífens, até 30.",
       iconInvalid: "Use letras minúsculas, dígitos e hífens, até 30.",
       saveOff: "Para salvar, preencha ou corrija: {fields}.",
-      efforts: { low: "Baixo", medium: "Médio", high: "Alto", xhigh: "Extra alto", max: "Máximo" },
       placeOption: { host: "No host", app: "No app (global)", project: "No projeto (versionada)" },
       preview: "Prévia",
       appended: "Acrescentado às instruções do sistema:",
