@@ -11,7 +11,7 @@ import { oneOf } from "./vault-args.ts";
 
 const ACTIONS = ["list", "read", "write"] as const;
 const ORIGINS = ["project", "user"] as const;
-const SHA256 = /^[0-9a-f]{64}$/;
+export const SHA256 = /^[0-9a-f]{64}$/;
 
 /** `agentcfg list|read|write <project>`. */
 export function readAgentcfg(args: CliArgs, reader: ArgReader): void {
@@ -59,15 +59,20 @@ const SHARED: Array<[string, (args: CliArgs) => boolean, readonly string[]]> = [
   ["--confirm", (args) => args.confirm !== undefined, ["write"]],
 ];
 
-/** `--path` is also `review add`'s, which checks its own flags. */
-const isReviewPath = (args: CliArgs, flag: string): boolean =>
-  flag === "--path" && args.command === "review";
+/** `--path` is also `review add`'s, and `--file`, `--expected-hash` and `--new` are `memory`'s: each checks its own flags. */
+const checkedElsewhere = (args: CliArgs, flag: string): boolean =>
+  (flag === "--path" && args.command === "review") ||
+  (args.command === "memory" && ["--file", "--expected-hash", "--new"].includes(flag));
 
 /** A flag outside the verbs that take it. */
 function strayFlag(args: CliArgs): string | undefined {
   const onAgentcfg = args.command === "agentcfg";
   for (const [flag, typed, verbs] of flagged(args))
-    if (typed && !(onAgentcfg && verbs.includes(args.action ?? "")) && !isReviewPath(args, flag))
+    if (
+      typed &&
+      !(onAgentcfg && verbs.includes(args.action ?? "")) &&
+      !checkedElsewhere(args, flag)
+    )
       return `${flag}: this flag only applies to flightdeckd agentcfg ${verbs.join(", ")}`;
   if (!onAgentcfg) return undefined;
   for (const [flag, typed, verbs] of SHARED)

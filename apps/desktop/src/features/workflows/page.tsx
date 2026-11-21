@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { workflowIssueText } from "@/i18n/errors";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { WorkflowTemplates } from "./workflow-templates.tsx";
@@ -37,7 +37,13 @@ export function WorkflowsPage(
   const [trusting, setTrusting] = useState<WorkflowInfo | null>(null);
 
   const reload = useCallback(async () => {
-    const result = await store.hostCommand(hostId, "workflow.list", { projectId });
+    // The page has its own error and Try again (the toast's retry would drop the answer).
+    const result = await store.hostCommand(
+      hostId,
+      "workflow.list",
+      { projectId },
+      { retry: false },
+    );
     setFailed(result === null);
     if (result) setWorkflows(result.workflows);
   }, [store, hostId, projectId]);
@@ -59,7 +65,13 @@ export function WorkflowsPage(
       subtitle={t("workflowsUi.subtitle")}
       actions={<WorkflowTemplates store={store} hostId={hostId} projectId={projectId} />}
     >
-      {failed && <InlineNotice tone="error">{t("workflowsUi.failed")}</InlineNotice>}
+      {failed && (
+        <ErrorState
+          message={t("workflowsUi.failed")}
+          retryLabel={t("workflowsUi.retry")}
+          onRetry={() => void reload()}
+        />
+      )}
       {!failed && workflows === null && <LoadingState label={t("workflowsUi.loading")} />}
       {workflows?.length === 0 && <EmptyState icon={Workflow} title={t("workflowsUi.empty")} />}
       {workflows && workflows.length > 0 && (
