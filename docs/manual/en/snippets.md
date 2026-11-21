@@ -72,7 +72,8 @@ fd snippet trust --project-path /home/pi/app --hash 0123abcd --confirm
 - `remove <name or id>` deletes the snippet. With `--project-path`, a name that both a host snippet and a project snippet have is refused with their ids: give the id. `favorite <name or id>` marks it, and `--off` clears the mark; it needs no
   `--confirm`.
 - `trust --project-path <folder> --hash <hash>` trusts the content of that project's versioned file, by the hash
-  `snippet list` showed: its commands may then be run. If the file changed since, the daemon refuses.
+  `snippet list` showed: its commands may then be run. If the file changed since, the daemon refuses. It needs a near
+  connection (this computer or Tailscale), like trusting a workflow.
 - `use <name or id> --terminal <id>` types the text into that terminal, and `--enter` also presses Enter, which runs it.
   A snippet of a project file that is not trusted is refused. It prints `typed into <id>` or `ran in <id>` and the text.
 - `save`, `remove`, `trust` and `use` need `--confirm`, and so does `import-history --select`. A session that runs

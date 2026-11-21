@@ -21,7 +21,10 @@ export const agentsHandlers = {
       .needIn("agentSetup", "mcp")
       .test(server.projectPath(projectId), name, confirm === true);
   },
-  "mcp.save": async (payload, { server }) => {
+  "mcp.save": async (payload, { ws, server }) => {
+    // The server is a command the next session starts from `.mcp.json`: near only, or a far
+    // connection could save one and turn it on, past the check on a confirmed `mcp.test` (#3807).
+    requireVaultTransport(ws.data.origin, "mcp.save", server.opts.log);
     const path = server.projectPath(payload.projectId);
     const mcp = server.needIn("agentSetup", "mcp");
     await mcp.save(path, payload.server, payload.confirm === true);
@@ -33,8 +36,10 @@ export const agentsHandlers = {
     await mcp.remove(path, payload.name, payload.confirm === true);
     return { servers: await mcp.list(path) };
   },
-  "mcp.toggle": async (payload, { server }) => {
+  "mcp.toggle": async (payload, { ws, server }) => {
     const { projectId, name, enabled, confirm, sessionId } = payload;
+    // Turning a server on lets Claude start its command: near only. Turning it off is not (#3807).
+    if (enabled) requireVaultTransport(ws.data.origin, "mcp.toggle", server.opts.log);
     const path = server.projectPath(projectId);
     const mcp = server.needIn("agentSetup", "mcp");
     await mcp.toggle(path, name, enabled, confirm === true);
@@ -195,7 +200,10 @@ export const agentsHandlers = {
   "snippets.remove": async (payload, { server }) => {
     await server.needIn("snippets", "library").remove(payload.id);
   },
-  "snippets.trust": async (payload, { server }) => {
+  "snippets.trust": async (payload, { ws, server }) => {
+    // A trusted snippet file lets its commands run in a terminal: near only, as trusting a workflow
+    // is (#3807).
+    requireVaultTransport(ws.data.origin, "snippets.trust", server.opts.log);
     const approvers = server.opts.approvers;
     // #3647: with a device enrolled, the person signs the project and the file's hash. The folder is the one the
     // host trusts: a link or a relative path that resolves elsewhere is refused with the folder it is, and the
