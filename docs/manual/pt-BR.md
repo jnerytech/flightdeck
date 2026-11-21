@@ -97,6 +97,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd watch](pt-BR/flightdeckd-watch-commands.md#fd-watch)
 
+## Comandos do flightdeckd: a sincronização de quadro de um projeto
+
+[Ler o capítulo.](pt-BR/flightdeckd-boardsync-commands.md) Suas seções:
+
+- [fd boardsync](pt-BR/flightdeckd-boardsync-commands.md#fd-boardsync)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)

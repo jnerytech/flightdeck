@@ -6,6 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
+import { readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
@@ -356,6 +357,7 @@ const HANDLERS: Record<string, Handler> = {
   session: readSession,
   ssh: readSsh,
   watch: readWatch,
+  boardsync: readBoardsync,
   terminal: readTerminal,
   requests: (args) => {
     startCommand(args, "requests");

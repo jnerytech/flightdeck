@@ -104,6 +104,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd watch](en/flightdeckd-watch-commands.md#fd-watch)
 
+## flightdeckd commands: the board sync of a project
+
+[Read the chapter.](en/flightdeckd-boardsync-commands.md) Its sections:
+
+- [fd boardsync](en/flightdeckd-boardsync-commands.md#fd-boardsync)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)

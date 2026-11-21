@@ -4,4 +4,5 @@
  * imports. Another domain imports from here.
  */
 
+export { type BoardsyncCliArgs, runBoardsyncCli } from "./boardsync-cli.ts";
 export { type BoardSyncDeps, createBoardSync } from "./wiring.ts";
