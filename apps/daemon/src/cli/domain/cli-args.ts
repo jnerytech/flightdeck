@@ -50,6 +50,7 @@ export interface CliArgs {
     | "agentcfg"
     | "watch"
     | "boardsync"
+    | "review"
     | "runenv"
     | "changes"
     | "requests"
@@ -230,6 +231,8 @@ export interface CliArgs {
   watchTarget?: string;
   /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
   changesOperand?: string;
+  /** `review list <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  reviewTarget?: string;
   /** `runenv config <project>` or `runenv get <card>`: the operand. */
   runenvTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
