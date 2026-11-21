@@ -143,7 +143,7 @@ describe("conexoes-ui: the form", () => {
     await fill("Usuário", "me");
     const save = () =>
       screen.queryByRole("button", { name: "Salvar destino" }) as HTMLButtonElement;
-    for (const bad of ["abc", "-1", "1.5"]) {
+    for (const bad of ["abc", "-1", "1.5", "99999999999999999999"]) {
       await fill("Manter a conexão viva (segundos)", bad);
       expect(
         screen.queryByText("Use um número inteiro de 0 ou mais, ou deixe em branco."),
