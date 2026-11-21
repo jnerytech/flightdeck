@@ -10,6 +10,7 @@ export const VERB_NOUNS = new Set([
   "approvers",
   "autoapprove",
   "automation",
+  "bg",
   "boardsync",
   "budget",
   "card",

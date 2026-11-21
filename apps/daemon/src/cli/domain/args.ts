@@ -8,7 +8,7 @@ import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.t
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { AUTOMATION_FLAGS, automationProblem, readAutomation } from "./automation-args.ts";
-import { readBg } from "./bg-args.ts";
+import { BG_FLAGS, bgProblem, readBg, takeBgFlags } from "./bg-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
@@ -575,6 +575,7 @@ const HANDLERS: Record<string, Handler> = {
   ...REVIEW_FLAGS,
   ...CHANGES_FLAGS,
   ...CHECKPOINT_FLAGS,
+  ...BG_FLAGS,
   ...FILE_FLAGS,
   "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
@@ -701,6 +702,7 @@ function refuseStrayFlags(args: CliArgs): void {
   takeFileFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);
+  takeBgFlags(args);
   if (
     !["requests", "message", "autoapprove", "vault", "mcp"].includes(args.command) &&
     args.session !== undefined
@@ -759,6 +761,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     runenvProblem(args) ??
     changesProblem(args) ??
     checkpointsProblem(args) ??
+    bgProblem(args) ??
     fileProblem(args) ??
     actionProblem(args) ??
     automationProblem(args) ??

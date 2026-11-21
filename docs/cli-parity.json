@@ -61,10 +61,10 @@
   "automation.save": { "cli": "automation" },
   "automation.toggle": { "cli": "automation" },
   "bg.list": { "cli": "bg" },
-  "bg.message": {},
-  "bg.respawn": {},
-  "bg.start": {},
-  "bg.stop": {},
+  "bg.message": { "cli": "bg" },
+  "bg.respawn": { "cli": "bg" },
+  "bg.start": { "cli": "bg" },
+  "bg.stop": { "cli": "bg" },
   "board.get": {
     "cli": "card"
   },

@@ -125,6 +125,7 @@ export interface CliArgs {
     | "budget"
     | "suggest"
     | "message"
+    | "respawn"
     | "templates"
     | "validation-template"
     | "pr-create"
@@ -488,6 +489,17 @@ export interface CliArgs {
   snippetRun?: string;
   /** `snippet save --text <prompt>`: a prompt snippet. */
   snippetText?: string;
+  /** `bg stop|respawn|message <id>`: the id of the background session. */
+  bgId?: string;
+  /** `bg start|message`'s flags, moved out of the shared fields by `takeBgFlags`; `--card` is theirs alone. */
+  bgFlags?: {
+    cwd?: string;
+    prompt?: string;
+    card?: string;
+    name?: string;
+    persona?: string;
+    text?: string;
+  };
   /** `snippet import-history --select <id,id,...>`: the candidates to make snippets. */
   snippetSelect?: string[];
   /** `snippet use --terminal <id>`: the terminal the command is typed into. */

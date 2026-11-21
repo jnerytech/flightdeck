@@ -168,6 +168,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       "approvers",
       "autoapprove",
       "automation",
+      "bg",
       "boardsync",
       "budget",
       "card",
