@@ -41,3 +41,10 @@ export function bgLines(list: BgList): string[] {
     ...list.sessions.map(sessionLine),
   ];
 }
+
+/** The one line a write verb prints once the daemon has done it; `start` names the session it made. */
+export function bgDoneLine(action: "start" | "stop" | "respawn" | "message", id: string): string {
+  if (action === "start") return `started background session ${id}`;
+  if (action === "message") return `sent a message to ${id}`;
+  return `${action === "stop" ? "stopped" : "respawned"} ${id}`;
+}

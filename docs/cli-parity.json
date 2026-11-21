@@ -61,10 +61,10 @@
   "automation.save": { "cli": "automation" },
   "automation.toggle": { "cli": "automation" },
   "bg.list": { "cli": "bg" },
-  "bg.message": {},
-  "bg.respawn": {},
-  "bg.start": {},
-  "bg.stop": {},
+  "bg.message": { "cli": "bg" },
+  "bg.respawn": { "cli": "bg" },
+  "bg.start": { "cli": "bg" },
+  "bg.stop": { "cli": "bg" },
   "board.get": {
     "cli": "card"
   },
@@ -181,9 +181,9 @@
   "daemon.update.check": {},
   "deps.check": {},
   "doctor.run": {},
-  "external.list": {},
-  "external.message": {},
-  "external.watch": {},
+  "external.list": { "cli": "external" },
+  "external.message": { "cli": "external" },
+  "external.watch": { "cli": "external" },
   "file.list": { "cli": "file" },
   "file.read": { "cli": "file" },
   "file.search": { "cli": "file" },
@@ -231,8 +231,8 @@
     "cli": "message"
   },
   "issues.createCard": {},
-  "issues.get": {},
-  "issues.list": {},
+  "issues.get": { "cli": "issues" },
+  "issues.list": { "cli": "issues" },
   "knowledge.create": { "cli": "knowledge" },
   "knowledge.feed": { "cli": "knowledge" },
   "knowledge.index": { "cli": "knowledge" },
@@ -288,7 +288,7 @@
   "messaging.rules.set": {
     "cli": "message"
   },
-  "names.list": {},
+  "names.list": { "cli": "names" },
   "permission.respond": {
     "cli": "approve"
   },
@@ -327,7 +327,7 @@
   "plugins.previewUpdate": { "cli": "plugins" },
   "plugins.uninstall": { "cli": "plugins" },
   "plugins.update": { "cli": "plugins" },
-  "pr.comments": {},
+  "pr.comments": { "cli": "card" },
   "pr.comments.send": {},
   "project.add": { "cli": "project" },
   "project.detectProvider": { "cli": "project" },
@@ -354,7 +354,7 @@
   "quota.watch": { "cli": "quota" },
   "releases.list": { "cli": "releases" },
   "resources.endOrphan": {},
-  "resources.get": {},
+  "resources.get": { "cli": "resources" },
   "resources.setPauseAt": {},
   "review.add": { "cli": "review" },
   "review.list": { "cli": "review" },
@@ -614,6 +614,6 @@
   "workflow.templates": { "cli": "workflow" },
   "workflow.trust": {},
   "workflow.validate": { "cli": "workflow" },
-  "worktree.list": {},
+  "worktree.list": { "cli": "worktree" },
   "worktree.remove": {}
 }

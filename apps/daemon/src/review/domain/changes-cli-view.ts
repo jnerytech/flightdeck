@@ -33,8 +33,10 @@ export const changesJson = (result: ChangesResult) => ({
 /** What the daemon did with a file's lines: the counts, or the reason it has none. */
 function detail(file: DiffFile): string {
   if (file.secret) return "may hold a credential, not read";
-  if (file.tooLarge)
-    return `too large${file.bytes === undefined ? "" : ` (${file.bytes} bytes)`}, not read`;
+  if (file.tooLarge) {
+    const size = file.bytes === undefined ? "" : ` (${file.bytes} bytes)`;
+    return `too large${size}, not read`;
+  }
   if (file.binary) return "binary";
   return `+${file.additions} -${file.deletions}`;
 }
@@ -89,10 +91,10 @@ export function sessionsLines(path: string, sessions: FileSession[]): string[] {
   if (sessions.length === 0) return [`${path}: no session wrote it`];
   return [
     `${path}: ${plural(sessions.length, "session wrote it", "sessions wrote it")}`,
-    ...sessions.map(
-      (s) =>
-        `  ${s.claudeSessionId}: ${plural(s.edits, "edit", "edits")}, first ${s.firstAt}, last ${s.lastAt}${s.title ? `, ${s.title}` : ""}`,
-    ),
+    ...sessions.map((s) => {
+      const title = s.title ? `, ${s.title}` : "";
+      return `  ${s.claudeSessionId}: ${plural(s.edits, "edit", "edits")}, first ${s.firstAt}, last ${s.lastAt}${title}`;
+    }),
   ];
 }
 
@@ -123,10 +125,14 @@ export const openedLines = (done: ChangesPrOpened) => [
   `opened ${done.url} (${done.branch} into ${done.base})`,
 ];
 
+const LONG_WAITS = new Map([
+  ["commit", 130_000],
+  ["pr", 300_000],
+]);
+
 /**
  * How long a `changes` verb waits for the daemon's answer, in milliseconds. A commit runs the person's git hooks,
  * which the daemon lets take 120 s, and a pr pushes the branch over the network before it opens the pull request:
  * a shorter wait would say "may or may not have happened" about a write that is still running.
  */
-export const timeoutOf = (action: string): number =>
-  action === "commit" ? 130_000 : action === "pr" ? 300_000 : 15_000;
+export const timeoutOf = (action: string): number => LONG_WAITS.get(action) ?? 15_000;

@@ -65,6 +65,14 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 - [fd memory](flightdeckd-memory-commands.md#fd-memory)
 - [Mudar uma nota](flightdeckd-memory-commands.md#mudar-uma-nota)
 
+## Comandos do flightdeckd: worktrees, issues e comentários de PR
+
+[Ler o capítulo.](flightdeckd-worktree-commands.md) Suas seções:
+
+- [fd worktree](flightdeckd-worktree-commands.md#fd-worktree)
+- [fd issues](flightdeckd-worktree-commands.md#fd-issues)
+- [fd card pr-comments](flightdeckd-worktree-commands.md#fd-card-pr-comments)
+
 ## Comandos do flightdeckd: o log, os releases, os alertas e a atividade de um host
 
 [Ler o capítulo.](flightdeckd-feed-commands.md) Suas seções:
@@ -135,3 +143,16 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-workflow-commands.md) Suas seções:
 
 - [fd workflow](flightdeckd-workflow-commands.md#fd-workflow)
+
+## Comandos do flightdeckd: o que o trabalho do host custa a ele
+
+[Ler o capítulo.](flightdeckd-resources-commands.md) Suas seções:
+
+- [fd resources](flightdeckd-resources-commands.md#fd-resources)
+
+## Comandos do flightdeckd: sessões de terminal e nomes
+
+[Ler o capítulo.](flightdeckd-external-commands.md) Suas seções:
+
+- [fd external](flightdeckd-external-commands.md#fd-external)
+- [fd names](flightdeckd-external-commands.md#fd-names)

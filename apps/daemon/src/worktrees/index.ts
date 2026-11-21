@@ -14,4 +14,5 @@ export {
   WORKTREE_INCLUDE,
   WORKTREE_INCLUDE_LIMIT,
 } from "./worktree.ts";
+export { runWorktreeCli, type WorktreeCliArgs } from "./worktree-cli.ts";
 export type { Worktrees } from "./worktrees.ts";

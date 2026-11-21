@@ -57,8 +57,8 @@ describe("risk rules: a session ending or forcing a card from its shell (#3454)"
         "fd card update c1 --title delete",
         "fd card move c1 review",
         "fd card move c1 review --position 2",
-        "fd send fd-qa 'please discard c1'",
-        // Like `fd send`, these reach a session's work by card id and are left unrated (#3454).
+        "fd message send fd-qa 'please discard c1'",
+        // Like `fd message send`, these reach a session's work by card id and are left unrated (#3454).
         "fd card message c1 'please rebase'",
         "fd card review c1",
         "fd card diff c1",
@@ -75,7 +75,7 @@ describe("risk rules: a session ending or forcing a card from its shell (#3454)"
         "fd card new 'fix card delete flow'",
         "fd card message c1 'remember to card complete it'",
         "fd card pr-create c1 --title 'card merge-local notes'",
-        "fd send s1 'please card discard'",
+        "fd message send s1 'please card discard'",
         "echo card discard",
         "bun test card discard",
         "bash -c 'echo card delete'",

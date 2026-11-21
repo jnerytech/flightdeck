@@ -8,7 +8,7 @@ import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.t
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { AUTOMATION_FLAGS, automationProblem, readAutomation } from "./automation-args.ts";
-import { readBg } from "./bg-args.ts";
+import { BG_FLAGS, bgProblem, readBg, takeBgFlags } from "./bg-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
@@ -24,18 +24,12 @@ import {
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, LIMIT_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
-import {
-  feedLimitMax,
-  feedProblem,
-  LINES_FLAG,
-  readActivity,
-  readAlert,
-  readLogs,
-  readReleases,
-} from "./feed-args.ts";
+import { externalProblem, readExternal, readNames, TEXT_FLAG } from "./external-args.ts";
+import { FEED_READERS, feedProblem, LINES_FLAG, readFeedLimit } from "./feed-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
+import { issuesProblem, readIssues } from "./issues-args.ts";
 import { knowledgeFlags, knowledgeProblem, readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
 import { memoryProblem, readMemory } from "./memory-args.ts";
@@ -61,6 +55,7 @@ import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
 import { readWorkflow, workflowProblem } from "./workflow-args.ts";
+import { readWorktree, worktreeProblem } from "./worktree-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -129,6 +124,7 @@ const HANDLERS: Record<string, Handler> = {
   channel: setCommand("channel"),
   mcp: readMcp,
   knowledge: readKnowledge,
+  resources: setCommand("resources"),
   workflow: readWorkflow,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
@@ -228,6 +224,7 @@ const HANDLERS: Record<string, Handler> = {
         "choose-variant",
         "check-loop",
         "dismiss-unblocked",
+        "pr-comments",
       ],
       "invalid card action",
     );
@@ -342,10 +339,9 @@ const HANDLERS: Record<string, Handler> = {
   boardsync: readBoardsync,
   review: readReview,
   memory: readMemory,
-  logs: readLogs,
-  releases: readReleases,
-  alert: readAlert,
-  activity: readActivity,
+  worktree: readWorktree,
+  issues: readIssues,
+  ...FEED_READERS,
   runenv: readRunenv,
   changes: readChanges,
   snapshots: readSnapshots,
@@ -353,6 +349,8 @@ const HANDLERS: Record<string, Handler> = {
   trace: readTrace,
   bg: readBg,
   file: readFile,
+  external: readExternal,
+  names: readNames,
   automation: readAutomation,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
@@ -570,11 +568,7 @@ const HANDLERS: Record<string, Handler> = {
     args.scope = v;
   }),
   "--limit": setValue((args, v) => {
-    const max = feedLimitMax(args.command);
-    if (max !== undefined) {
-      args.limit = wholeFrom("--limit", v, max);
-      return;
-    }
+    if (readFeedLimit(args, v)) return;
     const n = Number(v);
     if (!/^\d+$/.test(v) || n < 1 || n > 1000)
       throw new Error(`--limit: a whole number from 1 to 1000, got ${v}\n${USAGE}`);
@@ -593,8 +587,10 @@ const HANDLERS: Record<string, Handler> = {
   "--lines": LINES_FLAG,
   ...CHANGES_FLAGS,
   ...CHECKPOINT_FLAGS,
+  ...BG_FLAGS,
   ...FILE_FLAGS,
   "--off": OFF_FLAG,
+  "--text": TEXT_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   ...MESSAGE_FLAGS,
@@ -719,6 +715,7 @@ function refuseStrayFlags(args: CliArgs): void {
   takeFileFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);
+  takeBgFlags(args);
   if (
     !["requests", "message", "autoapprove", "vault", "mcp"].includes(args.command) &&
     args.session !== undefined
@@ -769,11 +766,15 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     boardsyncProblem(args) ??
     reviewProblem(args) ??
     memoryProblem(args) ??
+    issuesProblem(args) ??
+    worktreeProblem(args) ??
     feedProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
     checkpointsProblem(args) ??
+    bgProblem(args) ??
     fileProblem(args) ??
+    externalProblem(args) ??
     actionProblem(args) ??
     automationProblem(args) ??
     projectProblem(args) ??

@@ -42,7 +42,7 @@ describe("risk rules: a session saving, enabling or removing an automation from 
         "fd automation list api",
         "fd automation runs a1 --limit 20 --json --host pi",
         "fd automation disable a1",
-        "fd send fd-qa 'automation enable a1'",
+        "fd message send fd-qa 'automation enable a1'",
         "echo automation remove a1",
       ]),
     ).toEqual([]);

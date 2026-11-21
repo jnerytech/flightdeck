@@ -77,7 +77,7 @@ describe("risk rules: a session changing a project's MCP servers from its shell 
         "fd mcp test api files --json --host pi",
         "fd mcp",
         "fd mcp --config c.json",
-        "fd send fd-qa 'mcp remove api files --confirm'",
+        "fd message send fd-qa 'mcp remove api files --confirm'",
         "echo mcp remove api files",
       ]),
     ).toEqual([]);

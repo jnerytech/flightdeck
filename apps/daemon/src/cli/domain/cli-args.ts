@@ -35,9 +35,12 @@ export interface CliArgs {
     | "askpass"
     | "mcp"
     | "knowledge"
+    | "resources"
     | "workflow"
     | "statusline"
     | "action"
+    | "external"
+    | "names"
     | "snippet"
     | "message"
     | "card"
@@ -59,6 +62,8 @@ export interface CliArgs {
     | "boardsync"
     | "review"
     | "memory"
+    | "worktree"
+    | "issues"
     | "logs"
     | "releases"
     | "alert"
@@ -130,6 +135,7 @@ export interface CliArgs {
     | "tail"
     | "since"
     | "message"
+    | "respawn"
     | "templates"
     | "validation-template"
     | "pr-create"
@@ -153,6 +159,7 @@ export interface CliArgs {
     | "export"
     | "reprice"
     | "dismiss-unblocked"
+    | "pr-comments"
     | "search"
     | "tool"
     | "decisions"
@@ -223,6 +230,8 @@ export interface CliArgs {
     | "harness-export"
     | "harness-apply"
     | "harness-commit";
+  /** `external message <session> --text <text>`: the Claude session id of a terminal. */
+  externalSession?: string;
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -295,6 +304,12 @@ export interface CliArgs {
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
   memoryName?: string;
+  /** `worktree list [<project>]`: the project, by name or id. */
+  worktreeProject?: string;
+  /** `issues list|get <project>`: the project, by name or id. */
+  issuesProject?: string;
+  /** `issues get <project> <id>`: the issue's id. */
+  issuesId?: string;
   /** `logs tail --lines <n>`: how many lines of the daemon log, 1 to 500. */
   logLines?: number;
   /** `alert list <project>`: the project, by name or id. */
@@ -499,6 +514,17 @@ export interface CliArgs {
   snippetRun?: string;
   /** `snippet save --text <prompt>`: a prompt snippet. */
   snippetText?: string;
+  /** `bg stop|respawn|message <id>`: the id of the background session. */
+  bgId?: string;
+  /** `bg start|message`'s flags, moved out of the shared fields by `takeBgFlags`; `--card` is theirs alone. */
+  bgFlags?: {
+    cwd?: string;
+    prompt?: string;
+    card?: string;
+    name?: string;
+    persona?: string;
+    text?: string;
+  };
   /** `snippet import-history --select <id,id,...>`: the candidates to make snippets. */
   snippetSelect?: string[];
   /** `snippet use --terminal <id>`: the terminal the command is typed into. */

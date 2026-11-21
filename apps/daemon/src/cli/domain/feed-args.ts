@@ -23,25 +23,25 @@ const MOST_ACTIVITY = 50;
 /** An ISO date and time with its zone, as the daemon takes it: `2026-11-20T09:00:00Z`, with seconds and a zone offset optional. */
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
-export function readLogs(args: CliArgs, reader: ArgReader): void {
+function readLogs(args: CliArgs, reader: ArgReader): void {
   args.command = "logs";
   args.action = subAction(reader, ["tail"] as const, "invalid logs action");
 }
 
-export function readReleases(args: CliArgs, reader: ArgReader): void {
+function readReleases(args: CliArgs, reader: ArgReader): void {
   args.command = "releases";
   args.action = subAction(reader, ["list"] as const, "invalid releases action");
 }
 
 /** `alert list <project>`: the project is its id or its name. */
-export function readAlert(args: CliArgs, reader: ArgReader): void {
+function readAlert(args: CliArgs, reader: ArgReader): void {
   args.command = "alert";
   args.action = subAction(reader, ["list"] as const, "invalid alert action");
   args.alertProject = operand(reader, "the project");
 }
 
 /** `activity since <time>`: the instant is sent as UTC, whatever zone the person typed it in. */
-export function readActivity(args: CliArgs, reader: ArgReader): void {
+function readActivity(args: CliArgs, reader: ArgReader): void {
   args.command = "activity";
   args.action = subAction(reader, ["since"] as const, "invalid activity action");
   const time = operand(reader, "the time");
@@ -60,12 +60,21 @@ export const LINES_FLAG: Handler = (args, reader, value) => {
   else REVIEW_FLAGS["--lines"]?.(args, reader, value);
 };
 
-/** The most a `--limit` takes on `releases list` and `activity since`; the other commands keep theirs. */
-export function feedLimitMax(command: string): number | undefined {
-  if (command === "releases") return MOST_RELEASES;
-  if (command === "activity") return MOST_ACTIVITY;
-  return undefined;
+/** A `--limit` on `releases list` or `activity since`, in the range the daemon takes; false for the other commands, which keep theirs. */
+export function readFeedLimit(args: CliArgs, value: string): boolean {
+  const max =
+    args.command === "releases" ? MOST_RELEASES : args.command === "activity" ? MOST_ACTIVITY : 0;
+  if (max > 0) args.limit = wholeFrom("--limit", value, max);
+  return max > 0;
 }
+
+/** The readers of these four nouns, for the table of `args.ts`. */
+export const FEED_READERS = {
+  logs: readLogs,
+  releases: readReleases,
+  alert: readAlert,
+  activity: readActivity,
+};
 
 /** What is wrong with the flags of these nouns: a `--limit` on the two that list the whole answer. */
 export function feedProblem(args: CliArgs): string | undefined {
