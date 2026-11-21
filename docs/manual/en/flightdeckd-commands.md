@@ -132,10 +132,6 @@ two sessions share is refused, and the error lists their ids. Prints `sent to <i
 prints `session` and `queued`. If the daemon is cut off after the text left, the exit is `2` and the
 text may or may not have gone in: look at the session before you send it again.
 
-The shell of a session of Flightdeck itself asks the person first: the session that receives the text reads it as the
-person's own, so `fd send` from a session's shell is a high risk command. Sessions message each other with
-`fd message send`.
-
 ## fd approvers
 
 ```sh
