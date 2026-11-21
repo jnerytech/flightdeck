@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PopoverContent } from "@/components/ui/popover";
 import { ApprovalActions, RiskSeal } from "@/features/permissions/ui.ts";
 import type { Key } from "@/i18n";
-import { formatTime } from "../../i18n/format.ts";
+import { formatWhen } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
 import { type InboxEntry, type InboxRow, inboxRows } from "./domain/inbox.ts";
 
@@ -49,6 +49,7 @@ function InboxItem(
   const { row, t, gone } = props;
   const { entry } = row;
   const unread = !entry.read;
+  const title = entry.subject ?? entry.title;
   const { request } = props;
   const keysId = useId();
   // The same keys as in Needs you: only a plain press answers, and a high-risk request is never
@@ -80,20 +81,20 @@ function InboxItem(
             </>
           )}
           <span data-slot="row-title" className={unread ? "font-semibold text-sm" : "text-sm"}>
-            {entry.subject ?? entry.title}
+            {title}
           </span>
           {row.count > 1 && (
             <span className="text-muted-foreground text-xs">
               {t("inbox.count", { n: row.count })}
             </span>
           )}
-          <span className="inbox-time">{formatTime(entry.at, t.lang)}</span>
+          <span className="inbox-time">{formatWhen(entry.at, Date.now(), t.lang)}</span>
         </span>
         <span className="text-muted-foreground text-xs">{says}</span>
         {gone && <span className="text-muted-foreground text-xs">{t("inbox.gone")}</span>}
       </button>
       {request && (
-        <fieldset className="inbox-request" aria-label={entry.subject ?? entry.title}>
+        <fieldset className="inbox-request" aria-label={title}>
           <span id={keysId} className="sr-only">
             {t(request.risk === "high" ? "inbox.keysHigh" : "inbox.keys")}
           </span>
@@ -113,7 +114,7 @@ function InboxItem(
             variant="ghost"
             size="icon"
             className="size-6"
-            aria-label={t("inbox.markRead")}
+            aria-label={t("inbox.markRead", { title })}
             onClick={() => props.onMarkRead(row)}
           >
             <Check aria-hidden="true" />
@@ -126,7 +127,7 @@ function InboxItem(
             variant="ghost"
             size="icon"
             className="size-6"
-            aria-label={t("inbox.markUnread")}
+            aria-label={t("inbox.markUnread", { title })}
             onClick={() => props.onMarkUnread(row)}
           >
             <Undo2 aria-hidden="true" />
@@ -138,6 +139,7 @@ function InboxItem(
           variant="outline"
           size="sm"
           className="inbox-dismiss"
+          aria-label={t("inbox.dismissRow", { title })}
           onClick={() => props.onDismiss(row)}
         >
           {t("inbox.dismiss")}
