@@ -60,6 +60,20 @@ describe("risk rules: the daemon's own update and stop, from a session's shell (
     ).toEqual([]);
   });
 
+  test("a leading start word is the parser's default command, so it hides no verb", () => {
+    expect(
+      wrongReasons([
+        ["fd start update apply --confirm", APPLY],
+        ["fd start daemon stop --confirm", STOP],
+        ["flightdeckd start update apply --confirm", APPLY],
+      ]),
+    ).toEqual([]);
+    expect(bash("fd start session close s1").level).toBe("high");
+    expect(
+      notHigh(["fd start", "flightdeckd start --config c.json", "fd start update check"]),
+    ).toEqual([]);
+  });
+
   test("update check and the install of a local file stay ordinary, and so do words that only name them", () => {
     expect(
       notHigh([
