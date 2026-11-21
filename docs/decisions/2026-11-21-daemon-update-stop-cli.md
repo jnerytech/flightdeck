@@ -46,6 +46,9 @@ the person for each, and from a shell `--confirm` is only a typed word (#3439).
 
 ## Consequences
 
+- Under an installed service `daemon stop` is a restart: the unit has `Restart=always` and the daemon exits 0, so it
+  returns after about 5 s. The manual says so; keeping it down is `service stop`. `update apply` waits up to 180 s for
+  the daemon's answer, because the daemon downloads and verifies the binary before it answers.
 - Not done here: a device proof of `apply` and `shutdown` (they would stop the daemon every session shares),
   `host updates` for a far host, and `service start`.
 - Parity: `daemon.update.check` and `daemon.update.apply` map to `update`, `daemon.shutdown` to `daemon`.

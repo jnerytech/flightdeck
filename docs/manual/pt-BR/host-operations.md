@@ -71,10 +71,12 @@ flightdeckd daemon stop --confirm [--json]
   `up to date  checked <hora>` ou `check failed  <motivo>  checked <hora>`. Sai com 0 sempre que a checagem rodou,
   mesmo sem achar nada ou com falha; `--json` imprime `available`, `version`, `checkedAt` e `error` (null se não há).
 - `update apply --confirm` faz o daemon baixar e instalar o que a checagem achou, e reiniciar. Imprime
-  `update started` (`{"started":true}`) assim que o daemon aceita, e não espera o reinício: rode `update check` ou
-  `host` depois para ver a versão nova.
+  `update started` (`{"started":true}`) assim que o daemon baixou e verificou o binário (pode levar um minuto num
+  link lento) e aceita, e não espera o reinício: rode `update check` ou `host` depois para ver a versão nova. O
+  daemon recusa até ter checado o servidor de releases uma vez, então rode `update check` antes num daemon recém-iniciado.
 - `daemon stop --confirm` faz o daemon sair, e com ele terminam todas as sessões e terminais que ele roda. Imprime
-  `stopping` (`{"stopping":true}`) na resposta do daemon. Subir de novo é `service start` ou o app.
+  `stopping` (`{"stopping":true}`) na resposta do daemon. Com o serviço instalado, o serviço o sobe de novo cerca de 5 s
+  depois; para mantê-lo parado, pare o serviço com `flightdeckd service stop`.
 
 `apply` e `stop` recusam sem `--confirm` (saída 1, nada enviado). Uma conexão cortada depois do envio sai com 2 e diz
 que o daemon pode ou não ter agido. O shell de um modelo é barrado nos dois, com ou sem a flag.

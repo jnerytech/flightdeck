@@ -11,7 +11,9 @@ import {
   updateCheckLine,
 } from "./domain/update-cli-view.ts";
 
-const DEFAULT_TIMEOUT_MS = 15_000;
+/** `apply` answers only after the daemon downloaded and verified the binary, so it gets a longer wait than `check`. */
+const CHECK_TIMEOUT_MS = 15_000;
+const APPLY_TIMEOUT_MS = 180_000;
 
 export interface UpdateCliArgs {
   action: "check" | "apply";
@@ -26,7 +28,7 @@ export async function runUpdateCli(
   return runOnLocalDaemon({
     config,
     clientName: "flightdeck-update",
-    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    timeoutMs: options.timeoutMs ?? (args.action === "apply" ? APPLY_TIMEOUT_MS : CHECK_TIMEOUT_MS),
     ...(args.action === "apply" ? { unsure: UNSURE_APPLY } : {}),
     perform: async (daemon, note) => {
       if (args.action === "apply") {
