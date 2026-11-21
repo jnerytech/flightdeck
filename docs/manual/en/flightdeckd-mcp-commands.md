@@ -3,8 +3,8 @@
 [Back to the manual](../en.md) · [Português (Brasil)](../pt-BR/flightdeckd-mcp-commands.md)
 
 The verbs that read the MCP servers that apply to a project and the state each one reports in a live session, and
-those that test (start), remove or turn on or off a server. They work as the other `flightdeckd` commands do: see
-[what they all share](flightdeckd-commands.md#what-they-all-share). Saving a server stays in the app.
+those that test (start), save, remove or turn on or off a server. They work as the other `flightdeckd` commands do: see
+[what they all share](flightdeckd-commands.md#what-they-all-share).
 
 ## fd mcp
 
@@ -14,6 +14,8 @@ fd mcp list api --json
 fd mcp status 5b1c0e
 fd mcp test api files
 fd mcp test api files --confirm
+fd mcp save api server.json --confirm
+cat server.json | fd mcp save api - --confirm
 fd mcp remove api files --confirm
 fd mcp toggle api files --disable
 fd mcp toggle api files --enable --confirm --session 5b1c0e
@@ -35,6 +37,14 @@ refused with exit `1`.
 With `--confirm` it starts the server, as the app's Test button does, and prints the tools and the resources it offers
 (`tools: a, b`, `resources: none`). Read the preview first: the server is a command from the project's `.mcp.json`.
 
+`save <project> <file> --confirm` adds a server to the project's `.mcp.json`, or replaces the one of the same name, and
+prints the servers. The file is JSON (`-` reads it from standard input) with the fields of a server: `name`, and
+`type` (`stdio`, `http` or `sse`), `command`, `args`, `env`, `url` and `headers`. A field it does not know is refused,
+so a typo does not save a server that runs nothing. Secrets go in the file, never on the command line, where the
+shell history and the process list would keep them; the messages name a field but never print a value. A value that
+shows as `••••••` (copied from `list`) is refused: type the real one. It needs `--confirm`, since the server is a
+command the host will run.
+
 `remove <project> <server> --confirm` deletes the server from that file and prints the servers that are left. It needs
 `--confirm`.
 
@@ -43,9 +53,9 @@ the servers. `--enable` lets the server run, so it needs `--confirm`; `--disable
 refuses `--confirm`). `--session <id>` also refreshes that live session. A server of your own user file (`read-only`)
 is refused.
 
-If the host does not answer a `remove` or a `toggle`, the result is unknown: the command exits `2` and says to run
+If the host does not answer a `save`, a `remove` or a `toggle`, the result is unknown: the command exits `2` and says to run
 `mcp list` before trying again. A session's own shell cannot use these as the person would: `--confirm` is only a
-word the caller types, so the permission check treats `remove`, `test --confirm`, `toggle --enable` and anything that
+word the caller types, so the permission check treats `save`, `remove`, `test --confirm`, `toggle --enable` and anything that
 is not a plain read as high risk and asks you.
 
 With `--json` the commands print one JSON value with `null` for a missing field. The daemon already masks the secrets

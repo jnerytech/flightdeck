@@ -153,13 +153,16 @@ type LocalConfig = { bind: string; port: number; token: string };
 const NO_LOCAL_DAEMON: LocalConfig = { bind: "", port: 0, token: "" };
 
 /** A command that asks a daemon with the arguments its noun reads off the command line: `asking` for the usual runner. */
+type Asked = { remote?: RemoteTarget; stdin?: CliDeps["stdin"] };
 const askingWith = <A>(
   args: CliArgs,
   deps: CliDeps,
   toArgs: (args: CliArgs) => A,
-  run: (a: A, config: LocalConfig, options: { remote?: RemoteTarget }) => Promise<CliResult>,
+  run: (a: A, config: LocalConfig, options: Asked) => Promise<CliResult>,
 ): Promise<number> =>
-  asking(args, deps, (config, remote) => run(toArgs(args), config, remote ? { remote } : {}));
+  asking(args, deps, (config, remote) =>
+    run(toArgs(args), config, { ...(remote ? { remote } : {}), stdin: deps.stdin }),
+  );
 
 /** `approve` and `deny`: one answer to one open permission request. */
 async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
@@ -211,27 +214,26 @@ async function rulesCli(
 
 /** The persona verb of the command line as the persona CLI takes it: each flag given, nothing else. */
 function personaCliArgs(args: CliArgs): PersonaCliArgs {
-  return {
-    action: args.action as PersonaCliArgs["action"],
-    ...(args.personaId === undefined ? {} : { id: args.personaId }),
-    ...(args.personaName === undefined ? {} : { name: args.personaName }),
-    ...(args.description === undefined ? {} : { description: args.description }),
-    ...(args.body === undefined ? {} : { body: args.body }),
-    ...(args.bodyFile === undefined ? {} : { bodyFile: args.bodyFile }),
-    ...(args.model === undefined ? {} : { model: args.model }),
-    ...(args.effort === undefined ? {} : { effort: args.effort }),
-    ...(args.tools === undefined ? {} : { tools: args.tools }),
-    ...(args.permissionMode === undefined
-      ? {}
-      : { permissionMode: args.permissionMode as PersonaCliArgs["permissionMode"] }),
-    ...(args.icon === undefined ? {} : { icon: args.icon }),
-    ...(args.hash === undefined ? {} : { hash: args.hash }),
-    ...(args.confirm ? { confirm: true } : {}),
-    ...(args.scope === undefined ? {} : { scope: args.scope }),
-    ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),
-    ...(args.language === undefined ? {} : { language: args.language }),
-    ...(args.json ? { json: true } : {}),
+  const typed: Record<string, unknown> = {
+    id: args.personaId,
+    name: args.personaName,
+    description: args.description,
+    body: args.body,
+    bodyFile: args.bodyFile,
+    model: args.model,
+    effort: args.effort,
+    tools: args.tools,
+    permissionMode: args.permissionMode,
+    icon: args.icon,
+    hash: args.hash,
+    confirm: args.confirm || undefined,
+    scope: args.scope,
+    projectPath: args.projectPath,
+    language: args.language,
+    json: args.json || undefined,
   };
+  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
+  return { action: args.action, ...Object.fromEntries(present) } as PersonaCliArgs;
 }
 
 /** What the person typed for `card`, as `runCardCli` takes it: what they left out stays out. */
@@ -579,15 +581,11 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   autoapprove: async (args, deps) => rulesCli("autoapprove", args, deps),
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runHostCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runHostCli);
   },
   sessions: async (args, deps) => {
     const { runSessionsCli } = await import("../sessions/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runSessionsCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runSessionsCli);
   },
   session: async (args, deps) => {
     const { runSessionCli } = await import("../sessions/index.ts");
