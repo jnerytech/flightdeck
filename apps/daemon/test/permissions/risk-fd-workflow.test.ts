@@ -54,6 +54,16 @@ describe("risk rules: the workflow verbs that write, from a session's shell (#36
     expect(wrongReasons([["fd workflow $V api ship", HIDDEN]])).toEqual([]);
   });
 
+  test("a resume that xargs raises with a --confirm from its input is high", () => {
+    expect(
+      wrongReasons([
+        ["echo --confirm | xargs fd workflow resume r1", HIDDEN],
+        ["cat flags | xargs -n1 fd workflow resume r1", HIDDEN],
+        ["echo --confirm | xargs bun run apps/daemon/src/bin.ts workflow resume r1", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
   test("the reads and the check form of resume stay ordinary", () => {
     expect(
       notHigh([
