@@ -212,16 +212,24 @@ describe("flightdeckd workflow run, watch and resume (issue #3628)", () => {
     const daemon = fakeDaemon(base());
     const run = await flightdeckd(["workflow", "resume", "r1"], daemon.port);
     expect(run.out).toEqual(["r1 can resume from build"]);
+    expect(run.code).toBe(0);
     expect(callsOf(daemon, "run.resume")).toEqual([{ runId: "r1" }]);
   });
 
-  test("resume says why a run cannot resume, and --json prints the check", async () => {
-    const check: RunResumeCheck = { from: "", ok: false, reason: "transport_refused" };
+  test("resume says why a run cannot resume with its parameters, exits 1, and --json prints the check", async () => {
+    const check: RunResumeCheck = {
+      from: "",
+      ok: false,
+      reason: "run_resume_branch_moved",
+      params: { branch: "card/c1" },
+    };
     const daemon = fakeDaemon(base({ "run.resume": () => check }));
     const text = await flightdeckd(["workflow", "resume", "r1"], daemon.port);
-    expect(text.out).toEqual(["r1 cannot resume: transport_refused"]);
+    expect(text.out).toEqual(["r1 cannot resume: run_resume_branch_moved (branch: card/c1)"]);
+    expect(text.code).toBe(1);
     const asJson = await flightdeckd(["workflow", "resume", "r1", "--json"], daemon.port);
     expect(printed(asJson.out)).toEqual(check);
+    expect(asJson.code).toBe(1);
   });
 
   test("watch writes a line for each change of a run and Ctrl-C ends it with 0", async () => {
