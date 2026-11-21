@@ -19,7 +19,7 @@ unblocked. A badge on the bell counts the unread ones.
   for a secret have no buttons: click the row to open it. An answered request leaves the bell, also
   one answered somewhere else (while its host is offline the row stays, since nothing says it was
   answered). After an answer the focus goes to the row that took its place, or to the panel's title.
-- Hover a row (or focus it) for a small **Mark as read** control: it marks that row and opens
+- Hover a row (or focus it) for a small **Mark as read** control (named for its row, such as "Mark Session A as read"): it marks that row and opens
   nothing.
 - Click an entry to mark just it read and open its screen (a request opens on its card; a quota alert
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
@@ -31,7 +31,7 @@ unblocked. A badge on the bell counts the unread ones.
   count the next time the app starts.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
-- A read row has **Mark as unread** (hover or focus it) to come back to it later.
+- A read row has **Mark as unread** (named for its row; hover or focus it) to come back to it later.
 - The OS notifications are sent as before unless you tune them (below). The center only keeps a
   copy, so one that is never sent (the window had focus) is not in it either.
 - Click the system notification of a request and the app comes forward on that request: its

@@ -9,10 +9,12 @@ import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import { configPath } from "./config-path.ts";
+import { daemonRuns } from "./daemon-runs.ts";
 import { actionCliArgs, actionVerbCliArgs, isRawAction } from "./domain/action-args.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { automationCliArgs } from "./domain/automation-args.ts";
+import { bgCliArgs } from "./domain/bg-args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { changesCliArgs } from "./domain/changes-args.ts";
 import { checkpointsCliArgs, traceCliArgs } from "./domain/checkpoints-args.ts";
@@ -31,7 +33,6 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
-import { externalRun, namesRun } from "./external-run.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
@@ -136,7 +137,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `external` (list, message and watch), `names`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `workflow`, `external` (list, message and watch), `names`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -606,8 +607,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       runWatchCli(watchCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
   },
-  external: (args, deps) => asking(args, deps, externalRun(args, liveStream(args, deps))),
-  names: (args, deps) => asking(args, deps, namesRun(args)),
+  ...daemonRuns(asking),
   knowledge: async (args, deps) => {
     const { runKnowledgeCli } = await import("../knowledge/index.ts");
     return askingWith(args, deps, knowledgeCliArgs, runKnowledgeCli);
@@ -628,6 +628,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   snapshots: checkpointsRun,
   rewind: checkpointsRun,
+  bg: (args, deps) =>
+    import("../bg/index.ts").then((m) => askingWith(args, deps, bgCliArgs, m.runBgCli)),
   trace: async (args, deps) => {
     const { runTraceCli } = await import("../trace/index.ts");
     return asking(args, deps, (config, remote) =>

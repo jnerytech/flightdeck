@@ -175,7 +175,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
         "message",
         "mcp",
       ],
-      ...["changes", "file", "rewind", "action"],
+      ...["knowledge", "changes", "file", "rewind", "action"],
     ];
     expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());
     expect(new Set(nouns).size).toBe(nouns.length);
