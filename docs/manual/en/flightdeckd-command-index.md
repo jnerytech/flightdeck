@@ -93,3 +93,9 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 [Read the chapter.](flightdeckd-mcp-commands.md) Its sections:
 
 - [fd mcp](flightdeckd-mcp-commands.md#fd-mcp)
+
+## flightdeckd commands: the document library of a project
+
+[Read the chapter.](flightdeckd-knowledge-commands.md) Its sections:
+
+- [fd knowledge](flightdeckd-knowledge-commands.md#fd-knowledge)

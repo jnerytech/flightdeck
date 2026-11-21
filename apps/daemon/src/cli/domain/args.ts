@@ -19,6 +19,7 @@ import { costsProblem } from "./costs-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
+import { readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
 import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
@@ -108,6 +109,7 @@ const HANDLERS: Record<string, Handler> = {
   doctor: setCommand("doctor"),
   channel: setCommand("channel"),
   mcp: readMcp,
+  knowledge: readKnowledge,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {

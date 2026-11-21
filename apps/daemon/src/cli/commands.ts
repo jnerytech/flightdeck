@@ -17,6 +17,7 @@ import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { changesCliArgs } from "./domain/changes-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
+import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
 import { messageAdminCliArgs } from "./domain/message-args.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
@@ -132,7 +133,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `changes`, `mcp` (its verbs), `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `changes`, `mcp` (its verbs), `knowledge`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -156,13 +157,16 @@ type LocalConfig = { bind: string; port: number; token: string };
 const NO_LOCAL_DAEMON: LocalConfig = { bind: "", port: 0, token: "" };
 
 /** A command that asks a daemon with the arguments its noun reads off the command line: `asking` for the usual runner. */
+type Asked = { remote?: RemoteTarget; stdin?: CliDeps["stdin"] };
 const askingWith = <A>(
   args: CliArgs,
   deps: CliDeps,
   toArgs: (args: CliArgs) => A,
-  run: (a: A, config: LocalConfig, options: { remote?: RemoteTarget }) => Promise<CliResult>,
+  run: (a: A, config: LocalConfig, options: Asked) => Promise<CliResult>,
 ): Promise<number> =>
-  asking(args, deps, (config, remote) => run(toArgs(args), config, remote ? { remote } : {}));
+  asking(args, deps, (config, remote) =>
+    run(toArgs(args), config, { ...(remote ? { remote } : {}), stdin: deps.stdin }),
+  );
 
 /** `approve` and `deny`: one answer to one open permission request. */
 async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
@@ -354,12 +358,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     // A verb asks a daemon; a bare `mcp` is the stdio server.
     if (args.action !== undefined) {
       const { runMcpCli } = await import("../agentcfg/index.ts");
-      return asking(args, deps, (config, remote) =>
-        runMcpCli(mcpCliArgs(args), config, {
-          ...(remote ? { remote } : {}),
-          stdin: deps.stdin,
-        }),
-      );
+      return askingWith(args, deps, mcpCliArgs, runMcpCli);
     }
     const { daemonUrl } = await import("../daemon-client/index.ts");
     const { identityOf, startMcp } = await import("../mcp/index.ts");
@@ -561,15 +560,11 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   autoapprove: async (args, deps) => rulesCli("autoapprove", args, deps),
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runHostCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runHostCli);
   },
   sessions: async (args, deps) => {
     const { runSessionsCli } = await import("../sessions/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runSessionsCli(args.json ? { json: true } : {}, config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runSessionsCli);
   },
   session: async (args, deps) => {
     const { runSessionCli } = await import("../sessions/index.ts");
@@ -599,6 +594,10 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     return asking(args, deps, (config, remote) =>
       runWatchCli(watchCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
+  },
+  knowledge: async (args, deps) => {
+    const { runKnowledgeCli } = await import("../knowledge/index.ts");
+    return askingWith(args, deps, knowledgeCliArgs, runKnowledgeCli);
   },
   runenv: async (args, deps) => {
     const { runRunenvCli } = await import("../runenv/index.ts");
