@@ -344,6 +344,20 @@ describe("flightdeckd worktree remove arguments (issue #3702)", () => {
     });
   });
 
+  test.each([".", "..", "api-card-1", "", "./a"])(
+    "the relative path %p is refused: the host would resolve it against its own folder, not the person's",
+    (path) => {
+      const text = String(parsed(["worktree", "remove", "api", path, "--confirm"]));
+      expect(text).toContain("absolute");
+    },
+  );
+
+  test("an absolute path, POSIX or Windows, is taken", () => {
+    expect(
+      parsed(["worktree", "remove", "api", "/w/a", "C:\\w\\b", "D:/w/c", "--confirm"]),
+    ).toMatchObject({ worktreePaths: ["/w/a", "C:\\w\\b", "D:/w/c"] });
+  });
+
   test("a path typed after a flag is refused, never dropped: the removal would otherwise miss a folder the person named", () => {
     expect(parsed(["worktree", "remove", "api", "/w/a", "--confirm", "/w/b"])).toContain(
       "unknown argument: /w/b",
