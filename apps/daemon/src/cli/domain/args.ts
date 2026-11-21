@@ -6,6 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
+import { automationProblem, readAutomation } from "./automation-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
@@ -344,6 +345,7 @@ const HANDLERS: Record<string, Handler> = {
   runenv: readRunenv,
   changes: readChanges,
   file: readFile,
+  automation: readAutomation,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
   requests: (args) => {
@@ -700,13 +702,15 @@ function refuseStrayFlags(args: CliArgs): void {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests, message, autoapprove, vault and mcp toggle\n${USAGE}`,
     );
-  // `history`, `vault` and `snippet` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts).
+  // `history`, `vault`, `snippet` and `automation` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts, automation-args.ts).
   if (
-    !["autoapprove", "history", "vault", "snippet", "message"].includes(args.command) &&
+    !["autoapprove", "history", "vault", "snippet", "message", "automation"].includes(
+      args.command,
+    ) &&
     args.limit !== undefined
   )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault and snippet\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet and automation runs\n${USAGE}`,
     );
 }
 
@@ -746,6 +750,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     runenvProblem(args) ??
     changesProblem(args) ??
     fileProblem(args) ??
+    automationProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??

@@ -64,7 +64,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 ## Comandos do flightdeckd
 
-[Leia o índice.](pt-BR/flightdeckd-command-index.md) Ele lista um capítulo para cada grupo de comandos do `flightdeckd`: host, sessions, requests, approve e send, uma sessão, ssh, arquivos de configuração de agentes, terminais, a vigia de PR, a sincronização de quadro, os comentários de revisão, o ambiente de execução, as mudanças, os arquivos e os servidores MCP.
+[Leia o índice.](pt-BR/flightdeckd-command-index.md) Ele lista um capítulo para cada grupo de comandos do `flightdeckd`: host, sessions, requests, approve e send, uma sessão, ssh, arquivos de configuração de agentes, terminais, a vigia de PR, a sincronização de quadro, os comentários de revisão, o ambiente de execução, as automações, as mudanças, os arquivos e os servidores MCP.
 
 ## Aprovações e permitir sempre
 

@@ -2,6 +2,7 @@
  * Issue #3461: what the `history` verbs of the CLI take, checked before anything is sent. The parser in
  * `args.ts` adds the usage text to the problem this names. The ranges are the protocol's.
  */
+import type { HistoryCliArgs } from "../../history/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { USAGE } from "./usage.ts";
@@ -102,4 +103,29 @@ export function readHistory(args: CliArgs, reader: ArgReader): void {
       throw new Error(`history tool: the index is a whole number from 0 to 1000\n${USAGE}`);
     args.index = index;
   }
+}
+
+/** What the person typed for `history list|search|get|tool|resume|watch`, as `runHistoryCli` takes it: what they left out stays out. */
+export function historyCliArgs(args: CliArgs): HistoryCliArgs {
+  const typed: Record<string, unknown> = {
+    query: args.query,
+    claudeSessionId: args.claudeSessionId,
+    uuid: args.uuid,
+    index: args.index,
+    cwd: args.cwd,
+    projectKey: args.projectKey,
+    from: args.from,
+    to: args.until,
+    origin: args.origin,
+    hideAutomated: args.hideAutomated,
+    limit: args.limit,
+    cursor: args.cursor,
+    tail: args.tail,
+    name: args.personaName,
+    permissionMode: args.permissionMode,
+    force: args.force,
+    json: args.json || undefined,
+  };
+  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
+  return { action: args.action, ...Object.fromEntries(present) } as HistoryCliArgs;
 }
