@@ -4,6 +4,9 @@ import { notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 const REASON =
   "changes what a card's PR watch does on its own, which sessions it wakes and what it spends, without the person choosing it in the app (flightdeckd watch set, extend, resolve-held or settings with a flag)";
 
+const HIDDEN =
+  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
+
 describe("risk rules: a session changing a card's PR watch from its shell (#3539)", () => {
   test("watch set is high unless it only turns the watch off, however the CLI is reached", () => {
     expect(
@@ -62,6 +65,26 @@ describe("risk rules: a session changing a card's PR watch from its shell (#3539
         ["fd watch settings api --host pi --persona qa", REASON],
         ["bash -c 'fd watch settings api --max-turns none'", REASON],
         ["bun apps/daemon/src/bin.ts watch settings api --daily-usd 5", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a verb or a flag the shell expands is high: the line does not say what it does", () => {
+    expect(
+      wrongReasons([
+        ["A=set; fd watch $A c1 --enable", HIDDEN],
+        ["fd watch ${A} c1 --enable", HIDDEN],
+        ["fd watch s{e,x}t c1 --enable", HIDDEN],
+        ["fd watch se[t] c1 --enable", HIDDEN],
+        [String.raw`fd watch $'set' c1 --enable`, HIDDEN],
+        ["bash -c 'fd watch $A c1 --enable'", HIDDEN],
+        ["bun run apps/daemon/src/bin.ts watch $A c1 --rounds 3", HIDDEN],
+        ["X='--check evil'; fd watch settings p --disable $X", REASON],
+        ['fd watch settings p --disable "$X"', REASON],
+        ["fd watch settings p --disable ${X}", REASON],
+        [String.raw`fd watch settings p --disable $'--budget-usd' none`, REASON],
+        ["bash -c 'fd watch settings p --disable $X'", REASON],
+        ["fd watch resolve-held c1 r1 --drop $X", REASON],
       ]),
     ).toEqual([]);
   });

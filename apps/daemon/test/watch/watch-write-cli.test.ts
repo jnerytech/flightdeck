@@ -315,6 +315,17 @@ describe("flightdeckd watch settings with a patch (issue #3539)", () => {
     );
   });
 
+  test("a clear flag and the flag that adds to its list are refused in either order", () => {
+    for (const [clear, add] of [
+      ["--clear-drift-allow", "--drift-allow"],
+      ["--clear-check-env", "--check-env"],
+    ] as const) {
+      const value = add === "--check-env" ? "HOME" : "a";
+      expect(refused(["watch", "settings", "p", add, value, clear])).toContain("not with");
+      expect(refused(["watch", "settings", "p", clear, add, value])).toContain("not with");
+    }
+  });
+
   test("a far host's refusal of a field it may not change is exit 1 with the daemon's line", async () => {
     const daemon = fakeDaemon({
       ...OPEN,
