@@ -14,7 +14,7 @@ verbs: 0 done, 1 refused, 2 no daemon.
   exist yet. The CLI never reads the hash for the person, so a stale copy is refused by the daemon with
   `agentcfg_changed`, as it is in the app.
 - The content comes from `--file <path>` or `--file -` (standard input). The CLI passes only the content: the
-  daemon validates the frontmatter and the path, and returns the item's name and description.
+  daemon validates the frontmatter and the path, and `list` and `read` take the name and description from it.
 - The daemon's refusal text is printed as it is, with its reason (`agentcfg_changed`, `agentcfg_exists`,
   `agentcfg_outside_project`, `agentcfg_path_invalid`, `agentcfg_field_required`, `agentcfg_file_missing`, ...).
   `--origin user` is passed through: the daemon says why a file of `~/.claude` is read-only.
