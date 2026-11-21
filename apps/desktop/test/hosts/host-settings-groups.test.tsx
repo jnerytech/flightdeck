@@ -44,7 +44,7 @@ async function settings(language: "en" | "pt-BR", features: string[]) {
   store.hostCommand = (async () => null) as never;
   store.sessionLists.refresh = (async () => {}) as never;
   (store as unknown as { update(p: object): void }).update({ hosts: [hostWith(features)] });
-  render(
+  const page = (features: string[]) => (
     <TContext.Provider value={store.i18n.t}>
       <HostPage
         store={store}
@@ -60,8 +60,9 @@ async function settings(language: "en" | "pt-BR", features: string[]) {
         onNewSession={() => {}}
         onRemove={() => {}}
       />
-    </TContext.Provider>,
+    </TContext.Provider>
   );
+  const view = render(page(features));
   const tab = screen.queryByRole("tab", { name: language === "en" ? "Settings" : "Configurações" });
   expect(tab).not.toBeNull();
   await act(async () => {
@@ -71,6 +72,7 @@ async function settings(language: "en" | "pt-BR", features: string[]) {
   // The tab is open: a panel's own heading shows, so a missing group is the failure, not a closed tab.
   const panel = language === "en" ? "Pause new runs" : "Pausar novas execuções";
   expect(screen.queryByRole("heading", { name: panel })).not.toBeNull();
+  return { announce: (later: string[]) => view.rerender(page(later)) };
 }
 
 const groupHeadings = () =>
@@ -127,6 +129,21 @@ describe("the Settings tab groups its panels (#3697)", () => {
         .queryAllByRole("button")
         .map((b) => b.textContent),
     ).toEqual(["Connection", "Sessions and work"]);
+  });
+
+  test("a host that announces its features after the first paint gets its groups then", async () => {
+    const tab = await settings("en", []);
+    expect(groupHeadings()).toEqual(["Connection", "Sessions and work"]);
+    await act(async () => {
+      tab.announce(["logs"]);
+    });
+    expect(groupHeadings()).toEqual(["Connection", "Sessions and work", "Maintenance and logs"]);
+    const jump = screen.queryByRole("navigation", { name: "Settings groups" });
+    expect(
+      within(jump as HTMLElement)
+        .queryAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Connection", "Sessions and work", "Maintenance and logs"]);
   });
 
   test("an app in Portuguese reads the groups and the jump row in Portuguese", async () => {
