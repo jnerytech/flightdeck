@@ -33,5 +33,7 @@ slice, and the four app-only rows get their reasons there.
 - `rules-set` is rated high for a session's shell (`permissions/domain/message-risk.ts`): a typed `--confirm` is not the
   person, and a session could open a path to another session or free a pair a loop guard paused. `message` joined the
   verb nouns whose verb the shell may not hide (`fd message $V`), and `--policy-file` and `--unpause` the options with a value.
+- `--confirm` now belongs to `message rules-set` alone: `message send ... --confirm` is refused by the `message` parser with that
+  owner named, where the generic `card` check refused it before.
 - The history, watch and rules verbs only read, so they get no risk rating. The rules of a session's shell skip `--team`, `--with-host` and
   `--status` as options with a value, as they do for the others.

@@ -36,10 +36,11 @@ const UNSURE_RULES =
 /** The policy a `rules-set` file or standard input holds (`-`): an object, which the daemon then validates. */
 async function policyOf(
   source: string,
-  stdin: ReadableStream<Uint8Array>,
+  stdin: () => ReadableStream<Uint8Array>,
 ): Promise<Record<string, unknown> | null> {
   try {
-    const body = source === "-" ? await new Response(stdin).text() : await readFile(source, "utf8");
+    const body =
+      source === "-" ? await new Response(stdin()).text() : await readFile(source, "utf8");
     return parseJsonWith(z.record(z.string(), z.unknown()), body);
   } catch {
     return null;
@@ -60,15 +61,16 @@ export async function runMessageAdminCli(
     write?: (line: string) => void;
   } = {},
 ): Promise<CliResult> {
-  let policy: Record<string, unknown> | null = null;
+  let policy: Record<string, unknown> = {};
   if (args.action === "rules-set") {
     const source = args.policyFile ?? "";
-    policy = await policyOf(source, options.stdin ?? Bun.stdin.stream());
-    if (policy === null)
+    const read = await policyOf(source, () => options.stdin ?? Bun.stdin.stream());
+    if (read === null)
       return failure(
         1,
         `message rules-set: cannot read a policy object from ${source === "-" ? "standard input" : source}`,
       );
+    policy = read;
   }
   return runOnLocalDaemon({
     config,
@@ -96,7 +98,7 @@ export async function runMessageAdminCli(
         case "rules-set": {
           note.wrote = true;
           const set = await daemon.call("messaging.rules.set", {
-            policy: policy ?? {},
+            policy,
             ...(args.unpause?.length ? { unpause: args.unpause } : {}),
           });
           return args.json ? json(set) : said(...rulesLines(set));
