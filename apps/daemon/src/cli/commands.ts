@@ -13,6 +13,7 @@ import { configPath } from "./config-path.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
+import { changesCliArgs } from "./domain/changes-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
@@ -124,7 +125,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `runenv`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `runenv`, `changes`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -608,6 +609,17 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const stop = watchStop(args, deps);
     return asking(args, deps, (config, remote) =>
       runRunenvCli(runenvCliArgs(args), config, {
+        ...(remote ? { remote } : {}),
+        signal: stop.signal,
+        write: (line) => deps.log.log(line),
+      }),
+    );
+  },
+  changes: async (args, deps) => {
+    const { runChangesCli } = await import("../review/index.ts");
+    const stop = watchStop(args, deps);
+    return asking(args, deps, (config, remote) =>
+      runChangesCli(changesCliArgs(args), config, {
         ...(remote ? { remote } : {}),
         signal: stop.signal,
         write: (line) => deps.log.log(line),
