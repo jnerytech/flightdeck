@@ -4,7 +4,7 @@ import { bash, classify, notHigh } from "../support/permissions-risk-rules.ts";
 setDefaultTimeout(30_000);
 
 const UNREADABLE =
-  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec, a chain of variable programs or thousands of words or commands), so it is not read as routine";
+  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec, a chain of variable programs or a very large number of words or characters), so it is not read as routine";
 
 /** What the classifier says about a line, and how long it took (ms). */
 function timed(command: string) {
@@ -24,12 +24,13 @@ describe("risk rules: a crafted command line cannot stall the daemon (#3593)", (
     ["process substitutions, 14 deep", "cat " + "<(cat ".repeat(14) + "ls"],
     ["a runner followed by 16000 CLI names", "sh " + "fd ".repeat(16000)],
     ["bun start with 16000 words after it", "bun " + "start ".repeat(16000)],
-    ["3000 statements that each start with a variable program", "$a fd x; ".repeat(3000)],
+    ["12000 statements that each start with a variable program", "$a fd x; ".repeat(12000)],
     [
       "100 lines that each chain 15 variable programs before 250 words",
       `${`${"$a ".repeat(15)}${"w ".repeat(250)}\n`.repeat(100)}`,
     ],
     ["300 lines of echo with 4000 words each", `echo ${"w ".repeat(4000)}\n`.repeat(300)],
+    ["one line of 2 MB", `echo ${"word ".repeat(400_000)}`],
     ["find -exec, 12 deep", "find . " + "-exec find . ".repeat(12) + "-exec ls ;"],
   ];
 
