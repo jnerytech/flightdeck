@@ -147,25 +147,25 @@ function fingerprintProblem(args: CliArgs): string | undefined {
   return undefined;
 }
 
-/** What is wrong with the flags of `ssh add|edit`, or with one of them given to another verb. */
-function saveProblem(args: CliArgs, saving: boolean): string | undefined {
+/** What `ssh add` cannot do without and `ssh edit` must not be given, or the nothing `ssh edit` was asked to change. */
+function saveRequiredProblem(args: CliArgs, adding: boolean): string | undefined {
   const fields = args.sshSave;
-  if (!saving) {
-    const [, flag] = SAVE_FLAGS.find(([field]) => fields?.[field] !== undefined) ?? [];
-    return flag === undefined
-      ? undefined
-      : `${flag}: this flag only applies to flightdeckd ssh add and ssh edit`;
+  if (!adding) {
+    return fields === undefined
+      ? `ssh edit needs at least one of ${SAVE_FLAGS.map(([, flag]) => flag).join(", ")}`
+      : undefined;
   }
-  const adding = args.action === "add";
-  if (adding) {
-    if (fields?.address === undefined) return "ssh add needs --address <host>";
-    if (fields.user === undefined) return "ssh add needs --user <name>";
-    if (fields.noJump) return "--no-jump: this flag only applies to flightdeckd ssh edit";
-    if (fields.noForwardAgent)
-      return "--no-forward-agent: this flag only applies to flightdeckd ssh edit";
-  } else if (fields === undefined) {
-    return `ssh edit needs at least one of ${SAVE_FLAGS.map(([, flag]) => flag).join(", ")}`;
-  }
+  if (fields?.address === undefined) return "ssh add needs --address <host>";
+  if (fields.user === undefined) return "ssh add needs --user <name>";
+  if (fields.noJump) return "--no-jump: this flag only applies to flightdeckd ssh edit";
+  if (fields.noForwardAgent)
+    return "--no-forward-agent: this flag only applies to flightdeckd ssh edit";
+  return undefined;
+}
+
+/** The flags of `ssh add|edit` that cannot go together, or need `--confirm`. */
+function saveCombinationProblem(args: CliArgs, adding: boolean): string | undefined {
+  const fields = args.sshSave;
   if (
     fields?.secretRef !== undefined &&
     (fields.auth ?? (adding ? "agent" : undefined)) === "agent"
@@ -177,6 +177,18 @@ function saveProblem(args: CliArgs, saving: boolean): string | undefined {
   if (fields?.forwardAgent && args.confirm === undefined)
     return "--forward-agent hands your agent to the remote host: pass --confirm";
   return undefined;
+}
+
+/** What is wrong with the flags of `ssh add|edit`, or with one of them given to another verb. */
+function saveProblem(args: CliArgs, saving: boolean): string | undefined {
+  if (!saving) {
+    const [, flag] = SAVE_FLAGS.find(([field]) => args.sshSave?.[field] !== undefined) ?? [];
+    return flag === undefined
+      ? undefined
+      : `${flag}: this flag only applies to flightdeckd ssh add and ssh edit`;
+  }
+  const adding = args.action === "add";
+  return saveRequiredProblem(args, adding) ?? saveCombinationProblem(args, adding);
 }
 
 /** What the ssh runner takes from the parsed arguments: each field only when the person gave it. */

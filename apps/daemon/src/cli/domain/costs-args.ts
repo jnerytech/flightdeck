@@ -46,19 +46,28 @@ function periodProblem(args: CostsArgs): string | undefined {
   return undefined;
 }
 
-/** What is wrong with the flags of `costs` and `roi`: a day that is not one, a missing day, a flag of another verb. */
-export function costsProblem(args: CostsArgs): string | undefined {
-  // `--to`, `--from` and `--origin` are `history`'s and `update`'s flags too: those commands are checked elsewhere.
-  if (args.command !== "costs" && args.command !== "roi") return undefined;
-  const costs = args.command === "costs";
-  if (args.confirm !== undefined && !(costs && args.action === "reprice"))
+/** `--confirm` belongs to `costs reprice` alone, and `reprice` cannot run without it. */
+function confirmProblem(args: CostsArgs): string | undefined {
+  const reprice = args.command === "costs" && args.action === "reprice";
+  if (args.confirm !== undefined && !reprice)
     return "--confirm: this flag only applies to flightdeckd costs reprice";
-  if (costs && args.action === "reprice" && args.confirm === undefined)
+  if (reprice && args.confirm === undefined)
     return "costs reprice rewrites the cost of every entry: pass --confirm to do it";
+  return undefined;
+}
+
+/** `--to` and `--from` belong to the verbs that take a period. */
+function periodFlagProblem(args: CostsArgs): string | undefined {
   if (args.until !== undefined && !takesPeriod(args))
     return "--to: this flag only applies to flightdeckd costs summary, export and roi";
-  if (costs && args.from !== undefined && !takesPeriod(args))
+  if (args.command === "costs" && args.from !== undefined && !takesPeriod(args))
     return "--from: this flag only applies to flightdeckd costs summary, export and roi";
+  return undefined;
+}
+
+/** `--origin`, `--model` and `--project` belong to `costs summary` and `costs export`. */
+function filterFlagProblem(args: CostsArgs): string | undefined {
+  const costs = args.command === "costs";
   const filters = costs && (args.action === "summary" || args.action === "export");
   if (args.origin !== undefined && !filters)
     return "--origin: this flag only applies to flightdeckd costs summary and export";
@@ -66,5 +75,14 @@ export function costsProblem(args: CostsArgs): string | undefined {
     return "--model: this flag only applies to flightdeckd costs summary and export";
   if (costs && !filters && args.project !== undefined)
     return "--project: this flag only applies to flightdeckd costs summary and export";
+  return undefined;
+}
+
+/** What is wrong with the flags of `costs` and `roi`: a day that is not one, a missing day, a flag of another verb. */
+export function costsProblem(args: CostsArgs): string | undefined {
+  // `--to`, `--from` and `--origin` are `history`'s and `update`'s flags too: those commands are checked elsewhere.
+  if (args.command !== "costs" && args.command !== "roi") return undefined;
+  const stray = confirmProblem(args) ?? periodFlagProblem(args) ?? filterFlagProblem(args);
+  if (stray !== undefined) return stray;
   return takesPeriod(args) ? periodProblem(args) : undefined;
 }
