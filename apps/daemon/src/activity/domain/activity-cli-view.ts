@@ -2,7 +2,7 @@
  * Issue #3736: what `flightdeckd activity since` says, as pure rules over the daemon's answer. The terminal-control
  * scrub is the runner's (`said`, `json`).
  */
-import type { ActivityList, ActivitySinceResult } from "@flightdeck/protocol";
+import type { ActivityList, ActivityRun, ActivitySinceResult } from "@flightdeck/protocol";
 
 export interface ActivityCliArgs {
   /** The instant, in UTC, as the daemon takes it. */
@@ -17,6 +17,12 @@ const heading = (label: string, list: ActivityList<unknown>) =>
 
 const percent = (share: number | null) =>
   share === null ? "unknown" : `${Math.round(share * 100)}%`;
+
+/** Why a run failed: the key the app translates, with its params, so the check or the step is not lost. */
+const why = ({ reasonKey, reasonParams }: ActivityRun) => {
+  const params = Object.entries(reasonParams ?? {}).map(([key, value]) => `${key}=${value}`);
+  return `${reasonKey ?? "failed"}${params.length > 0 ? ` (${params.join(", ")})` : ""}`;
+};
 
 export function activityLines(result: ActivitySinceResult): string[] {
   const { sessions, reviewCards, prs, failedRuns, quota } = result;
@@ -42,8 +48,7 @@ export function activityLines(result: ActivitySinceResult): string[] {
     section(
       "failed runs",
       failedRuns,
-      (r) =>
-        `${r.runId} ${r.workflowName} on card ${r.cardId}, ${r.reasonKey ?? "failed"}, ${r.at}`,
+      (r) => `${r.runId} ${r.workflowName} on card ${r.cardId}, ${why(r)}, ${r.at}`,
     );
   }
   if (quota.length > 0)
@@ -63,8 +68,26 @@ export const activityJson = (result: ActivitySinceResult) => ({
       at,
     })),
   },
-  reviewCards: result.reviewCards,
-  prs: result.prs,
+  reviewCards: {
+    total: result.reviewCards.total,
+    items: result.reviewCards.items.map(({ cardId, projectId, title, at }) => ({
+      cardId,
+      projectId,
+      title,
+      at,
+    })),
+  },
+  prs: {
+    total: result.prs.total,
+    items: result.prs.items.map(({ cardId, projectId, title, at, prUrl, outcome }) => ({
+      cardId,
+      projectId,
+      title,
+      at,
+      prUrl,
+      outcome,
+    })),
+  },
   failedRuns: {
     total: result.failedRuns.total,
     items: result.failedRuns.items.map((run) => ({

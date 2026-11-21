@@ -21,7 +21,23 @@ const MOST_RELEASES = 20;
 const MOST_ACTIVITY = 50;
 
 /** An ISO date and time with its zone, as the daemon takes it: `2026-11-20T09:00:00Z`, with seconds and a zone offset optional. */
-const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+const ISO_TIME =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/** An ISO time whose date, hour, minute and second exist: `Date` rolls 2026-02-31 over to March, and 24:00 to the next day. */
+function isCalendarTime(text: string): boolean {
+  const parts = ISO_TIME.exec(text);
+  if (!parts) return false;
+  const [year, month, day, hour, minute, second] = parts.slice(1).map((part) => Number(part ?? 0));
+  const day0 = new Date(Date.UTC(year as number, (month as number) - 1, day as number));
+  return (
+    day0.getUTCMonth() === (month as number) - 1 &&
+    day0.getUTCDate() === day &&
+    (hour as number) < 24 &&
+    (minute as number) < 60 &&
+    (second as number) < 60
+  );
+}
 
 function readLogs(args: CliArgs, reader: ArgReader): void {
   args.command = "logs";
@@ -45,7 +61,7 @@ function readActivity(args: CliArgs, reader: ArgReader): void {
   args.command = "activity";
   args.action = subAction(reader, ["since"] as const, "invalid activity action");
   const time = operand(reader, "the time");
-  const instant = ISO_TIME.test(time) ? new Date(time) : new Date(Number.NaN);
+  const instant = isCalendarTime(time) ? new Date(time) : new Date(Number.NaN);
   if (Number.isNaN(instant.getTime()))
     throw invalid(
       "activity since: the time must be an ISO date and time (2026-11-20T09:00:00Z)",
@@ -60,12 +76,14 @@ export const LINES_FLAG: Handler = (args, reader, value) => {
   else REVIEW_FLAGS["--lines"]?.(args, reader, value);
 };
 
-/** A `--limit` on `releases list` or `activity since`, in the range the daemon takes; false for the other commands, which keep theirs. */
+/** The most a `--limit` takes on the two nouns that cap it; the other commands keep theirs. */
+const LIMIT_MOST: Record<string, number> = { releases: MOST_RELEASES, activity: MOST_ACTIVITY };
+
+/** A `--limit` on `releases list` or `activity since`, in the range the daemon takes; false for the other commands. */
 export function readFeedLimit(args: CliArgs, value: string): boolean {
-  const max =
-    args.command === "releases" ? MOST_RELEASES : args.command === "activity" ? MOST_ACTIVITY : 0;
-  if (max > 0) args.limit = wholeFrom("--limit", value, max);
-  return max > 0;
+  const max = LIMIT_MOST[args.command];
+  if (max !== undefined) args.limit = wholeFrom("--limit", value, max);
+  return max !== undefined;
 }
 
 /** The readers of these four nouns, for the table of `args.ts`. */
@@ -76,10 +94,11 @@ export const FEED_READERS = {
   activity: readActivity,
 };
 
-/** What is wrong with the flags of these nouns: a `--limit` on the two that list the whole answer. */
+/** A `--limit` read before the noun was named got the general range: hold it to the noun's own, as the daemon does. */
 export function feedProblem(args: CliArgs): string | undefined {
-  if (args.limit !== undefined && (args.command === "logs" || args.command === "alert"))
-    return "--limit: this flag only applies to flightdeckd releases list and activity since";
+  const max = LIMIT_MOST[args.command];
+  if (max !== undefined && args.limit !== undefined && args.limit > max)
+    return `--limit needs a whole number from 1 to ${max}`;
   return undefined;
 }
 

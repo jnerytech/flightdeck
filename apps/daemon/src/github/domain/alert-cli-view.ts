@@ -23,7 +23,13 @@ export function alertLines(
   unavailable: AlertsUnavailable[],
 ): string[] {
   const unread = unavailable.map((u) => `  ${u.kind} alerts could not be read: ${WHY[u.reason]}`);
-  if (alerts.length === 0) return [`no open alerts in ${project}`, ...unread];
+  if (alerts.length === 0)
+    return [
+      unread.length === 0
+        ? `no open alerts in ${project}`
+        : `no open alerts in ${project}, but not every source could be read`,
+      ...unread,
+    ];
   return [
     `${alerts.length} open ${alerts.length === 1 ? "alert" : "alerts"} in ${project}`,
     ...alerts.map((alert) =>
