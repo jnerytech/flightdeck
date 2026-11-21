@@ -47,11 +47,15 @@ describe("risk rules: the daemon's own update and stop, from a session's shell (
     ).toEqual([]);
   });
 
-  test("a line that xargs completes with a --confirm from its input is high", () => {
+  test("xargs changes nothing: the verb alone is high, and a verb its input gives is hidden, so high", () => {
     expect(
       wrongReasons([
-        ["echo --confirm | xargs fd update apply", HIDDEN],
-        ["echo --confirm | xargs fd daemon stop", HIDDEN],
+        ["echo --confirm | xargs fd update apply", APPLY],
+        ["echo --confirm | xargs fd daemon stop", STOP],
+        ["echo apply | xargs fd update", HIDDEN],
+        ["echo stop | xargs fd daemon", HIDDEN],
+        // The install of a local file with its path fed by xargs reads as unfinished, so it is high too: accepted (#3780).
+        ["echo ./flightdeckd-new | xargs fd update --from", HIDDEN],
       ]),
     ).toEqual([]);
   });
