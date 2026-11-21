@@ -13,7 +13,7 @@ own high-risk rules, the `--confirm` flag and a security review.
   name, a card's title) are not resolved: the target of a commit must be exact.
 - `get` prints the root of the checkout, the base and the position of a card against it, the push address
   (`remote`) and the commit hooks, then one line for each file with its status, its counts, whether it is not committed
-  and its `digest`. The write side's `commit` repeats those digests (`--file <path>=<digest>`) and `pr` repeats the
+  and its `digest`. The write side's `commit` repeats those digests (`--digest <path>=<digest>`) and `pr` repeats the
   remote, so the person always names what they saw; the CLI never reads them back for them. A file the daemon lists
   with no lines (a credential, over the cap) is listed so here, and the text never prints the lines of a diff.
 - `sessions` takes the absolute path the daemon takes. A file no session wrote is `no session wrote it` and exit `0`.
@@ -26,4 +26,22 @@ own high-risk rules, the `--confirm` flag and a security review.
   `tooLarge` and `secret`. A `watch --json` line has no frame type.
 - `changes` joined the commands that take `--json` and `--host`. The risk rules need no new entry: nothing here writes,
   so `fd changes` from a session's shell stays ordinary.
-- Not in this slice: `revert`, `undo-revert`, `commit` and `pr`.
+- Not in this slice: `revert`, `undo-revert`, `commit` and `pr`; they are the next section.
+
+## The write side (slice 2, issue #3620)
+
+`changes revert <target> <file>`, `changes undo-revert <target> <file>`, `changes commit <target>` and
+`changes pr <target>`, over `changes.revert`, `changes.undoRevert`, `changes.commit` and `changes.pr`.
+
+- Every write needs `--confirm`; without it the command is refused with exit `1` and the usage. `commit` takes
+  `--branch`, `--message` and one `--digest <path>=<digest>` for each file; `pr` takes `--title`, `--body` and
+  `--remote`. A flag that does not belong to the verb is refused with the verbs it applies to. `--message`, `--title`,
+  `--body` and `--confirm` are also the flags of other commands, so the parser moves them into the `changes` fields
+  before the `card` and persona checks see them.
+- The CLI sends exactly what the person typed: the digests and the remote are the ones `changes get` printed and the
+  person read, never refetched, so a file that changed since is refused by the daemon. The daemon refuses `commit`
+  and `pr` on a transport that cannot reach the vault (`transport_refused`, exit `1`).
+- A cut connection after the request left prints that the write may or may not have happened and exits `2`.
+- Risk: `changes commit`, `changes pr` and `changes revert` are high from a session's shell, in every spelling the
+  other `flightdeckd` rules cover (a global flag before the command, `bunx`, `bash -c`, a quoted or expanded verb).
+  `undo-revert` only restores what a revert took out, and `get`, `sessions` and `watch` read: they stay ordinary.

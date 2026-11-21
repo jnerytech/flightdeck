@@ -153,11 +153,11 @@
   "card.validationTemplate": {
     "cli": "card"
   },
-  "changes.commit": {},
+  "changes.commit": { "cli": "changes" },
   "changes.get": { "cli": "changes" },
-  "changes.pr": {},
-  "changes.revert": {},
-  "changes.undoRevert": {},
+  "changes.pr": { "cli": "changes" },
+  "changes.revert": { "cli": "changes" },
+  "changes.undoRevert": { "cli": "changes" },
   "changes.unwatch": { "cli": "changes" },
   "changes.watch": { "cli": "changes" },
   "costs.card": { "cli": "costs" },
@@ -275,7 +275,9 @@
   "messaging.rules.get": {
     "cli": "message"
   },
-  "messaging.rules.set": {},
+  "messaging.rules.set": {
+    "cli": "message"
+  },
   "names.list": {},
   "permission.respond": {
     "cli": "approve"
