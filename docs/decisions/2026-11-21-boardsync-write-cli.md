@@ -30,6 +30,10 @@ moves to an outside board. `set-push` is read by what it is not: only a lone `--
 the shell expands never is. `unlink` and the reads grant nothing, so they stay ordinary. `boardsync` joined the commands
 whose verb a shell expansion cannot hide.
 
+`unlink` is left ordinary on purpose, and its cost is known: it deletes the link row, so the project's custom map, its
+push opt-in and its sync cursor are gone, and the cards stop syncing. The cards and their links stay, and linking again
+is high, so the person is asked before anything reaches the board again. The security review (2026-11-21) rated this low.
+
 Without a device-bound confirmation in the daemon, the typed `--confirm` of `set-push --on` is all a person at a
 terminal has: the same state as every other `--confirm` verb of the CLI.
 
