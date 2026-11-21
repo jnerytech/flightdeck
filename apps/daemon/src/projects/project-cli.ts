@@ -1,13 +1,16 @@
 /**
  * Issue #3515: `flightdeckd project trust-state|stack|trust-inspect|harness-preview|detect-provider|add|update|
- * harness-draft|harness-export`, what a host knows of a project's folder and what a person changes in a project,
+ * harness-draft|harness-export|harness-apply|harness-commit`, what a host knows of a project's folder and what a person changes in a project,
  * from a terminal or a script. It speaks to the daemon like `flightdeckd plugins` does (the same `DaemonClient`,
- * the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. `add`, `update` and `harness-export` write.
+ * the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. `add`, `update`, `harness-export`,
+ * `harness-apply` and `harness-commit` write.
  */
 import { resolve } from "node:path";
 import {
   type CliResult,
   type DaemonClient,
+  DaemonRefusal,
+  failure,
   type RemoteTarget,
   resolveProject,
   runOnLocalDaemon,
@@ -15,13 +18,18 @@ import {
   shown,
 } from "../daemon-client/index.ts";
 import {
+  appliedDigests,
+  appliedLines,
+  committedLines,
   detectLines,
   draftLines,
   exportLines,
   inspectLines,
   type ProjectCliArgs,
+  previewDigests,
   previewLines,
   projectLines,
+  type SavedDigests,
   stackLines,
   trustLines,
 } from "./domain/project-cli-view.ts";
@@ -32,6 +40,26 @@ const UNSURE =
 
 /** A preview reads the folder's files and a template's, which takes longer than a lookup. */
 const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** The file the person saved an earlier answer in, read as text, or the line that says it cannot be. */
+async function readSaved(file: string): Promise<string | CliResult> {
+  try {
+    return await Bun.file(file).text();
+  } catch {
+    return failure(1, `${file}: cannot read it`);
+  }
+}
+
+/**
+ * A host with a device enrolled wants that device's signature, which a terminal cannot give (#3453), and a
+ * layout change wants `--reformat` here, not the protocol's field: both are said in the CLI's own words.
+ */
+const REFUSALS: Record<string, string> = {
+  approval_proof_required:
+    "this host has a device enrolled, which confirms what is written to a project's files, so do it in the app",
+  harness_reformat:
+    "writing the settings back would change their layout: run it again with --reformat if the person accepts that",
+};
 
 export function runProjectCli(
   args: ProjectCliArgs,
@@ -77,6 +105,9 @@ export function runProjectCli(
           });
           return shown(args.json, answer, exportLines);
         }
+        case "harness-apply":
+        case "harness-commit":
+          return writeHarness(args, daemon, note, folder);
         case "trust-state":
           return shown(
             args.json,
@@ -107,6 +138,50 @@ export function runProjectCli(
       }
     },
   });
+}
+
+/**
+ * `harness-apply` and `harness-commit` (#3515): the digests come from the answer the person saved, and a typed
+ * `--confirm` stands for their word. The reasons the CLI cannot meet (a device proof) or tells in its own words
+ * (a reformat) are refused here; any other refusal goes up as the daemon said it.
+ */
+async function writeHarness(
+  args: Extract<ProjectCliArgs, { action: "harness-apply" | "harness-commit" }>,
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+  folder: (path: string) => string,
+): Promise<CliResult> {
+  const read = await readSaved(args.digestsFile);
+  if (typeof read !== "string") return read;
+  const saved: SavedDigests =
+    args.action === "harness-apply"
+      ? previewDigests(args.digestsFile, read)
+      : appliedDigests(args.digestsFile, read);
+  if ("problem" in saved) return failure(1, saved.problem);
+  note.wrote = true;
+  try {
+    if (args.action === "harness-commit") {
+      const committed = await daemon.call("project.harness.commit", {
+        path: folder(args.path),
+        digests: saved.digests,
+        confirm: true,
+      });
+      return shown(args.json, committed, committedLines);
+    }
+    const applied = await daemon.call("project.harness.apply", {
+      path: folder(args.path),
+      parts: args.parts,
+      digests: saved.digests,
+      confirm: true,
+      ...(args.reformat ? { reformat: true } : {}),
+      ...(args.template === undefined ? {} : { template: args.template }),
+    });
+    return shown(args.json, applied, appliedLines);
+  } catch (error) {
+    const reason = error instanceof DaemonRefusal ? error.reason : undefined;
+    if (reason === undefined || !Object.hasOwn(REFUSALS, reason)) throw error;
+    return failure(1, `${args.path} ${REFUSALS[reason]}`);
+  }
 }
 
 /** A project the person names (its name or its id): `update` changes it, `detect-provider` asks which host it is on. */

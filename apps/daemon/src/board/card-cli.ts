@@ -151,12 +151,18 @@ async function endCard(
   const confirm = confirmed(args);
   const payload = { cardId: args.id ?? "", confirm };
   note.wrote = true;
-  const card = await (done === "completed"
-    ? daemon.call("card.complete", payload)
-    : done === "discarded"
-      ? daemon.call("card.discard", payload)
-      : daemon.call("card.delete", payload));
+  const card = await endCall(daemon, done, payload);
   return args.json ? json(card) : said(`${done} ${card.id}  ${card.title}`);
+}
+
+function endCall(
+  daemon: DaemonClient,
+  done: "completed" | "discarded" | "deleted",
+  payload: { cardId: string; confirm: boolean },
+) {
+  if (done === "completed") return daemon.call("card.complete", payload);
+  if (done === "discarded") return daemon.call("card.discard", payload);
+  return daemon.call("card.delete", payload);
 }
 
 /** Pushes the card's branch and opens its pull request: public, so a write the person cannot take back. */

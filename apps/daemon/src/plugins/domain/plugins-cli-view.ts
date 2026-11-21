@@ -90,9 +90,10 @@ export function listLines(list: PluginList): string[] {
     const pin = p.pinned ? `  pinned ${p.pinned.version}` : "";
     return `installed  ${p.id}  ${p.version}  ${p.scope}  ${state}${pin}`;
   });
-  const available = list.available.map(
-    (p) => `available  ${p.id}${p.description ? `  ${p.description}` : ""}`,
-  );
+  const available = list.available.map((p) => {
+    const description = p.description ? `  ${p.description}` : "";
+    return `available  ${p.id}${description}`;
+  });
   const marketplaces = list.marketplaces.map(
     (m) => `marketplace  ${m.name}  ${withoutUserinfo(m.source)}`,
   );

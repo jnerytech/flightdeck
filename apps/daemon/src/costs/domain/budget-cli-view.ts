@@ -31,11 +31,15 @@ const dollars = (usd: number): string => `$${usd.toFixed(2)}`;
 /** One budget as a line: its scope, its period, what it spent of its limit, and what it does at the limit. */
 export function budgetLine(budget: Budget): string {
   const scope = budget.scope === "project" ? `project ${budget.projectKey ?? ""}` : "host";
-  const spent =
-    budget.limitPct === null
-      ? `${dollars(budget.spentUsd)} of ${dollars(budget.limitUsd)}`
-      : `${budget.estimated ? "~" : ""}${percent(budget.spentPct ?? 0)} of ${percent(budget.limitPct)}`;
+  const spent = spentOf(budget);
   return `${budget.id}  ${scope}  ${budget.period}  spent ${spent} (${percent(budget.fraction)})  ${budget.action}`;
+}
+
+/** What a budget spent of its limit: dollars for a dollar limit, a share (marked `~` when estimated) for a quota limit. */
+function spentOf(budget: Budget): string {
+  if (budget.limitPct === null) return `${dollars(budget.spentUsd)} of ${dollars(budget.limitUsd)}`;
+  const estimate = budget.estimated ? "~" : "";
+  return `${estimate}${percent(budget.spentPct ?? 0)} of ${percent(budget.limitPct)}`;
 }
 
 /** The line `watch` prints for a change: the budget as `budget list` says it, then the threshold it crossed or its removal. */
@@ -44,12 +48,13 @@ export function watchLine(change: {
   threshold: number | null;
   removed: boolean;
 }): string {
-  const note = change.removed
-    ? "  removed"
-    : change.threshold === null
-      ? ""
-      : `  crossed ${percent(change.threshold)}`;
-  return `${budgetLine(change.budget)}${note}`;
+  return `${budgetLine(change.budget)}${changeNote(change)}`;
+}
+
+function changeNote(change: { threshold: number | null; removed: boolean }): string {
+  if (change.removed) return "  removed";
+  if (change.threshold === null) return "";
+  return `  crossed ${percent(change.threshold)}`;
 }
 
 /** One line per budget, or a sentence when there is none. */

@@ -5,6 +5,7 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
+import { PROJECT_RULES } from "./project-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -217,7 +218,7 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
-const HOSTKEY_WRITES = ["confirm", "forget"];
+const HOSTKEY_WRITES = new Set(["confirm", "forget"]);
 
 /**
  * Which server keys a host trusts is the person's call (#3537): `ssh hostkey confirm` pins a key, and
@@ -227,7 +228,7 @@ const HOSTKEY_WRITES = ["confirm", "forget"];
  */
 function changesTrustedHostKeys(prog: string, args: string[]): boolean {
   return runsFlightdeckWords(prog, args, ([command, action, verb]) => {
-    return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.includes(verb ?? "");
+    return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.has(verb ?? "");
   });
 }
 
@@ -338,15 +339,6 @@ const repricesTheCosts = (prog: string, args: string[]) =>
  */
 const endsASession = (prog: string, args: string[]) =>
   runsCliVerb(prog, args, "session", ["close"]);
-
-/**
- * `project add` and `update` set a project's setup script (a shell command that runs in every card), its
- * auto-approval and its prompt; `harness-export` copies its instructions into the host's shared store and
- * `harness-draft` runs a model over the repository (#3515). The app has the person fill a form and press a
- * button; from a shell, any session could widen what the next card runs or is allowed to do.
- */
-const changesAProject = (prog: string, args: string[]) =>
-  runsCliVerb(prog, args, "project", ["add", "update", "harness-draft", "harness-export"]);
 
 /**
  * `session create` and `fork` start a session with a folder, a prompt, a model and a permission mode of
@@ -469,11 +461,7 @@ const DANGEROUS: Array<{
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
   },
-  {
-    when: changesAProject,
-    reason: () =>
-      "sets what a project runs or allows without the person confirming it in the app: its setup script, its auto-approval, or the instructions it exports to the shared store, and a drafted CLAUDE.md is a model call (flightdeckd project add, update, harness-draft or harness-export)",
-  },
+  ...PROJECT_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>
@@ -704,7 +692,7 @@ export class RiskClassifier {
     const out = joined === command ? written : [...written, ...this.shell(joined, cwd)];
     // PowerShell's backslash is a path separator and its escape is the backtick (#3559): the line is read once more
     // with the two swapped, so `"C:\work\" persona remove qa` does not read as one open string.
-    const swapped = command.replace(/\\/g, "/").replace(/`/g, "\\");
+    const swapped = command.replaceAll("\\", "/").replaceAll("`", "\\");
     return powershell && swapped !== command ? [...out, ...this.shell(swapped, cwd)] : out;
   }
 
