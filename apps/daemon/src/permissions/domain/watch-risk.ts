@@ -1,16 +1,17 @@
 import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
 
 /** The flags that only choose the daemon or the output, and change nothing (`watch settings`, `boardsync set-push`). */
-export const READING_FLAGS = ["--json", "--host", "--config"];
+const READING_FLAGS = ["--json", "--host", "--config"];
 
 /**
- * Whether the only change the words ask for is `--disable`: turning the watch off grants a session nothing.
- * A word the shell expands may be any flag (`--disable $X` with `X='--check evil'`), so it is never only that.
+ * Whether the only change the words ask for is `off` (`--disable` for a watch, `--off` for a board push): turning
+ * something off grants a session nothing. A word the shell expands may be any flag (`--disable $X` with
+ * `X='--check evil'`), so it is never only that.
  */
-const onlyTurnsOff = (own: string[]) => {
+export const onlyTurnsOff = (own: string[], off: string) => {
   if (own.some(isExpanded)) return false;
   const changes = own.filter((word) => word.startsWith("--") && !READING_FLAGS.includes(word));
-  return changes.length === 1 && changes[0] === "--disable";
+  return changes.length === 1 && changes[0] === off;
 };
 
 /**
@@ -25,10 +26,11 @@ export function changesAWatch(prog: string, args: string[]): boolean {
   return runsFlightdeckWords(prog, args, ([command, action], own) => {
     if (command !== "watch") return false;
     if (action === "extend") return true;
-    if (action === "set") return !onlyTurnsOff(own);
+    if (action === "set") return !onlyTurnsOff(own, "--disable");
     if (action === "settings")
       return (
-        own.some((w) => w.startsWith("--") && !READING_FLAGS.includes(w)) && !onlyTurnsOff(own)
+        own.some((w) => w.startsWith("--") && !READING_FLAGS.includes(w)) &&
+        !onlyTurnsOff(own, "--disable")
       );
     if (action === "resolve-held")
       return !(

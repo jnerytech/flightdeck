@@ -1,15 +1,5 @@
-import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
-import { READING_FLAGS } from "./watch-risk.ts";
-
-/**
- * Whether the only change the words ask for is `--off`: turning the push off grants a session nothing. A word
- * the shell expands may be any flag (`--off $X` with `X=--on`), so it is never only that.
- */
-const onlyTurnsOff = (own: string[]) => {
-  if (own.some(isExpanded)) return false;
-  const changes = own.filter((word) => word.startsWith("--") && !READING_FLAGS.includes(word));
-  return changes.length === 1 && changes[0] === "--off";
-};
+import { runsFlightdeckWords } from "./shell-call.ts";
+import { onlyTurnsOff } from "./watch-risk.ts";
 
 /**
  * A change of a project's board sync from a shell (#3540): `link` ties the project to a GitHub Projects board
@@ -22,7 +12,7 @@ function changesABoardSync(prog: string, args: string[]): boolean {
   return runsFlightdeckWords(prog, args, ([command, action], own) => {
     if (command !== "boardsync") return false;
     if (action === "link" || action === "set-map" || action === "sync-now") return true;
-    return action === "set-push" && !onlyTurnsOff(own);
+    return action === "set-push" && !onlyTurnsOff(own, "--off");
   });
 }
 
