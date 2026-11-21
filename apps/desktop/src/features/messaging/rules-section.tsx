@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -28,6 +28,12 @@ interface Exception {
   bothWays?: boolean;
 }
 type Policy = Record<string, unknown> & { exceptions?: Exception[]; retentionDays?: number };
+interface Refusal {
+  code: string;
+  message: string;
+  reason?: string;
+  params?: Record<string, string | number>;
+}
 interface Rules {
   policy: Policy;
   paused: string[];
@@ -62,8 +68,10 @@ export function MessagingRulesSection(
   const t = useT();
   const { store, hostId } = props;
   const [rules, setRules] = useState<Rules | null>(null);
-  // Why the rules could not be read; null while they load or once they are shown (issue #3787).
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // The refusal that kept the rules from loading; null while they load or once they are shown (issue #3787).
+  const [loadRefusal, setLoadRefusal] = useState<Refusal | null>(null);
+  // Only the latest read may show its answer: an older one resolving last would show stale rules.
+  const latestRead = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [fromKind, setFromKind] = useState<Kind>("host");
   const [fromValue, setFromValue] = useState("");
@@ -78,12 +86,16 @@ export function MessagingRulesSection(
     setRules(next);
     setRetention(String(next.policy.retentionDays ?? ""));
   }, []);
+  // A retry keeps the error and its button on screen (busy) until the answer comes, so focus stays put.
   const read = useCallback(async () => {
-    setLoadError(null);
+    const mine = ++latestRead.current;
     const result = await store.hostRequest(hostId, "messaging.rules.get", {});
-    if (result.ok) show(result.data);
-    else setLoadError(refusalText(result.code, result.message, t, result));
-  }, [store, hostId, show, t]);
+    if (mine !== latestRead.current) return;
+    if (result.ok) {
+      setLoadRefusal(null);
+      show(result.data);
+    } else setLoadRefusal(result);
+  }, [store, hostId, show]);
   useEffect(() => {
     void read();
   }, [read]);
@@ -93,14 +105,15 @@ export function MessagingRulesSection(
     return (
       <section aria-label={title}>
         <Panel title={title}>
-          {loadError === null ? (
+          {loadRefusal === null ? (
             <output className="block text-sm">
               {t("messagingRulesUi.loading", { host: props.hostName })}
             </output>
           ) : (
             <>
               <InlineNotice tone="error">
-                {t("messagingRulesUi.loadFailed", { host: props.hostName })} {loadError}
+                {t("messagingRulesUi.loadFailed", { host: props.hostName })}{" "}
+                {refusalText(loadRefusal.code, loadRefusal.message, t, loadRefusal)}
               </InlineNotice>
               <Inline>
                 <ActionButton variant="outline" onClick={read}>

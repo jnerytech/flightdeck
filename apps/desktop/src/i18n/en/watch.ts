@@ -205,7 +205,7 @@ export const watch = {
       session: "The session's id, or host/id.",
       project: "The project's key.",
       team: "The team's id.",
-      host: "The host's id.",
+      host: "The host's name, as in host/id.",
     },
     pair: "{a} and {b}",
     release: "Free the pair {pair}",

@@ -5,7 +5,7 @@ import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
-import { settle, settleMaybe } from "../wait.ts";
+import { settle, settleMaybe, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -211,13 +211,13 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
 });
 
 /** Settings with a host whose messaging.rules.get the daemon refuses, in one language. */
-async function openRefused(lang: "en" | "pt-BR") {
+async function openRules(lang: "en" | "pt-BR", refused: boolean) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push("messaging");
   daemon.messaging.policy = structuredClone(POLICY);
-  daemon.refuse.set("messaging.rules.get", "the rules file is unreadable");
+  if (refused) daemon.refuse.set("messaging.rules.get", "the rules file is unreadable");
   render(<App store={store} />);
   await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -233,7 +233,7 @@ for (const [lang, t] of [
 ] as const) {
   describe(`mensagens-ui (${lang}): a failed load and what each field expects (issue #3787)`, () => {
     test("a refused load keeps the host's section with what failed and Try again, and the retry shows the form", async () => {
-      const { daemon } = await openRefused(lang);
+      const { daemon } = await openRules(lang, true);
       const title = t.messagingRulesUi.title.replace("{host}", "alfa");
       const failed = t.messagingRulesUi.loadFailed.replace("{host}", "alfa");
       await settleMaybe(() => document.body.textContent?.includes(failed) === true);
@@ -241,6 +241,11 @@ for (const [lang, t] of [
       expect(screen.queryByRole("region", { name: title })).not.toBeNull();
       expect(document.body.textContent).toContain("the rules file is unreadable");
       expect(document.body.textContent).not.toContain(t.messagingRulesUi.none);
+      // A retry the host refuses again leaves the error and the button where they were.
+      await click(t.messagingRulesUi.retry);
+      await uiIdle();
+      expect(document.body.textContent).toContain(failed);
+      expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).not.toBeNull();
       daemon.refuse.delete("messaging.rules.get");
       await click(t.messagingRulesUi.retry);
       await settle(() => screen.queryByLabelText(t.messagingRulesUi.retention) !== null);
@@ -250,12 +255,7 @@ for (const [lang, t] of [
     });
 
     test("under each value field a hint says what the chosen kind expects", async () => {
-      const { daemon } = await openRefused(lang);
-      daemon.refuse.delete("messaging.rules.get");
-      await settleMaybe(
-        () => screen.queryByRole("button", { name: t.messagingRulesUi.retry }) !== null,
-      );
-      await click(t.messagingRulesUi.retry);
+      await openRules(lang, false);
       await settle(() => screen.queryByLabelText(t.messagingRulesUi.fromValue) !== null);
       const hints = t.messagingRulesUi.hints;
       // Both sides start as "host".
