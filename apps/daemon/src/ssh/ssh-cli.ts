@@ -7,11 +7,13 @@
  */
 import {
   type CliResult,
+  type DaemonClient,
   failure,
   json,
   type RemoteTarget,
   runOnLocalDaemon,
   said,
+  shown,
 } from "../daemon-client/index.ts";
 import {
   confirmDecision,
@@ -81,116 +83,134 @@ export function runSshCli(
         ? CONNECT_TIMEOUT_MS
         : DEFAULT_TIMEOUT_MS),
     perform: async (daemon) => {
-      if (
-        args.action === "hostkey-check" ||
-        args.action === "hostkey-confirm" ||
-        args.action === "hostkey-forget" ||
-        args.action === "remove" ||
-        args.action === "test"
-      ) {
-        const { targets } = await daemon.call("ssh.list", {});
-        const found = resolveSshTarget(targets, args.target ?? "");
-        if ("problem" in found) return failure(1, found.problem);
-        const { id, name, auth } = found.target;
-        if (args.action === "remove") {
-          // The daemon refuses it too, and it also refuses a destination another one goes through.
-          await daemon.call("ssh.remove", { id, confirm: args.confirm === true });
-          return args.json ? json({ id, name, removed: true }) : said(removedLine(name));
+      switch (args.action) {
+        case "list":
+          return shown(args.json, await daemon.call("ssh.list", {}), (r) => targetLines(r.targets));
+        case "import-apply": {
+          const result = await daemon.call("ssh.import.apply", { aliases: args.aliases ?? [] });
+          const base = shown(args.json, result, importResultLines);
+          // A name that was not imported is a part of the work not done: a script sees it.
+          return { ...base, code: result.skipped.length > 0 ? 1 : 0 };
         }
-        if (args.action === "hostkey-forget") {
-          const forgotten = await daemon.call("ssh.hostkey.forget", { targetId: id });
-          return args.json ? json(forgotten) : said(hostKeyForgottenLine(name));
-        }
-        if (args.action === "hostkey-confirm") {
-          const typed = args.fingerprint ?? "";
-          // A fresh scan arms the daemon's five minutes, and shows what the server presents right now.
-          const check = await daemon.call("ssh.hostkey.check", { targetId: id });
-          const decision = confirmDecision(name, check, typed);
-          if (!decision.send) return failure(1, decision.message, decision.reason);
-          const pinned = await daemon.call("ssh.hostkey.confirm", {
-            targetId: id,
-            fingerprint: typed,
-          });
-          return args.json ? json(pinned) : said(hostKeyPinnedLine(name, typed));
-        }
-        if (args.action === "hostkey-check") {
-          const check = await daemon.call("ssh.hostkey.check", { targetId: id });
-          const shown = hostKeyLine(name, check);
-          const base = args.json ? json(check) : said(shown.line);
-          return { ...base, code: shown.code, ...(shown.reason ? { reason: shown.reason } : {}) };
-        }
-        // The terminal never sends a key: a vault key lives in the app, so the test is the app's to run.
-        if (auth === "vault-key") {
-          return failure(
-            1,
-            `${name} uses a vault key, which a terminal never sends: test it from the app`,
-            "ssh_key_missing",
+        case "import-preview":
+          return shown(args.json, await daemon.call("ssh.import.preview", {}), (r) =>
+            importLines(r.entries),
           );
-        }
-        const result = await daemon.call("ssh.test", { targetId: id });
-        const shown = testLine(name, result);
-        const base = args.json ? json(result) : said(shown.line);
-        return { ...base, code: shown.code, ...(result.reason ? { reason: result.reason } : {}) };
+        case "add":
+        case "edit":
+          return saveTarget(args, daemon);
+        default:
+          return namedTarget(args, daemon);
       }
-      if (args.action === "add" || args.action === "edit") {
-        const { targets } = await daemon.call("ssh.list", {});
-        const fields = args.save ?? {};
-        let jumpId: string | null | undefined = fields.noJump ? null : undefined;
-        if (fields.jump !== undefined) {
-          const jump = resolveSshTarget(targets, fields.jump);
-          if ("problem" in jump) return failure(1, jump.problem);
-          jumpId = jump.target.id;
-        }
-        const confirm = args.confirm === true;
-        const name = args.target ?? "";
-        if (args.action === "add") {
-          const named = name.trim();
-          if (targets.some((t) => t.name === named)) {
-            return failure(
-              1,
-              `a destination is already named ${named}: use ssh edit ${named}`,
-              "ssh_name_taken",
-            );
-          }
-          if (targets.some((t) => t.id === named)) {
-            return failure(
-              1,
-              `${named} is the id of another destination: pick another name`,
-              "ssh_name_taken",
-            );
-          }
-          const added = await daemon.call(
-            "ssh.save",
-            addPayload(name, fields, jumpId ?? undefined, confirm),
-          );
-          return args.json ? json(added) : said(addedLine(added.name, added.id));
-        }
-        const found = resolveSshTarget(targets, name);
-        if ("problem" in found) return failure(1, found.problem);
-        if (fields.secretRef !== undefined && (fields.auth ?? found.target.auth) === "agent") {
-          return failure(
-            1,
-            `--secret-ref: ${found.target.name} signs in with the agent, which has no key reference: pass --auth key-file, vault-key or password`,
-          );
-        }
-        const saved = await daemon.call(
-          "ssh.save",
-          editPayload(found.target, fields, jumpId, confirm),
-        );
-        return args.json ? json(saved) : said(updatedLine(found.target, saved));
-      }
-      if (args.action === "list") {
-        const result = await daemon.call("ssh.list", {});
-        return args.json ? json(result) : said(...targetLines(result.targets));
-      }
-      if (args.action === "import-apply") {
-        const result = await daemon.call("ssh.import.apply", { aliases: args.aliases ?? [] });
-        const base = args.json ? json(result) : said(...importResultLines(result));
-        // A name that was not imported is a part of the work not done: a script sees it.
-        return { ...base, code: result.skipped.length > 0 ? 1 : 0 };
-      }
-      const result = await daemon.call("ssh.import.preview", {});
-      return args.json ? json(result) : said(...importLines(result.entries));
     },
   });
+}
+
+/** The verbs that act on a destination the person names: they all start by finding it in the daemon's list. */
+async function namedTarget(args: SshCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { targets } = await daemon.call("ssh.list", {});
+  const found = resolveSshTarget(targets, args.target ?? "");
+  if ("problem" in found) return failure(1, found.problem);
+  const { id, name } = found.target;
+  switch (args.action) {
+    case "remove":
+      // The daemon refuses it too, and it also refuses a destination another one goes through.
+      await daemon.call("ssh.remove", { id, confirm: args.confirm === true });
+      return shown(args.json, { id, name, removed: true }, () => [removedLine(name)]);
+    case "hostkey-forget":
+      return shown(args.json, await daemon.call("ssh.hostkey.forget", { targetId: id }), () => [
+        hostKeyForgottenLine(name),
+      ]);
+    case "hostkey-confirm": {
+      const typed = args.fingerprint ?? "";
+      // A fresh scan arms the daemon's five minutes, and shows what the server presents right now.
+      const check = await daemon.call("ssh.hostkey.check", { targetId: id });
+      const decision = confirmDecision(name, check, typed);
+      if (!decision.send) return failure(1, decision.message, decision.reason);
+      const pinned = await daemon.call("ssh.hostkey.confirm", { targetId: id, fingerprint: typed });
+      return shown(args.json, pinned, () => [hostKeyPinnedLine(name, typed)]);
+    }
+    case "hostkey-check":
+      return checkHostKey(args, daemon, id, name);
+    default:
+      return testTarget(args, daemon, found.target);
+  }
+}
+
+/** What the server presents right now: the exit code says whether it is the pinned key, a new one or a changed one. */
+async function checkHostKey(
+  args: SshCliArgs,
+  daemon: DaemonClient,
+  id: string,
+  name: string,
+): Promise<CliResult> {
+  const check = await daemon.call("ssh.hostkey.check", { targetId: id });
+  const line = hostKeyLine(name, check);
+  const base = shown(args.json, check, () => [line.line]);
+  return { ...base, code: line.code, ...(line.reason ? { reason: line.reason } : {}) };
+}
+
+async function testTarget(
+  args: SshCliArgs,
+  daemon: DaemonClient,
+  target: { id: string; name: string; auth: string },
+): Promise<CliResult> {
+  // The terminal never sends a key: a vault key lives in the app, so the test is the app's to run.
+  if (target.auth === "vault-key") {
+    return failure(
+      1,
+      `${target.name} uses a vault key, which a terminal never sends: test it from the app`,
+      "ssh_key_missing",
+    );
+  }
+  const result = await daemon.call("ssh.test", { targetId: target.id });
+  const line = testLine(target.name, result);
+  const base = shown(args.json, result, () => [line.line]);
+  return { ...base, code: line.code, ...(result.reason ? { reason: result.reason } : {}) };
+}
+
+/** `add` makes a destination, `edit` changes one: both resolve their `--jump` first and then save. */
+async function saveTarget(args: SshCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { targets } = await daemon.call("ssh.list", {});
+  const fields = args.save ?? {};
+  let jumpId: string | null | undefined = fields.noJump ? null : undefined;
+  if (fields.jump !== undefined) {
+    const jump = resolveSshTarget(targets, fields.jump);
+    if ("problem" in jump) return failure(1, jump.problem);
+    jumpId = jump.target.id;
+  }
+  const confirm = args.confirm === true;
+  const name = args.target ?? "";
+  if (args.action === "add") {
+    const named = name.trim();
+    if (targets.some((t) => t.name === named)) {
+      return failure(
+        1,
+        `a destination is already named ${named}: use ssh edit ${named}`,
+        "ssh_name_taken",
+      );
+    }
+    if (targets.some((t) => t.id === named)) {
+      return failure(
+        1,
+        `${named} is the id of another destination: pick another name`,
+        "ssh_name_taken",
+      );
+    }
+    const added = await daemon.call(
+      "ssh.save",
+      addPayload(name, fields, jumpId ?? undefined, confirm),
+    );
+    return shown(args.json, added, (a) => [addedLine(a.name, a.id)]);
+  }
+  const found = resolveSshTarget(targets, name);
+  if ("problem" in found) return failure(1, found.problem);
+  if (fields.secretRef !== undefined && (fields.auth ?? found.target.auth) === "agent") {
+    return failure(
+      1,
+      `--secret-ref: ${found.target.name} signs in with the agent, which has no key reference: pass --auth key-file, vault-key or password`,
+    );
+  }
+  const saved = await daemon.call("ssh.save", editPayload(found.target, fields, jumpId, confirm));
+  return shown(args.json, saved, (s) => [updatedLine(found.target, s)]);
 }

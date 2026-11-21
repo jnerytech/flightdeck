@@ -8,12 +8,14 @@
  */
 import {
   type CliResult,
+  type DaemonClient,
   failure,
   json,
   type RemoteTarget,
   resolveSession,
   runOnLocalDaemon,
   said,
+  shown,
 } from "../daemon-client/index.ts";
 import { terminalLines } from "./domain/terminal-read-view.ts";
 import { closedLine, openedLine, settingsLine } from "./domain/terminal-write-view.ts";
@@ -61,54 +63,74 @@ export function runTerminalCli(
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
     perform: async (daemon, note) => {
-      if (args.action === "list") {
-        const result = await daemon.call("terminal.list", {});
-        return args.json ? json(result) : said(...terminalLines(result.terminals));
-      }
-      if (args.action === "open") {
-        note.wrote = true;
-        const { cwd, cols, rows } = args;
-        const opened = await daemon.call("terminal.open", {
-          cwd,
-          cols,
-          rows,
-          ...(args.command ? { command: args.command } : {}),
-          ...(args.claude ? { claude: args.claude } : {}),
-        });
-        return args.json ? json(opened) : said(openedLine(opened));
-      }
-      if (args.action === "open-session") {
-        const { sessions } = await daemon.call("session.list", {});
-        const ref = resolveSession(sessions, args.session);
-        if ("refusal" in ref) return ref.refusal;
-        note.wrote = true;
-        const opened = await daemon.call("terminal.openSession", {
-          session: ref.id,
-          cols: args.cols,
-          rows: args.rows,
-        });
-        return args.json ? json(opened) : said(openedLine(opened));
-      }
-      if (args.action === "close") {
-        note.wrote = true;
-        await daemon.call("terminal.close", { terminalId: args.terminalId, kill: args.kill });
-        // The daemon detaches only the connection that asks, and this one never attached: without --kill
-        // the call changes nothing but a terminal that had already ended, so the list says which it was.
-        if (!args.kill) {
-          const { terminals } = await daemon.call("terminal.list", {});
-          if (terminals.some((t) => t.terminalId === args.terminalId))
-            return failure(1, STILL_RUNNING(args.terminalId), "terminal_still_running");
+      switch (args.action) {
+        case "list":
+          return shown(args.json, await daemon.call("terminal.list", {}), (r) =>
+            terminalLines(r.terminals),
+          );
+        case "open": {
+          note.wrote = true;
+          const { cwd, cols, rows } = args;
+          const opened = await daemon.call("terminal.open", {
+            cwd,
+            cols,
+            rows,
+            ...(args.command ? { command: args.command } : {}),
+            ...(args.claude ? { claude: args.claude } : {}),
+          });
+          return shown(args.json, opened, (o) => [openedLine(o)]);
         }
-        return args.json
-          ? json({ terminalId: args.terminalId, kill: args.kill, closed: true })
-          : said(closedLine(args.terminalId, args.kill));
+        case "open-session":
+          return openSession(args, daemon, note);
+        case "close":
+          return closeTerminal(args, daemon, note);
+        default: {
+          note.wrote = true;
+          const settings = await daemon.call("terminal.settings", {
+            enabled: args.enabled,
+            ...(args.enabled ? { confirm: true as const } : {}),
+          });
+          return shown(args.json, settings, (t) => [settingsLine(t)]);
+        }
       }
-      note.wrote = true;
-      const settings = await daemon.call("terminal.settings", {
-        enabled: args.enabled,
-        ...(args.enabled ? { confirm: true as const } : {}),
-      });
-      return args.json ? json(settings) : said(settingsLine(settings));
     },
   });
+}
+
+type Wrote = { wrote: boolean };
+
+async function openSession(
+  args: Extract<TerminalCliArgs, { action: "open-session" }>,
+  daemon: DaemonClient,
+  note: Wrote,
+): Promise<CliResult> {
+  const { sessions } = await daemon.call("session.list", {});
+  const ref = resolveSession(sessions, args.session);
+  if ("refusal" in ref) return ref.refusal;
+  note.wrote = true;
+  const opened = await daemon.call("terminal.openSession", {
+    session: ref.id,
+    cols: args.cols,
+    rows: args.rows,
+  });
+  return shown(args.json, opened, (o) => [openedLine(o)]);
+}
+
+async function closeTerminal(
+  args: Extract<TerminalCliArgs, { action: "close" }>,
+  daemon: DaemonClient,
+  note: Wrote,
+): Promise<CliResult> {
+  note.wrote = true;
+  await daemon.call("terminal.close", { terminalId: args.terminalId, kill: args.kill });
+  // The daemon detaches only the connection that asks, and this one never attached: without --kill
+  // the call changes nothing but a terminal that had already ended, so the list says which it was.
+  if (!args.kill) {
+    const { terminals } = await daemon.call("terminal.list", {});
+    if (terminals.some((t) => t.terminalId === args.terminalId))
+      return failure(1, STILL_RUNNING(args.terminalId), "terminal_still_running");
+  }
+  return args.json
+    ? json({ terminalId: args.terminalId, kill: args.kill, closed: true })
+    : said(closedLine(args.terminalId, args.kill));
 }
