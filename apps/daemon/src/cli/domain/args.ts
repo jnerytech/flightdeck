@@ -37,7 +37,7 @@ import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-ar
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
-import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
+import { quotaHandler, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { REVIEW_FLAGS, readReview, reviewProblem } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readRunenv, runenvProblem } from "./runenv-args.ts";
@@ -295,19 +295,7 @@ const HANDLERS: Record<string, Handler> = {
       if (args.budgetId.trim() === "") throw new Error(`missing the budget\n${USAGE}`);
     }
   },
-  quota: (args, reader) => {
-    args.command = "quota";
-    const verbs = ["get", "history", "pause-at", "watch"] as const;
-    const action = subAction(reader, verbs, "invalid quota action");
-    args.action = action;
-    if (action === "history") args.quotaWindow = operand(reader, "the window");
-    if (action === "pause-at") {
-      const share = parseShare(operand(reader, "the share"));
-      if (share === undefined)
-        throw new Error(`quota pause-at: a share from 0 to 1, or off\n${USAGE}`);
-      args.quotaPauseAt = share;
-    }
-  },
+  quota: quotaHandler,
   usage: setCommand("usage"),
   costs: (args, reader) => {
     args.command = "costs";
