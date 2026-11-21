@@ -78,6 +78,7 @@ export const github = {
     conflictHint:
       "Este PR conflita com a base: atualize a branch com a base e depois faça o merge.",
     heldHint: "O GitHub pode recusar este merge: {why}.",
+    checksFailingHint: "Os checks estão falhando: o merge fica desligado até passarem.",
     heldWhy: {
       blocked: "as regras da branch o seguram",
       changes: "pediram mudanças",

@@ -78,6 +78,7 @@ export const github = {
     opened: "Opened {ago}",
     conflictHint: "This PR conflicts with its base: bring the branch up to date, then merge.",
     heldHint: "GitHub may refuse this merge: {why}.",
+    checksFailingHint: "Checks are failing: merge is off until they pass.",
     heldWhy: {
       blocked: "the branch rules hold it",
       changes: "changes were requested",
