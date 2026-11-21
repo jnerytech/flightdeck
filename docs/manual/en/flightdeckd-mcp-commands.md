@@ -30,5 +30,6 @@ refused with exit `1`.
 `test <project> <server>` prints the exact command (or link) that a test of the server would run, and starts nothing.
 
 With `--json` the commands print one JSON value with `null` for a missing field. The daemon already masks the secrets
-of a server there. The text and the JSON print the arguments of a command whole, so a secret belongs in a variable,
-not in an argument. `--host <name>` reads a paired host.
+of a server there. The text and the JSON print the arguments of a command and a link whole, so a secret belongs in a variable or a
+header, not in an argument or in a link. The text lines separate their fields with two spaces and a name may hold some:
+a script reads `--json`. `--host <name>` reads a paired host.

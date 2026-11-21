@@ -1,6 +1,9 @@
 /** Issue #3616: what `flightdeckd mcp` prints, as pure functions of what the daemon answered. */
 import type { McpLiveStatus, McpServerView } from "@flightdeck/protocol";
 
+/** What `mcp.test` answers without `confirm`: the command or the link a test would run. */
+type McpPreview = { command?: string; args?: string[]; url?: string };
+
 /** A server with every key a script reads: what it has none of is `null`. The daemon already masked its secrets. */
 export const serverJson = (server: McpServerView) => ({
   ...server,
@@ -24,10 +27,12 @@ const serverLine = (server: McpServerView): string =>
     server.transport,
     server.enabled ? "on" : "off",
     server.readOnly ? "read-only" : "editable",
-    server.url ?? [server.command, ...(server.args ?? [])].join(" "),
+    server.url ?? [server.command, ...(server.args ?? [])].filter(Boolean).join(" "),
     ...secretNames("env", server.env),
     ...secretNames("headers", server.headers),
-  ].join("  ");
+  ]
+    .filter((field) => field !== "")
+    .join("  ");
 
 export const listLines = (servers: readonly McpServerView[]): string[] =>
   servers.length === 0 ? ["no MCP servers"] : servers.map(serverLine);
@@ -42,17 +47,14 @@ export const statusLines = (servers: readonly McpLiveStatus[]): string[] =>
       );
 
 /** What a test would run, with the keys a script reads. */
-export const previewJson = (preview: { command?: string; args?: string[]; url?: string }) => ({
+export const previewJson = (preview: McpPreview) => ({
   command: preview.command ?? null,
   args: preview.args ?? null,
   url: preview.url ?? null,
 });
 
-export const previewLine = (preview: {
-  command?: string;
-  args?: string[];
-  url?: string;
-}): string =>
-  preview.url === undefined
-    ? `would run: ${[preview.command, ...(preview.args ?? [])].join(" ")}`
-    : `would connect to: ${preview.url}`;
+export const previewLine = (preview: McpPreview): string => {
+  if (preview.url !== undefined) return `would connect to: ${preview.url}`;
+  if (preview.command === undefined) return "nothing to run: the server has no command and no link";
+  return `would run: ${[preview.command, ...(preview.args ?? [])].join(" ")}`;
+};

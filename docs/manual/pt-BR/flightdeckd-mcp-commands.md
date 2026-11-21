@@ -30,5 +30,6 @@ conhece é recusada com saída `1`.
 `test <projeto> <servidor>` imprime o comando (ou link) exato que um teste do servidor executaria, e não inicia nada.
 
 Com `--json` os comandos imprimem um valor JSON com `null` para um campo ausente. O daemon já mascara ali os segredos de
-um servidor. O texto e o JSON imprimem os argumentos de um comando por inteiro, então um segredo vai em uma variável,
-não em um argumento. `--host <nome>` lê um host pareado.
+um servidor. O texto e o JSON imprimem os argumentos de um comando e um link por inteiro, então um segredo vai em uma variável ou
+em um header, não em um argumento nem em um link. As linhas de texto separam os campos com dois espaços e um nome pode
+tê-los: um script lê o `--json`. `--host <nome>` lê um host pareado.
