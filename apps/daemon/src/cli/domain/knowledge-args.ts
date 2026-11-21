@@ -17,6 +17,9 @@ const KNOWLEDGE_ACTIONS = ["list", "index", "feed", "set-status", "create", "set
 /** The title the daemon takes (`knowledge.create`). */
 const TITLE_MAX = 200;
 
+/** A sha256 in hex, as `knowledge list` prints it: the daemon compares it whole, so a prefix would only read as a changed file. */
+const HASH_LENGTH = 64;
+
 /**
  * `knowledge list|index|feed <project>`, `set-status <project> <file>` and `create <project> <kind> <title>`:
  * a project is its name or id, or its folder.
@@ -86,6 +89,10 @@ export function knowledgeProblem(args: CliArgs): string | undefined {
   if (verb === "set-status" && args.hash === undefined) return "knowledge set-status needs --hash";
   if (verb === "set-feed" && args.knowledgeFeed === undefined)
     return "knowledge set-feed needs --on or --off";
+  if (verb === "set-status" && args.hash !== undefined && args.hash.length !== HASH_LENGTH)
+    return `knowledge set-status: --hash is the ${HASH_LENGTH}-character hash knowledge list printed for the file`;
+  if (verb === "create" && (args.knowledgeTitle ?? "").trim() === "")
+    return "knowledge create: the title is empty";
   if (verb === "create" && (args.knowledgeTitle ?? "").length > TITLE_MAX)
     return `knowledge create: the title is longer than ${TITLE_MAX} characters`;
   return undefined;
