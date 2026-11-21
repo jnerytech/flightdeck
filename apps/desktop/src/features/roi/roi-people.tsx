@@ -4,6 +4,7 @@ import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
+import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { periodRange, usd } from "../costs/index.ts";
 import { humanTokens, personRows } from "./domain/roi-people.ts";
 
@@ -75,42 +76,42 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
       {rows.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("roiUi.people.empty")}</p>
       )}
-      {rows.length > 0 && answers === null && (
-        <p className="text-muted-foreground text-sm">{t("roiUi.loading")}</p>
-      )}
+      {rows.length > 0 && answers === null && <LoadingState label={t("roiUi.loading")} />}
       {rows.length > 0 && answers !== null && (
         <>
-          <table
-            aria-label={t("roiUi.people.title")}
-            className="w-full text-left text-sm tabular-nums"
-          >
-            <thead>
-              <tr>
-                {(["person", "used", "delivered", "perCard"] as const).map((column) => (
-                  <th key={column} scope="col" className="py-1 pr-3 font-medium">
-                    {t(`roiUi.people.${column}` as Key)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.person.id} className="border-t">
-                  <th scope="row" className="py-1 pr-3 font-normal">
-                    {row.person.name}
-                  </th>
-                  <td className="pr-3">{usedText(row)}</td>
-                  <td className="pr-3">
-                    {t("roiUi.people.cards", { n: row.cards })},{" "}
-                    {t("roiUi.people.prs", { n: row.prsMerged })}
-                  </td>
-                  <td className="pr-3">
-                    {row.tokensPerCard === null ? DASH : tokensText(row.tokensPerCard)}
-                  </td>
+          <WideTable name={t("roiUi.people.title")}>
+            <table
+              aria-label={t("roiUi.people.title")}
+              className="w-full text-left text-sm tabular-nums"
+            >
+              <thead>
+                <tr>
+                  {(["person", "used", "delivered", "perCard"] as const).map((column) => (
+                    <th key={column} scope="col" className="py-1 pr-3 font-medium">
+                      {t(`roiUi.people.${column}` as Key)}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.person.id} className="border-t">
+                    <th scope="row" className="py-1 pr-3 font-normal">
+                      {row.person.name}
+                    </th>
+                    <td className="pr-3">{usedText(row)}</td>
+                    <td className="pr-3">
+                      {t("roiUi.people.cards", { n: row.cards })},{" "}
+                      {t("roiUi.people.prs", { n: row.prsMerged })}
+                    </td>
+                    <td className="pr-3">
+                      {row.tokensPerCard === null ? DASH : tokensText(row.tokensPerCard)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </WideTable>
           <p className="text-muted-foreground text-xs">{t("roiUi.people.note")}</p>
         </>
       )}

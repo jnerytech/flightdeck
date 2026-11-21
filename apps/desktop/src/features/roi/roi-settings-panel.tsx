@@ -5,6 +5,7 @@ import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
 import { RoiSettingsError } from "./domain/roi-settings.ts";
 
@@ -25,6 +26,9 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
   const hosts = useStoreSlice(store, ["hosts", "roiRevision"]).hosts;
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [message, setMessage] = useState<string | null>(null);
+  /** A rate or a cap was just saved: said once, and gone when the person edits again or saves another. */
+  const [saved, setSaved] = useState(false);
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
   const settings = store.roi.data();
   const [rate, setRate] = useState(
     settings.defaultRate === null ? "" : String(settings.defaultRate),
@@ -43,13 +47,15 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
     cost: useId(),
   };
 
-  /** Runs a change of the settings; a refusal is told by its reason. */
-  const run = (change: () => void) => {
+  /** Runs a change of the settings; a refusal is told by its reason, a good `announce` save says so. */
+  const run = (change: () => void, announce = false) => {
     try {
       change();
       setMessage(null);
+      setSaved(announce);
       rerender();
     } catch (error) {
+      setSaved(false);
       setMessage(
         error instanceof RoiSettingsError
           ? t(`roiUi.settingsPanel.error.${error.reason}` as Key)
@@ -63,7 +69,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
       return run(() => {
         throw new RoiSettingsError("number");
       });
-    run(() => apply(n));
+    run(() => apply(n), true);
   };
 
   return (
@@ -77,6 +83,9 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
           {message}
         </p>
       )}
+      <p role="status" className="text-muted-foreground text-sm empty:hidden">
+        {saved ? t("roiUi.settingsPanel.saved") : ""}
+      </p>
       <div data-slot="setting-row" className="setting-row">
         <label htmlFor={ids.rate}>{t("roiUi.settingsPanel.defaultRate")}</label>
         <div className="team-row">
@@ -85,7 +94,10 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
             inputMode="decimal"
             className="h-8 w-28"
             value={rate}
-            onChange={(e) => setRate(e.target.value)}
+            onChange={(e) => {
+              setRate(e.target.value);
+              setSaved(false);
+            }}
           />
           <Button
             size="sm"
@@ -112,12 +124,15 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
             inputMode="numeric"
             className="h-8 w-20"
             value={cap}
-            onChange={(e) => setCap(e.target.value)}
+            onChange={(e) => {
+              setCap(e.target.value);
+              setSaved(false);
+            }}
           />
           <Button
             size="sm"
             variant="outline"
-            onClick={() => run(() => store.roi.setReviewCap(Number(cap)))}
+            onClick={() => run(() => store.roi.setReviewCap(Number(cap)), true)}
           >
             {t("roiUi.settingsPanel.saveCap")}
           </Button>
@@ -132,7 +147,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => run(() => store.roi.removePerson(p.id))}
+                onClick={() => setRemoving({ id: p.id, name: p.name })}
               >
                 {t("roiUi.settingsPanel.removePerson", { name: p.name })}
               </Button>
@@ -213,6 +228,19 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
       >
         {t("roiUi.settingsPanel.addPerson")}
       </Button>
+      {removing && (
+        <ConfirmDialog
+          message={t("roiUi.settingsPanel.removeAsk", { name: removing.name })}
+          confirmLabel={t("roiUi.settingsPanel.removeConfirm")}
+          destructive
+          onConfirm={() => {
+            const { id } = removing;
+            setRemoving(null);
+            run(() => store.roi.removePerson(id));
+          }}
+          onCancel={() => setRemoving(null)}
+        />
+      )}
     </Panel>
   );
 }

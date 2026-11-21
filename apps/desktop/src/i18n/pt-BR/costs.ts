@@ -38,6 +38,10 @@ export const costs = {
       costLimit: "Limite mensal de custo (US$)",
       addPerson: "Adicionar pessoa",
       removePerson: "Remover {name}",
+      removeAsk:
+        "Remover {name}? O agrupamento de hosts e os limites se perdem; os hosts continuam. Isso não pode ser desfeito.",
+      removeConfirm: "Remover pessoa",
+      saved: "Salvo.",
       error: {
         rate_invalid: "O valor deve ser um número de 0 a 1.000.000.",
         price_invalid: "O preço deve ser um número de 0 a 1.000.000.",
