@@ -39,6 +39,8 @@ export function messageProblem(args: CliArgs): string | undefined {
     // `--days` and `--limit` are other commands' flags too: only `message` is checked here.
     ["--days", onMessage && args.days !== undefined],
     ["--limit", onMessage && args.limit !== undefined],
+    // `--session` is a filter of `history`; `watch` and `rules` take none (the other verbs read it as an operand).
+    ["--session", isAdmin(args) && args.action !== "history" && args.session !== undefined],
   ];
   for (const [flag, given] of typed)
     if (given && !(onMessage && args.action === "history"))
