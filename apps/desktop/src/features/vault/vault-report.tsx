@@ -25,8 +25,9 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
   const hosts = hostsWith(state.hosts, "actions");
   const [hostId, setHostId] = useState("");
   const host = hosts.find((h) => h.id === hostId) ?? hosts[0];
-  // Null until the host answers, so a refused or slow read is never shown as "no use".
+  // Null until the host answers, so a refused or slow read is never shown as "no use". It names its host, so a render after a host change never shows the previous host's rows.
   const [data, setData] = useState<{
+    hostId: string;
     rows: VaultReportRow[];
     decisions: VaultDecisionInfo[];
   } | null>(null);
@@ -48,7 +49,8 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
     ]);
     if (mine !== latest.current) return;
     setFailed(!report || !decided);
-    if (report && decided) setData({ rows: report.rows, decisions: decided.decisions });
+    if (report && decided)
+      setData({ hostId: hostKey, rows: report.rows, decisions: decided.decisions });
   }, [store, hostKey]);
 
   // Another host starts from nothing: its table does not show the previous host's rows.
@@ -61,6 +63,7 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
     };
   }, [load]);
 
+  const shown = data?.hostId === hostKey ? data : null;
   if (!host) return <p className="text-muted-foreground text-sm">{t("vaultAudit.noHost")}</p>;
 
   const exportCsv = async () => {
@@ -99,10 +102,10 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
           onRetry={() => void load()}
         />
       )}
-      {!failed && data === null && <LoadingState label={t("vaultAudit.loading")} />}
-      {!failed && data !== null && (
+      {!failed && shown === null && <LoadingState label={t("vaultAudit.loading")} />}
+      {!failed && shown !== null && (
         <>
-          {data.rows.length === 0 ? (
+          {shown.rows.length === 0 ? (
             <p className="text-muted-foreground">{t("vaultAudit.empty")}</p>
           ) : (
             <table aria-label={t("vaultAudit.table")} className="w-full text-left text-xs">
@@ -115,7 +118,7 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((row) => (
+                {shown.rows.map((row) => (
                   <tr key={`${row.secretId}|${row.requester}|${row.outcome}`}>
                     <td>{name(row.secretId)}</td>
                     <td>{requester(row.requester)}</td>
@@ -126,11 +129,11 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
               </tbody>
             </table>
           )}
-          {data.decisions.length === 0 ? (
+          {shown.decisions.length === 0 ? (
             <p className="text-muted-foreground">{t("vaultAudit.noDecisions")}</p>
           ) : (
             <ul aria-label={t("vaultAudit.decisions")} className="flex flex-col gap-1 text-xs">
-              {data.decisions.map((d) => (
+              {shown.decisions.map((d) => (
                 <li key={d.id} className="flex flex-wrap gap-x-2">
                   <time dateTime={d.at} className="text-muted-foreground tabular-nums">
                     {store.formatDateTime(d.at)}

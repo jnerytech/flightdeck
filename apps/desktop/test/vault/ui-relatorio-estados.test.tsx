@@ -132,4 +132,27 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
     expect(hasTable()).toBe(false);
     expect(screen.queryByText(w.empty) === null).toBe(true);
   });
+
+  test("a late answer of the first host never shows once another host is picked", async () => {
+    let late: (value: unknown) => void = () => {};
+    await report(
+      lang,
+      (host, type, nth) => {
+        if (host === "h1" && nth === 1) return new Promise((resolve) => void (late = resolve));
+        if (host === "h1") return answers(host, type, nth);
+        return new Promise(() => {});
+      },
+      ["h1", "h2"],
+    );
+    const select = screen.queryByRole("combobox", { name: w.host }) as HTMLSelectElement;
+    expect(select !== null).toBe(true);
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "h2" } });
+    });
+    await act(async () => {
+      late({ rows: [ROW], decisions: [DECISION] });
+    });
+    expect(hasTable()).toBe(false);
+    expect(screen.queryByRole("status", { name: w.loading }) !== null).toBe(true);
+  });
 });
