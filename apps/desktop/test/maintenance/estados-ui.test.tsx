@@ -106,10 +106,13 @@ describe.each(["en", "pt-BR"] as const)("the Maintenance panel (%s)", (lang) => 
   });
 
   test("the result of a backup is announced as a status", async () => {
-    await section(lang, (type) =>
+    const { asked } = await section(lang, (type) =>
       type === "maintenance.status" ? STATUS : { path: "/data/backup-1.db" },
     );
     await click(w.backup);
+    // The facts are on screen: a failed refresh after the action keeps the toast's retry.
+    const loads = asked.filter((a) => a.type === "maintenance.status");
+    expect(loads.map((a) => a.options)).toEqual([{ retry: false }, { retry: true }]);
     await settle(() => screen.queryByText(/backup-1\.db/) !== null);
     expect(screen.queryByRole("status")?.textContent?.includes("/data/backup-1.db")).toBe(true);
   });

@@ -33,15 +33,20 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
   const [cleaning, setCleaning] = useState(false);
   // The status was refused and none is on screen: the panel says so and Try again asks once more.
   const [failed, setFailed] = useState(false);
-  const refresh = useCallback(async () => {
-    setFailed(false);
-    // The panel has its own Try again, so the toast offers none that would throw the answer away.
-    const next = await store.hostCommand(hostId, "maintenance.status", {}, { retry: false });
-    if (next) setStatus(next);
-    else setFailed(true);
-  }, [store, hostId]);
+  // `own`: the load is the panel's own (first or Try again), which has a Try again, so the toast
+  // offers none that would throw the answer away; after an action the facts shown stay and the
+  // toast keeps its retry.
+  const refresh = useCallback(
+    async (own = false) => {
+      setFailed(false);
+      const next = await store.hostCommand(hostId, "maintenance.status", {}, { retry: !own });
+      if (next) setStatus(next);
+      else setFailed(true);
+    },
+    [store, hostId],
+  );
   useEffect(() => {
-    void refresh();
+    void refresh(true);
   }, [refresh]);
 
   const backup = async () => {
@@ -103,7 +108,7 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
           <ErrorState
             message={t("maintenance.loadFailed")}
             retryLabel={t("maintenance.retry")}
-            onRetry={() => void refresh()}
+            onRetry={() => void refresh(true)}
           />
         ) : (
           <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
