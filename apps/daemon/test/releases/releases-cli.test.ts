@@ -79,6 +79,14 @@ describe("flightdeckd releases list (issue #3736)", () => {
     expect(run.out.join("\n").includes("\u001b")).toBe(false);
   });
 
+  test("a --limit before the noun is held to the same range, so the CLI refuses it, not the daemon", async () => {
+    const daemon = fakeDaemon({ "releases.list": () => ({ releases: [] }) });
+    const run = await flightdeckd(["--limit", "25", "releases", "list"], daemon.port);
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain("--limit needs a whole number from 1 to 20");
+    expect(daemon.calls).toEqual([]);
+  });
+
   test("a --limit outside 1 to 20, or not a whole number, is exit 1 and connects to nothing", async () => {
     const daemon = fakeDaemon({ "releases.list": () => ({ releases: [] }) });
     for (const bad of ["0", "21", "abc", "1e1"]) {

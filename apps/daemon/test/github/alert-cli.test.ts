@@ -101,7 +101,7 @@ describe("flightdeckd alert list (issue #3736)", () => {
     );
     const run = await flightdeckd(["alert", "list", "api"], daemon.port);
     expect(run.out).toEqual([
-      "no open alerts in api",
+      "no open alerts in api, but not every source could be read",
       "  dependabot alerts could not be read: gh is not installed",
     ]);
   });

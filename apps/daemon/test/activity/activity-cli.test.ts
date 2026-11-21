@@ -166,6 +166,73 @@ describe("flightdeckd activity since (issue #3736)", () => {
     expect(daemon.calls).toEqual([]);
   });
 
+  test("a date the calendar does not have is exit 1, not the next day", async () => {
+    const daemon = fakeDaemon({ "activity.since": () => EMPTY });
+    for (const bad of [
+      "2026-02-31T10:00:00Z",
+      "2026-04-31T00:00Z",
+      "2026-11-20T24:00:00Z",
+      "2026-11-20T10:60:00Z",
+    ]) {
+      const run = await flightdeckd(["activity", "since", bad], daemon.port);
+      expect({ bad, code: run.code }).toEqual({ bad, code: 1 });
+      expect(run.err.join("\n")).toContain("an ISO date and time");
+    }
+    expect(daemon.calls).toEqual([]);
+  });
+
+  test("a failed run says why with its params, not the bare translation key", async () => {
+    const daemon = fakeDaemon({
+      "activity.since": () => ({
+        ...EMPTY,
+        failedRuns: {
+          total: 1,
+          items: [
+            {
+              runId: "r9",
+              cardId: "c9",
+              workflowName: "feature",
+              reasonKey: "workflow.failed.check",
+              reasonParams: { check: "bun test", attempt: 2 },
+              at: "2026-11-20T13:00:00Z",
+            },
+          ],
+        },
+      }),
+    });
+    const run = await flightdeckd(["activity", "since", SINCE], daemon.port);
+    expect(run.out).toContain(
+      "  r9 feature on card c9, workflow.failed.check (check=bun test, attempt=2), 2026-11-20T13:00:00Z",
+    );
+  });
+
+  test("--json prints the keys of each card and pull request, not what the daemon adds later", async () => {
+    const daemon = fakeDaemon({
+      "activity.since": () => ({
+        ...RESULT,
+        reviewCards: {
+          total: 1,
+          items: [{ ...RESULT.reviewCards.items[0], internalNote: "do not print" }],
+        },
+        prs: { total: 1, items: [{ ...RESULT.prs.items[0], token: "do not print" }] },
+      }),
+    });
+    const run = await flightdeckd(["activity", "since", SINCE, "--json"], daemon.port);
+    expect(run.out.join("\n")).not.toContain("do not print");
+    expect(printed(run.out)).toMatchObject({
+      reviewCards: { total: 1, items: [RESULT.reviewCards.items[0]] },
+      prs: { total: 1, items: [RESULT.prs.items[0]] },
+    });
+  });
+
+  test("a --limit before the noun is held to the same range, so the CLI refuses it, not the daemon", async () => {
+    const daemon = fakeDaemon({ "activity.since": () => EMPTY });
+    const run = await flightdeckd(["--limit", "900", "activity", "since", SINCE], daemon.port);
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain("--limit needs a whole number from 1 to 50");
+    expect(daemon.calls).toEqual([]);
+  });
+
   test("a --limit outside 1 to 50 is exit 1 and connects to nothing", async () => {
     const daemon = fakeDaemon({ "activity.since": () => EMPTY });
     for (const bad of ["0", "51", "abc"]) {
