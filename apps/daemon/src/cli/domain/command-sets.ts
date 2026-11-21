@@ -128,6 +128,7 @@ export const CONFIRM_OWNERS = [
   "snippet",
   "ssh",
   "team",
+  "workflow",
   "worktree",
 ];
 

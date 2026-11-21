@@ -79,13 +79,14 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
     if (flag === "--body" && args.command === "review") continue;
     // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
     if (flag === "--model" && (args.command === "costs" || args.command === "roi")) continue;
-    // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`; `snippet trust --hash` is the project file's, checked by `snippetProblem`.
+    // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`; `snippet trust --hash` is the project file's, checked by `snippetProblem`; `workflow trust --hash` is the workflow's, by `workflowProblem`.
     if (
       flag === "--hash" &&
       (args.command === "runenv" ||
         args.command === "snippet" ||
         args.command === "action" ||
-        args.command === "knowledge")
+        args.command === "knowledge" ||
+        args.command === "workflow")
     )
       continue;
     // `knowledge create --body-file` is the document's text: `knowledgeProblem` checks it.

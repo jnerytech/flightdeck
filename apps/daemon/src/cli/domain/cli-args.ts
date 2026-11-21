@@ -94,6 +94,7 @@ export interface CliArgs {
     | "set-status"
     | "set-feed"
     | "templates"
+    | "template-add"
     | "validate"
     | "enable"
     | "disable"
