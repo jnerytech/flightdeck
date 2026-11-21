@@ -13,7 +13,8 @@ security review.
 - `config` prints the hash of the file, whether it is trusted, each error, and then what the file would run: the ports,
   the setup commands and one line for each process (its command, its ready check, and the names of the variables it
   sets). The values of those variables are never printed as text, because a run.yaml may hold one a person would not
-  paste into a terminal; `--json` keeps the daemon's answer whole. A project with no run.yaml is `no run.yaml` and exit
+  paste into a terminal; `--json` keeps the daemon's answer whole, the values included, as the app shows them to the
+  person who trusts the file (the manual says to keep that output out of shared logs). A project with no run.yaml is `no run.yaml` and exit
   `0`: the lookup worked and the answer is "no". The hash is what the write side's `trust` will take.
 - `get` prints the card's state, its ports and one line for each process, with the terminal it runs in, so a person
   can `fd terminal` into it. An unknown card is the daemon's refusal: exit `1`, one line on stderr.

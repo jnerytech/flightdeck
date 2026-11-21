@@ -26,5 +26,6 @@ recusado com saída `1`.
 
 `watch` imprime a execução de cada cartão a cada mudança, uma linha para cada, até Ctrl-C.
 
-Com `--json` os comandos imprimem o valor que o daemon devolve, com `null` para um campo ausente. `--host <nome>` lê
+Com `--json` os comandos imprimem o valor que o daemon devolve, com `null` para um campo ausente; em `config` isso
+inclui os valores das variáveis que um processo define, então não deixe essa saída em logs compartilhados. `--host <nome>` lê
 um host pareado.

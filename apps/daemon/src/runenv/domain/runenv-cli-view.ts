@@ -1,7 +1,8 @@
 /**
  * Issue #3621: what `flightdeckd runenv` prints, as pure rules over the daemon's answers. A `--json`
- * value keeps every key: `null` where an older daemon sends none. The environment values of a process
- * are never printed as text: only their names, since a run.yaml may hold one a person would not paste.
+ * value keeps every key (`null` where an older daemon sends none) and the daemon's answer whole, the
+ * environment values of a process included, as the app shows them. The text never prints those values, only
+ * their names, since a run.yaml may hold one a person would not paste into a terminal.
  */
 import type { RunConfigInfo, RunProcessState, RunState } from "@flightdeck/protocol";
 
@@ -12,7 +13,7 @@ export const configJson = (info: RunConfigInfo) => ({
   config: info.config ?? null,
 });
 
-/** The project's run.yaml: the hash a later `runenv trust` repeats, the errors, then the setup and each process. */
+/** The project's run.yaml: the hash of the file a person trusts, the errors, then the setup and each process. */
 export function configLines(project: string, info: RunConfigInfo): string[] {
   if (!info.exists) return [`${project}: no run.yaml`];
   const trust = info.trusted ? "trusted" : "not trusted";

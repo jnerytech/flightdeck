@@ -26,5 +26,6 @@ not know is refused with exit `1`.
 
 `watch` prints the run of each card each time it changes, one line each, until Ctrl-C.
 
-With `--json` the commands print the value the daemon returns, with `null` for a missing field. `--host <name>` reads
+With `--json` the commands print the value the daemon returns, with `null` for a missing field; for `config` that
+includes the values of the variables a process sets, so keep that output out of shared logs. `--host <name>` reads
 a paired host.
