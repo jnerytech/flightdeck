@@ -17,10 +17,13 @@ Slice 2 of #3702 (slice 1: `2026-11-21-cli-worktree-issues-read.md`): `worktree 
   daemon decided. `--json` has every key of every entry, `null` for a missing `branchKept` or `detail`.
 - A write that gets no answer exits 2 and says what may have happened and what to run before trying again (`worktree
   list`, `card list`, `card show`).
-- `card pr-comments-send <card> <comment-id>...` is an ordinary verb, like `card message`: it passes chosen comments to
-  the card's own session. A comment from outside the team stays flagged by `card pr-comments`; this verb does not hold
-  it back, since the person (or the session) chose the ids. An id typed twice is sent once; when the daemon found fewer
-  comments than ids, the line says `sent <n> of <m>`. Like `card pr-comments`, it has no `--host`.
+- `card pr-comments-send <card> <comment-id>...` passes chosen comments to the card's session, and a comment may be from
+  outside the team. It is rated high in a session's shell, as `review send` is (three reviewers of this slice asked for
+  it; the first plan had it ordinary, like `card message`, which carries no third-party text). The verb does not hold a
+  comment back: `card pr-comments` flags outside ones. An id typed twice is sent once, and so is a path typed twice to
+  `worktree remove`. When the daemon found fewer comments than ids, the line says `sent <n> of <m>` and that the others
+  were not among the comments the host last fetched (a newer comment may be missing from its cache, so the PR is not
+  blamed). Like `card pr-comments`, it has no `--host`.
 - `issues create-card <project> <issue>` makes the Backlog card of the app's "create card" button and prints the card.
   An issue by an outside author prints a line saying the card's auto-approval is suspended.
 - The parity file maps the three requests; the baseline drops from 93 to 90.

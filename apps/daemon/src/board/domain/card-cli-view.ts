@@ -404,6 +404,6 @@ export function commentsLines(comments: PrComment[]): string[] {
 /** What a send of PR comments did: how many reached the session, and when the daemon found fewer ids than were asked. */
 export function sentLine(cardId: string, sent: number, asked: number): string {
   return sent < asked
-    ? `sent ${sent} of ${asked} comments of ${cardId} to its session; the others are not on the pull request`
+    ? `sent ${sent} of ${asked} comments of ${cardId} to its session; the others were not found among the comments the host last fetched`
     : `sent ${sent} ${plural(sent, "comment", "comments")} of ${cardId} to its session`;
 }

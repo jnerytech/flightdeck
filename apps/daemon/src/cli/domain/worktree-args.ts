@@ -18,7 +18,7 @@ export function readWorktree(args: CliArgs, reader: ArgReader): void {
     reader.advance();
     paths.push(reader.current() ?? "");
   }
-  args.worktreePaths = paths;
+  args.worktreePaths = [...new Set(paths)];
 }
 
 /** A POSIX path, a drive path or a UNC path: the host's daemon may be on either system. */
