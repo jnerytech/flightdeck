@@ -13,6 +13,7 @@ import { configPath } from "./config-path.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
+import { changesCliArgs } from "./domain/changes-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
@@ -29,7 +30,7 @@ import { watchCliArgs } from "./domain/watch-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
-import { watchStop } from "./watch-stop.ts";
+import { liveStream, watchStop } from "./watch-stop.ts";
 
 /**
  * The commands of `flightdeckd` that are not the daemon (issue #1593): what each prints and does.
@@ -129,7 +130,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `mcp` (its verbs), `knowledge`, `message` (history, watch and rules), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `changes`, `mcp` (its verbs), `knowledge`, `message` (history, watch and rules), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -611,13 +612,9 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   watch: async (args, deps) => {
     const { runWatchCli } = await import("../watch/index.ts");
-    const stop = watchStop(args, deps);
+    const live = liveStream(args, deps);
     return asking(args, deps, (config, remote) =>
-      runWatchCli(watchCliArgs(args), config, {
-        ...(remote ? { remote } : {}),
-        signal: stop.signal,
-        write: (line) => deps.log.log(line),
-      }),
+      runWatchCli(watchCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
   },
   knowledge: async (args, deps) => {
@@ -626,13 +623,16 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   runenv: async (args, deps) => {
     const { runRunenvCli } = await import("../runenv/index.ts");
-    const stop = watchStop(args, deps);
+    const live = liveStream(args, deps);
     return asking(args, deps, (config, remote) =>
-      runRunenvCli(runenvCliArgs(args), config, {
-        ...(remote ? { remote } : {}),
-        signal: stop.signal,
-        write: (line) => deps.log.log(line),
-      }),
+      runRunenvCli(runenvCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
+    );
+  },
+  changes: async (args, deps) => {
+    const { runChangesCli } = await import("../review/index.ts");
+    const live = liveStream(args, deps);
+    return asking(args, deps, (config, remote) =>
+      runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
   },
   boardsync: async (args, deps) => {

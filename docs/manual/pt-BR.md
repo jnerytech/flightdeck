@@ -118,21 +118,19 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 ## Comandos do flightdeckd: o ambiente de execução de um cartão
 
-[Ler o capítulo.](pt-BR/flightdeckd-runenv-commands.md) Suas seções:
+[Ler o capítulo.](pt-BR/flightdeckd-runenv-commands.md)
 
-- [fd runenv](pt-BR/flightdeckd-runenv-commands.md#fd-runenv)
+## Comandos do flightdeckd: as mudanças de uma sessão, de um cartão, de um terminal ou de um projeto
+
+[Ler o capítulo.](pt-BR/flightdeckd-changes-commands.md)
 
 ## Comandos do flightdeckd: os servidores MCP de um projeto
 
-[Ler o capítulo.](pt-BR/flightdeckd-mcp-commands.md) Suas seções:
-
-- [fd mcp](pt-BR/flightdeckd-mcp-commands.md#fd-mcp)
+[Ler o capítulo.](pt-BR/flightdeckd-mcp-commands.md)
 
 ## Comandos do flightdeckd: a biblioteca de documentos de um projeto
 
-[Ler o capítulo.](pt-BR/flightdeckd-knowledge-commands.md) Suas seções:
-
-- [fd knowledge](pt-BR/flightdeckd-knowledge-commands.md#fd-knowledge)
+[Ler o capítulo.](pt-BR/flightdeckd-knowledge-commands.md)
 
 ## Aprovações e permitir sempre
 

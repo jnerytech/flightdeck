@@ -125,21 +125,19 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 ## flightdeckd commands: the run environment of a card
 
-[Read the chapter.](en/flightdeckd-runenv-commands.md) Its sections:
+[Read the chapter.](en/flightdeckd-runenv-commands.md)
 
-- [fd runenv](en/flightdeckd-runenv-commands.md#fd-runenv)
+## flightdeckd commands: the changes of a session, a card, a terminal or a project
+
+[Read the chapter.](en/flightdeckd-changes-commands.md)
 
 ## flightdeckd commands: the MCP servers of a project
 
-[Read the chapter.](en/flightdeckd-mcp-commands.md) Its sections:
-
-- [fd mcp](en/flightdeckd-mcp-commands.md#fd-mcp)
+[Read the chapter.](en/flightdeckd-mcp-commands.md)
 
 ## flightdeckd commands: the document library of a project
 
-[Read the chapter.](en/flightdeckd-knowledge-commands.md) Its sections:
-
-- [fd knowledge](en/flightdeckd-knowledge-commands.md#fd-knowledge)
+[Read the chapter.](en/flightdeckd-knowledge-commands.md)
 
 ## Approvals and always allow
 
