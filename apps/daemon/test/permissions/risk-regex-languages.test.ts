@@ -30,6 +30,8 @@ describe("risk: the opening of a subshell is stripped from a word whatever its l
         ["( fd persona remove qa )", PERSONA],
         ["(fd persona remove qa)", PERSONA],
         ["{ fd persona remove qa; }", PERSONA],
+        ["((((fd persona remove qa))))", PERSONA],
+        ["cat <(<(fd persona remove qa))", PERSONA],
       ]),
     ).toEqual([]);
   });

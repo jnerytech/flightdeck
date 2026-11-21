@@ -551,8 +551,7 @@ function execRisks(args: string[]): Candidate[] {
 }
 
 /** A shell's "run this text" flag: `-c` or any letters with a c in them after a dash (`-lc`, `-Command`), or `/c`; any case. */
-const isCommandFlag = (arg: string) =>
-  arg.toLowerCase() === "/c" || (/^-[a-z]+$/i.test(arg) && /c/i.test(arg));
+const isCommandFlag = (arg: string) => hasFlag([arg], "c", ["/c"]);
 
 /** The text a shell is told to run with `-c`, `-lc`, `-Command` or `/c`, without its outer quotes; none otherwise. */
 function shellText(prog: string, args: string[]): string | undefined {
