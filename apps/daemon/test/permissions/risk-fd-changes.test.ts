@@ -42,6 +42,19 @@ describe("risk rules: a session changing its own checkout through flightdeckd fr
     ).toEqual([]);
   });
 
+  test("a runner's text whose quotes the classifier and the shell read differently stays high (#3712 review)", () => {
+    expect(
+      wrongReasons([
+        ['sh -c "fd --message "\\\'"x\' changes commit s"', REASON],
+        ["bash -c \"sh -c 'fd changes commit s'\"", REASON],
+        ['sh -c "true && fd "\'changes commit\'" s1"', REASON],
+        ['bash -c "cd /tmp; fd "\'changes pr\'" s1 --remote r"', REASON],
+        ['sh -c "fd"\' changes \'"commit s"', REASON],
+        ["sh -c \"fd --message \\$'a\\\\'b c' changes commit s\"", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a verb the shell expands could be any of them, so it is high", () => {
     expect(
       wrongReasons([
