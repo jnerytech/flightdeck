@@ -26,6 +26,8 @@ export interface Shot {
   away?: boolean;
   /** #1414: the hosts answer with their memory and a budget over their holds (`holdsScript`). */
   holds?: boolean;
+  /** #3602: the vault's list kept in the page's storage before it loads (the secrets' rows, with no value). */
+  secrets?: boolean;
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */

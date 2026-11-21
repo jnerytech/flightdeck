@@ -84,3 +84,8 @@ export function demoFinished(
   };
   return JSON.stringify({ list: [finish], lastLook: null });
 }
+
+/** The vault's list of the prints: stub, so the red is by assertion. */
+export function demoSecrets(_now: Date): string {
+  return "[]";
+}
