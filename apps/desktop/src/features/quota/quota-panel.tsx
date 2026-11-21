@@ -17,7 +17,7 @@ const METER_OK =
 const METER_HOT =
   "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
 
-/** One host's card: its name and the two windows with a bar; with costs (phase 8) each window has the projection in its tooltip. */
+/** One host's card: its name and the two windows with a bar; with costs (phase 8) each window has its projection as a line of text. */
 function HostQuota(
   props: Readonly<{
     store: AppStore;
@@ -74,7 +74,6 @@ function HostQuota(
             data-window={bar.window}
             data-hot={bar.hot}
             className="flex flex-col gap-1"
-            {...(projections[bar.window] ? { title: projections[bar.window] } : {})}
           >
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm">{bar.label}</span>
@@ -97,6 +96,9 @@ function HostQuota(
                   {bar.reset && <span>{bar.reset}</span>}
                   <span>{bar.age}</span>
                 </div>
+                {projections[bar.window] && (
+                  <p className="text-muted-foreground text-xs">{projections[bar.window]}</p>
+                )}
               </>
             ) : (
               <p className="text-muted-foreground text-xs">{t("quota.noReading")}</p>

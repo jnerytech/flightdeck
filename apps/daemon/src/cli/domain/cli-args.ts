@@ -64,6 +64,7 @@ export interface CliArgs {
     | "snapshots"
     | "rewind"
     | "trace"
+    | "bg"
     | "file"
     | "automation"
     | "requests"
