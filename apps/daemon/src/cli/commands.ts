@@ -151,6 +151,15 @@ async function asking(
 type LocalConfig = { bind: string; port: number; token: string };
 const NO_LOCAL_DAEMON: LocalConfig = { bind: "", port: 0, token: "" };
 
+/** A command that asks a daemon with the arguments its noun reads off the command line: `asking` for the usual runner. */
+const askingWith = <A>(
+  args: CliArgs,
+  deps: CliDeps,
+  toArgs: (args: CliArgs) => A,
+  run: (a: A, config: LocalConfig, options: { remote?: RemoteTarget }) => Promise<CliResult>,
+): Promise<number> =>
+  asking(args, deps, (config, remote) => run(toArgs(args), config, remote ? { remote } : {}));
+
 /** `approve` and `deny`: one answer to one open permission request. */
 async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
   const { runAnswerCli } = await import("../permissions/index.ts");
@@ -604,9 +613,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   ssh: async (args, deps) => {
     const { runSshCli } = await import("../ssh/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runSshCli(sshCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, sshCliArgs, runSshCli);
   },
   watch: async (args, deps) => {
     const { runWatchCli } = await import("../watch/index.ts");
@@ -632,21 +639,15 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   boardsync: async (args, deps) => {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runBoardsyncCli(boardsyncCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, boardsyncCliArgs, runBoardsyncCli);
   },
   review: async (args, deps) => {
     const { runReviewCli } = await import("../review/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runReviewCli(reviewCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, reviewCliArgs, runReviewCli);
   },
   terminal: async (args, deps) => {
     const { runTerminalCli } = await import("../terminal/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runTerminalCli(terminalCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, terminalCliArgs, runTerminalCli);
   },
   agentcfg: async (args, deps) => {
     const { runAgentcfgCli } = await import("../agentcfg/index.ts");
@@ -766,15 +767,11 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   plugins: async (args, deps) => {
     const { runPluginsCli } = await import("../plugins/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runPluginsCli(pluginsCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, pluginsCliArgs, runPluginsCli);
   },
   project: async (args, deps) => {
     const { runProjectCli } = await import("../projects/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runProjectCli(projectCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, projectCliArgs, runProjectCli);
   },
   approvers: async (args, deps) => {
     // `enroll` and `reset` write the host's store from its terminal; `watch` asks the local daemon.
