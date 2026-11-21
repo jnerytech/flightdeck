@@ -23,6 +23,11 @@ app's decision and carry two guards.
   preview test, `list`, `status` and the bare stdio server stay ordinary. `mcp` joined the nouns whose verb a shell
   expansion may hide (`VERB_NOUNS`), so `fd mcp $A api files --confirm` is high too. `toggle --disable --session s1` is
   also high (a strict rule, the same as `watch`): a known false positive, cheap to ask about.
+- The security review found two ways around the `test` rule, both closed: a runner (`bun bin.ts`, `sh -c`) was given the
+  text of a command, so a flag word it expands (`$X`) was not marked as expanded as it is for the CLI itself (now it is,
+  for every rule built on `runsFlightdeckWords`, which also closes `watch settings $X`); and `xargs` can add `--confirm`
+  to a bare `mcp test`, so a fed `mcp test` is high like a fed `history resume`. The same `xargs` gap remains for
+  `watch settings` and is its own follow-up.
 - Rules per noun now join in `noun-risk.ts`, one list that `risk.ts` reads. `risk.ts` sat at the 800-line limit of the
   source-size ratchet and each noun cost it an import and a spread. A structure-only commit moved the list; a new noun
   adds a file and a line to `noun-risk.ts`.
