@@ -265,7 +265,7 @@ describe("run-ui: Run e Stop no card", () => {
         () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
       ),
     ).toBe(true);
-    await press("Run");
+    await press("Executar");
     expect(
       await shows(() => panel() !== null && inPanel().queryByText("Preparando (setup)…") !== null),
     ).toBe(true);
@@ -303,7 +303,7 @@ describe("run-ui: Run e Stop no card", () => {
         () => panel() !== null && inPanel().queryByRole("button", { name: "Parar" }) !== null,
       ),
     ).toBe(true);
-    await press("Stop");
+    await press("Parar");
     expect(
       await shows(
         () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
@@ -365,7 +365,7 @@ describe("run-ui: Run e Stop no card", () => {
         () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
       ),
     ).toBe(true);
-    await press("Run");
+    await press("Executar");
     expect(
       await shows(() => panel() !== null && inPanel().queryByText("Preparando (setup)…") !== null),
     ).toBe(true);
