@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
+  EXPANDS,
   flightdeckWords,
   HIDDEN_VERB,
   hidesItsVerb,
@@ -19,6 +20,7 @@ import {
   runsFlightdeckWords,
   SHELLS,
   shellReadings,
+  shellWords,
   splitOutsideQuotes,
   startsCli,
   unquoted,
@@ -251,9 +253,15 @@ function changesSshDestinations(prog: string, args: string[]): boolean {
  * session runs in (`bypassPermissions` included). A plain resume takes the host's defaults.
  */
 function resumesWithPower(prog: string, args: string[]): boolean {
+  // A word the shell expands may be the flag (`F=--force; fd history resume s $F`), and a runner's words have
+  // lost their quotes, so there a `$`, a glob or a brace is the sign (#3570).
   const raised = (all: string[]) =>
     all.some(
-      (w) => w === "--force" || w === "--permission-mode" || w.startsWith("--permission-mode="),
+      (w) =>
+        w === "--force" ||
+        w === "--permission-mode" ||
+        w.startsWith("--permission-mode=") ||
+        w.includes(EXPANDS),
     );
   if (isCliProgram(prog)) {
     return shellReadings(args).some((own) => {
@@ -265,7 +273,7 @@ function resumesWithPower(prog: string, args: string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const runsCli = words.some((_, i) => startsCli(words, i));
   const resumes = words.some((w, i) => w === "history" && words[i + 1] === "resume");
-  return runsCli && resumes && raised(words);
+  return runsCli && resumes && (raised(words) || words.some((w) => /[$`*?[{]/.test(w)));
 }
 
 const PERSONA_CHANGES = ["save", "remove", "reset", "trust", "publish-agent"];
@@ -522,7 +530,7 @@ function invocationRisks(call: Invocation, piped: boolean): Candidate[] {
   if (sudo) out.push(["high", "sudo"]);
   if (
     call.hidden ||
-    (isCliProgram(prog) && hidesItsVerb(args, call.unresolved)) ||
+    (isCliProgram(prog) && hidesItsVerb(args, call.unresolved, call.xargs)) ||
     runnerHidesAVerb(prog, args)
   )
     out.push(["high", HIDDEN_VERB]);
@@ -578,17 +586,15 @@ function statementRisks(command: string): Candidate[] {
   // Read twice: cut at every separator, which cannot miss a command that follows one, and cut only outside
   // quotes, which keeps a quoted value that holds a separator (`fd --prompt "a;b" session create`) from
   // cutting the verb off its program (#3514).
-  read(command.split(/&&|\|\||[;&\n]/), (statement) => statement.split("|"), segments);
+  read(
+    command.split(/&&|\|\||[;\n]|(?<![<>])&(?!>)/),
+    (statement) => statement.split("|"),
+    segments,
+  );
   read(
     splitOutsideQuotes(command, ["&&", "||", ";", "&", "\n"]),
     (statement) => splitOutsideQuotes(statement, ["|"]),
-    (part) =>
-      [
-        part
-          .trim()
-          .split(/\s+/)
-          .filter((w) => w !== ""),
-      ].filter((s) => s.length > 0),
+    (part) => [shellWords(part)].filter((s) => s.length > 0),
   );
   return out;
 }
