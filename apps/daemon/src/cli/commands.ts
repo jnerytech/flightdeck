@@ -8,6 +8,7 @@ import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
+import { answerRun } from "./answer-run.ts";
 import { configPath } from "./config-path.ts";
 import { actionCliArgs, actionVerbCliArgs, isRawAction } from "./domain/action-args.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
@@ -174,21 +175,8 @@ const askingWith = <A>(
   );
 
 /** `approve` and `deny`: one answer to one open permission request. */
-async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
-  const { runAnswerCli } = await import("../permissions/index.ts");
-  return asking(args, deps, (config, remote) =>
-    runAnswerCli(
-      {
-        decision,
-        request: args.requestId ?? "",
-        ...(args.answerMessage === undefined ? {} : { message: args.answerMessage }),
-        ...(args.json ? { json: true } : {}),
-      },
-      config,
-      remote ? { remote } : {},
-    ),
-  );
-}
+const answered = (decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> =>
+  asking(args, deps, answerRun(decision, args));
 
 /** The MCP SDK's stdio transport, loaded only by the commands that speak MCP. */
 const stdioTransport = async (): Promise<Transport> =>
