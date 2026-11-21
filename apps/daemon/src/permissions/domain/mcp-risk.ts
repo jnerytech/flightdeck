@@ -1,8 +1,5 @@
 import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
-import { onlyTurnsOff } from "./watch-risk.ts";
-
-/** The flags that only choose the daemon or the output, and change nothing. */
-const READING_FLAGS = ["--json", "--host", "--config"];
+import { onlyTurnsOff, READING_FLAGS } from "./watch-risk.ts";
 
 /**
  * `mcp test --confirm` starts the command a project's .mcp.json names, `mcp remove` deletes a server from
@@ -18,7 +15,7 @@ function changesAnMcpServer(prog: string, args: string[]): boolean {
     if (action === "remove") return true;
     if (action === "toggle") return !onlyTurnsOff(own, "--disable");
     if (action !== "test") return false;
-    return own.some((w) => isExpanded(w) || (w.startsWith("--") && !READING_FLAGS.includes(w)));
+    return own.some((w) => isExpanded(w) || (w.startsWith("--") && !READING_FLAGS.has(w)));
   });
 }
 

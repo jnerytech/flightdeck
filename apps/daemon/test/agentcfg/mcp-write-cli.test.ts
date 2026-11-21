@@ -66,6 +66,21 @@ describe("flightdeckd mcp test --confirm (issue #3616)", () => {
     expect(printed(run.out)).toEqual({ tools: ["read_file", "write_file"], resources: [] });
   });
 
+  test("a tool name from the started server cannot drive the terminal", async () => {
+    const daemon = fakeDaemon({
+      ...OPEN,
+      "mcp.test": () => ({
+        tools: ["evil\u001b[2J", "ok\u0007"],
+        resources: ["r\u001b]0;x\u0007"],
+      }),
+    });
+    const run = await flightdeckd(["mcp", "test", "api", "files", "--confirm"], daemon.port);
+    const control = run.out.some((line) =>
+      [...line].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127),
+    );
+    expect([run.code, run.out.length, control]).toEqual([0, 2, false]);
+  });
+
   test("a daemon that only answers a preview to a confirmed test is refused, exit 1", async () => {
     const daemon = fakeDaemon({ ...OPEN, "mcp.test": () => ({ preview: { command: "npx" } }) });
     const run = await flightdeckd(["mcp", "test", "api", "files", "--confirm"], daemon.port);
