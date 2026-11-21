@@ -17,5 +17,9 @@ export function readReview(args: CliArgs, reader: ArgReader): void {
 
 /** What the review runner takes from the parsed arguments. */
 export function reviewCliArgs(args: CliArgs): ReviewCliArgs {
-  return { action: "list", target: "", ...(args.json ? { json: true as const } : {}) };
+  return {
+    action: "list",
+    target: args.reviewTarget ?? "",
+    ...(args.json ? { json: true as const } : {}),
+  };
 }

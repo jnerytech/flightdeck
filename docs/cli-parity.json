@@ -319,7 +319,7 @@
   "resources.get": {},
   "resources.setPauseAt": {},
   "review.add": {},
-  "review.list": {},
+  "review.list": { "cli": "review" },
   "review.remove": {},
   "review.send": {},
   "review.update": {},
