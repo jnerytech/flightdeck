@@ -37,7 +37,9 @@ function usageLine(language: "pt-BR" | "en") {
       <UsageLog store={store} />
     </TContext.Provider>,
   );
-  const list = screen.queryByRole("list", { name: language === "en" ? "Usage log" : "Registro de uso" });
+  const list = screen.queryByRole("list", {
+    name: language === "en" ? "Usage log" : "Registro de uso",
+  });
   expect(list).not.toBeNull();
   return list?.textContent ?? "";
 }
