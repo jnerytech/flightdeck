@@ -2,9 +2,9 @@ import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
 import { onlyTurnsOff, READING_FLAGS } from "./watch-risk.ts";
 
 /**
- * `mcp test --confirm` starts the command a project's .mcp.json names, `mcp remove` deletes a server from
- * that file and `mcp toggle --enable` lets one run in the project's sessions (#3616): the app has the person
- * read the command first. From a shell `--confirm` is only a typed word. The preview test (no flag), the
+ * `mcp test --confirm` starts the command a project's .mcp.json names, `mcp save` writes one and `mcp remove`
+ * deletes one from that file, and `mcp toggle --enable` lets one run in the project's sessions (#3616): the app
+ * has the person read the command first. From a shell `--confirm` is only a typed word. The preview test (no flag), the
  * reads and turning a server off grant a session nothing, so they stay ordinary. A test is read by what it is
  * not (no flag outside the reading ones), so a flag a later version adds, `--confirm=1` or a word the shell
  * expands is high too.
@@ -12,7 +12,7 @@ import { onlyTurnsOff, READING_FLAGS } from "./watch-risk.ts";
 function changesAnMcpServer(prog: string, args: string[]): boolean {
   return runsFlightdeckWords(prog, args, ([command, action], own) => {
     if (command !== "mcp") return false;
-    if (action === "remove") return true;
+    if (action === "remove" || action === "save") return true;
     if (action === "toggle") return !onlyTurnsOff(own, "--disable");
     if (action !== "test") return false;
     return own.some((w) => isExpanded(w) || (w.startsWith("--") && !READING_FLAGS.has(w)));
@@ -27,6 +27,6 @@ export const MCP_RULES: Array<{
   {
     when: changesAnMcpServer,
     reason: () =>
-      "starts or changes an MCP server of a project, a command the project's .mcp.json names, without the person choosing it in the app; a typed --confirm is not the person (flightdeckd mcp test --confirm, remove or toggle)",
+      "starts or changes an MCP server of a project, a command the project's .mcp.json names, without the person choosing it in the app; a typed --confirm is not the person (flightdeckd mcp test --confirm, save, remove or toggle)",
   },
 ];
