@@ -85,57 +85,50 @@ export function demoFinished(
   return JSON.stringify({ list: [finish], lastLook: null });
 }
 
+/** The instant the vault's prints are drawn at: fixed, so a print's "last used" never changes between runs. */
+const DEMO_VAULT_NOW = Date.parse("2026-11-20T12:00:00Z");
+
+const hoursAgo = (hours: number) => DEMO_VAULT_NOW - hours * 3_600_000;
+
 /**
- * The vault's list of the prints (#3602): one secret of each type, so the rows differ, with their
- * descriptions in the language of the print. Only the list: the web build keeps values in memory,
- * so no secret has one and no value is ever on a print.
+ * The vault's list of the prints (#3602): one secret of each type, so the rows differ, allowed on
+ * `hostId`. Only the list: the web build keeps values in memory, so no secret has one and no value
+ * is ever on a print.
  */
-export function demoSecrets(now: Date, lang = "en"): string {
-  const pt = lang.startsWith("pt");
-  const ago = (hours: number) => now.getTime() - hours * 3_600_000;
-  const secret = (id: string, name: string, type: string, description: string, extra = {}) => ({
+export function demoSecrets(hostId: string): string {
+  const secret = (id: string, name: string, type: string, extra = {}) => ({
     id: `demo-secret-${id}`,
     name,
     type,
-    description,
+    description: "",
     tags: [],
-    createdAt: ago(24 * 30),
+    createdAt: hoursAgo(24 * 30),
     lastUsedAt: null,
-    allowedHosts: ["demo-alfa"],
+    allowedHosts: [hostId],
     ...extra,
   });
   return JSON.stringify([
-    secret(
-      "1",
-      "github-deploy",
-      "ssh-key",
-      pt ? "Chave de deploy do repositório web" : "Deploy key for the web repository",
-      {
-        tags: ["ci"],
-        lastUsedAt: ago(2),
-      },
-    ),
-    secret(
-      "2",
-      "npm-publish",
-      "token",
-      pt ? "Token para publicar pacotes" : "Token to publish packages",
-      {
-        tags: ["ci"],
-      },
-    ),
-    secret(
-      "3",
-      "staging-db",
-      "password",
-      pt ? "Senha do banco de homologação" : "Staging database password",
-      {
-        lastUsedAt: ago(72),
-      },
-    ),
-    secret("4", "web-env", "env", pt ? "Variáveis do ambiente web" : "Web environment variables", {
-      tags: ["web"],
-      lastUsedAt: ago(26),
-    }),
+    secret("1", "github-deploy", "ssh-key", { tags: ["ci"], lastUsedAt: hoursAgo(2) }),
+    secret("2", "npm-publish", "token", { tags: ["ci"] }),
+    secret("3", "staging-db", "password", { lastUsedAt: hoursAgo(72) }),
+    secret("4", "web-env", "env", { tags: ["web"], lastUsedAt: hoursAgo(26) }),
+  ]);
+}
+
+/** The vault's usage log of the prints: what `demoSecrets` asked for, one line each kind. No value. */
+export function demoVaultUsage(hostId: string): string {
+  const line = (n: string, kind: string, hours: number, purpose: string, detail: string) => ({
+    secretId: `demo-secret-${n}`,
+    hostId,
+    purpose,
+    requester: "session",
+    at: hoursAgo(hours),
+    kind,
+    detail,
+  });
+  return JSON.stringify([
+    line("1", "delivered", 2, "git push", ""),
+    line("4", "delivered", 26, "deploy", ""),
+    line("2", "denied", 30, "publish", "not allowed on this host"),
   ]);
 }

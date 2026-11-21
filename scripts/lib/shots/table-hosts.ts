@@ -8,7 +8,7 @@ import { ALFA, openHostSettings, type Shot, showSection, showToast } from "./sho
 function vaultTab(name: string | RegExp): NonNullable<Shot["prepare"]> {
   return async (page) => {
     await page.getByRole("tab", { name }).click();
-    await page.waitForTimeout(400);
+    await page.getByRole("tabpanel").waitFor();
   };
 }
 
@@ -49,7 +49,7 @@ export function hostShots(ids: DemoIds): Shot[] {
       secrets: true,
       prepare: async (page) => {
         await page.getByRole("button", { name: /^(New secret|Novo segredo)$/ }).click();
-        await page.waitForTimeout(400);
+        await page.getByRole("textbox").first().waitFor();
       },
     },
     {
@@ -59,13 +59,14 @@ export function hostShots(ids: DemoIds): Shot[] {
       secrets: true,
       prepare: async (page) => {
         await page.getByRole("button", { name: /^(Reveal|Revelar) github-deploy$/ }).click();
-        await page.getByRole("dialog").waitFor();
+        await page.getByRole("alertdialog").waitFor();
       },
     },
     {
       name: "cofre-uso",
       route: { name: "vault" },
       secrets: true,
+      vaultUsage: true,
       prepare: vaultTab(/^(Usage|Uso)$/),
     },
     { name: "cofre-backup", route: { name: "vault" }, prepare: vaultTab("Backup") },

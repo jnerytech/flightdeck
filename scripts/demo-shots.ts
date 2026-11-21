@@ -18,7 +18,7 @@ import {
 } from "./lib/browser/axe.ts";
 import { launchFirst } from "./lib/browser/browser.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/browser/visual.ts";
-import { demoFinished, demoInbox, demoSecrets } from "./lib/demo/seeds.ts";
+import { demoFinished, demoInbox, demoSecrets, demoVaultUsage } from "./lib/demo/seeds.ts";
 import { DEMO_AWAY_SINCE } from "./lib/e2e/journeys.ts";
 import { holdsScript } from "./lib/shots/holds.ts";
 import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
@@ -134,6 +134,8 @@ interface StorageSeed {
   finished: string | null;
   /** The vault's list: the secrets' rows, with no value (#3602). */
   secrets: string | null;
+  /** The vault's usage log (#3602). */
+  vaultUsage: string | null;
   /** The time the app was last active, long ago: Needs you shows "While you were away" (#1344). */
   away: string | null;
   simple: boolean;
@@ -151,6 +153,7 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.inbox",
       "flightdeck.finished",
       "flightdeck.vault",
+      "flightdeck.vault-usage",
       "flightdeck.lastActive",
       // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
       "flightdeck.sidebarFolded",
@@ -175,6 +178,7 @@ function seedStorage(seed: StorageSeed): void {
     if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
     if (seed.finished) localStorage.setItem("flightdeck.finished", seed.finished);
     if (seed.secrets) localStorage.setItem("flightdeck.vault", seed.secrets);
+    if (seed.vaultUsage) localStorage.setItem("flightdeck.vault-usage", seed.vaultUsage);
     if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
   } catch {
     // No storage, no clients.
@@ -226,7 +230,8 @@ async function printShot(
             new Date(),
           )
         : null,
-      secrets: shot.secrets ? demoSecrets(new Date(), lang) : null,
+      secrets: shot.secrets ? demoSecrets(ALFA) : null,
+      vaultUsage: shot.vaultUsage ? demoVaultUsage(ALFA) : null,
       away: shot.away ? DEMO_AWAY_SINCE : null,
       simple: shot.simple === true,
     });

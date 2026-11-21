@@ -28,6 +28,8 @@ export interface Shot {
   holds?: boolean;
   /** #3602: the vault's list kept in the page's storage before it loads (the secrets' rows, with no value). */
   secrets?: boolean;
+  /** #3602: the vault's usage log kept in the page's storage before it loads. */
+  vaultUsage?: boolean;
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
