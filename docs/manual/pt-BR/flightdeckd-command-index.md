@@ -126,3 +126,9 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-workflow-commands.md) Suas seções:
 
 - [fd workflow](flightdeckd-workflow-commands.md#fd-workflow)
+
+## Comandos do flightdeckd: o que o trabalho do host custa a ele
+
+[Ler o capítulo.](flightdeckd-resources-commands.md) Suas seções:
+
+- [fd resources](flightdeckd-resources-commands.md#fd-resources)

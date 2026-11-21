@@ -120,6 +120,7 @@ const HANDLERS: Record<string, Handler> = {
   channel: setCommand("channel"),
   mcp: readMcp,
   knowledge: readKnowledge,
+  resources: setCommand("resources"),
   workflow: readWorkflow,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),

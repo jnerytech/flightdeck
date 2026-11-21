@@ -35,6 +35,7 @@ export interface CliArgs {
     | "askpass"
     | "mcp"
     | "knowledge"
+    | "resources"
     | "workflow"
     | "statusline"
     | "action"

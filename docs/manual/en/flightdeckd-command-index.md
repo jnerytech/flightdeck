@@ -126,3 +126,9 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 [Read the chapter.](flightdeckd-workflow-commands.md) Its sections:
 
 - [fd workflow](flightdeckd-workflow-commands.md#fd-workflow)
+
+## flightdeckd commands: what the host's work costs it
+
+[Read the chapter.](flightdeckd-resources-commands.md) Its sections:
+
+- [fd resources](flightdeckd-resources-commands.md#fd-resources)

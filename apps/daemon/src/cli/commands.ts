@@ -32,12 +32,12 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { resourcesRun, workflowRun } from "./domain-runs.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 import { liveStream, watchStop } from "./watch-stop.ts";
-import { workflowRun } from "./workflow-run.ts";
 
 /**
  * The commands of `flightdeckd` that are not the daemon (issue #1593): what each prints and does.
@@ -137,7 +137,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `workflow`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `resources`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `workflow`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -611,6 +611,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runKnowledgeCli } = await import("../knowledge/index.ts");
     return askingWith(args, deps, knowledgeCliArgs, runKnowledgeCli);
   },
+  resources: (args, deps) => asking(args, deps, resourcesRun(args)),
   workflow: (args, deps) => asking(args, deps, workflowRun(args, liveStream(args, deps))),
   runenv: async (args, deps) => {
     const { runRunenvCli } = await import("../runenv/index.ts");
