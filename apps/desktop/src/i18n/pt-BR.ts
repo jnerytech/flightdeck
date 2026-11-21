@@ -374,6 +374,7 @@ export const ptBR = {
   historyUi: {
     title: "Histórico de {host}",
     folder: "Pasta",
+    folderHelp: "Parte da pasta do projeto",
     project: "Projeto: {name}",
     clearProject: "Limpar projeto",
     from: "De",
@@ -388,6 +389,7 @@ export const ptBR = {
     automatedHidden: "{count} execuções automáticas ocultas",
     emptyAutomated: "{count} execuções automáticas estão ocultas pelo filtro.",
     emptyFiltered: "Nenhuma sessão atende a estes filtros.",
+    periodReversed: "A data De vem depois da data Até: escolha um período que comece antes.",
     clearFilters: "Limpar os filtros",
     showAutomated: "Mostrar",
     automatedTag: "automática",
