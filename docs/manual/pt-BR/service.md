@@ -46,7 +46,10 @@ O `setup` faz, nesta ordem:
 Quando a entrada acaba (um script sem `--yes`), o `setup` para com código 1 em vez de ficar em
 laço. O `service install` também inicia o serviço agora, sozinho. O `doctor` confere a config,
 as pastas, o serviço, o `/health` do daemon, o `claude`, os hooks e a Tailscale, uma linha cada,
-e imprime o conserto de cada falha; sai com 1 quando uma checagem falha.
+e imprime o conserto de cada falha; sai com 1 quando uma checagem falha. Com `--json` imprime um
+valor, `{ ok, checks, deps }`, com o mesmo código de saída (`ok` é o resultado das checagens, e uma
+dependência obrigatória que falta também faz o código ser 1); `deps` é `null` quando a config não
+pode ser lida.
 
 ## Instalar como serviço
 
