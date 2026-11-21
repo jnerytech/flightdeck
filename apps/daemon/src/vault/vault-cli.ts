@@ -1,8 +1,8 @@
 /**
  * Issue #3458: `flightdeckd vault decisions|report|rules`, the vault's audit and rules from a terminal or
  * a script. It speaks to the local daemon like `flightdeckd card` does (the same `DaemonClient`, the
- * token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. Every verb is a read, so no answer
- * is ever "unsure"; none of them prints a secret value or a webhook URL, which these answers do not hold.
+ * token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. Only `deny` writes, so only its answer
+ * can be "unsure"; none of the verbs prints a secret value or a webhook URL, which these answers do not hold.
  */
 import type { VaultRequestFrame, VaultUsed } from "@flightdeck/protocol";
 import {
@@ -78,9 +78,9 @@ export async function runVaultCli(
           });
         case "deny": {
           note.wrote = true;
-          const { denied } = await daemon.call("vault.deny", { requestId: args.requestId });
-          // A daemon from before the answer carried `denied` said nothing when it had nothing to refuse: its word stands.
-          if (denied === false)
+          const answer = await daemon.call("vault.deny", { requestId: args.requestId });
+          // A daemon from before the answer carried `denied` acks with no data at all: its word stands.
+          if (answer?.denied === false)
             return failure(
               1,
               `request ${args.requestId} is not waiting: it was answered, expired or never existed`,
