@@ -61,6 +61,8 @@ export class ExternalPermissions {
       auto?: Pick<AutoApprover, "decide">;
       /** #3439: the signed proof a high-risk allow needs once a device is enrolled. */
       approval?: ApprovalGate;
+      /** #3752: one more sentence for the reason of a request (what a file it names holds); undefined when it has none. */
+      explain?: (command: string, cwd: string) => Promise<string> | undefined;
     } = {},
   ) {
     this.risk = opts.risk ?? new RiskClassifier({ allowedRoots: [], home: userHome() });

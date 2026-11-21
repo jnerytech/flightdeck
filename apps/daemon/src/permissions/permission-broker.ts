@@ -27,6 +27,8 @@ export interface BrokerHooks {
   autoDecide?(request: AutoApproveRequest): Promise<AutoDecision | null>;
   /** Phase 33: the request in plain words; the host looks at its files to word it. */
   plain?(sessionId: string, toolName: string, input: ToolInput, risk: Risk): Promise<PlainInfo>;
+  /** #3752: one more sentence for the request's reason (what a file it names holds); undefined when it has none. */
+  explain?(sessionId: string, toolName: string, input: ToolInput): Promise<string> | undefined;
   /** #3439: the signed proof an allow of a high-risk request needs once a device is enrolled; without it, the hold. */
   approval?: ApprovalGate;
 }
@@ -151,6 +153,11 @@ export class PermissionBroker {
   /** The plain wording the request was announced with, if the host worded it. */
   plainOf(requestId: string): PlainInfo | undefined {
     return this.plains.get(requestId);
+  }
+
+  /** The reason an announced request carries when `explain` added a sentence to the rule's; undefined otherwise. */
+  reasonOf(_requestId: string): string | undefined {
+    return undefined;
   }
 
   /** The session of an open request; "" when it is not open. */
