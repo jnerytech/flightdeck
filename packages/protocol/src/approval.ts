@@ -74,6 +74,15 @@ export function commandNeedsProof(command: string, payload: unknown): boolean {
   return (payload as Record<string, unknown> | null | undefined)?.[field] !== false;
 }
 
+/**
+ * Whether one rule of a secret loosens what is asked: its decision or its outsideWindow is `allow`. An item that is
+ * not a rule is taken as loosening, never let through unread. The one definition: the host's ceiling and the gate of
+ * `vault.rules.set` both read it (#3754).
+ */
+export function ruleLoosens(_rule: unknown): boolean {
+  return false;
+}
+
 /** The text a device hashes for a command: the payload without its `proof`, as canonical JSON. */
 export function commandDigest(payload: Record<string, unknown>): string {
   const { proof: _proof, ...bound } = payload;

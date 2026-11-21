@@ -11,6 +11,7 @@ import {
   FEATURE_APPROVAL_RESUME,
   needsApprovalProof,
   revokeMessage,
+  ruleLoosens,
   vaultApproveMessage,
 } from "../../src/approval.ts";
 import { Command, ServerMessage } from "../../src/index.ts";
@@ -499,6 +500,52 @@ describe("command-approve: a device signs the command and a hash of what it carr
       true,
       false,
     ]);
+  });
+
+  test("Given a rule, Then it loosens when its decision or its outsideWindow is allow, and an item that is no rule is taken as loosening (#3754)", () => {
+    expect([
+      ruleLoosens({ id: "a", decision: "allow" }),
+      ruleLoosens({ id: "b", decision: "ask", outsideWindow: "allow" }),
+      ruleLoosens({ id: "c", decision: "ask" }),
+      ruleLoosens({ id: "d", decision: "deny", outsideWindow: "deny" }),
+      ruleLoosens("allow"),
+      ruleLoosens(null),
+      ruleLoosens(["allow"]),
+      ruleLoosens(7),
+    ]).toEqual([true, true, false, false, true, true, true, true]);
+  });
+
+  test("Given vault.rules.set, Then a payload with a rule that loosens needs the proof and one of ask and deny rules, or none, needs none (#3754)", () => {
+    const set = (rules: unknown) => commandNeedsProof("vault.rules.set", { secretId: "s", rules });
+    expect([
+      set([{ id: "a", decision: "allow" }]),
+      set([
+        { id: "a", decision: "ask" },
+        { id: "b", decision: "deny", outsideWindow: "allow" },
+      ]),
+      set([
+        { id: "a", decision: "ask" },
+        { id: "b", decision: "deny" },
+      ]),
+      set([]),
+      // Fail closed: a payload the host cannot read as a list of rules is gated.
+      set("allow"),
+      set(undefined),
+      set([null]),
+      commandNeedsProof("vault.rules.set", null),
+    ]).toEqual([true, true, false, false, true, true, true, true]);
+  });
+
+  test("Given vault.rules.set, Then it takes an optional proof, and a challenge for it is one of the gate's (#3754)", () => {
+    const base = { secretId: "s", tags: ["prod"], rules: [{ id: "a", decision: "allow" }] };
+    const proof = { keyId: "k1", nonce: "n1", signature: "c2ln" };
+    const parse = (payload: unknown) =>
+      Command.safeParse({ id: "1", type: "vault.rules.set", payload }).success;
+    expect([
+      parse(base),
+      parse({ ...base, proof }),
+      challenge({ purpose: "command", command: "vault.rules.set" }),
+    ]).toEqual([true, true, true]);
   });
 
   test("Given the plugin commands, Then every payload of install and update needs the proof, and a challenge for each is one of the gate's", () => {
