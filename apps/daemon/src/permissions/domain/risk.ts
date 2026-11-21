@@ -6,6 +6,7 @@
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
+import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
@@ -672,6 +673,8 @@ export class RiskClassifier {
       const out = (named.length > 0 ? named : [""]).map((path): Candidate => {
         if (credential(path)) return ["high", "escrita em caminho de credencial"];
         if (opencodeConfig(path)) return ["high", "writes OpenCode's configuration"];
+        if (writesControlFile(path, cwd, this.opts.allowedRoots, this.opts.home))
+          return ["high", CONTROL_WRITE];
         return this.allowed(path, cwd)
           ? ["medium", "escrita dentro do projeto"]
           : ["high", "escrita fora do cwd e de allowedRoots"];
@@ -729,6 +732,8 @@ export class RiskClassifier {
         !this.insideAny(target, cwd)
       ) {
         out.push(["high", "redirecionamento para fora do cwd"]);
+      } else if (redirectsToControlFile(target, cwd, this.opts.home)) {
+        out.push(["high", CONTROL_WRITE]);
       }
     }
     if (words(command).some(credential)) out.push(["high", "caminho de credencial"]);

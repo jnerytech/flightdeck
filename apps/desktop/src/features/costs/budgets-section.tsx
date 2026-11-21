@@ -1,11 +1,11 @@
 import type { Budget } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
 import {
   Field,
@@ -19,7 +19,8 @@ import {
   Stack,
 } from "@/shared/layout/index.ts";
 import { Meter } from "@/shared/status/index.ts";
-import type { AppStore } from "../../lib/app-store.ts";
+import { refusalText } from "../../i18n/errors.ts";
+import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import { type Draft, draftOf, EMPTY, MIN_PCT, missingOf } from "./domain/budget-draft.ts";
 import { budgetLabel, budgetLine, projectName } from "./domain/budgets.ts";
 import { periodRange } from "./domain/costs.ts";
@@ -39,6 +40,31 @@ const HOT_FROM = 0.8;
 /** The value of the list entry that opens the key field. */
 const OTHER = "__other__";
 
+/** Where the focus goes once a change is on screen: the pressed control may be gone (#3613). */
+type AfterFocus =
+  | { kind: "form" }
+  | { kind: "edit"; id: string }
+  | { kind: "gone"; id: string; next: string | null };
+
+/** The element the focus goes to, or null while the list has not caught up with the change. */
+function focusTarget(
+  root: HTMLElement | null,
+  focus: AfterFocus,
+  budgets: readonly Budget[],
+): HTMLElement | null {
+  if (!root) return null;
+  const firstField = () => root.querySelector<HTMLElement>("form select, form input");
+  const editOf = (id: string) =>
+    Array.from(root.querySelectorAll<HTMLElement>("[data-budget]"))
+      .find((row) => row.dataset.budget === id)
+      ?.querySelector<HTMLElement>('[data-action="edit"]') ?? null;
+  if (focus.kind === "form") return firstField();
+  if (focus.kind === "edit") return editOf(focus.id);
+  // A removed budget's row is gone once the host's answer is in the list.
+  if (budgets.some((b) => b.id === focus.id)) return null;
+  return (focus.next ? editOf(focus.next) : null) ?? firstField();
+}
+
 /** A host's budgets with what each one spent in its period, and a form to create or edit one. */
 export function BudgetsSection(
   props: Readonly<{
@@ -54,6 +80,15 @@ export function BudgetsSection(
   const [removing, setRemoving] = useState<Budget | null>(null);
   const saving = useBusy();
   const { budgets } = props;
+  const rootRef = useRef<HTMLElement>(null);
+  /** What the last change did: a polite line on the section, not silence (#3613). */
+  const [done, setDone] = useState<string | null>(null);
+  const [focus, setFocus] = useState<AfterFocus | null>(null);
+  /** Why the host's projects could not be listed; null while they could, or before the answer. */
+  const [lookupFailed, setLookupFailed] = useState<Extract<
+    HostResult<unknown>,
+    { ok: false }
+  > | null>(null);
   const editing = budgets.find((b) => b.id === draft.id);
   // The selected client's project budgets, and the host's own, which cap everything on the host.
   const scope = store.clientScope.get();
@@ -72,10 +107,50 @@ export function BudgetsSection(
   // The keys a project budget can name are the ones the host has seen: those with usage in the
   // last 30 days and those a budget already uses.
   useEffect(() => {
-    void store
-      .hostCommand(hostId, "costs.summary", periodRange("30d", store.today()))
-      .then((summary) => summary && setSpentOn(summary.byProject.map((p) => p.projectKey)));
+    let live = true;
+    setLookupFailed(null);
+    setDone(null);
+    setFocus(null);
+    void (async () => {
+      let result: HostResult<{ byProject: { projectKey: string }[] }>;
+      try {
+        result = await store.hostRequest(
+          hostId,
+          "costs.summary",
+          periodRange("30d", store.today()),
+        );
+      } catch (error) {
+        result = {
+          ok: false,
+          code: "internal",
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+      if (!live) return;
+      if (result.ok) {
+        setLookupFailed(null);
+        setSpentOn(result.data.byProject.map((p) => p.projectKey));
+      } else setLookupFailed(result);
+    })();
+    return () => {
+      live = false;
+    };
   }, [store, hostId]);
+  // The closing dialog hands the focus back in a timeout of its own: this one comes after it.
+  useEffect(() => {
+    if (!focus) return;
+    const target = focusTarget(rootRef.current, focus, visible);
+    if (!target) {
+      // A row the list does not show will not appear later: drop the request. A removed row may still be leaving.
+      if (focus.kind !== "gone") setFocus(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      target.focus();
+      setFocus(null);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [focus, visible]);
   const keys = [
     ...new Set([
       ...spentOn,
@@ -98,34 +173,53 @@ export function BudgetsSection(
       ...(draft.scope === "project" ? { projectKey: draft.projectKey } : {}),
       action: draft.action,
     };
-    if (draft.unit === "usd") {
-      await store.budgets.set(hostId, {
-        ...common,
-        period: draft.period,
-        limitUsd: Number(draft.limitUsd),
-      });
-    } else {
-      await store.budgets.setQuota(hostId, {
-        ...common,
-        window: draft.unit,
-        limitPct: Number(draft.limitPct) / 100,
-      });
-    }
+    const took =
+      draft.unit === "usd"
+        ? await store.budgets.set(hostId, {
+            ...common,
+            period: draft.period,
+            limitUsd: Number(draft.limitUsd),
+          })
+        : await store.budgets.setQuota(hostId, {
+            ...common,
+            window: draft.unit,
+            limitPct: Number(draft.limitPct) / 100,
+          });
+    // A refusal keeps the form as it was: the toast says why.
+    if (!took) return;
+    const label = budgetLabel(
+      {
+        scope: draft.scope,
+        projectKey: draft.scope === "project" ? draft.projectKey : null,
+        period: draft.unit === "usd" ? draft.period : draft.unit,
+      },
+      t,
+    );
+    setDone(t(draft.id ? "budgetsUi.done.saved" : "budgetsUi.done.created", { label }));
+    setFocus(draft.id ? { kind: "edit", id: draft.id } : { kind: "form" });
     setDraft(EMPTY);
   };
   const byShare = draft.unit !== "usd";
   const needs = missingOf(draft, t);
   const title = t("budgetsUi.title", { host: props.hostName });
   return (
-    <section aria-label={title}>
+    <section ref={rootRef} aria-label={title}>
       <Panel title={title}>
         <Stack gap={4}>
+          {done && <InlineNotice tone="info">{done}</InlineNotice>}
+          {lookupFailed && (
+            <InlineNotice tone="error">
+              {t("budgetsUi.projectsFailed", {
+                reason: refusalText(lookupFailed.code, lookupFailed.message, t, lookupFailed),
+              })}
+            </InlineNotice>
+          )}
           {budgets.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("budgetsUi.none")}</p>
           ) : (
             <Stack as="ul" gap={2}>
               {visible.map((budget) => (
-                <li key={budget.id}>
+                <li key={budget.id} data-budget={budget.id}>
                   <Stack gap={1}>
                     <ListRow
                       title={
@@ -142,7 +236,11 @@ export function BudgetsSection(
                             variant="ghost"
                             size="sm"
                             aria-label={t("budgetsUi.edit", { label: budgetLabel(budget, t) })}
-                            onClick={() => setDraft(draftOf(budget))}
+                            data-action="edit"
+                            onClick={() => {
+                              setDraft(draftOf(budget));
+                              setFocus({ kind: "form" });
+                            }}
                           >
                             {t("budgetsUi.editShort")}
                           </Button>
@@ -336,9 +434,15 @@ export function BudgetsSection(
           message={t("budgetsUi.removeMessage", { label: budgetLabel(removing, t) })}
           confirmLabel={t("budgetsUi.removeConfirm")}
           destructive
-          onConfirm={() => {
-            void store.budgets.remove(hostId, removing);
+          onConfirm={async () => {
+            const gone = removing;
             setRemoving(null);
+            if (!(await store.budgets.remove(hostId, gone))) return;
+            const at = visible.findIndex((b) => b.id === gone.id);
+            // A budget the list does not show (the client changed meanwhile) leaves the focus where it is.
+            const next = at < 0 ? undefined : (visible[at + 1] ?? visible[at - 1]);
+            setDone(t("budgetsUi.done.removed", { label: budgetLabel(gone, t) }));
+            setFocus({ kind: "gone", id: gone.id, next: next?.id ?? null });
           }}
           onCancel={() => setRemoving(null)}
         />

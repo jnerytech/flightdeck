@@ -435,6 +435,98 @@ describe("orcamentos-ui", () => {
     ]);
   });
 
+  /** Issue #3613: a change to the budget list says what happened and leaves the focus on the page. */
+  describe("a change to the list is announced and keeps the focus (#3613)", () => {
+    const status = () => section()?.querySelector("[role=status]")?.textContent ?? null;
+    const focusedOn = (element: Element | null) =>
+      element !== null && document.activeElement === element;
+    const editButton = (label: string) => screen.queryByRole("button", { name: `Editar ${label}` });
+    const create = async (limit: string) => {
+      await choose("Limite (US$)", limit);
+      await click("Criar orçamento");
+      await uiIdle();
+    };
+
+    test("Editar leva o foco ao primeiro campo do formulário", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      await click("Editar orçamento do host (dia)");
+      await uiIdle();
+      expect(focusedOn(field("Escopo"))).toBe(true);
+    });
+
+    test("criar diz o que aconteceu e o foco fica no primeiro campo, para o próximo orçamento", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      expect(status()).toBe("Orçamento criado: orçamento do host (dia)");
+      expect(focusedOn(field("Escopo"))).toBe(true);
+    });
+
+    test("salvar uma edição diz o que aconteceu e o foco vai ao botão Editar da linha", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      await click("Editar orçamento do host (dia)");
+      await choose("Limite (US$)", "20");
+      await click("Salvar orçamento");
+      await uiIdle();
+      expect(status()).toBe("Orçamento salvo: orçamento do host (dia)");
+      expect(focusedOn(editButton("orçamento do host (dia)"))).toBe(true);
+    });
+
+    test("remover diz que o orçamento saiu e o foco vai ao botão Editar da linha seguinte", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      await choose("Escopo", "project");
+      await settle(() => projectOptions().includes("kA"));
+      await choose("Projeto do orçamento", "kA");
+      await choose("Limite (US$)", "100");
+      await click("Criar orçamento");
+      await settle(() => rows().length === 2);
+      await click("Remover orçamento do host (dia)");
+      await click("Remover orçamento");
+      await settle(() => rows().length === 1);
+      await uiIdle();
+      expect(status()).toBe("Orçamento removido: orçamento do host (dia)");
+      expect(focusedOn(editButton("orçamento de kA (dia)"))).toBe(true);
+    });
+
+    test("remover o último orçamento leva o foco ao primeiro campo do formulário", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      await click("Remover orçamento do host (dia)");
+      await click("Remover orçamento");
+      await settle(() => rows().length === 0);
+      await uiIdle();
+      expect(status()).toBe("Orçamento removido: orçamento do host (dia)");
+      expect(focusedOn(field("Escopo"))).toBe(true);
+    });
+
+    test("uma consulta dos projetos que falha avisa, com o motivo do host", async () => {
+      const { store } = await online();
+      const ask = store.hostRequest.bind(store);
+      store.hostRequest = ((hostId: string, type: string, payload: unknown) =>
+        type === "costs.summary"
+          ? Promise.resolve({ ok: false, code: "internal", message: "o host não respondeu" })
+          : ask(hostId, type as never, payload as never)) as typeof store.hostRequest;
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await uiIdle();
+      const alert = section()?.querySelector("[role=alert]")?.textContent ?? "";
+      expect(alert.startsWith("Não foi possível listar os projetos")).toBe(true);
+      expect(alert.includes("o host não respondeu")).toBe(true);
+    });
+  });
+
   test("host sem costs: sem orçamentos e sem banner de erro", async () => {
     const legacy = legacyDaemon(cleanups);
     const mem = memoryPlatform(false);
