@@ -30,6 +30,8 @@ type AfterFocus =
 
 type Control = "up" | "down" | "remove";
 
+const opposite = (dir: "up" | "down"): "up" | "down" => (dir === "up" ? "down" : "up");
+
 /** The control the focus goes to, or null while the list has not caught up with the change. */
 function focusTarget(
   focus: AfterFocus,
@@ -44,7 +46,7 @@ function focusTarget(
   if (rules.findIndex((r) => r.id === focus.id) !== focus.to) return null;
   // At either end the arrow that was pressed is now disabled: its twin takes the focus.
   const atEdge = focus.dir === "up" ? focus.to === 0 : focus.to === rules.length - 1;
-  const which: Control = atEdge ? (focus.dir === "up" ? "down" : "up") : focus.dir;
+  const which: Control = atEdge ? opposite(focus.dir) : focus.dir;
   return control(focus.id, which) ?? null;
 }
 

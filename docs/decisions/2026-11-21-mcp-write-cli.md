@@ -28,9 +28,8 @@ app's decision and carry two guards.
   for every rule built on `runsFlightdeckWords`, which also closes `watch settings $X`); and `xargs` can add `--confirm`
   to a bare `mcp test`, so a fed `mcp test` is high like a fed `history resume`. The same `xargs` gap remains for
   `watch settings` and is its own follow-up.
-- Rules per noun now join in `noun-risk.ts`, one list that `risk.ts` reads. `risk.ts` sat at the 800-line limit of the
-  source-size ratchet and each noun cost it an import and a spread. A structure-only commit moved the list; a new noun
-  adds a file and a line to `noun-risk.ts`.
+- `MCP_RULES` (`mcp-risk.ts`) joins the list in `flightdeck-verb-risk.ts` that `risk.ts` reads, so `risk.ts` (at the
+  800-line limit of the source-size ratchet) does not grow.
 - A daemon that does not answer a `remove` or a `toggle` leaves its result unknown: exit `2`, and the message says to
   check with `mcp list` before trying again. A `test --confirm` is not one of those: it changes nothing on disk.
 - The tool and resource names of `test --confirm` come from the server that was started, so they are untrusted text:

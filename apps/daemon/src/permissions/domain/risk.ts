@@ -6,7 +6,7 @@
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
-import { NOUN_RULES } from "./noun-risk.ts";
+import { FLIGHTDECK_VERB_RULES } from "./flightdeck-verb-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -462,7 +462,7 @@ const DANGEROUS: Array<{
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
   },
-  ...NOUN_RULES,
+  ...FLIGHTDECK_VERB_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>

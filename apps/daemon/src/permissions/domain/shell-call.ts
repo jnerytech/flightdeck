@@ -440,6 +440,8 @@ export const OPTIONS_WITH_VALUE = [
   "--plugin-scope",
   "--parts",
   "--map",
+  "--side",
+  "--lines",
   "--template",
   "--digests",
   "--limit",
@@ -648,6 +650,7 @@ const VERB_NOUNS = new Set([
   "watch",
   "snippet",
   "boardsync",
+  "review",
   "runenv",
   "mcp",
 ]);
