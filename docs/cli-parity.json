@@ -231,8 +231,8 @@
     "cli": "message"
   },
   "issues.createCard": {},
-  "issues.get": {},
-  "issues.list": {},
+  "issues.get": { "cli": "issues" },
+  "issues.list": { "cli": "issues" },
   "knowledge.create": { "cli": "knowledge" },
   "knowledge.feed": { "cli": "knowledge" },
   "knowledge.index": { "cli": "knowledge" },
@@ -327,7 +327,7 @@
   "plugins.previewUpdate": { "cli": "plugins" },
   "plugins.uninstall": { "cli": "plugins" },
   "plugins.update": { "cli": "plugins" },
-  "pr.comments": {},
+  "pr.comments": { "cli": "card" },
   "pr.comments.send": {},
   "project.add": { "cli": "project" },
   "project.detectProvider": { "cli": "project" },
@@ -614,6 +614,6 @@
   "workflow.templates": { "cli": "workflow" },
   "workflow.trust": {},
   "workflow.validate": { "cli": "workflow" },
-  "worktree.list": {},
+  "worktree.list": { "cli": "worktree" },
   "worktree.remove": {}
 }

@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { PrProviderKind } from "@flightdeck/protocol";
 import { z } from "zod";
-import { TRUSTED_ASSOCIATIONS } from "../github/index.ts";
+import { isExternalComment } from "../github/index.ts";
 import { parseJsonOr } from "../kernel/index.ts";
 import type { PrCheck, PrComment, PrProvider } from "../pr/index.ts";
 import { prProvider } from "../pr-hosts/index.ts";
@@ -45,8 +45,7 @@ const EMPTY: Snapshot = { failing: [], conflicts: false, seen: [] };
 
 /** A comment you can act on: the host says its author is part of the team. */
 function isTrustedComment(comment: PrComment): boolean {
-  if (comment.authorIdentity !== null) return true;
-  return TRUSTED_ASSOCIATIONS.has((comment.authorAssociation ?? "").toUpperCase());
+  return !isExternalComment(comment);
 }
 
 /** Watches the open PRs of cards: reads their builds, conflicts and comments each round. */

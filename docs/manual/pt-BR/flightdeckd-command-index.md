@@ -65,6 +65,14 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 - [fd memory](flightdeckd-memory-commands.md#fd-memory)
 - [Mudar uma nota](flightdeckd-memory-commands.md#mudar-uma-nota)
 
+## Comandos do flightdeckd: worktrees, issues e comentários de PR
+
+[Ler o capítulo.](flightdeckd-worktree-commands.md) Suas seções:
+
+- [fd worktree](flightdeckd-worktree-commands.md#fd-worktree)
+- [fd issues](flightdeckd-worktree-commands.md#fd-issues)
+- [fd card pr-comments](flightdeckd-worktree-commands.md#fd-card-pr-comments)
+
 ## Comandos do flightdeckd: o ambiente de execução de um cartão
 
 [Ler o capítulo.](flightdeckd-runenv-commands.md) Suas seções:

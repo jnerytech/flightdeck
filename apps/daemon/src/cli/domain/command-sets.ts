@@ -24,6 +24,7 @@ export const JSON_COMMANDS = [
   "file",
   "history",
   "host",
+  "issues",
   "knowledge",
   "mcp",
   "memory",
@@ -52,6 +53,7 @@ export const JSON_COMMANDS = [
   "vault",
   "watch",
   "workflow",
+  "worktree",
 ];
 export const HOST_COMMANDS = [
   "action",
@@ -64,6 +66,7 @@ export const HOST_COMMANDS = [
   "deny",
   "file",
   "host",
+  "issues",
   "knowledge",
   "mcp",
   "memory",
@@ -86,6 +89,7 @@ export const HOST_COMMANDS = [
   "vault",
   "watch",
   "workflow",
+  "worktree",
 ];
 
 /** The commands that check their own `--confirm` (their verbs say which take it), so the `card` check skips them. */

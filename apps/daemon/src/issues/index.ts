@@ -6,4 +6,5 @@
 
 export { closingLine, parseIssueRef } from "./domain/issue-ref.ts";
 export { Issues } from "./issues.ts";
+export { type IssuesCliArgs, runIssuesCli } from "./issues-cli.ts";
 export { providerOfRef } from "./providers.ts";

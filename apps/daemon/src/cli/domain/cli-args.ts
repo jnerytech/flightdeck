@@ -60,6 +60,8 @@ export interface CliArgs {
     | "boardsync"
     | "review"
     | "memory"
+    | "worktree"
+    | "issues"
     | "runenv"
     | "changes"
     | "snapshots"
@@ -149,6 +151,7 @@ export interface CliArgs {
     | "export"
     | "reprice"
     | "dismiss-unblocked"
+    | "pr-comments"
     | "search"
     | "tool"
     | "decisions"
@@ -291,6 +294,12 @@ export interface CliArgs {
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
   memoryName?: string;
+  /** `worktree list [<project>]`: the project, by name or id. */
+  worktreeProject?: string;
+  /** `issues list|get <project>`: the project, by name or id. */
+  issuesProject?: string;
+  /** `issues get <project> <id>`: the issue's id. */
+  issuesId?: string;
   /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
   changesOperand?: string;
   /** `changes revert|undo-revert <target> <file>`: the file. */
