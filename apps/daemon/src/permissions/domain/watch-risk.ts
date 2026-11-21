@@ -1,7 +1,8 @@
 import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
 
 /** The flags that only choose the daemon or the output, and change nothing (`watch settings`, `boardsync set-push`). */
-const READING_FLAGS = new Set(["--json", "--host", "--config"]);
+/** The flags that only choose the daemon or the output; `mcp-risk.ts` reads the same list. */
+export const READING_FLAGS = new Set(["--json", "--host", "--config"]);
 
 /**
  * Whether the only change the words ask for is `off` (`--disable` for a watch, `--off` for a board push): turning

@@ -13,7 +13,7 @@ export const HOST_COMMANDS =
 
 /** The commands that check their own `--confirm` (their verbs say which take it), so the `card` check skips them. */
 export const CONFIRM_OWNERS =
-  "rules autoapprove team costs plugins ssh project boardsync runenv agentcfg snippet review message".split(
+  "rules autoapprove team costs plugins ssh project boardsync runenv agentcfg snippet review mcp message".split(
     " ",
   );
 

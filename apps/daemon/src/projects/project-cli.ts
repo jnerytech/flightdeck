@@ -14,7 +14,6 @@ import {
   type RemoteTarget,
   resolveProject,
   runOnLocalDaemon,
-  said,
   shown,
 } from "../daemon-client/index.ts";
 import {
