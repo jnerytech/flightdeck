@@ -2,6 +2,8 @@
  * Issue #3499: a shell command read as the program it runs and its arguments, and the Flightdeck CLI
  * as one of those programs. Pure: the risk rules in `risk.ts` ask here what a segment runs.
  */
+import { Scan } from "./scan.ts";
+
 /** A prefix assignment (`A=1`, `A+=1`, `A[0]=1`): it comes before the program and is not it. */
 const ASSIGNMENT = /^\w+(?:\[[^\]]*\])?\+?=/;
 
@@ -309,93 +311,16 @@ function mayBeCli(word: string): boolean {
 /** A program name that is the Flightdeck CLI (source, compiled or launcher), or a variable that may hold it. */
 export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || name.includes("$");
 
-/** The most words read after a program that is a variable: matching them against every verb grows with the square of their number. */
-const MAX_WORDS_AFTER_VARIABLE = 256;
-
-/** The most words of one command that are read: the rules match each start word against all that follows, so the work grows with the square of the count. */
-const MAX_SEGMENT_WORDS = 4096;
-
-/** The longest command line that is read at all: every rule walks the text, so the work grows with its size. */
-const MAX_LINE_CHARS = 262_144;
-
-/** The most words one line may have read in all, each word counted once for every time a rule reads the command that holds it. */
-const MAX_WORDS_READ = 100_000;
-
-/** The most variable programs in a row that are read as the start of a command each: every one reads all that follows it. */
-const MAX_VARIABLE_CHAIN = 16;
-
-/** How many times one line may be read again inside itself (a shell's text, a substitution, a `find -exec` command). */
-const MAX_REREADS = 256;
-
-/**
- * The work one command line may cost (#3593). Each read of a part of the line inside the line (the text of
- * `sh -c`, a process substitution, a `find -exec` command) spends one of a fixed number of re-reads, so nesting
- * that doubles the work at every level (`sh -c 'sh -c '...`) stops at a known size. A command with more words
- * than the rules can match in bounded time, a chain of variable programs, and a line whose commands add up to
- * more words read than a fixed total are cut the same way. Whatever is cut leaves `spent` set, and the caller
- * rates the line high.
- */
-export class Scan {
-  private left = MAX_REREADS;
-  spent = false;
-
-  private words = MAX_WORDS_READ;
-
-  /** More than `max` words: the rest is cut off, and the line is spent. */
-  cap(words: string[], max = MAX_WORDS_AFTER_VARIABLE): string[] {
-    if (words.length <= max) return words;
-    this.spent = true;
-    return words.slice(0, max);
-  }
-
-  /** Whether a read of `count` words fits in what is left of the line's total; the first refusal marks the line as spent. */
-  spend(count: number): boolean {
-    this.words -= Math.max(count, 1);
-    if (this.words >= 0) return true;
-    this.spent = true;
-    return false;
-  }
-
-  /** Whether a variable program may be followed by another one at this depth of the chain (`$a $b $c ...`). */
-  chained(depth: number): boolean {
-    if (depth < MAX_VARIABLE_CHAIN) return true;
-    this.spent = true;
-    return false;
-  }
-
-  /** A line longer than the rules read: nothing of it is read, and the line is spent. */
-  tooLong(text: string): boolean {
-    if (text.length <= MAX_LINE_CHARS) return false;
-    this.spent = true;
-    return true;
-  }
-
-  /** Whether one more re-read is allowed; the first refusal marks the line as spent. */
-  reread(): boolean {
-    if (this.left > 0) {
-      this.left--;
-      return true;
-    }
-    this.spent = true;
-    return false;
-  }
-}
-
-/** Why a line that spent its re-reads is high: it is not read as routine. */
-export const UNREADABLE =
-  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec, a chain of variable programs or a very large number of words or characters), so it is not read as routine";
-
 /**
  * What a segment runs, past `sudo`, `env X=1`, `timeout 5`, a subshell or brace group, a redirection and the
  * like (#3499). A program that is a variable (`$FD`, `"${BIN}"`) cannot be resolved: it may be the CLI, a shell
  * or a wrapper, so it gives one reading for each, and the rest of the line is read as a command again.
  */
 export function invocations(segment: string[], scan: Scan = new Scan(), chain = 0): Invocation[] {
-  const words = scan.cap(
+  const words = scan.segment(
     withoutRedirections(afterLabel(segment).map(closed).map(opened)).filter((w) => w !== ""),
-    MAX_SEGMENT_WORDS,
   );
-  if (!scan.spend(words.length)) return [];
+  if (!words) return [];
   const { at, sudo, xargs } = programStart(words);
   const fed = xargs ? { xargs: true } : {};
   const written = words[at] ?? "";
@@ -416,7 +341,7 @@ export function invocations(segment: string[], scan: Scan = new Scan(), chain = 
           { prog: escaped, args, sudo, unresolved: false, ...fed },
         ];
   }
-  const rest = scan.cap(args);
+  const rest = scan.afterVariable(args);
   return [
     { prog: "flightdeckd", args: rest, sudo, unresolved: true, ...hidden, ...fed },
     { prog: "sh", args: rest, sudo, unresolved: true },

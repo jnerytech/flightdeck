@@ -5,6 +5,7 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
+import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
   EXPANDS,
@@ -18,13 +19,11 @@ import {
   runnerHidesAVerb,
   runsCliVerb,
   runsFlightdeckWords,
-  Scan,
   SHELLS,
   shellReadings,
   shellWords,
   splitOutsideQuotes,
   startsCli,
-  UNREADABLE,
   unquoted,
 } from "./shell-call.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
