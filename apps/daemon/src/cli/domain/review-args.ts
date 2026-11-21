@@ -35,9 +35,6 @@ function readLines(v: string): { start: number; end: number } {
 
 /** The flags of the review verbs; each verb takes its own, checked in `reviewProblem`. */
 export const REVIEW_FLAGS: Record<string, Handler> = {
-  "--path": setValue((args, v) => {
-    args.reviewPath = v;
-  }),
   "--side": setValue((args, v) => {
     if (v !== "new" && v !== "old") throw new Error(`--side: new or old\n${USAGE}`);
     args.reviewSide = v;
@@ -51,7 +48,7 @@ export const REVIEW_FLAGS: Record<string, Handler> = {
 function reviewMissing(args: CliArgs): string | undefined {
   const verb = args.action;
   if (verb === "add") {
-    if (args.reviewPath === undefined) return "review add needs --path";
+    if (args.pathFlag === undefined) return "review add needs --path";
     if (args.reviewLines === undefined) return "review add needs --lines";
   }
   if ((verb === "add" || verb === "update") && args.body === undefined)
@@ -66,7 +63,9 @@ function reviewMissing(args: CliArgs): string | undefined {
 /** What is wrong with the review flags and verbs, or undefined; the other commands may not carry them. */
 export function reviewProblem(args: CliArgs): string | undefined {
   const verb = args.command === "review" ? args.action : undefined;
-  if (args.reviewPath !== undefined && verb !== "add") return `--path: ${ONLY} add`;
+  // `--path` is also `agentcfg`'s, which refuses it on the other commands.
+  if (args.command === "review" && args.pathFlag !== undefined && verb !== "add")
+    return `--path: ${ONLY} add`;
   if (args.reviewSide !== undefined && verb !== "add") return `--side: ${ONLY} add`;
   if (args.reviewLines !== undefined && verb !== "add") return `--lines: ${ONLY} add`;
   if (args.command !== "review") return undefined;
@@ -88,7 +87,7 @@ export function reviewCliArgs(args: CliArgs): ReviewCliArgs {
       return {
         action: "add",
         target,
-        path: args.reviewPath ?? "",
+        path: args.pathFlag ?? "",
         side: args.reviewSide ?? "new",
         lineStart: args.reviewLines?.start ?? 0,
         lineEnd: args.reviewLines?.end ?? 0,

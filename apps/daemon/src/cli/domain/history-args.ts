@@ -57,7 +57,7 @@ function historyStrayFlag(args: HistoryArgs): string | undefined {
     if (value === undefined) continue;
     if (
       (flag === "--to" || flag === "--origin") &&
-      (args.command === "costs" || args.command === "roi")
+      (args.command === "costs" || args.command === "roi" || args.command === "agentcfg")
     )
       continue;
     if (args.command !== "history" || !verbs.includes(args.action as string))

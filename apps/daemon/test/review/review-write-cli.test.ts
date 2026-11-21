@@ -342,7 +342,7 @@ describe("flightdeckd review arguments (issue #3619)", () => {
       command: "review",
       action: "add",
       reviewTarget: "card:k1",
-      reviewPath: "src/a.ts",
+      pathFlag: "src/a.ts",
       reviewLines: { start: 10, end: 12 },
       reviewSide: "old",
       body: "why?",

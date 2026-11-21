@@ -1,5 +1,5 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
-import type { BoardColumn, VaultRequester } from "@flightdeck/protocol";
+import type { AgentCfgItem, BoardColumn, VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
 import type { ProjectFields } from "../../projects/index.ts";
 import type { SessionStartOptions } from "../../sessions/index.ts";
@@ -47,6 +47,7 @@ export interface CliArgs {
     | "session"
     | "ssh"
     | "terminal"
+    | "agentcfg"
     | "watch"
     | "boardsync"
     | "review"
@@ -67,6 +68,7 @@ export interface CliArgs {
     | "reset"
     | "list"
     | "run"
+    | "write"
     | "get"
     | "send"
     | "idle"
@@ -195,6 +197,14 @@ export interface CliArgs {
   terminalSession?: string;
   terminalPersona?: string;
   terminalConfirm?: true;
+  /** `agentcfg list|read|write <project>` (#3617): the project word, `--kind`, `--path`, `--file`, `--expected-hash` and `--new`; `--origin` and `--confirm` are the shared fields. */
+  agentcfgWords?: string[];
+  agentcfgKind?: AgentCfgItem["kind"];
+  /** `--path`, of `agentcfg read|write` and `review add`. */
+  pathFlag?: string;
+  agentcfgFile?: string;
+  agentcfgHash?: string;
+  agentcfgNew?: true;
   /** `terminal close <terminal>`: the terminal to close, its id. */
   terminalId?: string;
   /** `terminal open|open-session --cols <n> --rows <n>`: the size the terminal opens at. */
@@ -219,7 +229,6 @@ export interface CliArgs {
   /** `review update|remove <comment>`: the comment's id. */
   reviewComment?: string;
   /** `review add --path <file>`: the file the comment is on, as the diff names it. */
-  reviewPath?: string;
   /** `review add --side new|old`: the side of the diff; `new` when absent. */
   reviewSide?: "new" | "old";
   /** `review add --lines <start>[-<end>]`: the lines the comment covers. */
@@ -384,7 +393,7 @@ export interface CliArgs {
   cwd?: string;
   projectKey?: string;
   until?: string;
-  origin?: "flightdeck" | "external";
+  origin?: "flightdeck" | "external" | "project" | "user";
   /** `vault decisions|rules|rules preview <secret>`, `vault decisions|report --days`, `vault report --csv`. */
   secretId?: string;
   days?: number;
