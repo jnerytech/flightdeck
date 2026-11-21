@@ -91,6 +91,7 @@ export interface CliArgs {
   /** `service <action>`, `hooks <action>`, `history reindex` or `action list|run`. */
   action?:
     | ServiceAction
+    | "prune"
     | "reindex"
     | "index"
     | "feed"

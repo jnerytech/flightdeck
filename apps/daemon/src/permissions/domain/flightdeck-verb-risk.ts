@@ -9,6 +9,7 @@ import { FILE_RULES } from "./file-risk.ts";
 import { HOST_RULES } from "./host-risk.ts";
 import { KNOWLEDGE_RULES } from "./knowledge-risk.ts";
 import { LOGS_RULES } from "./logs-risk.ts";
+import { MAINTENANCE_RULES } from "./maintenance-risk.ts";
 import { MCP_RULES } from "./mcp-risk.ts";
 import { MEMORY_RULES } from "./memory-risk.ts";
 import { MESSAGE_RULES } from "./message-risk.ts";
@@ -49,4 +50,5 @@ export const FLIGHTDECK_VERB_RULES = [
   ...KNOWLEDGE_RULES,
   ...TELEMETRY_RULES,
   ...TEMPLATES_RULES,
+  ...MAINTENANCE_RULES,
 ];

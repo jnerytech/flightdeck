@@ -58,6 +58,8 @@ como o script de preparação. Por isso, cada workflow precisa ser confiado ante
 execução. Na tela Projetos, **Workflows de &lt;projeto&gt;** lista os workflows da base com a
 validação e os comandos `check`. **Confiar** mostra esses comandos e pede confirmação.
 
+- **Onde dá para confiar:** confiar deixa os comandos rodarem no host, então exige uma conexão próxima (este
+  computador ou a Tailscale). Por uma distante, o daemon recusa com a mensagem de conexão próxima.
 - **O que fica guardado:** a confiança guarda o hash (sha256) do arquivo.
 - **Se o arquivo mudar na base:** o hash muda, e o workflow volta a pedir confiança.
 - **Antes de cada check:** o daemon confere que o comando está literalmente no workflow da

@@ -6,7 +6,7 @@
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import type { Logger } from "../kernel/index.ts";
-import { Maintenance, restoreBackup } from "../maintenance/index.ts";
+import { Maintenance, restoreBackup, statusLines } from "../maintenance/index.ts";
 import { EventStore } from "../store/index.ts";
 import { configPath } from "./config-path.ts";
 import type { CliArgs } from "./domain/args.ts";
@@ -18,22 +18,37 @@ export interface MaintenanceCommandDeps {
   now?: () => number;
 }
 
-/** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
-export async function runBackup(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
+/** Runs `work` over the host's database and its maintenance, with the daemon running or not, and closes the store. */
+async function withMaintenance<T>(
+  args: CliArgs,
+  deps: MaintenanceCommandDeps,
+  work: (maintenance: Maintenance) => Promise<T>,
+): Promise<T> {
   const config = await loadConfig(configPath(args));
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
-    const info = await new Maintenance({
-      db: store.db,
-      dataDir: config.dataDir,
-      retention: config.retention,
-      backup: config.backup,
-      ...(deps.now ? { now: deps.now } : {}),
-    }).backupNow(args.out);
-    deps.log.log(`backup created: ${info.path} (${info.bytes} bytes)`);
+    return await work(
+      new Maintenance({
+        db: store.db,
+        dataDir: config.dataDir,
+        retention: config.retention,
+        backup: config.backup,
+        ...(deps.now ? { now: deps.now } : {}),
+      }),
+    );
   } finally {
     store.close();
   }
+}
+
+/** `flightdeckd backup [--out <file>] [--json]`: a backup now, with the daemon running or not. */
+export async function runBackup(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
+  const info = await withMaintenance(args, deps, (m) => m.backupNow(args.out));
+  deps.log.log(
+    args.json
+      ? JSON.stringify(info, null, 2)
+      : `backup created: ${info.path} (${info.bytes} bytes)`,
+  );
 }
 
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
@@ -44,21 +59,29 @@ export async function runRestore(args: CliArgs, deps: MaintenanceCommandDeps): P
   deps.log.log(`database restored from ${args.file}; the previous one stayed at ${beforeRestore}`);
 }
 
-/** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
-export async function runPrune(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
-  const config = await loadConfig(configPath(args));
-  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
-  try {
-    const maintenance = new Maintenance({
-      db: store.db,
-      dataDir: config.dataDir,
-      retention: config.retention,
-      ...(deps.now ? { now: deps.now } : {}),
-    });
-    const counts = await maintenance.prune(args.dryRun === true);
-    deps.log.log(args.dryRun ? "dry run of the cleanup (nothing was deleted):" : "cleanup done:");
-    for (const [table, n] of Object.entries(counts)) deps.log.log(`  ${table}: ${n}`);
-  } finally {
-    store.close();
+/** `flightdeckd db status|prune`: the two verbs of the database commands. */
+export async function runDb(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
+  if (args.action === "status") return await runDbStatus(args, deps);
+  // A prune deletes: it runs only when it is asked for by name, never as the default of a missing action.
+  if (args.action === "prune") return await runPrune(args, deps);
+  throw new Error("invalid db action");
+}
+
+/** `flightdeckd db prune [--dry-run] [--json]`: the retention policy now, with the count per table. */
+async function runPrune(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
+  const dryRun = args.dryRun === true;
+  const counts = await withMaintenance(args, deps, (m) => m.prune(dryRun));
+  if (args.json) {
+    deps.log.log(JSON.stringify({ dryRun, counts }, null, 2));
+    return;
   }
+  deps.log.log(dryRun ? "dry run of the cleanup (nothing was deleted):" : "cleanup done:");
+  for (const [table, n] of Object.entries(counts)) deps.log.log(`  ${table}: ${n}`);
+}
+
+/** `flightdeckd db status [--json]`: the size, the backups and the last cleanup, read from the files, with no daemon. */
+async function runDbStatus(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
+  const status = await withMaintenance(args, deps, (m) => m.status());
+  if (args.json) deps.log.log(JSON.stringify(status, null, 2));
+  else for (const line of statusLines(status)) deps.log.log(line);
 }
