@@ -99,3 +99,9 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-knowledge-commands.md) Suas seções:
 
 - [fd knowledge](flightdeckd-knowledge-commands.md#fd-knowledge)
+
+## Comandos do flightdeckd: os workflows de um projeto e suas execuções
+
+[Ler o capítulo.](flightdeckd-workflow-commands.md) Suas seções:
+
+- [fd workflow](flightdeckd-workflow-commands.md#fd-workflow)

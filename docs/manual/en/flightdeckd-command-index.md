@@ -99,3 +99,9 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 [Read the chapter.](flightdeckd-knowledge-commands.md) Its sections:
 
 - [fd knowledge](flightdeckd-knowledge-commands.md#fd-knowledge)
+
+## flightdeckd commands: the workflows of a project and their runs
+
+[Read the chapter.](flightdeckd-workflow-commands.md) Its sections:
+
+- [fd workflow](flightdeckd-workflow-commands.md#fd-workflow)
