@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { afterAll, describe, expect, test } from "bun:test";
+import { rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
 import { actionSaveNote, readDefinitionFile } from "../../src/permissions/action-save-note.ts";
 
 const CWD = resolve("/work/proj");
@@ -99,7 +99,8 @@ describe("actionSaveNote: the request to save an action carries what the file ho
 });
 
 describe("readDefinitionFile: only a small regular file is read (#3752)", () => {
-  const dir = mkdtempSync(join(tmpdir(), "fd-save-note-"));
+  const dir = realTempDir("fd-save-note-");
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
   const put = (name: string, content: string) => {
     const path = join(dir, name);
     writeFileSync(path, content);

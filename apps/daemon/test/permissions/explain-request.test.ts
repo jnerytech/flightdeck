@@ -5,7 +5,7 @@ import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 
 /** Lets the promises already started finish: no timer, no clock. */
-const settle = () => new Promise<void>((done) => setImmediate(done));
+const flush = () => new Promise<void>((done) => setImmediate(done));
 
 const RISK = {
   level: "high",
@@ -53,7 +53,7 @@ describe("a request that carries an extra sentence about itself (#3752)", () => 
       { command: "fd action save --definition-file d.json" },
       new AbortController().signal,
     );
-    await settle();
+    await flush();
     expect(asked().map((e) => [e.risk, e.riskReason])).toEqual([
       ["high", 'saves, trusts or removes an action. saves d.json: run ["deploy.sh"]'],
     ]);
@@ -62,7 +62,7 @@ describe("a request that carries an extra sentence about itself (#3752)", () => 
   test("the summary lists the same reason the request was announced with", async () => {
     const { broker, asked } = setup(async () => "saves d.json");
     void broker.request("s", "Bash", { command: "x" }, new AbortController().signal);
-    await settle();
+    await flush();
     const id = asked()[0]?.requestId as string;
     expect(broker.reasonOf(id)).toBe("saves, trusts or removes an action. saves d.json");
   });
@@ -70,7 +70,7 @@ describe("a request that carries an extra sentence about itself (#3752)", () => 
   test("a request the hook has nothing to say about keeps the rule's reason", async () => {
     const { broker, asked } = setup(() => undefined);
     void broker.request("s", "Bash", { command: "ls" }, new AbortController().signal);
-    await settle();
+    await flush();
     expect(asked().map((e) => e.riskReason)).toEqual(["saves, trusts or removes an action"]);
     expect(broker.reasonOf(asked()[0]?.requestId as string)).toBeUndefined();
   });
@@ -78,7 +78,7 @@ describe("a request that carries an extra sentence about itself (#3752)", () => 
   test("a hook that fails does not stop the request: it is announced with the rule's reason", async () => {
     const { broker, asked } = setup(() => Promise.reject(new Error("no file")));
     void broker.request("s", "Bash", { command: "x" }, new AbortController().signal);
-    await settle();
+    await flush();
     expect(asked().map((e) => e.riskReason)).toEqual(["saves, trusts or removes an action"]);
   });
 });
@@ -101,12 +101,12 @@ describe("an external session's request carries the same sentence (#3752)", () =
       async (command, cwd) => `saves d.json in ${cwd} for ${command.length}`,
     );
     void hold("fd action save --definition-file d.json");
-    await settle();
+    await flush();
     expect(frames.map((f) => [f.state, f.risk, f.riskReason])).toEqual([
       [
         "open",
         "high",
-        "saves, trusts or removes an action: a saved action is trusted as it is saved and then runs with its secrets, and a trusted one may run, without the person choosing it in the app (flightdeckd action save, trust or remove). saves d.json in /p for 41",
+        "saves, trusts or removes an action: a saved action is trusted as it is saved and then runs with its secrets, and a trusted one may run, without the person choosing it in the app (flightdeckd action save, trust or remove). saves d.json in /p for 39",
       ],
     ]);
   });
@@ -114,7 +114,7 @@ describe("an external session's request carries the same sentence (#3752)", () =
   test("a command with nothing to explain is held with the rule's reason alone", async () => {
     const { frames, hold } = held(() => undefined);
     void hold("fd action trust deploy --hash abc");
-    await settle();
+    await flush();
     expect(
       String(frames[0]?.riskReason).endsWith("(flightdeckd action save, trust or remove)"),
     ).toBe(true);
@@ -123,7 +123,7 @@ describe("an external session's request carries the same sentence (#3752)", () =
   test("a hook that fails still holds the request", async () => {
     const { frames, hold } = held(() => Promise.reject(new Error("no file")));
     void hold("fd action save --definition-file d.json");
-    await settle();
+    await flush();
     expect(frames.map((f) => f.state)).toEqual(["open"]);
   });
 

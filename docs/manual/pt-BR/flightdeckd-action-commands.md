@@ -67,5 +67,7 @@ sido feita: rode `fd action list --plain` antes de tentar de novo.
 
 Quando uma sessão roda `fd action save`, `trust` ou `remove` no próprio shell, o pedido é de **risco alto** e vem para você:
 escreveria um comando que roda com segredos, deixaria um rodar ou apagaria um. `list`, `runs` e `run` continuam comandos
-comuns de shell. No `save` o pedido mostra o caminho do arquivo de definição, não o que há nele, e uma sessão pode mudar o arquivo
-depois da sua resposta: abra o arquivo e negue se não puder ler o que ele roda.
+comuns de shell. No `save` o pedido também diz o que o arquivo de definição traz: o nome, o comando que ele roda (`run`, os primeiros
+300 caracteres), a pasta, os nomes das variáveis de ambiente (nunca os valores), os segredos que usa e o host em que roda.
+Um arquivo que não pode ser lido, passa de 256 KiB ou não é um único objeto JSON é dito como tal, e você deve negar.
+O arquivo é lido quando o pedido aparece, e uma sessão pode mudá-lo depois da sua resposta: negue o que você não puder ler.
