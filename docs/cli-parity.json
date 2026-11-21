@@ -354,7 +354,7 @@
   "quota.watch": { "cli": "quota" },
   "releases.list": {},
   "resources.endOrphan": {},
-  "resources.get": {},
+  "resources.get": { "cli": "resources" },
   "resources.setPauseAt": {},
   "review.add": { "cli": "review" },
   "review.list": { "cli": "review" },
