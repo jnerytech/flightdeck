@@ -127,7 +127,7 @@ describe("cota-ui-historico", () => {
     expect(consumers?.textContent).toContain("atribuição aproximada");
   });
 
-  test("as barras da cota trazem a projeção no tooltip", async () => {
+  test("as barras da cota trazem a projeção como texto", async () => {
     const { d } = await online();
     await act(async () => {
       // A reading of the current window (the daemon's quota runs on the real clock): a host with
@@ -135,12 +135,11 @@ describe("cota-ui-historico", () => {
       d.quota.record([{ ...five(0.4), resetsAt: Date.now() + 3 * 60 * MIN }]);
     });
     const bar = (window: string) =>
-      region("Cota de alfa")?.querySelector(`[data-window="${window}"]`)?.getAttribute("title") ??
-      "";
+      region("Cota de alfa")?.querySelector(`[data-window="${window}"] p`)?.textContent ?? "";
     await settle(() => bar("five_hour") !== "");
     expect(bar("five_hour")).toBe("no ritmo atual, a janela de 5 h esgota às 16:00");
-    // A single reading of the week: nothing to project yet.
-    expect(bar("seven_day")).toBe("poucas leituras para projetar");
+    // The week has no reading yet, so it has nothing to project.
+    expect(bar("seven_day")).toBe("sem leitura ainda");
   });
 
   test("custo estimado na linha da sessão, no detalhe, no card e na execução do workflow", async () => {

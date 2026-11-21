@@ -95,11 +95,11 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
   });
 
   test("the Costs charts say they are loading, then that there is nothing to show", async () => {
-    let answer: (value: null) => void = () => undefined;
+    const answers: Array<(value: null) => void> = [];
     const store = {
       i18n: { t },
       formatTime: () => "16:00",
-      hostCommand: () => new Promise<null>((resolve) => (answer = resolve)),
+      hostCommand: () => new Promise<null>((resolve) => answers.push(resolve)),
     } as never;
     render(
       <TContext.Provider value={t}>
@@ -107,7 +107,7 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       </TContext.Provider>,
     );
     expect(screen.queryByRole("status", { name: t("quotaCharts.loading") }) !== null).toBe(true);
-    answer(null);
+    for (const answer of answers) answer(null);
     await settle(() => screen.queryByText(t("quotaCharts.empty")) !== null);
     expect(screen.queryByText(t("quotaCharts.empty")) !== null).toBe(true);
     expect(screen.queryByRole("status", { name: t("quotaCharts.loading") }) === null).toBe(true);

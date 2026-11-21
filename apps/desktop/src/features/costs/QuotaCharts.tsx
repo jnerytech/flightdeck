@@ -1,7 +1,7 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
-import { Panel } from "@/shared/layout/index.ts";
+import { LoadingState, Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { HISTORY_HOURS, projectionText, SHOWN } from "../quota/index.ts";
@@ -69,7 +69,7 @@ function WindowChart(props: Readonly<{ store: AppStore; history: QuotaHistory }>
 export function QuotaCharts(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const { store, hostId } = props;
-  const [histories, setHistories] = useState<QuotaHistory[]>([]);
+  const [histories, setHistories] = useState<QuotaHistory[] | null>(null);
   useEffect(() => {
     void Promise.all(
       SHOWN.map((window) =>
@@ -83,8 +83,12 @@ export function QuotaCharts(props: Readonly<{ store: AppStore; hostId: string }>
   return (
     <section aria-label={t("quotaCharts.title")}>
       <Panel title={t("quotaCharts.title")}>
+        {histories === null && <LoadingState label={t("quotaCharts.loading")} />}
+        {histories?.length === 0 && (
+          <p className="text-muted-foreground text-sm">{t("quotaCharts.empty")}</p>
+        )}
         <div className="flex flex-wrap gap-6">
-          {histories.map((history) => (
+          {histories?.map((history) => (
             <WindowChart key={history.window} store={store} history={history} />
           ))}
         </div>
