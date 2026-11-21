@@ -13,4 +13,4 @@ export { githubCoords } from "./adapters/remote.ts";
 export type { AlertList } from "./domain/alerts.ts";
 export type { GhResult, GhRunner } from "./domain/gh-runner.ts";
 export { githubStatus } from "./domain/status.ts";
-export { TRUSTED_ASSOCIATIONS } from "./domain/trust.ts";
+export { isExternalComment, TRUSTED_ASSOCIATIONS } from "./domain/trust.ts";

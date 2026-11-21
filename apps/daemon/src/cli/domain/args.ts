@@ -51,7 +51,7 @@ import {
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
-import { readWorktree } from "./worktree-args.ts";
+import { readWorktree, worktreeProblem } from "./worktree-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -749,6 +749,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     reviewProblem(args) ??
     memoryProblem(args) ??
     issuesProblem(args) ??
+    worktreeProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
     checkpointsProblem(args) ??

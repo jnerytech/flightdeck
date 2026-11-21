@@ -33,10 +33,9 @@ function worktreeLine(item: WorktreeItem): string {
 
 /** The worktrees, then the free disk of each project that has one. */
 export function worktreeLines(result: WorktreesResult): string[] {
-  if (result.worktrees.length === 0) return ["no worktrees"];
   const names = new Map(result.worktrees.map((item) => [item.projectId, item.projectName]));
   return [
-    ...result.worktrees.map(worktreeLine),
+    ...(result.worktrees.length === 0 ? ["no worktrees"] : result.worktrees.map(worktreeLine)),
     ...result.disks.map(
       (disk) =>
         `disk ${names.get(disk.projectId) ?? disk.projectId}: ${sizeText(disk.freeBytes)} free of ${sizeText(disk.totalBytes)}`,

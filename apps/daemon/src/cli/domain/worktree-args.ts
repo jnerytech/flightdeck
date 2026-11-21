@@ -14,6 +14,13 @@ export function readWorktree(args: CliArgs, reader: ArgReader): void {
     args.worktreeProject = operand(reader, "the project");
 }
 
+/** `--query` is shared with other nouns and means nothing to `worktree list`: refuse it, not ignore it. */
+export function worktreeProblem(args: CliArgs): string | undefined {
+  return args.command === "worktree" && args.query !== undefined
+    ? "--query: on worktree this flag only applies to flightdeckd issues list"
+    : undefined;
+}
+
 /** What the worktree runner takes from the parsed arguments. */
 export function worktreeCliArgs(args: CliArgs): WorktreeCliArgs {
   return {
