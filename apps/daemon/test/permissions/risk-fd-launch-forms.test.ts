@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { VALUE_FLAGS } from "../../src/cli/domain/args.ts";
-import { OPTIONS_WITH_VALUE, VERB_NOUNS } from "../../src/permissions/domain/shell-call.ts";
+import { OPTIONS_WITH_VALUE } from "../../src/permissions/domain/shell-call.ts";
+import { VERB_NOUNS } from "../../src/permissions/domain/verb-nouns.ts";
 import { bash, MEDIUM } from "../support/permissions-risk-rules.ts";
 
 /** Each line is rated as `plain` is, and `plain` is high: the form only changes how the CLI is reached. */
@@ -162,12 +163,43 @@ describe("the option list of the shell rules (#3566)", () => {
 describe("the nouns whose verb the shell rules read (#3627)", () => {
   test("it holds exactly these nouns: none lost, none new, each once", () => {
     const nouns = [
-      ...["card", "history", "approvers", "persona", "team", "quota", "budget", "costs"],
-      ...["session", "rules", "autoapprove", "plugins", "project", "agentcfg", "ssh", "watch"],
-      ...["snippet", "boardsync", "review", "memory", "runenv", "automation", "message", "mcp"],
-      ...["knowledge", "changes", "file", "rewind", "action", "logs"],
+      "action",
+      "agentcfg",
+      "approvers",
+      "autoapprove",
+      "automation",
+      "boardsync",
+      "budget",
+      "card",
+      "changes",
+      "costs",
+      "file",
+      "history",
+      "knowledge",
+      "logs",
+      "mcp",
+      "memory",
+      "message",
+      "persona",
+      "plugins",
+      "project",
+      "quota",
+      "review",
+      "rewind",
+      "rules",
+      "runenv",
+      "session",
+      "snippet",
+      "ssh",
+      "team",
+      "watch",
     ];
     expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());
     expect(new Set(nouns).size).toBe(nouns.length);
+  });
+
+  test("it is kept in alphabetical order, so two PRs that add a noun do not edit the same place (#3759)", () => {
+    const sorted = [...VERB_NOUNS].sort((a, b) => (a < b ? -1 : Number(a > b)));
+    expect([...VERB_NOUNS]).toEqual(sorted);
   });
 });
