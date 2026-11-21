@@ -149,6 +149,16 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-resources-commands.md) Suas seções:
 
 - [fd resources](flightdeckd-resources-commands.md#fd-resources)
+- [fd resources pause-at](flightdeckd-resources-commands.md#fd-resources-pause-at)
+- [fd resources end-orphan](flightdeckd-resources-commands.md#fd-resources-end-orphan)
+
+## Comandos do flightdeckd: as chaves de um host
+
+[Ler o capítulo.](flightdeckd-host-commands.md) Suas seções:
+
+- [fd host sleep](flightdeckd-host-commands.md#fd-host-sleep)
+- [fd host keep-awake, pause e updates](flightdeckd-host-commands.md#fd-host-keep-awake-pause-e-updates)
+- [fd host bypass](flightdeckd-host-commands.md#fd-host-bypass)
 
 ## Comandos do flightdeckd: sessões de terminal e nomes
 
