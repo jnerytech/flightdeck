@@ -270,6 +270,8 @@ describe("memoria-ui: o nome de uma memória nova (#3708)", () => {
     expect(create().disabled).toBe(true);
     await fill("Nome do arquivo", "user_role.md");
     expect(screen.queryByText("Já existe uma memória com este nome.")).not.toBeNull();
+    await fill("Nome do arquivo", "solta .md");
+    expect(screen.queryByText("Já existe uma memória com este nome.")).not.toBeNull();
     await fill("Nome do arquivo", "notas.md");
     expect(create().disabled).toBe(false);
     await click("Criar");
