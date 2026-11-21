@@ -134,11 +134,16 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
   });
 
   test("a late answer of the first host never shows once another host is picked", async () => {
-    let late: (value: unknown) => void = () => {};
+    // Both of the first host's reads wait; each is answered after the second host is picked.
+    const late: Array<() => void> = [];
     await report(
       lang,
       (host, type, nth) => {
-        if (host === "h1" && nth === 1) return new Promise((resolve) => void (late = resolve));
+        if (host === "h1" && nth === 1) {
+          return new Promise((resolve) => {
+            late.push(() => resolve(answers(host, type, nth)));
+          });
+        }
         if (host === "h1") return answers(host, type, nth);
         return new Promise(() => {});
       },
@@ -150,7 +155,7 @@ describe.each(["en", "pt-BR"] as const)("the vault Report tab, its states (%s)",
       fireEvent.change(select, { target: { value: "h2" } });
     });
     await act(async () => {
-      late({ rows: [ROW], decisions: [DECISION] });
+      for (const answer of late) answer();
     });
     expect(hasTable()).toBe(false);
     expect(screen.queryByRole("status", { name: w.loading }) !== null).toBe(true);
