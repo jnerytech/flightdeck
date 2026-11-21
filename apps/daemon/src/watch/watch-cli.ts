@@ -6,6 +6,7 @@
  */
 import {
   type CliResult,
+  type DaemonClient,
   json,
   type RemoteTarget,
   resolveProject,
@@ -63,13 +64,16 @@ export function runWatchCli(
         const found = await daemon.call("watch.byUrl", { url: args.target });
         return args.json ? json(byUrlJson(found)) : said(...byUrlLines(found));
       }
-      const { projects } = await daemon.call("project.list", {});
-      const chosen = resolveProject(projects, args.target);
-      if ("refusal" in chosen) return chosen.refusal;
-      const settings = await daemon.call("watch.settings", { projectId: chosen.id });
-      return args.json
-        ? json(settingsJson(settings))
-        : said(...settingsLines(chosen.name, settings));
+      return settingsOf(args, daemon);
     },
   });
+}
+
+/** A project's watch settings: the project is a name or an id, so it is looked up first. */
+async function settingsOf(args: WatchCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { projects } = await daemon.call("project.list", {});
+  const chosen = resolveProject(projects, args.target);
+  if ("refusal" in chosen) return chosen.refusal;
+  const settings = await daemon.call("watch.settings", { projectId: chosen.id });
+  return args.json ? json(settingsJson(settings)) : said(...settingsLines(chosen.name, settings));
 }

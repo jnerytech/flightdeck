@@ -58,6 +58,12 @@ export const said = (...out: string[]): CliResult => ({
   out: out.map(plain),
   err: [],
 });
+/** The answer as JSON when the person asked for it, else as the lines `text` makes of it. */
+export const shown = <T>(
+  asJson: boolean | undefined,
+  value: T,
+  text: (value: T) => string[],
+): CliResult => (asJson ? json(value) : said(...text(value)));
 
 export const failure = (code: 1 | 2, message: string, reason?: string): CliResult => ({
   code,
