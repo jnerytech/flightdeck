@@ -121,6 +121,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 [Ler o capítulo.](pt-BR/flightdeckd-memory-commands.md) Suas seções:
 
 - [fd memory](pt-BR/flightdeckd-memory-commands.md#fd-memory)
+- [Mudar uma nota](pt-BR/flightdeckd-memory-commands.md#mudar-uma-nota)
 
 ## Comandos do flightdeckd: o ambiente de execução de um cartão
 

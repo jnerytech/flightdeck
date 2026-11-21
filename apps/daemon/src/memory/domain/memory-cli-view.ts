@@ -65,6 +65,6 @@ export const suggestLines = (suggestions: readonly MemorySuggestion[]): string[]
       );
 
 /** What a write printed: the file and the hash a later write repeats. */
-export const wroteLine = (_name: string, _hash: string): string => "";
+export const wroteLine = (name: string, hash: string): string => `wrote ${name}  hash: ${hash}`;
 
-export const deletedLine = (_name: string): string => "";
+export const deletedLine = (name: string): string => `deleted ${name}`;

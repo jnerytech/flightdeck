@@ -3,6 +3,7 @@
  * app's Memory screen) from a terminal. They ask the daemon for what it already keeps and change nothing.
  * Exit codes: 0 done, 1 refused, 2 no daemon.
  */
+import { readFile } from "node:fs/promises";
 import {
   type CliResult,
   DaemonRefusal,
@@ -27,6 +28,10 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+/** The new content: a file, or standard input for `-`. */
+const contentOf = (file: string, stdin: ReadableStream<Uint8Array>): Promise<string> =>
+  file === "-" ? new Response(stdin).text() : readFile(file, "utf8");
+
 const UNSURE =
   "; the memory file may or may not have changed: read it again before you write again";
 
@@ -45,7 +50,7 @@ export type MemoryCliArgs = { project: string; json?: boolean } & (
   | { action: "delete"; name: string; expectedHash: string; confirm: true }
 );
 
-export function runMemoryCli(
+export async function runMemoryCli(
   args: MemoryCliArgs,
   config: { bind: string; port: number; token: string },
   options: {
@@ -54,13 +59,21 @@ export function runMemoryCli(
     stdin?: ReadableStream<Uint8Array> | undefined;
   } = {},
 ): Promise<CliResult> {
+  let content = "";
+  if (args.action === "write") {
+    try {
+      content = await contentOf(args.file, options.stdin ?? Bun.stdin.stream());
+    } catch {
+      return failure(1, `memory write: cannot read the content from ${args.file}`);
+    }
+  }
   return runOnLocalDaemon({
     config,
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-memory",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
-    perform: async (daemon) => {
+    perform: async (daemon, note) => {
       const { projects } = await daemon.call("project.list", {});
       const found = resolveProject(projects, args.project);
       if ("refusal" in found) return found.refusal;
@@ -81,10 +94,24 @@ export function runMemoryCli(
             const budget = await daemon.call("memory.budget", { projectId });
             return args.json ? json(budget) : said(...budgetLines(budget));
           }
-          case "write":
-            return said("");
-          case "delete":
-            return said("");
+          case "write": {
+            const { name, expectedHash } = args;
+            note.wrote = true;
+            const { hash } = await daemon.call("memory.write", {
+              projectId,
+              name,
+              content,
+              expectedHash,
+              confirm: true,
+            });
+            return args.json ? json({ name, hash }) : said(wroteLine(name, hash));
+          }
+          case "delete": {
+            const { name, expectedHash } = args;
+            note.wrote = true;
+            await daemon.call("memory.delete", { projectId, name, expectedHash, confirm: true });
+            return args.json ? json({ name }) : said(deletedLine(name));
+          }
           case "suggest": {
             const { suggestions } = await daemon.call("memory.suggest", { projectId });
             return args.json

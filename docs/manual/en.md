@@ -128,6 +128,7 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 [Read the chapter.](en/flightdeckd-memory-commands.md) Its sections:
 
 - [fd memory](en/flightdeckd-memory-commands.md#fd-memory)
+- [Changing a note](en/flightdeckd-memory-commands.md#changing-a-note)
 
 ## flightdeckd commands: the run environment of a card
 
