@@ -61,12 +61,15 @@ export function HostOfflineBanner(
   const seconds = retry ? Math.max(0, Math.ceil((retry.nextRetryAt - now) / 1000)) : 0;
   const hint = offlineHint(kind, host.url, host.hostInfo?.os ?? null);
   const answered = asked !== null && !connecting && (retry?.lastTryAt ?? 0) > asked;
-  const copy = (command: string) =>
+  const copy = (command: string) => {
+    // A copy during a try is not announced: the live region keeps the try's own words, then its answer.
+    const during = connecting;
     void props
       .onCopy(command)
-      .then((landed) => landed && setCopied((n) => n + 1))
-      // A clipboard that refuses says nothing: there is nothing the person can do about it here.
+      .then((landed) => landed && !during && setCopied((n) => n + 1))
+      // A refusal is already reported by the store's own failure notice; the live region only confirms.
       .catch(() => {});
+  };
   const status = (() => {
     if (connecting && asked !== null) return t("hostOffline.connecting");
     if (copied > 0) return t("hostOffline.copied");
