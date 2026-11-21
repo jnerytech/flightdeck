@@ -40,9 +40,8 @@ export function statusLines(project: string, status: BoardSyncStatus): string[] 
   if (status.pausedUntil) lines.push(`  paused until: ${status.pausedUntil}`);
   if (status.lastError) lines.push(`  last error: ${status.lastError}`);
   if (status.truncated) lines.push("  the board has more items than one pull reads");
-  const map = Object.entries(status.columnMap ?? {});
-  if (map.length > 0)
-    lines.push(`  map: ${map.map(([from, to]) => `${from} -> ${to}`).join(", ")}`);
+  const map = Object.entries(status.columnMap ?? {}).map(([from, to]) => `${from} -> ${to}`);
+  if (map.length > 0) lines.push(`  map: ${map.join(", ")}`);
   if (status.statusOptions && status.statusOptions.length > 0)
     lines.push(`  statuses: ${status.statusOptions.join(", ")}`);
   return lines;

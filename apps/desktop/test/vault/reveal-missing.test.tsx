@@ -105,7 +105,7 @@ for (const lang of ["en", "pt-BR"] as const) {
       const button = screen.queryByRole("button", { name: WORDS[lang].reveal });
       expect(button).not.toBeNull();
       await settleMaybe(() => document.activeElement === button, 600);
-      expect(document.activeElement === button).toBe(true);
+      expect(document.activeElement).toBe(button);
     });
 
     test("Copy says the same and writes nothing to the clipboard", async () => {

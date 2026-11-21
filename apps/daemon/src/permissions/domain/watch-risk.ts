@@ -1,7 +1,8 @@
 import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
 
 /** The flags that only choose the daemon or the output, and change nothing (`watch settings`, `boardsync set-push`). */
-const READING_FLAGS = ["--json", "--host", "--config"];
+/** The flags that only choose the daemon or the output; `mcp-risk.ts` reads the same list. */
+export const READING_FLAGS = new Set(["--json", "--host", "--config"]);
 
 /**
  * Whether the only change the words ask for is `off` (`--disable` for a watch, `--off` for a board push): turning
@@ -10,7 +11,7 @@ const READING_FLAGS = ["--json", "--host", "--config"];
  */
 export const onlyTurnsOff = (own: string[], off: string) => {
   if (own.some(isExpanded)) return false;
-  const changes = own.filter((word) => word.startsWith("--") && !READING_FLAGS.includes(word));
+  const changes = own.filter((word) => word.startsWith("--") && !READING_FLAGS.has(word));
   return changes.length === 1 && changes[0] === off;
 };
 
@@ -29,7 +30,7 @@ export function changesAWatch(prog: string, args: string[]): boolean {
     if (action === "set") return !onlyTurnsOff(own, "--disable");
     if (action === "settings")
       return (
-        own.some((w) => w.startsWith("--") && !READING_FLAGS.includes(w)) &&
+        own.some((w) => w.startsWith("--") && !READING_FLAGS.has(w)) &&
         !onlyTurnsOff(own, "--disable")
       );
     if (action === "resolve-held")

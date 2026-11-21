@@ -249,4 +249,34 @@ describe("webhook-alvos: switching a target's type (#263)", () => {
     await targets.update(other.id, { type: "ntfy", signingSecret: "tk_new" });
     expect(vault.get(`webhook-sign:${other.id}`)).toBe("tk_new");
   });
+
+  test("a target changed to Slack or Discord drops the secret it had, so a switch back to generic signs nothing (#3674)", async () => {
+    const { targets, vault } = setup();
+    for (const type of ["slack", "discord"] as const) {
+      const hook = await targets.add(input({ type: "generic", signingSecret: "abc" }));
+      await targets.update(hook.id, { type });
+      expect(vault.has(`webhook-sign:${hook.id}`)).toBe(false);
+      await targets.update(hook.id, { type: "generic" });
+      expect((await targets.secrets(hook.id))?.signingSecret).toBeNull();
+    }
+  });
+
+  test("an ntfy token is not a signing secret: a target changed from ntfy to generic drops it (#3674)", async () => {
+    const { targets, vault } = setup();
+    const topic = await targets.add(
+      input({ type: "ntfy", url: "https://ntfy.sh/alerts", signingSecret: "tk_abc" }),
+    );
+    await targets.update(topic.id, { type: "generic" });
+    expect(vault.has(`webhook-sign:${topic.id}`)).toBe(false);
+  });
+
+  test("an edit that keeps the type keeps the secret, and a new secret with a type change is stored (#3674)", async () => {
+    const { targets, vault } = setup();
+    const hook = await targets.add(input({ type: "generic", signingSecret: "abc" }));
+    await targets.update(hook.id, { name: "Renamed" });
+    expect(vault.get(`webhook-sign:${hook.id}`)).toBe("abc");
+    await targets.update(hook.id, { type: "ntfy", url: "https://ntfy.sh/alerts" });
+    await targets.update(hook.id, { type: "generic", signingSecret: "fresh" });
+    expect(vault.get(`webhook-sign:${hook.id}`)).toBe("fresh");
+  });
 });
