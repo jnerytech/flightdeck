@@ -166,7 +166,8 @@ live; the list is the project's, so a session of another project never shows her
   (failing checks, a conflict, changes requested, or a watch that needs you). A row names the card, its host and project, its
   checks, whether **Watch and fix** is off, watching or needs you, and a link to the PR. **Merge
   PR** asks first, with the same confirm as the card page, and is offered only when the host can
-  merge and the checks are not failing; **Update from the base** rebases the card's branch, and a
+  merge and the checks are not failing (a row with failing checks says that merge is off until they
+  pass); **Update from the base** rebases the card's branch, and a
   conflict stays on screen with the files. With two or more PRs that can take it (a branch, and not
   running), **Update N from the base** above the list updates them all, one at a time, each on its
   own host, as the board's selection bar does: a PR already on its base is left alone, a conflict

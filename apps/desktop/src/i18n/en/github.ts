@@ -68,7 +68,7 @@ export const github = {
     updateLeftOut: "Left out: {items}.",
     refused: "{title}: {reason}",
     noHosts: "No host is online.",
-    watchOff: "Watch and fix is off",
+    watchOff: "Watch and fix is off: turn it on from the card",
     conflict: "Conflicts with the base",
     mergeClean: "No conflicts",
     mergeBlocked: "Blocked from merging",
