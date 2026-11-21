@@ -16,11 +16,14 @@ const actionJson = (action: Automation["action"]) =>
       }
     : action;
 
+/** One automation with every key, as `list`, `save`, `enable` and `disable` print it with `--json`. */
+export const automationJson = (automation: Automation) => ({
+  ...automation,
+  action: actionJson(automation.action),
+});
+
 export const listJson = (automations: readonly Automation[]) => ({
-  automations: automations.map((automation) => ({
-    ...automation,
-    action: actionJson(automation.action),
-  })),
+  automations: automations.map(automationJson),
 });
 
 export const runsJson = (runs: readonly AutomationRun[]) => ({
@@ -62,6 +65,14 @@ function automationLine(automation: Automation): string {
   ];
   if (automation.allowExternalAuthors) parts.push("external authors allowed");
   return `${automation.id}: ${parts.join(", ")}`;
+}
+
+/** What a write did to an automation, then the automation as `list` shows it. */
+export function changedLine(
+  verb: "saved" | "enabled" | "disabled",
+  automation: Automation,
+): string {
+  return `${verb} ${automationLine(automation)}`;
 }
 
 /** A project's automations, one line each; a project with none says so. */

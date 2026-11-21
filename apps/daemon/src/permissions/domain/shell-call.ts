@@ -494,6 +494,10 @@ export const OPTIONS_WITH_VALUE = [
   "--resume",
   "--cols",
   "--rows",
+  "--automation",
+  "--max-runs",
+  "--external-authors",
+  "--definition-file",
   "--digest",
   "--branch",
   "--remote",
@@ -638,32 +642,11 @@ export function shellReadings(args: string[]): string[][] {
 }
 
 /** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
-const VERB_NOUNS = new Set([
-  "card",
-  "history",
-  "approvers",
-  "persona",
-  "team",
-  "quota",
-  "budget",
-  "costs",
-  "session",
-  "rules",
-  "autoapprove",
-  "plugins",
-  "project",
-  "agentcfg",
-  "ssh",
-  "watch",
-  "snippet",
-  "boardsync",
-  "review",
-  "runenv",
-  "message",
-  "mcp",
-  "changes",
-  "file",
-]);
+export const VERB_NOUNS = new Set(
+  "card history approvers persona team quota budget costs session rules autoapprove plugins project agentcfg ssh watch snippet boardsync review runenv automation message mcp changes file".split(
+    " ",
+  ),
+);
 
 /**
  * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,
