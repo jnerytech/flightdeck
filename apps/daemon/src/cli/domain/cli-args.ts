@@ -62,6 +62,9 @@ export interface CliArgs {
     | "issues"
     | "runenv"
     | "changes"
+    | "snapshots"
+    | "rewind"
+    | "trace"
     | "file"
     | "automation"
     | "requests"
@@ -262,6 +265,12 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
+  /** `snapshots list|files`, `rewind preview` and `trace get|export`: the Claude session id. */
+  checkpointSession?: string;
+  /** `snapshots files <id> <n>` and `rewind preview <id> <turn>`: the turn number. */
+  checkpointTurn?: number;
+  /** `trace export --include-content`: the prompts and results too, with secrets replaced. */
+  includeContent?: true;
   /** `memory list|read|budget|suggest <project>`: the project, by name or id. */
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */

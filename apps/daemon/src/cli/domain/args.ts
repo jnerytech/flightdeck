@@ -13,6 +13,13 @@ import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-ar
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import { refuseCardFlags } from "./card-args.ts";
 import { CHANGES_FLAGS, changesProblem, readChanges, takeChangesFlags } from "./changes-args.ts";
+import {
+  CHECKPOINT_FLAGS,
+  checkpointsProblem,
+  readRewind,
+  readSnapshots,
+  readTrace,
+} from "./checkpoints-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
@@ -330,6 +337,9 @@ const HANDLERS: Record<string, Handler> = {
   issues: readIssues,
   runenv: readRunenv,
   changes: readChanges,
+  snapshots: readSnapshots,
+  rewind: readRewind,
+  trace: readTrace,
   file: readFile,
   automation: readAutomation,
   terminal: readTerminal,
@@ -564,6 +574,7 @@ const HANDLERS: Record<string, Handler> = {
   ...BOARDSYNC_FLAGS,
   ...REVIEW_FLAGS,
   ...CHANGES_FLAGS,
+  ...CHECKPOINT_FLAGS,
   ...FILE_FLAGS,
   "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
@@ -740,6 +751,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     issuesProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
+    checkpointsProblem(args) ??
     fileProblem(args) ??
     actionProblem(args) ??
     automationProblem(args) ??
