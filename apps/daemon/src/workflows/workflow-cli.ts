@@ -95,7 +95,8 @@ export function runWorkflowCli(
         return shown(args.json, info, () => infoLines(info));
       }
       if (args.action === "template-add") {
-        note.wrote = true;
+        // Without --confirm the daemon always refuses, so nothing can have been written.
+        if (args.confirm) note.wrote = true;
         const added = await daemon.call("workflow.template.add", {
           projectId,
           templateId: args.templateId,

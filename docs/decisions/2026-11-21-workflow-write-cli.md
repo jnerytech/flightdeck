@@ -31,5 +31,6 @@ step). Under CLI first (#3423) each needs a verb.
 ## Consequences
 
 - A flag before the verb (`workflow --json list api`) is still refused, as for the other nouns.
-- `resume` over `--host` reports `transport_refused` for the check and for the confirmed form; run it on the host.
+- Over `--host`, the `resume` check reports `transport_refused` as its reason, while `resume --confirm` and `template-add`
+  are refused with an error (exit 1, the daemon's text); run them on the host.
 - The shell rule reads the words, not the file: a script that runs the verb is rated by the script's own line.
