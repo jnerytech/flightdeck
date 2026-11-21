@@ -11,7 +11,9 @@
     "cli": "action"
   },
   "actions.runFree": {},
-  "actions.runs": {},
+  "actions.runs": {
+    "cli": "action"
+  },
   "actions.save": {},
   "actions.trust": {},
   "activity.since": {},
