@@ -5,6 +5,7 @@
  * deletes it from the project's .mcp.json and `toggle` turns it on or off; a daemon that does not answer one
  * of the last two leaves its result unknown. Exit codes: 0 done, 1 refused, 2 no daemon.
  */
+import { readFile } from "node:fs/promises";
 import {
   type CliResult,
   failure,
@@ -23,6 +24,7 @@ import {
   testJson,
   testLines,
 } from "./domain/mcp-cli-view.ts";
+import { serverFromText } from "./domain/mcp-input.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -35,14 +37,33 @@ export type McpCliArgs = { json?: boolean } & (
   | { action: "list"; project: string }
   | { action: "status"; session: string }
   | { action: "test"; project: string; server: string; confirm?: true }
+  | { action: "save"; project: string; file: string }
   | { action: "remove"; project: string; server: string }
   | { action: "toggle"; project: string; server: string; enabled: boolean; session?: string }
 );
 
+/** The server the file describes (`-` is standard input), or what is wrong with reading it. */
+async function readServer(
+  file: string,
+  stdin: ReadableStream<Uint8Array>,
+): Promise<ReturnType<typeof serverFromText>> {
+  try {
+    return serverFromText(
+      file === "-" ? await new Response(stdin).text() : await readFile(file, "utf8"),
+    );
+  } catch {
+    return { problem: `cannot read the server from ${file}` };
+  }
+}
+
 export function runMcpCli(
   args: McpCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
+  options: {
+    timeoutMs?: number;
+    remote?: RemoteTarget;
+    stdin?: ReadableStream<Uint8Array> | undefined;
+  } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
@@ -62,6 +83,20 @@ export function runMcpCli(
       if (args.action === "list") {
         const { servers } = await daemon.call("mcp.list", { projectId });
         return shown(args.json, { servers: servers.map(serverJson) }, () => listLines(servers));
+      }
+      if (args.action === "save") {
+        const read = await readServer(args.file, options.stdin ?? Bun.stdin.stream());
+        if ("problem" in read) return failure(1, `mcp save: ${read.problem}`);
+        note.wrote = true;
+        const { servers } = await daemon.call("mcp.save", {
+          projectId,
+          server: read.server,
+          confirm: true,
+        });
+        return shown(args.json, { servers: servers.map(serverJson) }, () => [
+          `saved ${read.server.name}`,
+          ...listLines(servers),
+        ]);
       }
       if (args.action === "remove" || args.action === "toggle") {
         note.wrote = true;

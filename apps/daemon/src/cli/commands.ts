@@ -366,7 +366,10 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     if (args.action !== undefined) {
       const { runMcpCli } = await import("../agentcfg/index.ts");
       return asking(args, deps, (config, remote) =>
-        runMcpCli(mcpCliArgs(args), config, remote ? { remote } : {}),
+        runMcpCli(mcpCliArgs(args), config, {
+          ...(remote ? { remote } : {}),
+          stdin: deps.stdin,
+        }),
       );
     }
     const { daemonUrl } = await import("../daemon-client/index.ts");
