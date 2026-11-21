@@ -33,5 +33,5 @@ também é do mod.
 recebe um número inteiro de 1 a 500. Com `--json` imprime `{ "runs": [ ... ] }` como o host responde.
 
 `--project <nome ou id>` indica o projeto; um nome que dois projetos compartilham é recusado com os ids deles. Sem ele,
-pede-se as ações e execuções do próprio host. `--host <nome>` lê um host pareado. Saída `0` feito, `1` recusado, `2` sem
+`list` pede as ações do próprio host e `runs` as execuções de todos os projetos do host. `--host <nome>` lê um host pareado. Saída `0` feito, `1` recusado, `2` sem
 daemon.

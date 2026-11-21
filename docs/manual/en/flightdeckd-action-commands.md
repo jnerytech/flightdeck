@@ -31,6 +31,6 @@ is the mod's too.
 `output cut`) and the output, indented. Secrets in the output are already masked by the host. `--limit` takes a whole
 number from 1 to 500. With `--json` it prints `{ "runs": [ ... ] }` as the host answers.
 
-`--project <name or id>` names the project; a name that two projects share is refused with their ids. Without it the
-host's own actions and runs are asked for. `--host <name>` reads a paired host. Exit `0` done, `1` refused, `2` no
+`--project <name or id>` names the project; a name that two projects share is refused with their ids. Without it `list` asks
+for the host's own actions and `runs` for the runs of every project on the host. `--host <name>` reads a paired host. Exit `0` done, `1` refused, `2` no
 daemon.
