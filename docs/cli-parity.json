@@ -235,7 +235,7 @@
   "maintenance.status": {},
   "mcp.list": { "cli": "mcp" },
   "mcp.remove": { "cli": "mcp" },
-  "mcp.save": {},
+  "mcp.save": { "cli": "mcp" },
   "mcp.status": { "cli": "mcp" },
   "mcp.test": { "cli": "mcp" },
   "mcp.toggle": { "cli": "mcp" },

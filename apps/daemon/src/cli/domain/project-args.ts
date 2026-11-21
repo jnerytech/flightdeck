@@ -163,6 +163,17 @@ const FOLDERS: Record<string, number> = {
 /** The flags other commands read too: outside `project` they are theirs, so only a `project` verb checks them. */
 const SHARED_FLAGS = new Set(["--name", "--confirm"]);
 
+/** `project harness-export <folder> <template id> <title>`: three words, a valid template id and a title. */
+function harnessExportProblem(verb: string, words: readonly string[]): string | undefined {
+  if (words.length < 3)
+    return `${verb}: missing the ${["folder", "template id", "title"][words.length]}`;
+  if (words.length > 3) return `${verb}: quote the title, got ${words.length - 2} words for it`;
+  if (!HARNESS_TEMPLATE_ID.test(words[1] ?? ""))
+    return `${verb}: a template id is lower case letters, digits and dashes (up to 40)`;
+  if ((words[2] ?? "").trim() === "") return `${verb}: the title is blank`;
+  return undefined;
+}
+
 /** What is wrong with the operands of a `project` verb: a missing or extra folder, project, id or title. */
 function operandProblem(args: ProjectArgs): string | undefined {
   const verb = `project ${args.action}`;
@@ -172,15 +183,7 @@ function operandProblem(args: ProjectArgs): string | undefined {
     if (words.length > 1) return `${verb}: give one project, got ${words.length}`;
     return undefined;
   }
-  if (args.action === "harness-export") {
-    if (words.length < 3)
-      return `${verb}: missing the ${["folder", "template id", "title"][words.length]}`;
-    if (words.length > 3) return `${verb}: quote the title, got ${words.length - 2} words for it`;
-    if (!HARNESS_TEMPLATE_ID.test(words[1] ?? ""))
-      return `${verb}: a template id is lower case letters, digits and dashes (up to 40)`;
-    if ((words[2] ?? "").trim() === "") return `${verb}: the title is blank`;
-    return undefined;
-  }
+  if (args.action === "harness-export") return harnessExportProblem(verb, words);
   const paths = args.projectPaths ?? [];
   if (paths.length === 0) return `${verb}: missing the folder`;
   if (paths.length > (FOLDERS[args.action ?? ""] ?? 1))
@@ -266,25 +269,8 @@ const projectFields = (
   ...(args.personaName === undefined ? {} : { name: args.personaName }),
   ...args.projectFields,
 });
-/** What the person typed for `project`, as `runProjectCli` takes it: the parser checked the folders and the parts. */
-export function projectCliArgs(args: CliArgs): ProjectCliArgs {
-  const printed = args.json ? { json: true as const } : {};
-  const paths = args.projectPaths ?? [];
-  const path = paths[0] ?? "";
-  if (args.action === "trust-state") return { action: "trust-state", paths, ...printed };
-  if (args.action === "stack") return { action: "stack", path, ...printed };
-  if (args.action === "trust-inspect") return { action: "trust-inspect", path, ...printed };
-  if (args.action === "add")
-    return { action: "add", path, fields: projectFields(args), ...printed };
-  if (args.action === "update")
-    return {
-      action: "update",
-      project: args.projectRef ?? "",
-      fields: projectFields(args),
-      ...printed,
-    };
-  if (args.action === "detect-provider")
-    return { action: "detect-provider", project: args.projectRef ?? "", ...printed };
+/** What the person typed for the `harness-*` verbs of `project`; `harness-preview` is the one left when no other verb matches. */
+function harnessCliArgs(args: CliArgs, path: string, printed: { json?: true }): ProjectCliArgs {
   if (args.action === "harness-draft") return { action: "harness-draft", path, ...printed };
   if (args.action === "harness-export")
     return {
@@ -320,4 +306,26 @@ export function projectCliArgs(args: CliArgs): ProjectCliArgs {
     ...(args.projectTemplate === undefined ? {} : { template: args.projectTemplate }),
     ...printed,
   };
+}
+
+/** What the person typed for `project`, as `runProjectCli` takes it: the parser checked the folders and the parts. */
+export function projectCliArgs(args: CliArgs): ProjectCliArgs {
+  const printed = args.json ? { json: true as const } : {};
+  const paths = args.projectPaths ?? [];
+  const path = paths[0] ?? "";
+  if (args.action === "trust-state") return { action: "trust-state", paths, ...printed };
+  if (args.action === "stack") return { action: "stack", path, ...printed };
+  if (args.action === "trust-inspect") return { action: "trust-inspect", path, ...printed };
+  if (args.action === "add")
+    return { action: "add", path, fields: projectFields(args), ...printed };
+  if (args.action === "update")
+    return {
+      action: "update",
+      project: args.projectRef ?? "",
+      fields: projectFields(args),
+      ...printed,
+    };
+  if (args.action === "detect-provider")
+    return { action: "detect-provider", project: args.projectRef ?? "", ...printed };
+  return harnessCliArgs(args, path, printed);
 }
