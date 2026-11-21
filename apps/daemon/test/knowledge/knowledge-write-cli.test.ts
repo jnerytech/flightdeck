@@ -1,16 +1,16 @@
 import { afterAll, afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runKnowledgeCli } from "../../src/knowledge/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { config, fakeDaemon, type Handlers, project, stopAll } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
+import { tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 afterEach(stopAll);
 
-const dir = mkdtempSync(join(tmpdir(), "knowledge-write-"));
+const dir = tempDir("knowledge-write-");
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const HASH = "b".repeat(64);
