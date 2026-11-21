@@ -44,8 +44,7 @@ function rowProblem(name: string, row: unknown, cliCommands: ReadonlySet<string>
     return `${name}: a row names a CLI command or an app-only reason, not both`;
   if (row.cli !== undefined && !cliCommands.has(row.cli))
     return `${name}: the row names the CLI command "${row.cli}", which flightdeckd does not have`;
-  if (row.appOnly !== undefined && row.appOnly.trim() === "")
-    return `${name}: an app-only row needs its reason`;
+  if (row.appOnly?.trim() === "") return `${name}: an app-only row needs its reason`;
   return null;
 }
 
