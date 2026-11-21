@@ -205,6 +205,8 @@ export interface CliArgs {
   agentcfgFile?: string;
   agentcfgHash?: string;
   agentcfgNew?: true;
+  /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
+  mcpWords?: string[];
   /** `terminal close <terminal>`: the terminal to close, its id. */
   terminalId?: string;
   /** `terminal open|open-session --cols <n> --rows <n>`: the size the terminal opens at. */

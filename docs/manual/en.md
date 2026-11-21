@@ -122,6 +122,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd runenv](en/flightdeckd-runenv-commands.md#fd-runenv)
 
+## flightdeckd commands: the MCP servers of a project
+
+[Read the chapter.](en/flightdeckd-mcp-commands.md) Its sections:
+
+- [fd mcp](en/flightdeckd-mcp-commands.md#fd-mcp)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)

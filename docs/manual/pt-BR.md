@@ -115,6 +115,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd runenv](pt-BR/flightdeckd-runenv-commands.md#fd-runenv)
 
+## Comandos do flightdeckd: os servidores MCP de um projeto
+
+[Ler o capítulo.](pt-BR/flightdeckd-mcp-commands.md) Suas seções:
+
+- [fd mcp](pt-BR/flightdeckd-mcp-commands.md#fd-mcp)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)
