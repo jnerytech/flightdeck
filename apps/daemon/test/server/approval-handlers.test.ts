@@ -403,7 +403,7 @@ describe("approval-handlers: approval.watch announces the devices enrolled and r
     // A device that does enroll reaches the watcher and not the client that never asked.
     await enrollFirst(device());
     await poll(() => approvalFrames(client)[0]);
-    expect(approvalFrames(client).length).toBe(1);
+    expect(approvalFrames(client)).toHaveLength(1);
     await other.request("approval.list", {});
     expect(approvalFrames(other)).toEqual([]);
   });

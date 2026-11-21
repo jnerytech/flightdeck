@@ -61,7 +61,7 @@ function enroll(approvers: ReturnType<typeof permissions>["approvers"]) {
 describe("approval-reach: the permission domain builds the approvers once, for the server and the gates", () => {
   test("Given the permission domain, Then its server module carries the approvers", () => {
     const { modules, approvers } = permissions();
-    expect((modules[0].server as { approvers?: unknown }).approvers === approvers).toBe(true);
+    expect((modules[0].server as { approvers?: unknown }).approvers).toBe(approvers);
   });
 
   test("Given two builds on one database, Then the daemon id is the same", () => {
@@ -149,7 +149,7 @@ describe("approval-reach: a gate handed to the session manager guards a managed 
         }),
       ),
     ).toBe("approval_proof_required");
-    expect(store.pendingPermissions(sessionId).length).toBe(1);
+    expect(store.pendingPermissions(sessionId)).toHaveLength(1);
   });
 });
 
@@ -187,6 +187,6 @@ describe("approval-reach: a gate handed to the hub guards an external session's 
     expect(reasonOf(() => central.permissions.respond(requestId, "allow", { held: true }))).toBe(
       "approval_proof_required",
     );
-    expect(central.permissions.open().length).toBe(1);
+    expect(central.permissions.open()).toHaveLength(1);
   });
 });

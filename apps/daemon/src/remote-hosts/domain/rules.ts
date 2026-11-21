@@ -54,13 +54,13 @@ export type AddressRefusal = "bad_address" | "cleartext_remote";
 /** Loopback, the private ranges, the shared range of Tailscale (100.64/10) and the unique-local and link-local IPv6 ranges. */
 const PRIVATE_NETWORKS = [
   "127.0.0.0/8",
-  "10.0.0.0/8",
-  "172.16.0.0/12",
-  "192.168.0.0/16",
-  "100.64.0.0/10",
+  "10.0.0.0/8", // NOSONAR: private range of the host rule, not an address to hide
+  "172.16.0.0/12", // NOSONAR: private range of the host rule, not an address to hide
+  "192.168.0.0/16", // NOSONAR: private range of the host rule, not an address to hide
+  "100.64.0.0/10", // NOSONAR: shared range of Tailscale of the host rule, not an address to hide
   "::1/128",
-  "fc00::/7",
-  "fe80::/10",
+  "fc00::/7", // NOSONAR: unique-local IPv6 range of the host rule, not an address to hide
+  "fe80::/10", // NOSONAR: link-local IPv6 range of the host rule, not an address to hide
 ];
 
 /** A name that stays on this machine or on the tailnet; a trailing dot makes it another name. */

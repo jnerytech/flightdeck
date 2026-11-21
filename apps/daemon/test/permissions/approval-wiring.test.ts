@@ -228,7 +228,7 @@ describe("approval-wiring: an external session's hook is guarded the same way", 
     expect(reasonOf(() => permissions.respond(id, "allow", { held: true }))).toBe(
       "approval_proof_required",
     );
-    expect(permissions.open().length).toBe(1);
+    expect(permissions.open()).toHaveLength(1);
     permissions.respond(id, "allow", { proof: proofFor(id) });
     expect(JSON.parse(await answer).hookSpecificOutput.decision.behavior).toBe("allow");
   });
