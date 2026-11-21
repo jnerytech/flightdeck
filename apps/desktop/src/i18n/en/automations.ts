@@ -216,6 +216,7 @@ export const automations = {
     untrusted: "not trusted",
     trust: "Trust {name}",
     trustConfirm: "Trust",
+    farOnly: "This works only from this computer or over Tailscale.",
     trustMessage:
       "Trust the workflow {name}? It will be able to run these commands in the cards' worktrees: {commands}.",
     none: "none",
