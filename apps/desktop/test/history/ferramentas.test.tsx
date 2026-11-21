@@ -81,14 +81,14 @@ async function openReader() {
   await act(async () => {
     fireEvent.click(hit as HTMLElement);
   });
-  await settle(() => screen.queryByRole("log", { name: "Transcript" }) !== null);
+  await settle(() => screen.queryByRole("log", { name: "Transcrição" }) !== null);
 }
 
 describe("historico-ferramentas: the transcript reader", () => {
   test("a tool call is a collapsed row with the tool and a short input, not a bracketed line", async () => {
     await setup();
     await openReader();
-    const log = within(screen.getByRole("log", { name: "Transcript" }));
+    const log = within(screen.getByRole("log", { name: "Transcrição" }));
     await settle(() => log.queryAllByRole("figure", { name: /^Ferramenta / }).length === 3);
     const rows = log.getAllByRole("figure", { name: /^Ferramenta / });
     expect(rows.map((r) => r.getAttribute("aria-label"))).toEqual([

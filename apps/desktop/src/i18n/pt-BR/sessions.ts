@@ -319,7 +319,7 @@ export const sessions = {
     failed: "Não foi possível ler a sessão em {host}.",
     back: "Voltar às sessões",
     retry: "Tentar de novo",
-    transcript: "Transcript",
+    transcript: "Transcrição",
   },
   newSession: {
     bypassTitle: "Começar sem pedidos de permissão?",

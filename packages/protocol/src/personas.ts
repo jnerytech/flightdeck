@@ -68,8 +68,9 @@ export type PersonaRef = z.infer<typeof PersonaRef>;
 /** A persona as the daemon keeps it: every optional field is `null` when absent. */
 export type PersonaDef = PersonaFields; // NOSONAR: apps/daemon/src/personas imports this name
 
-const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const ICON = /^[a-z0-9-]{1,30}$/;
+/** The id and the icon a persona may have: the app checks a value with the same patterns before Save. */
+export const PERSONA_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
+export const PERSONA_ICON_PATTERN = /^[a-z0-9-]{1,30}$/;
 const MODEL = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 // A tool is a plain name (or an MCP tool/server), never a permission rule such as `Bash(rm:*)`.
 const TOOL = /^(?:[A-Za-z]\w{0,63}|mcp__[\w-]{1,100}(?:__[\w-]{1,100})?)$/;
@@ -144,7 +145,7 @@ export function normalizePersona(raw: unknown, scanner: Pick<SecretScanner, "sca
   if (unknown)
     throw badRequest(`unknown field: ${unknown}`, "persona_field_unknown", { field: unknown });
   const id = fields.id;
-  if (typeof id !== "string" || !ID.test(id)) {
+  if (typeof id !== "string" || !PERSONA_ID_PATTERN.test(id)) {
     throw badRequest(
       "id: lowercase letters, digits and hyphens, 1 to 40 (it becomes a file and agent name)",
       "persona_id_format",
@@ -184,7 +185,7 @@ export function normalizePersona(raw: unknown, scanner: Pick<SecretScanner, "sca
     id,
     name,
     description,
-    icon: optional(fields, "icon", ICON),
+    icon: optional(fields, "icon", PERSONA_ICON_PATTERN),
     model: optional(fields, "model", MODEL),
     effort: effort as PersonaDef["effort"],
     tools: toolList(fields.tools),
