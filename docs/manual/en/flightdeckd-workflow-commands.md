@@ -39,6 +39,7 @@ step with its attempt, type, state and exit code. An unknown run exits `1`.
 (exit `0`). With `--json` each line is one run.
 
 `resume <run>` only checks: it prints where a failed run would resume and starts nothing. When it cannot resume it prints why, with the parameters of
-the reason, and exits `1`.
+the reason, and exits `1`. The reason is a stable word a script can read; over `--host` the daemon answers
+`transport_refused` for every run, so run the check on the host itself.
 
 With `--json` the commands print what the daemon answered. `--host <name>` reads a paired host.

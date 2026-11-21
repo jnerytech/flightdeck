@@ -39,6 +39,7 @@ passo com tentativa, tipo, estado e código de saída. Uma execução desconheci
 (saída `0`). Com `--json` cada linha é uma execução.
 
 `resume <execução>` só verifica: imprime de onde uma execução que falhou retomaria e não inicia nada. Quando não pode
-retomar, imprime o motivo, com os parâmetros dele, e sai com `1`.
+retomar, imprime o motivo, com os parâmetros dele, e sai com `1`. O motivo é uma palavra estável que um script pode ler; com `--host` o daemon responde
+`transport_refused` para toda execução, então rode a verificação no próprio host.
 
 Com `--json` os comandos imprimem o que o daemon respondeu. `--host <nome>` lê um host pareado.
