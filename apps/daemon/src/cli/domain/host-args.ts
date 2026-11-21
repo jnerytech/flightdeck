@@ -14,7 +14,7 @@ const HOST_VERBS = ["sleep", "keep-awake", "pause", "updates", "bypass"] as cons
 const RESOURCES_VERBS = ["pause-at", "end-orphan"] as const;
 
 /** A verb follows only when the next word is no flag: `host --json` is still the read. */
-const verbFollows = (peek: string | undefined): boolean =>
+export const verbFollows = (peek: string | undefined): boolean =>
   peek !== undefined && !peek.startsWith("-");
 
 /** A whole number as plain digits (no sign, exponent, hex or space) within `[min, max]`, or undefined. */

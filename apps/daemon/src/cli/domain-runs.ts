@@ -43,3 +43,23 @@ export const resourcesRun =
       config,
       remote ? { remote } : {},
     );
+
+/**
+ * What `update check|apply` and `daemon stop` run once `asking` has the config of this machine's daemon (#3780): a
+ * `--host` is refused by the parser, so the paired host's target is never given. Each domain loads only when its
+ * verb runs (cli-startup test).
+ */
+export const daemonLifeRun =
+  (args: CliArgs) =>
+  async (
+    config: { bind: string; port: number; token: string },
+    _remote?: RemoteTarget,
+  ): Promise<CliResult> => {
+    const json = args.json ? { json: true as const } : {};
+    if (args.command === "daemon")
+      return (await import("../service/index.ts")).runDaemonStopCli(json, config);
+    return (await import("../updates/index.ts")).runUpdateCli(
+      { action: args.action as "check" | "apply", ...json },
+      config,
+    );
+  };
