@@ -1,6 +1,7 @@
 /**
- * Issue #3618: `flightdeckd memory list|read|budget|suggest`, a project's Claude Code auto memory (the
- * app's Memory screen) from a terminal. They ask the daemon for what it already keeps and change nothing.
+ * Issue #3618: `flightdeckd memory list|read|budget|suggest|write|delete`, a project's Claude Code auto memory
+ * (the app's Memory screen) from a terminal. The first four ask the daemon for what it already keeps and change
+ * nothing; `write` and `delete` change a note, so a call that got no answer exits 2 and says it may have happened.
  * Exit codes: 0 done, 1 refused, 2 no daemon.
  */
 import { readFile } from "node:fs/promises";

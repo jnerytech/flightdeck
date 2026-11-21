@@ -61,7 +61,8 @@ const SHARED: Array<[string, (args: CliArgs) => boolean, readonly string[]]> = [
 
 /** `--path` is also `review add`'s, and `--file`, `--expected-hash` and `--new` are `memory`'s: each checks its own flags. */
 const checkedElsewhere = (args: CliArgs, flag: string): boolean =>
-  (flag === "--path" && args.command === "review") || args.command === "memory";
+  (flag === "--path" && args.command === "review") ||
+  (args.command === "memory" && ["--file", "--expected-hash", "--new"].includes(flag));
 
 /** A flag outside the verbs that take it. */
 function strayFlag(args: CliArgs): string | undefined {
