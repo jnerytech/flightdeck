@@ -24,6 +24,7 @@ import {
   unquoted,
 } from "./shell-call.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
+import { changesAWatch } from "./watch-risk.ts";
 
 export { credential };
 
@@ -429,6 +430,11 @@ const DANGEROUS: Array<{
     when: enablesTerminals,
     reason: () =>
       "turns the host's terminals on, a full shell for whoever reaches the daemon, without the person choosing it in the app (flightdeckd terminal settings --enable)",
+  },
+  {
+    when: changesAWatch,
+    reason: () =>
+      "changes what a card's PR watch does on its own, which sessions it wakes and what it spends, without the person choosing it in the app (flightdeckd watch set, extend, resolve-held or settings with a flag)",
   },
   {
     when: changesWhatGuards,
