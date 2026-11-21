@@ -5,7 +5,8 @@
  * verbs follow the CLI-first rules (`--json`, exit codes, `--host`).
  */
 import type { SnippetVerbArgs } from "../../snippets/index.ts";
-import { type ArgReader, operand, subAction } from "./arg-reader.ts";
+import { type ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
+import { BOARDSYNC_FLAGS } from "./boardsync-args.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { USAGE } from "./usage.ts";
@@ -72,6 +73,14 @@ export const SNIPPET_FLAGS: Record<string, Handler> = {
     args.snippetOff = true;
   }),
 };
+
+/**
+ * `--off` is `snippet favorite`'s and `boardsync set-push`'s, and the parser's table holds one handler per flag:
+ * the command names the reading. Any other command gets the boardsync one, whose check says where the flag belongs.
+ */
+export const OFF_FLAG: Handler = (args, reader, value) =>
+  (args.command === "snippet" ? SNIPPET_FLAGS : BOARDSYNC_FLAGS)["--off"]?.(args, reader, value);
+FLAGS.add(OFF_FLAG);
 
 /** The flags another command takes too. */
 const SHARED = ["--hash", "--tag", "--project-path"];
