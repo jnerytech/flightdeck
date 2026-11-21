@@ -35,6 +35,8 @@ const HOW = [
  * when its only change since the record is a merge of the base (#3731). Null when git cannot say: no merge
  * base, a git older than 2.38 (no `merge-tree --write-tree`), or a merge that conflicts, whose resolution is
  * a change nobody reviewed. Exact, so a reviewed hunk moved elsewhere, a mode change or a binary cannot match.
+ * It runs the checkout's configured merge drivers (the ratchet baselines use one); their result depends only on
+ * the base and the reviewed commit, so it cannot carry an unreviewed change.
  */
 async function reviewedMergedOntoBase(git: ReviewGit, onto: string, sha: string) {
   const merged = await git(["merge-tree", "--write-tree", "--no-messages", onto, sha]);
