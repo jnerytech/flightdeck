@@ -7,6 +7,7 @@ import {
   type CliResult,
   type DaemonClient,
   DaemonRefusal,
+  failure,
   json,
   plain,
   type RemoteTarget,
@@ -129,11 +130,21 @@ async function write(
   }
   if (args.action === "trust") {
     note.wrote = true;
-    const info = await daemon.call("snippets.trust", {
-      projectPath: args.projectPath as string,
-      hash: args.hash as string,
-    });
-    return args.json ? json(info) : said(trustedLine(info));
+    try {
+      const info = await daemon.call("snippets.trust", {
+        projectPath: args.projectPath as string,
+        hash: args.hash as string,
+      });
+      return args.json ? json(info) : said(trustedLine(info));
+    } catch (error) {
+      // A host with a device enrolled wants that device's signature, which a terminal cannot give (#3647).
+      if (error instanceof DaemonRefusal && error.reason === "approval_proof_required")
+        return failure(
+          1,
+          `${args.projectPath} has a device enrolled on this host, which confirms the trust of a project's snippet file, so do it in the app`,
+        );
+      throw error;
+    }
   }
   const snippet = await resolveOne(daemon, args.name as string, args.projectPath);
   if (args.action === "remove") {
