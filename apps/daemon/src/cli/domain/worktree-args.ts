@@ -21,6 +21,9 @@ export function readWorktree(args: CliArgs, reader: ArgReader): void {
   args.worktreePaths = paths;
 }
 
+/** A POSIX path, a drive path or a UNC path: the host's daemon may be on either system. */
+const ABSOLUTE = /^(\/|[A-Za-z]:[\\/]|\\\\)/;
+
 /** What is wrong with the `worktree` flags: `--query` (it means nothing here), a remove with no path, or one with no `--confirm`. */
 export function worktreeProblem(args: CliArgs): string | undefined {
   if (args.command !== "worktree") return undefined;
@@ -32,6 +35,9 @@ export function worktreeProblem(args: CliArgs): string | undefined {
       : "--confirm: on worktree this flag only applies to worktree remove";
   if ((args.worktreePaths ?? []).length === 0)
     return "worktree remove: missing the path of the worktree to remove (see worktree list)";
+  const relative = (args.worktreePaths ?? []).find((path) => !ABSOLUTE.test(path));
+  if (relative !== undefined)
+    return `worktree remove: "${relative}" is not an absolute path; the host would resolve it against its own folder (see worktree list)`;
   if (args.confirm !== true)
     return "worktree remove: needs --confirm, since it deletes the folder of every worktree listed";
   return undefined;

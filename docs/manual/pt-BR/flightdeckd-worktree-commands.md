@@ -29,8 +29,8 @@ fd worktree remove api /work/api-card-1 /work/api-card-2 --confirm
 quando ele não tem commit próprio. O host decide quais saem: ele mantém uma pasta com trabalho não commitado, commits
 que não existem em outro lugar, uma sessão ativa ou outro branch que não o do cartão, e diz por quê. Uma linha por
 caminho vem em seguida: `removed <caminho>  freed <tamanho>` (`size unknown`, e `branch kept` quando o branch ficou) ou
-`kept <caminho>  <motivo>`. `--confirm` é obrigatório: sem ele o comando sai com `1` e não apaga nada. Ponha todos os
-caminhos antes da primeira flag. Uma chamada que o host respondeu sai com `0`, mesmo que ele tenha mantido todas as
+`kept <caminho>  <motivo>`. `--confirm` é obrigatório: sem ele o comando sai com `1` e não apaga nada. Dê cada
+caminho completo, como `list` o imprime, e antes da primeira flag. Uma chamada que o host respondeu sai com `0`, mesmo que ele tenha mantido todas as
 pastas. Uma que não recebe resposta sai com `2` e diz que as pastas podem ou não ter sido removidas: rode `worktree
 list` antes de tentar de novo. No shell de uma sessão é um comando de risco alto, como os outros verbos que apagam, e o
 app pergunta à pessoa antes.

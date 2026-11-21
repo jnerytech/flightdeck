@@ -29,7 +29,7 @@ fd worktree remove api /work/api-card-1 /work/api-card-2 --confirm
 when it has no commit of its own. The host decides which ones go: it keeps a folder with uncommitted work, commits that
 exist nowhere else, a live session or another branch than its card's, and says why. One line per path follows:
 `removed <path>  freed <size>` (`size unknown`, and `branch kept` when the branch stayed) or `kept <path>  <reason>`.
-`--confirm` is required: without it the command exits `1` and deletes nothing. Put every path before the first flag. A
+`--confirm` is required: without it the command exits `1` and deletes nothing. Give every path in full, as `list` prints it, and before the first flag. A
 call the host answered exits `0` even when it kept every folder. One that gets no answer exits `2` and says the folders
 may or may not have been removed: run `worktree list` before you try again. In a session's shell it is a high-risk
 command, like the other verbs that delete, and the app asks the person first.

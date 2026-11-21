@@ -10,7 +10,8 @@ Slice 2 of #3702 (slice 1: `2026-11-21-cli-worktree-issues-read.md`): `worktree 
   the CLI adds none of its own and never passes a force.
 - `worktree remove <project> <path>... --confirm`: without `--confirm` it is refused when the arguments are read, exit 1
   and before any connection, so the missing word is never confused with a missing daemon. Every path comes before the
-  first flag; a path after a flag is refused, never dropped. `--confirm` is taken on `worktree remove` only.
+  first flag; a path after a flag is refused, never dropped. A path must be absolute (the host resolves a relative one
+  against its own folder, not the caller's), so a typed `.` is refused. `--confirm` is taken on `worktree remove` only.
 - The answer says one line per path, `removed` (with what it freed, `size unknown` when not known, and `branch kept`) or
   `kept` with the reason. A call the daemon answered is exit 0 even when every path was kept: the verb did what the
   daemon decided. `--json` has every key of every entry, `null` for a missing `branchKept` or `detail`.
