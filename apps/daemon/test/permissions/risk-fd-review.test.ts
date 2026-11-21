@@ -4,6 +4,9 @@ import { notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 const REASON =
   "puts the drafted review comments into a session, a card or a terminal as a message, which the app sends only when the person presses Send review (flightdeckd review send)";
 
+const CHANGES =
+  "rewrites or deletes a review comment, which may be one the person wrote or already sent, so what the person later sends with Send review can carry a session's words (flightdeckd review update|remove)";
+
 const HIDDEN =
   "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
 
@@ -36,15 +39,29 @@ describe("risk rules: a session sending a review from its shell (#3619)", () => 
     ).toEqual([]);
   });
 
-  test("list, add, update and remove stay ordinary shell commands, and a word in an argument is not a verb", () => {
+  test("review update and remove are high: a session could rewrite or erase the person's drafts", () => {
+    expect(
+      wrongReasons([
+        ["fd review update c1 --body x", CHANGES],
+        ["flightdeckd review remove c1", CHANGES],
+        ["fd --json review remove c1", CHANGES],
+        ["bunx flightdeckd review update c1 --body 'send it'", CHANGES],
+        ['fd review "remove" c1', CHANGES],
+        ["fd review list card:k1 && fd review remove c1", CHANGES],
+        ['bash -c "fd review update c1 --body x"', CHANGES],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("list and add stay ordinary shell commands, and a word in an argument is not a verb", () => {
     expect(
       notHigh([
         "fd review list card:k1",
         "fd review list card:k1 --json",
         "fd review add card:k1 --path a.ts --lines 3 --body 'send it'",
-        "fd review update c1 --body x",
-        "fd review remove c1",
         "fd review --help",
+        "echo review update c1",
+        "git rm review/remove",
         "fd card list --project send",
         "echo review send",
         "git add review",
