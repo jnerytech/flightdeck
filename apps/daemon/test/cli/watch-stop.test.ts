@@ -12,7 +12,7 @@ function listening(args: Partial<CliArgs>) {
 
 describe("watchStop (issue #3621)", () => {
   test("a streaming command stops on Ctrl-C and on a stop of the process, and not before", async () => {
-    for (const action of ["watch", "follow"]) {
+    for (const action of ["watch", "follow"] as const) {
       const { stop, handlers } = listening({ action });
       expect([...handlers.keys()].sort()).toEqual(["SIGINT", "SIGTERM"]);
       expect(stop.signal.aborted).toBe(false);
