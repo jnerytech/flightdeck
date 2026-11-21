@@ -652,6 +652,7 @@ const VERB_NOUNS = new Set([
   "boardsync",
   "review",
   "runenv",
+  "mcp",
 ]);
 
 /**
@@ -666,12 +667,14 @@ export function hidesItsVerb(args: string[], unresolved: boolean, fed = false): 
   return shellReadings(args).some((own) => {
     const [command, verb] = flightdeckWords(own);
     // Behind `xargs` the words its input gives follow the ones written: a line that stops short of its verb is
-    // finished by them (`echo persona remove qa | xargs fd`), or raised by a flag (`echo --force | xargs fd history resume s`).
+    // finished by them (`echo persona remove qa | xargs fd`), or raised by a flag (`echo --force | xargs fd history resume s`,
+    // `echo --confirm | xargs fd mcp test p s`).
     const unfinished =
       fed &&
       (command === undefined ||
         (VERB_NOUNS.has(command) && verb === undefined) ||
-        (command === "history" && verb === "resume"));
+        (command === "history" && verb === "resume") ||
+        (command === "mcp" && verb === "test"));
     return (
       unfinished ||
       (!unresolved && isExpanded(command)) ||
@@ -723,7 +726,12 @@ export function runsFlightdeckWords(
   if (isCliProgram(prog))
     return shellReadings(args).some((own) => matches(flightdeckWords(own), own));
   if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  // A runner is given the text of a command, not its words, so a word the shell expands (`$X`, `*`, `{a,b}`) is marked
+  // here as `readArguments` marks it for the CLI itself: a rule reads it as unknown, not as the word it looks like.
+  const words = args
+    .flatMap((a) => unquoted(a).split(/\s+/))
+    .filter(Boolean)
+    .map((w) => (/[$`*?[{]/.test(w) ? w + EXPANDS : w));
   return words.some(
     (_, i) =>
       startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1)), words.slice(i + 1)),
