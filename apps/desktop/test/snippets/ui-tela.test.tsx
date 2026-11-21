@@ -201,6 +201,14 @@ describe("snippets-ui: the empty states say why the list is empty (#3605, #3606)
     expect(screen.queryByText("No snippet.")).toBeNull();
   });
 
+  test("with no host, the app's own Globals list needs none: its empty list is plain and has no dead button", async () => {
+    noHost("pt-BR");
+    await choose("Projeto", "@global");
+    expect(screen.queryByText("Nenhum snippet.")).not.toBeNull();
+    expect(screen.queryByText("Nenhum host online guarda snippets.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Criar o primeiro snippet" })).toBeNull();
+  });
+
   test("a search with no match says no snippet matches, offers no first-snippet button and clears the filters", async () => {
     await open(async ({ save }) => {
       await save({ name: "status", type: "command", run: "git status" });
