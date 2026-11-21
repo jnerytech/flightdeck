@@ -58,6 +58,8 @@ setup script. That is why every workflow must be trusted before its first run. O
 screen, **Workflows of &lt;project&gt;** lists the base branch's workflows with their validation
 and their `check` commands. **Trust** shows those commands and asks for confirmation.
 
+- **Where you can trust:** trusting lets the commands run on the host, so it needs a near connection (this
+  computer or Tailscale). Over a far one, the daemon refuses it with the near-connection message.
 - **What is stored:** trust stores the file's hash (sha256).
 - **If the file changes on the base:** the hash changes, and the workflow asks for trust again.
 - **Before each check:** the daemon verifies that the command is literally in the run's workflow
