@@ -15,6 +15,8 @@ import {
   type Project,
   type ProjectDetectResult,
   type ProjectLoad,
+  type ProjectsCloneResult,
+  type ProjectsScanResult,
   type ProjectTrustStates,
 } from "@flightdeck/protocol";
 import { parseJsonText } from "../../kernel/index.ts";
@@ -64,6 +66,14 @@ export type ProjectCliArgs =
   | (Printed & { action: "harness-draft"; path: string })
   | (Printed & { action: "harness-export"; path: string; id: string; title: string })
   | (Printed & { action: "trust-state"; paths: string[] })
+  | (Printed & { action: "scan"; depth?: number })
+  | (Printed & {
+      action: "clone";
+      url: string;
+      root: string;
+      name?: string;
+      confirm: true;
+    })
   | (Printed & { action: "stack"; path: string })
   | (Printed & { action: "trust-inspect"; path: string })
   | (Printed & {
@@ -72,6 +82,26 @@ export type ProjectCliArgs =
       parts: HarnessPart[];
       template?: string;
     });
+
+/** How long the CLI waits for an answer: a clone runs `git` on the host, a preview reads files, the rest look up. */
+export const callTimeoutMs = (args: ProjectCliArgs): number =>
+  args.action === "clone" ? CLONE_WAIT_MS : LOOKUP_WAIT_MS;
+
+/** The host stops a clone's `git` after five minutes: wait a little longer, so its own answer arrives. */
+const CLONE_WAIT_MS = 6 * 60_000;
+/** A preview reads the folder's files and a template's, which takes longer than a lookup. */
+const LOOKUP_WAIT_MS = 30_000;
+
+/** One line a repository found, and a line when the scan stopped at its cap. */
+export const scanLines = (answer: ProjectsScanResult): string[] => [
+  ...(answer.repos.length === 0
+    ? ["no git repositories found in the allowed folders"]
+    : answer.repos.map((repo) => `${repo.name}  ${repo.path}`)),
+  ...(answer.truncated ? ["the scan stopped at its cap: more repositories may exist"] : []),
+];
+
+/** The folder the clone made. */
+export const cloneLines = (answer: ProjectsCloneResult): string[] => [`cloned into ${answer.path}`];
 
 /** One line a folder: whether it is trusted and through which record, and the live sessions that still run with the setup they loaded. */
 export const trustLines = (answer: ProjectTrustStates): string[] =>
