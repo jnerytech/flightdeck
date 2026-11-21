@@ -123,6 +123,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 - [fd review](en/flightdeckd-review-commands.md#fd-review)
 - [Writing the comments](en/flightdeckd-review-commands.md#writing-the-comments)
 
+## flightdeckd commands: the auto memory of a project
+
+[Read the chapter.](en/flightdeckd-memory-commands.md) Its sections:
+
+- [fd memory](en/flightdeckd-memory-commands.md#fd-memory)
+
 ## flightdeckd commands: the run environment of a card
 
 [Read the chapter.](en/flightdeckd-runenv-commands.md) Its sections:

@@ -183,7 +183,10 @@ describe("flightdeckd memory read (issue #3618)", () => {
         }),
       }),
     );
-    expect({ code: r.code, err: r.err }).toEqual({ code: 1, err: ["no memory file gone.md"] });
+    expect({ code: r.code, err: r.err }).toEqual({
+      code: 1,
+      err: ["flightdeckd: memory_not_found: no memory file gone.md"],
+    });
   });
 
   test("content with accents, emoji and a CRLF is printed as lines, and an escape cannot drive the terminal", async () => {

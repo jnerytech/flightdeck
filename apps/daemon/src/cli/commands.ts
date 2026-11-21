@@ -632,9 +632,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   memory: async (args, deps) => {
     const { runMemoryCli } = await import("../memory/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runMemoryCli(memoryCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return asking(args, deps, (c, r) => runMemoryCli(memoryCliArgs(args), c, { remote: r }));
   },
   review: async (args, deps) => {
     const { runReviewCli } = await import("../review/index.ts");

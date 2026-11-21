@@ -13,7 +13,15 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
-import { budgetLines, listLines, readLines, suggestLines } from "./domain/memory-cli-view.ts";
+import {
+  budgetLines,
+  fileJson,
+  listingJson,
+  listLines,
+  readLines,
+  suggestionJson,
+  suggestLines,
+} from "./domain/memory-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -41,23 +49,27 @@ export function runMemoryCli(
         switch (args.action) {
           case "list": {
             const listing = await daemon.call("memory.list", { projectId });
-            return args.json ? json({}) : said(...listLines(listing));
+            return args.json ? json(listingJson(listing)) : said(...listLines(listing));
           }
           case "read": {
             const file = await daemon.call("memory.read", { projectId, name: args.name });
-            return args.json ? json({}) : said(...readLines(file, file.content));
+            return args.json
+              ? json({ ...fileJson(file), content: file.content })
+              : said(...readLines(file, file.content));
           }
           case "budget": {
             const budget = await daemon.call("memory.budget", { projectId });
-            return args.json ? json({}) : said(...budgetLines(budget));
+            return args.json ? json(budget) : said(...budgetLines(budget));
           }
           case "suggest": {
             const { suggestions } = await daemon.call("memory.suggest", { projectId });
-            return args.json ? json({}) : said(...suggestLines(suggestions));
+            return args.json
+              ? json({ suggestions: suggestions.map(suggestionJson) })
+              : said(...suggestLines(suggestions));
           }
         }
       } catch (error) {
-        if (error instanceof DaemonRefusal) return failure(1, "", error.reason);
+        if (error instanceof DaemonRefusal) return failure(1, error.message, error.reason);
         throw error;
       }
     },
