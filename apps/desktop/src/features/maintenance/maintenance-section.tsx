@@ -38,10 +38,10 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
   // toast keeps its retry.
   const refresh = useCallback(
     async (own = false) => {
-      setFailed(false);
+      // The error stays up while Try again runs, so the keyboard focus is not dropped with it.
       const next = await store.hostCommand(hostId, "maintenance.status", {}, { retry: !own });
+      setFailed(!next);
       if (next) setStatus(next);
-      else setFailed(true);
     },
     [store, hostId],
   );
@@ -50,6 +50,8 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
   }, [refresh]);
 
   const backup = async () => {
+    // The last outcome goes first, so a repeated one is announced again and a refusal leaves none.
+    setResult(null);
     const made = await store.hostCommand(hostId, "maintenance.backup", {});
     // Status first, so the message and the new numbers show up together.
     await refresh();
@@ -57,10 +59,15 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
   };
   const prune = async (dryRun: boolean) => {
     setConfirming(false);
+    setResult(null);
     if (!dryRun) setCleaning(true);
-    const counts = await store.hostCommand(hostId, "maintenance.prune", { dryRun });
-    await refresh();
-    setCleaning(false);
+    let counts: PruneCounts | null;
+    try {
+      counts = await store.hostCommand(hostId, "maintenance.prune", { dryRun });
+      await refresh();
+    } finally {
+      setCleaning(false);
+    }
     if (counts) {
       setResult(
         t(dryRun ? "maintenance.wouldDelete" : "maintenance.deleted", {
@@ -113,8 +120,8 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
         ) : (
           <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
         )}
-        {/* Always there, so a screen reader hears the outcome when it fills in. */}
-        <p role="status" className="text-sm empty:hidden">
+        {/* Always in the tree (empty, it takes no room but is not hidden), so a screen reader hears the outcome when it fills in. */}
+        <p role="status" className="text-sm empty:sr-only">
           {result}
         </p>
         <div className="flex gap-2">

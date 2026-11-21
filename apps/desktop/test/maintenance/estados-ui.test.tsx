@@ -117,6 +117,19 @@ describe.each(["en", "pt-BR"] as const)("the Maintenance panel (%s)", (lang) => 
     expect(screen.queryByRole("status")?.textContent?.includes("/data/backup-1.db")).toBe(true);
   });
 
+  test("a refused backup does not leave the last outcome on screen as if it were current", async () => {
+    let refuse = false;
+    await section(lang, (type) =>
+      type === "maintenance.status" ? STATUS : refuse ? null : { path: "/data/backup-1.db" },
+    );
+    await click(w.backup);
+    await settle(() => screen.queryByText(/backup-1\.db/) !== null);
+    refuse = true;
+    await click(w.backup);
+    await act(async () => {});
+    expect(screen.queryByText(/backup-1\.db/) === null).toBe(true);
+  });
+
   test("Clean is busy while the prune runs, and a second click starts no second prune", async () => {
     let release: (counts: Record<string, number>) => void = () => {};
     const pending = new Promise<Record<string, number>>((resolve) => {
