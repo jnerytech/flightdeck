@@ -1,10 +1,14 @@
-import { runsFlightdeckWords } from "./shell-call.ts";
+import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
 
 /** The flags of `watch settings` that only choose the daemon or the output, and change nothing. */
 const READING_FLAGS = ["--json", "--host", "--config"];
 
-/** Whether the only change the words ask for is `--disable`: turning the watch off grants a session nothing. */
+/**
+ * Whether the only change the words ask for is `--disable`: turning the watch off grants a session nothing.
+ * A word the shell expands may be any flag (`--disable $X` with `X='--check evil'`), so it is never only that.
+ */
 const onlyTurnsOff = (own: string[]) => {
+  if (own.some(isExpanded)) return false;
   const changes = own.filter((word) => word.startsWith("--") && !READING_FLAGS.includes(word));
   return changes.length === 1 && changes[0] === "--disable";
 };
@@ -27,7 +31,11 @@ export function changesAWatch(prog: string, args: string[]): boolean {
         own.some((w) => w.startsWith("--") && !READING_FLAGS.includes(w)) && !onlyTurnsOff(own)
       );
     if (action === "resolve-held")
-      return !(own.includes("--drop") && !own.some((w) => w.startsWith("--push")));
+      return !(
+        own.includes("--drop") &&
+        !own.some((w) => w.startsWith("--push")) &&
+        !own.some(isExpanded)
+      );
     return false;
   });
 }

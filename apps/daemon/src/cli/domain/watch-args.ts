@@ -94,6 +94,8 @@ const orNone = (flag: string, field: string, shape: RegExp, what: string): Handl
 const listed = (flag: string, field: string): Handler =>
   typed(flag, (a, v) => {
     const patch = patchOf(a);
+    if (a.watchFlags?.includes(`--clear-${flag.slice(2)}`))
+      throw new Error(`${flag}: not with the flag that clears it\n${USAGE}`);
     patch[field] = [...((patch[field] as string[] | undefined) ?? []), v];
   });
 

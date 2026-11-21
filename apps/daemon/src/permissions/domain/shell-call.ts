@@ -451,6 +451,9 @@ export function stepQuote(open: string, text: string, i: number): { open: string
 /** Ends a word the shell expands (`$V`, `r*`, `{a,b}`): kept by `readArguments`, tested by `hidesItsVerb`. */
 const EXPANDS = "\u0000";
 
+/** Whether the shell expands the word (a variable, a glob, a brace list, an ANSI-C quote) before the command reads it. */
+export const isExpanded = (word: string | undefined): boolean => (word ?? "").includes(EXPANDS);
+
 /**
  * Whether the shell expands something in a word as written (#3559): a variable, a command, a glob, a brace list or
  * range, or an ANSI-C quote. Single quotes and an escaped character are literal, and double quotes expand only a
@@ -525,6 +528,7 @@ const VERB_NOUNS = [
   "autoapprove",
   "plugins",
   "project",
+  "watch",
 ];
 
 /**
@@ -535,11 +539,11 @@ const VERB_NOUNS = [
  * (Braces are already cut off the word by `invocations`, which leaves the comma or the dots of the expansion.)
  */
 export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
-  const expands = (word: string | undefined) => (word ?? "").includes(EXPANDS);
   return shellReadings(args).some((own) => {
     const [command, verb] = flightdeckWords(own);
     return (
-      (!unresolved && expands(command)) || (VERB_NOUNS.includes(command ?? "") && expands(verb))
+      (!unresolved && isExpanded(command)) ||
+      (VERB_NOUNS.includes(command ?? "") && isExpanded(verb))
     );
   });
 }
