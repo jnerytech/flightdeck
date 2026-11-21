@@ -459,6 +459,7 @@ export const hosts = {
     uptime: "up for {n} s",
     latency: "latency: {value}",
     unavailable: "information unavailable",
+    offlineInfo: "The host's details show here once it answers.",
     hooks: "Claude Code hooks",
     hooksInstalled: "installed",
     hooksAbsent: "absent",

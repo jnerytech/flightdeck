@@ -40,7 +40,7 @@ export function HostInfoPanel(
         </ul>
       ) : (
         <p className="text-muted-foreground text-sm">
-          {offline ? t("hostOffline.title") : t("hostPage.unavailable")}
+          {offline ? t("hostPage.offlineInfo") : t("hostPage.unavailable")}
         </p>
       )}
     </Panel>
