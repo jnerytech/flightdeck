@@ -457,6 +457,8 @@ export const OPTIONS_WITH_VALUE = [
   "--team",
   "--with-host",
   "--status",
+  "--policy-file",
+  "--unpause",
   "--requester",
   "--purpose",
   "--action",
@@ -644,6 +646,7 @@ const VERB_NOUNS = new Set([
   "watch",
   "snippet",
   "boardsync",
+  "message",
 ]);
 
 /**

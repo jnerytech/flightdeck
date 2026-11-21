@@ -63,6 +63,7 @@ export const USAGE = [
   "     fd message history [--team <team>] [--session <session>] [--with-host <host>] [--status pending|delivered|queued|refused|expired] [--days <1-365>] [--limit <1-1000>] [--host <name>] [--json] [--config <file>]   (the messages between sessions, with status and reason)",
   "     fd message watch [--host <name>] [--json] [--config <file>]   (one line per message, relayed message, loop alert and idle notice, until Ctrl-C)",
   "     fd message rules [--host <name>] [--json] [--config <file>]   (the messaging policy in force and the pairs a loop paused)",
+  "     fd message rules-set --policy-file <path|-> --confirm [--unpause <pair>]... [--host <name>] [--json] [--config <file>]   (replaces the messaging policy; frees paused pairs; a refused policy changes nothing)",
   "     fd card list [--project <name or id>] [--json] [--config <file>]",
   "     fd card show <card> [--json] [--config <file>]",
   "     fd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",

@@ -5,10 +5,8 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
-import { AGENTCFG_RULES } from "./agentcfg-risk.ts";
-import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
+import { CLI_VERB_RULES } from "./cli-verb-rules.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
-import { PROJECT_RULES } from "./project-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -470,9 +468,7 @@ const DANGEROUS: Array<{
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
   },
-  ...PROJECT_RULES,
-  ...AGENTCFG_RULES,
-  ...BOARDSYNC_RULES,
+  ...CLI_VERB_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>
