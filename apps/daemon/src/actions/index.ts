@@ -4,6 +4,7 @@
  * from here, never a file inside.
  */
 
+export { type ActionVerbCliArgs, runActionVerbCli } from "./action-verbs-cli.ts";
 export type { Actions } from "./actions.ts";
-export { runActionCli, runSnippetCli } from "./cli.ts";
+export { type ActionCliArgs, runActionCli, runSnippetCli } from "./cli.ts";
 export { envInput, remoteCommand } from "./domain/ssh-command.ts";
