@@ -51,6 +51,7 @@ export interface CliArgs {
     | "watch"
     | "boardsync"
     | "review"
+    | "memory"
     | "runenv"
     | "requests"
     | "send"
@@ -96,6 +97,8 @@ export interface CliArgs {
     | "diff"
     | "spec"
     | "review"
+    | "budget"
+    | "suggest"
     | "message"
     | "templates"
     | "validation-template"
@@ -230,6 +233,10 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
+  /** `memory list|read|budget|suggest <project>`: the project, by name or id. */
+  memoryProject?: string;
+  /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
+  memoryName?: string;
   /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
   /** `review update|remove <comment>`: the comment's id. */
