@@ -20,3 +20,17 @@ export function secretRefOf(auth: string, keyFile: string, secretId: string): st
   if (auth === "key-file") return keyFile.trim() || null;
   return auth === "vault-key" || auth === "password" ? secretId || null : null;
 }
+
+const WHOLE = /^\d+$/;
+
+/** A port is a whole number from 1 to 65535. */
+export const validPort = (text: string): boolean => {
+  const value = text.trim();
+  return WHOLE.test(value) && Number(value) >= 1 && Number(value) <= 65535;
+};
+
+/** A keep-alive is empty (no option) or a whole number of 0 or more. */
+export const validAlive = (text: string): boolean => {
+  const value = text.trim();
+  return value === "" || WHOLE.test(value);
+};

@@ -11,7 +11,14 @@ import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
-import { AUTH_KEY, AUTHS, secretRefOf, split } from "./domain/target-form.ts";
+import {
+  AUTH_KEY,
+  AUTHS,
+  secretRefOf,
+  split,
+  validAlive,
+  validPort,
+} from "./domain/target-form.ts";
 
 const TARGETFORM_KEYS = ["secrets", "hosts"] as const;
 
@@ -55,7 +62,11 @@ export const TargetForm = memo(function TargetForm(props: {
   const [testResult, setTestResult] = useState<string | null>(null);
 
   const saving = useBusy();
+  const portBad = !validPort(port);
+  const aliveBad = !validAlive(alive);
   const ready =
+    !portBad &&
+    !aliveBad &&
     name.trim() !== "" &&
     host.trim() !== "" &&
     user.trim() !== "" &&
@@ -73,7 +84,7 @@ export const TargetForm = memo(function TargetForm(props: {
       ...(target ? { id: target.id } : {}),
       name: name.trim(),
       host: host.trim(),
-      port: Number(port) || 22,
+      port: Number(port),
       user: user.trim(),
       viaHost: via === "" ? null : via,
       auth,
@@ -134,7 +145,10 @@ export const TargetForm = memo(function TargetForm(props: {
         </Field>
       }
       {
-        <Field label={t("connections.form.port")}>
+        <Field
+          label={t("connections.form.port")}
+          error={portBad ? t("connections.form.portInvalid") : undefined}
+        >
           {(control) => (
             <Input
               {...control}
@@ -238,7 +252,10 @@ export const TargetForm = memo(function TargetForm(props: {
         </Field>
       }
       {
-        <Field label={t("connections.form.alive")}>
+        <Field
+          label={t("connections.form.alive")}
+          error={aliveBad ? t("connections.form.aliveInvalid") : undefined}
+        >
           {(control) => (
             <Input
               {...control}
@@ -293,6 +310,7 @@ export const TargetForm = memo(function TargetForm(props: {
         submit={t("connections.form.save")}
         busy={saving.busy}
         disabled={!ready}
+        disabledReason={portBad || aliveBad ? t("connections.form.fixFields") : undefined}
         cancel={t("common.cancel")}
         onCancel={props.onClose}
         extra={
