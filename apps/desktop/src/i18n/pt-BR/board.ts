@@ -203,8 +203,8 @@ export const board = {
     trustMessage:
       "Confiar neste run.yaml? Os comandos dele vão rodar na worktree deste card, sem shell, sempre que você apertar Run. Se o arquivo mudar, você revisa de novo.",
     trustConfirm: "Confiar",
-    run: "Run",
-    stop: "Stop",
+    run: "Executar",
+    stop: "Parar",
     errors: "O run.yaml tem erros:",
     status: {
       idle: "Parado",
@@ -407,7 +407,7 @@ export const board = {
     saveTitle: "Salvar título",
     workflow: "Workflow",
     noWorkflow: "Nenhum (card simples)",
-    input: "Input {name}",
+    input: "Entrada {name}",
     start: "Iniciar",
     stop: "Parar",
     openPr: "Abrir PR",
