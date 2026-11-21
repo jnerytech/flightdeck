@@ -152,7 +152,10 @@ describe("flightdeckd file write (issue #3624)", () => {
         undefined,
         stdin("x".repeat(1024 * 1024 + 1)),
       ),
-      flightdeckd(write("--file", "/nonexistent/next.ts", "--hash", HASH_A, "--confirm"), daemon.port),
+      flightdeckd(
+        write("--file", "/nonexistent/next.ts", "--hash", HASH_A, "--confirm"),
+        daemon.port,
+      ),
     ]);
     expect(big.code).toBe(1);
     expect(big.err.join("\n")).toContain("over 1 MB");
