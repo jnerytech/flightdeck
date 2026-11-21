@@ -303,8 +303,9 @@ medidos, e um card concluído não é um resultado verificado. As telas nunca fa
   fechadas* (perguntadas ao `gh` do host, guardadas por uma hora; o cartão diz quando o `gh` falta ou está sem login).
   Os dois vêm desligados.
 - **A tabela de Custos.** Uma linha por projeto do escopo de clientes escolhido: custo, cards, PRs, custo por card e por
-  PR, horas estimadas, valor estimado e retorno sobre o custo (estimativa). Clique no cabeçalho de uma coluna para
-  ordenar, e de novo para inverter. O traço quer dizer que o número não pode ser calculado (sem cards, sem valor da
+  PR, horas estimadas, valor estimado e retorno sobre o custo (estimativa). A tabela abre ordenada pelo custo, do maior para o menor, e uma seta no
+  cabeçalho mostra a coluna ordenada e o sentido. Clique no cabeçalho de uma coluna para
+  ordenar, e de novo para inverter. Enquanto os hosts não respondem, ela diz que está carregando, não que não há projeto. O traço quer dizer que o número não pode ser calculado (sem cards, sem valor da
   hora). O rodapé soma as linhas. **Exportar a tabela de projetos em CSV** salva uma linha por projeto, com uma coluna
   que diz como cada número foi feito; o arquivo sempre usa ponto como separador decimal.
 - **Pessoas.** *Tokens contra entrega, por pessoa* agrupa hosts numa pessoa com nome (por exemplo, o host em que os
