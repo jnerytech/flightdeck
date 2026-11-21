@@ -33,6 +33,8 @@ export function refuseCardFlags(args: CliArgs): void {
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
+    // `--language` is also `review send`'s, which checks its own flags.
+    if (flag === "--language" && args.command === "review") continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
     // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s, `project harness-apply`'s, `boardsync set-push --on`'s, `agentcfg write`'s `snippet`'s and `message rules-set`'s writes, which check their own flags below.

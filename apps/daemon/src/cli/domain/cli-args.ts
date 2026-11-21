@@ -210,7 +210,8 @@ export interface CliArgs {
   /** `agentcfg list|read|write <project>` (#3617): the project word, `--kind`, `--path`, `--file`, `--expected-hash` and `--new`; `--origin` and `--confirm` are the shared fields. */
   agentcfgWords?: string[];
   agentcfgKind?: AgentCfgItem["kind"];
-  agentcfgPath?: string;
+  /** `--path`, of `agentcfg read|write` and `review add`. */
+  pathFlag?: string;
   agentcfgFile?: string;
   agentcfgHash?: string;
   agentcfgNew?: true;
@@ -235,8 +236,14 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
-  /** `review list <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
+  /** `review update|remove <comment>`: the comment's id. */
+  reviewComment?: string;
+  /** `review add --side new|old`: the side of the diff; `new` when absent. */
+  reviewSide?: "new" | "old";
+  /** `review add --lines <start>[-<end>]`: the lines the comment covers. */
+  reviewLines?: { start: number; end: number };
   /** `runenv config <project>` or `runenv get <card>`: the operand. */
   runenvTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
