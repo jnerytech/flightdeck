@@ -457,6 +457,7 @@ export const OPTIONS_WITH_VALUE = [
   "--text",
   "--select",
   "--terminal",
+  "--value",
   "--risk",
   "--approval",
   "--at",
