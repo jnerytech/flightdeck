@@ -79,7 +79,7 @@ const withNamedAction =
   };
 
 /** The words of `fd` that are not subcommands but are still Flightdeck's own. */
-const FD_FLAGS = ["--version", "--help", "-h"];
+const FD_FLAGS = new Set(["--version", "--help", "-h"]);
 
 /** The pack personas a shortcut word opens: the word is the persona's id (#3413, #3441). */
 const SHORTCUTS = ["architect", "reviewer", "security", "coordinator"] as const;
@@ -136,7 +136,7 @@ const HANDLERS: Record<string, Handler> = {
     const rest = reader.takeRest();
     const word = rest[0] ?? "";
     const own = word !== "fd" && Object.hasOwn(HANDLERS, word) && !word.startsWith("-");
-    if (own || FD_FLAGS.includes(word)) Object.assign(args, parseArgs(rest));
+    if (own || FD_FLAGS.has(word)) Object.assign(args, parseArgs(rest));
     else Object.assign(args, { command: "claude", claudeArgs: rest });
   },
   "--help": setCommand("help"),
