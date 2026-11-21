@@ -64,7 +64,7 @@ async function panel(language: "en" | "pt-BR", answers: Array<unknown>) {
     </TContext.Provider>,
   );
   await act(async () => Bun.sleep(30));
-  return { asked };
+  return { asked, store };
 }
 
 const click = async (name: string) => {
@@ -74,23 +74,24 @@ const click = async (name: string) => {
     fireEvent.click(button as HTMLElement);
   });
 };
+const alertText = () =>
+  screen
+    .queryAllByRole("alert")
+    .map((el) => el.textContent ?? "")
+    .join(" ");
 const step = () => screen.queryByRole("status")?.textContent ?? "";
 
 describe("rastro-estados (#3706)", () => {
   test("a refused trace.get says so with Try again, then shows the trace, in both languages", async () => {
-    await panel("en", [null, TRACE]);
-    expect(screen.queryAllByRole("alert").map((el) => el.textContent)).toContain(
-      "Could not load the trace.",
-    );
-    expect(screen.queryByText("Loading…")).toBeNull();
+    const { store } = await panel("en", [null, TRACE]);
+    expect(alertText().includes("Could not load the trace.")).toBe(true);
+    expect(screen.queryByText(store.i18n.t("states.loading"))).toBeNull();
     await click("Try again");
     expect(screen.queryByRole("region", { name: "Session trace" })).not.toBeNull();
     expect(screen.queryAllByRole("alert")).toHaveLength(0);
     cleanup();
     await panel("pt-BR", [null]);
-    expect(screen.queryAllByRole("alert").map((el) => el.textContent)).toContain(
-      "Não deu para carregar o rastro.",
-    );
+    expect(alertText().includes("Não deu para carregar o rastro.")).toBe(true);
     expect(screen.queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
   });
 

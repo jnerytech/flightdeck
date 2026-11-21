@@ -72,7 +72,10 @@ export function TraceReplay(
               variant="outline"
               size="sm"
               disabled={index === 0}
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
+              onClick={() => {
+                setPlaying(false);
+                setIndex((i) => Math.max(0, i - 1));
+              }}
             >
               {t("trace.previous")}
             </Button>
@@ -90,7 +93,10 @@ export function TraceReplay(
               variant="outline"
               size="sm"
               disabled={index >= steps.length - 1}
-              onClick={() => setIndex((i) => Math.min(steps.length - 1, i + 1))}
+              onClick={() => {
+                setPlaying(false);
+                setIndex((i) => Math.min(steps.length - 1, i + 1));
+              }}
             >
               {t("trace.next")}
             </Button>
@@ -105,7 +111,8 @@ export function TraceReplay(
                 <option key={s} value={s}>{`${s}x`}</option>
               ))}
             </NativeSelect>
-            <span className="text-sm">
+            {/* Said aloud when the person steps; silent while it plays, one step a second. */}
+            <span role="status" aria-live={playing ? "off" : "polite"} className="text-sm">
               {t("trace.step", { n: index + 1, total: steps.length })}
             </span>
           </Inline>
