@@ -166,7 +166,7 @@ describe("vault rules proof: putting a refused save back never goes quiet (#3754
     expect({ asked: s.asked, sent: s.sent, events: s.events }).toEqual({
       asked: ["a r1"],
       sent: ["a r2", "b r2"],
-      events: ["fail approval_proof_required vault.rulesNotPutBack"],
+      events: ["fail approval_proof_required vaultRulesUi.notPutBack"],
     });
   });
 
@@ -179,7 +179,7 @@ describe("vault rules proof: putting a refused save back never goes quiet (#3754
     });
     const result = await s.rules.set("s1", ASK);
     expect(result).toEqual({ ok: false, code: "refused", message: "b says no" });
-    expect(s.events).toEqual(["fail refused vault.rulesNotPutBack"]);
+    expect(s.events).toEqual(["fail refused vaultRulesUi.notPutBack"]);
   });
 });
 
@@ -196,7 +196,7 @@ describe("vault rules proof: the resync on connect asks for no signature and sho
     await Promise.resolve();
     expect({ asked: s.asked, events: s.events }).toEqual({
       asked: [],
-      events: ["fail approval_proof_required vault.rulesNotResent"],
+      events: ["fail approval_proof_required vaultRulesUi.notResent"],
     });
   });
 });

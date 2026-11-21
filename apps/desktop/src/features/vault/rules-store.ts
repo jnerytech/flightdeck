@@ -1,5 +1,11 @@
-import type { CommandPayload, CommandResults, RuleIssue, VaultVerdict } from "@flightdeck/protocol";
-import { inSequence } from "@flightdeck/protocol";
+import type {
+  ApprovalProof,
+  CommandPayload,
+  CommandResults,
+  RuleIssue,
+  VaultVerdict,
+} from "@flightdeck/protocol";
+import { inSequence, ruleLoosens } from "@flightdeck/protocol";
 import {
   type Client,
   effectiveRules,
@@ -32,6 +38,16 @@ export interface RulesRefusal {
   items?: readonly RuleIssue[];
 }
 
+/** The refusal a person's "no" in the device's dialog is: the host would have refused the set for the missing proof. */
+const DECLINED: RulesRefusal = {
+  ok: false,
+  code: "approval_proof_required",
+  message: "the device's signature was declined",
+};
+
+/** What a set of rules says: the secret, its tags and the rules, as the host reads and the device signs them. */
+type RulesBody = Pick<CommandPayload<"vault.rules.set">, "secretId" | "rules"> & { tags: string[] };
+
 /** The commands about a secret's rules: what the app hands a host, and what it reads back. */
 type RulesCommand = "vault.rules.set" | "vault.rules.get";
 
@@ -44,6 +60,14 @@ export interface RulesConnection {
 export interface VaultRulesCore {
   /** The rules the app keeps for each secret (the daemon only holds a copy). */
   rules: Pick<VaultRules, "get" | "set" | "all">;
+  /**
+   * The device's proof of a set of rules that loosens (#3754): `none` when the host asks for none (it checks
+   * no proof, or no device is enrolled); `declined` when the person said no in the device's own dialog.
+   */
+  proveRules(
+    hostId: string,
+    body: RulesBody,
+  ): Promise<{ kind: "none" } | { kind: "proof"; proof: ApprovalProof } | { kind: "declined" }>;
   /** The vault's secrets, metadata only. */
   secrets(): SecretMeta[];
   hosts(): RulesHost[];
@@ -100,14 +124,9 @@ export class VaultRulesSlice {
     for (const host of this.core.hosts()) {
       if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
       const result =
-        await /* NOSONAR: stops at the first host that refuses, to put back the ones that accepted */ this.core.request(
+        await /* NOSONAR: stops at the first host that refuses, to put back the ones that accepted */ this.put(
           host.id,
-          "vault.rules.set",
-          {
-            secretId,
-            tags: secret.tags,
-            rules: this.effective(secret, rules),
-          },
+          { secretId, tags: secret.tags, rules: this.effective(secret, rules) },
         );
       if (!result.ok) {
         refusal = result;
@@ -120,11 +139,23 @@ export class VaultRulesSlice {
       // app did not save (they could be looser).
       const saved = this.core.rules.get(secretId);
       await inSequence(accepted, async (hostId) => {
-        await this.core.request(hostId, "vault.rules.set", {
+        const back = await this.put(hostId, {
           secretId,
           tags: secret.tags,
           rules: this.effective(secret, saved),
         });
+        // Saved rules that allow need the signature again: a "no" or a refusal is said, never a quiet fall back.
+        if (!back.ok) {
+          const name = this.core.hosts().find((h) => h.id === hostId)?.name ?? hostId;
+          this.core.fail(
+            new Error(back.code),
+            this.core.t()("vaultRulesUi.notPutBack", {
+              host: name,
+              secret: secret.name,
+              message: back.message,
+            }),
+          );
+        }
       });
       return refusal;
     }
@@ -170,8 +201,17 @@ export class VaultRulesSlice {
       if (!own || !secret.allowedHosts.includes(hostId)) continue;
       const rules = this.effective(secret, own);
       this.sent.set(`${hostId}/${secret.id}`, JSON.stringify(rules));
+      // No signature is asked here: nobody pressed Save. A host that wants one for rules that allow refuses, and
+      // that is said (#3754); the rules are signed when the person saves them again.
       void this.sendScoped(hostId, conn, secret, rules).catch((error: unknown) =>
-        this.core.fail(error),
+        this.core.fail(
+          error,
+          this.core.t()("vaultRulesUi.notResent", {
+            host: this.core.hosts().find((h) => h.id === hostId)?.name ?? hostId,
+            secret: secret.name,
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        ),
       );
     }
   }
@@ -198,6 +238,24 @@ export class VaultRulesSlice {
   dispose(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+  }
+
+  /**
+   * Sends one host a set of rules. A set that loosens (an allow) carries the device's proof when the host asks
+   * for it (#3754); the person's "no" is a refusal, and nothing is sent.
+   */
+  private async put(
+    hostId: string,
+    body: RulesBody,
+  ): Promise<{ ok: true; data: CommandResults["vault.rules.set"] } | RulesRefusal> {
+    if (!body.rules.some(ruleLoosens)) return this.core.request(hostId, "vault.rules.set", body);
+    const proved = await this.core.proveRules(hostId, body);
+    if (proved.kind === "declined") return DECLINED;
+    return this.core.request(
+      hostId,
+      "vault.rules.set",
+      proved.kind === "proof" ? { ...body, proof: proved.proof } : body,
+    );
   }
 
   /** Rules the daemon is sent for a secret: its own, with its client's scope in front (phase 29). */

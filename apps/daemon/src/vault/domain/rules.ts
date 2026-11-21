@@ -8,6 +8,7 @@ import {
   isProdTag,
   type RefusalParams,
   type RuleIssue,
+  ruleLoosens,
   type VaultRequester,
 } from "@flightdeck/protocol";
 
@@ -220,7 +221,7 @@ function checkLimitFields(item: Item, bad: Bad): void {
 /** The ceiling: what no rule can loosen (a free command with a secret, a prod secret with no window). */
 function checkCeiling(item: Item, match: unknown, bad: Bad): void {
   const targets = isRecord(match) ? match : {};
-  const loosens = item.decision === "allow" || item.outsideWindow === "allow";
+  const loosens = ruleLoosens(item);
   if (targets.purpose === "run_with_secret" && loosens) {
     bad(item.decision === "allow" ? "decision" : "outsideWindow", "no_allow_run_with_secret");
   }

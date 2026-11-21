@@ -368,6 +368,8 @@ export const secretsCommands = [
       secretId: z.string().min(1),
       tags: z.array(z.string().min(1)).max(16).optional(),
       rules: z.array(z.unknown()).max(200),
+      /** The signed proof of an enrolled device over the whole request, for a set that loosens (#3754). */
+      proof: ApprovalProof.optional(),
     }),
   ),
   cmd("vault.rules.get", z.object({ secretId: z.string().min(1) })),

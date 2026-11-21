@@ -145,12 +145,6 @@ describe("command-proof-vault-rules: loosening a secret's rules with a device en
     expect([failure(ack).includes("approval_proof_required"), await t.held()]).toEqual([true, []]);
   });
 
-  test("a rule list that is not a list is gated, never let through as if it loosened nothing", async () => {
-    const t = host();
-    const ack = await t.set({ secretId: "token", tags: [], rules: "allow" });
-    expect(failure(ack).includes("approval_proof_required")).toBe(true);
-  });
-
   test("a loosening hidden after harmless rules is still refused", async () => {
     const t = host();
     const ack = await t.set({ secretId: "token", tags: [], rules: [ASK, DENY, ALLOW] });

@@ -22,6 +22,7 @@ import {
   FEATURE_APPROVAL_SNIPPETS,
   FEATURE_APPROVAL_TRUST,
   FEATURE_APPROVAL_VAULT,
+  FEATURE_APPROVAL_VAULT_RULES,
   needsApprovalProof,
   PermissionRespondPayload,
   type PermissionUpdate,
@@ -65,6 +66,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "plugins.update": FEATURE_APPROVAL_PLUGINS,
   "plugins.marketplaceAdd": FEATURE_APPROVAL_MARKETPLACE,
   "snippets.trust": FEATURE_APPROVAL_SNIPPETS,
+  "vault.rules.set": FEATURE_APPROVAL_VAULT_RULES,
 };
 
 export type { UncheckedCommand };

@@ -25,6 +25,7 @@ const UNCHECKED_TEXT = {
   plugins: "approvalDevices.pluginsUnchecked",
   marketplace: "approvalDevices.marketplaceUnchecked",
   snippets: "approvalDevices.snippetsUnchecked",
+  vaultRules: "approvalDevices.vaultRulesUnchecked",
 } as const satisfies Record<UncheckedCommand, string>;
 
 type View = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; status: ApprovalStatus };

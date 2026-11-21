@@ -35,6 +35,9 @@ export const FEATURE_APPROVAL_MARKETPLACE = "approval-marketplace";
 /** The host checks a signed proof of the person's device before it trusts a project's snippet file with `snippets.trust` (#3647). */
 export const FEATURE_APPROVAL_SNIPPETS = "approval-snippets";
 
+/** The host checks a signed proof of the person's device before it saves rules that loosen a secret's use with `vault.rules.set` (#3754). */
+export const FEATURE_APPROVAL_VAULT_RULES = "approval-vault-rules";
+
 /** The host checks a signed proof of the person's device before it trusts a project folder (#3453). */
 export const FEATURE_APPROVAL_TRUST = "approval-trust";
 
@@ -53,6 +56,7 @@ export const PROOF_COMMANDS = [
   "plugins.update",
   "plugins.marketplaceAdd",
   "snippets.trust",
+  "vault.rules.set",
 ] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
 
@@ -69,6 +73,7 @@ const NARROWING_FIELD: Partial<Record<string, string>> = {
  */
 export function commandNeedsProof(command: string, payload: unknown): boolean {
   if (!(PROOF_COMMANDS as readonly string[]).includes(command)) return false;
+  if (command === "vault.rules.set") return setLoosens(payload);
   const field = NARROWING_FIELD[command];
   if (field === undefined) return true;
   return (payload as Record<string, unknown> | null | undefined)?.[field] !== false;
@@ -79,8 +84,16 @@ export function commandNeedsProof(command: string, payload: unknown): boolean {
  * not a rule is taken as loosening, never let through unread. The one definition: the host's ceiling and the gate of
  * `vault.rules.set` both read it (#3754).
  */
-export function ruleLoosens(_rule: unknown): boolean {
-  return false;
+export function ruleLoosens(rule: unknown): boolean {
+  if (typeof rule !== "object" || rule === null || Array.isArray(rule)) return true;
+  const { decision, outsideWindow } = rule as Record<string, unknown>;
+  return decision === "allow" || outsideWindow === "allow";
+}
+
+/** A `vault.rules.set` payload loosens when any rule does; one whose rules are not a list is gated (it fails closed). */
+function setLoosens(payload: unknown): boolean {
+  const rules = (payload as { rules?: unknown } | null | undefined)?.rules;
+  return !Array.isArray(rules) || rules.some(ruleLoosens);
 }
 
 /** The text a device hashes for a command: the payload without its `proof`, as canonical JSON. */

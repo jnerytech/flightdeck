@@ -38,6 +38,8 @@ export const approval = {
       "This host does not ask for a device to confirm installing or updating a plugin: update it to protect the code its sessions run.",
     marketplaceUnchecked:
       "This host does not ask for a device to confirm adding a plugin marketplace: update it to protect the plugins its sessions can install.",
+    vaultRulesUnchecked:
+      "This host does not ask for a device to confirm saving rules that allow a secret's use: update it to protect which uses are approved without asking.",
     snippetsUnchecked:
       "This host does not ask for a device to confirm trusting a project's snippet file: update it to protect the commands its sessions can run from that file.",
     harnessUnchecked:

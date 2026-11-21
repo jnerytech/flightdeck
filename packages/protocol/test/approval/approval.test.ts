@@ -482,6 +482,49 @@ describe("command-approve: a device signs the command and a hash of what it carr
     }
   });
 
+  test("Given the vault.rules.set payloads the Rust crate also reads, Then their digests and hashes are the shared literals", () => {
+    const cases: Array<[Record<string, unknown>, string, string]> = [
+      [
+        {
+          secretId: "token",
+          tags: [],
+          rules: [
+            {
+              id: "r1",
+              decision: "allow",
+              match: { purpose: "ssh" },
+              window: { days: ["mon"], from: "09:00", to: "17:00" },
+            },
+          ],
+        },
+        '{"rules":[{"decision":"allow","id":"r1","match":{"purpose":"ssh"},"window":{"days":["mon"],"from":"09:00","to":"17:00"}}],"secretId":"token","tags":[]}',
+        "1817e1cbdc3e20f228ee6ac056cd0b507e14043f6e809b89ef27ea4244b44dd1",
+      ],
+      [
+        {
+          tags: ["prod", "ünï🙂"],
+          rules: [
+            {
+              outsideWindow: "allow",
+              decision: "ask",
+              maxPerHour: 3,
+              expiresAt: 1732000000000,
+              note: 'a"b\n',
+            },
+            { id: "x", decision: "deny" },
+          ],
+          secretId: "sec_1.a-b",
+        },
+        '{"rules":[{"decision":"ask","expiresAt":1732000000000,"maxPerHour":3,"note":"a\\"b\\n","outsideWindow":"allow"},{"decision":"deny","id":"x"}],"secretId":"sec_1.a-b","tags":["prod","ünï🙂"]}',
+        "62f1d773bc7709ed39ab25777b9732ed56c1fa2543cd0866f0b1a0617220e83f",
+      ],
+    ];
+    for (const [payload, digest, hash] of cases) {
+      expect(commandDigest(payload)).toBe(digest);
+      expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(hash);
+    }
+  });
+
   test("Given snippets.trust, Then every payload needs the proof (there is no untrust to leave open) and a challenge for it is one of the gate's", () => {
     expect([
       commandNeedsProof("snippets.trust", { projectPath: "/work/app", hash: "a".repeat(64) }),

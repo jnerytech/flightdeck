@@ -9,6 +9,7 @@ import {
   FEATURE_APPROVAL_ROOTS,
   FEATURE_APPROVAL_SNIPPETS,
   FEATURE_APPROVAL_TRUST,
+  FEATURE_APPROVAL_VAULT_RULES,
 } from "@flightdeck/protocol";
 import { hasFeature } from "../../lib/version.ts";
 
@@ -22,7 +23,8 @@ export type UncheckedCommand =
   | "harness"
   | "plugins"
   | "marketplace"
-  | "snippets";
+  | "snippets"
+  | "vaultRules";
 
 /**
  * The commands whose proof the host does not check: it is from before they were guarded (#3453), so they ask
@@ -45,5 +47,11 @@ export function uncheckedCommandsOf(features: readonly string[] | undefined): Un
     !hasFeature(features, FEATURE_APPROVAL_SNIPPETS, false)
   )
     unchecked.push("snippets");
+  // Only a host that keeps a vault has rules to guard (#3754).
+  if (
+    hasFeature(features, "actions", false) &&
+    !hasFeature(features, FEATURE_APPROVAL_VAULT_RULES, false)
+  )
+    unchecked.push("vaultRules");
   return unchecked;
 }
