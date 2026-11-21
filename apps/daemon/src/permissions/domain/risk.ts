@@ -535,6 +535,7 @@ function segmentRisks(segment: string[], piped: boolean, scan: Scan): Candidate[
 function invocationRisks(call: Invocation, piped: boolean, scan: Scan): Candidate[] {
   const { prog, args, sudo } = call;
   const out: Candidate[] = [];
+  if (!scan.spend(args.length)) return out;
   if (sudo) out.push(["high", "sudo"]);
   if (
     call.hidden ||
@@ -590,8 +591,7 @@ function statementRisks(command: string, scan: Scan): Candidate[] {
   ) => {
     for (const statement of statements) {
       pipes(statement).forEach((part, i) => {
-        for (const segment of cut(part))
-          if (scan.command()) out.push(...segmentRisks(segment, i > 0, scan));
+        for (const segment of cut(part)) out.push(...segmentRisks(segment, i > 0, scan));
       });
     }
   };
@@ -710,6 +710,7 @@ export class RiskClassifier {
   private shell(command: string, cwd: string): Candidate[] {
     const out: Candidate[] = [["medium", "comando de shell"]];
     const scan = new Scan();
+    if (scan.tooLong(command)) return [...out, ["high", UNREADABLE]];
     const read = statementRisks(command, scan);
     // The first high reason wins a tie, so a line the rules could not finish reading says so first (#3593).
     if (scan.spent) out.push(["high", UNREADABLE]);
@@ -759,6 +760,7 @@ export class RiskClassifier {
     const command = typeof input.command === "string" ? input.command : "";
     return [command, joinContinuations(command)].some((text) => {
       const scan = new Scan();
+      if (scan.tooLong(text)) return true;
       const uses = segments(text).some((segment) =>
         invocations(segment, scan).some(({ prog, args }) => {
           const sub = prog === "git" ? gitCommand(args).sub : "";
