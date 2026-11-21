@@ -109,21 +109,33 @@ function budgetStrayFlag(args: BudgetArgs, budget: boolean): string | undefined 
   return undefined;
 }
 
-/** What `budget set` and `set-quota` cannot do without: a scope, its project, the limit and the action. */
-function budgetSetMissing(args: BudgetArgs): string | undefined {
+/** The scope of a budget and the project it needs, or the one it must not have. */
+function budgetScopeMissing(args: BudgetArgs): string | undefined {
   if (args.scope === undefined) return "missing --scope";
   if (args.scope === "all") return "--scope: host or project";
   if (args.scope === "project" && args.project === undefined)
     return "--scope project needs --project";
   if (args.scope === "host" && args.project !== undefined)
     return "--project: only with --scope project";
+  return undefined;
+}
+
+/** The limit of a budget: a period and an amount for `set`, a window and a percentage for `set-quota`. */
+function budgetLimitMissing(args: BudgetArgs): string | undefined {
   if (args.action === "set") {
     if (args.budgetPeriod === undefined) return "missing --period";
     if (args.limitUsd === undefined) return "missing --limit-usd";
-  } else {
-    if (args.budgetWindow === undefined) return "missing --window";
-    if (args.limitPct === undefined) return "missing --limit-pct";
+    return undefined;
   }
+  if (args.budgetWindow === undefined) return "missing --window";
+  if (args.limitPct === undefined) return "missing --limit-pct";
+  return undefined;
+}
+
+/** What `budget set` and `set-quota` cannot do without: a scope, its project, the limit and the action. */
+function budgetSetMissing(args: BudgetArgs): string | undefined {
+  const missing = budgetScopeMissing(args) ?? budgetLimitMissing(args);
+  if (missing !== undefined) return missing;
   if (args.budgetAction === undefined) return "missing --action";
   return undefined;
 }

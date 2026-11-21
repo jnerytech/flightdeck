@@ -216,7 +216,8 @@ describe("flightdeckd mcp words and flags (issue #3616)", () => {
     expect(() => parseArgs(["mcp", "--host", "box"])).toThrow("--host");
   });
 
-  test("--confirm is not a flag of the read verbs", () => {
-    expect(() => parseArgs(["mcp", "test", "api", "files", "--confirm"])).toThrow("--confirm");
+  test("--confirm is not a flag of the read verbs: list and status refuse it", () => {
+    expect(() => parseArgs(["mcp", "list", "api", "--confirm"])).toThrow("--confirm");
+    expect(() => parseArgs(["mcp", "status", "s1", "--confirm"])).toThrow("--confirm");
   });
 });

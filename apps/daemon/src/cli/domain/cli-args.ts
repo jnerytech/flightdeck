@@ -1,5 +1,10 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
-import type { AgentCfgItem, BoardColumn, VaultRequester } from "@flightdeck/protocol";
+import type {
+  AgentCfgItem,
+  BoardColumn,
+  MessageStatus,
+  VaultRequester,
+} from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
 import type { ProjectFields } from "../../projects/index.ts";
 import type { SessionStartOptions } from "../../sessions/index.ts";
@@ -94,6 +99,7 @@ export interface CliArgs {
     | "resume"
     | "publish-agent"
     | "trust"
+    | "toggle"
     | "diff"
     | "spec"
     | "review"
@@ -214,6 +220,8 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
+  /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
+  mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */
   terminalId?: string;
   /** `terminal open|open-session --cols <n> --rows <n>`: the size the terminal opens at. */
@@ -284,6 +292,10 @@ export interface CliArgs {
   last?: number;
   /** `message team <team>`. */
   team?: string;
+  /** `message history` (#3622): `--team`, `--with-host` and `--status`; `--session`, `--days` and `--limit` are the shared fields. */
+  messageTeam?: string;
+  withHost?: string;
+  messageStatus?: MessageStatus;
   /** `team show <team>`. */
   teamId?: string;
   /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */
