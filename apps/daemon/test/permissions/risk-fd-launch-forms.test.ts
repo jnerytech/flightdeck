@@ -162,12 +162,41 @@ describe("the option list of the shell rules (#3566)", () => {
 describe("the nouns whose verb the shell rules read (#3627)", () => {
   test("it holds exactly these nouns: none lost, none new, each once", () => {
     const nouns = [
-      ...["card", "history", "approvers", "persona", "team", "quota", "budget", "costs"],
-      ...["session", "rules", "autoapprove", "plugins", "project", "agentcfg", "ssh", "watch"],
-      ...["snippet", "boardsync", "review", "memory", "runenv", "automation", "message", "mcp"],
-      ...["changes", "file", "rewind", "action"],
+      "action",
+      "agentcfg",
+      "approvers",
+      "autoapprove",
+      "automation",
+      "boardsync",
+      "budget",
+      "card",
+      "changes",
+      "costs",
+      "file",
+      "history",
+      "mcp",
+      "memory",
+      "message",
+      "persona",
+      "plugins",
+      "project",
+      "quota",
+      "review",
+      "rewind",
+      "rules",
+      "runenv",
+      "session",
+      "snippet",
+      "ssh",
+      "team",
+      "watch",
     ];
     expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());
     expect(new Set(nouns).size).toBe(nouns.length);
+  });
+
+  test("it is kept in alphabetical order, so two PRs that add a noun do not edit the same place (#3759)", () => {
+    const sorted = [...VERB_NOUNS].sort((a, b) => (a < b ? -1 : Number(a > b)));
+    expect([...VERB_NOUNS]).toEqual(sorted);
   });
 });
