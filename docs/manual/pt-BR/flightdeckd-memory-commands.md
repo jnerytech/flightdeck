@@ -2,10 +2,11 @@
 
 [Voltar ao manual](../pt-BR.md) · [English](../en/flightdeckd-memory-commands.md)
 
-Os verbos que leem a memória automática do Claude Code de um projeto: a pasta de notas que o Claude guarda para ele e
-carrega no início de uma sessão. Funcionam como os outros comandos do `flightdeckd`: veja
-[o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum). Nenhum deles muda algo. A tela do
-próprio app está em [Memória, contexto e plugins](memory-context-and-plugins.md).
+Os verbos que leem e mudam a memória automática do Claude Code de um projeto: a pasta de notas que o Claude guarda
+para ele e carrega no início de uma sessão. Funcionam como os outros comandos do `flightdeckd`: veja
+[o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum). `list`, `read`, `budget` e `suggest` não
+mudam nada; `write` e `delete` mudam uma nota. A tela do próprio app está em
+[Memória, contexto e plugins](memory-context-and-plugins.md).
 
 ## fd memory
 
@@ -35,3 +36,27 @@ Com `--json` cada verbo imprime um valor JSON com todas as chaves, e `null` no q
 (`type`, `description`, `detail`). O texto que uma sessão ou uma pessoa escreveu num arquivo é impresso com os
 caracteres de controle trocados, então não pode comandar o terminal. O código de saída é `0` para feito, `1` para
 recusado e `2` quando nenhum daemon responde.
+
+## Mudar uma nota
+
+```sh
+fd memory write api tdd.md --file next.md --expected-hash <hash> --confirm
+fd memory write api notes.md --file - --new --confirm < notes.md
+fd memory delete api tdd.md --expected-hash <hash> --confirm
+```
+
+- `write <projeto> <nome> --file <caminho> --expected-hash <hash> --confirm` troca uma nota pelo conteúdo de um
+  arquivo, ou da entrada padrão quando o caminho é `-`. O hash é o que `list` ou `read` imprimiu: o host recusa a
+  escrita com `memory_changed` se a nota não for mais essa versão, então você nunca sobrescreve uma mudança que não
+  leu. `--new` toma o lugar do hash para uma nota que não pode existir ainda, e o host a recusa com `memory_exists`
+  se ela existe. Imprime `wrote <nome>  hash: <novo hash>`.
+- `delete <projeto> <nome> --expected-hash <hash> --confirm` apaga uma nota e imprime `deleted <nome>`. Uma nota que
+  não existe é `memory_not_found`, e uma que mudou é `memory_changed`.
+- `--confirm` é obrigatório: sem ele nada é enviado. Um nome que não é um nome de arquivo simples, ou que é um link, é
+  recusado pelo host (`memory_name_invalid`, `memory_is_link`) com saída `1`.
+
+Uma escrita que não recebe resposta sai com `2` e diz que a nota pode ou não ter mudado: rode `memory read` antes de
+repetir. Com `--json` uma escrita imprime `{ "name", "hash" }` e uma exclusão imprime `{ "name" }`. No shell de uma
+sessão, `write` e `delete` são comandos de risco alto: o app pergunta à pessoa antes, porque toda sessão seguinte do
+projeto carrega a nota como memória sua. `--confirm` e `--expected-hash` são palavras digitadas por quem roda o
+comando, então não valem pela pessoa.
