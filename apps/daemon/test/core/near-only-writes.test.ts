@@ -75,6 +75,7 @@ describe("a project's setup script needs a near connection (#3807)", () => {
     const { near, far, board, project, repo, reasonOf } = await nearAndFar();
     const script = "touch ready";
     const farAdd = await reasonOf(far.request("project.add", { path: repo, setupScript: script }));
+    const farBlank = await reasonOf(far.request("project.add", { path: repo, setupScript: "  " }));
     const farSet = await reasonOf(
       far.request("project.update", { projectId: project.id, setupScript: script }),
     );
@@ -91,6 +92,7 @@ describe("a project's setup script needs a near connection (#3807)", () => {
     );
     expect([
       farAdd,
+      farBlank,
       farSet,
       afterFar,
       farRename,
@@ -98,7 +100,17 @@ describe("a project's setup script needs a near connection (#3807)", () => {
       afterNear,
       farClear,
       board.getProject(project.id).setupScript,
-    ]).toEqual(["transport_refused", "transport_refused", null, null, null, script, null, null]);
+    ]).toEqual([
+      "transport_refused",
+      "project_exists",
+      "transport_refused",
+      null,
+      null,
+      null,
+      script,
+      null,
+      null,
+    ]);
   });
 });
 
