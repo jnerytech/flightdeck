@@ -230,10 +230,7 @@ export function ProjectGroup(
                     />
                   )}
                   {rowMeta && (
-                    <span
-                      data-slot="row-meta"
-                      className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline"
-                    >
+                    <span data-slot="row-meta" className="row-meta text-muted-foreground text-xs">
                       {rowMeta}
                     </span>
                   )}
