@@ -6,14 +6,20 @@ import type { MemoryCliArgs } from "../../memory/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 
-const MEMORY_ACTIONS = ["list", "read", "budget", "suggest"] as const;
+const MEMORY_ACTIONS = ["list", "read", "budget", "suggest", "write", "delete"] as const;
 
 /** `memory list|budget|suggest <project>` and `memory read <project> <name>`. */
 export function readMemory(args: CliArgs, reader: ArgReader): void {
   args.command = "memory";
   args.action = subAction(reader, MEMORY_ACTIONS, "invalid memory action");
   args.memoryProject = operand(reader, "the project");
-  if (args.action === "read") args.memoryName = operand(reader, "the file name");
+  if (args.action === "read" || args.action === "write" || args.action === "delete")
+    args.memoryName = operand(reader, "the file name");
+}
+
+/** What is wrong with the `memory` flags and words. */
+export function memoryProblem(_args: CliArgs): string | undefined {
+  return undefined;
 }
 
 /** What the memory runner takes from the parsed arguments. */
@@ -22,7 +28,11 @@ export function memoryCliArgs(args: CliArgs): MemoryCliArgs {
     project: args.memoryProject ?? "",
     ...(args.json ? { json: true as const } : {}),
   };
-  return args.action === "read"
-    ? { ...common, action: "read", name: args.memoryName ?? "" }
-    : { ...common, action: args.action as "list" | "budget" | "suggest" };
+  const name = args.memoryName ?? "";
+  if (args.action === "read") return { ...common, action: "read", name };
+  if (args.action === "write")
+    return { ...common, action: "write", name, file: "", expectedHash: null, confirm: true };
+  if (args.action === "delete")
+    return { ...common, action: "delete", name, expectedHash: "", confirm: true };
+  return { ...common, action: args.action as "list" | "budget" | "suggest" };
 }

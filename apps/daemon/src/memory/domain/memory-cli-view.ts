@@ -63,3 +63,8 @@ export const suggestLines = (suggestions: readonly MemorySuggestion[]): string[]
     : suggestions.map((s) =>
         [s.kind, s.files.join(", "), ...(s.detail === undefined ? [] : [s.detail])].join("  "),
       );
+
+/** What a write printed: the file and the hash a later write repeats. */
+export const wroteLine = (_name: string, _hash: string): string => "";
+
+export const deletedLine = (_name: string): string => "";

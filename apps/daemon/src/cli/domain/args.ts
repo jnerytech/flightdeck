@@ -16,7 +16,7 @@ import { costsProblem } from "./costs-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
 import { mcpProblem, readMcp } from "./mcp-args.ts";
-import { readMemory } from "./memory-args.ts";
+import { memoryProblem, readMemory } from "./memory-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
@@ -732,6 +732,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     watchProblem(args) ??
     boardsyncProblem(args) ??
     reviewProblem(args) ??
+    memoryProblem(args) ??
     runenvProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??

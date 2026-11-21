@@ -15,31 +15,51 @@ import {
 } from "../daemon-client/index.ts";
 import {
   budgetLines,
+  deletedLine,
   fileJson,
   listingJson,
   listLines,
   readLines,
   suggestionJson,
   suggestLines,
+  wroteLine,
 } from "./domain/memory-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+const UNSURE =
+  "; the memory file may or may not have changed: read it again before you write again";
+
 export type MemoryCliArgs = { project: string; json?: boolean } & (
   | { action: "list" | "budget" | "suggest" }
   | { action: "read"; name: string }
+  | {
+      action: "write";
+      name: string;
+      /** The file with the new content, or `-` for standard input. */
+      file: string;
+      /** The hash `read` printed; `null` for a file that must not exist yet. */
+      expectedHash: string | null;
+      confirm: true;
+    }
+  | { action: "delete"; name: string; expectedHash: string; confirm: true }
 );
 
 export function runMemoryCli(
   args: MemoryCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number; remote?: RemoteTarget | undefined } = {},
+  options: {
+    timeoutMs?: number;
+    remote?: RemoteTarget | undefined;
+    stdin?: ReadableStream<Uint8Array> | undefined;
+  } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-memory",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    unsure: UNSURE,
     perform: async (daemon) => {
       const { projects } = await daemon.call("project.list", {});
       const found = resolveProject(projects, args.project);
@@ -61,6 +81,10 @@ export function runMemoryCli(
             const budget = await daemon.call("memory.budget", { projectId });
             return args.json ? json(budget) : said(...budgetLines(budget));
           }
+          case "write":
+            return said("");
+          case "delete":
+            return said("");
           case "suggest": {
             const { suggestions } = await daemon.call("memory.suggest", { projectId });
             return args.json

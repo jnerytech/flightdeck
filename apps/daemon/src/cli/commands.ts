@@ -630,9 +630,9 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       runBoardsyncCli(boardsyncCliArgs(args), config, remote ? { remote } : {}),
     );
   },
-  memory: async (args, deps) => {
-    const { runMemoryCli } = await import("../memory/index.ts");
-    return asking(args, deps, (c, r) => runMemoryCli(memoryCliArgs(args), c, { remote: r }));
+  memory: async (args, d) => {
+    const { runMemoryCli: run } = await import("../memory/index.ts");
+    return asking(args, d, (c, r) => run(memoryCliArgs(args), c, { remote: r, stdin: d.stdin }));
   },
   review: async (args, deps) => {
     const { runReviewCli } = await import("../review/index.ts");
