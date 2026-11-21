@@ -1,4 +1,4 @@
-import { runsFlightdeckWords } from "./shell-call.ts";
+import { isCliProgram, runsFlightdeckWords, unquoted } from "./shell-call.ts";
 
 /**
  * `flightdeckd send <session> <text>` puts the text into the session as the input box does: the session reads it
@@ -9,6 +9,8 @@ import { runsFlightdeckWords } from "./shell-call.ts";
  * text: the daemon cannot tell who holds the shell.
  */
 const writesAsThePerson = (prog: string, args: string[]) =>
+  // A runner's text that never names `send` is no run of it: skip the walk over its CLI starts (#3566).
+  (isCliProgram(prog) || args.some((a) => unquoted(a).split(/\s+/).includes("send"))) &&
   runsFlightdeckWords(prog, args, ([first]) => first === "send");
 
 /** The top-level `flightdeckd` commands that are high from a shell, with what each is stopped for. */
