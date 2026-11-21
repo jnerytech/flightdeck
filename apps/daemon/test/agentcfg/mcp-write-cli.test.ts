@@ -197,6 +197,24 @@ describe("flightdeckd mcp save (issue #3616)", () => {
     expect(callsOf(daemon, "mcp.save")).toEqual([]);
   });
 
+  test("a server whose type does not match what it names to run, or whose link is no URL, is refused", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const shapes = [
+      { name: "a", type: "stdio", url: "https://h.example/mcp" },
+      { name: "b", type: "http", command: "npx" },
+      { name: "c", command: "   " },
+      { name: "d", url: "not a url" },
+    ];
+    const codes: number[] = [];
+    for (const shape of shapes)
+      codes.push(
+        (await flightdeckd(["mcp", "save", "api", serverFile(shape), "--confirm"], daemon.port))
+          .code,
+      );
+    expect(codes).toEqual([1, 1, 1, 1]);
+    expect(callsOf(daemon, "mcp.save")).toEqual([]);
+  });
+
   test("a file that is refused is exit 1 whether or not a daemon runs, since it is read before one is asked", async () => {
     const daemon = fakeDaemon(OPEN);
     const { port } = daemon;
