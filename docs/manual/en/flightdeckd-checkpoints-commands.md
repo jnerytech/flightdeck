@@ -35,7 +35,7 @@ fd rewind preview 3f9c1a 2
 ```
 
 `preview <session> <turn>` says what rewinding the session to that turn would change, and whether the daemon would do
-it through the SDK's checkpoint or through a snapshot: the files, and the lines added and removed. It changes nothing.
+it through the SDK's checkpoint or through a snapshot: the files, and the lines added and removed. It changes no file and no ref; on the snapshot path git may store the objects of the working tree, which it collects later.
 
 ## fd trace
 
@@ -48,7 +48,7 @@ fd trace export 3f9c1a --include-content > trace.json
 `get <session>` prints the cost and duration of the session, the turn or subagent that cost most and the call that
 took longest, then the tree: one line for each turn, tool call, subagent and thought, with its time, its cost and
 `error` when it failed. The text of the prompts of the turns is cut to a line; `--json` prints the whole trace the
-daemon built, tool inputs and results included.
+daemon built, tool inputs and results included, as they are in the transcript: secrets are not replaced, so `get --json` is not the file to share. `export` is.
 
 `export <session>` prints the trace as JSON on standard output, the file the app's export would save, so a shell
 redirects it where it wants. The file holds the structure and the numbers; `--include-content` adds the prompts and

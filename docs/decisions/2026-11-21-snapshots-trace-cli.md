@@ -18,3 +18,9 @@ write side, `rewind apply` and `rewind undo`, is the second slice.
   prompt is cut to 100 characters, and `trace get` cuts a label to 60.
 - The handlers of these commands do not call `requireVaultTransport`; whether a read of another host's transcript
   needs it is the transport guard of #3439 and is not decided here.
+- `trace get --json` and `snapshots list --json` print the transcript's text as the app receives it, with no secret
+  scan: only `trace export` runs the scanner. The usage line and the manual say so, and name `export` as the file to
+  share.
+- `rewind preview` changes no file and no ref, but on the snapshot path the daemon writes the objects of the working
+  tree into the repository's object store (`git add` into a temporary index, then `write-tree`); git collects them.
+  Keeping them out of the store is the daemon's, not this slice's.

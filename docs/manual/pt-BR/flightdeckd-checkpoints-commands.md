@@ -35,7 +35,7 @@ fd rewind preview 3f9c1a 2
 ```
 
 `preview <sessão> <turno>` diz o que voltar a sessão àquele turno mudaria, e se o daemon faria isso pelo checkpoint do
-SDK ou por um snapshot: os arquivos e as linhas adicionadas e removidas. Não muda nada.
+SDK ou por um snapshot: os arquivos e as linhas adicionadas e removidas. Não muda arquivo nem referência; no caminho do snapshot o git pode guardar os objetos da árvore de trabalho, e depois os coleta.
 
 ## fd trace
 
@@ -48,7 +48,7 @@ fd trace export 3f9c1a --include-content > trace.json
 `get <sessão>` imprime o custo e a duração da sessão, o turno ou subagente que mais custou e a chamada que mais
 demorou, e depois a árvore: uma linha para cada turno, chamada de ferramenta, subagente e pensamento, com seu tempo,
 seu custo e `error` quando falhou. O texto dos prompts dos turnos é cortado em uma linha; `--json` imprime o trace
-inteiro que o daemon montou, com as entradas e os resultados das ferramentas.
+inteiro que o daemon montou, com as entradas e os resultados das ferramentas, como estão na transcrição: os segredos não são substituídos, então `get --json` não é o arquivo para compartilhar. O `export` é.
 
 `export <sessão>` imprime o trace como JSON na saída padrão, o arquivo que a exportação do app salvaria, para que o
 shell o redirecione para onde quiser. O arquivo tem a estrutura e os números; `--include-content` acrescenta os
