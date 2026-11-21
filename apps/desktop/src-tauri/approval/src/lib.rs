@@ -887,7 +887,7 @@ fn command_text(ask: &Ask, pt: bool) -> String {
             short_hash(hash)
         ),
         Some(CommandAsk::TrustSnippets { path, hash }) => format!(
-            "Trust the snippet file of a project folder? Its commands, as they are in file {}, will be able to run in terminals with no prompt. Continue only if you just pressed Trust file in Flightdeck.\n\"{path}\"",
+            "Trust the snippet file of a project folder? Its commands, as they are in file {}, will be able to run in terminals with no prompt. Continue only if you just pressed Trust the file in Flightdeck.\n\"{path}\"",
             short_hash(hash)
         ),
         None => String::new(),
