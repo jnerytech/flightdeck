@@ -40,7 +40,7 @@ const renderDaemon = (): Handlers => ({
       ? REVIEW
       : { error: { code: "not_found", message: "snippet not found" } },
   "snippets.render": (payload) => ({
-    text: `Review a.ts on ${(payload.values as Record<string, string>).branch}`,
+    text: `Review a.ts on ${(payload.values as Record<string, string> | undefined)?.branch ?? "main"}`,
     fields: FIELDS,
   }),
 });

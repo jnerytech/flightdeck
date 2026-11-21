@@ -138,4 +138,7 @@ export const USAGE = [
   "     fd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
   "     fd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
   "     fd snippet get <name> [--project-path <folder>] [--config <file>]",
+  "     fd snippet render <name or id> [--value <field>=<text> ...] [--project-path <folder>] [--host <name>] [--json] [--config <file>]   (the text the snippet would produce; nothing is pasted or run, and a field with no value is refused)",
+  "     fd snippet parse <file or -> [--host <name>] [--json] [--config <file>]   (reads a YAML or JSON list of snippets, up to 1000000 characters, and saves none)",
+  "     fd snippet import-history [--limit <1-200>] [--reveal] [--host <name>] [--json] [--config <file>]   (the most used commands of the shell histories; a command with a secret is hidden unless --reveal, and none is saved)",
 ].join("\n");

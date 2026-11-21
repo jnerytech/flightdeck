@@ -36,3 +36,28 @@ Para usar:
 - O Claude lê snippets pelas ferramentas `list_snippets` e `get_snippet` do MCP do Flightdeck. O
   Flightdeck nunca roda um snippet pelo Claude: um comando que o Claude roda passa pelas permissões
   do próprio Claude Code.
+
+## Pelo shell
+
+`flightdeckd snippet` (ou `fd snippet`) lê os snippets de um host. Funciona como os outros comandos do `flightdeckd`:
+veja [o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum).
+
+```sh
+fd snippet render review --value file=src/a.ts --value branch=dev
+fd snippet render review --project-path /home/pi/app --json
+fd snippet parse snippets.yaml
+cat snippets.yaml | fd snippet parse - --json
+fd snippet import-history --limit 20
+fd snippet import-history --reveal --json
+```
+
+- `render <nome ou id>` imprime o texto que o snippet geraria, com cada `--value campo=texto` preenchido. Não cola nem
+  roda nada. Um campo sem valor é recusado com o motivo do daemon e saída `1`. `--project-path` soma os snippets desse
+  projeto à busca pelo nome. Com `--json` imprime `{"id", "name", "text", "fields"}`.
+- `parse <arquivo>` envia ao daemon o texto de uma lista YAML ou JSON e imprime uma linha por snippet lido (nome, tipo e
+  etiquetas); `-` lê o texto do stdin. Não guarda nada. Uma entrada que o daemon deixou de fora aparece no stderr; um
+  texto sem nenhum snippet sai com `1`. Um texto acima de 1000000 caracteres é recusado antes de ser enviado.
+- `import-history` lista os comandos mais usados dos históricos de shell do host (`--limit` de 1 a 200). Uma linha com
+  segredo mostra o que foi achado, nunca o valor, e não pode ser importada; `--reveal` mostra só os comandos que a
+  varredura escondeu por um motivo que ela sabe nomear. Não guarda nada: importar as linhas é um verbo posterior.
+- `--host <nome>` e `--json` valem como em todo lugar. `list` e `get` mantêm a saída crua própria.
