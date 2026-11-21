@@ -122,6 +122,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd review](en/flightdeckd-review-commands.md#fd-review)
 
+## flightdeckd commands: the run environment of a card
+
+[Read the chapter.](en/flightdeckd-runenv-commands.md) Its sections:
+
+- [fd runenv](en/flightdeckd-runenv-commands.md#fd-runenv)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)

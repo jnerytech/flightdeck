@@ -135,6 +135,7 @@ export const USAGE = [
   "     fd boardsync boards | status <project> | log <card> [--host <name>] [--json] [--config <file>]   (the GitHub Projects boards of the account, a project's board sync, a card's sync log; nothing is changed)",
   "     fd review list <target> [--host <name>] [--json] [--config <file>]   (the inline comments on the diff of a target, which is session:<id>, card:<id>, terminal:<id> or project:<id>; nothing is changed)",
   "     fd boardsync link <project> <board id> [--map <status>=<column>]... | set-map <project> --map <status>=<column>... | unlink <project> | sync-now <project> | set-push <project> --on --confirm | --off [--host <name>] [--json] [--config <file>]   (a column is backlog, in_progress, waiting, review or done; a link without --map takes the board's own map; --on sends the cards' moves to the board and needs the project permission)",
+  "     fd runenv config <project> | get <card> | watch [--host <name>] [--json] [--config <file>]   (a project's run.yaml and the hash a person trusts; a card's run environment; watch prints a line for each card's run as it changes, until Ctrl-C; they change nothing)",
   "     fd approve <request> [--message <text>] [--hold] [--host <name>] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
   "     fd deny <request> [--message <text>] [--host <name>] [--json] [--config <file>]",
   "     fd requests [--session <session>] [--host <name>] [--json] [--config <file>]   (the open permission requests, oldest first)",

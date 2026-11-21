@@ -374,6 +374,7 @@ export const en: Dictionary = {
   historyUi: {
     title: "History of {host}",
     folder: "Folder",
+    folderHelp: "Part of the project folder",
     project: "Project: {name}",
     clearProject: "Clear project",
     from: "From",
@@ -388,6 +389,7 @@ export const en: Dictionary = {
     automatedHidden: "{count} automated runs hidden",
     emptyAutomated: "{count} automated runs are hidden by the filter.",
     emptyFiltered: "No session matches these filters.",
+    periodReversed: "From is after To: pick a period that starts first.",
     clearFilters: "Clear the filters",
     showAutomated: "Show them",
     automatedTag: "automated",
