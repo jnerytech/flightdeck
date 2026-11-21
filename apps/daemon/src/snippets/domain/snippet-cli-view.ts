@@ -54,6 +54,8 @@ export function importedLines(result: Pick<SnippetHistoryResult, "created" | "sk
   return lines.length ? lines : ["nothing imported"];
 }
 
-/** What went into the terminal, and whether Enter ran it. */
-export const usedLine = (terminalId: string, ran: boolean, text: string): string =>
-  `${ran ? "ran in" : "typed into"} ${terminalId}  ${text}`;
+/** What went into the terminal, and whether Enter ran it: one line for each line of the text. */
+export const usedLines = (terminalId: string, ran: boolean, text: string): string[] => {
+  const [first, ...rest] = renderLines(text);
+  return [`${ran ? "ran in" : "typed into"} ${terminalId}  ${first}`, ...rest];
+};

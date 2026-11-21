@@ -21,7 +21,7 @@ import {
   renderLines,
   savedLine,
   trustedLine,
-  usedLine,
+  usedLines,
 } from "./domain/snippet-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -86,6 +86,23 @@ async function resolve(daemon: DaemonClient, name: string, projectPath: string |
   }
 }
 
+/**
+ * The snippet a write by name means. A name the host and the project both have is two snippets, and the host's
+ * would win in `resolve`: a write refuses it and names the ids, so none is changed or typed by mistake.
+ */
+async function resolveOne(daemon: DaemonClient, name: string, projectPath: string | undefined) {
+  if (projectPath) {
+    const { snippets } = await daemon.call("snippets.list", { projectPath });
+    const same = snippets.filter((s) => s.name === name);
+    if (same.length > 1)
+      throw new DaemonRefusal(
+        "invalid_request",
+        `${plain(name)} names ${same.length} snippets (${same.map((s) => s.id).join(", ")}): give one of the ids`,
+      );
+  }
+  return await resolve(daemon, name, projectPath);
+}
+
 /** The verbs that change what the host keeps or runs. */
 const WRITING = ["save", "remove", "favorite", "trust", "use"];
 
@@ -118,7 +135,7 @@ async function write(
     });
     return args.json ? json(info) : said(trustedLine(info));
   }
-  const snippet = await resolve(daemon, args.name as string, args.projectPath);
+  const snippet = await resolveOne(daemon, args.name as string, args.projectPath);
   if (args.action === "remove") {
     note.wrote = true;
     await daemon.call("snippets.remove", { id: snippet.id });
@@ -131,6 +148,7 @@ async function write(
     const marked = await daemon.call("snippets.favorite", { id: snippet.id, favorite: !args.off });
     return args.json ? json(marked) : said(favoriteLine(marked));
   }
+  if (args.action !== "use") throw new Error(`snippet ${args.action} is not a write`);
   note.wrote = true;
   const terminalId = args.terminalId as string;
   const used = await daemon.call("snippets.use", {
@@ -140,7 +158,7 @@ async function write(
     ...(args.values ? { values: args.values } : {}),
     ...(args.enter ? { enter: true } : {}),
   });
-  return args.json ? json(used) : said(usedLine(terminalId, args.enter === true, used.text));
+  return args.json ? json(used) : said(...usedLines(terminalId, args.enter === true, used.text));
 }
 
 export function runSnippetVerbCli(

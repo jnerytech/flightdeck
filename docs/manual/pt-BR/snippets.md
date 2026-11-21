@@ -66,7 +66,7 @@ fd snippet trust --project-path /home/pi/app --hash 0123abcd --confirm
 - `save <nome> --run <comando>` ou `--text <prompt>` (exatamente um) guarda um snippet do host, ou do projeto quando
   há `--project-path`, e imprime `saved <nome>  <tipo>  <id>`. `--tag` pode repetir. O daemon recusa um comando ou texto
   com segredo, com o motivo e saída `1`.
-- `remove <nome ou id>` apaga o snippet. `favorite <nome ou id>` o marca, e `--off` tira a marca; não precisa de
+- `remove <nome ou id>` apaga o snippet. Com `--project-path`, um nome que um snippet do host e um do projeto têm é recusado com os ids: dê o id. `favorite <nome ou id>` o marca, e `--off` tira a marca; não precisa de
   `--confirm`.
 - `trust --project-path <pasta> --hash <hash>` confia no conteúdo do arquivo versionado do projeto, pelo hash que
   `snippet list` mostrou: seus comandos poderão rodar. Se o arquivo mudou depois, o daemon recusa.

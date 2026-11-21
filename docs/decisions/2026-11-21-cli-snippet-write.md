@@ -15,8 +15,14 @@ with `select`.
 - `use` always sends `action: "paste"` with the terminal given: the text goes into that terminal, and `--enter` is the
   only thing that runs it. The daemon's `run` and `send` actions (a snippet run in a new terminal, or sent to a
   session) are not in the CLI yet.
-- A name is resolved as for `render` (a name first, then an id), so a write by name never touches the wrong row. A name
-  no snippet has is the daemon's `not_found`, exit `1`, and nothing is written.
+- A name is resolved as for `render` (a name first, then an id). With `--project-path`, a name that a host snippet and a
+  project snippet both have is refused for `remove`, `favorite` and `use`, with the ids, because the host's would win;
+  the id is then given instead. A name no snippet has is the daemon's `not_found`, exit `1`, and nothing is written.
+- `remove` stays an ordinary shell command, but on a snippet of a project's versioned file it rewrites that file and
+  drops its trust. A session can already edit that file in its own repository, so the rule adds no gate there.
+- `use` prints one stdout line for each line of the text, as `render` does; `--json` keeps the text exact.
+- `import-history --select` takes at least one id, and neither `--limit` nor `--reveal` (they only shape the preview).
+- The verb of a `snippet` line the shell expands (`fd snippet $V ...`) is read as high, as for the other nouns (#3559).
 - The write that may have gone out is said when no answer came: `note.wrote` is set right before each write call, and
   exit `2` carries "the host may or may not have made the change".
 - Left out: `save --target file` (writing the project's versioned file), editing a snippet by id, `--var` defaults on

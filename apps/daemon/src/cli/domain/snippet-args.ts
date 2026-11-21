@@ -126,6 +126,11 @@ export function snippetProblem(args: CliArgs): string | undefined {
     if (args.limit > MOST_HISTORY) return `--limit: at most ${MOST_HISTORY}`;
   }
   if ((args.snippetSelect?.length ?? 0) > MOST_HISTORY) return `--select: at most ${MOST_HISTORY}`;
+  if (args.snippetSelect?.length === 0) return "--select needs at least one id";
+  if (args.snippetSelect !== undefined) {
+    if (args.limit !== undefined) return "--limit: this flag does not apply with --select";
+    if (args.snippetReveal !== undefined) return "--reveal: this flag does not apply with --select";
+  }
   return missingOperand(args, action);
 }
 

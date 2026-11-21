@@ -633,6 +633,7 @@ const VERB_NOUNS = new Set([
   "project",
   "ssh",
   "watch",
+  "snippet",
 ]);
 
 /**
