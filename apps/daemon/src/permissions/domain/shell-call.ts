@@ -291,12 +291,51 @@ function mayBeCli(word: string): boolean {
 /** A program name that is the Flightdeck CLI (source, compiled or launcher), or a variable that may hold it. */
 export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || name.includes("$");
 
+/** The most words read after a program that is a variable: matching them against every verb grows with the square of their number. */
+const MAX_WORDS_AFTER_VARIABLE = 64;
+
+/** How many times one line may be read again inside itself (a shell's text, a substitution, a variable program's rest). */
+const MAX_REREADS = 32;
+
+/**
+ * The work one command line may cost (#3593). Each read of a part of the line inside the line (the text of
+ * `sh -c`, a process substitution, a `find -exec` command, what follows a variable program) spends one of a
+ * fixed number of re-reads, so nesting that doubles the work at every level (`sh -c 'sh -c '...`) stops at a
+ * known size. When the re-reads run out the rest is not read, and `spent` says the line cannot be judged: the
+ * caller rates it high.
+ */
+export class Scan {
+  private left = MAX_REREADS;
+  spent = false;
+
+  /** More words than the rules read after a program they cannot resolve: the rest is cut off, and the line is spent. */
+  cap(words: string[]): string[] {
+    if (words.length <= MAX_WORDS_AFTER_VARIABLE) return words;
+    this.spent = true;
+    return words.slice(0, MAX_WORDS_AFTER_VARIABLE);
+  }
+
+  /** Whether one more re-read is allowed; the first refusal marks the line as spent. */
+  reread(): boolean {
+    if (this.left > 0) {
+      this.left--;
+      return true;
+    }
+    this.spent = true;
+    return false;
+  }
+}
+
+/** Why a line that spent its re-reads is high: it is not read as routine. */
+export const UNREADABLE =
+  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec or a chain of variable programs), so it is not read as routine";
+
 /**
  * What a segment runs, past `sudo`, `env X=1`, `timeout 5`, a subshell or brace group, a redirection and the
  * like (#3499). A program that is a variable (`$FD`, `"${BIN}"`) cannot be resolved: it may be the CLI, a shell
  * or a wrapper, so it gives one reading for each, and the rest of the line is read as a command again.
  */
-export function invocations(segment: string[]): Invocation[] {
+export function invocations(segment: string[], scan: Scan = new Scan()): Invocation[] {
   const words = withoutRedirections(afterLabel(segment).map(closed).map(opened)).filter(
     (w) => w !== "",
   );
@@ -318,10 +357,11 @@ export function invocations(segment: string[]): Invocation[] {
           { prog: escaped, args, sudo, unresolved: false },
         ];
   }
+  const rest = scan.cap(args);
   return [
-    { prog: "flightdeckd", args, sudo, unresolved: true, ...hidden },
-    { prog: "sh", args, sudo, unresolved: true },
-    ...invocations(args).map((i) => ({ ...i, sudo: i.sudo || sudo })),
+    { prog: "flightdeckd", args: rest, sudo, unresolved: true, ...hidden },
+    { prog: "sh", args: rest, sudo, unresolved: true },
+    ...(scan.reread() ? invocations(rest, scan).map((i) => ({ ...i, sudo: i.sudo || sudo })) : []),
   ];
 }
 
