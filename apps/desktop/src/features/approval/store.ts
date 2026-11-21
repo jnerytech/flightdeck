@@ -51,6 +51,7 @@ import type {
   SnippetTrustPayload,
   TrustPayload,
 } from "./payloads.ts";
+import { type UncheckedCommand, uncheckedCommandsOf } from "./unchecked.ts";
 
 /** The feature a host announces for each command it guards (#3453). */
 const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
@@ -66,17 +67,7 @@ const COMMAND_FEATURE: Partial<Record<ProofCommand, string>> = {
   "snippets.trust": FEATURE_APPROVAL_SNIPPETS,
 };
 
-/** A command a host from before its proof does not guard: the devices panel says so for each. */
-export type UncheckedCommand =
-  | "merge"
-  | "trust"
-  | "bypass"
-  | "resume"
-  | "roots"
-  | "harness"
-  | "plugins"
-  | "marketplace"
-  | "snippets";
+export type { UncheckedCommand };
 
 /** What a host says about its approval devices, and which key is this device's. */
 export interface ApprovalStatus {
@@ -259,29 +250,9 @@ export class ApprovalSlice {
     }
   }
 
-  /**
-   * The host checks the proof of an allow but not of a merge (#3453): it is from before the commands were
-   * guarded, so its merges ask for no device. A host the app has no features for is not said to be one.
-   */
+  /** The commands the host does not guard with a proof (see `uncheckedCommandsOf`). */
   uncheckedCommands(hostId: string): UncheckedCommand[] {
-    const features = this.core.host(hostId)?.features;
-    if (features === undefined || !hasFeature(features, FEATURE_APPROVAL_PROOF, false)) return [];
-    const unchecked: UncheckedCommand[] = [];
-    if (!hasFeature(features, FEATURE_APPROVAL_COMMAND, false)) unchecked.push("merge");
-    if (!hasFeature(features, FEATURE_APPROVAL_TRUST, false)) unchecked.push("trust");
-    if (!hasFeature(features, FEATURE_APPROVAL_BYPASS, false)) unchecked.push("bypass");
-    if (!hasFeature(features, FEATURE_APPROVAL_RESUME, false)) unchecked.push("resume");
-    if (!hasFeature(features, FEATURE_APPROVAL_ROOTS, false)) unchecked.push("roots");
-    if (!hasFeature(features, FEATURE_APPROVAL_HARNESS, false)) unchecked.push("harness");
-    if (!hasFeature(features, FEATURE_APPROVAL_PLUGINS, false)) unchecked.push("plugins");
-    if (!hasFeature(features, FEATURE_APPROVAL_MARKETPLACE, false)) unchecked.push("marketplace");
-    // Only a host that keeps snippets has a trust to guard (#3647).
-    if (
-      hasFeature(features, "snippets", false) &&
-      !hasFeature(features, FEATURE_APPROVAL_SNIPPETS, false)
-    )
-      unchecked.push("snippets");
-    return unchecked;
+    return uncheckedCommandsOf(this.core.host(hostId)?.features);
   }
 
   /** This app can hold a key (it runs in the shell) and the host checks proofs. */
