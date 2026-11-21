@@ -6,16 +6,17 @@
 import type { ActionCliArgs, ActionVerbCliArgs } from "../../actions/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
-import { type Handler, setFlag } from "./flag-handlers.ts";
+import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 
-const ACTION_VERBS = ["list", "run", "runs"] as const;
+const ACTION_VERBS = ["list", "run", "runs", "save", "trust", "remove"] as const;
 
 /** `action list`, `action run <name>` or `action runs [<name>]`. */
 export function readAction(args: CliArgs, reader: ArgReader): void {
   args.command = "action";
   const verb = subAction(reader, ACTION_VERBS, "invalid action");
   args.action = verb;
-  if (verb === "run") args.actionName = operand(reader, "the action name");
+  if (verb === "run" || verb === "trust" || verb === "remove")
+    args.actionName = operand(reader, "the action name");
   // `runs` may name one action; a word that starts with `-` is the next option.
   const next = reader.peek();
   if (verb === "runs" && next !== undefined && !next.startsWith("-")) {
@@ -24,8 +25,11 @@ export function readAction(args: CliArgs, reader: ArgReader): void {
   }
 }
 
-/** The flag of `action list` that prints lines for a person. */
+/** The flags of `action`: `--plain` prints lines for a person, `--secret-ids` is the secrets `save` may name. */
 export const ACTION_FLAGS: Record<string, Handler> = {
+  "--secret-ids": setValue((args, v) => {
+    args.secretIds = v.split(",");
+  }),
   "--plain": setFlag((args) => {
     args.plain = true;
   }),

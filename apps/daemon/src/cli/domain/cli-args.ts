@@ -312,6 +312,8 @@ export interface CliArgs {
   maxRuns?: number;
   /** `automation save --external-authors on|off`. */
   externalAuthors?: boolean;
+  /** `action save --secret-ids a,b`: the ids of the secrets the vault has, so a reference to another is refused. */
+  secretIds?: string[];
   /** `automation save --definition-file <file>`: the JSON of the trigger and the action. */
   definitionFile?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */

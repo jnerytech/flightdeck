@@ -498,6 +498,7 @@ export const OPTIONS_WITH_VALUE = [
   "--max-runs",
   "--external-authors",
   "--definition-file",
+  "--secret-ids",
   "--digest",
   "--branch",
   "--remote",

@@ -17,7 +17,16 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 /** `--project` names a project by its name or id; without it the host's own actions and runs are asked for. */
 export type ActionVerbCliArgs =
   | { action: "list"; project?: string; plain?: boolean; json?: boolean }
-  | { action: "runs"; project?: string; name?: string; limit?: number; json?: boolean };
+  | { action: "runs"; project?: string; name?: string; limit?: number; json?: boolean }
+  | {
+      action: "save";
+      project?: string;
+      definitionFile: string;
+      secretIds?: string[];
+      json?: boolean;
+    }
+  | { action: "trust"; project?: string; name: string; hash: string; json?: boolean }
+  | { action: "remove"; project?: string; name: string; json?: boolean };
 
 type Config = { bind: string; port: number; token: string };
 
@@ -48,6 +57,7 @@ export function runActionVerbCli(
         });
         return shown(args.json, runsJson(runs), () => runsLines(runs));
       }
+      if (args.action !== "list") return shown(args.json, {}, () => []);
       const list = await daemon.call("actions.list", scope);
       return shown(args.json, listJson(list), () => listLines(list));
     },
