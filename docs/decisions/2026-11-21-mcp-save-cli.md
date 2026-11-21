@@ -17,7 +17,11 @@ The text is checked against the protocol's schema, strictly (`domain/mcp-input.t
 the daemon would drop it and save a server with no `command`. A problem names the field and what is wrong with it,
 never a value (an `env` value may be a secret and the message ends on a terminal); a file that cannot be read, that is
 no JSON or that is not one object exits `1` before the daemon hears of it. The daemon still refuses a value that shows
-as the mask, so a copied `list` cannot write the mask over a secret.
+as the mask, so a copied `list` cannot write the mask over a secret. A server with neither a `command` nor a `url` is
+refused too: the schema leaves both optional for the app, but a saved one runs nothing. The file is read before a daemon
+is asked, so a refused file is exit `1` even with no daemon, and `-` holds no connection open while it is typed. An
+unknown key is named in the refusal (`unknown field: cmd`): the name is what a person needs to fix a typo, and a value
+is never printed.
 
 - `--confirm` is required (the daemon refuses a save without it, and the CLI sends it, as for `remove`). `--enable`,
   `--disable` and `--session` are refused on it; the file is a word, not a flag, so `save api -` and `save api f.json`

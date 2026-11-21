@@ -19,7 +19,13 @@ export function serverFromText(text: string): ServerFile {
     return { problem: "the content is not JSON" };
   }
   const checked = McpServerInput.strict().safeParse(value);
-  if (checked.success) return { server: checked.data };
+  if (checked.success) {
+    const { command, url } = checked.data;
+    // The schema leaves both optional (the app fills them in as it goes), but a saved server with neither runs nothing.
+    if (!command && !url)
+      return { problem: "the server needs a command (stdio) or a url (http, sse)" };
+    return { server: checked.data };
+  }
   const issue = checked.error.issues[0];
   if (issue === undefined) return { problem: "the content is not a server" };
   if (issue.code === "unrecognized_keys")

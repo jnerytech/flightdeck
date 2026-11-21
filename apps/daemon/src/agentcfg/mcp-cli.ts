@@ -47,16 +47,16 @@ async function readServer(
   file: string,
   stdin: ReadableStream<Uint8Array>,
 ): Promise<ReturnType<typeof serverFromText>> {
+  let text: string;
   try {
-    return serverFromText(
-      file === "-" ? await new Response(stdin).text() : await readFile(file, "utf8"),
-    );
+    text = file === "-" ? await new Response(stdin).text() : await readFile(file, "utf8");
   } catch {
     return { problem: `cannot read the server from ${file}` };
   }
+  return serverFromText(text);
 }
 
-export function runMcpCli(
+export async function runMcpCli(
   args: McpCliArgs,
   config: { bind: string; port: number; token: string },
   options: {
@@ -65,6 +65,12 @@ export function runMcpCli(
     stdin?: ReadableStream<Uint8Array> | undefined;
   } = {},
 ): Promise<CliResult> {
+  // A save reads its file first: a refused file is exit 1 with no daemon asked, and `-` holds no connection open.
+  const saved =
+    args.action === "save"
+      ? await readServer(args.file, options.stdin ?? Bun.stdin.stream())
+      : undefined;
+  if (saved && "problem" in saved) return failure(1, `mcp save: ${saved.problem}`);
   return runOnLocalDaemon({
     config,
     ...(options.remote ? { remote: options.remote } : {}),
@@ -85,16 +91,16 @@ export function runMcpCli(
         return shown(args.json, { servers: servers.map(serverJson) }, () => listLines(servers));
       }
       if (args.action === "save") {
-        const read = await readServer(args.file, options.stdin ?? Bun.stdin.stream());
-        if ("problem" in read) return failure(1, `mcp save: ${read.problem}`);
+        // `saved` holds the server whenever the action is a save: the guard before this call returned any problem.
+        if (!saved || !("server" in saved)) return failure(1, "mcp save: no server to save");
         note.wrote = true;
         const { servers } = await daemon.call("mcp.save", {
           projectId,
-          server: read.server,
+          server: saved.server,
           confirm: true,
         });
         return shown(args.json, { servers: servers.map(serverJson) }, () => [
-          `saved ${read.server.name}`,
+          `saved ${saved.server.name}`,
           ...listLines(servers),
         ]);
       }
