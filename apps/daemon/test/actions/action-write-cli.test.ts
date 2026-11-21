@@ -223,6 +223,24 @@ describe("flightdeckd action trust (issue #3629)", () => {
     expect(callsOf(daemon, "actions.list")).toEqual([{ projectId: "p1" }]);
   });
 
+  test("a refused trust stays a refusal when the current hash cannot be read: no 'may have been made'", async () => {
+    const daemon = fakeDaemon({
+      ...OPEN,
+      "actions.trust": () => ({
+        error: {
+          code: "invalid_state",
+          message: "action deploy changed; review it again before trusting it",
+          reason: "action_changed_review",
+        },
+      }),
+      "actions.list": () => CLOSE,
+    });
+    const run = await flightdeckd(["action", "trust", "deploy", "--hash", HASH], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
+    expect(run.err.join("\n")).toContain("action deploy changed; review it again");
+    expect(run.err.join("\n")).not.toContain("may or may not");
+  });
+
   test("any other refusal is the daemon's text and asks for no hash; a dead daemon says the trust may have gone in", async () => {
     const refusing = fakeDaemon({
       ...OPEN,
@@ -330,6 +348,10 @@ describe("the flags of flightdeckd action save, trust and remove (issue #3629)",
     expect(() =>
       parseArgs(["action", "save", "--definition-file", "d.json", "--secret-ids", ","]),
     ).toThrow("--secret-ids");
+    // A space after the comma is not part of the id.
+    expect(
+      parseArgs(["action", "save", "--definition-file", "d.json", "--secret-ids", "a, b"]),
+    ).toMatchObject({ secretIds: ["a", "b"] });
   });
 
   test("--json and --host go with the writes; the persona's --hash is still the persona's", () => {
