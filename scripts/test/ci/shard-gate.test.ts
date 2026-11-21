@@ -7,6 +7,7 @@ import {
   type ShardJob,
   shardRun,
 } from "../../lib/tests/shard-gate.ts";
+import { ENTRY_POINTS } from "../../lib/coverage-gate/check.ts";
 import { importsOf } from "../../lib/tests/test-related.ts";
 import { bun, functions, gate, healthy, ist, marker, record, TESTS } from "./shard-gate-setup.ts";
 
@@ -86,6 +87,25 @@ describe("shard-gate: the merged 80% gate (#296, #1002)", () => {
       "b.ts: nenhum teste carrega este arquivo",
       "scripts/entry.ts: funções 0/0, linhas 0/1",
     ]);
+  });
+
+  test("a loaded entry point is waived as in the full suite: the gate does not judge it", () => {
+    // A print-table file the prints run in a browser; a test that imports it must not close the gate.
+    const entry = "scripts/lib/shots/table-hosts.ts";
+    expect(ENTRY_POINTS.has(entry)).toBe(true);
+    const jobs = healthy();
+    jobs[0] = bun(
+      1,
+      `${record(
+        "a.ts",
+        [1, 2],
+        [
+          [1, 1],
+          [2, 0],
+        ],
+      )}\n${record(entry, [2, 34], [[4, 0]])}`,
+    );
+    expect(gate(jobs).problems).toEqual([]);
   });
 
   test("a file istanbul did not instrument falls back to Bun's counts, and counts that cannot settle it fail", () => {
