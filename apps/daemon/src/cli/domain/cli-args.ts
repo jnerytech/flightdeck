@@ -35,6 +35,7 @@ export interface CliArgs {
     | "askpass"
     | "mcp"
     | "knowledge"
+    | "workflow"
     | "statusline"
     | "action"
     | "snippet"
@@ -80,6 +81,8 @@ export interface CliArgs {
     | "reindex"
     | "index"
     | "feed"
+    | "templates"
+    | "validate"
     | "enable"
     | "disable"
     | "enroll"
@@ -241,6 +244,8 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
+  /** `workflow list|templates <project>`, `validate <project> <name>`, `run|resume <run>` (#3628): the operands; `watch` has none. */
+  workflowWords?: string[];
   /** `knowledge list|index|feed <project>` (#3623): a project's name or id, or its folder. */
   knowledgeProject?: string;
   /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
