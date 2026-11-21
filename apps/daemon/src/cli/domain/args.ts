@@ -19,6 +19,7 @@ import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
+import { readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import {
@@ -193,15 +194,7 @@ const HANDLERS: Record<string, Handler> = {
       args.actionName = name;
     },
   ),
-  snippet: withNamedAction(
-    "snippet",
-    ["list", "get"],
-    "invalid snippet action",
-    "the snippet name",
-    (args, name) => {
-      args.snippetName = name;
-    },
-  ),
+  snippet: readSnippet,
   message: (args, reader) => {
     args.command = "message";
     const action = subAction(
@@ -580,6 +573,7 @@ const HANDLERS: Record<string, Handler> = {
   }),
   ...BUDGET_FLAGS,
   ...PLUGINS_FLAGS,
+  ...SNIPPET_FLAGS,
   ...SSH_FLAGS,
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
@@ -701,10 +695,13 @@ function refuseStrayFlags(args: CliArgs): void {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests, message, autoapprove and vault\n${USAGE}`,
     );
-  // `history` and `vault` check their own limits (history-args.ts, vault-args.ts).
-  if (!["autoapprove", "history", "vault"].includes(args.command) && args.limit !== undefined)
+  // `history`, `vault` and `snippet` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts).
+  if (
+    !["autoapprove", "history", "vault", "snippet"].includes(args.command) &&
+    args.limit !== undefined
+  )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history and vault\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, vault and snippet\n${USAGE}`,
     );
 }
 
@@ -776,6 +773,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     historyProblem(args) ??
     vaultProblem(args) ??
     pluginsProblem(args) ??
+    snippetProblem(args) ??
     sshProblem(args) ??
     terminalProblem(args) ??
     watchProblem(args) ??
