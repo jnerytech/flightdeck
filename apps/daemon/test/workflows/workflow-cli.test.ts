@@ -290,11 +290,11 @@ describe("the workflow arguments (issue #3628)", () => {
     expect(() => parseArgs(["workflow", "frobnicate"])).toThrow("invalid workflow action");
   });
 
-  test("--json and --host are read, and --confirm is refused until a verb takes it", () => {
+  test("--json and --host are read, and --confirm is refused by a verb that changes nothing", () => {
     expect(parseArgs(["workflow", "list", "api", "--json", "--host", "pi"])).toMatchObject({
       json: true,
       host: "pi",
     });
-    expect(() => parseArgs(["workflow", "resume", "r1", "--confirm"])).toThrow("--confirm");
+    expect(() => parseArgs(["workflow", "run", "r1", "--confirm"])).toThrow("--confirm");
   });
 });
