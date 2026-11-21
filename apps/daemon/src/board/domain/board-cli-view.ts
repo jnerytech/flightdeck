@@ -25,5 +25,6 @@ export function settingsLine(settings: BoardSettings): string {
 /** The line `watch` prints for a card that changed; the same words as `card list`. */
 export function watchLine(card: Card): string {
   const wait = waitOf(card);
-  return `${card.id}  ${card.column}  ${card.title}${wait === null ? "" : ` (${wait})`}`;
+  const waiting = wait === null ? "" : ` (${wait})`;
+  return `${card.id}  ${card.column}  ${card.title}${waiting}`;
 }

@@ -212,7 +212,7 @@ describe("plugins-ui: marketplaces", () => {
     });
     expect(changes(fake)).toEqual([]);
     expect(field.value).toBe("acme/novo");
-    expect(messages.length).toBe(1);
+    expect(messages).toHaveLength(1);
     expect(messages[0]).toContain("the marketplace source is not one the dialog can show");
     expect(messages[0]).toContain("dono/repo");
   });
