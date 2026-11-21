@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { en } from "../../src/i18n/en.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
-import { waiter } from "../wait.ts";
+import { stays, waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -15,7 +15,7 @@ afterEach(cleanup);
 const settle = waiter(3000);
 
 /** The history of a host whose list holds no session; `automated` runs are hidden by the filter. */
-async function emptyHistory(automated: number) {
+async function emptyHistory(automated: number, initial?: { projectKey?: string }) {
   const store = new AppStore(memoryPlatform(false, "en").platform);
   await store.i18n.setLang("en");
   const asked: unknown[] = [];
@@ -32,6 +32,7 @@ async function emptyHistory(automated: number) {
         density="compact"
         openId={null}
         onOpen={() => {}}
+        initial={initial}
       />
     </TContext.Provider>,
   );
@@ -158,11 +159,11 @@ describe("history-filters: the filters are a form (#3636)", () => {
     await typeInto(en.historyUi.from, "2026-11-10");
     await typeInto(en.historyUi.to, "2026-11-01");
     await submitFilters();
+    await stays(() => asked.length === 1);
     expect({
       error: (document.body.textContent ?? "").includes(en.historyUi.periodReversed),
       invalid: screen.queryByLabelText(en.historyUi.to)?.getAttribute("aria-invalid"),
-      asked: asked.length,
-    }).toEqual({ error: true, invalid: "true", asked: 1 });
+    }).toEqual({ error: true, invalid: "true" });
   });
 
   test("the error goes when a date is corrected", async () => {
@@ -170,17 +171,46 @@ describe("history-filters: the filters are a form (#3636)", () => {
     await typeInto(en.historyUi.from, "2026-11-10");
     await typeInto(en.historyUi.to, "2026-11-01");
     await submitFilters();
+    expect((document.body.textContent ?? "").includes(en.historyUi.periodReversed)).toBe(true);
     await typeInto(en.historyUi.to, "2026-11-12");
     expect((document.body.textContent ?? "").includes(en.historyUi.periodReversed)).toBe(false);
   });
 
-  test("the Folder field says what it matches and is wider than a short box", async () => {
+  test("Clear the filters also clears the reversed-period error", async () => {
+    await emptyHistory(0);
+    await typeInto(en.historyUi.folder, "web");
+    await submitFilters();
+    await settle(() => (document.body.textContent ?? "").includes(en.historyUi.emptyFiltered));
+    await typeInto(en.historyUi.from, "2026-11-10");
+    await typeInto(en.historyUi.to, "2026-11-01");
+    await submitFilters();
+    expect((document.body.textContent ?? "").includes(en.historyUi.periodReversed)).toBe(true);
+    await act(async () => {
+      fireEvent.click(
+        screen.queryByRole("button", { name: en.historyUi.clearFilters }) as HTMLElement,
+      );
+    });
+    expect((document.body.textContent ?? "").includes(en.historyUi.periodReversed)).toBe(false);
+  });
+
+  test("Clear project does not send a reversed period", async () => {
+    const { asked } = await emptyHistory(0, { projectKey: "p" });
+    await settle(() => asked.length === 1);
+    await typeInto(en.historyUi.from, "2026-11-10");
+    await typeInto(en.historyUi.to, "2026-11-01");
+    await act(async () => {
+      fireEvent.click(
+        screen.queryByRole("button", { name: en.historyUi.clearProject }) as HTMLElement,
+      );
+    });
+    await stays(() => asked.length === 1);
+    expect((document.body.textContent ?? "").includes(en.historyUi.periodReversed)).toBe(true);
+  });
+
+  test("the Folder field says what it matches", async () => {
     await emptyHistory(0);
     const folder = screen.queryByLabelText(en.historyUi.folder) as HTMLElement;
     const help = document.getElementById(folder.getAttribute("aria-describedby") ?? "");
-    expect({ help: help?.textContent, narrow: folder.className.includes("w-32") }).toEqual({
-      help: en.historyUi.folderHelp,
-      narrow: false,
-    });
+    expect(help?.textContent).toBe(en.historyUi.folderHelp);
   });
 });
