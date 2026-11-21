@@ -266,6 +266,7 @@ function cardCliArgs(args: CliArgs): CardCliArgs {
     specPath: args.specPath,
     blockedBy: args.blockedBy,
     text: args.text,
+    commentIds: args.commentIds,
     language: args.language,
     json: args.json || undefined,
   };

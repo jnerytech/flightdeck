@@ -3,14 +3,14 @@ import type { IssuesCliArgs } from "../../issues/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 
-const ISSUES_ACTIONS = ["list", "get"] as const;
+const ISSUES_ACTIONS = ["list", "get", "create-card"] as const;
 
-/** `issues list <project> [--query <text>]` and `issues get <project> <id>`. */
+/** `issues list <project> [--query <text>]`, `issues get <project> <id>` and `issues create-card <project> <issue>`. */
 export function readIssues(args: CliArgs, reader: ArgReader): void {
   args.command = "issues";
   args.action = subAction(reader, ISSUES_ACTIONS, "invalid issues action");
   args.issuesProject = operand(reader, "the project");
-  if (args.action === "get") args.issuesId = operand(reader, "the issue");
+  if (args.action !== "list") args.issuesId = operand(reader, "the issue");
 }
 
 /** What is wrong with the `issues` flags: `--query` outside `list`, or an empty one (the daemon takes at least a character). */
@@ -28,5 +28,7 @@ export function issuesCliArgs(args: CliArgs): IssuesCliArgs {
     ...(args.json ? { json: true as const } : {}),
   };
   if (args.action === "get") return { ...common, action: "get", id: args.issuesId ?? "" };
+  if (args.action === "create-card")
+    return { ...common, action: "create-card", issue: args.issuesId ?? "" };
   return { ...common, action: "list", ...(args.query === undefined ? {} : { query: args.query }) };
 }

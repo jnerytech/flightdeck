@@ -22,6 +22,7 @@ import {
   loopLine,
   pick,
   reviewLines,
+  sentLine,
   specLines,
   templatesLines,
   textOf,
@@ -359,6 +360,8 @@ function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<C
       return dismissUnblocked(args, daemon, note);
     case "pr-comments":
       return commentsOf(args, daemon);
+    case "pr-comments-send":
+      return sendComments(args, daemon, note);
   }
 }
 
@@ -366,6 +369,18 @@ function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<C
 async function commentsOf(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
   const found = await daemon.call("pr.comments", { cardId: args.id ?? "" });
   return args.json ? json(found) : said(...commentsLines(found.comments));
+}
+
+/** The chosen comments of the card's pull request, sent to its session in the review's format. */
+async function sendComments(
+  args: CardCliArgs,
+  daemon: DaemonClient,
+  note: Note,
+): Promise<CliResult> {
+  const ids = [...new Set(args.commentIds ?? [])];
+  note.wrote = true;
+  const answer = await daemon.call("pr.comments.send", { cardId: args.id ?? "", ids });
+  return args.json ? json(answer) : said(sentLine(args.id ?? "", answer.sent, ids.length));
 }
 
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */

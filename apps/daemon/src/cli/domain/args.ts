@@ -219,6 +219,7 @@ const HANDLERS: Record<string, Handler> = {
         "check-loop",
         "dismiss-unblocked",
         "pr-comments",
+        "pr-comments-send",
       ],
       "invalid card action",
     );
@@ -235,6 +236,15 @@ const HANDLERS: Record<string, Handler> = {
     }
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
+    if (action === "pr-comments-send") {
+      args.commentIds = [];
+      while (reader.peek() !== undefined && !(reader.peek() ?? "").startsWith("--"))
+        args.commentIds.push(reader.next() ?? "");
+      if (args.commentIds.length === 0)
+        throw new Error(
+          `card pr-comments-send: missing the id of a comment (see card pr-comments)\n${USAGE}`,
+        );
+    }
   },
   board: (args, reader) => {
     args.command = "board";
