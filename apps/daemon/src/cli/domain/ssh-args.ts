@@ -127,12 +127,20 @@ export function sshProblem(args: CliArgs): string | undefined {
     return "ssh remove deletes the destination: pass --confirm";
   const saveFault = saveProblem(args, saving);
   if (saveFault !== undefined) return saveFault;
-  if (applying) {
-    const count = args.sshAliases?.length ?? 0;
-    if (count === 0) return "ssh import apply needs at least one --alias <name from ~/.ssh/config>";
-    if (count > MAX_ALIASES) return `ssh import apply takes at most ${MAX_ALIASES} --alias`;
-  }
-  if (!confirming) return undefined;
+  if (applying) return aliasProblem(args);
+  return confirming ? fingerprintProblem(args) : undefined;
+}
+
+/** What is wrong with the `--alias` list of `ssh import apply`. */
+function aliasProblem(args: CliArgs): string | undefined {
+  const count = args.sshAliases?.length ?? 0;
+  if (count === 0) return "ssh import apply needs at least one --alias <name from ~/.ssh/config>";
+  if (count > MAX_ALIASES) return `ssh import apply takes at most ${MAX_ALIASES} --alias`;
+  return undefined;
+}
+
+/** What is wrong with the `--fingerprint` of `ssh hostkey confirm`. */
+function fingerprintProblem(args: CliArgs): string | undefined {
   if (args.sshFingerprint === undefined) return "missing --fingerprint";
   if (!/^SHA256:\S+$/.test(args.sshFingerprint))
     return `--fingerprint: a SHA256 fingerprint, like SHA256:abc..., got ${args.sshFingerprint}`;

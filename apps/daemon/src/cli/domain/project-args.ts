@@ -171,13 +171,8 @@ function operandProblem(args: ProjectArgs): string | undefined {
   return undefined;
 }
 
-/**
- * What is wrong with the `project` words and flags: a flag outside the verbs that take it, no folder or too many,
- * a part the host has no template for, a template id that is not one, an update that changes nothing, a blank
- * name, and a relative folder for another host (it is read there, not here).
- */
-export function projectProblem(args: ProjectArgs): string | undefined {
-  const project = args.command === "project";
+/** A flag outside the verbs that take it. */
+function strayFlag(args: ProjectArgs, project: boolean): string | undefined {
   for (const [flag, typed, verbs] of FLAG_VERBS)
     if (
       typed(args) &&
@@ -185,21 +180,37 @@ export function projectProblem(args: ProjectArgs): string | undefined {
       (project || flag !== "--name")
     )
       return `${flag}: this flag only applies to flightdeckd project ${verbs.join(" or ")}`;
+  return undefined;
+}
+
+/** What is wrong with the parts and the template of `project harness-preview`. */
+function previewProblem(args: ProjectArgs): string | undefined {
+  const parts = args.projectParts ?? [];
+  if (parts.length === 0) return "project harness-preview: missing --parts <part,part>";
+  const valid = parts.every(
+    (part, index) =>
+      (HARNESS_PREVIEW_PARTS as readonly string[]).includes(part) && parts.indexOf(part) === index,
+  );
+  if (!valid) return `--parts: invalid part, each of ${HARNESS_PREVIEW_PARTS.join(", ")} once`;
+  if (args.projectTemplate !== undefined && !HARNESS_TEMPLATE_ID.test(args.projectTemplate))
+    return "--template: a template id is lower case letters, digits and dashes (up to 40)";
+  return undefined;
+}
+
+/**
+ * What is wrong with the `project` words and flags: a flag outside the verbs that take it, no folder or too many,
+ * a part the host has no template for, a template id that is not one, an update that changes nothing, a blank
+ * name, and a relative folder for another host (it is read there, not here).
+ */
+export function projectProblem(args: ProjectArgs): string | undefined {
+  const project = args.command === "project";
+  const stray = strayFlag(args, project);
+  if (stray !== undefined) return stray;
   if (!project) return undefined;
   const operands = operandProblem(args);
   if (operands) return operands;
-  if (args.action === "harness-preview") {
-    const parts = args.projectParts ?? [];
-    if (parts.length === 0) return "project harness-preview: missing --parts <part,part>";
-    const valid = parts.every(
-      (part, index) =>
-        (HARNESS_PREVIEW_PARTS as readonly string[]).includes(part) &&
-        parts.indexOf(part) === index,
-    );
-    if (!valid) return `--parts: invalid part, each of ${HARNESS_PREVIEW_PARTS.join(", ")} once`;
-    if (args.projectTemplate !== undefined && !HARNESS_TEMPLATE_ID.test(args.projectTemplate))
-      return "--template: a template id is lower case letters, digits and dashes (up to 40)";
-  }
+  const preview = args.action === "harness-preview" ? previewProblem(args) : undefined;
+  if (preview !== undefined) return preview;
   if (args.personaName !== undefined && args.personaName.trim() === "")
     return "--name: the project's name is blank";
   if (args.action === "update" && Object.keys(projectFields(args)).length === 0)
