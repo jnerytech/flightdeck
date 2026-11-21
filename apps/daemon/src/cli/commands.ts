@@ -14,6 +14,7 @@ import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
+import { mcpCliArgs } from "./domain/mcp-args.ts";
 import { messageAdminCliArgs } from "./domain/message-args.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
@@ -127,7 +128,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `message` (history, watch, rules and rules-set), `watch`, `boardsync`, `review`, `runenv`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `mcp` (its verbs), `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -363,6 +364,13 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     return 0;
   },
   mcp: async (args, deps) => {
+    // A verb asks a daemon; a bare `mcp` is the stdio server.
+    if (args.action !== undefined) {
+      const { runMcpCli } = await import("../agentcfg/index.ts");
+      return asking(args, deps, (config, remote) =>
+        runMcpCli(mcpCliArgs(args), config, remote ? { remote } : {}),
+      );
+    }
     const { daemonUrl } = await import("../daemon-client/index.ts");
     const { identityOf, startMcp } = await import("../mcp/index.ts");
     const config = await loadConfig(configPath(args));
