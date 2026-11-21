@@ -63,6 +63,7 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-memory-commands.md) Suas seções:
 
 - [fd memory](flightdeckd-memory-commands.md#fd-memory)
+- [Mudar uma nota](flightdeckd-memory-commands.md#mudar-uma-nota)
 
 ## Comandos do flightdeckd: o ambiente de execução de um cartão
 

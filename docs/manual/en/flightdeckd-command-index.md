@@ -63,6 +63,7 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 [Read the chapter.](flightdeckd-memory-commands.md) Its sections:
 
 - [fd memory](flightdeckd-memory-commands.md#fd-memory)
+- [Changing a note](flightdeckd-memory-commands.md#changing-a-note)
 
 ## flightdeckd commands: the run environment of a card
 
