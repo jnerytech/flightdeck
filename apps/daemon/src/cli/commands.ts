@@ -13,6 +13,7 @@ import { actionCliArgs, actionVerbCliArgs, isRawAction } from "./domain/action-a
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { automationCliArgs } from "./domain/automation-args.ts";
+import { bgCliArgs } from "./domain/bg-args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { changesCliArgs } from "./domain/changes-args.ts";
 import { checkpointsCliArgs, traceCliArgs } from "./domain/checkpoints-args.ts";
@@ -625,6 +626,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   snapshots: checkpointsRun,
   rewind: checkpointsRun,
+  bg: (args, deps) =>
+    import("../bg/index.ts").then((m) => askingWith(args, deps, bgCliArgs, m.runBgCli)),
   trace: async (args, deps) => {
     const { runTraceCli } = await import("../trace/index.ts");
     return asking(args, deps, (config, remote) =>

@@ -100,7 +100,7 @@ describe("flightdeckd bg list (issue #3734)", () => {
     });
     const run = await flightdeckd(["bg", "list"], daemon.port);
     expect(run.out.join("\n")).toContain("wiped");
-    expect(/[\u001b\u0007]/.test(run.out.join("\n"))).toBe(false);
+    expect(["\u001b", "\u0007"].some((c) => run.out.join("\n").includes(c))).toBe(false);
   });
 
   test("a refusal is one line on stderr and exit 1; a closed connection is exit 2", async () => {

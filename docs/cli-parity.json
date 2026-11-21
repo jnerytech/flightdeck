@@ -54,7 +54,7 @@
   "automation.runs": { "cli": "automation" },
   "automation.save": { "cli": "automation" },
   "automation.toggle": { "cli": "automation" },
-  "bg.list": {},
+  "bg.list": { "cli": "bg" },
   "bg.message": {},
   "bg.respawn": {},
   "bg.start": {},
