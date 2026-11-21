@@ -145,6 +145,8 @@ export const USAGE = [
   "     fd changes revert <target> <file> | undo-revert <target> <file> --confirm   (revert discards the changes of one file, undo-revert puts them back while the daemon still keeps the file)",
   "     fd changes commit <target> --branch <name> --message <text> --digest <path>=<digest>... --confirm   (commits the files you name on a new branch; each digest is the one `changes get` printed)",
   "     fd changes pr <target> --title <text> [--body <text>] --remote <address> --confirm   (pushes the branch of the target to the remote `changes get` printed and opens a pull request)",
+  "     fd file list <target> [--dir <folder>] | read <target> <file> | search <target> --mode name|content --query <text> [--limit <1-200>] [--host <name>] [--json] [--config <file>]   (the files of a session, a card, a terminal or a project: <target> is session:<id>, card:<id>, terminal:<id> or project:<id>; a file that may hold a credential is listed and never read; read prints a file up to 1 MB whole, --json as the host has it; they change nothing)",
+  "     fd file dirs [<path>] | files <path> [--hidden] [--host <name>] [--json] [--config <file>]   (the folders and files of a folder on the host, within the folders it allows; dirs alone lists those; on another host the path is the host's own and absolute)",
   "     fd approve <request> [--message <text>] [--hold] [--host <name>] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
   "     fd deny <request> [--message <text>] [--host <name>] [--json] [--config <file>]",
   "     fd requests [--session <session>] [--host <name>] [--json] [--config <file>]   (the open permission requests, oldest first)",

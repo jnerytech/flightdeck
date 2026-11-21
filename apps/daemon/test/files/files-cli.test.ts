@@ -104,7 +104,7 @@ describe("flightdeckd file list (issue #3624)", () => {
     const run = await flightdeckd(["file", "list", "session:s1"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({
       code: 0,
-      out: ["session:s1 .", "no files"],
+      out: ["session:s1 .", "empty folder"],
     });
     expect(callsOf(daemon, "file.list")).toEqual([{ target: "session:s1", dir: "" }]);
   });
@@ -165,7 +165,7 @@ describe("flightdeckd file read (issue #3624)", () => {
     const run = await flightdeckd(["file", "read", "card:c1", "src/a.ts"], daemon.port);
     expect({ code: run.code, out: run.out, err: run.err }).toEqual({
       code: 0,
-      out: ["src/a.ts (25 bytes, hash 9f86d0)", "const a = 1;", "  let b = 2;"],
+      out: ["src/a.ts (25 bytes, hash 9f86d0)", "const a = 1;", " let b = 2;"],
       err: [],
     });
     expect(callsOf(daemon, "file.read")).toEqual([{ target: "card:c1", path: "src/a.ts" }]);

@@ -167,6 +167,7 @@ export interface CliArgs {
     | "edit"
     | "test"
     | "files"
+    | "dirs"
     | "interrupt"
     | "sleep"
     | "set-model"
