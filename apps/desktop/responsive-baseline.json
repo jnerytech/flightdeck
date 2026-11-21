@@ -1,19 +1,19 @@
 {
   "overflow-x|dark en 1024x700 abas-muitas|div.tab-item": {
-    "count": 15,
-    "worst": 1395
+    "count": 17,
+    "worst": 2355
   },
   "overflow-x|dark en 640x800 abas-muitas|div.tab-item": {
-    "count": 17,
-    "worst": 1595
+    "count": 18,
+    "worst": 2555
   },
   "overflow-x|dark pt-BR 1024x700 abas-muitas|div.tab-item": {
-    "count": 15,
-    "worst": 1395
+    "count": 17,
+    "worst": 2355
   },
   "overflow-x|dark pt-BR 640x800 abas-muitas|div.tab-item": {
-    "count": 17,
-    "worst": 1595
+    "count": 18,
+    "worst": 2555
   },
   "nested-scroll|dark en 1024x700 board-contrato|page > page-body > board-columns > ul.flex": {
     "count": 1

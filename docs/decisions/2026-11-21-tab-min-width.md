@@ -7,3 +7,4 @@ With ten tabs of one screen open, a tab at 6 rem left the title one or two lette
 - Fewer tabs fit before the strip scrolls sideways. The strip already scrolls, shows the selected tab and, past 8 tabs, offers the list of all tabs, so no tab becomes unreachable.
 - A pinned tab is still only its icon.
 - The e2e `layout` journey measures the floor at 1024x700 with 12 tabs and with 2 (143 px, a pixel of rounding).
+- The responsive baseline of `abas-muitas` (`overflow-x` of `div.tab-item`) goes up on purpose: with 12 tabs of at least 9 rem, more of them sit past the right edge of the strip, which scrolls by design. At 1024x700 it is 15 to 17 findings (worst 2355 px), at 640x800 it is 17 to 18 (worst 2555 px), in both languages. The values come from the CI prints of this change, as the narrow-window guard requires.
