@@ -109,3 +109,78 @@ describe("history-filters: one Show them at a time (#588)", () => {
     }).toEqual({ buttons: 1, short: false });
   });
 });
+
+/** The form that holds the filter fields, or null when they sit outside one. */
+function filterForm(): HTMLFormElement | null {
+  return (screen.queryByLabelText(en.historyUi.folder) as HTMLElement).closest("form");
+}
+
+/** Enter in a field, as the browser does it: the form submits. */
+async function submitFilters() {
+  const form = filterForm();
+  expect(form).not.toBeNull();
+  await act(async () => {
+    fireEvent.submit(form as HTMLFormElement);
+  });
+}
+
+async function typeInto(label: string, value: string) {
+  await act(async () => {
+    fireEvent.change(screen.queryByLabelText(label) as HTMLElement, { target: { value } });
+  });
+}
+
+// #3636: the filters were loose fields with a button, so Enter did nothing, a change of origin
+// waited for the button, the folder box was too narrow for a path and a reversed period said nothing.
+describe("history-filters: the filters are a form (#3636)", () => {
+  test("Enter in a field applies the filters: the fields are one form with Filter as its submit", async () => {
+    const { asked } = await emptyHistory(0);
+    await typeInto(en.historyUi.folder, "web");
+    await submitFilters();
+    await settle(() => asked.some((filter) => (filter as { cwd?: string }).cwd === "web"));
+    expect(
+      (screen.queryByRole("button", { name: en.historyUi.filter }) as HTMLButtonElement).type,
+    ).toBe("submit");
+  });
+
+  test("a change of Origin applies at once, without the button", async () => {
+    const { asked } = await emptyHistory(0);
+    await typeInto(en.historyUi.origin, "external");
+    await settle(() =>
+      asked.some((filter) => (filter as { origin?: string }).origin === "external"),
+    );
+    expect(asked.length).toBeGreaterThan(1);
+  });
+
+  test("From after To is said on the To field and the host is not asked", async () => {
+    const { asked } = await emptyHistory(0);
+    await settle(() => asked.length === 1);
+    await typeInto(en.historyUi.from, "2026-11-10");
+    await typeInto(en.historyUi.to, "2026-11-01");
+    await submitFilters();
+    expect({
+      error: (document.body.textContent ?? "").includes(en.historyUi.periodReversed),
+      invalid: screen.queryByLabelText(en.historyUi.to)?.getAttribute("aria-invalid"),
+      asked: asked.length,
+    }).toEqual({ error: true, invalid: "true", asked: 1 });
+  });
+
+  test("the error goes when a date is corrected", async () => {
+    await emptyHistory(0);
+    await typeInto(en.historyUi.from, "2026-11-10");
+    await typeInto(en.historyUi.to, "2026-11-01");
+    await submitFilters();
+    await typeInto(en.historyUi.to, "2026-11-12");
+    expect((document.body.textContent ?? "").includes(en.historyUi.periodReversed)).toBe(false);
+  });
+
+  test("the Folder field says what it matches and is wider than a short box", async () => {
+    await emptyHistory(0);
+    const folder = screen.queryByLabelText(en.historyUi.folder) as HTMLElement;
+    const help = document.getElementById(folder.getAttribute("aria-describedby") ?? "");
+    expect({ help: help?.textContent, narrow: folder.className.includes("w-32") }).toEqual({
+      help: en.historyUi.folderHelp,
+      narrow: false,
+    });
+  });
+});
