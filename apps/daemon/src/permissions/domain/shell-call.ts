@@ -371,10 +371,8 @@ export function invocations(segment: string[], scan: Scan = new Scan(), chain = 
 /** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */
 export const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCase();
 
-/**
- * The options of `fd` that take a value, which can stand before the command (`fd --project p card
- * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import.
- */
+/** The options of `fd` that take a value, which can stand before the command (`fd --project p card
+ * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import. */
 export const OPTIONS_WITH_VALUE = [
   "--message",
   "--position",
