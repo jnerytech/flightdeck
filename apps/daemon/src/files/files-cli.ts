@@ -76,7 +76,7 @@ export async function runFileCli(
   options: {
     timeoutMs?: number;
     remote?: RemoteTarget;
-    stdin?: ReadableStream<Uint8Array> | undefined;
+    stdin?: ReadableStream<Uint8Array>;
   } = {},
 ): Promise<CliResult> {
   // A write reads its text first: a file or a stream that cannot be read is exit 1 with no daemon asked, and `-` holds no connection open.
@@ -86,7 +86,8 @@ export async function runFileCli(
       text = await textOf(args.file, options.stdin ?? Bun.stdin.stream());
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      const why = error instanceof RefusedText ? ` (${error.message})` : code ? ` (${code})` : "";
+      const reason = error instanceof RefusedText ? error.message : code;
+      const why = reason ? ` (${reason})` : "";
       return failure(1, `file write: cannot read the text from ${args.file}${why}`);
     }
   }

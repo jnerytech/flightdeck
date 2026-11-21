@@ -162,45 +162,56 @@ async function historyVerb(
   return said(...(args.select ? importedLines(result) : historyLines(result)));
 }
 
-/** One write: the snippet is resolved first (a read), `note.wrote` is set right before the call that changes something. */
-async function write(
+type Note = { wrote: boolean };
+
+async function saveVerb(
   daemon: DaemonClient,
-  note: { wrote: boolean },
+  note: Note,
   args: SnippetVerbArgs,
 ): Promise<CliResult> {
-  if (args.action === "save") {
-    const { name, run, prompt, tags, projectPath } = args;
-    note.wrote = true;
-    const saved = await daemon.call("snippets.save", {
-      name: name as string,
-      ...(run === undefined
-        ? { type: "prompt", text: prompt as string }
-        : { type: "command", run }),
-      ...(tags ? { tags } : {}),
-      scope: projectPath ? "project" : "host",
-      target: "daemon",
-      ...(projectPath ? { projectPath } : {}),
-    });
-    return args.json ? json(saved) : said(savedLine(saved));
-  }
-  if (args.action === "trust") {
-    note.wrote = true;
-    return await trustVerb(daemon, args);
-  }
-  const snippet = await resolveOne(daemon, args.name as string, args.projectPath);
-  if (args.action === "remove") {
-    note.wrote = true;
-    await daemon.call("snippets.remove", { id: snippet.id });
-    return args.json
-      ? json({ id: snippet.id, name: snippet.name, removed: true })
-      : said(`removed ${snippet.name}`);
-  }
-  if (args.action === "favorite") {
-    note.wrote = true;
-    const marked = await daemon.call("snippets.favorite", { id: snippet.id, favorite: !args.off });
-    return args.json ? json(marked) : said(favoriteLine(marked));
-  }
-  if (args.action !== "use") throw new Error(`snippet ${args.action} is not a write`);
+  const { name, run, prompt, tags, projectPath } = args;
+  note.wrote = true;
+  const saved = await daemon.call("snippets.save", {
+    name: name as string,
+    ...(run === undefined ? { type: "prompt", text: prompt as string } : { type: "command", run }),
+    ...(tags ? { tags } : {}),
+    scope: projectPath ? "project" : "host",
+    target: "daemon",
+    ...(projectPath ? { projectPath } : {}),
+  });
+  return args.json ? json(saved) : said(savedLine(saved));
+}
+
+async function removeVerb(
+  daemon: DaemonClient,
+  note: Note,
+  args: SnippetVerbArgs,
+  snippet: { id: string; name: string },
+): Promise<CliResult> {
+  note.wrote = true;
+  await daemon.call("snippets.remove", { id: snippet.id });
+  return args.json
+    ? json({ id: snippet.id, name: snippet.name, removed: true })
+    : said(`removed ${snippet.name}`);
+}
+
+async function favoriteVerb(
+  daemon: DaemonClient,
+  note: Note,
+  args: SnippetVerbArgs,
+  snippet: { id: string },
+): Promise<CliResult> {
+  note.wrote = true;
+  const marked = await daemon.call("snippets.favorite", { id: snippet.id, favorite: !args.off });
+  return args.json ? json(marked) : said(favoriteLine(marked));
+}
+
+async function useVerb(
+  daemon: DaemonClient,
+  note: Note,
+  args: SnippetVerbArgs,
+  snippet: { id: string },
+): Promise<CliResult> {
   note.wrote = true;
   const terminalId = args.terminalId as string;
   const used = await daemon.call("snippets.use", {
@@ -211,6 +222,20 @@ async function write(
     ...(args.enter ? { enter: true } : {}),
   });
   return args.json ? json(used) : said(...usedLines(terminalId, args.enter === true, used.text));
+}
+
+/** One write: the snippet is resolved first (a read), `note.wrote` is set right before the call that changes something. */
+async function write(daemon: DaemonClient, note: Note, args: SnippetVerbArgs): Promise<CliResult> {
+  if (args.action === "save") return await saveVerb(daemon, note, args);
+  if (args.action === "trust") {
+    note.wrote = true;
+    return await trustVerb(daemon, args);
+  }
+  const snippet = await resolveOne(daemon, args.name as string, args.projectPath);
+  if (args.action === "remove") return await removeVerb(daemon, note, args, snippet);
+  if (args.action === "favorite") return await favoriteVerb(daemon, note, args, snippet);
+  if (args.action !== "use") throw new Error(`snippet ${args.action} is not a write`);
+  return await useVerb(daemon, note, args, snippet);
 }
 
 export function runSnippetVerbCli(
