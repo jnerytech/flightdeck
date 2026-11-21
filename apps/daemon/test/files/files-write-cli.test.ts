@@ -143,6 +143,24 @@ describe("flightdeckd file write (issue #3624)", () => {
     expect(callsOf(daemon, "file.write")).toEqual([]);
   });
 
+  test("standard input over 1 MB is refused before the daemon is asked, and a missing file says why", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const [big, missing] = await Promise.all([
+      flightdeckd(
+        write("--file", "-", "--hash", HASH_A, "--confirm"),
+        daemon.port,
+        undefined,
+        stdin("x".repeat(1024 * 1024 + 1)),
+      ),
+      flightdeckd(write("--file", "/nonexistent/next.ts", "--hash", HASH_A, "--confirm"), daemon.port),
+    ]);
+    expect(big.code).toBe(1);
+    expect(big.err.join("\n")).toContain("over 1 MB");
+    expect(missing.code).toBe(1);
+    expect(missing.err.join("\n")).toContain("ENOENT");
+    expect(callsOf(daemon, "file.write")).toEqual([]);
+  });
+
   test("--file, --hash and --confirm belong to write: another file verb refuses them", async () => {
     const daemon = fakeDaemon({
       ...OPEN,
