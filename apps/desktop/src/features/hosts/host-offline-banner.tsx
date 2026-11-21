@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { Stack } from "@/shared/layout/index.ts";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 import type { HostView } from "../../lib/app-store.ts";
 import { mayBeRefusedAddress, offlineHint } from "./domain/host-offline.ts";
 import { useNow } from "./use-now.ts";
@@ -14,6 +14,19 @@ const ENABLE_LINGER = "sudo loginctl enable-linger $USER";
 const WSL_SYSTEMD = "systemd=true";
 const SERVICE_STATUS = "flightdeckd service status";
 const SERVICE_START = "flightdeckd service start";
+
+/** A command to type on the host, with a button that copies exactly that text. */
+function CopyCommand(props: Readonly<{ command: string; onCopy(command: string): void }>) {
+  const t = useT();
+  return (
+    <Inline gap={2}>
+      <code className={COMMAND}>{props.command}</code>
+      <Button type="button" variant="outline" size="xs" onClick={() => props.onCopy(props.command)}>
+        {t("hostOffline.copy", { command: props.command })}
+      </Button>
+    </Inline>
+  );
+}
 
 /**
  * At the top of the host page while the host is not online: the state, what failed in plain words,
@@ -39,6 +52,8 @@ export function HostOfflineBanner(
   const [fresh, setFresh] = useState("");
   const [pairError, setPairError] = useState<string | null>(null);
   const [pairing, setPairing] = useState(false);
+  // How many copies landed: the live region says "Copied" once per press, even on the same command.
+  const [copied, setCopied] = useState(0);
   const trying = useRef(false);
   const retry = host.retry;
   const connecting = host.status === "connecting";
@@ -46,6 +61,17 @@ export function HostOfflineBanner(
   const seconds = retry ? Math.max(0, Math.ceil((retry.nextRetryAt - now) / 1000)) : 0;
   const hint = offlineHint(kind, host.url, host.hostInfo?.os ?? null);
   const answered = asked !== null && !connecting && (retry?.lastTryAt ?? 0) > asked;
+  const copy = (command: string) =>
+    void props
+      .onCopy(command)
+      .then((landed) => landed && setCopied((n) => n + 1))
+      // A clipboard that refuses says nothing: there is nothing the person can do about it here.
+      .catch(() => {});
+  const status = (() => {
+    if (connecting && asked !== null) return t("hostOffline.connecting");
+    if (copied > 0) return t("hostOffline.copied");
+    return answered ? t("hostOffline.still") : "";
+  })();
   const reason =
     host.status === "unauthorized"
       ? t("hostOffline.unauthorized")
@@ -76,6 +102,7 @@ export function HostOfflineBanner(
             disabled={connecting}
             onClick={() => {
               setAsked(retry?.lastTryAt ?? 0);
+              setCopied(0);
               props.onReconnect();
             }}
           >
@@ -116,25 +143,21 @@ export function HostOfflineBanner(
           </form>
         )}
         {/* Always in the page, so a screen reader announces what lands in it (#2586). */}
-        <output className="block">
-          {connecting && asked !== null
-            ? t("hostOffline.connecting")
-            : answered && t("hostOffline.still")}
-        </output>
+        <output className="block">{status && <span key={copied}>{status}</span>}</output>
         {hint === "linux" && (
           <Stack gap={1}>
             <p>{t("hostOffline.hintLinux")}</p>
-            <code className={COMMAND}>{CHECK_DAEMON}</code>
-            <code className={COMMAND}>{ENABLE_LINGER}</code>
+            <CopyCommand command={CHECK_DAEMON} onCopy={copy} />
+            <CopyCommand command={ENABLE_LINGER} onCopy={copy} />
             <p>{t("hostOffline.hintWsl")}</p>
-            <code className={COMMAND}>{WSL_SYSTEMD}</code>
+            <CopyCommand command={WSL_SYSTEMD} onCopy={copy} />
           </Stack>
         )}
         {hint === "windows" && (
           <Stack gap={1}>
             <p>{t("hostOffline.hintWindows")}</p>
-            <code className={COMMAND}>{SERVICE_STATUS}</code>
-            <code className={COMMAND}>{SERVICE_START}</code>
+            <CopyCommand command={SERVICE_STATUS} onCopy={copy} />
+            <CopyCommand command={SERVICE_START} onCopy={copy} />
           </Stack>
         )}
         {hint === "generic" && <p>{t("hostOffline.hintGeneric")}</p>}
