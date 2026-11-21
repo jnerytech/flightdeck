@@ -4,6 +4,14 @@ import { DEMO_CARD_TEMPLATE } from "../demo/card-templates.ts";
 import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "../e2e/journeys.ts";
 import { ALFA, openHostSettings, type Shot, showSection, showToast } from "./shot.ts";
 
+/** Opens one of the vault's tabs and waits for its panel to settle. */
+function vaultTab(name: string | RegExp): NonNullable<Shot["prepare"]> {
+  return async (page) => {
+    await page.getByRole("tab", { name }).click();
+    await page.waitForTimeout(400);
+  };
+}
+
 export function hostShots(ids: DemoIds): Shot[] {
   return [
     {
@@ -31,13 +39,40 @@ export function hostShots(ids: DemoIds): Shot[] {
         await showSection(/^(Maintenance|Manutenção)$/)(page);
       },
     },
+    // #3602: the vault's views. The seeded list has no values (the web build keeps them in memory).
+    { name: "cofre-segredos", route: { name: "vault" }, secrets: true },
+    // No secret stored: the empty state with its action.
+    { name: "cofre-vazio", route: { name: "vault" } },
     {
-      name: "cofre-backup",
+      name: "cofre-novo",
       route: { name: "vault" },
+      secrets: true,
       prepare: async (page) => {
-        await page.getByRole("tab", { name: "Backup" }).click();
+        await page.getByRole("button", { name: /^(New secret|Novo segredo)$/ }).click();
         await page.waitForTimeout(400);
       },
+    },
+    {
+      // The typed confirmation, its word field empty and the Reveal button off.
+      name: "cofre-revelar",
+      route: { name: "vault" },
+      secrets: true,
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Reveal|Revelar) github-deploy$/ }).click();
+        await page.getByRole("dialog").waitFor();
+      },
+    },
+    {
+      name: "cofre-uso",
+      route: { name: "vault" },
+      secrets: true,
+      prepare: vaultTab(/^(Usage|Uso)$/),
+    },
+    { name: "cofre-backup", route: { name: "vault" }, prepare: vaultTab("Backup") },
+    {
+      name: "cofre-relatorio",
+      route: { name: "vault" },
+      prepare: vaultTab(/^(Report|Relatório)$/),
     },
     {
       // #1328: Settings > Backup schedule, with the demo's folder (#1309): every day, the folder

@@ -85,7 +85,57 @@ export function demoFinished(
   return JSON.stringify({ list: [finish], lastLook: null });
 }
 
-/** The vault's list of the prints: stub, so the red is by assertion. */
-export function demoSecrets(_now: Date): string {
-  return "[]";
+/**
+ * The vault's list of the prints (#3602): one secret of each type, so the rows differ, with their
+ * descriptions in the language of the print. Only the list: the web build keeps values in memory,
+ * so no secret has one and no value is ever on a print.
+ */
+export function demoSecrets(now: Date, lang = "en"): string {
+  const pt = lang.startsWith("pt");
+  const ago = (hours: number) => now.getTime() - hours * 3_600_000;
+  const secret = (id: string, name: string, type: string, description: string, extra = {}) => ({
+    id: `demo-secret-${id}`,
+    name,
+    type,
+    description,
+    tags: [],
+    createdAt: ago(24 * 30),
+    lastUsedAt: null,
+    allowedHosts: ["demo-alfa"],
+    ...extra,
+  });
+  return JSON.stringify([
+    secret(
+      "1",
+      "github-deploy",
+      "ssh-key",
+      pt ? "Chave de deploy do repositório web" : "Deploy key for the web repository",
+      {
+        tags: ["ci"],
+        lastUsedAt: ago(2),
+      },
+    ),
+    secret(
+      "2",
+      "npm-publish",
+      "token",
+      pt ? "Token para publicar pacotes" : "Token to publish packages",
+      {
+        tags: ["ci"],
+      },
+    ),
+    secret(
+      "3",
+      "staging-db",
+      "password",
+      pt ? "Senha do banco de homologação" : "Staging database password",
+      {
+        lastUsedAt: ago(72),
+      },
+    ),
+    secret("4", "web-env", "env", pt ? "Variáveis do ambiente web" : "Web environment variables", {
+      tags: ["web"],
+      lastUsedAt: ago(26),
+    }),
+  ]);
 }

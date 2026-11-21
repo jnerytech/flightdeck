@@ -29,7 +29,7 @@ describe("the vault's prints (#3602)", () => {
   });
 
   test("the seeded list is valid secrets of every type, with no value in it", () => {
-    const rows = JSON.parse(demoSecrets(new Date("2026-11-21T12:00:00Z"))) as unknown[];
+    const rows = JSON.parse(demoSecrets(new Date("2026-11-21T12:00:00Z"), "pt-BR")) as unknown[];
     const secrets = rows.map((row) => SecretMetaSchema.parse(row));
     expect(new Set(secrets.map((s) => s.type))).toEqual(
       new Set(["ssh-key", "password", "token", "env"]),

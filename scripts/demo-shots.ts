@@ -18,7 +18,7 @@ import {
 } from "./lib/browser/axe.ts";
 import { launchFirst } from "./lib/browser/browser.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/browser/visual.ts";
-import { demoFinished, demoInbox } from "./lib/demo/seeds.ts";
+import { demoFinished, demoInbox, demoSecrets } from "./lib/demo/seeds.ts";
 import { DEMO_AWAY_SINCE } from "./lib/e2e/journeys.ts";
 import { holdsScript } from "./lib/shots/holds.ts";
 import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
@@ -132,6 +132,8 @@ interface StorageSeed {
   roi: string | null;
   inbox: string | null;
   finished: string | null;
+  /** The vault's list: the secrets' rows, with no value (#3602). */
+  secrets: string | null;
   /** The time the app was last active, long ago: Needs you shows "While you were away" (#1344). */
   away: string | null;
   simple: boolean;
@@ -148,6 +150,7 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.uiMode",
       "flightdeck.inbox",
       "flightdeck.finished",
+      "flightdeck.vault",
       "flightdeck.lastActive",
       // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
       "flightdeck.sidebarFolded",
@@ -171,6 +174,7 @@ function seedStorage(seed: StorageSeed): void {
     if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
     if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
     if (seed.finished) localStorage.setItem("flightdeck.finished", seed.finished);
+    if (seed.secrets) localStorage.setItem("flightdeck.vault", seed.secrets);
     if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
   } catch {
     // No storage, no clients.
@@ -222,6 +226,7 @@ async function printShot(
             new Date(),
           )
         : null,
+      secrets: shot.secrets ? demoSecrets(new Date(), lang) : null,
       away: shot.away ? DEMO_AWAY_SINCE : null,
       simple: shot.simple === true,
     });
