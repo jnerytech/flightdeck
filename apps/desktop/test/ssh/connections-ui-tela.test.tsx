@@ -145,10 +145,15 @@ describe("conexoes-ui: the screen", () => {
 
   test("with no host that announces ssh the page says so, offers no dead button and has no empty host name (#3705)", async () => {
     const { store, hostId } = await open({ targets: [] });
+    const plain = sshDaemon(cleanups, { feature: false });
+    await store.roster.add({ name: "plain", url: plain.url, token: TOKEN });
+    await settle(() =>
+      store.getState().hosts.some((h) => h.name === "plain" && h.hostInfo != null),
+    );
     await act(async () => {
       await store.roster.remove(hostId);
     });
-    await settle(() => store.getState().hosts.length === 0);
+    await settle(() => store.getState().hosts.length === 1);
     await uiIdle();
     expect(
       screen.queryByText(
