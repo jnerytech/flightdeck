@@ -12,7 +12,7 @@ export interface CheckpointsDeps {
   prepare: ConstructorParameters<typeof Forker>[0]["preparePersonas"];
   /** The folders a fork may name, and the ones being removed (#3550). */
   allowedRoots: ConstructorParameters<typeof Forker>[0]["allowedRoots"];
-  folderLocks?: ConstructorParameters<typeof Forker>[0]["folderLocks"];
+  folderLocks?: NonNullable<ConstructorParameters<typeof Forker>[0]["folderLocks"]>;
 }
 
 /**
