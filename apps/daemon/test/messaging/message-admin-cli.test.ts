@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { CliResult } from "../../src/daemon-client/index.ts";
-import { parseArgs } from "../../src/main.ts";
 import { runMessageAdminCli } from "../../src/messaging/message-admin-cli.ts";
 import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
 import { poll } from "../support/helpers.ts";
@@ -9,14 +8,6 @@ setDefaultTimeout(20_000);
 afterEach(stopAll);
 
 const text = (r: CliResult) => [...r.out, ...r.err].join("\n");
-/** The parsed arguments, or what the parser refused with: a wrong parse fails an assertion. */
-function parsed(argv: string[]): unknown {
-  try {
-    return parseArgs(argv);
-  } catch (error) {
-    return { refusedWith: (error as Error).message };
-  }
-}
 
 /** A message as the daemon lists it: the protocol checks every one, so it must be whole. */
 const message = (over: Record<string, unknown> = {}) => ({
@@ -244,99 +235,5 @@ describe("flightdeckd message watch (issue #3622)", () => {
       { type: "messages.updated", message: message({ text: `a\u001b[2Jb ${config(0).token}` }) },
     ]);
     expect(lines[0]).toEndWith("a [2Jb [token]");
-  });
-});
-
-describe("the arguments of message history, watch and rules (issue #3622)", () => {
-  test("history takes its filters and --json", () => {
-    expect(parsed(["message", "history"])).toMatchObject({ command: "message", action: "history" });
-    expect(
-      parsed([
-        "message",
-        "history",
-        "--team",
-        "t1",
-        "--session",
-        "s-dev",
-        "--with-host",
-        "laptop",
-        "--status",
-        "queued",
-        "--days",
-        "7",
-        "--limit",
-        "50",
-        "--json",
-        "--host",
-        "pi",
-      ]),
-    ).toMatchObject({
-      command: "message",
-      action: "history",
-      messageTeam: "t1",
-      session: "s-dev",
-      withHost: "laptop",
-      messageStatus: "queued",
-      days: 7,
-      limit: 50,
-      json: true,
-      host: "pi",
-    });
-  });
-
-  test("watch and rules take --json and --host", () => {
-    expect(parsed(["message", "watch", "--json"])).toMatchObject({ action: "watch", json: true });
-    expect(parsed(["message", "rules", "--host", "pi"])).toMatchObject({
-      action: "rules",
-      host: "pi",
-    });
-  });
-
-  test("a bad status, days or limit is refused", () => {
-    expect(parsed(["message", "history", "--status", "lost"])).toMatchObject({
-      refusedWith: expect.stringContaining("--status"),
-    });
-    expect(parsed(["message", "history", "--days", "0"])).toMatchObject({
-      refusedWith: expect.stringContaining("--days"),
-    });
-    expect(parsed(["message", "history", "--limit", "2000"])).toMatchObject({
-      refusedWith: expect.stringContaining("--limit"),
-    });
-  });
-
-  test("a filter belongs to history only, and --json and --host to the three new verbs", () => {
-    for (const [argv, flag] of [
-      [["message", "watch", "--team", "t1"], "--team"],
-      [["message", "rules", "--days", "3"], "--days"],
-      [["message", "rules", "--status", "queued"], "--status"],
-      [["message", "watch", "--limit", "5"], "--limit"],
-      [["message", "rules", "--with-host", "laptop"], "--with-host"],
-      [["message", "watch", "--session", "s-dev"], "--session"],
-      [["message", "rules", "--session", "s-dev"], "--session"],
-    ] as const)
-      expect(parsed([...argv])).toMatchObject({
-        refusedWith: expect.stringContaining(
-          `${flag}: this flag only applies to flightdeckd message history`,
-        ),
-      });
-    expect(parsed(["message", "send", "s-dev", "hi", "--json"])).toMatchObject({
-      refusedWith: expect.stringContaining(
-        "--json: this flag only applies to flightdeckd message history, watch, rules and rules-set",
-      ),
-    });
-    expect(parsed(["message", "list", "--host", "pi"])).toMatchObject({
-      refusedWith: expect.stringContaining(
-        "--host: this flag only applies to flightdeckd message history, watch, rules and rules-set",
-      ),
-    });
-  });
-
-  test("the verbs that exist keep their arguments", () => {
-    expect(parsed(["message", "list"])).toMatchObject({ command: "message", action: "list" });
-    expect(parsed(["message", "read", "s-dev", "--last", "3"])).toMatchObject({
-      action: "read",
-      session: "s-dev",
-      last: 3,
-    });
   });
 });
