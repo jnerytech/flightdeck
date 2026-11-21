@@ -371,7 +371,7 @@
   "rules.list": { "cli": "rules" },
   "rules.remove": { "cli": "rules" },
   "run.get": { "cli": "workflow" },
-  "run.resume": {},
+  "run.resume": { "cli": "workflow" },
   "run.watch": { "cli": "workflow" },
   "runenv.config": { "cli": "runenv" },
   "runenv.get": { "cli": "runenv" },
@@ -612,9 +612,9 @@
     "appOnly": "the payload carries the webhook URL, a vault secret that only the app holds and hands over for one use; a CLI verb would let a session post a body of its choice and would need the person to paste the URL (#3459)"
   },
   "workflow.list": { "cli": "workflow" },
-  "workflow.template.add": {},
+  "workflow.template.add": { "cli": "workflow" },
   "workflow.templates": { "cli": "workflow" },
-  "workflow.trust": {},
+  "workflow.trust": { "cli": "workflow" },
   "workflow.validate": { "cli": "workflow" },
   "worktree.list": { "cli": "worktree" },
   "worktree.remove": { "cli": "worktree" }
