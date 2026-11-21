@@ -292,10 +292,13 @@ function mayBeCli(word: string): boolean {
 export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || name.includes("$");
 
 /** The most words read after a program that is a variable: matching them against every verb grows with the square of their number. */
-const MAX_WORDS_AFTER_VARIABLE = 64;
+const MAX_WORDS_AFTER_VARIABLE = 256;
 
-/** How many times one line may be read again inside itself (a shell's text, a substitution, a variable program's rest). */
-const MAX_REREADS = 32;
+/** The most variable programs in a row that are read as the start of a command each: every one reads all that follows it. */
+const MAX_VARIABLE_CHAIN = 16;
+
+/** How many times one line may be read again inside itself (a shell's text, a substitution, a `find -exec` command). */
+const MAX_REREADS = 256;
 
 /**
  * The work one command line may cost (#3593). Each read of a part of the line inside the line (the text of
@@ -313,6 +316,13 @@ export class Scan {
     if (words.length <= MAX_WORDS_AFTER_VARIABLE) return words;
     this.spent = true;
     return words.slice(0, MAX_WORDS_AFTER_VARIABLE);
+  }
+
+  /** Whether a variable program may be followed by another one at this depth of the chain (`$a $b $c ...`). */
+  chained(depth: number): boolean {
+    if (depth < MAX_VARIABLE_CHAIN) return true;
+    this.spent = true;
+    return false;
   }
 
   /** Whether one more re-read is allowed; the first refusal marks the line as spent. */
@@ -335,7 +345,7 @@ export const UNREADABLE =
  * like (#3499). A program that is a variable (`$FD`, `"${BIN}"`) cannot be resolved: it may be the CLI, a shell
  * or a wrapper, so it gives one reading for each, and the rest of the line is read as a command again.
  */
-export function invocations(segment: string[], scan: Scan = new Scan()): Invocation[] {
+export function invocations(segment: string[], scan: Scan = new Scan(), chain = 0): Invocation[] {
   const words = withoutRedirections(afterLabel(segment).map(closed).map(opened)).filter(
     (w) => w !== "",
   );
@@ -361,7 +371,9 @@ export function invocations(segment: string[], scan: Scan = new Scan()): Invocat
   return [
     { prog: "flightdeckd", args: rest, sudo, unresolved: true, ...hidden },
     { prog: "sh", args: rest, sudo, unresolved: true },
-    ...(scan.reread() ? invocations(rest, scan).map((i) => ({ ...i, sudo: i.sudo || sudo })) : []),
+    ...(scan.chained(chain)
+      ? invocations(rest, scan, chain + 1).map((i) => ({ ...i, sudo: i.sudo || sudo }))
+      : []),
   ];
 }
 

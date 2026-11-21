@@ -750,14 +750,17 @@ export class RiskClassifier {
     // A command that is not text fails closed, as its level does (`candidates`).
     if (oddCommand(input)) return true;
     const command = typeof input.command === "string" ? input.command : "";
-    return [command, joinContinuations(command)].some((text) =>
-      segments(text).some((segment) => {
-        return invocations(segment).some(({ prog, args }) => {
+    return [command, joinContinuations(command)].some((text) => {
+      const scan = new Scan();
+      const uses = segments(text).some((segment) =>
+        invocations(segment, scan).some(({ prog, args }) => {
           const sub = prog === "git" ? gitCommand(args).sub : "";
           return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
-        });
-      }),
-    );
+        }),
+      );
+      // A line the rules gave up on may hide a program that uses the network (#3593).
+      return uses || scan.spent;
+    });
   }
 
   /** Inside the cwd or one of `allowedRoots`. */
