@@ -4,7 +4,7 @@
  * nothing; `write` replaces a file only if it still has the hash the person read (the daemon says otherwise).
  * Exit codes: 0 done, 1 refused, 2 no daemon.
  */
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   type CliResult,
@@ -43,9 +43,20 @@ const shown = <T>(
 /** What a closed connection after the write was sent leaves unknown. */
 const UNSURE = "; the file may or may not have changed: read it again before you write again";
 
-/** The new text: a file, or standard input for `-`. */
-const textOf = (file: string, stdin: ReadableStream<Uint8Array>): Promise<string> =>
-  file === "-" ? new Response(stdin).text() : readFile(file, "utf8");
+/** The most the daemon writes (1 MB): a bigger file is refused before it is read into memory. */
+const MOST_TEXT_BYTES = 1024 * 1024;
+
+/** A text file that is refused for what it is, with the reason to tell the person. */
+class RefusedText extends Error {}
+
+/** The new text: a file, or standard input for `-`. A file that is no regular file (`/dev/zero`) or is over 1 MB is not read. */
+async function textOf(file: string, stdin: ReadableStream<Uint8Array>): Promise<string> {
+  if (file === "-") return new Response(stdin).text();
+  const info = await stat(file);
+  if (!info.isFile()) throw new RefusedText("not a regular file");
+  if (info.size > MOST_TEXT_BYTES) throw new RefusedText("over 1 MB");
+  return readFile(file, "utf8");
+}
 
 export async function runFileCli(
   args: FileCliArgs,
@@ -61,8 +72,9 @@ export async function runFileCli(
   if (args.action === "write") {
     try {
       text = await textOf(args.file, options.stdin ?? Bun.stdin.stream());
-    } catch {
-      return failure(1, `file write: cannot read the text from ${args.file}`);
+    } catch (error) {
+      const why = error instanceof RefusedText ? ` (${error.message})` : "";
+      return failure(1, `file write: cannot read the text from ${args.file}${why}`);
     }
   }
   // A folder typed relative is this machine's; on another host it is the host's own path, which the parser checked.
