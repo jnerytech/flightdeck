@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
+import { settle, stays } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -63,7 +64,13 @@ async function panel(language: "en" | "pt-BR", answers: Array<unknown>) {
       <TracePanel store={store} hostId="h1" claudeSessionId="c1" />
     </TContext.Provider>,
   );
-  await act(async () => Bun.sleep(30));
+  await settle(
+    () =>
+      screen.queryByRole("alert") !== null ||
+      screen.queryByRole("region", {
+        name: language === "en" ? "Session trace" : "Rastro da sessão",
+      }) !== null,
+  );
   return { asked, store };
 }
 
@@ -117,9 +124,9 @@ describe("rastro-estados (#3706)", () => {
     await click("Previous");
     expect(screen.queryByRole("button", { name: "Play" })).not.toBeNull();
     const before = step();
-    await act(async () => Bun.sleep(1300));
-    expect(step()).toBe(before);
     expect(before).toBe("Step 1 of 4");
+    // Longer than one tick at 1x: a playback still running would have moved on by now.
+    await stays(() => step() === before, 1300);
   });
 
   test("Next onto the last step ends the playback, and a playing replay is not read aloud", async () => {
