@@ -37,11 +37,11 @@ describe("workflow.trust is near only (#3799)", () => {
       const trustedNow = async () =>
         (await board.listWorkflows(project.id)).find((w) => w.name === "wf")?.trusted;
       const refused = await far.request("workflow.trust", payload);
-      const error = refused.error as { code?: string; reason?: string } | undefined;
+      const error = refused.error as { reason?: string } | undefined;
       const afterFar = await trustedNow();
       const accepted = await near.request("workflow.trust", payload);
       const afterNear = await trustedNow();
-      expect([error?.code ?? error?.reason ?? null, afterFar, accepted.ok, afterNear]).toEqual([
+      expect([error?.reason ?? null, afterFar, accepted.ok, afterNear]).toEqual([
         "transport_refused",
         false,
         true,
