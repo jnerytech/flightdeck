@@ -16,6 +16,7 @@ import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
+import { runenvCliArgs } from "./domain/runenv-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
@@ -132,7 +133,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `ssh`, `terminal`, `watch`, `boardsync`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `ssh`, `terminal`, `watch`, `boardsync`, `runenv`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -628,6 +629,17 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const stop = watchStop(args, deps);
     return asking(args, deps, (config, remote) =>
       runWatchCli(watchCliArgs(args), config, {
+        ...(remote ? { remote } : {}),
+        signal: stop.signal,
+        write: (line) => deps.log.log(line),
+      }),
+    );
+  },
+  runenv: async (args, deps) => {
+    const { runRunenvCli } = await import("../runenv/index.ts");
+    const stop = watchStop(args, deps);
+    return asking(args, deps, (config, remote) =>
+      runRunenvCli(runenvCliArgs(args), config, {
         ...(remote ? { remote } : {}),
         signal: stop.signal,
         write: (line) => deps.log.log(line),

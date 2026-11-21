@@ -18,6 +18,7 @@ import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
+import { readRunenv } from "./runenv-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
@@ -358,6 +359,7 @@ const HANDLERS: Record<string, Handler> = {
   ssh: readSsh,
   watch: readWatch,
   boardsync: readBoardsync,
+  runenv: readRunenv,
   terminal: readTerminal,
   requests: (args) => {
     startCommand(args, "requests");

@@ -3,11 +3,11 @@ import { USAGE } from "./usage.ts";
 
 /** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
 export const JSON_COMMANDS =
-  "card board history team persona quota usage budget costs roi host sessions session ssh terminal watch boardsync requests send approve deny approvers rules autoapprove vault plugins project".split(
+  "card board history team persona quota usage budget costs roi host sessions session ssh terminal watch boardsync runenv requests send approve deny approvers rules autoapprove vault plugins project".split(
     " ",
   );
 export const HOST_COMMANDS =
-  "host sessions session ssh terminal watch boardsync requests send approve deny vault plugins project".split(
+  "host sessions session ssh terminal watch boardsync runenv requests send approve deny vault plugins project".split(
     " ",
   );
 
