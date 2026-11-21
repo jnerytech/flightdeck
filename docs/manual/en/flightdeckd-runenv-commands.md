@@ -30,7 +30,8 @@ not know is refused with exit `1`.
 `watch` prints the run of each card each time it changes, one line each, until Ctrl-C.
 
 `trust <project> --hash <hash> --confirm` lets the host run the commands of the project's `run.yaml`. Pass the whole 64-character hash
-`config` printed after you read the file: if the file changed since, the host refuses and nothing is trusted. It
+`config` printed after you read the file: if the file changed since, the host refuses and nothing is trusted. Trusting lets the host run the
+commands, so it needs a near connection (this computer or Tailscale): over a far one the daemon refuses it. It
 prints the file as `config` does. `start <card> --confirm` runs the setup and the processes of the card, and prints
 its run as `get` does. Both need `--confirm`, because they make the host run commands. `stop <card>` ends them
 and needs nothing. A session that runs `trust` or `start` from its own shell for you is stopped at the permission

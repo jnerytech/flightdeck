@@ -3,6 +3,7 @@
  * snippets.
  */
 import { FlightdeckError, resolveAllowedCwd } from "../../kernel/index.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../domain/handler.ts";
 
 export const agentsHandlers = {
@@ -11,8 +12,11 @@ export const agentsHandlers = {
       servers: await server.needIn("agentSetup", "mcp").list(server.projectPath(payload.projectId)),
     };
   },
-  "mcp.test": async (payload, { server }) => {
+  "mcp.test": async (payload, { ws, server }) => {
     const { projectId, name, confirm } = payload;
+    // A confirmed test starts the server, a command from the project's `.mcp.json`: near only, as
+    // confirming a resume is. The preview starts nothing and answers anywhere (#3807).
+    if (confirm) requireVaultTransport(ws.data.origin, "mcp.test", server.opts.log);
     return await server
       .needIn("agentSetup", "mcp")
       .test(server.projectPath(projectId), name, confirm === true);

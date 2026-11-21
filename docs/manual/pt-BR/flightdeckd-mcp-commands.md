@@ -35,7 +35,8 @@ conhece é recusada com saída `1`.
 
 `test <projeto> <servidor>` imprime o comando (ou link) exato que um teste do servidor executaria, e não inicia nada.
 Com `--confirm` ele inicia o servidor, como o botão Testar do app, e imprime as ferramentas e os recursos que ele
-oferece (`tools: a, b`, `resources: none`). Leia antes a prévia: o servidor é um comando do `.mcp.json` do projeto.
+oferece (`tools: a, b`, `resources: none`). Leia antes a prévia: o servidor é um comando do `.mcp.json` do projeto. Iniciá-lo exige uma conexão próxima (este
+computador ou a Tailscale): por uma conexão distante o daemon recusa o `--confirm`. A prévia responde em qualquer lugar.
 
 `save <projeto> <arquivo> --confirm` adiciona um servidor ao `.mcp.json` do projeto, ou troca o de mesmo nome, e imprime
 os servidores. O arquivo é JSON (`-` lê da entrada padrão) com os campos de um servidor: `name`, e `type` (`stdio`,

@@ -35,7 +35,8 @@ refused with exit `1`.
 
 `test <project> <server>` prints the exact command (or link) that a test of the server would run, and starts nothing.
 With `--confirm` it starts the server, as the app's Test button does, and prints the tools and the resources it offers
-(`tools: a, b`, `resources: none`). Read the preview first: the server is a command from the project's `.mcp.json`.
+(`tools: a, b`, `resources: none`). Read the preview first: the server is a command from the project's `.mcp.json`. Starting it needs a near connection (this
+computer or Tailscale): over a far one the daemon refuses `--confirm`. The preview answers anywhere.
 
 `save <project> <file> --confirm` adds a server to the project's `.mcp.json`, or replaces the one of the same name, and
 prints the servers. The file is JSON (`-` reads it from standard input) with the fields of a server: `name`, and
