@@ -407,6 +407,8 @@ export const hosts = {
     noSessions: "No sessions on this host yet.",
     noProjects: "No projects on this host yet.",
     newSession: "New session",
+    noSessionsAway: "-",
+    noProjectsAway: "-",
   },
   hostOffline: {
     label: "Connection status",
@@ -468,6 +470,8 @@ export const hosts = {
     uptime: "up for {n} s",
     latency: "latency: {value}",
     unavailable: "information unavailable",
+    unavailableIncompatible: "-",
+    unavailableUnauthorized: "-",
     offlineInfo: "The host's details show here once it answers.",
     hooks: "Claude Code hooks",
     hooksInstalled: "installed",

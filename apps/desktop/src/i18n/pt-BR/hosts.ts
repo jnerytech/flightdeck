@@ -415,6 +415,8 @@ export const hosts = {
     noSessions: "Nenhuma sessão neste host ainda.",
     noProjects: "Nenhum projeto neste host ainda.",
     newSession: "Nova sessão",
+    noSessionsAway: "-",
+    noProjectsAway: "-",
   },
   hostOffline: {
     label: "Estado da conexão",
@@ -475,6 +477,8 @@ export const hosts = {
     uptime: "no ar há {n} s",
     latency: "latência: {value}",
     unavailable: "informações indisponíveis",
+    unavailableIncompatible: "-",
+    unavailableUnauthorized: "-",
     offlineInfo: "Os detalhes do host aparecem aqui quando ele responder.",
     hooks: "Hooks do Claude Code",
     hooksInstalled: "instalados",
