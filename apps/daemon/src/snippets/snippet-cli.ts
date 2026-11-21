@@ -141,7 +141,7 @@ async function write(
       if (error instanceof DaemonRefusal && error.reason === "approval_proof_required")
         return failure(
           1,
-          `${args.projectPath} has a device enrolled on this host, which confirms the trust of a project's snippet file, so do it in the app`,
+          `${args.projectPath}: this host has a device enrolled, which confirms the trust of a project's snippet file, so do it in the app`,
         );
       throw error;
     }
