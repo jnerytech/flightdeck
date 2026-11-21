@@ -62,6 +62,7 @@ async function open(
   await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
   await addedSecret(store, { name: "github", type: "password", value: VALUE });
   platform.vault.get = keyring.get;
+  store.i18n.setLang(lang);
   render(
     <TContext.Provider value={translator(lang)}>
       <VaultPage store={store} />

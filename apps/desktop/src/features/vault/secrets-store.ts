@@ -1,3 +1,4 @@
+import type { T } from "../../i18n/index.ts";
 import { BackupError, type BackupErrorCode } from "./domain/backup-error.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./domain/vault-backup.ts";
 import type { NewKey, NewSecret, SecretMeta, SecretPatch, Vault } from "./vault.ts";
@@ -16,8 +17,10 @@ export interface VaultSecretsCore {
   saveFile(name: string, text: string): Promise<boolean>;
   /** A file the person picks; null when the dialog is cancelled. */
   pickFile(): Promise<{ text: string } | null>;
-  /** A failure for the person to read. */
-  fail(error: unknown): void;
+  /** A failure for the person to read, with the text to show instead of the error's message. */
+  fail(error: unknown, text?: string): void;
+  /** The translator of the language in use. */
+  t(): T;
   /** Copies a text to the clipboard and tells the person; false when it failed. */
   copyText(text: string): Promise<boolean>;
   /** Empties the clipboard `ms` from now. */
@@ -78,9 +81,29 @@ export class VaultSecretsSlice {
     return meta;
   }
 
+  /**
+   * A secret's value for the screen to show or copy. Null after telling the person why there is
+   * none: a refused read, or a keyring with nothing under the key (#3603). The text names the
+   * secret and never carries a value.
+   */
+  async value(id: string): Promise<string | null> {
+    let value: string | null;
+    try {
+      value = await this.core.vault.value(id);
+    } catch (error) {
+      this.core.fail(error);
+      return null;
+    }
+    if (value === null) {
+      const name = this.core.vault.list().find((s) => s.id === id)?.name ?? "";
+      this.core.fail(new Error("no value"), this.core.t()("vault.noValue", { name }));
+    }
+    return value;
+  }
+
   /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
   async copy(id: string, clearMs: number): Promise<boolean> {
-    const value = await this.core.vault.value(id);
+    const value = await this.value(id);
     if (value === null || !(await this.core.copyText(value))) return false;
     this.core.clearClipboardIn(clearMs);
     return true;

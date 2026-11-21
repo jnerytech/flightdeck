@@ -29,6 +29,8 @@ export const vault = {
     hidesSoon: "Some em {seconds} segundos",
     hidden: "Oculto",
     copy: "Copiar",
+    noValue:
+      "{name} não tem valor no cofre do sistema. Edite o segredo para defini-lo de novo ou remova-o.",
     copyFor: "Copiar {name}",
     remove: "Remover",
     removeFor: "Remover {name}",
