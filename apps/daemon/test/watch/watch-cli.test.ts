@@ -383,7 +383,7 @@ describe("the arguments of the watch read verbs (issue #3539)", () => {
     expect(JSON.stringify(parsed(["watch", "by-url"]))).toContain("missing the PR link");
     expect(JSON.stringify(parsed(["watch", "settings"]))).toContain("missing the project");
     expect(JSON.stringify(parsed(["watch"]))).toContain("invalid watch action");
-    expect(JSON.stringify(parsed(["watch", "set", "c1"]))).toContain("invalid watch action");
+    expect(JSON.stringify(parsed(["watch", "frobnicate", "c1"]))).toContain("invalid watch action");
     expect(JSON.stringify(parsed(["watch", "get", "c1", "c2"]))).toContain("unknown argument: c2");
   });
 });
