@@ -11,7 +11,7 @@ import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import { answerRun } from "./answer-run.ts";
 import { configPath } from "./config-path.ts";
-import { daemonRuns } from "./daemon-runs.ts";
+import { daemonRuns, updateCommand } from "./daemon-runs.ts";
 import { actionCliArgs, actionVerbCliArgs, isRawAction } from "./domain/action-args.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
@@ -277,7 +277,7 @@ const checkpointsRun: CommandRun = async (args, deps) => {
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   backup: done(async (args, deps) => (await import("./maintenance.ts")).runBackup(args, deps)),
   restore: done(async (args, deps) => (await import("./maintenance.ts")).runRestore(args, deps)),
-  update: async (args, deps) => (await import("./host.ts")).runUpdateCommand(args, deps),
+  update: (args, deps) => updateCommand(args, deps, asking),
   db: done(async (args, deps) => (await import("./maintenance.ts")).runDb(args, deps)),
   version: async (_args, deps) => {
     const { PROTOCOL_VERSION } = await import("@flightdeck/protocol");

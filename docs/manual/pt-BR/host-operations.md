@@ -56,6 +56,31 @@ binário novo.
 - **Linux remoto (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` e, no host,
   `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
 
+### Perguntar ao daemon: update check, update apply e daemon stop
+
+O `update --from` instala um arquivo que quem chama já tem e não pergunta a nenhum daemon. Três outros comandos
+perguntam ao daemon desta máquina, nunca a um nomeado com `--host`:
+
+```sh
+flightdeckd update check [--json]
+flightdeckd update apply --confirm [--json]
+flightdeckd daemon stop --confirm [--json]
+```
+
+- `update check` pergunta o que o servidor de releases tem e imprime uma linha: `available  <versão>  checked <hora>`,
+  `up to date  checked <hora>` ou `check failed  <motivo>  checked <hora>`. Sai com 0 sempre que a checagem rodou,
+  mesmo sem achar nada ou com falha; `--json` imprime `available`, `version`, `checkedAt` e `error` (null se não há).
+- `update apply --confirm` faz o daemon baixar e instalar o que a checagem achou, e reiniciar. Imprime
+  `update started` (`{"started":true}`) assim que o daemon baixou e verificou o binário (pode levar um minuto num
+  link lento) e aceita, e não espera o reinício: rode `update check` ou `host` depois para ver a versão nova. O
+  daemon recusa até ter checado o servidor de releases uma vez, então rode `update check` antes num daemon recém-iniciado.
+- `daemon stop --confirm` faz o daemon sair, e com ele terminam todas as sessões e terminais que ele roda. Imprime
+  `stopping` (`{"stopping":true}`) na resposta do daemon. Com o serviço instalado, o serviço o sobe de novo cerca de 5 s
+  depois; para mantê-lo parado, pare o serviço com `flightdeckd service stop`.
+
+`apply` e `stop` recusam sem `--confirm` (saída 1, nada enviado). Uma conexão cortada depois do envio sai com 2 e diz
+que o daemon pode ou não ter agido. O shell de um modelo é barrado nos dois, com ou sem a flag.
+
 ## Sessões que um reinício interrompeu
 
 Quando o daemon de um host reinicia (uma atualização, um boot, um reinício do serviço), as sessões que

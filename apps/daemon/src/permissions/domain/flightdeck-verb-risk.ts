@@ -4,6 +4,7 @@ import { AUTOMATION_RULES } from "./automation-risk.ts";
 import { BG_RULES } from "./bg-risk.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
 import { CHANGES_RULES } from "./changes-risk.ts";
+import { DAEMON_RULES } from "./daemon-risk.ts";
 import { EXTERNAL_RULES } from "./external-risk.ts";
 import { FILE_RULES } from "./file-risk.ts";
 import { HOST_RULES } from "./host-risk.ts";
@@ -50,5 +51,6 @@ export const FLIGHTDECK_VERB_RULES = [
   ...KNOWLEDGE_RULES,
   ...TELEMETRY_RULES,
   ...TEMPLATES_RULES,
+  ...DAEMON_RULES,
   ...MAINTENANCE_RULES,
 ];
