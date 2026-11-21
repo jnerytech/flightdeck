@@ -115,8 +115,9 @@ export class WebhookTargets {
     checkNtfy(type, url, patch.signingSecret);
     if (patch.url !== undefined) await this.platform.vault.set(urlId(id), patch.url);
     if (patch.signingSecret) await this.platform.vault.set(signId(id), patch.signingSecret);
-    // Another type's secret is not an ntfy token: it would go out as a Bearer that fails forever.
-    else if (becomesNtfy) await this.platform.vault.delete(signId(id));
+    // The secret belongs to the type it was typed for: another type's is not an ntfy token (a Bearer that
+    // fails forever), an ntfy token is not a signing key, and Slack and Discord take none (#3674).
+    else if (type !== current.type) await this.platform.vault.delete(signId(id));
     const next: WebhookTarget = {
       ...current,
       ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
