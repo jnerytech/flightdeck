@@ -344,11 +344,10 @@ describe("flightdeckd worktree remove arguments (issue #3702)", () => {
     });
   });
 
-  test("a flag before the paths does not hide them", () => {
-    expect(parsed(["worktree", "remove", "api", "--confirm", "/w/a"])).toMatchObject({
-      worktreeProject: "api",
-      worktreePaths: ["/w/a"],
-    });
+  test("a path typed after a flag is refused, never dropped: the removal would otherwise miss a folder the person named", () => {
+    expect(parsed(["worktree", "remove", "api", "/w/a", "--confirm", "/w/b"])).toContain(
+      "unknown argument: /w/b",
+    );
   });
 
   test("remove without a project, or without a path, is refused", () => {
