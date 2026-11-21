@@ -32,13 +32,12 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { resourcesRun, workflowRun } from "./domain-runs.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
-import { resourcesRun } from "./resources-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 import { liveStream, watchStop } from "./watch-stop.ts";
-import { workflowRun } from "./workflow-run.ts";
 
 /**
  * The commands of `flightdeckd` that are not the daemon (issue #1593): what each prints and does.
