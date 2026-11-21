@@ -169,9 +169,12 @@ para atualizar, e o `manifestUrl` padrão é `null`.
 
 - **Automático:** uma vez por dia, `VACUUM INTO <dataDir>/backups/flightdeck-<AAAAMMDD-HHmmss>.db`
   (horário UTC), mantendo os últimos `keep`. Funciona com o daemon rodando.
-- **À mão:** `flightdeckd backup [--out <arquivo>]`, ou **Fazer backup agora** na seção
+- **À mão:** `flightdeckd backup [--out <arquivo>] [--force]`, ou **Fazer backup agora** na seção
   Manutenção. Os arquivos ficam só para o dono (0600 fora do Windows). Com `--json`, imprime
-  `{ "path", "at", "bytes" }` no lugar da linha.
+  `{ "path", "at", "bytes" }` no lugar da linha. Um caminho de `--out` já ocupado (arquivo, link ou
+  pasta) é recusado com saída 1 e o motivo `target_exists`, e o arquivo continua como estava;
+  `--force` substitui um arquivo ali, ou o próprio link e nunca o que ele aponta, e uma pasta é
+  recusada mesmo com ele.
 - **Restaurar:** `flightdeckd service stop`, depois `flightdeckd restore <arquivo>`, depois
   `flightdeckd service start`. Sem serviço, pare o daemon à mão antes do `restore`. O comando
   recusa com o daemon rodando, confere a integridade e se o backup não veio de uma versão mais

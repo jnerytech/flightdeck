@@ -28,7 +28,8 @@ async function refusal(out: string, force?: boolean) {
   }
 }
 
-const isDatabase = (path: string) => readFileSync(path).subarray(0, 15).toString() === "SQLite format 3";
+const isDatabase = (path: string) =>
+  readFileSync(path).subarray(0, 15).toString() === "SQLite format 3";
 const skipLinks = process.platform === "win32"; // a link needs a privilege there
 
 /**
@@ -40,7 +41,11 @@ describe("backupNow with a target that already exists (#3809)", () => {
     const out = join(tempDir(), "thesis.docx");
     writeFileSync(out, "precious");
     const got = await refusal(out);
-    expect({ code: got?.code, names: got?.message.includes(out), force: got?.message.includes("--force") }).toEqual({
+    expect({
+      code: got?.code,
+      names: got?.message.includes(out),
+      force: got?.message.includes("--force"),
+    }).toEqual({
       code: "target_exists",
       names: true,
       force: true,
@@ -67,38 +72,52 @@ describe("backupNow with a target that already exists (#3809)", () => {
     writeFileSync(join(out, "keep.txt"), "kept");
     const plain = await refusal(out);
     const forced = await refusal(out, true);
-    expect({ plain: plain?.code, forced: forced?.code, kept: readFileSync(join(out, "keep.txt"), "utf8") }).toEqual({
+    expect({
+      plain: plain?.code,
+      forced: forced?.code,
+      kept: readFileSync(join(out, "keep.txt"), "utf8"),
+    }).toEqual({
       plain: "target_exists",
       forced: "target_exists",
       kept: "kept",
     });
   });
 
-  test.skipIf(skipLinks)("a link is refused as itself, and what it points to is not touched", async () => {
-    const dir = tempDir();
-    const real = join(dir, "real.txt");
-    const out = join(dir, "link.db");
-    writeFileSync(real, "precious");
-    symlinkSync(real, out);
-    const got = await refusal(out);
-    expect({ code: got?.code, real: readFileSync(real, "utf8"), link: lstatSync(out).isSymbolicLink() }).toEqual({
-      code: "target_exists",
-      real: "precious",
-      link: true,
-    });
-  });
+  test.skipIf(skipLinks)(
+    "a link is refused as itself, and what it points to is not touched",
+    async () => {
+      const dir = tempDir();
+      const real = join(dir, "real.txt");
+      const out = join(dir, "link.db");
+      writeFileSync(real, "precious");
+      symlinkSync(real, out);
+      const got = await refusal(out);
+      expect({
+        code: got?.code,
+        real: readFileSync(real, "utf8"),
+        link: lstatSync(out).isSymbolicLink(),
+      }).toEqual({
+        code: "target_exists",
+        real: "precious",
+        link: true,
+      });
+    },
+  );
 
-  test.skipIf(skipLinks)("a dangling link is refused: the copy does not land where it points", async () => {
-    const dir = tempDir();
-    const away = join(dir, "away.db");
-    const out = join(dir, "link.db");
-    symlinkSync(away, out);
-    const got = await refusal(out);
-    expect({ code: got?.code, written: existsSync(away) }).toEqual({
-      code: "target_exists",
-      written: false,
-    });
-  });
+  test.skipIf(skipLinks)(
+    "a dangling link is refused: the copy does not land where it points",
+    async () => {
+      const dir = tempDir();
+      const away = join(dir, "away.db");
+      const out = join(dir, "link.db");
+      symlinkSync(away, out);
+      const got = await refusal(out);
+      expect({ code: got?.code, written: existsSync(away) }).toEqual({
+        code: "target_exists",
+        written: false,
+      });
+    },
+  );
 
   test.skipIf(skipLinks)("force replaces the link itself and never writes through it", async () => {
     const dir = tempDir();
@@ -107,7 +126,11 @@ describe("backupNow with a target that already exists (#3809)", () => {
     writeFileSync(real, "precious");
     symlinkSync(real, out);
     expect(await refusal(out, true)).toBeNull();
-    expect({ real: readFileSync(real, "utf8"), link: lstatSync(out).isSymbolicLink(), copy: isDatabase(out) }).toEqual({
+    expect({
+      real: readFileSync(real, "utf8"),
+      link: lstatSync(out).isSymbolicLink(),
+      copy: isDatabase(out),
+    }).toEqual({
       real: "precious",
       link: false,
       copy: true,

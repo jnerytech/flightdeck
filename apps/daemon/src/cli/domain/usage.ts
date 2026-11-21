@@ -5,7 +5,7 @@ export const USAGE = [
   "     fd --version | --help",
   "     fd db status [--json] [--config <file>]   (the size, the backups and the last cleanup of this host)",
   "     fd db prune [--dry-run] [--json] [--config <file>]",
-  "     fd backup [--out <file>] [--json] [--config <file>]",
+  "     fd backup [--out <file> [--force]] [--json] [--config <file>]   (a taken path is refused; --force replaces a file there, never a folder)",
   "     fd restore <file> [--config <file>]   (with the daemon stopped)",
   "     fd update --from <binary> [--allow-downgrade] [--config <file>]",
   "     fd setup [--yes --folders <a,b>] [--config <file>]   (guided first run)",

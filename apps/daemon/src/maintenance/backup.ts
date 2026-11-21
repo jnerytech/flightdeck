@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { chmod, copyFile, mkdir, readdir, rm, stat } from "node:fs/promises";
+import { chmod, copyFile, lstat, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { withLock } from "../kernel/index.ts";
@@ -22,9 +22,25 @@ function backupName(now: number): string {
   return `flightdeck-${day}-${time}.db`;
 }
 
+/** `backup --out` found something at the path it was asked to write (#3809). */
+export class TargetExists extends Error {
+  readonly code = "target_exists";
+  constructor(path: string, isDirectory: boolean) {
+    super(
+      isDirectory
+        ? `${path} is a folder, and a backup does not replace a folder: name a file`
+        : `${path} already exists: pass --force to replace it`,
+    );
+    this.name = "TargetExists";
+  }
+}
+
 /**
  * `VACUUM INTO` a consistent copy, safe with the daemon running (WAL). Owner-only file (0600
- * outside Windows). `out` replaces the automatic name in `dir`.
+ * outside Windows). `out` replaces the automatic name in `dir`, and refuses whatever it finds there
+ * (`lstat`, so a link counts as itself, a dangling one too) unless `force` says to replace a file or
+ * the link itself, never a folder and never what a link points to (#3809). The automatic name is not
+ * guarded: it is the daemon's own file.
  */
 export async function backupNow(
   db: Database,
@@ -35,6 +51,10 @@ export async function backupNow(
 ): Promise<BackupInfo> {
   const path = out ?? join(dir, backupName(now));
   await mkdir(dirname(path), { recursive: true });
+  if (out !== undefined) {
+    const found = await lstat(out).catch(() => null);
+    if (found && (!force || found.isDirectory())) throw new TargetExists(out, found.isDirectory());
+  }
   await rm(path, { force: true });
   db.query("VACUUM INTO ?").run(path);
   await chmod(path, 0o600);
