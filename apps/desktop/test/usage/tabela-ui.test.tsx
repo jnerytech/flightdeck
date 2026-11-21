@@ -87,7 +87,9 @@ describe("uso-tabela-ui: the day button says its project and where it leads (#36
     expect(
       view.queryByRole("button", { name: "Open History for entrevista on 2026-10-15" }),
     ).not.toBeNull();
-    expect(view.queryByRole("button", { name: "Open History for repo on 2026-10-15" })).not.toBeNull();
+    expect(
+      view.queryByRole("button", { name: "Open History for repo on 2026-10-15" }),
+    ).not.toBeNull();
     view.unmount();
     const pt = render(
       <TContext.Provider value={translator("pt-BR")}>
