@@ -402,6 +402,8 @@ export const ptBR = {
     consumers: "Quem consumiu a janela de 5 horas",
     attribution: "atribuição aproximada: o plano não diz quem consumiu",
     title: "Cota",
+    loading: "Carregando as leituras da cota",
+    empty: "Nenhuma leitura de cota para mostrar.",
   },
   prefs: {
     title: "Configurações",
