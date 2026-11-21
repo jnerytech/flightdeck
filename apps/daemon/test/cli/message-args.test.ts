@@ -84,12 +84,12 @@ describe("the arguments of message history, watch and rules (issue #3622)", () =
       });
     expect(parsed(["message", "send", "s-dev", "hi", "--json"])).toMatchObject({
       refusedWith: expect.stringContaining(
-        "--json: this flag only applies to flightdeckd message history, watch and rules",
+        "--json: this flag only applies to flightdeckd message history, watch, rules and rules-set",
       ),
     });
     expect(parsed(["message", "list", "--host", "pi"])).toMatchObject({
       refusedWith: expect.stringContaining(
-        "--host: this flag only applies to flightdeckd message history, watch and rules",
+        "--host: this flag only applies to flightdeckd message history, watch, rules and rules-set",
       ),
     });
   });
@@ -101,5 +101,67 @@ describe("the arguments of message history, watch and rules (issue #3622)", () =
       session: "s-dev",
       last: 3,
     });
+  });
+});
+
+describe("the arguments of message rules-set (issue #3622)", () => {
+  test("it takes a policy file, the pairs to free (repeatable), --confirm, --json and --host", () => {
+    expect(
+      parsed([
+        "message",
+        "rules-set",
+        "--policy-file",
+        "p.json",
+        "--unpause",
+        "s-a|s-b",
+        "--unpause",
+        "s-c|s-d",
+        "--confirm",
+        "--json",
+        "--host",
+        "pi",
+      ]),
+    ).toMatchObject({
+      command: "message",
+      action: "rules-set",
+      policyFile: "p.json",
+      unpause: ["s-a|s-b", "s-c|s-d"],
+      confirm: true,
+      json: true,
+      host: "pi",
+    });
+  });
+
+  test("it is refused with no policy file or no --confirm", () => {
+    expect(parsed(["message", "rules-set", "--confirm"])).toMatchObject({
+      refusedWith: expect.stringContaining("message rules-set: missing --policy-file"),
+    });
+    expect(parsed(["message", "rules-set", "--policy-file", "p.json"])).toMatchObject({
+      refusedWith: expect.stringContaining("message rules-set: needs --confirm"),
+    });
+  });
+
+  test("its flags belong to it alone, and --confirm belongs to no other message verb", () => {
+    for (const [argv, flag, owner] of [
+      [["message", "rules", "--policy-file", "p.json"], "--policy-file", "message rules-set"],
+      [["message", "history", "--unpause", "a|b"], "--unpause", "message rules-set"],
+      [["message", "rules", "--confirm"], "--confirm", "message rules-set"],
+      [["message", "send", "s-dev", "hi", "--confirm"], "--confirm", "message rules-set"],
+      [
+        ["message", "rules-set", "--policy-file", "p", "--confirm", "--team", "t"],
+        "--team",
+        "message history",
+      ],
+      [
+        ["message", "rules-set", "--policy-file", "p", "--confirm", "--session", "s"],
+        "--session",
+        "message history",
+      ],
+    ] as const)
+      expect(parsed([...argv])).toMatchObject({
+        refusedWith: expect.stringContaining(
+          `${flag}: this flag only applies to flightdeckd ${owner}`,
+        ),
+      });
   });
 });
