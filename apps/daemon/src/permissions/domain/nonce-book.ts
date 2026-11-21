@@ -71,7 +71,7 @@ export class NonceBook {
   /** Uses the nonce up: `ok` once, `expired` past its life, `unknown` for any other (used, never issued, another purpose or request). */
   take(nonce: string, purpose: NoncePurpose, requestId?: string): "ok" | "expired" | "unknown" {
     const issued = this.live.get(nonce);
-    if (!issued || issued.purpose !== purpose || issued.requestId !== requestId) return "unknown";
+    if (issued?.purpose !== purpose || issued.requestId !== requestId) return "unknown";
     this.live.delete(nonce);
     return this.opts.mono() - issued.at > this.ttl ? "expired" : "ok";
   }

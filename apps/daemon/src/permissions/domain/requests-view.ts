@@ -45,7 +45,13 @@ export function requestRows(
       })),
     );
   // The queue of the whole host, as the person would answer it: the one that waited longest first.
-  return rows.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
+  return rows.sort(oldestFirst);
+}
+
+/** The order of the queue: the one that waited longest first. */
+function oldestFirst(a: RequestRow, b: RequestRow): number {
+  if (a.createdAt < b.createdAt) return -1;
+  return a.createdAt > b.createdAt ? 1 : 0;
 }
 
 /** What the request asks is cut here: the line says which request it is, the app shows the rest. */
@@ -54,6 +60,7 @@ const ASKS_MAX = 120;
 export function requestLine(row: RequestRow): string {
   const asks = row.input ? JSON.stringify(row.input) : "";
   const shown = asks.length > ASKS_MAX ? `${asks.slice(0, ASKS_MAX)}…` : asks;
-  const risk = `${row.risk ?? "unknown"}${row.riskReason ? ` (${row.riskReason})` : ""}`;
+  const reason = row.riskReason ? ` (${row.riskReason})` : "";
+  const risk = `${row.risk ?? "unknown"}${reason}`;
   return [row.id, row.session ?? row.sessionId, risk, row.tool, shown].join("  ").trimEnd();
 }

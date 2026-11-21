@@ -179,7 +179,7 @@ const answersARequest = (prog: string, args: string[]) =>
 const changesApprovers = (prog: string, args: string[]) =>
   runsFlightdeckVerb(prog, args, ["approvers"]);
 
-const CARD_ENDS = ["discard", "complete", "delete", "merge-local", "choose-variant"];
+const CARD_ENDS = new Set(["discard", "complete", "delete", "merge-local", "choose-variant"]);
 
 /**
  * What the app asks the person to confirm, done from a session's shell (#3454): `card discard`,
@@ -198,7 +198,7 @@ function endsACard(prog: string, args: string[]): boolean {
       const [command, action, , switchTo] = flightdeckWords(own);
       return (
         command === "card" &&
-        (CARD_ENDS.includes(action ?? "") ||
+        (CARD_ENDS.has(action ?? "") ||
           (action === "move" && own.includes("--force")) ||
           (action === "check-loop" && switchTo === "on"))
       );
@@ -209,7 +209,7 @@ function endsACard(prog: string, args: string[]): boolean {
   return (
     runsCli &&
     words.includes("card") &&
-    (words.some((w) => CARD_ENDS.includes(w)) || forcedMove(words) || loopOn(words))
+    (words.some((w) => CARD_ENDS.has(w)) || forcedMove(words) || loopOn(words))
   );
 }
 
@@ -544,7 +544,7 @@ function execRisks(args: string[]): Candidate[] {
   const out: Candidate[] = [];
   args.forEach((arg, i) => {
     if (!["-exec", "-execdir", "-ok", "-okdir"].includes(arg)) return;
-    const end = args.findIndex((a, j) => j > i && [";", "\\;", "+"].includes(a));
+    const end = args.findIndex((a, j) => j > i && [";", String.raw`\;`, "+"].includes(a));
     out.push(...segmentRisks(args.slice(i + 1, end < 0 ? undefined : end), false));
   });
   return out;
