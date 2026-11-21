@@ -65,7 +65,6 @@ export class DaemonClient {
     this.unreadable = new Promise<never>((_, reject) => {
       this.reject = reject;
     });
-    this.unreadable.catch(() => undefined); // only a stream reads it: no unhandled rejection otherwise
     ws.addEventListener("message", (msg) => {
       let frame: ServerMessage;
       try {
@@ -102,7 +101,9 @@ export class DaemonClient {
       if (frame.type === type) listener(frame as Extract<ServerMessage, { type: T }>);
     };
     this.listeners.add(each);
-    return () => void this.listeners.delete(each);
+    return () => {
+      this.listeners.delete(each);
+    };
   }
 
   /** `signal` gives up: it closes the socket, so nothing is sent on a connection nobody waits for. */
@@ -122,6 +123,7 @@ export class DaemonClient {
         ws.addEventListener("close", () => reject(new DaemonUnreachable()), { once: true });
       });
       const client = new DaemonClient(ws);
+      client.unreadable.catch(() => undefined); // only a stream reads it: no unhandled rejection otherwise
       await client.call("hello", { token, client: name });
       if (signal?.aborted) throw new Error("connection closed");
       return client;

@@ -128,6 +128,9 @@ export interface CliArgs {
     | "trace"
     | "describe"
     | "by-url"
+    | "extend"
+    | "resolve-held"
+    | "follow"
     | "hostkey-check"
     | "hostkey-confirm"
     | "hostkey-forget"
@@ -200,8 +203,20 @@ export interface CliArgs {
   terminalDisable?: true;
   /** `ssh add|edit`: the flags that set a destination. */
   sshSave?: SshSaveFields;
-  /** `watch get|trace|describe <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
+  /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
+  /** `watch resolve-held <card> <round>`: the round. */
+  watchRound?: string;
+  /** `watch set|settings`: `--enable` is true, `--disable` false and `--default` (set only) null. */
+  watchSwitch?: boolean | null;
+  /** `watch extend --rounds <n>`: the rounds the card is allowed on top. */
+  watchRounds?: number;
+  /** `watch resolve-held --push|--drop`. */
+  watchResolution?: "push" | "drop";
+  /** `watch settings`: the fields the flags set, as the protocol's patch. */
+  watchPatch?: Record<string, unknown>;
+  /** The flags of the watch verbs that were typed, to refuse one on a verb that does not take it. */
+  watchFlags?: string[];
   /** `session summary|files <session>`: the session to read, its name or its id. */
   sessionRef?: string;
   /** `session set-model|set-effort <session> <value>`: the model or the effort, or `default`. */

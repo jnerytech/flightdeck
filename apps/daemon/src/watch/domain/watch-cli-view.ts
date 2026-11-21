@@ -1,5 +1,5 @@
 /**
- * Issue #3539: what `flightdeckd watch get|trace|describe|by-url|settings` print, as pure rules over the
+ * Issue #3539: what `flightdeckd watch` prints, as pure rules over the
  * daemon's answers. A `--json` value keeps every key: `null` where an older daemon sends none.
  */
 import type {
@@ -9,6 +9,13 @@ import type {
   WatchInfo,
   WatchSettings,
 } from "@flightdeck/protocol";
+
+/** What a write that got no answer may have done, as text that follows the message. */
+export const UNSURE =
+  "; the change may or may not have been made: check with `watch get` or `watch settings` before trying again";
+
+export const resolvedLine = (resolution: "push" | "drop", round: string) =>
+  `${resolution === "push" ? "pushed" : "dropped"} round ${round}`;
 
 const dollars = (usd: number) => `$${usd.toFixed(2)}`;
 
