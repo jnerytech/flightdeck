@@ -282,27 +282,31 @@ describe("flightdeckd runenv watch (issue #3621)", () => {
         });
       },
     });
+    // One line an update: the stream flattens a line break.
     expect(lines).toEqual([
-      [
-        "c1: running, setup done",
-        "ports: web 4101, api 4102",
-        "  web (t1): running, ready, http://127.0.0.1:4101",
-        "  worker (t2): exited with code 1, no ready check",
-      ].join("\n"),
-      "c2: setup, setup running\nports: web 4101, api 4102",
+      "c1: running, setup done; ports: web 4101, api 4102; web (t1): running, ready, http://127.0.0.1:4101; worker (t2): exited with code 1, no ready check",
+      "c2: setup, setup running; ports: web 4101, api 4102",
     ]);
     expect(result.code).toBe(0);
     expect(callsOf(daemon, "runenv.watch")).toEqual([{}]);
   });
 
-  test("--json writes one run per line, with the keys an older daemon leaves out as null", async () => {
+  test("--json writes one run per line, every key kept", async () => {
     const daemon = fakeDaemon({ "runenv.watch": () => ({}) });
     const { lines } = await watching(daemon, {
       json: true,
       after: () =>
         daemon.push({
           type: "runenv.updated",
-          state: { cardId: "c1", status: "idle", setup: "pending", ports: {}, processes: [] },
+          state: {
+            cardId: "c1",
+            status: "idle",
+            setup: "pending",
+            setupTerminalId: null,
+            ports: {},
+            processes: [],
+            error: null,
+          },
         }),
     });
     expect(lines).toHaveLength(1);
