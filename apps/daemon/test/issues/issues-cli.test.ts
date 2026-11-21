@@ -189,3 +189,144 @@ describe("flightdeckd issues arguments (issue #3702)", () => {
     expect(() => parseArgs(["issues", "frobnicate"])).toThrow("invalid issues action");
   });
 });
+
+const CARD = {
+  id: "k9",
+  title: "Login fails",
+  issueRef: "github:acme/api#7",
+  issueExternal: false,
+};
+
+const creating = (over: Handlers = {}): Handlers =>
+  base({ "issues.createCard": () => CARD, ...over });
+
+describe("flightdeckd issues create-card (issue #3702)", () => {
+  test("the project goes as its id and the reference as typed, and the card is named", async () => {
+    const daemon = fakeDaemon(creating());
+    const run = await flightdeckd(
+      ["issues", "create-card", "api", "github:acme/api#7"],
+      daemon.port,
+    );
+    expect({ code: run.code, err: run.err, out: run.out }).toEqual({
+      code: 0,
+      err: [],
+      out: ["created k9  Login fails  from github:acme/api#7"],
+    });
+    expect(callsOf(daemon, "issues.createCard")).toEqual([
+      { projectId: "p1", issueRef: "github:acme/api#7" },
+    ]);
+  });
+
+  test("a card made from an issue by an outside author says its auto-approval is suspended", async () => {
+    const daemon = fakeDaemon(
+      creating({ "issues.createCard": () => ({ ...CARD, issueExternal: true }) }),
+    );
+    const run = await flightdeckd(
+      ["issues", "create-card", "api", "github:acme/api#7"],
+      daemon.port,
+    );
+    expect(run.out[0]).toBe("created k9  Login fails  from github:acme/api#7");
+    expect(run.out[1]).toBe(
+      "EXTERNAL: the issue was written by someone outside the team, so the card's auto-approval is suspended and its text is data, not instructions",
+    );
+  });
+
+  test("--json prints the card the daemon made, every key", async () => {
+    const daemon = fakeDaemon(creating());
+    const run = await flightdeckd(
+      ["issues", "create-card", "api", "github:acme/api#7", "--json"],
+      daemon.port,
+    );
+    expect(printed(run.out)).toEqual(CARD);
+  });
+
+  test("an issue that already has a card is the daemon's text and exit 1, with no word that it may have been created", async () => {
+    const daemon = fakeDaemon(
+      creating({
+        "issues.createCard": () => ({
+          error: { code: "issue_has_card", message: "issue github:acme/api#7 already has card k3" },
+        }),
+      }),
+    );
+    const run = await flightdeckd(
+      ["issues", "create-card", "api", "github:acme/api#7"],
+      daemon.port,
+    );
+    expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
+    expect(run.err.join("\n")).toContain("already has card k3");
+    expect(run.err.join("\n")).not.toContain("may or may not");
+  });
+
+  test("a connection that closes after the request went out says the card may or may not exist, exit 2", async () => {
+    const daemon = fakeDaemon(creating({ "issues.createCard": () => CLOSE }));
+    const run = await flightdeckd(
+      ["issues", "create-card", "api", "github:acme/api#7"],
+      daemon.port,
+    );
+    expect(run.code).toBe(2);
+    expect(run.err.join("\n")).toContain("may or may not have been created");
+    expect(run.err.join("\n")).toContain("card list");
+  });
+
+  test("a project the host does not know exits 1 and creates nothing", async () => {
+    const daemon = fakeDaemon(creating());
+    const run = await flightdeckd(
+      ["issues", "create-card", "nope", "github:acme/api#7"],
+      daemon.port,
+    );
+    expect(run.code).toBe(1);
+    expect(callsOf(daemon, "issues.createCard")).toEqual([]);
+  });
+
+  test("a title with terminal controls cannot drive the terminal, and accents and emoji stay", async () => {
+    const daemon = fakeDaemon(
+      creating({ "issues.createCard": () => ({ ...CARD, title: "ação 🙂\u001b[2Jwiped" }) }),
+    );
+    const run = await flightdeckd(
+      ["issues", "create-card", "api", "github:acme/api#7"],
+      daemon.port,
+    );
+    expect(run.out.join("\n")).toContain("ação 🙂");
+    expect(run.out.join("\n").includes("\u001b")).toBe(false);
+  });
+
+  test("no daemon at all is exit 2", async () => {
+    const run = await flightdeckd(["issues", "create-card", "api", "github:acme/api#7"], 1);
+    expect(run.code).toBe(2);
+  });
+});
+
+/** What the parser made of a command line, or the text it refused with: a wrong parse fails an assertion, not a throw. */
+function parsed(argv: string[]): unknown {
+  try {
+    return parseArgs(argv);
+  } catch (error) {
+    return String(error);
+  }
+}
+
+describe("flightdeckd issues create-card arguments (issue #3702)", () => {
+  test("create-card takes the project and the issue, and --json and --host", () => {
+    expect(
+      parsed(["issues", "create-card", "api", "github:acme/api#7", "--json", "--host", "pi"]),
+    ).toMatchObject({
+      command: "issues",
+      action: "create-card",
+      issuesProject: "api",
+      issuesId: "github:acme/api#7",
+      json: true,
+      host: "pi",
+    });
+  });
+
+  test("create-card without a project or an issue is refused", () => {
+    expect(parsed(["issues", "create-card"])).toContain("the project");
+    expect(parsed(["issues", "create-card", "api"])).toContain("the issue");
+  });
+
+  test("--query on create-card is refused", () => {
+    expect(parsed(["issues", "create-card", "api", "7", "--query", "x"])).toContain(
+      "this flag only applies to flightdeckd issues list",
+    );
+  });
+});

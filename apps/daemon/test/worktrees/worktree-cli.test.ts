@@ -186,3 +186,178 @@ describe("flightdeckd worktree arguments (issue #3702)", () => {
     expect(() => parseArgs(["worktree", "frobnicate"])).toThrow("invalid worktree action");
   });
 });
+
+const OUTCOME = {
+  removed: [
+    { path: "/w/api/k2", freedBytes: 5_242_880, branchKept: false },
+    { path: "/w/api/k3", freedBytes: null, branchKept: false },
+    { path: "/w/api/k4", freedBytes: 1_048_576, branchKept: true },
+  ],
+  kept: [
+    { path: "/w/api/k1", reason: "dirty" },
+    { path: "/w/api/k5", reason: "failed", detail: "git said no" },
+    { path: "/w/api/k6", reason: "not_listed" },
+  ],
+};
+
+const removing = (over: Handlers = {}): Handlers =>
+  base({ "worktree.remove": () => OUTCOME, ...over });
+
+const remove = (...rest: string[]) => ["worktree", "remove", "api", ...rest];
+
+describe("flightdeckd worktree remove (issue #3702)", () => {
+  test("every path of the project goes to the daemon in one request, with the confirmation", async () => {
+    const daemon = fakeDaemon(removing());
+    await flightdeckd(remove("/w/api/k1", "/w/api/k2", "--confirm"), daemon.port);
+    expect(callsOf(daemon, "worktree.remove")).toEqual([
+      {
+        items: [
+          { projectId: "p1", path: "/w/api/k1" },
+          { projectId: "p1", path: "/w/api/k2" },
+        ],
+        confirm: true,
+      },
+    ]);
+  });
+
+  test("it says what went, what it freed and which branch stayed, and what the daemon kept and why", async () => {
+    const daemon = fakeDaemon(removing());
+    const run = await flightdeckd(remove("/w/api/k2", "--confirm"), daemon.port);
+    expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: [] });
+    expect(run.out).toEqual([
+      "removed /w/api/k2  freed 5.0 MB",
+      "removed /w/api/k3  size unknown",
+      "removed /w/api/k4  freed 1.0 MB  branch kept",
+      "kept /w/api/k1  dirty",
+      "kept /w/api/k5  failed: git said no",
+      "kept /w/api/k6  not_listed",
+    ]);
+  });
+
+  test("a worktree the daemon keeps is still exit 0: the daemon answered, and the line says it stayed", async () => {
+    const daemon = fakeDaemon(
+      removing({ "worktree.remove": () => ({ removed: [], kept: [OUTCOME.kept[0]] }) }),
+    );
+    const run = await flightdeckd(remove("/w/api/k1", "--confirm"), daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["kept /w/api/k1  dirty"] });
+  });
+
+  test("without --confirm it is refused before it connects: exit 1, not 2, and the text names the flag", async () => {
+    const run = await flightdeckd(remove("/w/api/k1"), 1);
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain("--confirm");
+  });
+
+  test("a project the host does not know exits 1 and removes nothing", async () => {
+    const daemon = fakeDaemon(removing());
+    const run = await flightdeckd(
+      ["worktree", "remove", "nope", "/w/api/k1", "--confirm"],
+      daemon.port,
+    );
+    expect(run.code).toBe(1);
+    expect(callsOf(daemon, "worktree.remove")).toEqual([]);
+  });
+
+  test("--json keeps every key: a size that is not known and a branch flag the daemon left out are null", async () => {
+    const daemon = fakeDaemon(
+      removing({
+        "worktree.remove": () => ({
+          removed: [{ path: "/w/api/k3", freedBytes: null }],
+          kept: [{ path: "/w/api/k1", reason: "dirty" }],
+        }),
+      }),
+    );
+    const run = await flightdeckd(
+      remove("/w/api/k3", "/w/api/k1", "--confirm", "--json"),
+      daemon.port,
+    );
+    expect(run.code).toBe(0);
+    expect(printed(run.out)).toEqual({
+      removed: [{ path: "/w/api/k3", freedBytes: null, branchKept: null }],
+      kept: [{ path: "/w/api/k1", reason: "dirty", detail: null }],
+    });
+  });
+
+  test("a path or a detail that holds terminal controls cannot drive the terminal, and accents and emoji stay", async () => {
+    const daemon = fakeDaemon(
+      removing({
+        "worktree.remove": () => ({
+          removed: [{ path: "/w/ação 🙂", freedBytes: 0, branchKept: false }],
+          kept: [{ path: "/w/\u001b[2Jwiped", reason: "failed", detail: "a\u001b]0;x\u0007b" }],
+        }),
+      }),
+    );
+    const run = await flightdeckd(remove("/w/x", "--confirm"), daemon.port);
+    expect(run.out.join("\n")).toContain("/w/ação 🙂");
+    expect(run.out.join("\n")).toContain("wiped");
+    expect(run.out.join("\n").includes("\u001b")).toBe(false);
+  });
+
+  test("a daemon that refuses is its text on stderr and exit 1, with no word that the removal may have happened", async () => {
+    const daemon = fakeDaemon(
+      removing({
+        "worktree.remove": () => ({ error: { code: "forbidden", message: "not allowed" } }),
+      }),
+    );
+    const run = await flightdeckd(remove("/w/api/k1", "--confirm"), daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
+    expect(run.err.join("\n")).toContain("not allowed");
+    expect(run.err.join("\n")).not.toContain("may or may not");
+  });
+
+  test("a connection that closes after the request went out says the folders may or may not be gone, exit 2", async () => {
+    const daemon = fakeDaemon(removing({ "worktree.remove": () => CLOSE }));
+    const run = await flightdeckd(remove("/w/api/k1", "--confirm"), daemon.port);
+    expect(run.code).toBe(2);
+    expect(run.err.join("\n")).toContain("may or may not have been removed");
+    expect(run.err.join("\n")).toContain("worktree list");
+  });
+
+  test("no daemon at all is exit 2 and does not say anything was removed", async () => {
+    const run = await flightdeckd(remove("/w/api/k1", "--confirm"), 1);
+    expect(run.code).toBe(2);
+    expect(run.err.join("\n")).not.toContain("may or may not");
+  });
+});
+
+/** What the parser made of a command line, or the text it refused with: a wrong parse fails an assertion, not a throw. */
+function parsed(argv: string[]): unknown {
+  try {
+    return parseArgs(argv);
+  } catch (error) {
+    return String(error);
+  }
+}
+
+describe("flightdeckd worktree remove arguments (issue #3702)", () => {
+  test("remove takes the project, every path up to the next flag, --confirm, --json and --host", () => {
+    expect(
+      parsed(["worktree", "remove", "api", "/w/a", "/w/b", "--confirm", "--json", "--host", "pi"]),
+    ).toMatchObject({
+      command: "worktree",
+      action: "remove",
+      worktreeProject: "api",
+      worktreePaths: ["/w/a", "/w/b"],
+      confirm: true,
+      json: true,
+      host: "pi",
+    });
+  });
+
+  test("a flag before the paths does not hide them", () => {
+    expect(parsed(["worktree", "remove", "api", "--confirm", "/w/a"])).toMatchObject({
+      worktreeProject: "api",
+      worktreePaths: ["/w/a"],
+    });
+  });
+
+  test("remove without a project, or without a path, is refused", () => {
+    expect(parsed(["worktree", "remove", "--confirm"])).toContain("the project");
+    expect(parsed(["worktree", "remove", "api", "--confirm"])).toContain("worktree remove");
+    expect(parsed(["worktree", "remove", "api", "--confirm"])).toContain("path");
+  });
+
+  test("--confirm on worktree list is refused, since list changes nothing", () => {
+    expect(parsed(["worktree", "list", "--confirm"])).toContain("--confirm");
+  });
+});
