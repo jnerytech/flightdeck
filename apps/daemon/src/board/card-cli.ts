@@ -356,7 +356,14 @@ function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<C
       return checkLoop(args, daemon, note);
     case "dismiss-unblocked":
       return dismissUnblocked(args, daemon, note);
+    case "pr-comments":
+      return commentsOf(args, daemon);
   }
+}
+
+/** The comments on the card's pull request. */
+async function commentsOf(_args: CardCliArgs, _daemon: DaemonClient): Promise<CliResult> {
+  return said("");
 }
 
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */

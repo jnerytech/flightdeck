@@ -19,6 +19,7 @@ import { costsProblem } from "./costs-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
+import { issuesProblem, readIssues } from "./issues-args.ts";
 import { readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
 import { memoryProblem, readMemory } from "./memory-args.ts";
@@ -43,6 +44,7 @@ import {
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
+import { readWorktree } from "./worktree-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -209,6 +211,7 @@ const HANDLERS: Record<string, Handler> = {
         "choose-variant",
         "check-loop",
         "dismiss-unblocked",
+        "pr-comments",
       ],
       "invalid card action",
     );
@@ -323,6 +326,8 @@ const HANDLERS: Record<string, Handler> = {
   boardsync: readBoardsync,
   review: readReview,
   memory: readMemory,
+  worktree: readWorktree,
+  issues: readIssues,
   runenv: readRunenv,
   changes: readChanges,
   file: readFile,
@@ -732,6 +737,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     boardsyncProblem(args) ??
     reviewProblem(args) ??
     memoryProblem(args) ??
+    issuesProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
     fileProblem(args) ??

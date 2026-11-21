@@ -40,7 +40,8 @@ export interface CardCliArgs {
     | "start-arena"
     | "choose-variant"
     | "check-loop"
-    | "dismiss-unblocked";
+    | "dismiss-unblocked"
+    | "pr-comments";
   /** `message`: the text; `review --language`. */
   text?: string;
   language?: "en" | "pt-BR";
