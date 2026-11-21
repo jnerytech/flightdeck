@@ -247,11 +247,11 @@ describe("direcao-visual: três colunas", () => {
     expect(within(main()).queryByText("Escolha uma sessão para ler.")).not.toBeNull();
     await click(list()?.querySelector("button") as HTMLElement);
     expect(store.router.current.name).toBe("reader");
-    await settle(() => screen.queryByRole("log", { name: "Transcript" }) !== null);
-    expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
+    await settle(() => screen.queryByRole("log", { name: "Transcrição" }) !== null);
+    expect(screen.queryByRole("log", { name: "Transcrição" })).not.toBeNull();
     // The list stays beside it, and Esc goes back to it.
     expect(list()).not.toBeNull();
-    await press("Escape", screen.queryByRole("log", { name: "Transcript" }) as HTMLElement);
+    await press("Escape", screen.queryByRole("log", { name: "Transcrição" }) as HTMLElement);
     expect(store.router.current.name).toBe("history");
     expect(within(main()).queryByText("Escolha uma sessão para ler.")).not.toBeNull();
   });

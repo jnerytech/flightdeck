@@ -31,3 +31,8 @@ export function toFilter(draft: Draft): HistoryFilter {
     ...(draft.origin ? { origin: draft.origin } : {}),
   };
 }
+
+/** A period whose first day comes after its last: it can match nothing. Dates are `YYYY-MM-DD`. */
+export function periodReversed(draft: Pick<Draft, "from" | "to">): boolean {
+  return draft.from !== "" && draft.to !== "" && draft.from > draft.to;
+}
