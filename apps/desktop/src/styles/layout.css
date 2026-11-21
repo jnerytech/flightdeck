@@ -229,7 +229,7 @@
 }
 
 /* The origin tag of a row ("Flightdeck", the default) says the least on it: below 26 rem of list
-   it goes before the state word has to be cut (#3793). */
+   it leaves the screen before the state word has to be cut (#3793). */
 @utility row-meta {
   max-width: 40%;
   min-width: 0;
@@ -238,7 +238,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   @container (width < 26rem) {
-    display: none;
+    /* Out of sight, not out of the accessibility tree: a history or background row keeps its origin for a screen reader. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip: rect(0, 0, 0, 0);
   }
 }
 
