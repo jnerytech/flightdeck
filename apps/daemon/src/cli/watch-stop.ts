@@ -14,3 +14,14 @@ export function watchStop(
       deps.onSignal(signal, async () => stop.abort());
   return stop;
 }
+
+/** What a `watch` is given to run: the stop above and a writer for each line as it comes. */
+export function liveStream(
+  args: CliArgs,
+  deps: {
+    onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
+    log: { log(line: string): void };
+  },
+): { signal: AbortSignal; write: (line: string) => void } {
+  return { signal: watchStop(args, deps).signal, write: (line) => deps.log.log(line) };
+}

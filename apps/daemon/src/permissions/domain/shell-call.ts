@@ -466,6 +466,8 @@ export const OPTIONS_WITH_VALUE = [
   "--team",
   "--with-host",
   "--status",
+  "--policy-file",
+  "--unpause",
   "--requester",
   "--purpose",
   "--action",
@@ -493,6 +495,9 @@ export const OPTIONS_WITH_VALUE = [
   "--resume",
   "--cols",
   "--rows",
+  "--digest",
+  "--branch",
+  "--remote",
 ];
 /** The same list, for the lookup: the list stays an array so a test can compare it with the parser's. */
 const VALUE_OPTIONS = new Set(OPTIONS_WITH_VALUE);
@@ -655,7 +660,9 @@ const VERB_NOUNS = new Set([
   "boardsync",
   "review",
   "runenv",
+  "message",
   "mcp",
+  "changes",
 ]);
 
 /**
@@ -770,14 +777,12 @@ export function runsCliVerb(
   command: string,
   verbs: string[],
 ): boolean {
-  if (isCliProgram(prog)) {
-    return shellReadings(args).some((own) => {
-      const [first, verb] = flightdeckWords(own);
-      return first === command && verbs.includes(verb ?? "");
-    });
-  }
-  if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((_, i) => startsCli(words, i));
-  return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
+  // A runner's text that never names the command is no run of it: skip the walk over its CLI starts (#3566).
+  if (!isCliProgram(prog) && !args.some((a) => unquoted(a).split(/\s+/).includes(command)))
+    return false;
+  return runsFlightdeckWords(
+    prog,
+    args,
+    ([first, verb]) => first === command && verbs.includes(verb ?? ""),
+  );
 }

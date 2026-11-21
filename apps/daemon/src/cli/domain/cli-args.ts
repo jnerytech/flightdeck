@@ -58,6 +58,7 @@ export interface CliArgs {
     | "review"
     | "memory"
     | "runenv"
+    | "changes"
     | "requests"
     | "send"
     | "approve"
@@ -134,6 +135,7 @@ export interface CliArgs {
     | "decisions"
     | "report"
     | "rules"
+    | "rules-set"
     | "preview"
     | "interrupted"
     | "import-preview"
@@ -148,6 +150,7 @@ export interface CliArgs {
     | "boards"
     | "log"
     | "link"
+    | "sessions"
     | "unlink"
     | "set-map"
     | "set-push"
@@ -155,6 +158,10 @@ export interface CliArgs {
     | "extend"
     | "resolve-held"
     | "follow"
+    | "revert"
+    | "undo-revert"
+    | "commit"
+    | "pr"
     | "hostkey-check"
     | "hostkey-confirm"
     | "hostkey-forget"
@@ -245,6 +252,19 @@ export interface CliArgs {
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
   memoryName?: string;
+  /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
+  changesOperand?: string;
+  /** `changes revert|undo-revert <target> <file>`: the file. */
+  changesPath?: string;
+  /** `changes commit`: each `--digest <path>=<digest>` the person saw, in the order typed. */
+  changesDigests?: Array<[string, string]>;
+  changesBranch?: string;
+  changesRemote?: string;
+  /** `changes commit --message`, `changes pr --title` and `--body`, `--confirm` of the writes. */
+  changesMessage?: string;
+  changesTitle?: string;
+  changesBody?: string;
+  changesConfirm?: true;
   /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
   /** `review update|remove <comment>`: the comment's id. */
@@ -296,6 +316,8 @@ export interface CliArgs {
   messageTeam?: string;
   withHost?: string;
   messageStatus?: MessageStatus;
+  policyFile?: string;
+  unpause?: string[];
   /** `team show <team>`. */
   teamId?: string;
   /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */

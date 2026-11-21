@@ -153,13 +153,13 @@
   "card.validationTemplate": {
     "cli": "card"
   },
-  "changes.commit": {},
-  "changes.get": {},
-  "changes.pr": {},
-  "changes.revert": {},
-  "changes.undoRevert": {},
-  "changes.unwatch": {},
-  "changes.watch": {},
+  "changes.commit": { "cli": "changes" },
+  "changes.get": { "cli": "changes" },
+  "changes.pr": { "cli": "changes" },
+  "changes.revert": { "cli": "changes" },
+  "changes.undoRevert": { "cli": "changes" },
+  "changes.unwatch": { "cli": "changes" },
+  "changes.watch": { "cli": "changes" },
   "costs.card": { "cli": "costs" },
   "costs.export": { "cli": "costs" },
   "costs.reprice": { "cli": "costs" },
@@ -180,7 +180,7 @@
   "file.read": {},
   "file.search": {},
   "file.write": {},
-  "files.sessions": {},
+  "files.sessions": { "cli": "changes" },
   "fs.dirs": {},
   "fs.files": {},
   "gate.respond": {},
@@ -275,7 +275,9 @@
   "messaging.rules.get": {
     "cli": "message"
   },
-  "messaging.rules.set": {},
+  "messaging.rules.set": {
+    "cli": "message"
+  },
   "names.list": {},
   "permission.respond": {
     "cli": "approve"
