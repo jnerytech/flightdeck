@@ -9,10 +9,12 @@ import {
   hubRows,
   sessionLineText,
 } from "@/features/sessions/index.ts";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { CardGrid, Inline, Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { SessionCard, STATE_TONES } from "../sessions/ui.ts";
+import { hostDownReason } from "./domain/host-down-reason.ts";
 import { hostProjectCards, hostSessionRows } from "./domain/host-overview-model.ts";
 
 /**
@@ -23,7 +25,7 @@ export function HostOverview(
   props: Readonly<{
     store: AppStore;
     state: Pick<AppState, "projects" | "cards" | "hosts"> & Omit<HubRowState, "hosts">;
-    host: { id: string; name: string };
+    host: { id: string; name: string; status: string };
     onOpenSession(row: HubRow): void;
     onOpenProject(card: ProjectCard): void;
     onSeeAllSessions(): void;
@@ -33,6 +35,8 @@ export function HostOverview(
 ) {
   const { store, state, host } = props;
   const { t } = store.i18n;
+  // A host that does not answer cannot say it has no sessions, nor start one (issue #3786).
+  const away = host.status !== "online";
   useEffect(() => {
     void store.sessionLists.refresh();
   }, [store]);
@@ -60,10 +64,17 @@ export function HostOverview(
       >
         {rows.length === 0 ? (
           <Inline gap={3}>
-            <p className="text-muted-foreground text-sm">{t("hostHome.noSessions")}</p>
-            <Button size="sm" onClick={props.onNewSession}>
+            <p className="text-muted-foreground text-sm">
+              {away ? t("hostHome.noSessionsAway", { host: host.name }) : t("hostHome.noSessions")}
+            </p>
+            <ActionButton
+              size="sm"
+              disabled={away}
+              disabledReason={hostDownReason(host.status, host.name, t)}
+              onClick={props.onNewSession}
+            >
               {t("hostHome.newSession")}
-            </Button>
+            </ActionButton>
           </Inline>
         ) : (
           <>
@@ -96,7 +107,9 @@ export function HostOverview(
         label={t("hostHome.projectsTitle", { host: host.name })}
       >
         {projects.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("hostHome.noProjects")}</p>
+          <p className="text-muted-foreground text-sm">
+            {away ? t("hostHome.noProjectsAway", { host: host.name }) : t("hostHome.noProjects")}
+          </p>
         ) : (
           <>
             <ul className="card-grid">
