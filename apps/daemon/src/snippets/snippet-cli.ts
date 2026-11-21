@@ -7,6 +7,7 @@ import {
   type CliResult,
   type DaemonClient,
   DaemonRefusal,
+  failure,
   json,
   plain,
   type RemoteTarget,
@@ -104,7 +105,62 @@ async function resolveOne(daemon: DaemonClient, name: string, projectPath: strin
 }
 
 /** The verbs that change what the host keeps or runs. */
-const WRITING = ["save", "remove", "favorite", "trust", "use"];
+const WRITING = new Set(["save", "remove", "favorite", "trust", "use"]);
+
+/** `snippet trust`: a host with a device enrolled wants that device's signature, which a terminal cannot give (#3647). */
+async function trustVerb(daemon: DaemonClient, args: SnippetVerbArgs): Promise<CliResult> {
+  try {
+    const info = await daemon.call("snippets.trust", {
+      projectPath: args.projectPath as string,
+      hash: args.hash as string,
+    });
+    return args.json ? json(info) : said(trustedLine(info));
+  } catch (error) {
+    if (error instanceof DaemonRefusal && error.reason === "approval_proof_required")
+      return failure(
+        1,
+        `${args.projectPath}: this host has a device enrolled, which confirms the trust of a project's snippet file, so do it in the app`,
+      );
+    throw error;
+  }
+}
+
+async function renderVerb(daemon: DaemonClient, args: SnippetVerbArgs): Promise<CliResult> {
+  const snippet = await resolve(daemon, args.name as string, args.projectPath);
+  const { text, fields } = await daemon.call("snippets.render", {
+    id: snippet.id,
+    ...(args.values ? { values: args.values } : {}),
+  });
+  return args.json
+    ? json({ id: snippet.id, name: snippet.name, text, fields })
+    : said(...renderLines(text));
+}
+
+async function parseVerb(daemon: DaemonClient, args: SnippetVerbArgs): Promise<CliResult> {
+  const read = await daemon.call("snippets.parse", { text: args.text as string });
+  // Nothing read and a reason: the text is no list of snippets.
+  const nothing = read.snippets.length === 0 && read.errors.length > 0;
+  if (args.json) return { ...json(read), code: nothing ? 1 : 0 };
+  const reasons = read.errors.map(plain);
+  return nothing
+    ? { code: 1, out: [], err: reasons }
+    : { ...said(...parseLines(read.snippets)), err: reasons };
+}
+
+async function historyVerb(
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+  args: SnippetVerbArgs,
+): Promise<CliResult> {
+  if (args.select) note.wrote = true;
+  const result = await daemon.call("snippets.importHistory", {
+    ...(args.limit ? { limit: args.limit } : {}),
+    ...(args.reveal ? { reveal: true } : {}),
+    ...(args.select ? { select: args.select } : {}),
+  });
+  if (args.json) return json(result);
+  return said(...(args.select ? importedLines(result) : historyLines(result)));
+}
 
 /** One write: the snippet is resolved first (a read), `note.wrote` is set right before the call that changes something. */
 async function write(
@@ -129,11 +185,7 @@ async function write(
   }
   if (args.action === "trust") {
     note.wrote = true;
-    const info = await daemon.call("snippets.trust", {
-      projectPath: args.projectPath as string,
-      hash: args.hash as string,
-    });
-    return args.json ? json(info) : said(trustedLine(info));
+    return await trustVerb(daemon, args);
   }
   const snippet = await resolveOne(daemon, args.name as string, args.projectPath);
   if (args.action === "remove") {
@@ -173,35 +225,10 @@ export function runSnippetVerbCli(
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
     perform: async (daemon, note) => {
-      if (WRITING.includes(args.action)) return await write(daemon, note, args);
-      if (args.action === "render") {
-        const snippet = await resolve(daemon, args.name as string, args.projectPath);
-        const { text, fields } = await daemon.call("snippets.render", {
-          id: snippet.id,
-          ...(args.values ? { values: args.values } : {}),
-        });
-        return args.json
-          ? json({ id: snippet.id, name: snippet.name, text, fields })
-          : said(...renderLines(text));
-      }
-      if (args.action === "parse") {
-        const read = await daemon.call("snippets.parse", { text: args.text as string });
-        // Nothing read and a reason: the text is no list of snippets.
-        const nothing = read.snippets.length === 0 && read.errors.length > 0;
-        if (args.json) return { ...json(read), code: nothing ? 1 : 0 };
-        const reasons = read.errors.map(plain);
-        return nothing
-          ? { code: 1, out: [], err: reasons }
-          : { ...said(...parseLines(read.snippets)), err: reasons };
-      }
-      if (args.select) note.wrote = true;
-      const result = await daemon.call("snippets.importHistory", {
-        ...(args.limit ? { limit: args.limit } : {}),
-        ...(args.reveal ? { reveal: true } : {}),
-        ...(args.select ? { select: args.select } : {}),
-      });
-      if (args.json) return json(result);
-      return said(...(args.select ? importedLines(result) : historyLines(result)));
+      if (WRITING.has(args.action)) return await write(daemon, note, args);
+      if (args.action === "render") return await renderVerb(daemon, args);
+      if (args.action === "parse") return await parseVerb(daemon, args);
+      return await historyVerb(daemon, note, args);
     },
   });
 }
