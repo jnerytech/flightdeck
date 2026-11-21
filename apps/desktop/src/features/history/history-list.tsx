@@ -13,6 +13,7 @@ import {
   CheckField,
   EmptyState,
   Field,
+  Form,
   Inline,
   LoadingState,
   NativeSelect,
@@ -21,7 +22,7 @@ import { basename } from "@/shared/lib/index.ts";
 import type { AppStore, HistoryFilter } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { usageProjectLabel, usd } from "../costs/index.ts";
-import { type Draft, emptyReason, toFilter } from "./domain/history-filter.ts";
+import { type Draft, emptyReason, periodReversed, toFilter } from "./domain/history-filter.ts";
 import { HistoryCard } from "./history-card.tsx";
 
 /** Native selects, as in the hub. */
@@ -49,6 +50,8 @@ export function HistoryList(
     origin: "",
   }));
   const [filter, setFilter] = useState<HistoryFilter>(() => toFilter(draft));
+  /** The last apply was refused because From came after To; a date edit clears it. */
+  const [reversed, setReversed] = useState(false);
   /** The runs nobody typed (print-mode, temp folders) stay out of the list unless asked for. */
   const [hideAutomated, setHideAutomated] = useState(true);
   // A usage row opened this list again with another folder or day: the filter follows it.
@@ -71,6 +74,7 @@ export function HistoryList(
     setSeen(props.initial);
     setDraft(next);
     setFilter(toFilter(next));
+    setReversed(false);
   }
   const [automatedCount, setAutomatedCount] = useState(0);
   /** `null` until the host answers (the skeleton shows meanwhile). */
@@ -115,8 +119,20 @@ export function HistoryList(
 
   const field = (key: keyof Draft) => ({
     value: draft[key],
-    onChange: (e: { target: { value: string } }) => setDraft({ ...draft, [key]: e.target.value }),
+    onChange: (e: { target: { value: string } }) => {
+      setDraft({ ...draft, [key]: e.target.value });
+      if (key === "from" || key === "to") setReversed(false);
+    },
   });
+  /** Reads the list again with these fields, unless the period is reversed: that is said, not asked. */
+  const apply = (next: Draft) => {
+    if (periodReversed(next)) {
+      setReversed(true);
+      return;
+    }
+    setReversed(false);
+    setFilter(toFilter(next));
+  };
   /** Why the list is empty, once it is read: the hidden automated runs, the filters, or nothing yet. */
   const emptyBecause = emptyReason({
     open: !loading && sessions?.length === 0,
@@ -154,29 +170,50 @@ export function HistoryList(
           />
         </Inline>
         {/* Issue #180: every filter has a visible label (which date is from and which is to). */}
-        <div className="flex flex-wrap items-end gap-2">
-          <Field label={t("historyUi.folder")}>
-            {(control) => <Input {...control} className="w-32" {...field("cwd")} />}
+        <Form
+          variant="inline"
+          className="flex-row flex-wrap items-end gap-2"
+          onSubmit={() => apply(draft)}
+        >
+          <Field
+            label={t("historyUi.folder")}
+            help={t("historyUi.folderHelp")}
+            className="min-w-48 flex-1"
+          >
+            {(control) => <Input {...control} {...field("cwd")} />}
           </Field>
           <Field label={t("historyUi.from")}>
             {(control) => <Input {...control} type="date" className="w-36" {...field("from")} />}
           </Field>
-          <Field label={t("historyUi.to")}>
+          <Field
+            label={t("historyUi.to")}
+            error={reversed ? t("historyUi.periodReversed") : undefined}
+          >
             {(control) => <Input {...control} type="date" className="w-36" {...field("to")} />}
           </Field>
           <Field label={t("historyUi.origin")}>
             {(control) => (
-              <NativeSelect {...control} inline {...field("origin")}>
+              <NativeSelect
+                {...control}
+                inline
+                value={draft.origin}
+                onChange={(e) => {
+                  // A pick is one click: it applies at once. A typed field waits for Enter or Filter.
+                  const next = { ...draft, origin: e.target.value as Draft["origin"] };
+                  setDraft(next);
+                  apply(next);
+                }}
+              >
                 <option value="">{t("historyUi.allOrigins")}</option>
                 <option value="flightdeck">{t("historyUi.flightdeck")}</option>
                 <option value="external">{t("historyUi.external")}</option>
               </NativeSelect>
             )}
           </Field>
-          <Button variant="outline" onClick={() => setFilter(toFilter(draft))}>
+          <Button type="submit" variant="outline">
             {t("historyUi.filter")}
           </Button>
-        </div>
+        </Form>
         {draft.projectKey && filter.projectKey === draft.projectKey && (
           <Inline gap={2} className="text-sm">
             <span>{t("historyUi.project", { name: usageProjectLabel(draft.projectKey) })}</span>
