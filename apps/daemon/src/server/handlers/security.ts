@@ -54,7 +54,7 @@ export const securityHandlers = {
     ws.data.unwatchVault = service.watch((frame) => send(frame));
   },
   "vault.deny": (payload, { server }) => {
-    server.need("actions").deny(payload.requestId);
+    return { denied: server.need("actions").deny(payload.requestId) };
   },
   "vault.rules.set": (payload, { server }) => {
     const { secretId, tags, rules } = payload;

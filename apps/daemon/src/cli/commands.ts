@@ -762,7 +762,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runVaultCli } = await import("../vault/index.ts");
     return reported(
       deps,
-      await runVaultCli(vaultCliArgs(args), await localConfig(args)),
+      await runVaultCli(vaultCliArgs(args), await localConfig(args), liveStream(args, deps)),
       args.json,
     );
   },

@@ -585,12 +585,14 @@
   "trace.get": { "cli": "trace" },
   "ui.set": {},
   "usage.summary": { "cli": "usage" },
-  "vault.approve": {},
+  "vault.approve": {
+    "appOnly": "approving a request delivers the secret from the person's own screen, with the device's signed proof for a high-risk use; a terminal would put the value in shell history. flightdeckd vault deny refuses one (#3753)"
+  },
   "vault.decisions": { "cli": "vault" },
   "vault.deliver": {
     "appOnly": "hands a secret value to the daemon from the person's own screen after they approve a request; a terminal would put the value in shell history (#3458)"
   },
-  "vault.deny": {},
+  "vault.deny": { "cli": "vault" },
   "vault.report": { "cli": "vault" },
   "vault.rules.get": { "cli": "vault" },
   "vault.rules.preview": { "cli": "vault" },
@@ -598,7 +600,7 @@
   "vault.use": {
     "appOnly": "uses a delivered secret value, which a terminal must never print or pass as an argument (#3458)"
   },
-  "vault.watch": {},
+  "vault.watch": { "cli": "vault" },
   "watch.byUrl": { "cli": "watch" },
   "watch.describe": { "cli": "watch" },
   "watch.extend": { "cli": "watch" },

@@ -4,11 +4,22 @@
  * token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. Every verb is a read, so no answer
  * is ever "unsure"; none of them prints a secret value or a webhook URL, which these answers do not hold.
  */
-import { type CliResult, runOnLocalDaemon, shown } from "../daemon-client/index.ts";
+import type { VaultRequestFrame, VaultUsed } from "@flightdeck/protocol";
+import {
+  type CliResult,
+  failure,
+  json,
+  runOnLocalDaemon,
+  said,
+  shown,
+  streamFrames,
+} from "../daemon-client/index.ts";
 import {
   decisionLine,
   reportLine,
+  requestLine,
   ruleLines,
+  usedLine,
   type VaultCliArgs,
   verdictLine,
 } from "./domain/vault-cli-view.ts";
@@ -37,8 +48,9 @@ export async function runVaultCli(
     config,
     clientName: "flightdeck-vault",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    unsure: "",
-    perform: async (daemon) => {
+    unsure:
+      "; the request may or may not have been denied: look at the app, or run `vault watch`, before trying again",
+    perform: async (daemon, note, flow) => {
       switch (args.action) {
         case "decisions": {
           const { secretId, days, limit } = args;
@@ -56,8 +68,27 @@ export async function runVaultCli(
           return shown(args.json, answer, (found) => reportOut(found, csv));
         }
         case "watch":
-        case "deny":
-          return { code: 0, out: [], err: [] };
+          return streamFrames({
+            daemon,
+            flow,
+            ...options,
+            open: () => daemon.call("vault.watch", {}),
+            type: ["vault.request", "vault.used"],
+            line: (frame) => (args.json ? JSON.stringify(frame) : watchLine(frame)),
+          });
+        case "deny": {
+          note.wrote = true;
+          const { denied } = await daemon.call("vault.deny", { requestId: args.requestId });
+          // A daemon from before the answer carried `denied` said nothing when it had nothing to refuse: its word stands.
+          if (denied === false)
+            return failure(
+              1,
+              `request ${args.requestId} is not waiting: it was answered, expired or never existed`,
+            );
+          return args.json
+            ? json({ requestId: args.requestId, denied: true })
+            : said(`denied ${args.requestId}`);
+        }
         case "rules":
           return shown(
             args.json,
@@ -73,6 +104,11 @@ export async function runVaultCli(
       }
     },
   });
+}
+
+/** One line of `vault watch`: a request that asks or is let through, or a use of a delivered secret. */
+function watchLine(frame: VaultRequestFrame | VaultUsed): string {
+  return frame.type === "vault.request" ? requestLine(frame) : usedLine(frame);
 }
 
 /** The lines of a report: the CSV the app saves (its own line breaks stay, one output line each), else a line per use. */

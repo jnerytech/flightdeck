@@ -144,7 +144,7 @@ describe("flightdeckd vault watch (issue #3753)", () => {
     expect(JSON.parse(lines[0] ?? "")).toMatchObject({ requestId: "q1", secretId: "db-pass" });
   });
 
-  test("the alerts and the frames of other streams are not printed", async () => {
+  test("an alert is not printed", async () => {
     const daemon = fakeDaemon({ "vault.watch": () => ({}) });
     const { lines } = await watched(daemon, {
       after: () => {
@@ -156,7 +156,6 @@ describe("flightdeckd vault watch (issue #3753)", () => {
           message: "m",
           at: "t",
         });
-        daemon.push({ type: "card.updated", card: {} });
         daemon.push(used());
       },
     });

@@ -70,11 +70,33 @@ export function verdictLine(v: VaultVerdict): string {
 }
 
 /** The line `vault watch` prints for a use that asks, or is let through by a rule, and waits for the app. */
-export function requestLine(_frame: VaultRequestFrame): string {
-  return "";
+export function requestLine(frame: VaultRequestFrame): string {
+  const action = frame.action ? ` ${frame.action}` : "";
+  const where = frame.host ? ` on ${frame.host}` : "";
+  const parts = [
+    `request ${frame.requestId}`,
+    frame.secretId,
+    frame.requester,
+    `${frame.purpose}${action}${where}`,
+  ];
+  if (frame.decision) parts.push(requestVerdict(frame));
+  if (frame.command) parts.push(`runs: ${frame.command}`);
+  return parts.join("  ");
+}
+
+/** What the rules decided for a request, and why, with the notes the app shows beside it. */
+function requestVerdict(frame: VaultRequestFrame): string {
+  const by = frame.ruleId ? ` by rule ${frame.ruleId}` : "";
+  const why = frame.reason ? `: ${frame.reason}` : "";
+  const notes = [
+    frame.needsHold ? "[approval must be held 2 s]" : "",
+    frame.once ? "[once per session]" : "",
+  ].filter(Boolean);
+  return [`${frame.decision}${by}${why}`, ...(notes.length ? [notes.join(" ")] : [])].join("  ");
 }
 
 /** The line `vault watch` prints for a delivered secret that was used. It never holds the value. */
-export function usedLine(_frame: VaultUsed): string {
-  return "";
+export function usedLine(frame: VaultUsed): string {
+  const use = frame.action ? `${frame.purpose} ${frame.action}` : frame.purpose;
+  return `used  ${frame.secretId}  ${frame.requester}  ${use}  ${frame.at}`;
 }

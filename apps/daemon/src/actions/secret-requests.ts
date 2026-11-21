@@ -101,13 +101,13 @@ export class SecretRequests {
     return () => this.listeners.delete(listener);
   }
 
-  /** The user refused a request: the run that waits for it fails at once. */
+  /** The user refused a request: the run that waits for it fails at once. False when no request waits under that id. */
   deny(requestId: string): boolean {
     const waiting = this.pending.get(requestId);
     if (!waiting) return false;
     waiting.denied = true;
     waiting.controller.abort();
-    return false;
+    return true;
   }
 
   /** The user approved a request that asked; the delivery of its secret is allowed after this. */
