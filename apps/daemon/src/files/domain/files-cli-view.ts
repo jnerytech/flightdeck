@@ -24,6 +24,17 @@ export type FileCliArgs =
       limit?: number;
       json?: boolean;
     }
+  | {
+      action: "write";
+      target: string;
+      path: string;
+      /** The new text's file, or `-` for standard input. */
+      file: string;
+      /** The hash `read` printed: the version this write replaces. */
+      expectedHash: string;
+      confirm: true;
+      json?: boolean;
+    }
   | { action: "dirs"; path?: string; hidden?: boolean; json?: boolean }
   | { action: "files"; path: string; hidden?: boolean; json?: boolean };
 

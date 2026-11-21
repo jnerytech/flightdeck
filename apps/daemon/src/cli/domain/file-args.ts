@@ -12,7 +12,7 @@ import type { CliArgs } from "./cli-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { USAGE } from "./usage.ts";
 
-const FILE_ACTIONS = ["list", "read", "search", "dirs", "files"] as const;
+const FILE_ACTIONS = ["list", "read", "write", "search", "dirs", "files"] as const;
 /** The most characters of a search text and the most matches, as the daemon takes them. */
 const MOST_QUERY = 200;
 const MOST_MATCHES = 200;
@@ -32,7 +32,7 @@ export function readFile(args: CliArgs, reader: ArgReader): void {
   const target = operand(reader, "the target");
   if (!ReviewTarget.safeParse(target).success) throw invalid("invalid target", target);
   args.fileTarget = target;
-  if (verb === "read") args.filePath = operand(reader, "the file");
+  if (verb === "read" || verb === "write") args.filePath = operand(reader, "the file");
 }
 
 /** The flags only `file` verbs take, for the parser's table of flags. */
@@ -50,12 +50,22 @@ export const FILE_FLAGS: Record<string, Handler> = {
 /** On `file` the flags the other commands read move into fields of its own (the plugin's folder, the snippet query). */
 export function takeFileFlags(args: CliArgs): void {
   if (args.command !== "file") return;
-  const moved = { fileDir: args.pluginDir, fileQuery: args.query, fileLimit: args.limit };
+  const moved = {
+    fileDir: args.pluginDir,
+    fileQuery: args.query,
+    fileLimit: args.limit,
+    fileText: args.agentcfgFile,
+    fileHash: args.hash,
+    fileConfirm: args.confirm,
+  };
   for (const [field, value] of Object.entries(moved))
     if (value !== undefined) Object.assign(args, { [field]: value });
   delete args.pluginDir;
   delete args.query;
   delete args.limit;
+  delete args.agentcfgFile;
+  delete args.hash;
+  delete args.confirm;
 }
 
 /** Each flag, whether it was typed, and the verbs that take it. */
@@ -108,6 +118,16 @@ export function fileCliArgs(args: CliArgs): FileCliArgs {
       return { action: "list", target, dir: args.fileDir ?? "", ...json };
     case "read":
       return { action: "read", target, path: args.filePath ?? "", ...json };
+    case "write":
+      return {
+        action: "write",
+        target,
+        path: args.filePath ?? "",
+        file: args.fileText ?? "",
+        expectedHash: args.fileHash ?? "",
+        confirm: true,
+        ...json,
+      };
     case "search":
       return {
         action: "search",

@@ -63,6 +63,8 @@ export function runFileCli(
             readJson,
             readLines,
           );
+        case "write":
+          return said("wrote");
         case "search": {
           const { action: _action, json: _asJson, ...query } = args;
           return shown(args.json, await daemon.call("file.search", query), searchJson, (result) =>
