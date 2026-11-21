@@ -26,6 +26,7 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
@@ -636,6 +637,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
   },
+  file: (args, deps) => asking(args, deps, fileRun(args)),
   boardsync: async (args, deps) => {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
     return askingWith(args, deps, boardsyncCliArgs, runBoardsyncCli);
