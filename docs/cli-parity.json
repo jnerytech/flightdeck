@@ -181,9 +181,9 @@
   "daemon.update.check": {},
   "deps.check": {},
   "doctor.run": {},
-  "external.list": {},
-  "external.message": {},
-  "external.watch": {},
+  "external.list": { "cli": "external" },
+  "external.message": { "cli": "external" },
+  "external.watch": { "cli": "external" },
   "file.list": { "cli": "file" },
   "file.read": { "cli": "file" },
   "file.search": { "cli": "file" },
@@ -286,7 +286,7 @@
   "messaging.rules.set": {
     "cli": "message"
   },
-  "names.list": {},
+  "names.list": { "cli": "names" },
   "permission.respond": {
     "cli": "approve"
   },

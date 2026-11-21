@@ -17,7 +17,6 @@ import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { changesCliArgs } from "./domain/changes-args.ts";
 import { checkpointsCliArgs, traceCliArgs } from "./domain/checkpoints-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
-import { externalCliArgs, namesCliArgs } from "./domain/external-args.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
 import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
@@ -32,6 +31,7 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { externalRun, namesRun } from "./external-run.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
@@ -606,19 +606,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       runWatchCli(watchCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
   },
-  external: async (args, deps) => {
-    const { runExternalCli } = await import("../central/index.ts");
-    const live = liveStream(args, deps);
-    return asking(args, deps, (config, remote) =>
-      runExternalCli(externalCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
-    );
-  },
-  names: async (args, deps) => {
-    const { runNamesCli } = await import("../names/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runNamesCli(namesCliArgs(args), config, remote ? { remote } : {}),
-    );
-  },
+  external: (args, deps) => asking(args, deps, externalRun(args, liveStream(args, deps))),
+  names: (args, deps) => asking(args, deps, namesRun(args)),
   knowledge: async (args, deps) => {
     const { runKnowledgeCli } = await import("../knowledge/index.ts");
     return askingWith(args, deps, knowledgeCliArgs, runKnowledgeCli);
