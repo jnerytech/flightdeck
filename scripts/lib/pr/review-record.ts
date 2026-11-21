@@ -3,8 +3,8 @@
  * the branch with two trailers, `Code-Review: <sha> <summary>` and `Security-Review: <sha> <summary>`,
  * each naming the commit it reviewed. `pr open` reads them (the way the security gate reads
  * `Security-Reviewed:`, #273) and refuses a head that no named commit matches: a later commit that
- * changes the branch asks for a new review. A named commit matches by its tree, or by its branch-side
- * change (its diff against the base), so a merge of the base into a reviewed branch needs no new record (#3731).
+ * changes the branch asks for a new review. A named commit matches by its tree, or when merged onto the head's
+ * merge base with the base it gives the head's tree, so a merge of the base into a reviewed branch needs no new record (#3731).
  */
 
 /** Runs git with these arguments: its exit code and stdout. */
@@ -31,28 +31,22 @@ const HOW = [
 ];
 
 /**
- * The change a commit makes on its branch's side: its diff against the merge base with the base
- * branch, with what a merge of the base moves left out (blob ids, line numbers), or null when git
- * cannot print it. `--binary` keeps a binary change in the text and `--no-renames` keeps a moved file from
- * hiding behind a guess, so two equal texts are the same change.
+ * The tree of the reviewed commit merged onto the head's merge base with the base branch: what the head is
+ * when its only change since the record is a merge of the base (#3731). Null when git cannot say: no merge
+ * base, a git older than 2.38 (no `merge-tree --write-tree`), or a merge that conflicts, whose resolution is
+ * a change nobody reviewed. Exact, so a reviewed hunk moved elsewhere, a mode change or a binary cannot match.
  */
-async function branchSideChange(git: ReviewGit, base: string, rev: string): Promise<string | null> {
-  const diff = await git([
-    "diff",
-    "--no-color",
-    "--no-ext-diff",
-    "--no-textconv",
-    "--no-renames",
-    "--binary",
-    `origin/${base}...${rev}`,
-    "--",
-  ]);
-  if (diff.code !== 0) return null;
-  return diff.stdout
-    .split("\n")
-    .filter((line) => !line.startsWith("index "))
-    .map((line) => line.replace(/^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/, "@@"))
-    .join("\n");
+async function reviewedMergedOntoBase(
+  git: ReviewGit,
+  base: string,
+  branch: string,
+  sha: string,
+): Promise<string | null> {
+  const mergeBase = await git(["merge-base", `origin/${base}`, `origin/${branch}`]);
+  const onto = mergeBase.stdout.trim();
+  if (mergeBase.code !== 0 || !/^[0-9a-f]{40}$/.test(onto)) return null;
+  const merged = await git(["merge-tree", "--write-tree", "--no-messages", onto, sha]);
+  return merged.code === 0 ? (merged.stdout.split("\n")[0] ?? "").trim() || null : null;
 }
 
 /** Why `pr open` refuses a branch, or null when both reviews are on record for its head. */
@@ -77,9 +71,8 @@ export async function reviewProblem(
   if (codeLog.code !== 0 || securityLog.code !== 0 || head.code !== 0)
     return `review: the log or the head of ${branch} cannot be read`;
   // A review counts when a commit it names has the tree of the head (the record's own commit is empty), or
-  // the same branch-side change: a merge of the base moves the tree but not what the branch changes.
+  // merged onto the head's merge base with the base gives it: a merge of the base moves the tree, not the change.
   // `git log -1 --format=%T` prints nothing for a name that is no commit (a tree sha passes rev-parse).
-  let headChange: Promise<string | null> | undefined;
   const reviewed = async (shas: string[]): Promise<boolean> => {
     for (const sha of new Set(shas)) {
       const tree = await git([
@@ -92,9 +85,8 @@ export async function reviewProblem(
       ]);
       if (tree.code !== 0 || tree.stdout.trim() === "") continue;
       if (tree.stdout.trim() === head.stdout.trim()) return true;
-      headChange ??= branchSideChange(git, base, `origin/${branch}`);
-      const [own, theirs] = await Promise.all([headChange, branchSideChange(git, base, sha)]);
-      if (own !== null && own === theirs) return true;
+      if ((await reviewedMergedOntoBase(git, base, branch, sha)) === head.stdout.trim())
+        return true;
     }
     return false;
   };
