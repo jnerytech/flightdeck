@@ -2,6 +2,9 @@
  * Issue #3461: what the `history` verbs of the CLI take, checked before anything is sent. The parser in
  * `args.ts` adds the usage text to the problem this names. The ranges are the protocol's.
  */
+import { type ArgReader, operand, subAction } from "./arg-reader.ts";
+import type { CliArgs } from "./cli-args.ts";
+import { USAGE } from "./usage.ts";
 
 /** The parsed arguments this check reads: `CliArgs` fits it. */
 export interface HistoryArgs {
@@ -77,4 +80,26 @@ export function historyProblem(args: HistoryArgs): string | undefined {
   const most = args.action === "get" ? 500 : 200;
   if (args.limit !== undefined && args.limit > most) return `--limit: at most ${most}`;
   return undefined;
+}
+
+/** `history reindex|list|search|get|tool|resume|watch`: the command word and the operands of each verb. */
+export function readHistory(args: CliArgs, reader: ArgReader): void {
+  args.command = "history";
+  const action = subAction(
+    reader,
+    ["reindex", "list", "search", "get", "tool", "resume", "watch"] as const,
+    "invalid history action",
+  );
+  args.action = action;
+  if (action === "search") args.query = operand(reader, "the text");
+  if (action === "get" || action === "tool" || action === "resume")
+    args.claudeSessionId = operand(reader, "the session");
+  if (action === "tool") {
+    args.uuid = operand(reader, "the message");
+    const word = operand(reader, "the tool call index");
+    const index = /^\d{1,4}$/.test(word) ? Number(word) : -1;
+    if (index < 0 || index > 1000)
+      throw new Error(`history tool: the index is a whole number from 0 to 1000\n${USAGE}`);
+    args.index = index;
+  }
 }

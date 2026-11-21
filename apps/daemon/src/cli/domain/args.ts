@@ -12,7 +12,7 @@ import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { CONFIRM_OWNERS, HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
-import { historyProblem } from "./history-args.ts";
+import { historyProblem, readHistory } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
@@ -154,26 +154,7 @@ const HANDLERS: Record<string, Handler> = {
     ["install", "uninstall", "status"],
     "invalid telemetry action",
   ),
-  history: (args, reader) => {
-    args.command = "history";
-    const action = subAction(
-      reader,
-      ["reindex", "list", "search", "get", "tool", "resume", "watch"] as const,
-      "invalid history action",
-    );
-    args.action = action;
-    if (action === "search") args.query = operand(reader, "the text");
-    if (action === "get" || action === "tool" || action === "resume")
-      args.claudeSessionId = operand(reader, "the session");
-    if (action === "tool") {
-      args.uuid = operand(reader, "the message");
-      const word = operand(reader, "the tool call index");
-      const index = /^\d{1,4}$/.test(word) ? Number(word) : -1;
-      if (index < 0 || index > 1000)
-        throw new Error(`history tool: the index is a whole number from 0 to 1000\n${USAGE}`);
-      args.index = index;
-    }
-  },
+  history: readHistory,
   vault: readVault,
   plugins: readPlugins,
   project: readProject,
