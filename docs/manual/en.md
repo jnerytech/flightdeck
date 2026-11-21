@@ -92,6 +92,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd ssh](en/flightdeckd-ssh-commands.md#fd-ssh)
 
+## flightdeckd commands: agent setup files
+
+[Read the chapter.](en/flightdeckd-agentcfg-commands.md) Its sections:
+
+- [fd agentcfg](en/flightdeckd-agentcfg-commands.md#fd-agentcfg)
+
 ## flightdeckd commands: terminals
 
 [Read the chapter.](en/flightdeckd-terminal-commands.md) Its sections:

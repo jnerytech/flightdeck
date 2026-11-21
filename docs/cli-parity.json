@@ -15,9 +15,15 @@
   "actions.save": {},
   "actions.trust": {},
   "activity.since": {},
-  "agentcfg.list": {},
-  "agentcfg.read": {},
-  "agentcfg.write": {},
+  "agentcfg.list": {
+    "cli": "agentcfg"
+  },
+  "agentcfg.read": {
+    "cli": "agentcfg"
+  },
+  "agentcfg.write": {
+    "cli": "agentcfg"
+  },
   "alert.list": {},
   "approval.challenge": {
     "appOnly": "a device signs the nonce with a key that never leaves it; a terminal has no such key"
@@ -57,13 +63,13 @@
   "board.settings": { "cli": "board" },
   "board.watch": { "cli": "board" },
   "boardsync.boards": { "cli": "boardsync" },
-  "boardsync.link": {},
+  "boardsync.link": { "cli": "boardsync" },
   "boardsync.log": { "cli": "boardsync" },
-  "boardsync.setMap": {},
-  "boardsync.setPush": {},
+  "boardsync.setMap": { "cli": "boardsync" },
+  "boardsync.setPush": { "cli": "boardsync" },
   "boardsync.status": { "cli": "boardsync" },
-  "boardsync.syncNow": {},
-  "boardsync.unlink": {},
+  "boardsync.syncNow": { "cli": "boardsync" },
+  "boardsync.unlink": { "cli": "boardsync" },
   "budget.list": { "cli": "budget" },
   "budget.remove": { "cli": "budget" },
   "budget.set": { "cli": "budget" },
@@ -194,9 +200,15 @@
   "history.search": { "cli": "history" },
   "history.tool": { "cli": "history" },
   "history.watch": { "cli": "history" },
-  "hooks.install": {},
-  "hooks.status": {},
-  "hooks.uninstall": {},
+  "hooks.install": {
+    "cli": "hooks"
+  },
+  "hooks.status": {
+    "cli": "hooks"
+  },
+  "hooks.uninstall": {
+    "cli": "hooks"
+  },
   "host.bypass": {},
   "host.info": {
     "cli": "host"

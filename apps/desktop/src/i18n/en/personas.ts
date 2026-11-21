@@ -63,6 +63,13 @@ export const personas = {
       body: "Instructions",
       none: "None",
       place: "Where to keep it",
+      required: "Required.",
+      idHelp: "Required. Lowercase letters, digits and dashes, up to 40.",
+      idInvalid:
+        "Use lowercase letters, digits and dashes, up to 40, starting with a letter or digit.",
+      iconHelp: "Optional. Lowercase letters, digits and dashes, up to 30.",
+      iconInvalid: "Use lowercase letters, digits and dashes, up to 30.",
+      saveOff: "To save, fill in or fix: {fields}.",
       placeOption: {
         host: "On the host",
         app: "In the app (global)",
