@@ -27,16 +27,16 @@ export class TimedOut extends Error {}
 
 /** A name or a text comes from the board, an issue, a session or the daemon: it may not drive the terminal or reorder what it reads. */
 const HIDDEN = [
-  "\\u0000-\\u001f", // C0 controls
-  "\\u007f-\\u009f", // DEL and C1 controls
-  "\\u200b-\\u200f", // zero-width and direction marks
-  "\\u2028-\\u202e", // line and paragraph separators, direction embeddings
-  "\\u2060-\\u2064",
-  "\\u2066-\\u206f",
-  "\\u061c\\u00ad\\u034f\\u180e", // Arabic mark, soft hyphen, grapheme joiner, Mongolian separator
-  "\\ufe00-\\ufe0f", // variation selectors
-  "\\ufeff\\ufff9-\\ufffb",
-  "\\u{e0000}-\\u{e007f}", // tag characters
+  String.raw`\u0000-\u001f`, // C0 controls
+  String.raw`\u007f-\u009f`, // DEL and C1 controls
+  String.raw`\u200b-\u200f`, // zero-width and direction marks
+  String.raw`\u2028-\u202e`, // line and paragraph separators, direction embeddings
+  String.raw`\u2060-\u2064`,
+  String.raw`\u2066-\u206f`,
+  String.raw`\u061c\u00ad\u034f\u180e`, // Arabic mark, soft hyphen, grapheme joiner, Mongolian separator
+  String.raw`\ufe00-\ufe0f`, // variation selectors
+  String.raw`\ufeff\ufff9-\ufffb`,
+  String.raw`\u{e0000}-\u{e007f}`, // tag characters
 ];
 // Built from a list: a literal class would pair a combining mark with its neighbour (S5868).
 const CONTROL = new RegExp(`[${HIDDEN.join("")}]`, "gu");
