@@ -78,6 +78,8 @@ export function Stack(
     as?: ListTag;
     /** Names the stack for assistive technology (a list says what it lists). */
     label?: string;
+    /** The stack's `data-slot`, for tests and for code that reads the DOM it renders. */
+    slot?: string;
     className?: string;
     children: ReactNode;
   }>,
@@ -86,6 +88,7 @@ export function Stack(
   return (
     <Tag
       aria-label={props.label}
+      data-slot={props.slot}
       className={cn("flex flex-col", GAPS[props.gap ?? 4], props.className)}
     >
       {props.children}

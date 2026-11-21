@@ -24,6 +24,17 @@ export type FileCliArgs =
       limit?: number;
       json?: boolean;
     }
+  | {
+      action: "write";
+      target: string;
+      path: string;
+      /** The new text's file, or `-` for standard input. */
+      file: string;
+      /** The hash `read` printed: the version this write replaces. */
+      expectedHash: string;
+      confirm: true;
+      json?: boolean;
+    }
   | { action: "dirs"; path?: string; hidden?: boolean; json?: boolean }
   | { action: "files"; path: string; hidden?: boolean; json?: boolean };
 
@@ -69,6 +80,17 @@ export function readLines(file: FileRead): string[] {
   if (lines.at(-1) === "") lines.pop();
   return [`${file.path} (${file.size} bytes, hash ${file.hash})`, ...lines];
 }
+
+/** What the daemon wrote: the path, the new hash to repeat on the next write, and the size in bytes. */
+export const wroteJson = (written: { path: string; hash: string; size: number }) => ({
+  path: written.path,
+  hash: written.hash,
+  size: written.size,
+});
+
+export const wroteLines = (written: { path: string; hash: string; size: number }): string[] => [
+  `wrote ${written.path}  ${written.size} bytes  hash: ${written.hash}`,
+];
 
 export const searchJson = (result: FileSearchResult) => ({
   mode: result.mode,

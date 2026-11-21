@@ -211,6 +211,8 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
           } as never
         }
         onReconnect={() => {}}
+        formatTime={() => ""}
+        onCopy={async () => true}
         onPairAgain={async (input) => {
           asked.push(input);
           return "token refused";
@@ -242,6 +244,8 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
           } as never
         }
         onReconnect={() => {}}
+        formatTime={() => ""}
+        onCopy={async () => true}
         onPairAgain={async () => null}
       />,
     );
@@ -275,6 +279,8 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
           } as never
         }
         onReconnect={() => {}}
+        formatTime={() => ""}
+        onCopy={async () => true}
         onPairAgain={() => {
           calls += 1;
           return new Promise((resolve) => {
@@ -316,6 +322,8 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
           } as never
         }
         onReconnect={() => {}}
+        formatTime={() => ""}
+        onCopy={async () => true}
         onPairAgain={() => Promise.reject(new Error("the keychain said no"))}
       />,
     );

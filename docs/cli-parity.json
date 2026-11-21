@@ -179,7 +179,7 @@
   "file.list": { "cli": "file" },
   "file.read": { "cli": "file" },
   "file.search": { "cli": "file" },
-  "file.write": {},
+  "file.write": { "cli": "file" },
   "files.sessions": { "cli": "changes" },
   "fs.dirs": { "cli": "file" },
   "fs.files": { "cli": "file" },

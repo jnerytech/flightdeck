@@ -277,6 +277,12 @@ export interface CliArgs {
   fileLimit?: number;
   /** `file dirs|files --hidden`. */
   fileHidden?: true;
+  /** `file write --file`: the new text's file, or `-` for standard input. */
+  fileText?: string;
+  /** `file write --hash`: the sha256 `file read` printed, the version the write replaces. */
+  fileHash?: string;
+  /** `file write --confirm`. */
+  fileConfirm?: true;
   /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
   /** `review update|remove <comment>`: the comment's id. */
