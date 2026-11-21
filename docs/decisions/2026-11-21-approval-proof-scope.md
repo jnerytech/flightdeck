@@ -37,11 +37,11 @@ person would sign. The decision rests on the structure of the classifier:
 
 ## Options
 
-| | Covers | Cost for the person | Risk left |
-| - | - | - | - |
+| Option | Covers | Cost for the person | Risk left |
+| ------ | ------ | ------ | ------ |
 | (a) high and saved rules | the high tier, `updatedPermissions` | none beyond today | a session approves its own medium requests |
 | (b) every non-low allow | everything but a read inside the project | a native signing dialog for almost every request; a headless approval (app closed, a phone, `flightdeckd approve`) stops working for the ordinary case | a person who signs by habit proves nothing; the dialog shows hashes, never the command (see #3439, "A compromised renderer") |
-| (c) high plus the medium kinds that run code | shell commands, in-project writes, MCP tools | close to (b): in the sample these kinds are about three in four of the medium calls, and the text of a shell command cannot say which of them runs code the session wrote | the same as (b) |
+| (c) high plus the medium kinds that run code | shell commands, in-project writes, MCP tools | close to (b): shell commands alone are about three in four of the medium calls in the sample, and with the writes and MCP tools it covers nearly all of them; the text of a shell command cannot say which of them runs code the session wrote | the same as (b) |
 
 ## Decision: (a), and sharpen the classifier where a medium request is really a code-run
 
@@ -107,7 +107,8 @@ An allow of any of these with `updatedPermissions` is already covered (a saved r
 - Follow-up (classifier), #3614: rate a single write to a control path (`isControl`) high, so a session cannot
   approve with no proof the write of a hook, a settings file or a script that a tool then runs. It reuses
   `isControl`, changes the risk of those writes only, and needs a risk test per path kind. It covers those paths
-  only: a source file the session writes and then runs through a medium shell command stays open (reason 2).
+  only: a source file the session writes and then runs through a medium shell command stays open (reason 2). It is
+  a slice of (c) that the classifier can tell from the path alone, which is why it is taken and the rest of (c) is not.
 - **What (a) leaves open, stated plainly.** A session with the daemon token can answer its own medium request with
   `permission.respond`, so the person's prompt for a medium request is advisory against a hostile or
   prompt-injected session. (a) is the least bad choice now, not a boundary of the host. The guard that would close
