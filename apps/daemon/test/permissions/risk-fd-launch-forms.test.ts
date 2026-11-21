@@ -164,7 +164,17 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
     const nouns = [
       ...["card", "history", "approvers", "persona", "team", "quota", "budget", "costs"],
       ...["session", "rules", "autoapprove", "plugins", "project", "agentcfg", "ssh", "watch"],
-      ...["snippet", "boardsync", "review", "memory", "runenv", "automation", "message", "mcp"],
+      ...[
+        "snippet",
+        "boardsync",
+        "review",
+        "external",
+        "memory",
+        "runenv",
+        "automation",
+        "message",
+        "mcp",
+      ],
       ...["changes", "file", "rewind", "action"],
     ];
     expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());

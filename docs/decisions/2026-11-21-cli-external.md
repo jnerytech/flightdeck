@@ -16,6 +16,10 @@ Part of the CLI-first rule (`2026-11-19-cli-first.md`): `cli-first.md` is at the
   with exit `0`. The permission frames the same watch also pushes are not printed: answering a request is `approve` and
   `deny`.
 - `--text` was only `snippet save`'s; it is now also `external message`'s, picked by the command, as `--off` is.
-- Risk: `external message` is rated ordinary from a session's shell, like `send`, which puts a text into a managed
-  session. The text reaches only a Claude session that keeps its own permission system, and the verb cannot approve,
-  deny or run anything; the rule stays pinned by a test (`risk-fd-external.test.ts`) so a later change is a decision.
+- Risk: `external message` is high from a session's shell (security review, 2026-11-21). The text lands in a terminal
+  session as the person's next prompt, with no sender, and a session that runs in bypass mode (the default) acts on it
+  without asking. The verb also skips what `message send` applies: the access rules, the loop guard, the size cap and
+  the suspension of auto-approve after third-party text. So a session that read hostile content could drive another
+  terminal, or its own, and two sessions could message each other with no pause. It is rated like `review send` and
+  `team message`. `external list`, `external watch` and `names list` only read and stay ordinary. `send`, which
+  `2026-11-19-cli-first.md` leaves ordinary, may deserve the same look: it is a separate question.

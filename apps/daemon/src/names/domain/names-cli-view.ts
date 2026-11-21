@@ -3,9 +3,20 @@
  */
 import type { SessionNameInfo } from "@flightdeck/protocol";
 
-/** Every key of a name, `null` for what a host older than #101 leaves out. */
+/** Every key of a name, listed here so a field added to the daemon's answer is not printed unreviewed; `null` for what a host older than #101 leaves out. */
 export const namesJson = (names: SessionNameInfo[]) =>
-  names.map((name) => ({ ...name, standard: name.standard ?? null, team: name.team ?? null }));
+  names.map((name) => ({
+    sessionId: name.sessionId,
+    display: name.display,
+    alias: name.alias,
+    aliases: name.aliases,
+    project: name.project,
+    persona: name.persona,
+    number: name.number,
+    cardNumber: name.cardNumber,
+    standard: name.standard ?? null,
+    team: name.team ?? null,
+  }));
 
 /** The alias the person types, the name the app shows, the session it names, and the other aliases that name it. */
 export const namesLines = (names: SessionNameInfo[]): string[] =>
