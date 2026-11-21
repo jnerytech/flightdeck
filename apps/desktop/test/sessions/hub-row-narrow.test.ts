@@ -33,4 +33,12 @@ describe("hub-row-narrow: a narrow list keeps the session's title readable (#116
       true,
     );
   });
+
+  // Issue #3791: at about 23 rem of list the origin tag ("Flightdeck", the default) and the word
+  // together left the word "Waiting for ...". The tag says the least, so it goes first.
+  test("below 26 rem of list the origin tag is hidden, so the state word keeps its room (#3791)", () => {
+    expect(/@container \(width < 26rem\)\s*\{\s*display: none;/.test(utility("row-meta"))).toBe(
+      true,
+    );
+  });
 });
