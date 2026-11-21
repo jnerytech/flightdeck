@@ -30,7 +30,7 @@ describe("risk rules: a session changing a project's MCP servers from its shell 
         ["fd mcp toggle api files --enable", STARTS],
         ["fd mcp toggle api files --disable --session s1 --confirm", STARTS],
         ["fd mcp toggle api files --disable --x=y", STARTS],
-        ["fd mcp toggle api files $FLAG", HIDDEN],
+        ["fd mcp toggle api files $FLAG", STARTS],
       ]),
     ).toEqual([]);
     expect(
