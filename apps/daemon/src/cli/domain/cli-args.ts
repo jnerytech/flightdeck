@@ -73,6 +73,8 @@ export interface CliArgs {
   action?:
     | ServiceAction
     | "reindex"
+    | "enable"
+    | "disable"
     | "enroll"
     | "reset"
     | "list"
@@ -290,8 +292,16 @@ export interface CliArgs {
   reviewLines?: { start: number; end: number };
   /** `runenv config <project>` or `runenv get <card>`: the operand. */
   runenvTarget?: string;
-  /** `automation list <project>` or `automation runs <automation>`: the operand. */
+  /** `automation list|save <project>` or `automation runs|enable|disable|remove <automation>`: the operand. */
   automationTarget?: string;
+  /** `automation save --automation <id>`: the automation to change; `--name` is `personaName`. */
+  automationId?: string;
+  /** `automation save --max-runs <n>`. */
+  maxRuns?: number;
+  /** `automation save --external-authors on|off`. */
+  externalAuthors?: boolean;
+  /** `automation save --definition-file <file>`: the JSON of the trigger and the action. */
+  definitionFile?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
   boardsyncTarget?: string;
   /** `boardsync link <project> <board>`: the board's id. */
