@@ -143,9 +143,12 @@ describe("manutencao-ui", () => {
     expect(eventCount(d, sessionId)).toBe(before);
     await click("Limpar");
     await confirmWith("Limpar");
-    // "seriam apagados: …" also contains "apagados: …": wait for the simulation message to go.
-    await waitFor(() => expect(section().textContent).not.toContain("seriam apagados"));
-    expect(section().textContent).toContain(`apagados: eventos ${before}`);
+    // "seriam apagados: …" also contains "apagados: …": wait for the cleanup's own message, with
+    // the simulation's gone (the panel clears the last outcome when an action starts).
+    await waitFor(() => {
+      expect(section().textContent).toContain(`apagados: eventos ${before}`);
+      expect(section().textContent).not.toContain("seriam apagados");
+    });
     expect(eventCount(d, sessionId)).toBe(0);
     expect(section().textContent).not.toContain("(simulação)");
   });
