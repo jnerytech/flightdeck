@@ -287,6 +287,28 @@ describe("webhook-ui", () => {
     expect(secrets?.signingSecret ?? null).toBeNull();
   });
 
+  test("removing the webhook being edited empties the form instead of leaving its values in an Add form", async () => {
+    await open("en");
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    await click("Edit Team");
+    await click("Remove Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    });
+    await settle(() => screen.queryByText("Team") === null);
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("");
+    expect((screen.getByRole("checkbox", { name: "Needs you" }) as HTMLInputElement).checked).toBe(
+      false,
+    );
+  });
+
   test("Cancel in the remove question keeps the webhook", async () => {
     const { store } = await open("en");
     await fill("Name", "Team");
