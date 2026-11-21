@@ -95,7 +95,10 @@ describe("the workflow write arguments (issue #3628)", () => {
 describe("flightdeckd workflow trust, template-add and resume --confirm (issue #3628)", () => {
   test("trust sends the project, the name and the hash, and prints the workflow as the read does", async () => {
     const daemon = fakeDaemon(base());
-    const run = await flightdeckd(["workflow", "trust", "api", "ship", "--hash", HASH], daemon.port);
+    const run = await flightdeckd(
+      ["workflow", "trust", "api", "ship", "--hash", HASH],
+      daemon.port,
+    );
     expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: [] });
     expect(run.out).toEqual([`ship  ${HASH}  trusted`, "  input: ticket", "  check: bun test"]);
     expect(sent(daemon, "workflow.trust")).toEqual([{ projectId: "p1", name: "ship", hash: HASH }]);
@@ -114,7 +117,10 @@ describe("flightdeckd workflow trust, template-add and resume --confirm (issue #
         }),
       }),
     );
-    const run = await flightdeckd(["workflow", "trust", "api", "ship", "--hash", HASH], daemon.port);
+    const run = await flightdeckd(
+      ["workflow", "trust", "api", "ship", "--hash", HASH],
+      daemon.port,
+    );
     expect([run.code, run.err.join("\n")]).toEqual([
       1,
       expect.stringContaining("changed since you read it"),
@@ -123,7 +129,10 @@ describe("flightdeckd workflow trust, template-add and resume --confirm (issue #
 
   test("an unknown project is refused with exit 1 before anything is trusted", async () => {
     const daemon = fakeDaemon(base());
-    const run = await flightdeckd(["workflow", "trust", "nope", "ship", "--hash", HASH], daemon.port);
+    const run = await flightdeckd(
+      ["workflow", "trust", "nope", "ship", "--hash", HASH],
+      daemon.port,
+    );
     expect(run.code).toBe(1);
     expect(sent(daemon, "workflow.trust")).toEqual([]);
   });
@@ -137,7 +146,10 @@ describe("flightdeckd workflow trust, template-add and resume --confirm (issue #
             : { error: { code: "confirm_required", message: "add the template with confirm" } },
       }),
     );
-    const without = await flightdeckd(["workflow", "template-add", "api", "review-loop"], daemon.port);
+    const without = await flightdeckd(
+      ["workflow", "template-add", "api", "review-loop"],
+      daemon.port,
+    );
     expect([without.code, without.err.join("\n")]).toEqual([
       1,
       expect.stringContaining("with confirm"),
@@ -148,10 +160,7 @@ describe("flightdeckd workflow trust, template-add and resume --confirm (issue #
     );
     expect({ code: run.code, out: run.out }).toEqual({
       code: 0,
-      out: [
-        `${ADDED.path}  branch ${ADDED.branch}  base ${ADDED.base}`,
-        `pr  ${ADDED.url}`,
-      ],
+      out: [`${ADDED.path}  branch ${ADDED.branch}  base ${ADDED.base}`, `pr  ${ADDED.url}`],
     });
     expect(sent(daemon, "workflow.template.add")).toEqual([
       { projectId: "p1", templateId: "review-loop" },
@@ -169,7 +178,10 @@ describe("flightdeckd workflow trust, template-add and resume --confirm (issue #
     const run = await flightdeckd(["workflow", "resume", "r1", "--confirm"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["r1 resumed from build"] });
     expect(sent(daemon, "run.resume")).toEqual([{ runId: "r1", confirm: true }]);
-    const json = await flightdeckd(["workflow", "resume", "r1", "--confirm", "--json"], daemon.port);
+    const json = await flightdeckd(
+      ["workflow", "resume", "r1", "--confirm", "--json"],
+      daemon.port,
+    );
     expect(JSON.parse(json.out.join("\n"))).toEqual({ from: "build", ok: true });
   });
 
@@ -189,7 +201,9 @@ describe("flightdeckd workflow trust, template-add and resume --confirm (issue #
 
   test("a resume the daemon answers with ok false exits 1 and says why", async () => {
     const daemon = fakeDaemon(
-      base({ "run.resume": (): RunResumeCheck => ({ from: "", ok: false, reason: "run_resume_no_head" }) }),
+      base({
+        "run.resume": (): RunResumeCheck => ({ from: "", ok: false, reason: "run_resume_no_head" }),
+      }),
     );
     const run = await flightdeckd(["workflow", "resume", "r1", "--confirm"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({
@@ -205,7 +219,11 @@ describe("flightdeckd workflow trust, template-add and resume --confirm (issue #
       ["workflow", "resume", "r1", "--confirm"],
     ]) {
       const daemon = fakeDaemon(
-        base({ "workflow.trust": () => CLOSE, "workflow.template.add": () => CLOSE, "run.resume": () => CLOSE }),
+        base({
+          "workflow.trust": () => CLOSE,
+          "workflow.template.add": () => CLOSE,
+          "run.resume": () => CLOSE,
+        }),
       );
       const run = await flightdeckd(argv, daemon.port);
       expect([argv[1], run.code, run.err.join("\n").includes("may or may not")]).toEqual([
