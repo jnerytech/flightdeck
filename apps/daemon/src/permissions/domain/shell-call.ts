@@ -388,6 +388,7 @@ export const OPTIONS_WITH_VALUE = [
   "--fingerprint",
   "--max-rounds",
   "--check-timeout-min",
+  "--mode",
   "--budget-usd",
   "--max-turns",
   "--max-failures",

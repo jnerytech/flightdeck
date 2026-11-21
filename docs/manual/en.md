@@ -71,7 +71,7 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 ## flightdeckd commands
 
-[Read the index.](en/flightdeckd-command-index.md) It lists one chapter for each group of `flightdeckd` commands: host, sessions, requests, approve and send, one session, ssh, agent setup files, terminals, the PR watch, the board sync, the review comments, the run environment, changes, the MCP servers and the document library.
+[Read the index.](en/flightdeckd-command-index.md) It lists one chapter for each group of `flightdeckd` commands: host, sessions, requests, approve and send, one session, ssh, agent setup files, terminals, the PR watch, the board sync, the review comments, the run environment, changes, files, the MCP servers and the document library.
 
 ## Approvals and always allow
 

@@ -14,6 +14,7 @@ import { CHANGES_FLAGS, changesProblem, readChanges, takeChangesFlags } from "./
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
+import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
 import { readKnowledge } from "./knowledge-args.ts";
@@ -344,6 +345,7 @@ const HANDLERS: Record<string, Handler> = {
   review: readReview,
   runenv: readRunenv,
   changes: readChanges,
+  file: readFile,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
   requests: (args) => {
@@ -574,6 +576,7 @@ const HANDLERS: Record<string, Handler> = {
   ...BOARDSYNC_FLAGS,
   ...REVIEW_FLAGS,
   ...CHANGES_FLAGS,
+  ...FILE_FLAGS,
   "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
@@ -689,6 +692,7 @@ function refuseStrayFlags(args: CliArgs): void {
     );
   takeTerminalFlags(args);
   takeChangesFlags(args);
+  takeFileFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);
   if (
@@ -743,6 +747,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     reviewProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
+    fileProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
