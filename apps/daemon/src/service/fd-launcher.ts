@@ -26,7 +26,8 @@ export function fdLauncherText(stable: string, platform: string): string {
     const exe = stable.replaceAll("%", "%%");
     return `@echo off\r\nREM ${MARK}\r\n"${exe}" fd %*\r\n`;
   }
-  return `#!/bin/sh\n# ${MARK}\nexec '${stable.replaceAll("'", String.raw`'\''`)}' fd "$@"\n`;
+  const quoted = stable.replaceAll("'", String.raw`'\''`);
+  return `#!/bin/sh\n# ${MARK}\nexec '${quoted}' fd "$@"\n`;
 }
 
 /** Ours when the second line is our marker: a script that only mentions it is someone else's. */
@@ -83,7 +84,8 @@ function putFirst(dir: string, platform: string): string {
     // Not a script: writing the user's Path back as text would freeze its %VARIABLES%.
     return `open "Edit environment variables for your account", select Path, and move ${dir} to the top of the list`;
   }
-  return `export PATH='${dir.replaceAll("'", String.raw`'\''`)}':"$PATH"`;
+  const quoted = dir.replaceAll("'", String.raw`'\''`);
+  return `export PATH='${quoted}':"$PATH"`;
 }
 
 const sameFile = (a: string, b: string, platform: string) =>
