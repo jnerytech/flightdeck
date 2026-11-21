@@ -232,7 +232,7 @@ describe("flightdeckd snapshots and rewind words (issue #3701)", () => {
     expect(JSON.stringify(argsOf(["snapshots", "remove", "s1"]))).toContain(
       "invalid snapshots action",
     );
-    expect(JSON.stringify(argsOf(["rewind", "undo", "s1", "1"]))).toContain(
+    expect(JSON.stringify(argsOf(["rewind", "remove", "s1", "1"]))).toContain(
       "invalid rewind action",
     );
   });

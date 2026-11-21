@@ -5,8 +5,8 @@
 The verbs that read the git snapshots Flightdeck takes around each turn of a Claude session, what rewinding to one
 would change, and the trace of the session: its turns, tool calls and subagents with their time and cost. They work
 as the other `flightdeckd` commands do: see [what they all share](flightdeckd-commands.md#what-they-all-share). All of
-them only read: nothing here rewinds a session or changes a file. They take `--host <name>` to read a paired host and
-`--json` to print the value the daemon returns.
+them only read, except `rewind apply` and `rewind undo`, which put files back and need `--confirm`. They take
+`--host <name>` to run on a paired host, and `--json` to print the value the daemon returns.
 
 `<session>` is the Claude session id, the one the history commands print. A session the daemon does not know is
 refused with exit `1`.
@@ -36,6 +36,22 @@ fd rewind preview 3f9c1a 2
 
 `preview <session> <turn>` says what rewinding the session to that turn would change, and whether the daemon would do
 it through the SDK's checkpoint or through a snapshot: the files, and the lines added and removed. It changes no file and no ref; on the snapshot path git may store the objects of the working tree, which it collects later.
+
+```sh
+fd rewind apply 3f9c1a 2 --confirm
+fd rewind undo 3f9c1a --confirm
+```
+
+`apply <session> <turn>` puts the files of the session's checkout back to that turn, and `undo <session>` puts them
+back to the state before the last rewind. Each prints the files it put back and the lines added and removed, and
+whether it went through the SDK's checkpoint or a snapshot. Both need `--confirm`; without it the command is refused
+with exit `1` and the daemon is not asked. Read `preview` first. `undo` takes no snapshot of its own: it restores the state saved before the last rewind, so
+edits made since that rewind are lost. The daemon refuses with exit `1` while the session
+is in a turn, and when there is nothing to undo. If the connection is cut after the request left, the command says
+the files may or may not have been put back and exits `2`: look at them with `preview` and `snapshots list` before
+you try again.
+
+A session's own shell cannot run `rewind apply` or `rewind undo` without the person approving it in the app.
 
 ## fd trace
 
