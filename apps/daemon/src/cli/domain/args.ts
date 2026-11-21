@@ -15,6 +15,7 @@ import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem } from "./history-args.ts";
+import { mcpProblem, readMcp } from "./mcp-args.ts";
 import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
@@ -118,7 +119,7 @@ const HANDLERS: Record<string, Handler> = {
   setup: setCommand("setup"),
   doctor: setCommand("doctor"),
   channel: setCommand("channel"),
-  mcp: setCommand("mcp"),
+  mcp: readMcp,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {
@@ -746,6 +747,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     terminalProblem(args) ??
     agentcfgProblem(args) ??
     messageProblem(args) ??
+    mcpProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
     runenvProblem(args) ??
