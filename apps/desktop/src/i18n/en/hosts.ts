@@ -526,5 +526,9 @@ export const hosts = {
     renameDuplicate: "Another host already has this name.",
     reconnect: "Reconnect",
     remove: "Remove host",
+    groupsLabel: "Settings groups",
+    group_connection: "Connection",
+    group_sessions: "Sessions and work",
+    group_upkeep: "Maintenance and logs",
   },
 };
