@@ -38,7 +38,7 @@ example `{ "trigger": { "type": "cron", "expr": "0 3 * * *", "tz": "Europe/Lisbo
 "start_workflow", "workflow": "triage" } }`. A file that cannot be read, is not JSON or does not fit is refused with
 exit `1` before the host is asked. `--max-runs <n>` sets how many runs a day it may make (a whole number from 1),
 `--external-authors on|off` says whether it acts on content from third parties, and `--automation <id>` changes that
-automation instead of making a new one. `save` always leaves the automation off, so nothing fires until `enable`.
+automation instead of making a new one. `save` always leaves the automation off, so nothing fires until `enable`: saving over an automation that was on turns it off, and you turn it on again with `enable`. An `--automation` id the project does not have is refused.
 
 `enable <automation> --confirm` turns it on: from then on it fires on its own. `--confirm` is required, and it is only
 your own word that you read the trigger and the action (`automation list` prints what fires it and what it does).

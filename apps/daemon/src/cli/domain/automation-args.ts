@@ -32,7 +32,7 @@ export const AUTOMATION_FLAGS: Record<string, Handler> = {
   }),
   "--max-runs": setValue((args, v) => {
     // Plain decimal digits: `Number` would take `0x5` and `1e3`.
-    if (!/^\d+$/.test(v) || Number(v) < 1)
+    if (!/^\d+$/.test(v) || !Number.isSafeInteger(Number(v)) || Number(v) < 1)
       throw new Error(`--max-runs: a whole number from 1, got ${v}\n${USAGE}`);
     args.maxRuns = Number(v);
   }),

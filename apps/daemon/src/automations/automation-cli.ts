@@ -32,7 +32,7 @@ const UNSURE =
   "; the change may or may not have been made: check with `automation list` before trying again";
 
 /** The file `save` reads: what fires the automation and what it does. */
-const Definition = z.object({ trigger: AutomationTrigger, action: AutomationAction });
+const Definition = z.object({ trigger: AutomationTrigger, action: AutomationAction }).strict();
 
 /**
  * A project (its name or its id) for `list` and `save`, an automation id for the rest. `save` takes the
@@ -95,6 +95,12 @@ async function save(
     const { projects } = await daemon.call("project.list", {});
     const chosen = resolveProject(projects, args.target);
     if ("refusal" in chosen) return chosen.refusal;
+    // The daemon keeps the project of an automation it has: an id of another project would overwrite it.
+    if (args.id !== undefined) {
+      const { automations } = await daemon.call("automation.list", { projectId: chosen.id });
+      if (!automations.some((automation) => automation.id === args.id))
+        return failure(1, `${args.id} is not an automation of ${chosen.name}`);
+    }
     note.wrote = true;
     const automation = await daemon.call("automation.save", {
       projectId: chosen.id,

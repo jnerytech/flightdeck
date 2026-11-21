@@ -31,5 +31,12 @@ create it, turn it on or delete it are the app's decision.
   says to check with `automation list` before trying again.
 - `--name` is the flag `persona save` already has; the persona check skips it for `automation`, which requires it on
   `save` and refuses it on the other verbs.
+- `save --automation <id>` changes an automation of that project only: the runner asks `automation.list` first and
+  refuses an id the project does not have (exit `1`), because the daemon keeps the project of a row it has and an id
+  from another project would overwrite that one. Saving over an automation turns it off, as the daemon does for every
+  save; the manual says so. The definition file takes only `trigger` and `action` (a key such as `maxRunsPerDay` is
+  refused, not dropped: the scalars are flags), and `--max-runs` takes a safe integer.
+- `disable` stays ordinary: it only stops what a person turned on, and the app's own toggle does the same without a
+  card. A session that turns off a person's automations is an availability change, not a new thing that fires.
 - Not in this slice, and a gap to report: nothing stops a token holder from enabling an automation over the wire (the
   daemon takes `automation.toggle` with `confirm` from any paired client, as the app does).
