@@ -25,6 +25,32 @@ describe("savedDefinitionFiles: the file each action save of a command line read
     ).toEqual(["a.json", "b.json", null]);
   });
 
+  test("a flag given twice names no file: the CLI keeps the last, so the first is not what is saved", () => {
+    expect([
+      savedDefinitionFiles("fd action save --definition-file ok.json --definition-file evil.json"),
+      savedDefinitionFiles("fd action save --definition-file=ok.json --definition-file evil.json"),
+    ]).toEqual([[null], [null]]);
+  });
+
+  test("a relative file after a change of folder names no file: the shell reads it from elsewhere", () => {
+    expect(
+      [
+        "cd sub && fd action save --definition-file d.json",
+        "pushd sub; fd action save --definition-file d.json",
+        "bash -c 'cd sub && fd action save --definition-file d.json'",
+        "env -C sub fd action save --definition-file d.json",
+        "env --chdir=sub fd action save --definition-file d.json",
+      ].map(savedDefinitionFiles),
+    ).toEqual([[null], [null], [null], [null], [null]]);
+  });
+
+  test("an absolute file is still shown after a change of folder, and a word like cd inside an argument is no change", () => {
+    expect([
+      savedDefinitionFiles("cd sub && fd action save --definition-file /tmp/d.json"),
+      savedDefinitionFiles("fd action save --definition-file abcd.json"),
+    ]).toEqual([["/tmp/d.json"], ["abcd.json"]]);
+  });
+
   test("trust, remove, the reads and run name no file, and a word in an argument is no save", () => {
     expect(
       [
@@ -131,6 +157,26 @@ describe("describeDefinition: what the person reads in the request (#3752)", () 
     expect(shown.includes("\u001b")).toBe(false);
     expect(shown.includes("\n")).toBe(false);
     expect(shown).toContain("🙂");
+  });
+
+  test("approval and tags are shown, and approval never is said as no prompt", () => {
+    const text = (extra: Record<string, unknown>) =>
+      describeDefinition("d.json", JSON.stringify({ run: ["x"], ...extra }));
+    expect([
+      text({ approval: "never" }).includes("approval never (no approval is asked when it runs)"),
+      text({ approval: "always" }).includes("approval always"),
+      text({ tags: ["prod", "db"] }).includes("tags prod, db"),
+      text({}).includes("approval"),
+    ]).toEqual([true, true, true, false]);
+  });
+
+  test("bidi overrides, line separators and C1 controls in run, name, cwd, host or ssh never reach the person raw", () => {
+    const hostile = "a\u202eb\u2028c\u009bd\u2066e";
+    const out = describeDefinition(
+      "d.json",
+      JSON.stringify({ name: hostile, run: [hostile], cwd: hostile, host: hostile, ssh: hostile }),
+    );
+    expect(/[\u202a-\u202e\u2028\u2029\u2066-\u2069\u0080-\u009f]/.test(out)).toBe(false);
   });
 
   test("a run that is not a list of text is said, not hidden", () => {
