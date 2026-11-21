@@ -4,6 +4,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   symlinkSync,
   writeFileSync,
@@ -134,6 +135,19 @@ describe("backupNow with a target that already exists (#3809)", () => {
       real: "precious",
       link: false,
       copy: true,
+    });
+  });
+
+  test("a force that fails to write the copy leaves the old file as it was, and no temporary file", async () => {
+    const dir = tempDir();
+    const out = join(dir, "thesis.docx");
+    writeFileSync(out, "precious");
+    const db = new Database(":memory:");
+    db.close();
+    await backupNow(db, tempDir(), NOW, out, true).catch(() => null);
+    expect({ kept: readFileSync(out, "utf8"), names: readdirSync(dir) }).toEqual({
+      kept: "precious",
+      names: ["thesis.docx"],
     });
   });
 
