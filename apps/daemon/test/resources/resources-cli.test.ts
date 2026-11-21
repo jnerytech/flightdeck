@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { parseArgs } from "../../src/main.ts";
-import { fakeDaemon, type Handlers, stopAll } from "../board/card-cli-helpers.ts";
+import { CLOSE, fakeDaemon, type Handlers, stopAll } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
 
 setDefaultTimeout(20_000);
@@ -142,5 +142,101 @@ describe("flightdeckd resources (issue #3699)", () => {
     await stopAll();
     const run = await flightdeckd(["resources"], port);
     expect(run.code).toBe(2);
+  });
+});
+
+const parsed = (argv: string[]): Record<string, unknown> => {
+  try {
+    return { ...parseArgs(argv) };
+  } catch (error) {
+    return { refusal: String((error as Error).message).split("\n")[0] };
+  }
+};
+const sent = (daemon: ReturnType<typeof fakeDaemon>, type: string) =>
+  daemon.calls.filter((c) => c.type === type).map((c) => c.payload);
+
+describe("the resources verbs of the command line (issue #3699)", () => {
+  test("pause-at takes a share from 0 to 1 or off", () => {
+    expect(parsed(["resources", "pause-at", "0.8"])).toMatchObject({
+      command: "resources",
+      action: "pause-at",
+      resourcesPauseAt: 0.8,
+    });
+    expect(parsed(["resources", "pause-at", "off"])).toMatchObject({ resourcesPauseAt: null });
+    expect(parsed(["resources", "pause-at", "1"])).toMatchObject({ resourcesPauseAt: 1 });
+    for (const bad of ["2", "-0.1", "1.5", "0x1", "abc"]) {
+      expect(parsed(["resources", "pause-at", bad])).toHaveProperty("refusal");
+    }
+    expect(parsed(["resources", "pause-at"])).toHaveProperty("refusal");
+  });
+
+  test("end-orphan takes the pid and the start ticks of the orphan the read printed", () => {
+    expect(parsed(["resources", "end-orphan", "4242", "987654"])).toMatchObject({
+      command: "resources",
+      action: "end-orphan",
+      orphanPid: 4242,
+      orphanTicks: 987654,
+    });
+    expect(parsed(["resources", "end-orphan", "4242", "0"])).toMatchObject({ orphanTicks: 0 });
+    for (const line of [
+      ["end-orphan"],
+      ["end-orphan", "4242"],
+      ["end-orphan", "0", "1"],
+      ["end-orphan", "abc", "1"],
+      ["end-orphan", "4242", "-1"],
+      ["end-orphan", "4242", "1.5"],
+      ["end-orphan", "4242", "1", "extra"],
+    ]) {
+      expect(parsed(["resources", ...line])).toHaveProperty("refusal");
+    }
+  });
+
+  test("--json goes with a verb, and --confirm goes with none", () => {
+    expect(parsed(["resources", "pause-at", "off", "--json"])).toMatchObject({ json: true });
+    expect(parsed(["resources", "end-orphan", "1", "1", "--confirm"])).toHaveProperty("refusal");
+  });
+});
+
+describe("flightdeckd resources <verb> (issue #3699)", () => {
+  test("pause-at sends the share (null for off) and prints the guard as the read does", async () => {
+    const daemon = fakeDaemon({
+      "resources.setPauseAt": (p) => ({ pauseAt: p.pauseAt }),
+    });
+    const on = await flightdeckd(["resources", "pause-at", "0.8"], daemon.port);
+    expect({ code: on.code, out: on.out }).toEqual({
+      code: 0,
+      out: ["pause  new cards wait from 80% of memory"],
+    });
+    const off = await flightdeckd(["resources", "pause-at", "off", "--json"], daemon.port);
+    expect(off.code).toBe(0);
+    expect(JSON.parse(off.out.join("\n"))).toEqual({ pauseAt: null });
+    expect(sent(daemon, "resources.setPauseAt")).toEqual([{ pauseAt: 0.8 }, { pauseAt: null }]);
+  });
+
+  test("end-orphan sends the pair and says it ended; a process that is no orphan any more exits 1 with the daemon's text", async () => {
+    const daemon = fakeDaemon({ "resources.endOrphan": () => ({ ended: true }) });
+    const run = await flightdeckd(["resources", "end-orphan", "4242", "987654"], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["ended  pid 4242"] });
+    expect(sent(daemon, "resources.endOrphan")).toEqual([{ pid: 4242, startTicks: 987654 }]);
+    const json = await flightdeckd(["resources", "end-orphan", "4242", "1", "--json"], daemon.port);
+    expect(json.code).toBe(0);
+    expect(JSON.parse(json.out.join("\n"))).toEqual({ ended: true });
+    const gone = fakeDaemon({
+      "resources.endOrphan": () => ({
+        error: { code: "invalid_state", message: "pid 4242 is not an orphan any more" },
+      }),
+    });
+    const refused = await flightdeckd(["resources", "end-orphan", "4242", "1"], gone.port);
+    expect([refused.code, refused.err.join("\n")]).toEqual([
+      1,
+      expect.stringContaining("not an orphan any more"),
+    ]);
+  });
+
+  test("a connection lost while a write is in flight says it may or may not have happened", async () => {
+    const daemon = fakeDaemon({ "resources.endOrphan": () => CLOSE });
+    const run = await flightdeckd(["resources", "end-orphan", "4242", "1"], daemon.port);
+    expect(run.code).toBe(2);
+    expect(run.err.join("\n")).toContain("may or may not");
   });
 });
