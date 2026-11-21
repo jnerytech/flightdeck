@@ -39,17 +39,17 @@ const LINKED = {
 
 const ENTRIES = [
   {
-    at: "2026-11-20T08:00:00Z",
+    at: "2026-11-20T09:00:00Z",
     kind: "conflict",
     winner: "local",
     lostValue: "Done",
     lostAt: "2026-11-20T07:00:00Z",
     keptValue: "Doing",
-    keptAt: "2026-11-20T08:00:00Z",
+    keptAt: "2026-11-20T09:00:00Z",
     detail: null,
   },
   {
-    at: "2026-11-20T09:00:00Z",
+    at: "2026-11-20T08:00:00Z",
     kind: "push_failed",
     winner: null,
     lostValue: null,
@@ -227,14 +227,14 @@ describe("flightdeckd boardsync status (issue #3540)", () => {
 });
 
 describe("flightdeckd boardsync log (issue #3540)", () => {
-  test("a line an entry, in the order the daemon gives, with what was kept, what was lost and why", async () => {
+  test("a line an entry, newest first as the daemon gives them, with what was kept, what was lost and why", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(["boardsync", "log", "c1"], daemon.port);
     expect({ code: run.code, out: run.out, err: run.err }).toEqual({
       code: 0,
       out: [
-        "2026-11-20T08:00:00Z  conflict: local won, kept Doing (2026-11-20T08:00:00Z), lost Done (2026-11-20T07:00:00Z)",
-        "2026-11-20T09:00:00Z  push_failed: the board refused the move",
+        "2026-11-20T09:00:00Z  conflict: local won, kept Doing (2026-11-20T09:00:00Z), lost Done (2026-11-20T07:00:00Z)",
+        "2026-11-20T08:00:00Z  push_failed: the board refused the move",
       ],
       err: [],
     });
@@ -253,7 +253,7 @@ describe("flightdeckd boardsync log (issue #3540)", () => {
     expect(printed(run.out)).toEqual({ entries: ENTRIES });
   });
 
-  test("a card the daemon does not know is one line on stderr and exit 1", async () => {
+  test("a refusal of the daemon is one line on stderr and exit 1", async () => {
     const daemon = fakeDaemon({
       ...OPEN,
       "boardsync.log": () => ({ error: { code: "not_found", message: "card not found" } }),
@@ -261,6 +261,26 @@ describe("flightdeckd boardsync log (issue #3540)", () => {
     const run = await flightdeckd(["boardsync", "log", "nope"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
     expect(run.err.join("\n")).toContain("card not found");
+  });
+
+  test("an entry an older daemon sends with fields left out prints no undefined, and --json gives null for them", async () => {
+    const bare = { at: "2026-11-20T08:00:00Z", kind: "conflict", winner: "external" };
+    const daemon = fakeDaemon({ ...OPEN, "boardsync.log": () => ({ entries: [bare] }) });
+    const text = await flightdeckd(["boardsync", "log", "c1"], daemon.port);
+    const asJson = await flightdeckd(["boardsync", "log", "c1", "--json"], daemon.port);
+    expect(text.out).toEqual(["2026-11-20T08:00:00Z  conflict: external won"]);
+    expect(printed(asJson.out)).toEqual({
+      entries: [
+        {
+          ...bare,
+          lostValue: null,
+          lostAt: null,
+          keptValue: null,
+          keptAt: null,
+          detail: null,
+        },
+      ],
+    });
   });
 
   test("a detail from the daemon cannot drive the terminal", async () => {
