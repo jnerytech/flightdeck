@@ -62,7 +62,10 @@ export const runsHandlers = {
     const { projectId, name } = payload;
     return await server.need("board").validateWorkflow(projectId, name);
   },
-  "workflow.trust": async (payload, { server }) => {
+  "workflow.trust": async (payload, { ws, server }) => {
+    // Trusting a workflow lets its `check` commands run on this host: near only, as adding a
+    // template and confirming a resume are (#3799).
+    requireVaultTransport(ws.data.origin, "workflow.trust", server.opts.log);
     const { projectId, name, hash } = payload;
     return await server.need("board").trustWorkflow(projectId, name, hash);
   },
