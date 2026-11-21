@@ -179,7 +179,21 @@ function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string
  * heuristic over the command text: the daemon cannot tell who holds the shell.
  */
 const answersARequest = (prog: string, args: string[]) =>
-  runsFlightdeckVerb(prog, args, ["approve", "deny"]);
+  runsFlightdeckVerb(prog, args, ["approve", "deny"]) || deniesAVaultRequest(prog, args);
+
+/** `vault deny` refuses a person's pending request for a secret (#3753), as `deny` does for a permission request. */
+function deniesAVaultRequest(prog: string, args: string[]): boolean {
+  if (isCliProgram(prog)) {
+    return shellReadings(args).some((own) => {
+      const [command, action] = flightdeckWords(own);
+      return command === "vault" && action === "deny";
+    });
+  }
+  if (!RUNNERS.includes(prog)) return false;
+  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
+  const runsCli = words.some((_, i) => startsCli(words, i));
+  return runsCli && words.some((w, i) => w === "vault" && words[i + 1] === "deny");
+}
 
 /** `approvers enroll|reset` decide which devices may approve (#3439): a session must not run them for the person. */
 const changesApprovers = (prog: string, args: string[]) =>
