@@ -332,6 +332,97 @@ describe("webhook-ui", () => {
     expect(screen.queryByText(refused)).toBeNull();
   });
 
+  test("the form has a visible heading: Add webhook, then Edit <name> while a webhook is edited", async () => {
+    await open("en");
+    expect(screen.queryByRole("heading", { name: "Add webhook" })).not.toBeNull();
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    await click("Edit Team");
+    expect(screen.queryByRole("heading", { name: "Edit Team" })).not.toBeNull();
+    expect(screen.queryByRole("heading", { name: "Add webhook" })).toBeNull();
+  });
+
+  test("a test in flight shows its button busy and sends no second one; a refused call shows a failure line and frees the button", async () => {
+    const { store } = await open("en");
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Test Team" }) !== null);
+    let calls = 0;
+    let release: (value: { ok: boolean; httpStatus: number | null; at: string }) => void = () => {};
+    store.webhooks.test = () => {
+      calls += 1;
+      return new Promise((resolve) => {
+        release = resolve;
+      });
+    };
+    await click("Test Team");
+    const button = screen.getByRole("button", { name: "Test Team" });
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByText("Sending…")).not.toBeNull();
+    await click("Test Team");
+    expect(calls).toBe(1);
+    await act(async () => {
+      release({ ok: true, httpStatus: 200, at: new Date().toISOString() });
+    });
+    await settle(() => screen.queryByText(/^Sent: HTTP 200 at /) !== null);
+    expect(screen.getByRole("button", { name: "Test Team" }).getAttribute("aria-busy")).toBeNull();
+    store.webhooks.test = () => Promise.reject(new Error("socket closed"));
+    await click("Test Team");
+    await settle(() => screen.queryByText(/^Failed: no answer at /) !== null);
+    expect(screen.queryByText(/^Sent: HTTP 200 at /)).toBeNull();
+    expect(screen.getByRole("button", { name: "Test Team" }).getAttribute("aria-busy")).toBeNull();
+  });
+
+  test("saving an edit clears the last test result of that webhook", async () => {
+    await open("en");
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Test Team" }) !== null);
+    await click("Test Team");
+    await settle(() => screen.queryByText(/^Sent: HTTP 200 at /) !== null);
+    await click("Edit Team");
+    await fill("Webhook URL", "https://hooks.slack.com/services/T111/B111/OTHER");
+    await click("Save changes");
+    await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    expect(screen.queryByText(/^Sent: HTTP 200 at /)).toBeNull();
+  });
+
+  test("on edit the signing secret and the token say that an empty value keeps the stored one", async () => {
+    await open("en");
+    await fill("Name", "Hook");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "generic" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    // Adding: nothing is kept yet, so no such help.
+    expect(screen.queryByText("Leave empty to keep the current secret")).toBeNull();
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Edit Hook" }) !== null);
+    await click("Edit Hook");
+    expect(screen.queryByText("Leave empty to keep the current secret")).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "ntfy" } });
+    });
+    expect(screen.queryByText("Leave empty to keep the current token")).not.toBeNull();
+    expect(screen.queryByText("Leave empty to keep the current secret")).toBeNull();
+  });
+
   test("Cancel in the remove question keeps the webhook", async () => {
     const { store } = await open("en");
     await fill("Name", "Team");
