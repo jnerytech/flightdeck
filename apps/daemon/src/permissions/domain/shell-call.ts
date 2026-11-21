@@ -484,7 +484,7 @@ const VALUE_OPTIONS = new Set(OPTIONS_WITH_VALUE);
  * outside quotes, and inside double quotes only `"`, `\`, `$` and the backtick; single quotes take everything up
  * to their close; an ANSI-C quote lets a backslash escape anything, its own closing quote included.
  */
-export function stepQuote(open: string, text: string, i: number): { open: string; next: number } {
+function stepQuote(open: string, text: string, i: number): { open: string; next: number } {
   const c = text.charAt(i);
   if (open === "'") return { open: c === "'" ? "" : open, next: i + 1 };
   if (open === "$'") {
@@ -496,6 +496,28 @@ export function stepQuote(open: string, text: string, i: number): { open: string
   if (open === '"') return { open: c === '"' ? "" : open, next: i + 1 };
   if (c === "$" && text.charAt(i + 1) === "'") return { open: "$'", next: i + 2 };
   return { open: c === '"' || c === "'" ? c : "", next: i + 1 };
+}
+
+/** `text` cut at each of `separators` (the longest first) that sits outside single and double quotes. */
+export function splitOutsideQuotes(text: string, separators: string[]): string[] {
+  const parts: string[] = [];
+  let quote = "";
+  let from = 0;
+  for (let i = 0; i < text.length; ) {
+    const step = stepQuote(quote, text, i);
+    const separator =
+      quote === "" && step.open === "" ? separators.find((s) => text.startsWith(s, i)) : undefined;
+    if (separator === undefined) {
+      quote = step.open;
+      i = step.next;
+      continue;
+    }
+    parts.push(text.slice(from, i));
+    i += separator.length;
+    from = i;
+  }
+  parts.push(text.slice(from));
+  return parts;
 }
 
 /** Ends a word the shell expands (`$V`, `r*`, `{a,b}`): kept by `readArguments`, tested by `hidesItsVerb`. */
