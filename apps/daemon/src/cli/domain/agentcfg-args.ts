@@ -31,7 +31,7 @@ export const AGENTCFG_FLAGS: Record<string, Handler> = {
     args.agentcfgKind = oneOf("--kind", value(), AgentCfgKind.options);
   },
   "--path": (args, _reader, value) => {
-    args.agentcfgPath = value();
+    args.pathFlag = value();
   },
   "--file": (args, _reader, value) => {
     args.agentcfgFile = value();
@@ -47,7 +47,7 @@ export const AGENTCFG_FLAGS: Record<string, Handler> = {
 /** Every flag of the verbs, whether it was typed, and the verbs that take it. */
 const flagged = (args: CliArgs): Array<[string, boolean, readonly string[]]> => [
   ["--kind", args.agentcfgKind !== undefined, ACTIONS],
-  ["--path", args.agentcfgPath !== undefined, ["read", "write"]],
+  ["--path", args.pathFlag !== undefined, ["read", "write"]],
   ["--file", args.agentcfgFile !== undefined, ["write"]],
   ["--expected-hash", args.agentcfgHash !== undefined, ["write"]],
   ["--new", args.agentcfgNew === true, ["write"]],
@@ -59,11 +59,15 @@ const SHARED: Array<[string, (args: CliArgs) => boolean, readonly string[]]> = [
   ["--confirm", (args) => args.confirm !== undefined, ["write"]],
 ];
 
+/** `--path` is also `review add`'s, which checks its own flags. */
+const isReviewPath = (args: CliArgs, flag: string): boolean =>
+  flag === "--path" && args.command === "review";
+
 /** A flag outside the verbs that take it. */
 function strayFlag(args: CliArgs): string | undefined {
   const onAgentcfg = args.command === "agentcfg";
   for (const [flag, typed, verbs] of flagged(args))
-    if (typed && !(onAgentcfg && verbs.includes(args.action ?? "")))
+    if (typed && !(onAgentcfg && verbs.includes(args.action ?? "")) && !isReviewPath(args, flag))
       return `${flag}: this flag only applies to flightdeckd agentcfg ${verbs.join(", ")}`;
   if (!onAgentcfg) return undefined;
   for (const [flag, typed, verbs] of SHARED)
@@ -103,7 +107,7 @@ export function agentcfgProblem(args: CliArgs): string | undefined {
   if (args.agentcfgKind === undefined)
     return `${verb}: missing --kind <${AgentCfgKind.options.join("|")}>`;
   if (args.action === "list") return undefined;
-  if (args.agentcfgPath === undefined) return `${verb}: missing --path <file>`;
+  if (args.pathFlag === undefined) return `${verb}: missing --path <file>`;
   if (args.origin !== undefined && !(ORIGINS as readonly string[]).includes(args.origin))
     return `--origin: ${ORIGINS.join(" or ")}, got ${args.origin}`;
   return args.action === "write" ? writeProblem(args) : undefined;
@@ -116,7 +120,7 @@ export function agentcfgCliArgs(args: CliArgs): AgentcfgCliArgs {
     kind: args.agentcfgKind as NonNullable<CliArgs["agentcfgKind"]>,
     ...(args.json ? { json: true as const } : {}),
   };
-  const path = args.agentcfgPath ?? "";
+  const path = args.pathFlag ?? "";
   // The values of `--origin` were checked above: the daemon's two, not the history's.
   const origin = args.origin as "project" | "user" | undefined;
   if (args.action === "read")
