@@ -225,7 +225,7 @@ describe("run-ui: Run e Stop no card", () => {
     expect(await shows(() => panel() !== null)).toBe(true);
     expect(inPanel().queryByText("prepare")).not.toBeNull();
     expect(inPanel().queryByText("serve --port {{port.web}}")).not.toBeNull();
-    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Executar" })).toBeNull();
     await press("Confiar neste run.yaml");
     const dialog = screen.queryByRole("alertdialog");
     expect(dialog).not.toBeNull();
@@ -236,7 +236,7 @@ describe("run-ui: Run e Stop no card", () => {
     });
     expect(
       await shows(
-        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
       ),
     ).toBe(true);
     expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).toBeNull();
@@ -255,21 +255,21 @@ describe("run-ui: Run e Stop no card", () => {
     });
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).not.toBeNull();
-    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Executar" })).toBeNull();
   });
 
   test("Run mostra o setup, depois cada processo com o log e o preview; Stop encerra tudo", async () => {
     const { store, hostId, runHost } = await cardScreen(true);
     expect(
       await shows(
-        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
       ),
     ).toBe(true);
-    await press("Run");
+    await press("Executar");
     expect(
       await shows(() => panel() !== null && inPanel().queryByText("Preparando (setup)…") !== null),
     ).toBe(true);
-    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Executar" })).toBeNull();
     runHost?.finish("term-1", 0);
     expect(await shows(() => panel() !== null && inPanel().queryByText("web") !== null)).toBe(true);
     expect(inPanel().queryByText("Portas: web 41000")).not.toBeNull();
@@ -300,13 +300,13 @@ describe("run-ui: Run e Stop no card", () => {
     });
     expect(
       await shows(
-        () => panel() !== null && inPanel().queryByRole("button", { name: "Stop" }) !== null,
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Parar" }) !== null,
       ),
     ).toBe(true);
-    await press("Stop");
+    await press("Parar");
     expect(
       await shows(
-        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
       ),
     ).toBe(true);
     expect(runHost?.spawned.at(-1)?.killed).toBe(true);
@@ -317,7 +317,7 @@ describe("run-ui: Run e Stop no card", () => {
     const { store, hostId, cardId, key } = await cardScreen(true);
     expect(
       await shows(
-        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
       ),
     ).toBe(true);
     const state = (ready: "waiting" | "timeout") => ({
@@ -362,10 +362,10 @@ describe("run-ui: Run e Stop no card", () => {
     const { runHost } = await cardScreen(true);
     expect(
       await shows(
-        () => panel() !== null && inPanel().queryByRole("button", { name: "Run" }) !== null,
+        () => panel() !== null && inPanel().queryByRole("button", { name: "Executar" }) !== null,
       ),
     ).toBe(true);
-    await press("Run");
+    await press("Executar");
     expect(
       await shows(() => panel() !== null && inPanel().queryByText("Preparando (setup)…") !== null),
     ).toBe(true);
@@ -376,7 +376,7 @@ describe("run-ui: Run e Stop no card", () => {
       ),
     ).toBe(true);
     expect(inPanel().queryByText("Falhou")).not.toBeNull();
-    expect(inPanel().queryByRole("button", { name: "Run" })).not.toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Executar" })).not.toBeNull();
   });
 
   test("um run.yaml com erros mostra os erros e não oferece Confiar nem Run", async () => {
@@ -404,7 +404,7 @@ describe("run-ui: Run e Stop no card", () => {
       ),
     ).toBe(true);
     expect(inPanel().queryByRole("button", { name: "Confiar neste run.yaml" })).toBeNull();
-    expect(inPanel().queryByRole("button", { name: "Run" })).toBeNull();
+    expect(inPanel().queryByRole("button", { name: "Executar" })).toBeNull();
   });
 
   test("sem run.yaml no projeto, o card não mostra o painel", async () => {

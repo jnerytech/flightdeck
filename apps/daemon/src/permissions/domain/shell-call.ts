@@ -644,6 +644,7 @@ const VERB_NOUNS = new Set([
   "snippet",
   "boardsync",
   "review",
+  "runenv",
 ]);
 
 /**

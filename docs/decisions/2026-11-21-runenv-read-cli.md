@@ -4,8 +4,8 @@ Slice 1 of the `runenv` noun in [the CLI-first decision](2026-11-19-cli-first.md
 
 `runenv config <project>`, `runenv get <card>` and `runenv watch`, over `runenv.config`, `runenv.get` and
 `runenv.watch`. They read what the daemon already keeps and change nothing. The write side (`trust`, `start`, `stop`)
-is the second slice: it starts processes from a project's `run.yaml`, so it comes with its own high-risk rules and a
-security review.
+is [the second slice](2026-11-21-runenv-write-cli.md): it starts processes from a project's `run.yaml`, so it comes
+with its own high-risk rules and a security review.
 
 - The noun is `runenv`, as the protocol names it. `config` takes a project (its name or its id, through
   `resolveProject`: a name two projects share is refused with their ids); `get` takes a card id; `watch` takes no
@@ -22,6 +22,6 @@ security review.
   so the lines of a card's state are joined with `; `. With `--json` each update is one JSON line.
 - `--json` keeps every key and prints `null` where an older daemon sends none (`setupTerminalId`, `error`, a process's
   `exitCode` and `url`, and `hash` and `config` of a project with no file).
-- `runenv` joined the commands that take `--json` and `--host`. The risk rules need no new entry: nothing here writes, so
+- `runenv` joined the commands that take `--json` and `--host`. The risk rules need no new entry for these three: nothing here writes, so
   `fd runenv` from a session's shell stays ordinary.
 - Not in this slice: `trust`, `start` and `stop`.
