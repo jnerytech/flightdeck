@@ -157,7 +157,13 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
               {t("teleportUi.plainWs", { n: plain.length, hosts: plain.join(", ") })}
             </p>
           )}
-        {(phase.at === "pick" || phase.at === "preparing") && (
+        {phase.at === "pick" && props.targets.length === 0 && (
+          <Form variant="dialog" onSubmit={close}>
+            <p role="note">{t("teleportUi.noTarget")}</p>
+            <FormActions submit={t("teleportUi.close")} />
+          </Form>
+        )}
+        {(phase.at === "preparing" || (phase.at === "pick" && props.targets.length > 0)) && (
           <Form variant="dialog" onSubmit={begin}>
             <NativeSelect
               aria-label={t("teleportUi.host")}
@@ -188,6 +194,7 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
             <FormActions
               submit={t("teleportUi.next")}
               disabled={!target || !repo.trim()}
+              disabledReason={t(target ? "teleportUi.repoReason" : "teleportUi.pickHostReason")}
               busy={phase.at === "preparing"}
               cancel={t("teleportUi.cancel")}
               onCancel={leave}

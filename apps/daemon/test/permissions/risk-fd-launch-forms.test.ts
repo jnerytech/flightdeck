@@ -92,10 +92,33 @@ describe("risk rules: the CLI reached without its name in the line (#3566)", () 
     ).toEqual([]);
   });
 
+  test("bun with options before the script (--cwd <dir> start) is rated as the CLI itself (#3718)", () => {
+    expect(
+      ratedAsTheDirectForm([
+        ["bun --cwd apps/daemon start changes revert s a.ts", "fd changes revert s a.ts"],
+        ["bun --cwd=apps/daemon start changes revert s a.ts", "fd changes revert s a.ts"],
+        ["bun --cwd=apps/daemon run start mcp remove p f --confirm", "fd mcp remove p f --confirm"],
+        ["bun --silent --cwd d start persona remove qa", "fd persona remove qa"],
+        ["bun --bun start persona remove qa", "fd persona remove qa"],
+        ["sh -c 'bun --cwd d start persona remove qa'", "fd persona remove qa"],
+        ["bunx --bun --cwd d flightdeckd mcp remove p f --confirm", "fd mcp remove p f --confirm"],
+        ['bun --cwd "my dir" start persona remove qa', "fd persona remove qa"],
+        ["bun --cwd 'my dir' start persona remove qa", "fd persona remove qa"],
+        ["bun --cwd=my\\ dir start persona remove qa", "fd persona remove qa"],
+        ["bun --cwd my\\ dir start changes revert s a.ts", "fd changes revert s a.ts"],
+        ["bun $OPT start persona remove qa", "fd persona remove qa"],
+        ['bun "$OPT" start persona remove qa', "fd persona remove qa"],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a start script of another command, and a read, are ordinary shell commands", () => {
     const wrong = [
       "bun run start",
       "bun run start card list --json",
+      "bun --cwd d start",
+      "bun --cwd d start card list --json",
+      "echo bun --cwd d start persona remove qa",
       "bun run start:web",
       "npm run start",
       "echo bun run start persona remove qa",
