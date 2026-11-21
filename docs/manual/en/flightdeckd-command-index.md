@@ -83,6 +83,12 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 
 - [fd file](flightdeckd-file-commands.md#fd-file)
 
+## flightdeckd commands: the actions of a project
+
+[Read the chapter.](flightdeckd-action-commands.md) Its sections:
+
+- [fd action](flightdeckd-action-commands.md#fd-action)
+
 ## flightdeckd commands: the automations of a project
 
 [Read the chapter.](flightdeckd-automation-commands.md) Its sections:

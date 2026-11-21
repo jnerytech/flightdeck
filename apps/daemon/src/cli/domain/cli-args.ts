@@ -439,8 +439,10 @@ export interface CliArgs {
   hash?: string;
   /** `persona list --scope <host|project|all>`. */
   scope?: "host" | "project" | "all";
-  /** `action run <name>`. */
+  /** `action run <name>` or `action runs <name>`. */
   actionName?: string;
+  /** `action list --plain`: lines for a person, where `--json` is the stable value. */
+  plain?: boolean;
   /** `snippet get <name>` (phase 18). */
   snippetName?: string;
   /** `snippet ... --project-path <path>`: the project whose snippets count too. */

@@ -10,6 +10,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent, ConfirmDialog } from "@/shared/feedback/index.ts";
 import {
   EmptyState,
+  ErrorState,
   Field,
   Form,
   Inline,
@@ -76,6 +77,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
   );
   const hostId = host?.id;
   const [list, setList] = useState<PluginList | null>(null);
+  const [failed, setFailed] = useState(false);
   const [looking, setLooking] = useState<InstalledPlugin | null>(null);
   const [installing, setInstalling] = useState<InstallSource | null>(null);
   const [folder, setFolder] = useState("");
@@ -145,23 +147,44 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
     await done(t("pluginsUi.marketplaceUpdated"), result?.outcome === "ok");
   };
 
+  // The page has its own error and Try again (the toast's retry would drop the answer), so the
+  // toast offers none. A refusal is not an empty host: what is on screen stays.
   const reload = useCallback(async () => {
     if (!hostId) return;
-    const result = await store.hostCommand(hostId, "plugins.list", {});
-    setList(result ?? { installed: [], available: [], marketplaces: [] });
+    const result = await store.hostCommand(hostId, "plugins.list", {}, { retry: false });
+    if (result) setList(result);
+    setFailed(!result);
   }, [store, hostId]);
 
   useEffect(() => {
+    // Another host (or the same one coming back) starts from nothing: never its predecessor's list or error.
+    setList(null);
+    setFailed(false);
     void reload();
   }, [reload]);
+
+  const loadError = () => (
+    <ErrorState
+      message={t("pluginsUi.loadFailed")}
+      retryLabel={t("pluginsUi.retry")}
+      onRetry={() => void reload()}
+    />
+  );
+
+  /** What stands in for the tabs until a list is on screen. */
+  const standIn = () => {
+    if (!hostId) return <EmptyState title={t("pluginsUi.noHost")} />;
+    return failed ? loadError() : <LoadingState label={t("agent.loading")} />;
+  };
 
   return (
     <Page
       title={t("pluginsUi.title")}
-      subtitle={t("pluginsUi.subtitle", { host: host?.name ?? "" })}
+      subtitle={host ? t("pluginsUi.subtitle", { host: host.name }) : undefined}
     >
-      {list === null ? (
-        <LoadingState label={t("agent.loading")} />
+      {failed && list !== null && loadError()}
+      {!hostId || list === null ? (
+        standIn()
       ) : (
         <Tabs defaultValue="installed">
           <TabsList aria-label={t("pluginsUi.tabs")}>
