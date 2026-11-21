@@ -119,9 +119,9 @@ describe("workflows-ui", () => {
       "Nenhum (card simples)",
       "plan",
     ]);
-    expect(screen.queryByLabelText("Input task")).toBeNull();
+    expect(screen.queryByLabelText("Entrada task")).toBeNull();
     await change("Workflow", "plan");
-    await change("Input task", "dois números");
+    await change("Entrada task", "dois números");
     await act(async () => {
       fireEvent.click(
         within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
@@ -189,12 +189,12 @@ describe("workflows-ui", () => {
       "Nenhum (card simples)",
       "plan",
     ]);
-    expect(within(dialog).queryByLabelText("Input task")).toBeNull();
+    expect(within(dialog).queryByLabelText("Entrada task")).toBeNull();
     await act(async () => {
       fireEvent.change(select, { target: { value: "plan" } });
     });
     await act(async () => {
-      fireEvent.change(within(dialog).getByLabelText("Input task"), {
+      fireEvent.change(within(dialog).getByLabelText("Entrada task"), {
         target: { value: "dois números" },
       });
     });
