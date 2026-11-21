@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { messageAdminCliArgs } from "../../src/cli/domain/message-args.ts";
 import { parseArgs } from "../../src/main.ts";
 
 /** The parsed arguments, or what the parser refused with: a wrong parse fails an assertion. */
@@ -101,5 +102,39 @@ describe("the arguments of message history, watch and rules (issue #3622)", () =
       session: "s-dev",
       last: 3,
     });
+  });
+
+  test("the runner takes the filters that were given and nothing else, and only for the three admin verbs", () => {
+    const admin = (argv: string[]) => messageAdminCliArgs(parseArgs(argv));
+    expect(
+      admin([
+        "message",
+        "history",
+        "--team",
+        "t1",
+        "--session",
+        "s-dev",
+        "--with-host",
+        "laptop",
+        "--status",
+        "refused",
+        "--days",
+        "7",
+        "--limit",
+        "50",
+        "--json",
+      ]),
+    ).toEqual({
+      action: "history",
+      team: "t1",
+      session: "s-dev",
+      withHost: "laptop",
+      status: "refused",
+      days: 7,
+      limit: 50,
+      json: true,
+    });
+    expect(admin(["message", "rules"])).toEqual({ action: "rules" });
+    expect(admin(["message", "send", "s-dev", "hi"])).toBeUndefined();
   });
 });
