@@ -88,7 +88,13 @@ export function TracePanel(
 
   const load = useCallback(async () => {
     setFailed(false);
-    const result = await store.hostCommand(hostId, "trace.get", { claudeSessionId });
+    // The tab has its own Try again, so the toast offers none that would throw the answer away.
+    const result = await store.hostCommand(
+      hostId,
+      "trace.get",
+      { claudeSessionId },
+      { retry: false },
+    );
     setTrace(result);
     setFailed(result === null);
   }, [store, hostId, claudeSessionId]);
