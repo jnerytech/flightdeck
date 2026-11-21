@@ -16,4 +16,13 @@ describe("guard: abas-largura: tabs say their title (issue #103)", () => {
     expect(bar).toMatch(/<IconTip label=\{label\}>\s*<button[^>]*\s*type="button"\s*role="tab"/);
     expect(bar).not.toMatch(/role="tab"[\s\S]{0,400}title=\{label\}/);
   });
+
+  // Issue #3794: at 6 rem the icon, the close slot and the padding left room for one or two letters
+  // of the title, so ten tabs of one screen all read "O...". happy-dom has no layout, so the
+  // stylesheet's text is the proof; the e2e `layout` journey measures the widths.
+  test("a tab keeps at least 9 rem, so the start of its title shows (#3794)", () => {
+    const css = read("styles/tabs.css");
+    const rule = css.slice(css.indexOf("@utility tab-item {"));
+    expect(/min-width: 9rem;/.test(rule.slice(0, rule.indexOf("max-width")))).toBe(true);
+  });
 });
