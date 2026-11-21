@@ -427,6 +427,7 @@ export const OPTIONS_WITH_VALUE = [
   "--plugin-scope",
   "--parts",
   "--template",
+  "--digests",
   "--limit",
   "--out",
   "--from",
