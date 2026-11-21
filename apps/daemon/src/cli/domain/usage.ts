@@ -58,6 +58,7 @@ export const USAGE = [
   "     fd new <persona> [claude arguments]   (claude with any persona, by its id)",
   "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
   "     fd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
+  "     fd mcp list <project> | status <session> | test <project> <server> [--host <name>] [--json] [--config <file>]   (the MCP servers of a project, the state each reports in a live session, and the command a test would run: it starts nothing)",
   "     fd statusline [--config <file>]   (one line for Claude Code's statusline)",
   "     fd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
   "     fd card list [--project <name or id>] [--json] [--config <file>]",

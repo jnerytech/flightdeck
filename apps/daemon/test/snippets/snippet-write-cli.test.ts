@@ -337,6 +337,26 @@ describe("flightdeckd snippet use (issue #3615)", () => {
     expect(daemon.calls.filter((c) => c.type !== "hello")).toEqual([]);
   });
 
+  test("a host with a device enrolled wants that device's signature on a trust: says the person does it in the app, exit 1", async () => {
+    const daemon = fakeDaemon({
+      ...writeDaemon(),
+      "snippets.trust": () => ({
+        error: {
+          code: "invalid_state",
+          message: "the request needs the signature of an enrolled device",
+          reason: "approval_proof_required",
+        },
+      }),
+    });
+    const run = await flightdeckd(
+      ["snippet", "trust", "--project-path", "/srv/app", "--hash", HASH, "--confirm"],
+      daemon.port,
+    );
+    expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
+    expect(run.err.join("\n")).toContain("do it in the app");
+    expect(run.err.join("\n")).not.toContain("signature of an enrolled device");
+  });
+
   test("a project file the person has not trusted is refused by the daemon, exit 1", async () => {
     const daemon = fakeDaemon({
       ...writeDaemon(),

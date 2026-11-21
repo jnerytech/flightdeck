@@ -7,3 +7,4 @@ export { type AgentcfgCliArgs, runAgentcfgCli } from "./agentcfg-cli.ts";
 export { frontmatter } from "./domain/frontmatter.ts";
 export { AgentConfig, claudeMds } from "./files.ts";
 export { McpConfig } from "./mcp.ts";
+export { type McpCliArgs, runMcpCli } from "./mcp-cli.ts";
