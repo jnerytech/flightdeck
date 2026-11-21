@@ -150,6 +150,8 @@ export interface CliArgs {
     | "rules"
     | "rules-set"
     | "preview"
+    | "apply"
+    | "undo"
     | "interrupted"
     | "import-preview"
     | "import-history"

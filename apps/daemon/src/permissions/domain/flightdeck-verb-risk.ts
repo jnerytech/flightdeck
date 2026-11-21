@@ -9,6 +9,7 @@ import { MEMORY_RULES } from "./memory-risk.ts";
 import { MESSAGE_RULES } from "./message-risk.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
 import { REVIEW_RULES } from "./review-risk.ts";
+import { REWIND_RULES } from "./rewind-risk.ts";
 import { RUNENV_RULES } from "./runenv-risk.ts";
 import { SNIPPET_RULES } from "./snippet-risk.ts";
 
@@ -25,6 +26,7 @@ export const FLIGHTDECK_VERB_RULES = [
   ...MEMORY_RULES,
   ...MCP_RULES,
   ...CHANGES_RULES,
+  ...REWIND_RULES,
   ...FILE_RULES,
   ...KNOWLEDGE_RULES,
 ];

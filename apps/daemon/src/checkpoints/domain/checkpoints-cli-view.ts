@@ -48,13 +48,21 @@ function changeLines(what: string, changes: SnapshotFiles | RewindPreview): stri
 export const turnFilesLines = (session: string, turn: number, changes: SnapshotFiles): string[] =>
   changeLines(`${session} turn ${turn}`, changes);
 
+const through = (changes: RewindPreview) =>
+  changes.via === "sdk" ? "the SDK's checkpoint" : "a snapshot";
+
+/** What a rewind to a turn put back, and through what the daemon did it. */
+export const rewoundLines = (session: string, turn: number, done: RewindPreview): string[] =>
+  changeLines(`${session} rewound to turn ${turn}, through ${through(done)}`, done);
+
+/** What going back to the state before the last rewind put back. */
+export const undoneLines = (session: string, done: RewindPreview): string[] =>
+  changeLines(`${session} rewind undone, through ${through(done)}`, done);
+
 /** What a rewind to a turn would change, and through what the daemon would do it. */
 export const rewindPreviewLines = (
   session: string,
   turn: number,
   preview: RewindPreview,
 ): string[] =>
-  changeLines(
-    `${session} rewind to turn ${turn}, through ${preview.via === "sdk" ? "the SDK's checkpoint" : "a snapshot"}`,
-    preview,
-  );
+  changeLines(`${session} rewind to turn ${turn}, through ${through(preview)}`, preview);
