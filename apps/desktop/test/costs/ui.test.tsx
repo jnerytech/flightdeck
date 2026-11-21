@@ -178,7 +178,7 @@ describe("custos-ui", () => {
     const rows = (name: string) =>
       [...(region(name)?.querySelectorAll("tbody tr") ?? [])].map((r) => r.textContent);
     expect(rows("Por modelo")).toEqual(["claude-opus-5-5US$ 3,50", "claude-sonnet-5-5US$ 0,50"]);
-    expect(rows("Por origem")).toEqual(["cardUS$ 2,00", "terminalUS$ 1,50", "appUS$ 0,50"]);
+    expect(rows("Por origem")).toEqual(["CardUS$ 2,00", "TerminalUS$ 1,50", "AppUS$ 0,50"]);
     expect(rows("Por projeto")).toEqual(["kAUS$ 3,50", "kBUS$ 0,50"]);
     const total = async (period: string, expected: string) => {
       await click(period);
