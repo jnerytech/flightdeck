@@ -9,7 +9,6 @@ import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
-import type { VaultCliArgs } from "../vault/index.ts";
 import { configPath } from "./config-path.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
@@ -20,6 +19,7 @@ import { projectCliArgs } from "./domain/project-args.ts";
 import { snippetCliArgs } from "./domain/snippet-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
+import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
@@ -283,29 +283,6 @@ function historyCliArgs(args: CliArgs): HistoryCliArgs {
   };
   const present = Object.entries(typed).filter(([, value]) => value !== undefined);
   return { action: args.action, ...Object.fromEntries(present) } as HistoryCliArgs;
-}
-
-/** What the person typed for `vault decisions|report|rules`, as `runVaultCli` takes it: what they left out stays out. */
-function vaultCliArgs(args: CliArgs): VaultCliArgs {
-  const typed: Record<string, unknown> = {
-    secretId: args.secretId,
-    days: args.days,
-    limit: args.limit,
-    csv: args.csv,
-    requester: args.requester,
-    purpose: args.purpose,
-    useAction: args.useAction,
-    host: args.host,
-    project: args.project,
-    session: args.session,
-    tags: args.tags,
-    risk: args.risk,
-    approval: args.approval,
-    at: args.at,
-    json: args.json || undefined,
-  };
-  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
-  return { action: args.action, ...Object.fromEntries(present) } as VaultCliArgs;
 }
 
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
@@ -651,10 +628,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   agentcfg: async (args, deps) => {
     const { runAgentcfgCli } = await import("../agentcfg/index.ts");
     return asking(args, deps, (config, remote) =>
-      runAgentcfgCli(agentcfgCliArgs(args), config, {
-        ...(remote ? { remote } : {}),
-        stdin: deps.stdin ?? Bun.stdin.stream(),
-      }),
+      runAgentcfgCli(agentcfgCliArgs(args), config, { remote, stdin: deps.stdin }),
     );
   },
   requests: async (args, deps) => {

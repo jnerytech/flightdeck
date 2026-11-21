@@ -52,8 +52,8 @@ export async function runAgentcfgCli(
   config: { bind: string; port: number; token: string },
   options: {
     timeoutMs?: number;
-    remote?: RemoteTarget;
-    stdin?: ReadableStream<Uint8Array>;
+    remote?: RemoteTarget | undefined;
+    stdin?: ReadableStream<Uint8Array> | undefined;
   } = {},
 ): Promise<CliResult> {
   let content = "";
