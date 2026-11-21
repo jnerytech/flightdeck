@@ -214,11 +214,14 @@ export function takeWatchFlags(args: CliArgs): void {
 }
 
 /** The flag that sets a field of the patch, for a refusal that names it. */
-const FLAG_NAMES: Record<string, string> = { checks: "--check", enabled: "--enable" };
+const FLAG_NAMES = new Map([
+  ["checks", "--check"],
+  ["enabled", "--enable"],
+]);
 
 const flagOf = (field: string): string => {
   const kebab = field.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-  return FLAG_NAMES[field] ?? `--${kebab}`;
+  return FLAG_NAMES.get(field) ?? `--${kebab}`;
 };
 
 /** What is wrong with the watch words and flags, or undefined. */
