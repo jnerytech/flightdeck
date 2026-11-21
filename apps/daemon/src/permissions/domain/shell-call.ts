@@ -642,12 +642,40 @@ export function shellReadings(args: string[]): string[][] {
   return joined.length === separate.length ? [joined] : [joined, separate];
 }
 
-/** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
-export const VERB_NOUNS = new Set(
-  "card history approvers persona team quota budget costs session rules autoapprove plugins project agentcfg ssh watch snippet boardsync review memory runenv automation message mcp changes file rewind action".split(
-    " ",
-  ),
-);
+/**
+ * The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`.
+ * One name per line in alphabetical order (a test checks it), so two PRs that add a noun do not conflict (#3759).
+ */
+export const VERB_NOUNS = new Set([
+  "action",
+  "agentcfg",
+  "approvers",
+  "autoapprove",
+  "automation",
+  "boardsync",
+  "budget",
+  "card",
+  "changes",
+  "costs",
+  "file",
+  "history",
+  "mcp",
+  "memory",
+  "message",
+  "persona",
+  "plugins",
+  "project",
+  "quota",
+  "review",
+  "rewind",
+  "rules",
+  "runenv",
+  "session",
+  "snippet",
+  "ssh",
+  "team",
+  "watch",
+]);
 
 /**
  * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,
