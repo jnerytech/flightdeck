@@ -10,6 +10,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent, ConfirmDialog } from "@/shared/feedback/index.ts";
 import {
   EmptyState,
+  ErrorState,
   Field,
   Form,
   Inline,
@@ -76,6 +77,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
   );
   const hostId = host?.id;
   const [list, setList] = useState<PluginList | null>(null);
+  const [failed, setFailed] = useState(false);
   const [looking, setLooking] = useState<InstalledPlugin | null>(null);
   const [installing, setInstalling] = useState<InstallSource | null>(null);
   const [folder, setFolder] = useState("");
@@ -145,23 +147,45 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
     await done(t("pluginsUi.marketplaceUpdated"), result?.outcome === "ok");
   };
 
-  const reload = useCallback(async () => {
-    if (!hostId) return;
-    const result = await store.hostCommand(hostId, "plugins.list", {});
-    setList(result ?? { installed: [], available: [], marketplaces: [] });
-  }, [store, hostId]);
+  // `own`: the first load, or its Try again: the page has its own error, so the toast offers no
+  // retry. After an action the list on screen stays, and so does the toast's retry.
+  const reload = useCallback(
+    async (own = false) => {
+      if (!hostId) return;
+      const result = await store.hostCommand(hostId, "plugins.list", {}, { retry: !own });
+      // A refusal is not an empty host: keep what is on screen and say so only when nothing is.
+      if (result) setList(result);
+      setFailed(!result);
+    },
+    [store, hostId],
+  );
 
   useEffect(() => {
-    void reload();
+    void reload(true);
   }, [reload]);
+
+  /** What stands in for the tabs until a list is on screen. */
+  const standIn = () => {
+    if (!hostId) return <EmptyState title={t("pluginsUi.noHost")} />;
+    if (failed) {
+      return (
+        <ErrorState
+          message={t("pluginsUi.loadFailed")}
+          retryLabel={t("pluginsUi.retry")}
+          onRetry={() => void reload(true)}
+        />
+      );
+    }
+    return <LoadingState label={t("agent.loading")} />;
+  };
 
   return (
     <Page
       title={t("pluginsUi.title")}
-      subtitle={t("pluginsUi.subtitle", { host: host?.name ?? "" })}
+      subtitle={host ? t("pluginsUi.subtitle", { host: host.name }) : undefined}
     >
-      {list === null ? (
-        <LoadingState label={t("agent.loading")} />
+      {!hostId || list === null ? (
+        standIn()
       ) : (
         <Tabs defaultValue="installed">
           <TabsList aria-label={t("pluginsUi.tabs")}>
