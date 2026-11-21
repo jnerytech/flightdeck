@@ -328,6 +328,52 @@ describe("pull-requests-ui: the action a PR's state leads to (#1482)", () => {
   });
 });
 
+// #3633: a row with no Merge button says why, and a watch that is off says where to turn it on.
+describe("pull-requests-ui: a row that cannot be merged says why (#3633)", () => {
+  test("failing checks: no Merge PR, and a line says merge is off until they pass", () => {
+    open();
+    expect([
+      inRow("Card a").queryByRole("button", { name: "Merge PR" }) === null,
+      row("Card a").textContent?.includes("Checks are failing: merge is off until they pass"),
+    ]).toEqual([true, true]);
+  });
+
+  test("passing checks: the Merge PR button is there and the line is not", () => {
+    open();
+    expect([
+      inRow("Card b").queryByRole("button", { name: "Merge PR" }) !== null,
+      row("Card b").textContent?.includes("merge is off"),
+    ]).toEqual([true, false]);
+  });
+
+  test("on a host that cannot merge the line is not shown: the host, not the checks, is why", () => {
+    open({ features: ["watch"] });
+    expect([
+      row("Card a").textContent?.includes("Card a"),
+      row("Card a").textContent?.includes("merge is off"),
+    ]).toEqual([true, false]);
+  });
+
+  test("the line is in Portuguese in the pt-BR app", () => {
+    const { store } = open({ language: "pt-BR" });
+    const line = store.i18n.t("pullRequests.checksFailingHint");
+    expect([
+      line.startsWith("Checks are failing"),
+      row("Card a").textContent?.includes(line),
+    ]).toEqual([false, true]);
+  });
+
+  test("a watch that is off says to turn it on from the card", () => {
+    open({
+      cards: { "h1/a": card("a") },
+      watches: {
+        "h1/a": { cardId: "a", enabled: false, status: "watching", reason: null, rounds: [] },
+      },
+    });
+    expect(row("Card a").textContent).toContain("Watch and fix is off: turn it on from the card");
+  });
+});
+
 // #1406: after the base moves, every listed PR is updated from it in one go, one card at a time, on
 // its own host. A card already on its base is left alone, a conflict stops only that card, and a
 // summary names each group.

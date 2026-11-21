@@ -113,10 +113,17 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
 
   const trust = async () => {
     if (!hostId || !file || !project) return;
-    const trusted = await store.hostCommand(hostId, "snippets.trust", {
-      projectPath: project,
-      hash: file.hash,
-    });
+    // With a device enrolled the person signs the folder and the hash in the system's dialog; a no, or a
+    // failed signing, sends nothing (#3647).
+    let made: Awaited<ReturnType<typeof store.approval.snippetTrustPayload>>;
+    try {
+      made = await store.approval.snippetTrustPayload(hostId, project, file.hash);
+    } catch (error) {
+      store.reportError(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (made.kind === "declined") return;
+    const trusted = await store.hostCommand(hostId, "snippets.trust", made.payload);
     if (trusted) await reload();
   };
 

@@ -37,7 +37,7 @@ export function refuseCardFlags(args: CliArgs): void {
     if (flag === "--language" && args.command === "review") continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `project harness-apply`'s, `boardsync set-push --on`'s and `agentcfg write`'s, which check their own flags below.
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `project harness-apply`'s, `boardsync set-push --on`'s, `agentcfg write`'s and `snippet`'s writes, which check their own flags below.
     if (flag === "--confirm" && CONFIRM_OWNERS.includes(args.command)) continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);

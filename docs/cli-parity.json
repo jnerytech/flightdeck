@@ -345,12 +345,12 @@
   "run.get": {},
   "run.resume": {},
   "run.watch": {},
-  "runenv.config": {},
-  "runenv.get": {},
+  "runenv.config": { "cli": "runenv" },
+  "runenv.get": { "cli": "runenv" },
   "runenv.start": {},
   "runenv.stop": {},
   "runenv.trust": {},
-  "runenv.watch": {},
+  "runenv.watch": { "cli": "runenv" },
   "runtime.models": {},
   "service.install": {},
   "session.applyPersona": { "cli": "session" },
@@ -405,7 +405,9 @@
   },
   "snapshots.files": {},
   "snapshots.list": {},
-  "snippets.favorite": {},
+  "snippets.favorite": {
+    "cli": "snippet"
+  },
   "snippets.get": {
     "cli": "snippet"
   },
@@ -418,13 +420,21 @@
   "snippets.parse": {
     "cli": "snippet"
   },
-  "snippets.remove": {},
+  "snippets.remove": {
+    "cli": "snippet"
+  },
   "snippets.render": {
     "cli": "snippet"
   },
-  "snippets.save": {},
-  "snippets.trust": {},
-  "snippets.use": {},
+  "snippets.save": {
+    "cli": "snippet"
+  },
+  "snippets.trust": {
+    "cli": "snippet"
+  },
+  "snippets.use": {
+    "cli": "snippet"
+  },
   "ssh.connect": {
     "appOnly": "opens a terminal in the app's window: a shell already is one, so there is nothing for a command to open (use ssh in the shell)"
   },

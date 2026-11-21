@@ -116,6 +116,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [fd review](pt-BR/flightdeckd-review-commands.md#fd-review)
 - [Escrever os comentários](pt-BR/flightdeckd-review-commands.md#escrever-os-comentários)
 
+## Comandos do flightdeckd: o ambiente de execução de um cartão
+
+[Ler o capítulo.](pt-BR/flightdeckd-runenv-commands.md) Suas seções:
+
+- [fd runenv](pt-BR/flightdeckd-runenv-commands.md#fd-runenv)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)

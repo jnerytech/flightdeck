@@ -135,6 +135,7 @@ export const USAGE = [
   "     fd boardsync boards | status <project> | log <card> [--host <name>] [--json] [--config <file>]   (the GitHub Projects boards of the account, a project's board sync, a card's sync log; nothing is changed)",
   "     fd review list <target> | add <target> --path <file> --lines <start>[-<end>] [--side new|old] --body <text> | update <comment> --body <text> | remove <comment> | send <target> [--language en|pt-BR] --confirm [--host <name>] [--json] [--config <file>]   (the inline comments on the diff of a target, which is session:<id>, card:<id> or terminal:<id> (list also takes project:<id>); add, update and remove change the drafts and send puts them into the session as one message; --side is new unless you say old)",
   "     fd boardsync link <project> <board id> [--map <status>=<column>]... | set-map <project> --map <status>=<column>... | unlink <project> | sync-now <project> | set-push <project> --on --confirm | --off [--host <name>] [--json] [--config <file>]   (a column is backlog, in_progress, waiting, review or done; a link without --map takes the board's own map; --on sends the cards' moves to the board and needs the project permission)",
+  "     fd runenv config <project> | get <card> | watch [--host <name>] [--json] [--config <file>]   (a project's run.yaml and the hash a person trusts; a card's run environment; watch prints a line for each card's run as it changes, until Ctrl-C; they change nothing)",
   "     fd approve <request> [--message <text>] [--hold] [--host <name>] [--json] [--config <file>]   (a high-risk request is approved in the app; --hold is accepted and does nothing)",
   "     fd deny <request> [--message <text>] [--host <name>] [--json] [--config <file>]",
   "     fd requests [--session <session>] [--host <name>] [--json] [--config <file>]   (the open permission requests, oldest first)",
@@ -145,4 +146,10 @@ export const USAGE = [
   "     fd snippet render <name or id> [--value <field>=<text> ...] [--project-path <folder>] [--host <name>] [--json] [--config <file>]   (the text the snippet would produce; nothing is pasted or run, and a field with no value is refused)",
   "     fd snippet parse <file or -> [--host <name>] [--json] [--config <file>]   (reads a YAML or JSON list of snippets, up to 1000000 characters, and saves none)",
   "     fd snippet import-history [--limit <1-200>] [--reveal] [--host <name>] [--json] [--config <file>]   (the most used commands of the shell histories; a command with a secret is hidden unless --reveal, and none is saved)",
+  "     fd snippet import-history --select <id,id,...> --confirm [--host <name>] [--json] [--config <file>]   (makes snippets of the candidates it listed, up to 200; one with a secret is skipped)",
+  "     fd snippet save <name> (--run <command> | --text <prompt>) [--tag <t> ...] [--project-path <folder>] --confirm [--host <name>] [--json] [--config <file>]   (a snippet of the host, or of the project with --project-path; one with a secret is refused)",
+  "     fd snippet remove <name or id> --confirm [--project-path <folder>] [--host <name>] [--json] [--config <file>]",
+  "     fd snippet favorite <name or id> [--off] [--project-path <folder>] [--host <name>] [--json] [--config <file>]",
+  "     fd snippet trust --project-path <folder> --hash <hash> --confirm [--host <name>] [--json] [--config <file>]   (the hash snippet list shows for the project's file: its commands may then run)",
+  "     fd snippet use <name or id> --terminal <id> [--value <field>=<text> ...] [--enter] --confirm [--project-path <folder>] [--host <name>] [--json] [--config <file>]   (types the text into the terminal; --enter also runs it)",
 ].join("\n");

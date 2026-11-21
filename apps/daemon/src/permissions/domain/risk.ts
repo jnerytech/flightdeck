@@ -5,11 +5,8 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
-import { AGENTCFG_RULES } from "./agentcfg-risk.ts";
-import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
-import { PROJECT_RULES } from "./project-risk.ts";
-import { REVIEW_RULES } from "./review-risk.ts";
+import { FLIGHTDECK_VERB_RULES } from "./flightdeck-verb-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -31,6 +28,7 @@ import {
   startsCli,
   unquoted,
 } from "./shell-call.ts";
+import { changesASnippet } from "./snippet-risk.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
 import { changesAWatch } from "./watch-risk.ts";
 
@@ -427,6 +425,11 @@ const DANGEROUS: Array<{
       "adds, changes or removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh add, edit, remove or import apply)",
   },
   {
+    when: changesASnippet,
+    reason: () =>
+      "changes what a snippet makes the host run, without the person choosing it in the app (flightdeckd snippet save, trust, use or import-history --select)",
+  },
+  {
     when: opensATerminal,
     reason: () =>
       "opens a terminal on the host, a shell that runs what is typed into it, without the person opening it in the app (flightdeckd terminal open or open-session)",
@@ -465,10 +468,7 @@ const DANGEROUS: Array<{
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
   },
-  ...PROJECT_RULES,
-  ...AGENTCFG_RULES,
-  ...BOARDSYNC_RULES,
-  ...REVIEW_RULES,
+  ...FLIGHTDECK_VERB_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>

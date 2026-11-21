@@ -32,6 +32,9 @@ export const FEATURE_APPROVAL_PLUGINS = "approval-plugins";
 /** The host checks a signed proof of the person's device before it adds a plugin marketplace with `plugins.marketplaceAdd` (#3516). */
 export const FEATURE_APPROVAL_MARKETPLACE = "approval-marketplace";
 
+/** The host checks a signed proof of the person's device before it trusts a project's snippet file with `snippets.trust` (#3647). */
+export const FEATURE_APPROVAL_SNIPPETS = "approval-snippets";
+
 /** The host checks a signed proof of the person's device before it trusts a project folder (#3453). */
 export const FEATURE_APPROVAL_TRUST = "approval-trust";
 
@@ -49,6 +52,7 @@ export const PROOF_COMMANDS = [
   "plugins.install",
   "plugins.update",
   "plugins.marketplaceAdd",
+  "snippets.trust",
 ] as const;
 export type ProofCommand = (typeof PROOF_COMMANDS)[number];
 

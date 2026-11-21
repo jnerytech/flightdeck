@@ -16,7 +16,9 @@ versioned `.flightdeck/snippets.yaml`, or **Global (this app)** for the ones kep
   environment variable for it, whose vault secret you choose.
 - The versioned file is shared with the repository. Until you **Trust the file**, its commands
   only paste, they do not run; changing the file takes the trust away. Entries the app cannot read
-  are listed with the reason.
+  are listed with the reason. With a device enrolled (see Approvals), trusting the file asks that
+  device to confirm the folder and the version of the file: the host trusts that file only as it was
+  when you confirmed. `fd snippet trust` from a terminal is refused on such a host: confirm it in the app.
 - **Import from the shell history** lists the commands of the host's bash, zsh and PowerShell
   histories, most used first (read only). A line with a token, a key, a password or a value of the
   vault is hidden and cannot be imported; **Reveal hidden lines** shows only the ones the patterns
@@ -50,6 +52,9 @@ fd snippet parse snippets.yaml
 cat snippets.yaml | fd snippet parse - --json
 fd snippet import-history --limit 20
 fd snippet import-history --reveal --json
+fd snippet save deploy --run "git push origin {{branch}}" --tag ops --confirm
+fd snippet use deploy --terminal t7 --value branch=dev --confirm
+fd snippet trust --project-path /home/pi/app --hash 0123abcd --confirm
 ```
 
 - `render <name or id>` prints the text the snippet would produce, with each `--value field=text` filled in. It pastes and
@@ -60,5 +65,18 @@ fd snippet import-history --reveal --json
   with no snippet at all exits `1`. A text over 1000000 characters is refused before it is sent.
 - `import-history` lists the most used commands of the host's shell histories (`--limit` 1 to 200). A line with a
   secret shows what was found, never the value, and cannot be imported; `--reveal` shows only the commands the scan
-  hid for a reason it can name. It saves nothing: importing the lines is a later verb.
+  hid for a reason it can name. Without `--select` it saves nothing; `--select <id,id,...>` (up to 200, with `--confirm`) makes snippets of the candidates it listed and prints `imported <name>  <type>` or `skipped <id>  <reason>` for each. A line with a secret is skipped.
+- `save <name> --run <command>` or `--text <prompt>` (exactly one) saves a snippet for the host, or for the project when
+  `--project-path` is given, and prints `saved <name>  <type>  <id>`. `--tag` is repeatable. The daemon refuses a
+  command or text that holds a secret, with its reason and exit `1`.
+- `remove <name or id>` deletes the snippet. With `--project-path`, a name that both a host snippet and a project snippet have is refused with their ids: give the id. `favorite <name or id>` marks it, and `--off` clears the mark; it needs no
+  `--confirm`.
+- `trust --project-path <folder> --hash <hash>` trusts the content of that project's versioned file, by the hash
+  `snippet list` showed: its commands may then be run. If the file changed since, the daemon refuses.
+- `use <name or id> --terminal <id>` types the text into that terminal, and `--enter` also presses Enter, which runs it.
+  A snippet of a project file that is not trusted is refused. It prints `typed into <id>` or `ran in <id>` and the text.
+- `save`, `remove`, `trust` and `use` need `--confirm`, and so does `import-history --select`. A session that runs
+  `save`, `trust`, `use` or `import-history --select` is rated high risk, because what they save or type is what runs on
+  the host. When no answer comes back
+  (exit `2`), a snippet may or may not have changed: run `snippet list` before you run it again.
 - `--host <name>` and `--json` work as everywhere. `list` and `get` keep their own raw output.

@@ -17,6 +17,7 @@ import { exitWhenClosed } from "./domain/exit.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
 import { reviewCliArgs } from "./domain/review-args.ts";
+import { runenvCliArgs } from "./domain/runenv-args.ts";
 import { snippetCliArgs } from "./domain/snippet-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
@@ -24,6 +25,7 @@ import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import type { SetupCommandDeps } from "./setup.ts";
+import { watchStop } from "./watch-stop.ts";
 
 /**
  * The commands of `flightdeckd` that are not the daemon (issue #1593): what each prints and does.
@@ -89,18 +91,6 @@ async function localConfig(args: CliArgs) {
   }
 }
 
-/**
- * A `watch` runs until Ctrl-C (or a stop of the process) and writes as the changes come. Only the
- * stream listens: elsewhere Ctrl-C keeps its default, which ends the process.
- */
-function watchStop(args: CliArgs, deps: CliDeps): AbortController {
-  const stop = new AbortController();
-  if (args.action === "watch" || args.action === "follow")
-    for (const signal of ["SIGINT", "SIGTERM"] as const)
-      deps.onSignal(signal, async () => stop.abort());
-  return stop;
-}
-
 /** Prints what a command that asks the local daemon returned, and gives its exit code. */
 const reported = (deps: CliDeps, result: CliResult, asJson = false): Promise<number> =>
   settled(() => {
@@ -135,7 +125,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -608,6 +598,17 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const stop = watchStop(args, deps);
     return asking(args, deps, (config, remote) =>
       runWatchCli(watchCliArgs(args), config, {
+        ...(remote ? { remote } : {}),
+        signal: stop.signal,
+        write: (line) => deps.log.log(line),
+      }),
+    );
+  },
+  runenv: async (args, deps) => {
+    const { runRunenvCli } = await import("../runenv/index.ts");
+    const stop = watchStop(args, deps);
+    return asking(args, deps, (config, remote) =>
+      runRunenvCli(runenvCliArgs(args), config, {
         ...(remote ? { remote } : {}),
         signal: stop.signal,
         write: (line) => deps.log.log(line),

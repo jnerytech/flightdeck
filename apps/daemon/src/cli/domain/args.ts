@@ -21,8 +21,9 @@ import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { REVIEW_FLAGS, readReview, reviewProblem } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
+import { readRunenv } from "./runenv-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
-import { readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
+import { OFF_FLAG, readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import {
@@ -336,6 +337,7 @@ const HANDLERS: Record<string, Handler> = {
   watch: readWatch,
   boardsync: readBoardsync,
   review: readReview,
+  runenv: readRunenv,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
   requests: (args) => {
@@ -565,6 +567,7 @@ const HANDLERS: Record<string, Handler> = {
   ...WATCH_FLAGS,
   ...BOARDSYNC_FLAGS,
   ...REVIEW_FLAGS,
+  "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   "--project": setValue((args, v) => {

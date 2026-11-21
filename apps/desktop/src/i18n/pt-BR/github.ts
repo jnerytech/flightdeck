@@ -67,7 +67,7 @@ export const github = {
     updateLeftOut: "Ficam de fora: {items}.",
     refused: "{title}: {reason}",
     noHosts: "Nenhum host está online.",
-    watchOff: "Vigiar e consertar está desligado",
+    watchOff: "Vigiar e consertar está desligado: ligue no card",
     conflict: "Em conflito com a base",
     mergeClean: "Sem conflitos",
     mergeBlocked: "Merge bloqueado",
@@ -78,6 +78,7 @@ export const github = {
     conflictHint:
       "Este PR conflita com a base: atualize a branch com a base e depois faça o merge.",
     heldHint: "O GitHub pode recusar este merge: {why}.",
+    checksFailingHint: "Os checks estão falhando: o merge fica desligado até passarem.",
     heldWhy: {
       blocked: "as regras da branch o seguram",
       changes: "pediram mudanças",

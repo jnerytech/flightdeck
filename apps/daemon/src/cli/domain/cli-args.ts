@@ -51,6 +51,7 @@ export interface CliArgs {
     | "watch"
     | "boardsync"
     | "review"
+    | "runenv"
     | "requests"
     | "send"
     | "approve"
@@ -78,6 +79,7 @@ export interface CliArgs {
     | "new"
     | "move"
     | "update"
+    | "config"
     | "complete"
     | "delete"
     | "discard"
@@ -127,6 +129,8 @@ export interface CliArgs {
     | "interrupted"
     | "import-preview"
     | "import-history"
+    | "favorite"
+    | "use"
     | "render"
     | "parse"
     | "trace"
@@ -228,11 +232,12 @@ export interface CliArgs {
   reviewTarget?: string;
   /** `review update|remove <comment>`: the comment's id. */
   reviewComment?: string;
-  /** `review add --path <file>`: the file the comment is on, as the diff names it. */
   /** `review add --side new|old`: the side of the diff; `new` when absent. */
   reviewSide?: "new" | "old";
   /** `review add --lines <start>[-<end>]`: the lines the comment covers. */
   reviewLines?: { start: number; end: number };
+  /** `runenv config <project>` or `runenv get <card>`: the operand. */
+  runenvTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
   boardsyncTarget?: string;
   /** `boardsync link <project> <board>`: the board's id. */
@@ -366,6 +371,18 @@ export interface CliArgs {
   snippetValues?: Record<string, string>;
   /** `snippet import-history --reveal`: show the commands the secret scan hid. */
   snippetReveal?: boolean;
+  /** `snippet save --run <command>`: a command snippet. */
+  snippetRun?: string;
+  /** `snippet save --text <prompt>`: a prompt snippet. */
+  snippetText?: string;
+  /** `snippet import-history --select <id,id,...>`: the candidates to make snippets. */
+  snippetSelect?: string[];
+  /** `snippet use --terminal <id>`: the terminal the command is typed into. */
+  snippetTerminal?: string;
+  /** `snippet use --enter`: also press Enter, which runs the command. */
+  snippetEnter?: boolean;
+  /** `snippet favorite --off`: clear the mark. */
+  snippetOff?: boolean;
   /** `action run ... --param k=v`, repeatable. */
   params?: Record<string, string>;
   /** `service ... --dry-run`: print, change nothing. */

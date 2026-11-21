@@ -460,6 +460,10 @@ export const OPTIONS_WITH_VALUE = [
   "--purpose",
   "--action",
   "--tag",
+  "--run",
+  "--text",
+  "--select",
+  "--terminal",
   "--value",
   "--risk",
   "--approval",
@@ -637,6 +641,7 @@ const VERB_NOUNS = new Set([
   "agentcfg",
   "ssh",
   "watch",
+  "snippet",
   "boardsync",
   "review",
 ]);
