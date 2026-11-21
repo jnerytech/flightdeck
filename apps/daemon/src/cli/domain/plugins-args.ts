@@ -79,7 +79,14 @@ const ACTIONS = [
   "marketplace-update",
 ] as const;
 /** The verbs whose next word is the plugin, always. */
-const PLUGIN_OPERAND = ["detail", "preview-update", "update", "uninstall", "pin", "unpin"];
+const PLUGIN_OPERAND = new Set<string>([
+  "detail",
+  "preview-update",
+  "update",
+  "uninstall",
+  "pin",
+  "unpin",
+]);
 
 /** `plugins <verb> ...`: the plugin, source or name the verb names; a preview or an install may give `--dir` instead of a plugin. */
 export function readPlugins(args: CliArgs, reader: ArgReader): void {
@@ -87,7 +94,7 @@ export function readPlugins(args: CliArgs, reader: ArgReader): void {
   const action = subAction(reader, ACTIONS, "invalid plugins action");
   args.action = action;
   const optional = reader.peek() !== undefined && !(reader.peek() ?? "").startsWith("--");
-  if (PLUGIN_OPERAND.includes(action)) args.plugin = operand(reader, "the plugin");
+  if (PLUGIN_OPERAND.has(action)) args.plugin = operand(reader, "the plugin");
   else if ((action === "preview" || action === "install") && optional)
     args.plugin = operand(reader, "the plugin");
   else if (action === "marketplace-add")

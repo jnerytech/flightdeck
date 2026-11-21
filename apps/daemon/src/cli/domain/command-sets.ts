@@ -13,6 +13,6 @@ export const HOST_COMMANDS =
 
 export function refuseOutside(flag: string, commands: readonly string[], command: string): void {
   if (commands.includes(command)) return;
-  const list = `${commands.slice(0, -1).join(", ")} and ${commands[commands.length - 1]}`;
+  const list = `${commands.slice(0, -1).join(", ")} and ${commands.at(-1)}`;
   throw new Error(`${flag}: this flag only applies to flightdeckd ${list}\n${USAGE}`);
 }

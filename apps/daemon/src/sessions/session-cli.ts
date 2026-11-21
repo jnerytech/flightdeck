@@ -18,7 +18,7 @@ import { ACT_UNSURE, performAct } from "./session-act-cli.ts";
 import { performStart, START_UNSURE } from "./session-start-cli.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
-const READS = ["interrupted", "summary", "files"];
+const READS = new Set<string>(["interrupted", "summary", "files"]);
 
 export function runSessionCli(
   args: SessionCliArgs,
@@ -34,7 +34,7 @@ export function runSessionCli(
     unsure: starts ? START_UNSURE : ACT_UNSURE,
     perform: async (daemon, note) => {
       if (starts) return performStart(daemon, note, args);
-      if (!READS.includes(args.action)) return performAct(daemon, note, args);
+      if (!READS.has(args.action)) return performAct(daemon, note, args);
       if (args.action === "interrupted") {
         const result = await daemon.call("session.interrupted", {});
         return args.json ? json(result) : said(...interruptedLines(result.sessions));

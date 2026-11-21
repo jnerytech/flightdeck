@@ -50,7 +50,7 @@ const ACTIONS = [
 ] as const;
 
 /** The verbs that name a project rather than a folder. */
-const BY_REFERENCE = ["detect-provider", "update"];
+const BY_REFERENCE = new Set<string>(["detect-provider", "update"]);
 
 /**
  * `project <verb> <words>...`: every word up to the next flag is an operand; what each is depends on the verb
@@ -65,7 +65,7 @@ export function readProject(args: CliArgs, reader: ArgReader): void {
     words.push(reader.current() ?? "");
   }
   args.projectWords = words;
-  if (BY_REFERENCE.includes(args.action)) {
+  if (BY_REFERENCE.has(args.action)) {
     if (words[0] !== undefined) args.projectRef = words[0];
     return;
   }
@@ -167,7 +167,7 @@ const SHARED_FLAGS = ["--name", "--confirm"];
 function operandProblem(args: ProjectArgs): string | undefined {
   const verb = `project ${args.action}`;
   const words = args.projectWords ?? [];
-  if (BY_REFERENCE.includes(args.action ?? "")) {
+  if (BY_REFERENCE.has(args.action ?? "")) {
     if (words.length === 0) return `${verb}: missing the project (a name or id)`;
     if (words.length > 1) return `${verb}: give one project, got ${words.length}`;
     return undefined;
@@ -247,13 +247,12 @@ export function projectProblem(args: ProjectArgs): string | undefined {
   if (preview !== undefined) return preview;
   const written = writeProblem(args);
   if (written !== undefined) return written;
-  if (args.personaName !== undefined && args.personaName.trim() === "")
-    return "--name: the project's name is blank";
+  if (args.personaName?.trim() === "") return "--name: the project's name is blank";
   if (args.action === "update" && Object.keys(projectFields(args)).length === 0)
     return "project update: nothing to change; give at least one of --name, --base-branch, --pr-provider, --setup-script, --prompt-template, --auto-approve, --default-hours, --persona-subagents";
   if (
     args.host !== undefined &&
-    !BY_REFERENCE.includes(args.action ?? "") &&
+    !BY_REFERENCE.has(args.action ?? "") &&
     (args.projectPaths ?? []).some((path) => !posix.isAbsolute(path) && !win32.isAbsolute(path))
   )
     return "project: on another host the folder must be an absolute path (it is read there, not here)";
@@ -265,7 +264,7 @@ const projectFields = (
   args: Pick<ProjectArgs, "projectFields" | "personaName">,
 ): ProjectFields => ({
   ...(args.personaName === undefined ? {} : { name: args.personaName }),
-  ...(args.projectFields ?? {}),
+  ...args.projectFields,
 });
 /** What the person typed for `project`, as `runProjectCli` takes it: the parser checked the folders and the parts. */
 export function projectCliArgs(args: CliArgs): ProjectCliArgs {
