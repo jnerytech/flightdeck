@@ -205,7 +205,7 @@ describe("flightdeckd mcp save (issue #3616)", () => {
       { name: "c", command: "   " },
       { name: "d", url: "not a url" },
     ];
-    const codes: number[] = [];
+    const codes: (number | null)[] = [];
     for (const shape of shapes)
       codes.push(
         (await flightdeckd(["mcp", "save", "api", serverFile(shape), "--confirm"], daemon.port))
