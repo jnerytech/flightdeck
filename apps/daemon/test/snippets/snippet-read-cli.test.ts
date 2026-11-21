@@ -263,6 +263,24 @@ describe("flightdeckd snippet import-history (issue #3615)", () => {
     expect(callsOf(daemon, "snippets.importHistory")).toEqual([{ limit: 20, reveal: true }]);
   });
 
+  test("a history that was read but holds nothing to import is not reported as a missing one", async () => {
+    const read = {
+      candidates: [],
+      sources: [
+        { shell: "bash", found: true },
+        { shell: "zsh", found: false },
+      ],
+      created: [],
+      skipped: [],
+    };
+    const daemon = fakeDaemon({ "snippets.importHistory": () => read });
+    const run = await flightdeckd(["snippet", "import-history"], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({
+      code: 0,
+      out: ["no commands to import from the bash history"],
+    });
+  });
+
   test("with no history it says so, and --json prints an empty list", async () => {
     const none = {
       candidates: [],
@@ -380,6 +398,14 @@ describe("the arguments of snippet (issue #3615)", () => {
         "--json: this flag only applies to flightdeckd snippet render",
       ],
       [["snippet", "import-history", "--limit", "201"], "--limit: at most 200"],
+      [
+        ["snippet", "import-history", "--project-path", "/srv"],
+        "--project-path: this flag only applies to flightdeckd snippet list, get and render",
+      ],
+      [
+        ["snippet", "parse", "f", "--project-path", "/srv"],
+        "--project-path: this flag only applies to flightdeckd snippet list, get and render",
+      ],
     ] as const)
       expect(JSON.stringify(parsed([...argv]))).toContain(why);
   });
