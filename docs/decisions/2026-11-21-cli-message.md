@@ -24,7 +24,16 @@ slice, and the four app-only rows get their reasons there.
   With `--json` it prints one JSON line per frame, the frame as the daemon pushed it. Exit is `0` after Ctrl-C and `2`
   when the daemon cannot be reached or drops the stream.
 - `rules` prints the policy in force as one JSON line and the pairs a loop paused (`none` when there are none).
-- `--json` and `--host` apply to these three verbs only. The verbs of a session's tools (`send`, `read`, `list`, `idle`,
+- `--json` and `--host` apply to these verbs only. The verbs of a session's tools (`send`, `read`, `list`, `idle`,
   `team`) keep their identity-based behaviour and refuse both flags.
-- The three verbs only read, so they get no risk rating. The rules of a session's shell skip `--team`, `--with-host` and
+- `rules-set --policy-file <path|-> [--unpause <pair>]... --confirm` (slice 2) sends `messaging.rules.set`, reading the
+  policy from a JSON object file or standard input, and prints what `rules` prints. It requires `--confirm`, as the app
+  confirms the change. A refused policy exits `1` with the daemon's reasons and changes nothing. A silent daemon exits
+  `2` and says the rules may or may not have changed. `--json` prints the daemon's answer (`policy`, `paused`).
+- `rules-set` is rated high for a session's shell (`permissions/domain/message-risk.ts`): a typed `--confirm` is not the
+  person, and a session could open a path to another session or free a pair a loop guard paused. `message` joined the
+  verb nouns whose verb the shell may not hide (`fd message $V`), and `--policy-file` and `--unpause` the options with a value.
+- `--confirm` now belongs to `message rules-set` alone: `message send ... --confirm` is refused by the `message` parser with that
+  owner named, where the generic `card` check refused it before.
+- The history, watch and rules verbs only read, so they get no risk rating. The rules of a session's shell skip `--team`, `--with-host` and
   `--status` as options with a value, as they do for the others.

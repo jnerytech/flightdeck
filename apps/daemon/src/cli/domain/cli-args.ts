@@ -133,6 +133,7 @@ export interface CliArgs {
     | "decisions"
     | "report"
     | "rules"
+    | "rules-set"
     | "preview"
     | "interrupted"
     | "import-preview"
@@ -322,6 +323,8 @@ export interface CliArgs {
   messageTeam?: string;
   withHost?: string;
   messageStatus?: MessageStatus;
+  policyFile?: string;
+  unpause?: string[];
   /** `team show <team>`. */
   teamId?: string;
   /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */

@@ -1,5 +1,5 @@
 /**
- * Issue #3622: what `flightdeckd message history|watch|rules` say, as pure rules over the daemon's answers.
+ * Issue #3622: what `flightdeckd message history|watch|rules|rules-set` say, as pure rules over the daemon's answers.
  * The daemon calls and the exit codes stay in `messaging/message-admin-cli.ts`. A message is text a session
  * wrote: it prints as one plain line, never as markup, and the terminal scrub of the runner does the rest.
  */
@@ -24,7 +24,11 @@ export interface MessageFilters {
 }
 
 export interface MessageAdminCliArgs extends MessageFilters {
-  action: "history" | "watch" | "rules";
+  action: "history" | "watch" | "rules" | "rules-set";
+  /** `rules-set`: the JSON file with the new policy, or `-` for standard input. */
+  policyFile?: string;
+  /** `rules-set`: the paused pairs to free. */
+  unpause?: string[];
   /** `--json`: the daemon's own answer, for a script. */
   json?: boolean;
 }
