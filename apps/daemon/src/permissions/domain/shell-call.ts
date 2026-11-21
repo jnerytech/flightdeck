@@ -101,7 +101,14 @@ const opened = (word: string) => {
   }
   return rest;
 };
-const closed = (word: string) => (word === "{}" ? word : word.replace(/[)}`]+$/, ""));
+const CLOSERS = ")}`";
+/** The word without the closers at its end; a loop from the end, since a pattern for them backtracks over a long run (#3665). */
+const closed = (word: string) => {
+  if (word === "{}") return word;
+  let end = word.length;
+  while (end > 0 && CLOSERS.includes(word[end - 1] as string)) end--;
+  return word.slice(0, end);
+};
 
 /** The index of the word that closes the quote a word at `at` leaves open (`X="a b"`, `-d ' '`), or `at` itself. */
 function endOfQuote(words: string[], at: number): number {
