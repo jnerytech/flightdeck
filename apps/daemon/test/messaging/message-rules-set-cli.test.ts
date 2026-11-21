@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { runMessageAdminCli } from "../../src/messaging/message-admin-cli.ts";
-import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { CLOSE, config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
 import { notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
 setDefaultTimeout(20_000);
@@ -107,12 +107,11 @@ describe("flightdeckd message rules-set (issue #3622)", () => {
     expect(daemon.calls.filter((c) => c.type === "messaging.rules.set")).toEqual([]);
   });
 
-  test("a daemon that does not answer exits 2 and says the rules may or may not have changed", async () => {
-    const daemon = fakeDaemon({ "messaging.rules.set": () => ({}) });
+  test("a connection that closes after the write was sent exits 2 and says the rules may or may not have changed", async () => {
+    const daemon = fakeDaemon({ "messaging.rules.set": () => CLOSE });
     const result = await runMessageAdminCli(
       { action: "rules-set", policyFile: file(JSON.stringify(POLICY)) },
       config(daemon.port),
-      { timeoutMs: 300 },
     );
     expect(result.code).toBe(2);
     expect(text(result)).toContain("the rules may or may not have changed");
