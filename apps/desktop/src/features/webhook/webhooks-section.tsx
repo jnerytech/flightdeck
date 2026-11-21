@@ -160,8 +160,9 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
       refresh();
       return;
     }
-    // A form that was editing this webhook goes back to an empty Add form.
-    if (draft.id === target.id) setDraft(EMPTY);
+    // A form that was editing this webhook goes back to an empty Add form, without its save error.
+    setDraft((current) => (current.id === target.id ? EMPTY : current));
+    setError(null);
     // The next row's first button, the one before it for the last row, else the Add form.
     focusAfter.current = (section) => {
       const rows = section.querySelectorAll<HTMLElement>("[data-webhook]");
