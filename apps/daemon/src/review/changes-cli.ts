@@ -53,8 +53,8 @@ export function runChangesCli(
         return streamFrames({
           daemon,
           flow,
-          signal: options.signal ?? new AbortController().signal,
-          write: options.write ?? (() => undefined),
+          signal: options.signal,
+          write: options.write,
           open: () => daemon.call("changes.watch", { target }),
           type: "changes.updated",
           line: (frame) =>
