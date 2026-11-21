@@ -78,10 +78,12 @@ fd vault decisions [<secret>] [--days <1-365>] [--limit <1-1000>] [--json]
 fd vault report [--days <1-365>] [--csv] [--json]
 fd vault rules <secret> [--json]
 fd vault rules preview <secret> --requester <you|claude|automation|workflow> --purpose <ssh|action|run_with_secret> [--action <name>] [--host <h>] [--project <p>] [--session <s>] [--tag <t>]... [--risk <low|medium|high>] [--approval <always|never|first-per-session>] [--at <time>] [--json]
+fd vault watch [--json]
+fd vault deny <requestId> [--json]
 ```
 
-The read side of the vault, as the Secrets screen shows it. None of these prints a secret value, and
-none changes anything: handing a secret over and using it stay in the app.
+The vault, as the Secrets screen shows it. None of these prints a secret value. Only `deny` changes
+anything, and it only refuses: handing a secret over and using it stay in the app.
 
 - **`decisions [<secret>]`:** one line per decision, newest first as the daemon sorts them: time, secret,
   requester, purpose (and the action) on a host, `decision/outcome` with who approved it, and the reason.
@@ -94,5 +96,14 @@ none changes anything: handing a secret over and using it stay in the app.
   or `[limit reached]` when they apply. `--requester` and `--purpose` are needed; `--at` takes an ISO date and
   time with a zone, such as `2026-11-20T03:00:00Z` (now by default). It writes nothing to the audit. A secret named
   `preview` cannot be read with `rules <secret>`.
+- **`watch`:** each secret request and each use of a delivered secret, as it comes, until Ctrl-C. A request
+  line is `request <id>`, the secret, who asks, the purpose (and the action) on a host, what the rules decided
+  (`ask`, or `allow by rule <id>`) and why, with `[once per session]` or `[approval must be held 2 s]`, and
+  `runs: <command>` for `run_with_secret`. A use line is `used`, the secret, who, what for and when.
+  `--json` writes one frame per line. Alerts are not shown, and no parameter or value ever is.
+- **`deny <requestId>`:** refuses a request that waits for you, so the run that waits for it fails at once.
+  The id comes from `watch`. It says `denied <id>` (exit `0`), or exit `1` when no request waits under that id
+  (answered, expired or never there): it never says "denied" for one it did not refuse. A host from before this
+  answer existed is taken at its word.
 
 Exit codes are the same as the other commands: `0` done, `1` refused, `2` no daemon.

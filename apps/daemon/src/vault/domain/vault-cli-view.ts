@@ -6,6 +6,8 @@ import type {
   VaultDecisionInfo,
   VaultReportRow,
   VaultRequester,
+  VaultRequestFrame,
+  VaultUsed,
   VaultVerdict,
 } from "@flightdeck/protocol";
 
@@ -17,6 +19,8 @@ export type VaultCliArgs =
   | (Printed & { action: "decisions"; secretId?: string; days?: number; limit?: number })
   | (Printed & { action: "report"; days?: number; csv?: boolean })
   | (Printed & { action: "rules"; secretId: string })
+  | (Printed & { action: "watch" })
+  | (Printed & { action: "deny"; requestId: string })
   | (Printed & {
       action: "preview";
       secretId: string;
@@ -63,4 +67,36 @@ export function verdictLine(v: VaultVerdict): string {
     v.limited ? " [limit reached]" : "",
   ].join("");
   return `${v.decision} ${by}: ${v.reason}${notes}`;
+}
+
+/** The line `vault watch` prints for a use that asks, or is let through by a rule, and waits for the app. */
+export function requestLine(frame: VaultRequestFrame): string {
+  const action = frame.action ? ` ${frame.action}` : "";
+  const where = frame.host ? ` on ${frame.host}` : "";
+  const parts = [
+    `request ${frame.requestId}`,
+    frame.secretId,
+    frame.requester,
+    `${frame.purpose}${action}${where}`,
+  ];
+  if (frame.decision) parts.push(requestVerdict(frame));
+  if (frame.command) parts.push(`runs: ${frame.command}`);
+  return parts.join("  ");
+}
+
+/** What the rules decided for a request, and why, with the notes the app shows beside it. */
+function requestVerdict(frame: VaultRequestFrame): string {
+  const by = frame.ruleId ? ` by rule ${frame.ruleId}` : "";
+  const why = frame.reason ? `: ${frame.reason}` : "";
+  const notes = [
+    frame.needsHold ? "[approval must be held 2 s]" : "",
+    frame.once ? "[once per session]" : "",
+  ].filter(Boolean);
+  return [`${frame.decision}${by}${why}`, ...(notes.length ? [notes.join(" ")] : [])].join("  ");
+}
+
+/** The line `vault watch` prints for a delivered secret that was used. It never holds the value. */
+export function usedLine(frame: VaultUsed): string {
+  const use = frame.action ? `${frame.purpose} ${frame.action}` : frame.purpose;
+  return `used  ${frame.secretId}  ${frame.requester}  ${use}  ${frame.at}`;
 }

@@ -81,13 +81,14 @@ export function readVault(args: CliArgs, reader: ArgReader): void {
   args.command = "vault";
   const action = subAction(
     reader,
-    ["decisions", "report", "rules"] as const,
+    ["decisions", "report", "rules", "watch", "deny"] as const,
     "invalid vault action",
   );
   args.action = action;
   const word = reader.peek();
   if (action === "decisions" && word !== undefined && !word.startsWith("--"))
     args.secretId = operand(reader, "the secret");
+  if (action === "deny") args.requestId = operand(reader, "the request");
   if (action === "rules") {
     // `rules preview <secret>` asks about a use of it.
     if (word === "preview") {
@@ -112,6 +113,7 @@ export function atTime(value: string): number {
 export function vaultCliArgs(args: CliArgs): VaultCliArgs {
   const typed: Record<string, unknown> = {
     secretId: args.secretId,
+    requestId: args.requestId,
     days: args.days,
     limit: args.limit,
     csv: args.csv,
