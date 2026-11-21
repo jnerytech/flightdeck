@@ -124,4 +124,25 @@ describe("risk of a write to a file the host or a tool runs (#3614)", () => {
     expect(shell("echo x > out.txt", cwd).level).toBe("medium");
     expect(shell("echo x > .git/hooks/x", cwd).level).toBe("high");
   });
+
+  test("a redirect target spelled with an escape or quotes is judged by the file it names", () => {
+    const held = [
+      "echo x > .g\\it/hooks/pre-commit",
+      "echo x > pack\\age.json",
+      "echo x > .clau\\de/settings.json",
+      'echo x > ".git"/hooks/pre-commit',
+      "echo x > '.git/hooks/pre-commit'",
+      "echo x >.git/hooks/pre-commit",
+    ];
+    const missed = held.filter((command) => shell(command).level !== "high");
+    expect(missed).toEqual([]);
+  });
+
+  test("a path is read from the deepest root that holds it", () => {
+    const nested = resolve("/casa/u/.claude/worktrees/proj2");
+    const roots = new RiskClassifier({ allowedRoots: [resolve("/casa/u"), nested], home: HOME });
+    const call = (path: string) => roots.classify("Write", { file_path: path }, CWD).level;
+    expect(call(join(nested, "src/a.ts"))).toBe("medium");
+    expect(call(join(nested, ".git/hooks/x"))).toBe("high");
+  });
 });
