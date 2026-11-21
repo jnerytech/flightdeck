@@ -499,6 +499,7 @@ export const OPTIONS_WITH_VALUE = [
   "--max-runs",
   "--external-authors",
   "--definition-file",
+  "--secret-ids",
   "--digest",
   "--branch",
   "--remote",
@@ -644,7 +645,7 @@ export function shellReadings(args: string[]): string[][] {
 
 /** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
 export const VERB_NOUNS = new Set(
-  "card history approvers persona team quota budget costs session rules autoapprove plugins project agentcfg ssh watch snippet boardsync review memory runenv automation message mcp changes file rewind bg".split(
+  "card history approvers persona team quota budget costs session rules autoapprove plugins project agentcfg ssh watch snippet boardsync review memory runenv automation message mcp changes file rewind action bg".split(
     " ",
   ),
 );
