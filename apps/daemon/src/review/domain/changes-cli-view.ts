@@ -4,7 +4,13 @@
  * them. The text lists one line for each file, with the digest a later `commit` repeats, and never the lines
  * of a diff: a file that may hold a credential is listed with no lines by the daemon, and it stays so here.
  */
-import type { ChangesResult, DiffFile, FileSession } from "@flightdeck/protocol";
+import type {
+  ChangesCommitted,
+  ChangesPrOpened,
+  ChangesResult,
+  DiffFile,
+  FileSession,
+} from "@flightdeck/protocol";
 
 /** The changes as the protocol returns them, with the fields an older daemon leaves out as `null`; no frame type. */
 export const changesJson = (result: ChangesResult) => ({
@@ -89,3 +95,30 @@ export function sessionsLines(path: string, sessions: FileSession[]): string[] {
     ),
   ];
 }
+
+/** What a write that lost its connection may have done: the person looks before trying again. */
+export const UNSURE = {
+  revert:
+    "; the file may or may not have been reverted: check with `changes get` before trying again",
+  "undo-revert":
+    "; the file may or may not have been restored: check with `changes get` before trying again",
+  commit:
+    "; the commit may or may not have been made: check with `changes get` before trying again",
+  pr: "; the branch may or may not have been pushed and the PR opened: check on the remote before trying again",
+};
+
+/** A revert, and the command that takes it back while the daemon still keeps the file. */
+export const revertedLines = (target: string, done: { path: string; undoUntil: string }) => [
+  `reverted ${done.path}; undo it with \`changes undo-revert ${target} ${done.path} --confirm\` until ${done.undoUntil}`,
+];
+
+export const restoredLines = (done: { path: string }) => [`restored ${done.path}`];
+
+export const committedLines = (done: ChangesCommitted) => [
+  `committed ${done.commit} on ${done.branch}, started from ${done.base ?? "a detached HEAD"}: ${plural(done.files.length, "file", "files")}`,
+  ...done.files.map((path) => `  ${path}`),
+];
+
+export const openedLines = (done: ChangesPrOpened) => [
+  `opened ${done.url} (${done.branch} into ${done.base})`,
+];
