@@ -220,7 +220,8 @@ export const automations = {
     none: "nenhum",
     loading: "Carregando workflows",
     empty: "Nenhum workflow na branch base ainda.",
-    failed: "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
+    failed: "Não deu para ler os workflows. Veja se o host está conectado.",
+    retry: "Tentar de novo",
     templates: {
       open: "Adicionar de um modelo",
       title: "Modelos de workflow",
