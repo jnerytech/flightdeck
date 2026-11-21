@@ -1,5 +1,10 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
-import type { AgentCfgItem, BoardColumn, VaultRequester } from "@flightdeck/protocol";
+import type {
+  AgentCfgItem,
+  BoardColumn,
+  MessageStatus,
+  VaultRequester,
+} from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
 import type { ProjectFields } from "../../projects/index.ts";
 import type { SessionStartOptions } from "../../sessions/index.ts";
@@ -280,6 +285,10 @@ export interface CliArgs {
   last?: number;
   /** `message team <team>`. */
   team?: string;
+  /** `message history` (#3622): `--team`, `--with-host` and `--status`; `--session`, `--days` and `--limit` are the shared fields. */
+  messageTeam?: string;
+  withHost?: string;
+  messageStatus?: MessageStatus;
   /** `team show <team>`. */
   teamId?: string;
   /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */

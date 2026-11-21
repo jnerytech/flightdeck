@@ -15,6 +15,7 @@ import { type CliArgs, USAGE } from "./domain/args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
+import { messageAdminCliArgs } from "./domain/message-args.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
 import { reviewCliArgs } from "./domain/review-args.ts";
@@ -25,6 +26,7 @@ import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
+import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 import { watchStop } from "./watch-stop.ts";
 
@@ -126,7 +128,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `mcp` (its verbs), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `mcp` (its verbs), `message` (history, watch and rules), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -382,6 +384,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     return null;
   },
   message: async (args, deps) => {
+    const admin = messageAdminCliArgs(args);
+    if (admin) return asking(args, deps, messageAdminRun(admin, deps));
     const { identityOf } = await import("../mcp/index.ts");
     const { runMessageCli } = await import("../messaging/index.ts");
     const config = await loadConfig(configPath(args));
