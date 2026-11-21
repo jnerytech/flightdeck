@@ -21,6 +21,7 @@ const WATCH_ACTIONS = [
   "set",
   "extend",
   "resolve-held",
+  "follow",
 ] as const;
 
 /** What the operand of each verb is called in a refusal. */
@@ -33,14 +34,16 @@ const OPERANDS = {
   set: "the card",
   extend: "the card",
   "resolve-held": "the card",
+  follow: "",
 } as const;
 
-/** `watch get|trace|describe|set|extend <card>`, `watch resolve-held <card> <round>`, `watch by-url <link>` or `watch settings <project>`. */
+/** `watch follow`, `watch get|trace|describe|set|extend <card>`, `watch resolve-held <card> <round>`, `watch by-url <link>` or `watch settings <project>`. */
 export function readWatch(args: CliArgs, reader: ArgReader): void {
   args.command = "watch";
   const verb = subAction(reader, WATCH_ACTIONS, "invalid watch action");
   args.action = verb;
-  args.watchTarget = operand(reader, OPERANDS[verb]);
+  // `follow` takes no operand: the stream carries every card's watch.
+  args.watchTarget = verb === "follow" ? "" : operand(reader, OPERANDS[verb]);
   if (verb === "resolve-held") args.watchRound = operand(reader, "the round");
 }
 
@@ -248,6 +251,8 @@ export function watchCliArgs(args: CliArgs): WatchCliArgs {
   const json = args.json ? { json: true as const } : {};
   const target = args.watchTarget ?? "";
   switch (args.action) {
+    case "follow":
+      return { action: "follow", target, ...json };
     case "set":
       return { action: "set", target, enabled: args.watchSwitch as boolean | null, ...json };
     case "extend":

@@ -1,7 +1,7 @@
 /**
  * Issue #3539: `flightdeckd watch`, a card's PR watch from a terminal. `get`, `trace`, `describe`, `by-url`
  * and `settings` without a patch ask the daemon for something it already keeps and change nothing:
- * `describe` makes the PR description from the card's sessions and opens nothing, `by-url` looks a link
+ * `follow` writes the watch of each card as the daemon pushes it, until Ctrl-C; `describe` makes the PR description from the card's sessions and opens nothing, `by-url` looks a link
  * up and fetches nothing. `set`, `extend`, `resolve-held` and `settings` with a patch change what the
  * watch does unattended; a daemon that does not answer one leaves its result unknown. Exit codes: 0 done,
  * 1 refused, 2 no daemon.
@@ -14,6 +14,7 @@ import {
   resolveProject,
   runOnLocalDaemon,
   said,
+  streamFrames,
 } from "../daemon-client/index.ts";
 import {
   byUrlJson,
@@ -33,7 +34,7 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 
 /** A card id, a PR link or a project (its name or its id), by the action. */
 export type WatchCliArgs = { target: string; json?: boolean } & (
-  | { action: "get" | "trace" | "describe" | "by-url" }
+  | { action: "get" | "trace" | "describe" | "by-url" | "follow" }
   | { action: "settings"; patch?: Partial<WatchSettings> }
   | { action: "set"; enabled: boolean | null }
   | { action: "extend"; rounds: number }
@@ -43,7 +44,14 @@ export type WatchCliArgs = { target: string; json?: boolean } & (
 export function runWatchCli(
   args: WatchCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
+  options: {
+    timeoutMs?: number;
+    remote?: RemoteTarget;
+    /** `follow` stops when this aborts (Ctrl-C). */
+    signal?: AbortSignal;
+    /** `follow` writes each line here as it comes. */
+    write?: (line: string) => void;
+  } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
@@ -51,7 +59,18 @@ export function runWatchCli(
     clientName: "flightdeck-watch",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
-    perform: async (daemon, note) => {
+    perform: async (daemon, note, flow) => {
+      if (args.action === "follow")
+        return streamFrames({
+          daemon,
+          flow,
+          signal: options.signal ?? new AbortController().signal,
+          write: options.write ?? (() => undefined),
+          open: () => daemon.call("watch.watch", {}),
+          type: "watch.updated",
+          line: ({ watch }) =>
+            args.json ? JSON.stringify(watchJson(watch)) : watchLines(watch).join("\n"),
+        });
       if (args.action === "set" || args.action === "extend" || args.action === "resolve-held") {
         note.wrote = true;
         const info =
