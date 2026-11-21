@@ -136,21 +136,29 @@ export class PermissionBroker {
           });
       // With the plain wording the request is announced once the host has looked at its files,
       // and only then can it be answered automatically (the answer follows the question).
-      const noted = (): Promise<string | undefined> =>
-        Promise.resolve()
-          .then(() => this.hooks.explain?.(sessionId, toolName, input))
-          .catch(() => undefined);
-      if (this.hooks.plain || this.hooks.explain) {
+      // The note is asked now and waited for only when the host has one (a shell request that saves a definition):
+      // any other request is announced on the same ticks as before, so the summaries keep their order (#3752).
+      let explaining: Promise<string> | undefined;
+      try {
+        explaining = this.hooks.explain?.(sessionId, toolName, input);
+      } catch {
+        explaining = undefined;
+      }
+      const lookedAt = (plain?: PlainInfo, note?: string) => {
+        announce(plain, note);
+        decide();
+      };
+      if (explaining) {
         const worded = this.hooks.plain
           ? this.hooks.plain(sessionId, toolName, input, risk).catch(() => undefined)
           : Promise.resolve(undefined);
-        void Promise.all([worded, noted()]).then(([plain, note]) => {
-          announce(plain, note);
-          decide();
-        });
+        void Promise.all([worded, explaining.catch(() => undefined)]).then(([plain, note]) =>
+          lookedAt(plain, note),
+        );
+      } else if (this.hooks.plain) {
+        void this.hooks.plain(sessionId, toolName, input, risk).then(lookedAt, () => lookedAt());
       } else {
-        announce();
-        decide();
+        lookedAt();
       }
     });
   }
