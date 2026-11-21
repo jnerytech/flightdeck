@@ -25,6 +25,11 @@ describe("risk rules: a crafted command line cannot stall the daemon (#3593)", (
     ["a runner followed by 16000 CLI names", "sh " + "fd ".repeat(16000)],
     ["bun start with 16000 words after it", "bun " + "start ".repeat(16000)],
     ["3000 statements that each start with a variable program", "$a fd x; ".repeat(3000)],
+    [
+      "100 lines that each chain 15 variable programs before 250 words",
+      `${`${"$a ".repeat(15)}${"w ".repeat(250)}\n`.repeat(100)}`,
+    ],
+    ["300 lines of echo with 4000 words each", `echo ${"w ".repeat(4000)}\n`.repeat(300)],
     ["find -exec, 12 deep", "find . " + "-exec find . ".repeat(12) + "-exec ls ;"],
   ];
 
@@ -42,6 +47,18 @@ describe("risk rules: a crafted command line cannot stall the daemon (#3593)", (
         "ls; ".repeat(300),
         "sh -c 'ls; ls; ls'",
         "bash -c \"sh -c 'echo hello'\"",
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a long script of many short commands is not rated unreadable", () => {
+    expect(
+      notHigh([
+        Array.from({ length: 800 }, (_, i) => `echo ${i}`).join("\n"),
+        "ls; ".repeat(800),
+        `${"echo a | ".repeat(2000)}cat`,
+        `ls ${Array.from({ length: 2000 }, (_, i) => `f${i}`).join(" ")}`,
+        `cat > f <<'EOF'\n${"text line\n".repeat(800)}EOF`,
       ]),
     ).toEqual([]);
   });
