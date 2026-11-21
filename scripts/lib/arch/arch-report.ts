@@ -21,7 +21,7 @@ export type ArchInputs = {
   /** Process launches (`Bun.spawn`) per file outside an `adapters/` folder today and in spawn-count-baseline.json (#1612); absent when not counted. */
   spawnCounts?: Record<string, number>;
   spawnBaseline?: Record<string, number>;
-  /** Daemon commands with no CLI command and no app-only reason, today and in cli-parity-baseline.json (#3428); absent when not counted. */
+  /** Daemon commands with no CLI command and no app-only reason, today and at the merge base with main (#3428, #3759); absent when not counted. */
   cliParityGaps?: { today: number; baseline: number };
   /** Source files over the size limit today and in src-size-baseline.json. */
   srcOversized: Record<string, number>;

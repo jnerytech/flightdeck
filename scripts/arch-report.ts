@@ -19,7 +19,7 @@ import {
   ratchetRows,
   shapeShares,
 } from "./lib/arch/arch-report.ts";
-import { gapsBaseline, parityCheck, protocolCommands } from "./lib/arch/cli-parity.ts";
+import { newGaps, parityCheck, protocolCommands } from "./lib/arch/cli-parity.ts";
 import { type CruiseModule, cycleFiles } from "./lib/arch/cycle-files.ts";
 import { knipCounts } from "./lib/arch/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/guards/src-size.ts";
@@ -104,14 +104,13 @@ const parity = parityCheck({
   table: read("docs/cli-parity.json"),
   cliCommands: Object.keys((await import("../apps/daemon/src/cli/commands.ts")).COMMANDS),
 });
+// The gaps the head added since the merge base (#3759): the table at the base is the baseline, so no file to rewrite.
+const addedGaps = newGaps(
+  mergeBase ? git(["show", `${mergeBase}:docs/cli-parity.json`]) : null,
+  parity.gaps,
+);
 const rows = ratchetRows({
-  cliParityGaps: {
-    today: parity.gaps.length,
-    baseline: gapsBaseline(
-      mergeBase ? git(["show", `${mergeBase}:cli-parity-baseline.json`]) : null,
-      read("cli-parity-baseline.json"),
-    ),
-  },
+  cliParityGaps: { today: parity.gaps.length, baseline: parity.gaps.length - addedGaps.length },
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
   knownHead: read(KNOWN),
   newRules: newRules(mergeBase ? git(["show", `${mergeBase}:${CONFIG}`]) : null, read(CONFIG)),
@@ -167,6 +166,10 @@ if (parity.problems.length > 0) {
   console.error(`arch-report: docs/cli-parity.json (#3428)\n${parity.problems.join("\n")}`);
   process.exit(1);
 }
+if (addedGaps.length > 0)
+  console.error(
+    `arch-report: CLI parity gaps added since the merge base with main (#3428):\n${addedGaps.join("\n")}\nGive each a CLI command (a row with "cli") or an app-only reason, in docs/cli-parity.json.`,
+  );
 if (up.length > 0) {
   console.error(`arch-report: ${up.map((r) => r.ratchet).join(", ")} above the baseline (#1610)`);
   process.exit(1);
