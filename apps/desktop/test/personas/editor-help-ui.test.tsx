@@ -170,7 +170,7 @@ describe("editor help: a refusal reads in the app's language (#3632)", () => {
     });
     await uiIdle();
     const alert = within(document.body).queryByRole("alert")?.textContent ?? "";
-    expect(/^name: de 1 a \d+ caracteres\.$/.test(alert)).toBe(true);
+    expect(alert).toBe("name: de 1 a 60 caracteres, numa linha só.");
   });
 });
 
