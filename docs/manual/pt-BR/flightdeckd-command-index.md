@@ -85,6 +85,12 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 - [fd rewind](flightdeckd-checkpoints-commands.md#fd-rewind)
 - [fd trace](flightdeckd-checkpoints-commands.md#fd-trace)
 
+## Comandos do flightdeckd: as sessões em segundo plano de um host
+
+[Ler o capítulo.](flightdeckd-bg-commands.md) Suas seções:
+
+- [fd bg](flightdeckd-bg-commands.md#fd-bg)
+
 ## Comandos do flightdeckd: os arquivos de um repositório e as pastas de um host
 
 [Ler o capítulo.](flightdeckd-file-commands.md) Suas seções:

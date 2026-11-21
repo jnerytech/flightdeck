@@ -85,6 +85,12 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 - [fd rewind](flightdeckd-checkpoints-commands.md#fd-rewind)
 - [fd trace](flightdeckd-checkpoints-commands.md#fd-trace)
 
+## flightdeckd commands: the background sessions of a host
+
+[Read the chapter.](flightdeckd-bg-commands.md) Its sections:
+
+- [fd bg](flightdeckd-bg-commands.md#fd-bg)
+
 ## flightdeckd commands: the files of a repository and the folders of a host
 
 [Read the chapter.](flightdeckd-file-commands.md) Its sections:

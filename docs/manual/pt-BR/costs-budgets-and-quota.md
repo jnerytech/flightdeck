@@ -277,7 +277,8 @@ de 5 minutos viram uma só.
 - **Projeção:** com pelo menos 3 leituras da janela atual:
   - "no ritmo atual, a janela de 5 h esgota às HH:MM";
   - ou "não esgota antes de HH:MM", quando o ritmo não chega a 100% antes do reinício.
-- **Tooltip:** as barras do topo da tela Sessões mostram a mesma projeção.
+- **Nas barras da cota:** cada barra com leitura mostra a mesma projeção como uma linha de texto abaixo do horário do reinício.
+- **Sem leituras:** até o host responder a seção diz que está carregando, e quando não há nada para mostrar ela avisa.
 - **Quem consumiu a janela:** a fatia de cada projeto no custo estimado desde o início da janela
   de 5 horas atual. É uma atribuição aproximada, porque o plano não diz quem usou a cota.
 
