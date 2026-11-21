@@ -156,7 +156,7 @@ describe("flightdeckd alert words (issue #3736)", () => {
     expect(argsOf(["alert", "list", "api", "--host", "pi", "--json"])).toMatchObject({
       command: "alert",
       action: "list",
-      project: "api",
+      alertProject: "api",
       host: "pi",
       json: true,
     });
