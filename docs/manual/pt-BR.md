@@ -165,7 +165,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [O run.yaml](pt-BR/run-environment.md#o-runyaml)
 - [Confiança](pt-BR/run-environment.md#confiança)
 - [Portas](pt-BR/run-environment.md#portas)
-- [Run e Stop](pt-BR/run-environment.md#run-e-stop)
+- [Executar e Parar](pt-BR/run-environment.md#executar-e-parar)
 - [Preview](pt-BR/run-environment.md#preview)
 
 ## Workflows

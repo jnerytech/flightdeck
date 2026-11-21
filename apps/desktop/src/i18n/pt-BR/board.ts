@@ -201,7 +201,7 @@ export const board = {
     setupLabel: "Setup",
     trust: "Confiar neste run.yaml",
     trustMessage:
-      "Confiar neste run.yaml? Os comandos dele vão rodar na worktree deste card, sem shell, sempre que você apertar Run. Se o arquivo mudar, você revisa de novo.",
+      "Confiar neste run.yaml? Os comandos dele vão rodar na worktree deste card, sem shell, sempre que você apertar Executar. Se o arquivo mudar, você revisa de novo.",
     trustConfirm: "Confiar",
     run: "Executar",
     stop: "Parar",
