@@ -26,7 +26,7 @@ import { costsProblem } from "./costs-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
-import { readKnowledge } from "./knowledge-args.ts";
+import { knowledgeFlags, knowledgeProblem, readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
 import { memoryProblem, readMemory } from "./memory-args.ts";
 import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
@@ -577,6 +577,12 @@ const HANDLERS: Record<string, Handler> = {
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   ...MESSAGE_FLAGS,
+  // `--status`, `--on` and `--off` are also `knowledge`'s: it reads them itself, the rest keep the handler above.
+  ...knowledgeFlags({
+    ...MESSAGE_FLAGS,
+    "--on": BOARDSYNC_FLAGS["--on"] as Handler,
+    "--off": OFF_FLAG,
+  }),
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -741,6 +747,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     agentcfgProblem(args) ??
     messageProblem(args) ??
     mcpProblem(args) ??
+    knowledgeProblem(args) ??
     workflowProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
