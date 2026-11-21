@@ -22,7 +22,7 @@ export function wholeFrom(flag: string, text: string, max: number): number {
 /** A share of the plan from 0 to 1 as plain decimal digits, or `off` (null); undefined when it is neither. */
 export function parseShare(text: string): number | null | undefined {
   if (text === "off") return null;
-  if (!/^(0|1)(\.\d+)?$/.test(text)) return undefined;
+  if (!/^[01](\.\d+)?$/.test(text)) return undefined;
   const share = Number(text);
   return share <= 1 ? share : undefined;
 }

@@ -24,7 +24,7 @@ export interface HistoryArgs {
 }
 
 /** The verbs that print JSON for a script (`reindex` prints a sentence). */
-const JSON_VERBS = ["list", "search", "get", "tool", "resume", "watch"];
+const JSON_VERBS = new Set(["list", "search", "get", "tool", "resume", "watch"]);
 
 /** The flags of `history`, each with the verbs that take it (`--from` is `update`'s, `--name` the persona's, `--force` the card's and `--limit` `autoapprove`'s too: only `history` is checked). */
 function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly string[]]> {
@@ -62,7 +62,7 @@ export function historyProblem(args: HistoryArgs): string | undefined {
       return `${flag}: this flag only applies to flightdeckd history ${verbs.join(", ")}`;
   }
   if (args.command !== "history") return undefined;
-  if (args.json && !JSON_VERBS.includes(args.action as string))
+  if (args.json && !JSON_VERBS.has(args.action as string))
     return "--json: this flag only applies to flightdeckd history list, search, get, tool, resume and watch";
   if (args.origin !== undefined && args.origin !== "flightdeck" && args.origin !== "external")
     return "--origin: flightdeck or external";
