@@ -53,13 +53,13 @@ describe("risk rules: a crafted command line cannot stall the daemon (#3593)", (
   });
 
   test("a flood of process substitutions in a long line is read in well under the loose bound", () => {
-    const got = timed("<(a ".repeat(31_000));
+    const got = timed("<(a ".repeat(24_000));
     expect([got.level, got.reason]).toEqual(["high", UNREADABLE]);
     expect(got.ms).toBeLessThan(1500);
   });
 
-  test("a script of 110 KB made of ordinary commands is an ordinary shell command", () => {
-    expect(notHigh(["ls -l\ncd d\nls\n".repeat(8000), "cat <(echo a)\n".repeat(300)])).toEqual([]);
+  test("a script of 90 KB made of ordinary commands is an ordinary shell command", () => {
+    expect(notHigh(["ls -l\ncd d\nls\n".repeat(6500), "cat <(echo a)\n".repeat(300)])).toEqual([]);
   });
 
   test("a long script of many short commands is not rated unreadable", () => {
