@@ -5,7 +5,7 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
-import { CONTROL_WRITE, writesControlFile } from "./control-write.ts";
+import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
@@ -730,7 +730,7 @@ export class RiskClassifier {
         !this.insideAny(target, cwd)
       ) {
         out.push(["high", "redirecionamento para fora do cwd"]);
-      } else if (writesControlFile(target, cwd, [], this.opts.home)) {
+      } else if (redirectsToControlFile(target, cwd, this.opts.home)) {
         out.push(["high", CONTROL_WRITE]);
       }
     }

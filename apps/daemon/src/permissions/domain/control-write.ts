@@ -22,6 +22,19 @@ export function writesControlFile(
 ): boolean {
   const expanded = /^~(?=$|[\\/])/.test(path) ? join(home, path.slice(1)) : path;
   const full = resolve(cwd, expanded);
-  const root = [cwd, ...roots].map((r) => resolve(r)).find((r) => isInside(r, full));
+  // The deepest root that holds the path, so a nested project is read from its own folder.
+  const root = [cwd, ...roots]
+    .map((r) => resolve(r))
+    .filter((r) => isInside(r, full))
+    .sort((a, b) => b.length - a.length)[0];
   return root !== undefined && isControl(relative(root, full));
 }
+
+/**
+ * A redirect target is one shell word, read as bash reads it (`\` escapes the next character, so
+ * `.g\it` is `.git`) and as Windows reads it (`\` separates), as `insideAny` does for the cwd.
+ */
+export const redirectsToControlFile = (target: string, cwd: string, home: string): boolean =>
+  [target, target.replaceAll("\\", "/"), target.replaceAll("\\", "")].some((reading) =>
+    writesControlFile(reading, cwd, [], home),
+  );
