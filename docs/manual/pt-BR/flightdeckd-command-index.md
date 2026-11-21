@@ -140,3 +140,10 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-resources-commands.md) Suas seções:
 
 - [fd resources](flightdeckd-resources-commands.md#fd-resources)
+
+## Comandos do flightdeckd: sessões de terminal e nomes
+
+[Ler o capítulo.](flightdeckd-external-commands.md) Suas seções:
+
+- [fd external](flightdeckd-external-commands.md#fd-external)
+- [fd names](flightdeckd-external-commands.md#fd-names)

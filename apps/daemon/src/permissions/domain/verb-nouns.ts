@@ -16,6 +16,7 @@ export const VERB_NOUNS = new Set([
   "card",
   "changes",
   "costs",
+  "external",
   "file",
   "history",
   "knowledge",

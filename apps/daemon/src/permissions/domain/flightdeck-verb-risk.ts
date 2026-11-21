@@ -4,6 +4,7 @@ import { AUTOMATION_RULES } from "./automation-risk.ts";
 import { BG_RULES } from "./bg-risk.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
 import { CHANGES_RULES } from "./changes-risk.ts";
+import { EXTERNAL_RULES } from "./external-risk.ts";
 import { FILE_RULES } from "./file-risk.ts";
 import { KNOWLEDGE_RULES } from "./knowledge-risk.ts";
 import { MCP_RULES } from "./mcp-risk.ts";
@@ -27,6 +28,7 @@ export const FLIGHTDECK_VERB_RULES = [
   ...ACTION_RULES,
   ...SNIPPET_RULES,
   ...REVIEW_RULES,
+  ...EXTERNAL_RULES,
   ...MEMORY_RULES,
   ...MCP_RULES,
   ...CHANGES_RULES,

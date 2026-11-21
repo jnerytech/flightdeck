@@ -24,6 +24,7 @@ import {
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
+import { externalProblem, readExternal, readNames, TEXT_FLAG } from "./external-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
@@ -346,6 +347,8 @@ const HANDLERS: Record<string, Handler> = {
   trace: readTrace,
   bg: readBg,
   file: readFile,
+  external: readExternal,
+  names: readNames,
   automation: readAutomation,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
@@ -583,6 +586,7 @@ const HANDLERS: Record<string, Handler> = {
   ...BG_FLAGS,
   ...FILE_FLAGS,
   "--off": OFF_FLAG,
+  "--text": TEXT_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   ...MESSAGE_FLAGS,
@@ -770,6 +774,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     checkpointsProblem(args) ??
     bgProblem(args) ??
     fileProblem(args) ??
+    externalProblem(args) ??
     actionProblem(args) ??
     automationProblem(args) ??
     projectProblem(args) ??

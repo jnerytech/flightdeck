@@ -140,3 +140,10 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 [Read the chapter.](flightdeckd-resources-commands.md) Its sections:
 
 - [fd resources](flightdeckd-resources-commands.md#fd-resources)
+
+## flightdeckd commands: terminal sessions and names
+
+[Read the chapter.](flightdeckd-external-commands.md) Its sections:
+
+- [fd external](flightdeckd-external-commands.md#fd-external)
+- [fd names](flightdeckd-external-commands.md#fd-names)

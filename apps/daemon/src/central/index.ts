@@ -7,6 +7,7 @@ export { type Central, messageExternal } from "./central.ts";
 export { startChannel } from "./channel.ts";
 export type { HooksStatus, HookTarget } from "./domain/hook-entries.ts";
 export type { ExternalSessions } from "./external.ts";
+export { type ExternalCliArgs, runExternalCli } from "./external-cli.ts";
 export { sendSessionStart } from "./hook-command.ts";
 export {
   hooksStatus,
