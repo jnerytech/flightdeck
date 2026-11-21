@@ -1,4 +1,4 @@
-import type { CostsFilter, UsageOrigin } from "@flightdeck/protocol";
+import type { CostsFilter } from "@flightdeck/protocol";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,7 @@ import { useT } from "@/i18n/context";
 import { NativeSelect, Toolbar } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { PERIODS, type Period } from "./domain/costs.ts";
-
-const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
+import { originOptions } from "./domain/origins.ts";
 
 type ScopeProps = ComponentProps<typeof ScopeMenu>;
 
@@ -95,9 +94,9 @@ export function CostsFilters(
         onChange={(e) => props.onFilter("origin", e.target.value)}
       >
         <option value="">{t("costsUi.allOrigins")}</option>
-        {ORIGINS.map((o) => (
-          <option key={o} value={o}>
-            {o}
+        {originOptions(t).map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
           </option>
         ))}
       </NativeSelect>
