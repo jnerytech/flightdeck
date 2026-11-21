@@ -289,7 +289,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
           <details>
             <summary className="cursor-pointer text-sm">{t("roiUi.settings")}</summary>
             {badNumber && (
-              <p role="alert" className="mt-2 text-destructive text-xs">
+              <p role="alert" className="text-destructive text-xs">
                 {t("roiUi.settingsPanel.error.number")}
               </p>
             )}
