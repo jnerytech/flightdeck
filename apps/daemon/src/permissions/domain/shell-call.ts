@@ -630,6 +630,7 @@ const VERB_NOUNS = new Set([
   "autoapprove",
   "plugins",
   "project",
+  "agentcfg",
   "ssh",
   "watch",
 ]);
