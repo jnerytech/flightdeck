@@ -444,6 +444,8 @@ export const OPTIONS_WITH_VALUE = [
   "--lines",
   "--template",
   "--digests",
+  "--depth",
+  "--root",
   "--limit",
   "--out",
   "--from",

@@ -230,6 +230,8 @@ export interface CliArgs {
     | "detect-provider"
     | "harness-draft"
     | "harness-export"
+    | "scan"
+    | "clone"
     | "harness-apply"
     | "harness-commit";
   /** `external message <session> --text <text>`: the Claude session id of a terminal. */
@@ -589,6 +591,10 @@ export interface CliArgs {
   /** `project harness-apply|harness-commit --digests <file> [--reformat]` (#3515). */
   projectDigests?: string;
   projectReformat?: true;
+  /** `project scan --depth <1-3>` (#3737). */
+  projectDepth?: number;
+  /** `project clone <url> --root <folder>`: an allowed folder of the host (#3737). */
+  projectRoot?: string;
   /** `project update|detect-provider <name or id>`. */
   projectRef?: string;
   /** Every word of `project <verb>` before the first flag, whichever verb takes it as what. */
