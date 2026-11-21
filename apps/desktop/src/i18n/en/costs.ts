@@ -202,6 +202,12 @@ export const costs = {
       "The key is the repository address without https:// (github.com/acme/app); with no repository, host:<id>:<folder>.",
     pickProject: "Choose a project",
     save: "Save budget",
+    done: {
+      created: "Budget created: {label}",
+      saved: "Budget saved: {label}",
+      removed: "Budget removed: {label}",
+    },
+    projectsFailed: "Could not list the projects: {reason}",
   },
   costsUi: {
     setBudget: "Set a budget",
