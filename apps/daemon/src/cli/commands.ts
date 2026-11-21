@@ -9,6 +9,7 @@ import type { ResolveDeps } from "../remote-hosts/index.ts";
 import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import { configPath } from "./config-path.ts";
+import { actionCliArgs, actionVerbCliArgs, isRawAction } from "./domain/action-args.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { automationCliArgs } from "./domain/automation-args.ts";
@@ -676,20 +677,14 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   approve: async (args, deps) => answered("allow", args, deps),
   deny: async (args, deps) => answered("deny", args, deps),
   action: async (args, deps) => {
-    const { runActionCli } = await import("../actions/index.ts");
-    const config = await loadConfig(configPath(args));
-    return printed(
-      deps,
-      await runActionCli(
-        {
-          action: args.action as "list" | "run",
-          project: args.project,
-          name: args.actionName,
-          params: args.params,
-        },
-        config,
-      ),
-    );
+    // `run` and a bare `list` are the mod's readers and print raw (#3629); the rest follow the CLI-first contract.
+    if (isRawAction(args)) {
+      const { runActionCli } = await import("../actions/index.ts");
+      const config = await loadConfig(configPath(args));
+      return printed(deps, await runActionCli(actionCliArgs(args), config));
+    }
+    const { runActionVerbCli } = await import("../actions/index.ts");
+    return askingWith(args, deps, actionVerbCliArgs, runActionVerbCli);
   },
   snippet: async (args, deps) => {
     // The new verbs follow the CLI-first rules (#3615); `list` and `get` are the mod's readers and print raw.
