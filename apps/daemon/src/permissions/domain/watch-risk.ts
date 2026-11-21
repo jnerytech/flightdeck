@@ -1,7 +1,7 @@
 import { isExpanded, runsFlightdeckWords } from "./shell-call.ts";
 
-/** The flags of `watch settings` that only choose the daemon or the output, and change nothing. */
-const READING_FLAGS = ["--json", "--host", "--config"];
+/** The flags that only choose the daemon or the output, and change nothing (`watch settings`, `boardsync set-push`). */
+export const READING_FLAGS = ["--json", "--host", "--config"];
 
 /**
  * Whether the only change the words ask for is `--disable`: turning the watch off grants a session nothing.

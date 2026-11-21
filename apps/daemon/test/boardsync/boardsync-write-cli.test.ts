@@ -61,7 +61,8 @@ const OPEN: Handlers = {
     maxParallelRuns: 2,
   }),
   "boardsync.link": () => LINKED,
-  "boardsync.unlink": () => undefined,
+  // the fake daemon reads `undefined` as no answer; the real ack carries no data
+  "boardsync.unlink": () => ({}),
   "boardsync.setMap": () => LINKED,
   "boardsync.setPush": () => ({ ...LINKED, push: true }),
   "boardsync.syncNow": () => ({ status: LINKED, report: REPORT }),

@@ -1,5 +1,5 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
-import type { VaultRequester } from "@flightdeck/protocol";
+import type { BoardColumn, VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
 import type { ProjectFields } from "../../projects/index.ts";
 import type { SessionStartOptions } from "../../sessions/index.ts";
@@ -215,7 +215,7 @@ export interface CliArgs {
   /** `boardsync link <project> <board>`: the board's id. */
   boardsyncBoard?: string;
   /** `boardsync link|set-map --map <status>=<column>`, each pair once. */
-  boardsyncMap?: Record<string, string>;
+  boardsyncMap?: Record<string, BoardColumn>;
   /** `boardsync set-push --on|--off`. */
   boardsyncPush?: boolean;
   /** `watch resolve-held <card> <round>`: the round. */

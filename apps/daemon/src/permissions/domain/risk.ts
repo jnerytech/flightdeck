@@ -5,6 +5,7 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
+import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
@@ -462,6 +463,7 @@ const DANGEROUS: Array<{
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
   },
   ...PROJECT_RULES,
+  ...BOARDSYNC_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>
