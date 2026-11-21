@@ -49,6 +49,9 @@ fd snippet parse snippets.yaml
 cat snippets.yaml | fd snippet parse - --json
 fd snippet import-history --limit 20
 fd snippet import-history --reveal --json
+fd snippet save deploy --run "git push origin {{branch}}" --tag ops --confirm
+fd snippet use deploy --terminal t7 --value branch=dev --confirm
+fd snippet trust --project-path /home/pi/app --hash 0123abcd --confirm
 ```
 
 - `render <nome ou id>` imprime o texto que o snippet geraria, com cada `--value campo=texto` preenchido. Não cola nem
@@ -59,5 +62,18 @@ fd snippet import-history --reveal --json
   texto sem nenhum snippet sai com `1`. Um texto acima de 1000000 caracteres é recusado antes de ser enviado.
 - `import-history` lista os comandos mais usados dos históricos de shell do host (`--limit` de 1 a 200). Uma linha com
   segredo mostra o que foi achado, nunca o valor, e não pode ser importada; `--reveal` mostra só os comandos que a
-  varredura escondeu por um motivo que ela sabe nomear. Não guarda nada: importar as linhas é um verbo posterior.
+  varredura escondeu por um motivo que ela sabe nomear. Sem `--select` não guarda nada; `--select <id,id,...>` (até 200, com `--confirm`) cria snippets dos candidatos listados e imprime `imported <nome>  <tipo>` ou `skipped <id>  <motivo>` para cada um. Uma linha com segredo é pulada.
+- `save <nome> --run <comando>` ou `--text <prompt>` (exatamente um) guarda um snippet do host, ou do projeto quando
+  há `--project-path`, e imprime `saved <nome>  <tipo>  <id>`. `--tag` pode repetir. O daemon recusa um comando ou texto
+  com segredo, com o motivo e saída `1`.
+- `remove <nome ou id>` apaga o snippet. `favorite <nome ou id>` o marca, e `--off` tira a marca; não precisa de
+  `--confirm`.
+- `trust --project-path <pasta> --hash <hash>` confia no conteúdo do arquivo versionado do projeto, pelo hash que
+  `snippet list` mostrou: seus comandos poderão rodar. Se o arquivo mudou depois, o daemon recusa.
+- `use <nome ou id> --terminal <id>` digita o texto nesse terminal, e `--enter` também aperta Enter, o que o executa. Um
+  snippet de arquivo de projeto sem confiança é recusado. Imprime `typed into <id>` ou `ran in <id>` e o texto.
+- `save`, `remove`, `trust` e `use` pedem `--confirm`, e `import-history --select` também. Uma sessão que roda `save`,
+  `trust`, `use` ou `import-history --select` é classificada como risco alto, porque o que eles guardam ou digitam é o
+  que roda no host. Sem resposta (saída `2`), um
+  snippet pode ou não ter mudado: rode `snippet list` antes de repetir.
 - `--host <nome>` e `--json` valem como em todo lugar. `list` e `get` mantêm a saída crua própria.

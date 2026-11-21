@@ -27,6 +27,7 @@ import {
   startsCli,
   unquoted,
 } from "./shell-call.ts";
+import { changesASnippet } from "./snippet-risk.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
 import { changesAWatch } from "./watch-risk.ts";
 
@@ -421,6 +422,11 @@ const DANGEROUS: Array<{
     when: changesSshDestinations,
     reason: () =>
       "adds, changes or removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh add, edit, remove or import apply)",
+  },
+  {
+    when: changesASnippet,
+    reason: () =>
+      "changes what a snippet makes the host run, without the person choosing it in the app (flightdeckd snippet save, trust, use or import-history --select)",
   },
   {
     when: opensATerminal,
