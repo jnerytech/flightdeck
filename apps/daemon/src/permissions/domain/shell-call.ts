@@ -2,8 +2,8 @@
  * Issue #3499: a shell command read as the program it runs and its arguments, and the Flightdeck CLI
  * as one of those programs. Pure: the risk rules in `risk.ts` ask here what a segment runs.
  */
-/** A prefix assignment (`A=1`, `A+=1`): it comes before the program and is not it. */
-const ASSIGNMENT = /^\w+\+?=/;
+/** A prefix assignment (`A=1`, `A+=1`, `A[0]=1`): it comes before the program and is not it. */
+const ASSIGNMENT = /^\w+(?:\[[^\]]*\])?\+?=/;
 
 /** What may come before the program and is not it, and how many words each takes after its options. */
 interface Wrapper {
@@ -84,8 +84,13 @@ const program = (word: string) =>
 const BRACE_EXPANSION = /^\{[^{}\s]*\}/;
 
 /** A group or a substitution opens the word (`(fd`, `$(fd`, a backtick) or closes it (`on)`, `}`); `{}` is xargs's own. */
-const opened = (word: string) =>
-  word === "{}" || BRACE_EXPANSION.test(word) ? word : word.replace(/^(?:\$\(|[<>]\(|[({`])+/, "");
+function opened(word: string): string {
+  // One opener at a time, so a `(` in front of a brace range does not take the `{` with it (`({f..f}d x)`).
+  const opener = /^(?:\$\(|[<>]\(|[({`])/.exec(word);
+  return word === "{}" || BRACE_EXPANSION.test(word) || !opener
+    ? word
+    : opened(word.slice(opener[0].length));
+}
 const closed = (word: string) => (word === "{}" ? word : word.replace(/[)}`]+$/, ""));
 
 /** The index of the word that closes the quote a word at `at` leaves open (`X="a b"`, `-d ' '`), or `at` itself. */
@@ -283,9 +288,12 @@ function mayBeCli(word: string): boolean {
   const cut = open.length > 0 ? Math.min(...open) : -1;
   const literal = cut < 0 ? word : word.slice(0, cut);
   const parts = literal.split(/[{},]/);
+  // One brace list in the middle of the word, as bash expands it: prefix, each alternative, suffix (`{f,car}d`).
+  const group = /^([^{]*)\{([^{}]*)\}(.*)$/.exec(literal);
+  const listed = group ? (group[2] as string).split(",").map((a) => group[1] + a + group[3]) : [];
   const candidates =
     literal.includes("{") || literal.includes(",")
-      ? [...parts, ...parts.slice(1).map((p) => parts[0] + p)]
+      ? [...parts, ...parts.slice(1).map((p) => parts[0] + p), ...listed]
       : [literal];
   return candidates.some((c) => CLI_FILES.some((name) => globMatches(cut < 0 ? c : `${c}*`, name)));
 }
@@ -592,9 +600,12 @@ export function hidesItsVerb(args: string[], unresolved: boolean, fed = false): 
   return shellReadings(args).some((own) => {
     const [command, verb] = flightdeckWords(own);
     // Behind `xargs` the words its input gives follow the ones written: a line that stops short of its verb is
-    // finished by them (`echo persona remove qa | xargs fd`).
+    // finished by them (`echo persona remove qa | xargs fd`), or raised by a flag (`echo --force | xargs fd history resume s`).
     const unfinished =
-      fed && (command === undefined || (VERB_NOUNS.includes(command) && verb === undefined));
+      fed &&
+      (command === undefined ||
+        (VERB_NOUNS.includes(command) && verb === undefined) ||
+        (command === "history" && verb === "resume"));
     return (
       unfinished ||
       (!unresolved && expands(command)) ||
@@ -654,14 +665,14 @@ export function runsFlightdeckWords(
 }
 
 /** A runner (`bunx fd persona $V qa`, `sh -c 'fd ...'`) given the CLI and a noun or verb the shell expands. */
-export const runnerHidesAVerb = (prog: string, args: string[]) => {
+export const runnerHidesAVerb = (prog: string, args: string[], fed = false) => {
   if (!RUNNERS.includes(prog)) return false;
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   const at = words.findIndex((w, i) => startsCli(words, i) && !program(w).includes("$"));
   // Building or testing the entry file does not run it: what follows `bin.ts` in `bun build bin.ts --outfile $OUT`
   // is no command. Run, its words are the CLI's, so a command the shell expands hides it (#3570).
   const runs = !words.slice(0, Math.max(at, 0)).some((w) => w === "build" || w === "test");
-  return at >= 0 && hidesItsVerb(words.slice(at + 1), !runs);
+  return at >= 0 && hidesItsVerb(words.slice(at + 1), !runs, fed);
 };
 
 /**

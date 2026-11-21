@@ -8,11 +8,12 @@ running the line through bash with a fake `fd` that logs its arguments, before a
 
 - A redirection before the program (`2>&1 fd persona remove qa`): the `&` of `>&` and `&>` no longer
   cuts the line into two commands.
-- A prefix assignment that appends (`A+=x fd ...`) or whose value holds an escaped blank
-  (`A=x\ y fd ...`).
+- A prefix assignment that appends (`A+=x fd ...`), names an array element (`A[0]=x fd ...`) or whose
+  value holds an escaped blank (`A=x\ y fd ...`).
 - Blanks after a backslash, counted one by one (`fd --message a\ b\  persona remove qa`): the
   quote-aware read now cuts words with the shell's own rule instead of on every blank.
-- A brace range that opens the program word (`{f..f}d ...`): only a bare `{` opens a group.
+- A brace range or list that opens the program word (`{f..f}d ...`, `{f,car}d ...`), also behind a
+  subshell paren: only a bare `{` opens a group.
 - A word the shell expands in a `history resume` line (`F=--force; fd history resume s $F`) is read as
   the `--force` flag it may be. `fd history resume $SID` is high for the same reason: the variable
   may hold more than an id.
@@ -20,8 +21,9 @@ running the line through bash with a fake `fd` that logs its arguments, before a
   `bun run start $ARGS` in another project is read the same way: the script is named like the CLI's.
 - A noun that a rule reads and the verb check did not know (`fd ssh $V h`). A test now reads the nouns
   from `risk.ts` and checks each one.
-- Words that `xargs` appends (`echo persona remove qa | xargs fd`): a line that stops before its verb
-  is high when `xargs` runs it.
+- Words that `xargs` appends (`echo persona remove qa | xargs fd`, `xargs bun run start`): a line that
+  stops before its verb is high when `xargs` runs it, and so is a `history resume`, which a flag from
+  the input raises.
 
 ## Left out, with the reason
 

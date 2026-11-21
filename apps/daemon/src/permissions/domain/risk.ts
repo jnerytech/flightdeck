@@ -531,7 +531,7 @@ function invocationRisks(call: Invocation, piped: boolean): Candidate[] {
   if (
     call.hidden ||
     (isCliProgram(prog) && hidesItsVerb(args, call.unresolved, call.xargs)) ||
-    runnerHidesAVerb(prog, args)
+    runnerHidesAVerb(prog, args, call.xargs)
   )
     out.push(["high", HIDDEN_VERB]);
   if (piped && SHELLS.has(prog)) out.push(["high", `pipe para ${prog}`]);
