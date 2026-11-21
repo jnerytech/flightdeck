@@ -116,7 +116,7 @@ describe("host-offline-ui", () => {
     // The banner above already says "Host desconectado": the panel says what it will hold instead (#3698).
     expect(info.textContent).not.toContain("Host desconectado");
     expect(info.textContent).toContain("Os detalhes do host aparecem aqui quando ele responder.");
-    expect(text()).not.toContain("informações indisponíveis");
+    expect(text()).not.toContain("Os detalhes não estão disponíveis");
     await act(async () => {
       fireEvent.mouseDown(screen.getByRole("tab", { name: "Configurações" }));
       fireEvent.click(screen.getByRole("tab", { name: "Configurações" }));
@@ -299,7 +299,9 @@ describe("host-offline-ui", () => {
     );
     const panel = screen.getByRole("region", { name: "Informações" });
     expect(panel.textContent).not.toContain("quando ele responder");
-    expect(panel.textContent).toContain("informações indisponíveis");
+    expect(panel.textContent).toContain(
+      "Os detalhes não estão disponíveis: o host recusou o token.",
+    );
   });
 
   test("the copy buttons are named in English for an app in English (#3694)", async () => {

@@ -415,6 +415,8 @@ export const hosts = {
     noSessions: "Nenhuma sessão neste host ainda.",
     noProjects: "Nenhum projeto neste host ainda.",
     newSession: "Nova sessão",
+    noSessionsAway: "As sessões aparecem aqui quando {host} responder.",
+    noProjectsAway: "Os projetos aparecem aqui quando {host} responder.",
   },
   hostOffline: {
     label: "Estado da conexão",
@@ -474,7 +476,10 @@ export const hosts = {
     active: "sessões ativas: {n}",
     uptime: "no ar há {n} s",
     latency: "latência: {value}",
-    unavailable: "informações indisponíveis",
+    unavailable: "O host ainda não informou seus detalhes.",
+    unavailableIncompatible:
+      "Os detalhes não estão disponíveis: o daemon deste host fala uma versão diferente da do app.",
+    unavailableUnauthorized: "Os detalhes não estão disponíveis: o host recusou o token.",
     offlineInfo: "Os detalhes do host aparecem aqui quando ele responder.",
     hooks: "Hooks do Claude Code",
     hooksInstalled: "instalados",

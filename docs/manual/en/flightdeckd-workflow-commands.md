@@ -4,9 +4,9 @@
 
 The verbs that read a project's workflows and their runs: the workflows with their hash and trust, the templates a
 project can add, one workflow checked again, a run with its steps, a stream of every change of a run, and whether a
-failed run can resume. They work as the other `flightdeckd` commands do: see
-[what they all share](flightdeckd-commands.md#what-they-all-share). Trusting a workflow, adding a template, resuming a
-run and answering a gate stay in the app.
+failed run can resume. Three verbs change something: trust a workflow, add a template and resume a failed run. They
+work as the other `flightdeckd` commands do: see [what they all share](flightdeckd-commands.md#what-they-all-share).
+Answering a gate stays in the app.
 
 ## fd workflow
 
@@ -17,6 +17,9 @@ fd workflow validate api ship
 fd workflow run r1 --json
 fd workflow watch
 fd workflow resume r1
+fd workflow trust api ship --hash <the hash list printed>
+fd workflow template-add api review-loop --confirm
+fd workflow resume r1 --confirm
 ```
 
 A project is its name or its id.
@@ -41,5 +44,21 @@ step with its attempt, type, state and exit code. An unknown run exits `1`.
 `resume <run>` only checks: it prints where a failed run would resume and starts nothing. When it cannot resume it prints why, with the parameters of
 the reason, and exits `1`. The reason is a stable word a script can read; over `--host` the daemon answers
 `transport_refused` for every run, so run the check on the host itself.
+
+`trust <project> <workflow> --hash <hash>` gives the workflow the trust to run its shell commands, and prints it as
+`validate` does. The hash is the whole 64 characters `list` printed: the command never reads one for you. A workflow
+that changed since you read the hash, or has errors, is refused with exit `1`.
+
+`template-add <project> <template> --confirm` commits the template on a new branch of the project and opens its pull
+request, then prints the file, the branch, the base and the pull request. Without `--confirm` it exits `1` and changes
+nothing. It needs a connection from the computer the daemon runs on: over `--host` the daemon refuses it.
+
+`resume <run> --confirm` runs the project's commands again from the step that failed, and prints `<run> resumed from
+<step>`. It needs the same near connection. A run that cannot resume prints why and exits `1`.
+
+`--hash` and `--confirm` are only the word of whoever types them: a session's shell can type them too, so a session
+that runs these three verbs is stopped for the person's answer. If the connection is lost while one is in flight,
+the command exits `2` and says the change may or may not have happened: look with `list`, `run` or the project's
+branches before you run it again.
 
 With `--json` the commands print what the daemon answered. `--host <name>` reads a paired host.
