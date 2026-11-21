@@ -3,6 +3,8 @@ import { bash, MEDIUM, notHigh, wrongReasons } from "../support/permissions-risk
 
 const REASON =
   "changes what a snippet makes the host run, without the person choosing it in the app (flightdeckd snippet save, trust, use or import-history --select)";
+const REASON_HIDDEN =
+  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
 
 describe("risk rules: a session saving, trusting or using a snippet from its shell (#3615)", () => {
   test("save, trust, use and import-history --select are high, however the CLI is reached", () => {
@@ -40,6 +42,20 @@ describe("risk rules: a session saving, trusting or using a snippet from its she
         ["fd snippet import-history $(printf -- --select) abc --confirm", REASON],
         ["bash -c 'S=--select; fd snippet import-history $S abc --confirm'", REASON],
         ["bunx flightdeckd snippet import-history $S abc --confirm", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a verb the shell expands may be save, trust or use, so the line is high too", () => {
+    expect(
+      wrongReasons([
+        ["V=save; fd snippet $V a --run x --confirm", REASON_HIDDEN],
+        ["fd snippet $'save' a --run x --confirm", REASON_HIDDEN],
+        ["fd snippet sav{e,} a --run x --confirm", REASON_HIDDEN],
+        ["fd snippet [s]ave a --run x --confirm", REASON_HIDDEN],
+        ["bash -c 'V=use; fd snippet $V a --terminal t --confirm'", REASON_HIDDEN],
+        ["echo save a --run x --confirm | xargs fd snippet", REASON_HIDDEN],
+        ["fd --host pi snippet $V deploy --terminal t7 --confirm", REASON_HIDDEN],
       ]),
     ).toEqual([]);
   });

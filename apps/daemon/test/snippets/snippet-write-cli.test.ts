@@ -381,3 +381,65 @@ describe("the write verbs' flags (issue #3615)", () => {
       expect(() => parseArgs(argv)).toThrow("this flag only applies to");
   });
 });
+
+describe("flightdeckd snippet writes by name: what the code review found (issue #3615)", () => {
+  test("a name a host snippet and a project snippet share is refused, and nothing is changed", async () => {
+    const project = { ...REVIEW, id: "01JSNIP0000000000000000002", scope: "project" };
+    const daemon = fakeDaemon({
+      ...writeDaemon(),
+      "snippets.list": () => ({ snippets: [REVIEW, project], file: null }),
+    });
+    const run = await flightdeckd(
+      ["snippet", "remove", "review", "--project-path", "/srv/app", "--confirm"],
+      daemon.port,
+    );
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain(
+      `review names 2 snippets (${REVIEW.id}, ${project.id}): give one of the ids`,
+    );
+    expect(callsOf(daemon, "snippets.remove")).toEqual([]);
+  });
+
+  test("a name only one snippet has is removed as before, by its id", async () => {
+    const daemon = fakeDaemon({
+      ...writeDaemon(),
+      "snippets.list": () => ({ snippets: [REVIEW], file: null }),
+    });
+    const run = await flightdeckd(
+      ["snippet", "remove", "review", "--project-path", "/srv/app", "--confirm"],
+      daemon.port,
+    );
+    expect(run.code).toBe(0);
+    expect(callsOf(daemon, "snippets.remove")).toEqual([{ id: REVIEW.id }]);
+  });
+
+  test("a snippet of several lines prints one stdout line per line of its text", async () => {
+    const daemon = fakeDaemon({
+      ...writeDaemon(),
+      "snippets.use": () => ({ text: "git diff\ngit log", terminal: null }),
+    });
+    const run = await flightdeckd(
+      ["snippet", "use", "review", "--terminal", "t7", "--confirm"],
+      daemon.port,
+    );
+    expect(run.out).toEqual(["typed into t7  git diff", "git log"]);
+  });
+
+  test("--select needs an id, and the flags that only preview do not come with it", () => {
+    for (const [argv, why] of [
+      [
+        ["snippet", "import-history", "--select", ",", "--confirm"],
+        "--select needs at least one id",
+      ],
+      [
+        ["snippet", "import-history", "--select", "a", "--limit", "5", "--confirm"],
+        "--limit: this flag does not apply with --select",
+      ],
+      [
+        ["snippet", "import-history", "--select", "a", "--reveal", "--confirm"],
+        "--reveal: this flag does not apply with --select",
+      ],
+    ] as const)
+      expect(() => parseArgs([...argv])).toThrow(why);
+  });
+});
