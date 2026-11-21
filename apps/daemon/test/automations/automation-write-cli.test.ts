@@ -28,6 +28,7 @@ const OPEN: Handlers = {
     projects: [project("p1", "api"), project("p2", "web"), project("p3", "web")],
     maxParallelRuns: 2,
   }),
+  "automation.list": () => ({ automations: [NIGHTLY] }),
   "automation.save": () => NIGHTLY,
   "automation.toggle": (payload) => ({ ...NIGHTLY, enabled: payload.enabled === true }),
   "automation.remove": () => ({ automations: [] }),
@@ -156,6 +157,61 @@ describe("flightdeckd automation save (issue #3627)", () => {
     expect(noAction.err.join("\n")).toContain("does not fit");
     expect(badTrigger.err.join("\n")).toContain("does not fit");
     expect(writes(daemon)).toEqual([]);
+  });
+
+  test("--automation names an automation of that project: another project's id is refused before anything is saved", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const run = await flightdeckd(
+      [
+        "automation",
+        "save",
+        "api",
+        "--automation",
+        "a9",
+        "--name",
+        "N",
+        "--definition-file",
+        GOOD(),
+      ],
+      daemon.port,
+    );
+    expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
+    expect(run.err.join("\n")).toContain("a9 is not an automation of api");
+    expect(callsOf(daemon, "automation.save")).toEqual([]);
+  });
+
+  test("a key the file carries besides the trigger and the action is refused, not dropped", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const file = definition(
+      JSON.stringify({ trigger: TRIGGER, action: ACTION, maxRunsPerDay: 1, enabled: true }),
+    );
+    const run = await flightdeckd(
+      ["automation", "save", "api", "--name", "N", "--definition-file", file],
+      daemon.port,
+    );
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain("does not fit");
+    expect(callsOf(daemon, "automation.save")).toEqual([]);
+  });
+
+  test("--max-runs past the safe integers is refused before the daemon is asked", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const run = await flightdeckd(
+      [
+        "automation",
+        "save",
+        "api",
+        "--name",
+        "N",
+        "--definition-file",
+        GOOD(),
+        "--max-runs",
+        "99999999999999999999999",
+      ],
+      daemon.port,
+    );
+    expect(run.code).toBe(1);
+    expect(daemon.calls).toEqual([]);
   });
 
   test("a missing name or file, a bad count and a bad choice are refused with exit 1 and ask nothing", async () => {
