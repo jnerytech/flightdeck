@@ -75,7 +75,13 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
     // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
     if (flag === "--model" && (args.command === "costs" || args.command === "roi")) continue;
     // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`; `snippet trust --hash` is the project file's, checked by `snippetProblem`.
-    if (flag === "--hash" && (args.command === "runenv" || args.command === "snippet")) continue;
+    if (
+      flag === "--hash" &&
+      (args.command === "runenv" || args.command === "snippet" || args.command === "knowledge")
+    )
+      continue;
+    // `knowledge create --body-file` is the document's text: `knowledgeProblem` checks it.
+    if (flag === "--body-file" && args.command === "knowledge") continue;
     if (args.command !== "persona" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}`;
   }

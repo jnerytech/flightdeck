@@ -656,6 +656,7 @@ const VERB_NOUNS = new Set([
   "review",
   "runenv",
   "mcp",
+  "knowledge",
 ]);
 
 /**

@@ -73,6 +73,8 @@ export interface CliArgs {
     | "reindex"
     | "index"
     | "feed"
+    | "set-status"
+    | "set-feed"
     | "enroll"
     | "reset"
     | "list"
@@ -220,8 +222,15 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
-  /** `knowledge list|index|feed <project>` (#3623): a project's name or id, or its folder. */
+  /** `knowledge <verb> <project>` (#3623): a project's name or id, or its folder. */
   knowledgeProject?: string;
+  /** `knowledge set-status <project> <file> --status <status> --hash <hash>` and `create <project> <kind> <title>`. */
+  knowledgeFile?: string;
+  knowledgeStatus?: "valid" | "transitional" | "obsolete";
+  knowledgeKind?: "adr" | "rfc" | "prd";
+  knowledgeTitle?: string;
+  /** `knowledge set-feed --on|--off`. */
+  knowledgeFeed?: boolean;
   /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
   mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */

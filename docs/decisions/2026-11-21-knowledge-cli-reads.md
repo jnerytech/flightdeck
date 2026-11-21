@@ -33,3 +33,38 @@ gets its public entry, `index.ts`, which the command table imports.
   project covers; guessing would hide a typo.
 - A `--path` flag next to the project operand: one operand with two readings is shorter than two spellings of it, and the
   other verbs of this family already take a project that way.
+
+# The knowledge writes of the CLI (issue #3623, slice 2)
+
+`flightdeckd knowledge set-status|create|set-feed`, over `knowledge.setStatus`, `knowledge.create` and `knowledge.setFeed`,
+in the same `knowledge/knowledge-cli.ts`. The three rows of the parity map now name `knowledge`, so the gap count falls by
+three more (131).
+
+- **`set-status <project> <file> --status valid|transitional|obsolete --hash <hash>`.** The hash is what `list` printed;
+  the CLI never reads it, so a file that changed since is the daemon's `file_conflict` refusal (exit `1`) and nothing is
+  written. Prints the document as `list` does.
+- **`create <project> adr|rfc|prd <title> [--body-file <file>]`.** The kind and the title are operands, since a document is
+  made of them. The file is read before any daemon is asked: a file that cannot be read, or holds more than
+  `KNOWLEDGE_BODY_MAX` (100 000) characters, is exit `1` with no request. The daemon's own refusals (a title with no letter
+  or digit, a document that exists, a folder that leaves the project) reach the person as they are.
+- **`set-feed <project> --on|--off`.** One direction, never both; prints the feed state as `feed` does.
+- **Unsure result.** A write that gets no answer says the change may or may not have gone in and points at `knowledge list`
+  (`feed` for `set-feed`), as the other write commands do.
+- **Shared flags.** `--status`, `--on` and `--off` already belong to `message history`, `boardsync set-push` and
+  `snippet favorite`, and the parser holds one handler per flag name: `knowledgeFlags` reads them as `knowledge`'s when the
+  command is `knowledge` and hands any other command the handler it had. `--hash` and `--body-file` are plain values and
+  need no choice; `persona`'s check lets them through for `knowledge`, and `knowledgeProblem` says which verb takes each.
+
+## Shell risk
+
+A session that can switch the feed decides what every session of the project is told, so any `set-feed` line is **high**,
+on or off, by `permissions/domain/knowledge-risk.ts` (unlike `boardsync set-push`, whose `--off` grants nothing: here a
+session could switch the library off to hide what it was told). `create` writes a new file a person reviews in the
+project, and `set-status` moves one status line guarded by the hash, so both stay ordinary, as do the reads. `knowledge`
+joined the nouns whose verb the shell may not expand (`$V`, a brace list), so a hidden verb is high too.
+
+## Discarded
+
+- `--kind` and `--title` as flags: a document cannot exist without them, so they are operands, like the project.
+- `--confirm` on `set-feed`: from a shell it is only a typed word and grants nothing; the rule is on the shell line.
+- A `--off`-only exception like `set-push`: see Shell risk.
