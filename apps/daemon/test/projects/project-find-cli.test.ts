@@ -74,7 +74,18 @@ describe("flightdeckd project clone: the words (issue #3737)", () => {
     refusedWith(["project", "clone", URL, "--root", "/srv/code"], "needs --confirm");
     refusedWith(["project", "clone", URL, "--confirm"], "--root");
     refusedWith(["project", "clone", "--root", "/srv/code", "--confirm"], "missing the url");
-    refusedWith([...CLONE, "https://example.com/other.git"], "one url");
+    refusedWith(
+      [
+        "project",
+        "clone",
+        URL,
+        "https://example.com/other.git",
+        "--root",
+        "/srv/code",
+        "--confirm",
+      ],
+      "one url",
+    );
   });
 
   test("refuses a url or a name of a length the daemon refuses, before it connects", () => {

@@ -19,6 +19,7 @@ import {
 import {
   appliedDigests,
   appliedLines,
+  cloneLines,
   committedLines,
   detectLines,
   draftLines,
@@ -29,6 +30,7 @@ import {
   previewLines,
   projectLines,
   type SavedDigests,
+  scanLines,
   stackLines,
   trustLines,
 } from "./domain/project-cli-view.ts";
@@ -82,6 +84,24 @@ export function runProjectCli(
             ...args.fields,
           });
           return shown(args.json, answer, (added) => projectLines("added", added, args.fields));
+        }
+        case "scan":
+          return shown(
+            args.json,
+            await daemon.call(
+              "projects.scan",
+              args.depth === undefined ? {} : { depth: args.depth },
+            ),
+            scanLines,
+          );
+        case "clone": {
+          note.wrote = true;
+          const answer = await daemon.call("projects.clone", {
+            url: args.url,
+            root: folder(args.root),
+            ...(args.name === undefined ? {} : { name: args.name }),
+          });
+          return shown(args.json, answer, cloneLines);
         }
         case "update":
         case "detect-provider":

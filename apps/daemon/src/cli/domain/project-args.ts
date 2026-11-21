@@ -31,6 +31,8 @@ export interface ProjectArgs {
   projectTemplate?: string;
   projectDigests?: string;
   projectReformat?: true;
+  projectDepth?: number;
+  projectRoot?: string;
   confirm?: true;
   host?: string;
 }
@@ -47,6 +49,8 @@ const ACTIONS = [
   "harness-export",
   "harness-apply",
   "harness-commit",
+  "scan",
+  "clone",
 ] as const;
 
 /** The verbs that name a project rather than a folder. */
@@ -65,6 +69,8 @@ export function readProject(args: CliArgs, reader: ArgReader): void {
     words.push(reader.current() ?? "");
   }
   args.projectWords = words;
+  // `scan` takes no operand and `clone` an address: neither is a folder, so neither goes to `projectPaths`.
+  if (args.action === "scan" || args.action === "clone") return;
   if (BY_REFERENCE.has(args.action)) {
     if (words[0] !== undefined) args.projectRef = words[0];
     return;
@@ -90,6 +96,16 @@ export const PROJECT_FLAGS: Record<string, Handler> = {
   "--reformat": setFlag((args) => {
     args.projectReformat = true;
   }),
+  "--depth": (args, _reader, value) => {
+    const text = value();
+    const depth = Number(text);
+    if (!/^\d+$/.test(text) || depth < 1 || depth > 3)
+      throw new Error(`--depth: a whole number from 1 to 3, got ${text}\n${USAGE}`);
+    args.projectDepth = depth;
+  },
+  "--root": (args, _reader, value) => {
+    args.projectRoot = value();
+  },
   "--parts": (args, _reader, value) => {
     args.projectParts = value().split(",");
   },
@@ -136,8 +152,10 @@ const FLAG_VERBS: Array<[flag: string, typed: (args: ProjectArgs) => boolean, ve
   ["--template", (a) => a.projectTemplate !== undefined, ["harness-preview", "harness-apply"]],
   ["--digests", (a) => a.projectDigests !== undefined, ["harness-apply", "harness-commit"]],
   ["--reformat", (a) => a.projectReformat !== undefined, ["harness-apply"]],
-  ["--confirm", (a) => a.confirm !== undefined, ["harness-apply", "harness-commit"]],
-  ["--name", (a) => a.personaName !== undefined, ["add", "update"]],
+  ["--depth", (a) => a.projectDepth !== undefined, ["scan"]],
+  ["--root", (a) => a.projectRoot !== undefined, ["clone"]],
+  ["--confirm", (a) => a.confirm !== undefined, ["harness-apply", "harness-commit", "clone"]],
+  ["--name", (a) => a.personaName !== undefined, ["add", "update", "clone"]],
   ["--base-branch", (a) => a.projectFields?.baseBranch !== undefined, ["add", "update"]],
   ["--pr-provider", (a) => a.projectFields?.prProvider !== undefined, ["add", "update"]],
   ["--setup-script", (a) => a.projectFields?.setupScript !== undefined, ["add", "update"]],
@@ -184,6 +202,13 @@ function operandProblem(args: ProjectArgs): string | undefined {
     return undefined;
   }
   if (args.action === "harness-export") return harnessExportProblem(verb, words);
+  if (args.action === "scan")
+    return words.length > 0 ? `${verb}: takes no folder, got ${words.length}` : undefined;
+  if (args.action === "clone") {
+    if (words.length === 0) return `${verb}: missing the url`;
+    if (words.length > 1) return `${verb}: give one url, got ${words.length}`;
+    return undefined;
+  }
   const paths = args.projectPaths ?? [];
   if (paths.length === 0) return `${verb}: missing the folder`;
   if (paths.length > (FOLDERS[args.action ?? ""] ?? 1))
@@ -200,6 +225,29 @@ function strayFlag(args: ProjectArgs, project: boolean): string | undefined {
       (project || !SHARED_FLAGS.has(flag))
     )
       return `${flag}: this flag only applies to flightdeckd project ${verbs.join(" or ")}`;
+  return undefined;
+}
+
+/** The longest address and folder name the protocol takes (`projects.clone`), checked here so a bad length never connects. */
+const CLONE_URL_MAX = 2048;
+const CLONE_NAME_MAX = 100;
+
+/**
+ * What `project clone` needs besides the url: the allowed folder to clone into, the typed `--confirm` (it runs
+ * `git` on an address the caller gave and writes a folder; a typed flag is the caller's word, not a person's), and
+ * lengths the host takes.
+ */
+function cloneProblem(args: ProjectArgs): string | undefined {
+  if (args.action !== "clone") return undefined;
+  const url = args.projectWords?.[0] ?? "";
+  if (url.length > CLONE_URL_MAX)
+    return `project clone: the url is longer than ${CLONE_URL_MAX} characters`;
+  if (args.projectRoot === undefined || args.projectRoot.trim() === "")
+    return "project clone: missing --root <folder>, an allowed folder of the host";
+  if (args.personaName !== undefined && args.personaName.length > CLONE_NAME_MAX)
+    return `--name: at most ${CLONE_NAME_MAX} characters`;
+  if (args.confirm !== true)
+    return "project clone: needs --confirm, since it runs git on the address and writes a folder";
   return undefined;
 }
 
@@ -248,7 +296,7 @@ export function projectProblem(args: ProjectArgs): string | undefined {
     ? previewProblem(args)
     : undefined;
   if (preview !== undefined) return preview;
-  const written = writeProblem(args);
+  const written = writeProblem(args) ?? cloneProblem(args);
   if (written !== undefined) return written;
   if (args.personaName?.trim() === "") return "--name: the project's name is blank";
   if (args.action === "update" && Object.keys(projectFields(args)).length === 0)
@@ -256,7 +304,10 @@ export function projectProblem(args: ProjectArgs): string | undefined {
   if (
     args.host !== undefined &&
     !BY_REFERENCE.has(args.action ?? "") &&
-    (args.projectPaths ?? []).some((path) => !posix.isAbsolute(path) && !win32.isAbsolute(path))
+    [
+      ...(args.projectPaths ?? []),
+      ...(args.projectRoot === undefined ? [] : [args.projectRoot]),
+    ].some((path) => !posix.isAbsolute(path) && !win32.isAbsolute(path))
   )
     return "project: on another host the folder must be an absolute path (it is read there, not here)";
   return undefined;
@@ -314,6 +365,21 @@ export function projectCliArgs(args: CliArgs): ProjectCliArgs {
   const paths = args.projectPaths ?? [];
   const path = paths[0] ?? "";
   if (args.action === "trust-state") return { action: "trust-state", paths, ...printed };
+  if (args.action === "scan")
+    return {
+      action: "scan",
+      ...(args.projectDepth === undefined ? {} : { depth: args.projectDepth }),
+      ...printed,
+    };
+  if (args.action === "clone")
+    return {
+      action: "clone",
+      url: args.projectWords?.[0] ?? "",
+      root: args.projectRoot ?? "",
+      ...(args.personaName === undefined ? {} : { name: args.personaName }),
+      confirm: true,
+      ...printed,
+    };
   if (args.action === "stack") return { action: "stack", path, ...printed };
   if (args.action === "trust-inspect") return { action: "trust-inspect", path, ...printed };
   if (args.action === "add")
