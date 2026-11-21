@@ -72,7 +72,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
   test("Criar orçamento goes busy and saves once", async () => {
     const save = slow();
     const { store } = await fakeHostStore({
-      "costs.summary": () => null,
+      "costs.summary": () => ({ byProject: [] }),
       "budget.set": onWire(save.call),
     });
     render(
