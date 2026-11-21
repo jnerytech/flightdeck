@@ -3,13 +3,17 @@ import { USAGE } from "./usage.ts";
 
 /** The commands that take `--json` and `--host`; a flag on any other is refused with this list. */
 export const JSON_COMMANDS =
-  "card board history team persona quota usage budget costs roi host sessions session snippet ssh terminal watch boardsync review memory runenv changes snapshots rewind trace file action automation mcp knowledge workflow requests send approve deny approvers rules autoapprove vault plugins project agentcfg message".split(
+  "card board history team persona quota usage budget costs roi host sessions session snippet ssh terminal watch boardsync review memory runenv changes snapshots rewind trace file action automation mcp knowledge workflow requests send approve deny approvers rules autoapprove vault plugins project agentcfg message logs releases alert activity".split(
     " ",
   );
 export const HOST_COMMANDS =
-  "host sessions session snippet ssh terminal watch boardsync review memory runenv changes snapshots rewind trace file action automation mcp knowledge workflow requests send approve deny vault plugins project agentcfg message".split(
+  "host sessions session snippet ssh terminal watch boardsync review memory runenv changes snapshots rewind trace file action automation mcp knowledge workflow requests send approve deny vault plugins project agentcfg message logs releases alert activity".split(
     " ",
   );
+
+/** The commands that take `--limit`; a flag on any other is refused. */
+export const LIMIT_COMMANDS: readonly string[] =
+  "autoapprove history vault snippet message automation action releases activity".split(" ");
 
 /** The commands that check their own `--confirm` (their verbs say which take it), so the `card` check skips them. */
 export const CONFIRM_OWNERS =

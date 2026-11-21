@@ -31,6 +31,7 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { feedCommands } from "./feed-run.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
@@ -644,6 +645,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
     return askingWith(args, deps, boardsyncCliArgs, runBoardsyncCli);
   },
+  ...feedCommands(asking),
   memory: (args, deps) =>
     import("../memory/index.ts").then((m) => askingWith(args, deps, memoryCliArgs, m.runMemoryCli)),
   review: (args, deps) =>

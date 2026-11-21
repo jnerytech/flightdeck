@@ -59,6 +59,10 @@ export interface CliArgs {
     | "boardsync"
     | "review"
     | "memory"
+    | "logs"
+    | "releases"
+    | "alert"
+    | "activity"
     | "runenv"
     | "changes"
     | "snapshots"
@@ -122,6 +126,8 @@ export interface CliArgs {
     | "review"
     | "budget"
     | "suggest"
+    | "tail"
+    | "since"
     | "message"
     | "templates"
     | "validation-template"
@@ -288,6 +294,12 @@ export interface CliArgs {
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
   memoryName?: string;
+  /** `logs tail --lines <n>`: how many lines of the daemon log, 1 to 500. */
+  logLines?: number;
+  /** `alert list <project>`: the project, by name or id. */
+  alertProject?: string;
+  /** `activity since <time>`: the instant, as UTC ISO text. */
+  activitySince?: string;
   /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
   changesOperand?: string;
   /** `changes revert|undo-revert <target> <file>`: the file. */

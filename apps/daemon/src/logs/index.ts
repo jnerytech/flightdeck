@@ -4,6 +4,8 @@
  * `FileLog` type from `file-log.ts`: this entry loads `wiring.ts`, whose type import of
  * `server/index.ts` reaches `server-options.ts` back, a cycle for dependency-cruiser.
  */
+export type { LogsCliArgs } from "./domain/logs-cli-view.ts";
+export { runLogsCli } from "./logs-cli.ts";
 export { type ProcessTrace, traceProcessEnd } from "./process-trace.ts";
 export { logPathFor, tailForOrigin } from "./serve.ts";
 export { createHostLog } from "./wiring.ts";

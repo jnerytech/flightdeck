@@ -21,8 +21,17 @@ import {
   readTrace,
 } from "./checkpoints-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
-import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
+import { HOST_COMMANDS, JSON_COMMANDS, LIMIT_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
+import {
+  feedLimitMax,
+  feedProblem,
+  LINES_FLAG,
+  readActivity,
+  readAlert,
+  readLogs,
+  readReleases,
+} from "./feed-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
@@ -332,6 +341,10 @@ const HANDLERS: Record<string, Handler> = {
   boardsync: readBoardsync,
   review: readReview,
   memory: readMemory,
+  logs: readLogs,
+  releases: readReleases,
+  alert: readAlert,
+  activity: readActivity,
   runenv: readRunenv,
   changes: readChanges,
   snapshots: readSnapshots,
@@ -555,6 +568,11 @@ const HANDLERS: Record<string, Handler> = {
     args.scope = v;
   }),
   "--limit": setValue((args, v) => {
+    const max = feedLimitMax(args.command);
+    if (max !== undefined) {
+      args.limit = wholeFrom("--limit", v, max);
+      return;
+    }
     const n = Number(v);
     if (!/^\d+$/.test(v) || n < 1 || n > 1000)
       throw new Error(`--limit: a whole number from 1 to 1000, got ${v}\n${USAGE}`);
@@ -570,6 +588,7 @@ const HANDLERS: Record<string, Handler> = {
   ...WATCH_FLAGS,
   ...BOARDSYNC_FLAGS,
   ...REVIEW_FLAGS,
+  "--lines": LINES_FLAG,
   ...CHANGES_FLAGS,
   ...CHECKPOINT_FLAGS,
   ...FILE_FLAGS,
@@ -706,14 +725,9 @@ function refuseStrayFlags(args: CliArgs): void {
       `--session: this flag only applies to flightdeckd requests, message, autoapprove, vault and mcp toggle\n${USAGE}`,
     );
   // `history`, `vault`, `snippet`, `automation` and `action` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts, automation-args.ts, action-args.ts).
-  if (
-    !["autoapprove", "history", "vault", "snippet", "message", "automation", "action"].includes(
-      args.command,
-    ) &&
-    args.limit !== undefined
-  )
+  if (!LIMIT_COMMANDS.includes(args.command) && args.limit !== undefined)
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet, automation runs and action runs\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet, automation runs, action runs, releases list and activity since\n${USAGE}`,
     );
 }
 
@@ -753,6 +767,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     boardsyncProblem(args) ??
     reviewProblem(args) ??
     memoryProblem(args) ??
+    feedProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
     checkpointsProblem(args) ??
