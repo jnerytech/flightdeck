@@ -125,6 +125,9 @@ export interface CliArgs {
     | "preview"
     | "interrupted"
     | "import-preview"
+    | "import-history"
+    | "render"
+    | "parse"
     | "trace"
     | "describe"
     | "by-url"
@@ -335,6 +338,12 @@ export interface CliArgs {
   projectPath?: string;
   /** `snippet list --query <text>`. */
   query?: string;
+  /** `snippet parse <file>`: the file to read, or `-` for stdin. */
+  snippetFile?: string;
+  /** `snippet render --value name=value`, repeatable. */
+  snippetValues?: Record<string, string>;
+  /** `snippet import-history --reveal`: show the commands the secret scan hid. */
+  snippetReveal?: boolean;
   /** `action run ... --param k=v`, repeatable. */
   params?: Record<string, string>;
   /** `service ... --dry-run`: print, change nothing. */

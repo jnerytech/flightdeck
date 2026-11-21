@@ -17,6 +17,7 @@ import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
+import { snippetCliArgs } from "./domain/snippet-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
@@ -133,7 +134,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -702,6 +703,22 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     );
   },
   snippet: async (args, deps) => {
+    // The new verbs follow the CLI-first rules (#3615); `list` and `get` are the mod's readers and print raw.
+    if (args.action !== "list" && args.action !== "get") {
+      const snippets = await import("../snippets/index.ts");
+      const verb = snippetCliArgs(args);
+      const text =
+        args.snippetFile === undefined
+          ? undefined
+          : await snippets.readSnippetSource(args.snippetFile, deps.stdin);
+      return asking(args, deps, (config, remote) =>
+        snippets.runSnippetVerbCli(
+          { ...verb, ...(text === undefined ? {} : { text }) },
+          config,
+          remote ? { remote } : {},
+        ),
+      );
+    }
     const { runSnippetCli } = await import("../actions/index.ts");
     const config = await loadConfig(configPath(args));
     return printed(

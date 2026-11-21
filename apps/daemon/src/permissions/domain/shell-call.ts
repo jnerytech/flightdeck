@@ -457,6 +457,7 @@ export const OPTIONS_WITH_VALUE = [
   "--purpose",
   "--action",
   "--tag",
+  "--value",
   "--risk",
   "--approval",
   "--at",
