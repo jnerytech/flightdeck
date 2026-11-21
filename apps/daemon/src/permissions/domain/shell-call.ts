@@ -2,6 +2,7 @@
  * Issue #3499: a shell command read as the program it runs and its arguments, and the Flightdeck CLI
  * as one of those programs. Pure: the risk rules in `risk.ts` ask here what a segment runs.
  */
+import { scriptIndex } from "./runner-script.ts";
 import { Scan } from "./scan.ts";
 
 /** A prefix assignment (`A=1`, `A+=1`, `A[0]=1`): it comes before the program and is not it. */
@@ -712,13 +713,10 @@ export function flightdeckWords(args: string[]): string[] {
   return words[0] === "fd" ? words.slice(1) : words;
 }
 
-/**
- * Whether the word at `i` of a runner's text starts the CLI: its name, or `bun start` or `bun run [options] start`, the script of
- * `apps/daemon/package.json` that runs `bin.ts` (#3566).
- */
+/** Whether the word at `i` of a runner's text starts the CLI: its name, or the `start` script (`bun [options] [run] start`, #3566, #3718). */
 export const startsCli = (words: string[], i: number) =>
   isCliProgram(program(words[i] ?? "")) ||
-  (words[i] === "start" && (i === 0 || words.slice(0, i).includes("run")));
+  (words[i] === "start" && (words.slice(0, i).includes("run") || scriptIndex(words) >= i));
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
