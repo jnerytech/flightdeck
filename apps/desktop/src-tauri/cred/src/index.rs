@@ -4,7 +4,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 
 use crate::read::{is_host_id, url_account, Store};
 
@@ -74,7 +74,7 @@ pub fn write_addresses(store: &dyn Store, hosts: &[HostRef]) -> Result<(), Strin
 /// Runs `work` while no other call of this process is in the store or in the index folder.
 pub fn exclusive<T>(work: impl FnOnce() -> T) -> T {
     // A call that panicked left nothing half done in the lock itself: the next one goes on.
-    let _held = PLACE.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let _held = PLACE.lock().unwrap_or_else(PoisonError::into_inner);
     work()
 }
 

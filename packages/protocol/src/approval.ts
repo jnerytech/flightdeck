@@ -94,6 +94,12 @@ export function commandMessage(parts: {
   ]);
 }
 
+/** `<` on strings compares UTF-16 code units, the order RFC 8785 asks for. */
+function byCodeUnit(a: string, b: string): number {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+}
+
 /**
  * RFC 8785 canonical JSON: no spaces, object keys in UTF-16 code unit order (never a locale's), numbers and
  * strings as `JSON.stringify` writes them. A key whose value is `undefined` is left out; a number that is
@@ -112,11 +118,11 @@ export function canonicalJson(value: unknown): string {
   }
   if (typeof value === "object") {
     const record = value as Record<string, unknown>;
-    // `<` on strings compares UTF-16 code units, the order RFC 8785 asks for.
     const keys = Object.keys(record)
       .filter((key) => record[key] !== undefined)
-      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
+      .sort(byCodeUnit);
+    const members = keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`);
+    return `{${members.join(",")}}`;
   }
   throw new TypeError(`canonicalJson: a ${typeof value} cannot be signed`);
 }
@@ -132,9 +138,9 @@ export function needsApprovalProof(
 
 /** The three texts of a `permission.respond` allow that a proof binds; each side hashes them with SHA-256. */
 export interface ApprovalAnswer {
-  updatedPermissions?: unknown[] | undefined;
-  updatedInput?: Record<string, unknown> | undefined;
-  message?: string | undefined;
+  updatedPermissions?: unknown[];
+  updatedInput?: Record<string, unknown>;
+  message?: string;
 }
 
 export interface ApprovalDigests {

@@ -84,13 +84,21 @@ const program = (word: string) =>
 const BRACE_EXPANSION = /^\{[^{}\s]*\}/;
 
 /** A group or a substitution opens the word (`(fd`, `$(fd`, a backtick) or closes it (`on)`, `}`); `{}` is xargs's own. */
-function opened(word: string): string {
+const OPENERS = ["$(", "<(", ">(", "(", "{", "`"];
+const openerOf = (text: string) => OPENERS.find((opener) => text.startsWith(opener));
+const opened = (word: string) => {
+  if (word === "{}") return word;
+  let rest = word;
   // One opener at a time, so a `(` in front of a brace range does not take the `{` with it (`({f..f}d x)`).
-  const opener = /^(?:\$\(|[<>]\(|[({`])/.exec(word);
-  return word === "{}" || BRACE_EXPANSION.test(word) || !opener
-    ? word
-    : opened(word.slice(opener[0].length));
-}
+  for (
+    let opener = openerOf(rest);
+    opener !== undefined && !BRACE_EXPANSION.test(rest);
+    opener = openerOf(rest)
+  ) {
+    rest = rest.slice(opener.length);
+  }
+  return rest;
+};
 const closed = (word: string) => (word === "{}" ? word : word.replace(/[)}`]+$/, ""));
 
 /** The index of the word that closes the quote a word at `at` leaves open (`X="a b"`, `-d ' '`), or `at` itself. */
