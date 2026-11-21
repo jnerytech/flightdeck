@@ -177,6 +177,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       "external",
       "file",
       "history",
+      "host",
       "issues",
       "knowledge",
       "logs",
@@ -187,6 +188,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       "plugins",
       "project",
       "quota",
+      "resources",
       "review",
       "rewind",
       "rules",
@@ -195,7 +197,9 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       "snippet",
       "ssh",
       "team",
+      "telemetry",
       "watch",
+      "workflow",
       "worktree",
     ];
     expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());

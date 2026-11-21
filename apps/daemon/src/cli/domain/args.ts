@@ -23,12 +23,13 @@ import {
 } from "./checkpoints-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, LIMIT_COMMANDS, refuseOutside } from "./command-sets.ts";
-import { costsProblem } from "./costs-args.ts";
+import { costsProblem, readCosts } from "./costs-args.ts";
 import { externalProblem, readExternal, readNames, TEXT_FLAG } from "./external-args.ts";
 import { FEED_READERS, feedProblem, LINES_FLAG, readFeedLimit } from "./feed-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
+import { hostHandler, hostProblem, resourcesHandler } from "./host-args.ts";
 import { issuesProblem, readIssues } from "./issues-args.ts";
 import { knowledgeFlags, knowledgeProblem, readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
@@ -37,7 +38,7 @@ import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-ar
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
-import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
+import { quotaHandler, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { REVIEW_FLAGS, readReview, reviewProblem } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readRunenv, runenvProblem } from "./runenv-args.ts";
@@ -45,6 +46,7 @@ import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts
 import { OFF_FLAG, readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
+import { readTelemetry, telemetryProblem } from "./telemetry-args.ts";
 import {
   readTerminal,
   TERMINAL_FLAGS,
@@ -124,7 +126,7 @@ const HANDLERS: Record<string, Handler> = {
   channel: setCommand("channel"),
   mcp: readMcp,
   knowledge: readKnowledge,
-  resources: setCommand("resources"),
+  resources: resourcesHandler,
   workflow: readWorkflow,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
@@ -160,11 +162,7 @@ const HANDLERS: Record<string, Handler> = {
     args.askpassPrompt = reader.takeRest().join(" ");
   },
   hooks: withAction("hooks", ["install", "uninstall", "status"], "invalid hooks action"),
-  telemetry: withAction(
-    "telemetry",
-    ["install", "uninstall", "status"],
-    "invalid telemetry action",
-  ),
+  telemetry: readTelemetry,
   history: readHistory,
   vault: readVault,
   plugins: readPlugins,
@@ -295,29 +293,9 @@ const HANDLERS: Record<string, Handler> = {
       if (args.budgetId.trim() === "") throw new Error(`missing the budget\n${USAGE}`);
     }
   },
-  quota: (args, reader) => {
-    args.command = "quota";
-    const verbs = ["get", "history", "pause-at", "watch"] as const;
-    const action = subAction(reader, verbs, "invalid quota action");
-    args.action = action;
-    if (action === "history") args.quotaWindow = operand(reader, "the window");
-    if (action === "pause-at") {
-      const share = parseShare(operand(reader, "the share"));
-      if (share === undefined)
-        throw new Error(`quota pause-at: a share from 0 to 1, or off\n${USAGE}`);
-      args.quotaPauseAt = share;
-    }
-  },
+  quota: quotaHandler,
   usage: setCommand("usage"),
-  costs: (args, reader) => {
-    args.command = "costs";
-    const verbs = ["summary", "session", "card", "run", "status", "export", "reprice"] as const;
-    const action = subAction(reader, verbs, "invalid costs action");
-    args.action = action;
-    if (action === "session") args.costsId = operand(reader, "the session");
-    if (action === "card") args.costsId = operand(reader, "the card");
-    if (action === "run") args.costsId = operand(reader, "the run");
-  },
+  costs: readCosts,
   roi: setCommand("roi"),
   "--hours": setValue((args, v) => {
     args.hours = wholeFrom("--hours", v, 720);
@@ -333,7 +311,7 @@ const HANDLERS: Record<string, Handler> = {
     if (action !== "list" && action !== "subagents")
       args.personaId = operand(reader, "the persona");
   },
-  host: setCommand("host"),
+  host: hostHandler,
   sessions: setCommand("sessions"),
   session: readSession,
   ssh: readSsh,
@@ -781,10 +759,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     automationProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
+    hostProblem(args) ??
     budgetProblem(args) ??
     rulesProblem(args) ??
     approversProblem(args) ??
-    costsProblem(args);
+    costsProblem(args) ??
+    telemetryProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;

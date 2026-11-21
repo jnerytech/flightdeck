@@ -2,11 +2,17 @@
  * Issue #3460: `flightdeckd costs summary|session|card|run|status|export`, what the host's sessions cost.
  * Exit codes: 0 done, 1 refused, 2 no daemon.
  */
-import { type CliResult, runOnLocalDaemon, shown } from "../daemon-client/index.ts";
+import {
+  type CliResult,
+  type RemoteTarget,
+  runOnLocalDaemon,
+  shown,
+} from "../daemon-client/index.ts";
 import {
   type CostsCliArgs,
   csvLines,
   sessionLines,
+  sessionsLines,
   statusLines,
   summaryLines,
   UNSURE_REPRICE,
@@ -18,12 +24,13 @@ export type { CostsCliArgs } from "./domain/costs-cli-view.ts";
 export async function runCostsCli(
   args: CostsCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
     clientName: "flightdeck-costs",
     timeoutMs: options.timeoutMs ?? 15_000,
+    ...(options.remote ? { remote: options.remote } : {}),
     ...(args.action === "reprice" ? { unsure: UNSURE_REPRICE } : {}),
     perform: async (daemon, note) => {
       const id = args.id ?? "";
@@ -42,6 +49,14 @@ export async function runCostsCli(
             await daemon.call("costs.session", { claudeSessionId: id }),
             sessionLines,
           );
+        case "sessions": {
+          const ids = args.ids ?? [];
+          return shown(
+            args.json,
+            await daemon.call("costs.sessions", { claudeSessionIds: ids }),
+            (answer) => sessionsLines(ids, answer.costs),
+          );
+        }
         case "card":
           return shown(args.json, await daemon.call("costs.card", { cardId: id }), (card) => [
             `card ${id}: ${usd(card.costUsd)}`,

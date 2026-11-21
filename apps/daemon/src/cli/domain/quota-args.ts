@@ -2,6 +2,9 @@
  * Issue #3460: what `flightdeckd quota` and `flightdeckd usage` take, checked before anything is sent.
  * The parser in `args.ts` adds the usage text to the problem this names.
  */
+import { operand, subAction } from "./arg-reader.ts";
+import type { Handler } from "./flag-handlers.ts";
+import { USAGE } from "./usage.ts";
 
 /** The parsed arguments this check reads: `CliArgs` fits it. */
 export interface QuotaArgs {
@@ -36,3 +39,18 @@ export function quotaProblem(args: QuotaArgs): string | undefined {
     return "--days: this flag only applies to flightdeckd usage";
   return undefined;
 }
+
+/** `quota get|history|pause-at|watch`: the verb and the one operand each takes. */
+export const quotaHandler: Handler = (args, reader) => {
+  args.command = "quota";
+  const verbs = ["get", "history", "pause-at", "watch"] as const;
+  const action = subAction(reader, verbs, "invalid quota action");
+  args.action = action;
+  if (action === "history") args.quotaWindow = operand(reader, "the window");
+  if (action === "pause-at") {
+    const share = parseShare(operand(reader, "the share"));
+    if (share === undefined)
+      throw new Error(`quota pause-at: a share from 0 to 1, or off\n${USAGE}`);
+    args.quotaPauseAt = share;
+  }
+};

@@ -191,6 +191,8 @@ describe("hub-ui: o que se repete vai para o cabeçalho do grupo", () => {
     expect(run.querySelector("[data-slot='origin-chip']")?.textContent).toBe("terminal");
     const managedMeta = (item("Gerenciada") as HTMLElement).querySelector("[data-slot='row-meta']");
     expect(managedMeta?.textContent).toBe("Flightdeck");
+    // #3793: the stylesheet's row-meta rule hides it in a narrow list; it applies through this class.
+    expect(managedMeta?.classList.contains("row-meta")).toBe(true);
   });
 
   test("a group whose rows all come from the same host and origin has no per-row meta at all", () => {
