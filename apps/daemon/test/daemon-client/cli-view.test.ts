@@ -39,10 +39,10 @@ describe("plain: terminal-control and direction characters in daemon text (#3522
         expect(plain(`a${char(code)}b`)).toBe(`a${char(code)}b`);
       }
     }
-    expect(plain("Ação: 日本語 — ok ‐")).toBe("Ação: 日本語 — ok ‐");
+    expect(plain("Ação: 日本語 — ok\u00a0\u2010")).toBe("Ação: 日本語 — ok\u00a0\u2010");
   });
 
   test("an escape sequence and a bidi override are defused, the printable rest is kept", () => {
-    expect(plain("evil\u001b[2Jrepo‮")).toBe("evil [2Jrepo ");
+    expect(plain("evil\u001b[2Jrepo\u202e")).toBe("evil [2Jrepo ");
   });
 });
