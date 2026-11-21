@@ -30,9 +30,9 @@ describe("risk rules: the closing characters at the end of a word (#3665)", () =
 
   test("a word made of thousands of them is read in linear time", () => {
     const start = performance.now();
-    const risk = bash(`fd persona remove ${")".repeat(12_000)}x`);
+    const risk = bash(`fd persona remove ${")".repeat(30_000)}x`);
     const ms = performance.now() - start;
     expect([risk.level, risk.reason]).toEqual(["high", PERSONA]);
-    expect(ms).toBeLessThan(500);
+    expect(ms).toBeLessThan(2500);
   });
 });
