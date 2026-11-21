@@ -27,6 +27,6 @@ export function messageAdminRun(
       ...(remote ? { remote } : {}),
       signal: stop.signal,
       stdin: deps.stdin,
-      write: (line) => deps.log.log(line),
+      write: deps.log.log.bind(deps.log),
     });
 }
