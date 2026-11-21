@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { projectCliArgs } from "../../src/cli/domain/project-args.ts";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
+import { callTimeoutMs } from "../../src/projects/domain/project-cli-view.ts";
 import { runProjectCli } from "../../src/projects/index.ts";
 import { config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
 
@@ -97,6 +98,10 @@ describe("flightdeckd project clone: the words (issue #3737)", () => {
     refusedWith([...CLONE, "--name", "  "], "--name");
   });
 
+  test("refuses a blank url, before it connects", () => {
+    refusedWith(["project", "clone", "  ", "--root", "/srv/code", "--confirm"], "blank");
+  });
+
   test("refuses --depth, and a relative root for another host", () => {
     refusedWith([...CLONE, "--depth", "2"], "only applies");
     refusedWith(
@@ -189,5 +194,15 @@ describe("flightdeckd project clone (issue #3737)", () => {
     const result = await runProjectCli(args, config(silent.port), { timeoutMs: 200 });
     expect(result.code).toBe(2);
     expect(text(result)).toContain("may or may not");
+  });
+});
+
+describe("how long project waits for the host (issue #3737)", () => {
+  test("a clone is given more than the host's own five minutes for git, a lookup the usual half minute", () => {
+    expect(callTimeoutMs({ action: "clone", url: URL, root: "/r", confirm: true })).toBeGreaterThan(
+      5 * 60_000,
+    );
+    expect(callTimeoutMs({ action: "scan" })).toBe(30_000);
+    expect(callTimeoutMs({ action: "stack", path: "/r" })).toBe(30_000);
   });
 });
