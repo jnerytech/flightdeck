@@ -2,8 +2,10 @@
 
 [Voltar ao manual](../pt-BR.md) · [English](../en/flightdeckd-watch-commands.md)
 
-Os verbos que leem o que a vigia de PR de um card fez. Funcionam como os outros comandos do `flightdeckd`: veja
-[o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum). Não mudam nada.
+Os verbos que leem o que a vigia de PR de um card fez e os que a mudam. Funcionam como os outros comandos do
+`flightdeckd`: veja [o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum). `get`, `trace`,
+`describe`, `by-url`, `settings` sem flag e `follow` não mudam nada; os outros mudam o que a vigia faz sozinha, e por
+isso uma sessão que roda um deles no shell é consultada antes.
 
 ## fd watch
 
@@ -13,6 +15,11 @@ fd watch trace card-1 --json
 fd watch describe card-1 > pr-description.md
 fd watch by-url https://github.com/acme/api/pull/42
 fd watch settings api
+fd watch follow
+fd watch set card-1 --disable
+fd watch extend card-1 --rounds 2
+fd watch resolve-held card-1 round-1 --push
+fd watch settings api --max-rounds 4 --check "bun test" --budget-usd none
 ```
 
 `get <card>` mostra o estado da vigia: `watching`, `needs you` com o motivo, ou `watch off`, quantas das rodadas
@@ -34,5 +41,19 @@ configuração, com `none` para uma lista vazia e `unknown` para uma configuraç
 nome que dois projetos têm é recusado com os ids deles.
 
 Com `--json` os comandos imprimem o valor que o daemon devolve, com `null` para um campo que falta. `--host <nome>`
-lê um host pareado. Mudar as configurações, estender uma vigia e resolver uma rodada retida ainda não estão aqui: use
-o app.
+lê um host pareado.
+
+`follow` fica conectado e mostra a vigia de um card cada vez que ela muda, até Ctrl-C (sai com `0`); com `--json` mostra
+uma vigia por linha.
+
+`set <card>` recebe uma entre `--enable`, `--disable` ou `--default` (a configuração do projeto). `extend <card> --rounds
+<1-10>` permite essas rodadas além do limite. `resolve-held <card> <rodada>` recebe `--push` ou `--drop` e mostra a
+rodada que fez e depois a vigia do card.
+
+`settings <projeto>` com flags muda só os campos que elas nomeiam: `--enable`, `--disable`, `--max-rounds`,
+`--check <comando>` (repita; `--clear-checks` esvazia a lista), `--check-timeout-min`, `--budget-usd`, `--max-turns`,
+`--persona`, `--max-failures`, `--daily-usd`, `--check-rounds`, `--check-env <NOME>` (`--clear-check-env`),
+`--check-loop-default on|off` e `--drift-allow <glob>` (`--clear-drift-allow`). `--budget-usd`, `--max-turns` e
+`--daily-usd` aceitam `none` para sem limite. Um valor que o daemon recusaria é recusado pela flag, antes de enviar
+qualquer coisa. Um comando que não teve resposta diz que pode ou não ter mudado a vigia: leia de volta antes de
+tentar de novo. Um host pareado recusa a mudança de um campo que só quem está nesse host pode editar.
