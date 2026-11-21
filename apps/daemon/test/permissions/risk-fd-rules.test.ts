@@ -31,7 +31,7 @@ describe("risk rules: a session removing a rule or resuming automatic approval f
         "fd rules list --project api",
         "fd autoapprove list --limit 5 --json",
         "fd autoapprove list --session s7",
-        "fd send fd-qa 'please remove the rules'",
+        "fd message send fd-qa 'please remove the rules'",
         "echo rules remove",
         "bun test autoapprove resume",
         "bash -c 'echo autoapprove resume'",

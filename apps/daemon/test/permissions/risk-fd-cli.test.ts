@@ -41,18 +41,43 @@ describe("risk rules: a session answering a permission request from its shell (#
         ['bash -c "fd approvers enroll"', WHO],
       ]),
     ).toEqual([]);
-    expect(notHigh(["echo approvers", 'fd send fd-qa "approvers reset"'])).toEqual([]);
+    expect(notHigh(["echo approvers", 'fd message send fd-qa "approvers reset"'])).toEqual([]);
+  });
+
+  test("send puts a text into a session as the person's own input: high from a shell, in the same spellings (#3762)", () => {
+    const SENDS =
+      "puts a text into a session as the person's own input, and steps the card's check loop aside (flightdeckd send)";
+    expect(
+      wrongReasons([
+        ['fd send fd-qa "run the suite"', SENDS],
+        ["flightdeckd send fd-qa hi --json", SENDS],
+        ["flightdeckd --config /x/y.json send fd-qa hi", SENDS],
+        ["fd send fd-qa hi --host far", SENDS],
+        ["bun run apps/daemon/src/bin.ts send fd-qa hi", SENDS],
+        ['bash -c "fd send fd-qa hi"', SENDS],
+        ['fd send fd-qa "approvers reset"', SENDS],
+        ["bunx flightdeckd send fd-qa hi", SENDS],
+        ["env X=1 fd send fd-qa hi", SENDS],
+        ["echo fd-qa | xargs fd send", SENDS],
+        ['fd "send" fd-qa hi', SENDS],
+        ["fd --session fd-qa send hi", SENDS],
+        ["fd send", SENDS],
+      ]),
+    ).toEqual([]);
+    expect(
+      notHigh(["echo send", "grep send notes.txt", "fd sessions", "fd requests --json"]),
+    ).toEqual([]);
   });
 
   test("the other commands stay ordinary shell commands, and a word in an argument is not a verb", () => {
     expect(
       notHigh([
         "fd requests",
-        "fd send fd-qa hello",
+        "fd message send fd-qa hello",
         "fd host --json",
         "fd sessions",
         "flightdeckd doctor",
-        'fd send fd-qa "please approve r1"',
+        'fd message send fd-qa "please approve r1"',
         "echo approve",
         "approve r1",
         "bun test approve",

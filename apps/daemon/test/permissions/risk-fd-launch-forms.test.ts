@@ -61,8 +61,8 @@ describe("risk rules: the CLI reached as `flightdeckd fd <command>` (#3566)", ()
     const wrong = [
       "flightdeckd fd card list --json",
       "flightdeckd fd sessions --json",
-      "flightdeckd send s1 'fd approve r1'",
-      'fd send fd-qa "fd approve"',
+      "flightdeckd message send s1 'fd approve r1'",
+      'fd message send fd-qa "fd approve"',
       "flightdeckd fd fd approve r1",
     ].flatMap((line) => {
       const got = bash(line);
@@ -168,6 +168,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       "approvers",
       "autoapprove",
       "automation",
+      "bg",
       "boardsync",
       "budget",
       "card",

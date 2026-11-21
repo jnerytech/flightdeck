@@ -12,6 +12,8 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - `team_status`: the state of a team.
 - **Who is sending** comes from the session's environment: `FLIGHTDECK_SESSION` in managed
   sessions, `FLIGHTDECK_LAUNCH_ID` in those opened by `flightdeckd claude`.
+- **From a session's shell**, use `flightdeckd message send` to write to another session. `flightdeckd send`
+  puts the text in as the person's own input, so a session's shell asks the person before it runs it.
 - **Delivery on one host** needs no app:
   - a managed session in the middle of a turn gets the message when the turn ends;
   - a terminal waiting for a permission gets it after that.

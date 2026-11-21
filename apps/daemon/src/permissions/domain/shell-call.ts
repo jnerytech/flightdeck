@@ -487,6 +487,7 @@ export const OPTIONS_WITH_VALUE = [
   "--param",
   "--config",
   "--runtime",
+  "--card",
   "--period",
   "--window",
   "--limit-usd",

@@ -8,7 +8,7 @@ import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.t
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { AUTOMATION_FLAGS, automationProblem, readAutomation } from "./automation-args.ts";
-import { readBg } from "./bg-args.ts";
+import { BG_FLAGS, bgProblem, readBg, takeBgFlags } from "./bg-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
@@ -28,6 +28,7 @@ import { externalProblem, readExternal, readNames, TEXT_FLAG } from "./external-
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
+import { issuesProblem, readIssues } from "./issues-args.ts";
 import { knowledgeFlags, knowledgeProblem, readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
 import { memoryProblem, readMemory } from "./memory-args.ts";
@@ -53,6 +54,7 @@ import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
 import { readWorkflow, workflowProblem } from "./workflow-args.ts";
+import { readWorktree, worktreeProblem } from "./worktree-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -221,6 +223,7 @@ const HANDLERS: Record<string, Handler> = {
         "choose-variant",
         "check-loop",
         "dismiss-unblocked",
+        "pr-comments",
       ],
       "invalid card action",
     );
@@ -335,6 +338,8 @@ const HANDLERS: Record<string, Handler> = {
   boardsync: readBoardsync,
   review: readReview,
   memory: readMemory,
+  worktree: readWorktree,
+  issues: readIssues,
   runenv: readRunenv,
   changes: readChanges,
   snapshots: readSnapshots,
@@ -578,6 +583,7 @@ const HANDLERS: Record<string, Handler> = {
   ...REVIEW_FLAGS,
   ...CHANGES_FLAGS,
   ...CHECKPOINT_FLAGS,
+  ...BG_FLAGS,
   ...FILE_FLAGS,
   "--off": OFF_FLAG,
   "--text": TEXT_FLAG,
@@ -705,6 +711,7 @@ function refuseStrayFlags(args: CliArgs): void {
   takeFileFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);
+  takeBgFlags(args);
   if (
     !["requests", "message", "autoapprove", "vault", "mcp"].includes(args.command) &&
     args.session !== undefined
@@ -760,9 +767,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     boardsyncProblem(args) ??
     reviewProblem(args) ??
     memoryProblem(args) ??
+    issuesProblem(args) ??
+    worktreeProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
     checkpointsProblem(args) ??
+    bgProblem(args) ??
     fileProblem(args) ??
     externalProblem(args) ??
     actionProblem(args) ??
