@@ -65,5 +65,11 @@ or may not have been made: run `fd action list --plain` before trying again.
 ### From a session
 
 When a session runs `fd action save`, `trust` or `remove` in its own shell, the request is **high risk** and goes to you: it
-would write a command that runs with secrets, let one run, or delete one. `list`, `runs` and `run` stay ordinary shell commands. For `save` the request shows the path of the definition file, not what is in it, and
-a session can change the file after you answer: open the file, and deny if you cannot read what it runs.
+would write a command that runs with secrets, let one run, or delete one. `list`, `runs` and `run` stay ordinary shell commands. For `save` the request also says what the definition file holds: its name, the command it runs (`run`, the first
+300 characters), its folder, the names of its environment variables (never their values), the secrets it uses, and the
+host it runs on. A file that cannot be read, is over 256 KiB or is not one JSON object is said so, and you should deny it.
+A relative path is shown with the folder it was read in. A command that names the flag twice, changes folder before
+the save or builds the path in the shell is said to name no readable file, and a command that runs other steps before
+the save says so, because those steps may change the file after it was read. The request also shows `approval` and the
+tags when the file sets them, and says when a run line was cut. The file is read when the request is shown, and a
+session can change it after you answer: deny what you cannot read.

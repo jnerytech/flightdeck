@@ -27,6 +27,8 @@ export interface BrokerHooks {
   autoDecide?(request: AutoApproveRequest): Promise<AutoDecision | null>;
   /** Phase 33: the request in plain words; the host looks at its files to word it. */
   plain?(sessionId: string, toolName: string, input: ToolInput, risk: Risk): Promise<PlainInfo>;
+  /** #3752: one more sentence for the request's reason (what a file it names holds); undefined when it has none. */
+  explain?(sessionId: string, toolName: string, input: ToolInput): Promise<string> | undefined;
   /** #3439: the signed proof an allow of a high-risk request needs once a device is enrolled; without it, the hold. */
   approval?: ApprovalGate;
 }
@@ -71,6 +73,8 @@ export class PermissionBroker {
   private readonly announced = new Set<string>();
   /** The plain wording of an announced request, for the summary to list it (issue #88). */
   private readonly plains = new Map<string, PlainInfo>();
+  /** The reasons that `explain` extended, by request id, for the summary to list the same words (#3752). */
+  private readonly reasons = new Map<string, string>();
 
   constructor(
     private readonly store: EventStore,
@@ -102,11 +106,13 @@ export class PermissionBroker {
         resolve,
         detach: () => signal.removeEventListener("abort", onAbort),
       });
-      const announce = (plain?: PlainInfo) => {
+      const announce = (plain?: PlainInfo, note?: string) => {
         // Answered meanwhile (the turn was interrupted): nothing to announce.
         if (!this.open.has(id)) return;
         this.announced.add(id);
         if (plain) this.plains.set(id, plain);
+        const riskReason = note ? `${risk.reason}. ${note}` : risk.reason;
+        if (note) this.reasons.set(id, riskReason);
         this.hooks.emit(sessionId, {
           type: "permission.requested",
           requestId: id,
@@ -114,7 +120,7 @@ export class PermissionBroker {
           input,
           ...(suggestions.length > 0 ? { suggestions } : {}),
           risk: risk.level,
-          riskReason: risk.reason,
+          riskReason,
           ...(plain ? { plain } : {}),
         });
         this.hooks.onPendingChange(sessionId, this.pendingCount(sessionId));
@@ -130,15 +136,29 @@ export class PermissionBroker {
           });
       // With the plain wording the request is announced once the host has looked at its files,
       // and only then can it be answered automatically (the answer follows the question).
-      if (this.hooks.plain) {
-        const looked = (plain?: PlainInfo) => {
-          announce(plain);
-          decide();
-        };
-        void this.hooks.plain(sessionId, toolName, input, risk).then(looked, () => looked());
-      } else {
-        announce();
+      // The note is asked now and waited for only when the host has one (a shell request that saves a definition):
+      // any other request is announced on the same ticks as before, so the summaries keep their order (#3752).
+      let explaining: Promise<string> | undefined;
+      try {
+        explaining = this.hooks.explain?.(sessionId, toolName, input);
+      } catch {
+        explaining = undefined;
+      }
+      const lookedAt = (plain?: PlainInfo, note?: string) => {
+        announce(plain, note);
         decide();
+      };
+      if (explaining) {
+        const worded = this.hooks.plain
+          ? this.hooks.plain(sessionId, toolName, input, risk).catch(() => undefined)
+          : Promise.resolve(undefined);
+        void Promise.all([worded, explaining.catch(() => undefined)]).then(([plain, note]) =>
+          lookedAt(plain, note),
+        );
+      } else if (this.hooks.plain) {
+        void this.hooks.plain(sessionId, toolName, input, risk).then(lookedAt, () => lookedAt());
+      } else {
+        lookedAt();
       }
     });
   }
@@ -151,6 +171,11 @@ export class PermissionBroker {
   /** The plain wording the request was announced with, if the host worded it. */
   plainOf(requestId: string): PlainInfo | undefined {
     return this.plains.get(requestId);
+  }
+
+  /** The reason an announced request carries when `explain` added a sentence to the rule's; undefined otherwise. */
+  reasonOf(requestId: string): string | undefined {
+    return this.reasons.get(requestId);
   }
 
   /** The session of an open request; "" when it is not open. */
@@ -255,6 +280,7 @@ export class PermissionBroker {
     this.open.delete(id);
     this.announced.delete(id);
     this.plains.delete(id);
+    this.reasons.delete(id);
     pending.detach();
     const status = STATUS_OF[decision];
     this.store.resolvePermission(id, status, message);
