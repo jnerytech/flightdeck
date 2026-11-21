@@ -107,6 +107,21 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
 
   const { attached, setAttached, refusal, setRefusal, attach } = useComposerImages(props.images);
 
+  const sendShown = text.trim() !== "" || attached.length > 0;
+  // Read while the render runs, before React removes anything: did a button of the message card
+  // (Send, Stop, Queue) hold the focus? Those buttons leave the page when a send or the end of a
+  // turn changes what the card offers, and the focus would fall to the page body (#3813).
+  const card = box.current?.closest('[data-slot="composer-card"]');
+  const held = document.activeElement;
+  const buttonHeld = useRef(false);
+  buttonHeld.current = Boolean(card && held && held !== box.current && card.contains(held));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the buttons change with these two
+  useLayoutEffect(() => {
+    // Only a focus that fell to the body goes to the box: one that moved on its own stays.
+    const lost = document.activeElement === document.body || document.activeElement === null;
+    if (buttonHeld.current && lost) box.current?.focus();
+  }, [working, sendShown]);
+
   const { queued, enqueue, remove } = useComposerQueue({
     send: actions.send,
     working,
@@ -273,7 +288,7 @@ export function SessionComposer(props: Readonly<SessionComposerProps>) {
               </ActionButton>
             </>
           ) : (
-            (text.trim() !== "" || attached.length > 0) && (
+            sendShown && (
               <ActionButton
                 size="icon"
                 aria-label={t("session.send")}
