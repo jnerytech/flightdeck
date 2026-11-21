@@ -187,6 +187,24 @@ describe("flightdeckd mcp save (issue #3616)", () => {
     expect(callsOf(daemon, "mcp.save")).toEqual([]);
   });
 
+  test("a server with nothing to run, neither a command nor a link, is refused", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const run = await flightdeckd(
+      ["mcp", "save", "api", serverFile({ name: "files", args: ["-y"] }), "--confirm"],
+      daemon.port,
+    );
+    expect([run.code, run.err.join("\n")]).toEqual([1, expect.stringContaining("command")]);
+    expect(callsOf(daemon, "mcp.save")).toEqual([]);
+  });
+
+  test("a file that is refused is exit 1 whether or not a daemon runs, since it is read before one is asked", async () => {
+    const daemon = fakeDaemon(OPEN);
+    const { port } = daemon;
+    await stopAll();
+    const run = await flightdeckd(["mcp", "save", "api", serverFile("[]"), "--confirm"], port);
+    expect(run.code).toBe(1);
+  });
+
   test("a masked value is the daemon's refusal, exit 1", async () => {
     const daemon = fakeDaemon({
       ...OPEN,
