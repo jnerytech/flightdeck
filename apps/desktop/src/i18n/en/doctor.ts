@@ -80,6 +80,8 @@ export const doctor = {
     dryRun: " (dry run)",
     noCleanup: "none yet",
     asking: "checking…",
+    loadFailed: "Could not read this host's maintenance data.",
+    retry: "Try again",
     backup: "Back up now",
     dry: "Simulate",
     clean: "Clean",
