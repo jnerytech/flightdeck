@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { DEFAULT_POLICY, validatePolicy } from "../../../daemon/src/messaging/domain/policy.ts";
+import { en } from "../../src/i18n/en.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
-import { settle } from "../wait.ts";
+import { settle, settleMaybe, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -207,3 +209,69 @@ describe("regras-mensagens-ui: who may message whom, retention and paused pairs 
     expect((lastSet()?.policy as typeof POLICY | undefined)?.retentionDays).toBe(9);
   });
 });
+
+/** Settings with a host whose messaging.rules.get the daemon refuses, in one language. */
+async function openRules(lang: "en" | "pt-BR", refused: boolean) {
+  const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 60_000 });
+  cleanups.push(() => store.dispose());
+  const daemon = legacyDaemon(cleanups);
+  daemon.features.push("messaging");
+  daemon.messaging.policy = structuredClone(POLICY);
+  if (refused) daemon.refuse.set("messaging.rules.get", "the rules file is unreadable");
+  render(<App store={store} />);
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await settle(() => store.getState().hosts[0]?.hostInfo != null);
+  await act(async () => {
+    store.router.push({ name: "settings" });
+  });
+  return { daemon };
+}
+
+for (const [lang, t] of [
+  ["en", en],
+  ["pt-BR", ptBR],
+] as const) {
+  describe(`mensagens-ui (${lang}): a failed load and what each field expects (issue #3787)`, () => {
+    test("a refused load keeps the host's section with what failed and Try again, and the retry shows the form", async () => {
+      const { daemon } = await openRules(lang, true);
+      const title = t.messagingRulesUi.title.replace("{host}", "alfa");
+      const failed = t.messagingRulesUi.loadFailed.replace("{host}", "alfa");
+      await settleMaybe(() => document.body.textContent?.includes(failed) === true);
+      expect(document.body.textContent).toContain(failed);
+      expect(screen.queryByRole("region", { name: title })).not.toBeNull();
+      expect(document.body.textContent).toContain("the rules file is unreadable");
+      expect(document.body.textContent).not.toContain(t.messagingRulesUi.none);
+      // A retry the host refuses again leaves the error and the button where they were.
+      await click(t.messagingRulesUi.retry);
+      await uiIdle();
+      expect(document.body.textContent).toContain(failed);
+      expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).not.toBeNull();
+      daemon.refuse.delete("messaging.rules.get");
+      await click(t.messagingRulesUi.retry);
+      await settle(() => screen.queryByLabelText(t.messagingRulesUi.retention) !== null);
+      expect(document.body.textContent).not.toContain(failed);
+      expect(screen.queryByLabelText(t.messagingRulesUi.retention)).not.toBeNull();
+      expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).toBeNull();
+    });
+
+    test("under each value field a hint says what the chosen kind expects", async () => {
+      await openRules(lang, false);
+      await settle(() => screen.queryByLabelText(t.messagingRulesUi.fromValue) !== null);
+      const hints = t.messagingRulesUi.hints;
+      // Both sides start as "host".
+      expect(screen.queryAllByText(hints.host)).toHaveLength(2);
+      await change(t.messagingRulesUi.from, "project");
+      await change(t.messagingRulesUi.to, "team");
+      expect(screen.queryAllByText(hints.project)).toHaveLength(1);
+      expect(screen.queryAllByText(hints.team)).toHaveLength(1);
+      expect(screen.queryAllByText(hints.host)).toHaveLength(0);
+      await change(t.messagingRulesUi.from, "session");
+      expect(screen.queryAllByText(hints.session)).toHaveLength(1);
+      const value = screen.queryByLabelText(t.messagingRulesUi.fromValue);
+      const described = value?.getAttribute("aria-describedby")?.split(" ") ?? [];
+      expect(described.map((id) => document.getElementById(id)?.textContent)).toContain(
+        hints.session,
+      );
+    });
+  });
+}

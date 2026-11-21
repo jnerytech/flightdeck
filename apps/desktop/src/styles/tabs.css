@@ -26,8 +26,9 @@
   flex-shrink: 0;
 }
 
-/* Issue #488: flat tabs that share the bar, as in VS Code. A tab is as wide as its title (6 to 13
-   rem, then the title is cut and the tooltip has it whole); thin lines part them; the inactive
+/* Issue #488: flat tabs that share the bar, as in VS Code. A tab is as wide as its title (9 to 13
+   rem, then the title is cut and the tooltip has it whole; the floor keeps the start of the title
+   in sight, #3794); thin lines part them; the inactive
    ones are dimmer; the active one has the content's background, full-contrast text and an accent
    line on top, so it reads as joined to the screen below. */
 @utility tab-item {
@@ -35,7 +36,7 @@
   display: flex;
   align-items: center;
   flex: 0 1 auto;
-  min-width: 6rem;
+  min-width: 9rem;
   max-width: 13rem;
   border-right: 1px solid var(--color-border);
   color: var(--color-muted-foreground);
