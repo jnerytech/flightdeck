@@ -6,6 +6,7 @@
  * too: it reaches `central/` through `personas/` (#1601); `server-options.ts` takes `Forker` from it.
  */
 
+export { type CheckpointsCliArgs, runCheckpointsCli } from "./checkpoints-cli.ts";
 export { type SnapshotInput, snapshotForHook } from "./domain/snapshot-hook.ts";
 export { withTurnUuids } from "./domain/turn-uuid.ts";
 export type { Rewinder } from "./rewind.ts";

@@ -213,6 +213,9 @@ export const vault = {
     export: "Exportar CSV",
     decisions: "Decisões do cofre",
     noDecisions: "Nenhuma decisão no período",
+    loading: "Carregando o relatório do cofre",
+    failed: "Não deu para ler o relatório do cofre. Veja se o host está conectado.",
+    retry: "Tentar de novo",
     outcomes: {
       pending: "esperando",
       allowed: "deixou passar",

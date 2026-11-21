@@ -1,11 +1,12 @@
 import type { VaultDecisionInfo, VaultReportRow } from "@flightdeck/protocol";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { hostsWith } from "@/lib/version";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { ErrorState, LoadingState } from "@/shared/layout/index.ts";
 
 const DAYS = 30;
 const SELECT =
@@ -24,21 +25,45 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
   const hosts = hostsWith(state.hosts, "actions");
   const [hostId, setHostId] = useState("");
   const host = hosts.find((h) => h.id === hostId) ?? hosts[0];
-  const [rows, setRows] = useState<VaultReportRow[]>([]);
-  const [decisions, setDecisions] = useState<VaultDecisionInfo[]>([]);
+  // Null until the host answers, so a refused or slow read is never shown as "no use". It names its host, so a render after a host change never shows the previous host's rows.
+  const [data, setData] = useState<{
+    hostId: string;
+    rows: VaultReportRow[];
+    decisions: VaultDecisionInfo[];
+  } | null>(null);
+  const [failed, setFailed] = useState(false);
+  // The newest read only: an older answer (another host, an earlier try) is dropped.
+  const latest = useRef(0);
+  const hostKey = host?.id;
   const name = (id: string) => state.secrets.find((s) => s.id === id)?.name ?? id;
   const requester = (r: string) => t(`actionsUi.requester.${r}` as Key);
 
-  useEffect(() => {
-    if (!host) return;
-    void store.hostCommand(host.id, "vault.report", { days: DAYS }).then((report) => {
-      if (report) setRows(report.rows);
-    });
-    void store.hostCommand(host.id, "vault.decisions", { days: DAYS }).then((result) => {
-      if (result) setDecisions(result.decisions);
-    });
-  }, [store, host]);
+  // The tab has its own error and Try again, so the toast offers no retry (it would drop the answer).
+  const load = useCallback(async () => {
+    if (!hostKey) return;
+    latest.current += 1;
+    const mine = latest.current;
+    const [report, decided] = await Promise.all([
+      store.hostCommand(hostKey, "vault.report", { days: DAYS }, { retry: false }),
+      store.hostCommand(hostKey, "vault.decisions", { days: DAYS }, { retry: false }),
+    ]);
+    if (mine !== latest.current) return;
+    setFailed(!report || !decided);
+    if (report && decided)
+      setData({ hostId: hostKey, rows: report.rows, decisions: decided.decisions });
+  }, [store, hostKey]);
 
+  // Another host starts from nothing: its table does not show the previous host's rows.
+  useEffect(() => {
+    setData(null);
+    setFailed(false);
+    void load();
+    return () => {
+      latest.current += 1;
+    };
+  }, [load]);
+
+  const shown = data?.hostId === hostKey ? data : null;
   if (!host) return <p className="text-muted-foreground text-sm">{t("vaultAudit.noHost")}</p>;
 
   const exportCsv = async () => {
@@ -70,48 +95,60 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
           {t("vaultAudit.export")}
         </ActionButton>
       </div>
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground">{t("vaultAudit.empty")}</p>
-      ) : (
-        <table aria-label={t("vaultAudit.table")} className="w-full text-left text-xs">
-          <thead>
-            <tr>
-              <th>{t("vaultAudit.secret")}</th>
-              <th>{t("vaultAudit.requester")}</th>
-              <th>{t("vaultAudit.outcome")}</th>
-              <th className="text-right">{t("vaultAudit.count")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.secretId}|${row.requester}|${row.outcome}`}>
-                <td>{name(row.secretId)}</td>
-                <td>{requester(row.requester)}</td>
-                <td>{t(`vaultAudit.outcomes.${row.outcome}`)}</td>
-                <td className="text-right tabular-nums">{row.count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {failed && (
+        <ErrorState
+          message={t("vaultAudit.failed")}
+          retryLabel={t("vaultAudit.retry")}
+          onRetry={() => void load()}
+        />
       )}
-      {decisions.length === 0 ? (
-        <p className="text-muted-foreground">{t("vaultAudit.noDecisions")}</p>
-      ) : (
-        <ul aria-label={t("vaultAudit.decisions")} className="flex flex-col gap-1 text-xs">
-          {decisions.map((d) => (
-            <li key={d.id} className="flex flex-wrap gap-x-2">
-              <time dateTime={d.at} className="text-muted-foreground tabular-nums">
-                {store.formatDateTime(d.at)}
-              </time>
-              <span>{name(d.secretId)}</span>
-              {d.action && <span className="font-mono">{d.action}</span>}
-              <span>{requester(d.requester)}</span>
-              <strong>{t(`vaultAudit.outcomes.${d.outcome}`)}</strong>
-              {d.approver && <span>{t(`vaultAudit.approvers.${d.approver}`)}</span>}
-              <span className="text-muted-foreground">{d.reason}</span>
-            </li>
-          ))}
-        </ul>
+      {!failed && shown === null && <LoadingState label={t("vaultAudit.loading")} />}
+      {!failed && shown !== null && (
+        <>
+          {shown.rows.length === 0 ? (
+            <p className="text-muted-foreground">{t("vaultAudit.empty")}</p>
+          ) : (
+            <table aria-label={t("vaultAudit.table")} className="w-full text-left text-xs">
+              <thead>
+                <tr>
+                  <th>{t("vaultAudit.secret")}</th>
+                  <th>{t("vaultAudit.requester")}</th>
+                  <th>{t("vaultAudit.outcome")}</th>
+                  <th className="text-right">{t("vaultAudit.count")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.rows.map((row) => (
+                  <tr key={`${row.secretId}|${row.requester}|${row.outcome}`}>
+                    <td>{name(row.secretId)}</td>
+                    <td>{requester(row.requester)}</td>
+                    <td>{t(`vaultAudit.outcomes.${row.outcome}`)}</td>
+                    <td className="text-right tabular-nums">{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {shown.decisions.length === 0 ? (
+            <p className="text-muted-foreground">{t("vaultAudit.noDecisions")}</p>
+          ) : (
+            <ul aria-label={t("vaultAudit.decisions")} className="flex flex-col gap-1 text-xs">
+              {shown.decisions.map((d) => (
+                <li key={d.id} className="flex flex-wrap gap-x-2">
+                  <time dateTime={d.at} className="text-muted-foreground tabular-nums">
+                    {store.formatDateTime(d.at)}
+                  </time>
+                  <span>{name(d.secretId)}</span>
+                  {d.action && <span className="font-mono">{d.action}</span>}
+                  <span>{requester(d.requester)}</span>
+                  <strong>{t(`vaultAudit.outcomes.${d.outcome}`)}</strong>
+                  {d.approver && <span>{t(`vaultAudit.approvers.${d.approver}`)}</span>}
+                  <span className="text-muted-foreground">{d.reason}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );
