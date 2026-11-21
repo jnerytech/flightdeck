@@ -24,6 +24,7 @@ import {
   unquoted,
 } from "./shell-call.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
+import { changesAWatch } from "./watch-risk.ts";
 
 export { credential };
 
@@ -179,7 +180,7 @@ const answersARequest = (prog: string, args: string[]) =>
 const changesApprovers = (prog: string, args: string[]) =>
   runsFlightdeckVerb(prog, args, ["approvers"]);
 
-const CARD_ENDS = ["discard", "complete", "delete", "merge-local", "choose-variant"];
+const CARD_ENDS = new Set(["discard", "complete", "delete", "merge-local", "choose-variant"]);
 
 /**
  * What the app asks the person to confirm, done from a session's shell (#3454): `card discard`,
@@ -198,7 +199,7 @@ function endsACard(prog: string, args: string[]): boolean {
       const [command, action, , switchTo] = flightdeckWords(own);
       return (
         command === "card" &&
-        (CARD_ENDS.includes(action ?? "") ||
+        (CARD_ENDS.has(action ?? "") ||
           (action === "move" && own.includes("--force")) ||
           (action === "check-loop" && switchTo === "on"))
       );
@@ -209,7 +210,7 @@ function endsACard(prog: string, args: string[]): boolean {
   return (
     runsCli &&
     words.includes("card") &&
-    (words.some((w) => CARD_ENDS.includes(w)) || forcedMove(words) || loopOn(words))
+    (words.some((w) => CARD_ENDS.has(w)) || forcedMove(words) || loopOn(words))
   );
 }
 
@@ -431,6 +432,11 @@ const DANGEROUS: Array<{
       "turns the host's terminals on, a full shell for whoever reaches the daemon, without the person choosing it in the app (flightdeckd terminal settings --enable)",
   },
   {
+    when: changesAWatch,
+    reason: () =>
+      "changes what a card's PR watch does on its own, which sessions it wakes and what it spends, without the person choosing it in the app (flightdeckd watch set, extend, resolve-held or settings with a flag)",
+  },
+  {
     when: changesWhatGuards,
     reason: () => "changes what guards the sessions (flightdeckd rules remove, autoapprove resume)",
   },
@@ -544,16 +550,19 @@ function execRisks(args: string[]): Candidate[] {
   const out: Candidate[] = [];
   args.forEach((arg, i) => {
     if (!["-exec", "-execdir", "-ok", "-okdir"].includes(arg)) return;
-    const end = args.findIndex((a, j) => j > i && [";", "\\;", "+"].includes(a));
+    const end = args.findIndex((a, j) => j > i && [";", String.raw`\;`, "+"].includes(a));
     out.push(...segmentRisks(args.slice(i + 1, end < 0 ? undefined : end), false));
   });
   return out;
 }
 
+/** A shell's "run this text" flag: `-c` or any letters with a c in them after a dash (`-lc`, `-Command`), or `/c`; any case. */
+const isCommandFlag = (arg: string) => hasFlag([arg], "c", ["/c"]);
+
 /** The text a shell is told to run with `-c`, `-lc`, `-Command` or `/c`, without its outer quotes; none otherwise. */
 function shellText(prog: string, args: string[]): string | undefined {
   if (!SHELLS.has(prog) || ["iex", "invoke-expression"].includes(prog)) return undefined;
-  const flag = args.findIndex((a) => /^(?:-[a-z]*c[a-z]*|\/c)$/i.test(a));
+  const flag = args.findIndex(isCommandFlag);
   if (flag < 0) return undefined;
   return args
     .slice(flag + 1)

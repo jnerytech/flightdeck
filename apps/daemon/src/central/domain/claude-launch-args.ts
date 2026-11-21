@@ -113,7 +113,10 @@ export function bypassArgs(opts: {
 
 /** The folder name a session is named after: the git toplevel's when there is one, else the launch folder's. */
 export function repoFolder(cwd: string, toplevel: string | null): string {
-  const trimmed = (toplevel ?? cwd).replace(/[\\/]+$/, "");
+  const path = toplevel ?? cwd;
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end--;
+  const trimmed = path.slice(0, end);
   return trimmed.slice(Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\")) + 1);
 }
 

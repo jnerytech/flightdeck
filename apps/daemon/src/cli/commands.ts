@@ -91,7 +91,7 @@ async function localConfig(args: CliArgs) {
  */
 function watchStop(args: CliArgs, deps: CliDeps): AbortController {
   const stop = new AbortController();
-  if (args.action === "watch")
+  if (args.action === "watch" || args.action === "follow")
     for (const signal of ["SIGINT", "SIGTERM"] as const)
       deps.onSignal(signal, async () => stop.abort());
   return stop;
@@ -624,8 +624,13 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   watch: async (args, deps) => {
     const { runWatchCli } = await import("../watch/index.ts");
+    const stop = watchStop(args, deps);
     return asking(args, deps, (config, remote) =>
-      runWatchCli(watchCliArgs(args), config, remote ? { remote } : {}),
+      runWatchCli(watchCliArgs(args), config, {
+        ...(remote ? { remote } : {}),
+        signal: stop.signal,
+        write: (line) => deps.log.log(line),
+      }),
     );
   },
   terminal: async (args, deps) => {
