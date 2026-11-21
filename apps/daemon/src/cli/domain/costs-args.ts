@@ -34,6 +34,18 @@ const takesPeriod = (args: CostsArgs) =>
   (args.command === "costs" && (args.action === "summary" || args.action === "export")) ||
   args.command === "roi";
 
+/** The days of `costs summary|export` and `roi`: both there, each a day, in order, and a known origin. */
+function periodProblem(args: CostsArgs): string | undefined {
+  if (args.from === undefined || args.until === undefined)
+    return "missing --from and --to: the first and the last day, as YYYY-MM-DD";
+  if (!isDay(args.from)) return "--from needs a day as YYYY-MM-DD";
+  if (!isDay(args.until)) return "--to needs a day as YYYY-MM-DD";
+  if (args.from > args.until) return "--from is after --to";
+  if (args.origin !== undefined && !ORIGINS.includes(args.origin))
+    return `--origin: ${ORIGINS.join(", ")}`;
+  return undefined;
+}
+
 /** What is wrong with the flags of `costs` and `roi`: a day that is not one, a missing day, a flag of another verb. */
 export function costsProblem(args: CostsArgs): string | undefined {
   // `--to`, `--from` and `--origin` are `history`'s and `update`'s flags too: those commands are checked elsewhere.
@@ -54,13 +66,5 @@ export function costsProblem(args: CostsArgs): string | undefined {
     return "--model: this flag only applies to flightdeckd costs summary and export";
   if (costs && !filters && args.project !== undefined)
     return "--project: this flag only applies to flightdeckd costs summary and export";
-  if (!takesPeriod(args)) return undefined;
-  if (args.from === undefined || args.until === undefined)
-    return "missing --from and --to: the first and the last day, as YYYY-MM-DD";
-  if (!isDay(args.from)) return "--from needs a day as YYYY-MM-DD";
-  if (!isDay(args.until)) return "--to needs a day as YYYY-MM-DD";
-  if (args.from > args.until) return "--from is after --to";
-  if (args.origin !== undefined && !ORIGINS.includes(args.origin))
-    return `--origin: ${ORIGINS.join(", ")}`;
-  return undefined;
+  return takesPeriod(args) ? periodProblem(args) : undefined;
 }

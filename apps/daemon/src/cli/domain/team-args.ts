@@ -44,14 +44,8 @@ function teamFlags(args: TeamArgs): Array<[string, unknown, readonly string[]]> 
   ];
 }
 
-/** What is wrong with the `team` flags: a flag of another verb, or one `team new` cannot do without. */
-export function teamProblem(args: TeamArgs): string | undefined {
-  for (const [flag, value, verbs] of teamFlags(args)) {
-    if (value === undefined) continue;
-    if (args.command !== "team" || !verbs.includes(args.action as string))
-      return `${flag}: this flag only applies to flightdeckd team ${verbs.join(", ")}`;
-  }
-  if (args.command !== "team" || args.action !== "new") return undefined;
+/** What `team new` cannot do without: its goal and the workers, one way or the other. */
+function teamNewProblem(args: TeamArgs): string | undefined {
   if (args.teamGoal === undefined || args.teamGoal.trim() === "") return "missing the goal";
   const { teamWorkers: workers, teamWorkerSpecs: specs } = args;
   if (workers !== undefined && specs !== undefined) return "--workers or --worker, not both";
@@ -64,4 +58,15 @@ export function teamProblem(args: TeamArgs): string | undefined {
   if (specs !== undefined && specs.length > MAX_WORKERS)
     return `--worker: a team has 1 to ${MAX_WORKERS} workers`;
   return undefined;
+}
+
+/** What is wrong with the `team` flags: a flag of another verb, or one `team new` cannot do without. */
+export function teamProblem(args: TeamArgs): string | undefined {
+  for (const [flag, value, verbs] of teamFlags(args)) {
+    if (value === undefined) continue;
+    if (args.command !== "team" || !verbs.includes(args.action as string))
+      return `${flag}: this flag only applies to flightdeckd team ${verbs.join(", ")}`;
+  }
+  if (args.command !== "team" || args.action !== "new") return undefined;
+  return teamNewProblem(args);
 }
