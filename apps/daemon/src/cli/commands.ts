@@ -16,6 +16,7 @@ import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
+import { reviewCliArgs } from "./domain/review-args.ts";
 import { snippetCliArgs } from "./domain/snippet-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
@@ -133,7 +134,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `watch`, `boardsync`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `watch`, `boardsync`, `review`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -639,6 +640,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
     return asking(args, deps, (config, remote) =>
       runBoardsyncCli(boardsyncCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  review: async (args, deps) => {
+    const { runReviewCli } = await import("../review/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runReviewCli(reviewCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   terminal: async (args, deps) => {
