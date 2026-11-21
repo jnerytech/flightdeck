@@ -438,6 +438,28 @@ export function stepQuote(open: string, text: string, i: number): { open: string
   return { open: c === '"' || c === "'" ? c : "", next: i + 1 };
 }
 
+/** `text` cut at each of `separators` (the longest first) that sits outside single and double quotes. */
+export function splitOutsideQuotes(text: string, separators: string[]): string[] {
+  const parts: string[] = [];
+  let quote = "";
+  let from = 0;
+  for (let i = 0; i < text.length; ) {
+    const step = stepQuote(quote, text, i);
+    const separator =
+      quote === "" && step.open === "" ? separators.find((s) => text.startsWith(s, i)) : undefined;
+    if (separator === undefined) {
+      quote = step.open;
+      i = step.next;
+      continue;
+    }
+    parts.push(text.slice(from, i));
+    i += separator.length;
+    from = i;
+  }
+  parts.push(text.slice(from));
+  return parts;
+}
+
 /** Ends a word the shell expands (`$V`, `r*`, `{a,b}`): kept by `readArguments`, tested by `hidesItsVerb`. */
 const EXPANDS = "\u0000";
 

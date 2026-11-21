@@ -19,8 +19,8 @@ import {
   runsFlightdeckWords,
   SHELLS,
   shellReadings,
+  splitOutsideQuotes,
   startsCli,
-  stepQuote,
   unquoted,
 } from "./shell-call.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
@@ -591,28 +591,6 @@ function statementRisks(command: string): Candidate[] {
       ].filter((s) => s.length > 0),
   );
   return out;
-}
-
-/** `text` cut at each of `separators` (the longest first) that sits outside single and double quotes. */
-function splitOutsideQuotes(text: string, separators: string[]): string[] {
-  const parts: string[] = [];
-  let quote = "";
-  let from = 0;
-  for (let i = 0; i < text.length; ) {
-    const step = stepQuote(quote, text, i);
-    const separator =
-      quote === "" && step.open === "" ? separators.find((s) => text.startsWith(s, i)) : undefined;
-    if (separator === undefined) {
-      quote = step.open;
-      i = step.next;
-      continue;
-    }
-    parts.push(text.slice(from, i));
-    i += separator.length;
-    from = i;
-  }
-  parts.push(text.slice(from));
-  return parts;
 }
 
 /** An MCP tool from any server: a free command with a secret and a discarded card are high risk. */
