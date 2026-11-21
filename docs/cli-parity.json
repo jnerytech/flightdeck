@@ -179,7 +179,7 @@
   "daemon.shutdown": {},
   "daemon.update.apply": {},
   "daemon.update.check": {},
-  "deps.check": {},
+  "deps.check": { "cli": "doctor" },
   "doctor.run": { "cli": "doctor" },
   "external.list": { "cli": "external" },
   "external.message": { "cli": "external" },
@@ -380,7 +380,7 @@
   "runenv.trust": { "cli": "runenv" },
   "runenv.watch": { "cli": "runenv" },
   "runtime.models": {},
-  "service.install": {},
+  "service.install": { "cli": "service" },
   "session.applyPersona": { "cli": "session" },
   "session.clearPersona": { "cli": "session" },
   "session.close": {
