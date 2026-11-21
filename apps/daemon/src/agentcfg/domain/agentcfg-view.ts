@@ -13,7 +13,7 @@ export const withNulls = (item: AgentCfgItem) => ({
 const access = (item: AgentCfgItem) => (item.readOnly ? "read-only" : "editable");
 
 /** A file as one line: path, origin, access, hash, and its name and description when it has them. */
-export const itemLine = (item: AgentCfgItem): string =>
+const itemLine = (item: AgentCfgItem): string =>
   [item.path, item.origin, access(item), item.hash, item.name, item.description]
     .filter((part) => part !== undefined)
     .join("  ");
