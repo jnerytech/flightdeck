@@ -681,7 +681,8 @@ const MAX_CLI_WORDS = 6;
 /**
  * The words of `fd` or `flightdeckd` that are not options nor an option's value (`--config <file>`, `--json`).
  * The parser reads `flightdeckd fd <command>` as `flightdeckd <command>`, so one leading `fd` is no word (#3566); a
- * second one stays, since the parser sends `fd fd` to claude, and a later one is an argument.
+ * second one stays, since the parser sends `fd fd` to claude, and a later one is an argument. A `start` that another
+ * word follows is no word either (#3780).
  */
 export function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
@@ -690,7 +691,9 @@ export function flightdeckWords(args: string[]): string[] {
     if (VALUE_OPTIONS.has(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
   }
-  return words[0] === "fd" ? words.slice(1) : words;
+  const named = words[0] === "fd" ? words.slice(1) : words;
+  // `start` is the parser's default command, so a command typed after it still runs (`fd start update apply`, #3780).
+  return named[0] === "start" && named.length > 1 ? named.slice(1) : named;
 }
 
 /** Whether the word at `i` of a runner's text starts the CLI: its name, or the `start` script that runs `bin.ts` (`bun start`, `bun run [options] start`, `bun --cwd "my dir" start`: after an option or an expansion that opens the text, whose value is not told apart from the script, #3566, #3718). */
