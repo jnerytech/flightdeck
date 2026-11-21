@@ -130,7 +130,7 @@ tokens e turnos.
   "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
 
-- **Pelo terminal:** `fd usage --days 30` imprime as mesmas linhas, uma por dia e projeto; `fd costs summary --from <dia> --to <dia>` imprime os totais e os grupos (veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-costs-e-fd-roi)).
+- **Pelo terminal:** `fd usage --days 30` imprime as mesmas linhas, uma por dia e projeto; `fd costs summary --from <dia> --to <dia>` imprime os totais e os grupos (veja os [comandos do flightdeckd](flightdeckd-commands.md#fd-costs-e-fd-roi)). `fd costs sessions <id da sessão>...` imprime uma linha por sessão, com o custo em dólares (`$0.00` para uma sem custo no host), para até 500 sessões numa chamada; acrescente `--host <nome>` para um host pareado ou `--json` para a resposta do daemon.
 
 ## Custos
 

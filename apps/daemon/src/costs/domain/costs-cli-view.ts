@@ -2,9 +2,11 @@
 import type { CostsSession, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 
 export interface CostsCliArgs {
-  action: "summary" | "session" | "card" | "run" | "status" | "export" | "reprice";
+  action: "summary" | "session" | "sessions" | "card" | "run" | "status" | "export" | "reprice";
   /** `session`: the Claude session id; `card`: the card id; `run`: the run id. */
   id?: string;
+  /** `sessions`: the Claude session ids, at most 500. */
+  ids?: string[];
   /** `summary` and `export`: the first and last day (`YYYY-MM-DD`), and the filters. */
   from?: string;
   to?: string;
@@ -43,6 +45,10 @@ export function summaryLines(summary: CostsSummary): string[] {
     ),
   ];
 }
+
+/** One line per asked session: its cost, or $0.00 when the daemon has none. */
+export const sessionsLines = (ids: string[], costs: Record<string, number>): string[] =>
+  ids.map((id) => `${id}  ${usd(costs[id] ?? 0)}`);
 
 /** The session's cost, the part its subagents spent and each model. */
 export function sessionLines(session: CostsSession): string[] {
