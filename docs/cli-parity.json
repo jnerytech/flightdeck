@@ -191,7 +191,9 @@
   "files.sessions": { "cli": "changes" },
   "fs.dirs": { "cli": "file" },
   "fs.files": { "cli": "file" },
-  "gate.respond": {},
+  "gate.respond": {
+    "appOnly": "a workflow gate is answered by a person, never by a script or a session"
+  },
   "github.issues": {},
   "github.login.cancel": {},
   "github.login.start": {},
@@ -231,12 +233,12 @@
   "issues.createCard": {},
   "issues.get": {},
   "issues.list": {},
-  "knowledge.create": {},
+  "knowledge.create": { "cli": "knowledge" },
   "knowledge.feed": { "cli": "knowledge" },
   "knowledge.index": { "cli": "knowledge" },
   "knowledge.list": { "cli": "knowledge" },
-  "knowledge.setFeed": {},
-  "knowledge.setStatus": {},
+  "knowledge.setFeed": { "cli": "knowledge" },
+  "knowledge.setStatus": { "cli": "knowledge" },
   "logs.tail": {},
   "maintenance.backup": {},
   "maintenance.prune": {},
@@ -366,9 +368,9 @@
   "roots.add": {},
   "rules.list": { "cli": "rules" },
   "rules.remove": { "cli": "rules" },
-  "run.get": {},
+  "run.get": { "cli": "workflow" },
   "run.resume": {},
-  "run.watch": {},
+  "run.watch": { "cli": "workflow" },
   "runenv.config": { "cli": "runenv" },
   "runenv.get": { "cli": "runenv" },
   "runenv.start": { "cli": "runenv" },
@@ -607,11 +609,11 @@
   "webhook.send": {
     "appOnly": "the payload carries the webhook URL, a vault secret that only the app holds and hands over for one use; a CLI verb would let a session post a body of its choice and would need the person to paste the URL (#3459)"
   },
-  "workflow.list": {},
+  "workflow.list": { "cli": "workflow" },
   "workflow.template.add": {},
-  "workflow.templates": {},
+  "workflow.templates": { "cli": "workflow" },
   "workflow.trust": {},
-  "workflow.validate": {},
+  "workflow.validate": { "cli": "workflow" },
   "worktree.list": {},
   "worktree.remove": {}
 }
