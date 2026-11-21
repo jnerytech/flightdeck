@@ -12,6 +12,7 @@ import {
   json,
   runOnLocalDaemon,
   said,
+  shown,
 } from "../daemon-client/index.ts";
 import {
   hashChanged,
@@ -100,39 +101,45 @@ export async function runPersonaCli(
     unsure: UNSURE,
     perform: async (daemon, note) => {
       switch (args.action) {
-        case "list": {
-          const answer = await daemon.call("personas.list", {
-            ...(args.scope === undefined ? {} : { scope: args.scope }),
-            ...where,
-            ...language,
-          });
-          return args.json ? json(answer) : said(...listLines(answer));
-        }
-        case "show": {
-          const answer = await daemon.call("personas.resolve", {
-            ref: { id: args.id ?? "", ...language },
-            ...where,
-          });
-          return args.json ? json(answer) : said(...showLines(answer));
-        }
-        case "subagents": {
-          const answer = await daemon.call("personas.subagents", { ...where, ...language });
-          return args.json ? json(answer) : said(...subagentsLines(answer));
-        }
+        case "list":
+          return shown(
+            args.json,
+            await daemon.call("personas.list", {
+              ...(args.scope === undefined ? {} : { scope: args.scope }),
+              ...where,
+              ...language,
+            }),
+            listLines,
+          );
+        case "show":
+          return shown(
+            args.json,
+            await daemon.call("personas.resolve", {
+              ref: { id: args.id ?? "", ...language },
+              ...where,
+            }),
+            showLines,
+          );
+        case "subagents":
+          return shown(
+            args.json,
+            await daemon.call("personas.subagents", { ...where, ...language }),
+            subagentsLines,
+          );
         case "save":
           return save(args, daemon, note, where, body);
         case "remove": {
           note.wrote = true;
           const scope = args.scope === "project" ? "project" : "host";
           await daemon.call("personas.remove", { scope, id: args.id ?? "", ...where });
-          return args.json
-            ? json({ id: args.id, scope, removed: true })
-            : said(`removed ${args.id} (${scope})`);
+          return shown(args.json, { id: args.id, scope, removed: true }, () => [
+            `removed ${args.id} (${scope})`,
+          ]);
         }
         case "reset": {
           note.wrote = true;
           const reset = await daemon.call("personas.reset", { id: args.id ?? "", ...language });
-          return args.json ? json(reset) : said(`reset ${reset.id} to the pack's version`);
+          return shown(args.json, reset, (done) => [`reset ${done.id} to the pack's version`]);
         }
         case "publish-agent": {
           if (!args.confirm) return failure(1, publishRefusal(args));
@@ -143,7 +150,7 @@ export async function runPersonaCli(
             ...language,
             confirm: true,
           });
-          return args.json ? json(published) : said(`wrote ${published.path}`);
+          return shown(args.json, published, (done) => [`wrote ${done.path}`]);
         }
         case "trust":
           return trust(args, daemon, note, projectPath ?? "");

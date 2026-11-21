@@ -1,19 +1,21 @@
 /**
  * Issue #3515: `flightdeckd project trust-state|stack|trust-inspect|harness-preview|detect-provider|add|update|
- * harness-draft|harness-export`, what a host knows of a project's folder and what a person changes in a project,
+ * harness-draft|harness-export|harness-apply|harness-commit`, what a host knows of a project's folder and what a person changes in a project,
  * from a terminal or a script. It speaks to the daemon like `flightdeckd plugins` does (the same `DaemonClient`,
- * the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. `add`, `update` and `harness-export` write.
+ * the token of the config). Exit codes: 0 done, 1 refused, 2 no daemon. `add`, `update`, `harness-export`,
+ * `harness-apply` and `harness-commit` write.
  */
 import { resolve } from "node:path";
 import {
   type CliResult,
+  type DaemonClient,
   DaemonRefusal,
   failure,
-  json,
   type RemoteTarget,
   resolveProject,
   runOnLocalDaemon,
   said,
+  shown,
 } from "../daemon-client/index.ts";
 import {
   appliedDigests,
@@ -73,100 +75,135 @@ export function runProjectCli(
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     unsure: UNSURE,
     perform: async (daemon, note) => {
-      if (args.action === "add") {
-        note.wrote = true;
-        const answer = await daemon.call("project.add", {
-          path: folder(args.path),
-          ...args.fields,
-        });
-        return args.json ? json(answer) : said(...projectLines("added", answer, args.fields));
-      }
-      if (args.action === "update" || args.action === "detect-provider") {
-        const { projects } = await daemon.call("project.list", {});
-        const found = resolveProject(projects, args.project);
-        if ("refusal" in found) return found.refusal;
-        note.wrote = true;
-        if (args.action === "detect-provider") {
-          const answer = await daemon.call("project.detectProvider", { projectId: found.id });
-          return args.json ? json(answer) : said(...detectLines(found.name, answer));
-        }
-        // The daemon fills a missing model or low-risk rule of the patch with its default, so the
-        // project's own values go along with the switch.
-        const current = projects.find((p) => p.id === found.id)?.autoApprove;
-        const fields = args.fields.autoApprove
-          ? { ...args.fields, autoApprove: { ...current, ...args.fields.autoApprove } }
-          : args.fields;
-        const answer = await daemon.call("project.update", { projectId: found.id, ...fields });
-        return args.json ? json(answer) : said(...projectLines("updated", answer, args.fields));
-      }
-      if (args.action === "harness-draft") {
-        const answer = await daemon.call("project.harness.draft", {
-          path: folder(args.path),
-          part: "claudeMd",
-        });
-        return args.json ? json(answer) : said(...draftLines(answer));
-      }
-      if (args.action === "harness-export") {
-        note.wrote = true;
-        const answer = await daemon.call("project.harness.export", {
-          path: folder(args.path),
-          id: args.id,
-          title: args.title,
-        });
-        return args.json ? json(answer) : said(...exportLines(answer));
-      }
-      if (args.action === "harness-apply" || args.action === "harness-commit") {
-        const read = await readSaved(args.digestsFile);
-        if (typeof read !== "string") return read;
-        const saved: SavedDigests =
-          args.action === "harness-apply"
-            ? previewDigests(args.digestsFile, read)
-            : appliedDigests(args.digestsFile, read);
-        if ("problem" in saved) return failure(1, saved.problem);
-        note.wrote = true;
-        try {
-          if (args.action === "harness-commit") {
-            const answer = await daemon.call("project.harness.commit", {
-              path: folder(args.path),
-              digests: saved.digests,
-              confirm: true,
-            });
-            return args.json ? json(answer) : said(...committedLines(answer));
-          }
-          const answer = await daemon.call("project.harness.apply", {
+      switch (args.action) {
+        case "add": {
+          note.wrote = true;
+          const answer = await daemon.call("project.add", {
             path: folder(args.path),
-            parts: args.parts,
-            digests: saved.digests,
-            confirm: true,
-            ...(args.reformat ? { reformat: true } : {}),
-            ...(args.template === undefined ? {} : { template: args.template }),
+            ...args.fields,
           });
-          return args.json ? json(answer) : said(...appliedLines(answer));
-        } catch (error) {
-          const reason = error instanceof DaemonRefusal ? error.reason : undefined;
-          if (reason === undefined || !Object.hasOwn(REFUSALS, reason)) throw error;
-          return failure(1, `${args.path} ${REFUSALS[reason]}`);
+          return shown(args.json, answer, (added) => projectLines("added", added, args.fields));
+        }
+        case "update":
+        case "detect-provider":
+          return changeProject(args, daemon, note);
+        case "harness-draft":
+          return shown(
+            args.json,
+            await daemon.call("project.harness.draft", {
+              path: folder(args.path),
+              part: "claudeMd",
+            }),
+            draftLines,
+          );
+        case "harness-export": {
+          note.wrote = true;
+          const answer = await daemon.call("project.harness.export", {
+            path: folder(args.path),
+            id: args.id,
+            title: args.title,
+          });
+          return shown(args.json, answer, exportLines);
+        }
+        case "harness-apply":
+        case "harness-commit":
+          return writeHarness(args, daemon, note, folder);
+        case "trust-state":
+          return shown(
+            args.json,
+            await daemon.call("project.trust.state", { paths: args.paths.map(folder) }),
+            trustLines,
+          );
+        case "stack":
+          return shown(
+            args.json,
+            await daemon.call("project.harness.stack", { path: folder(args.path) }),
+            stackLines,
+          );
+        case "trust-inspect":
+          return shown(
+            args.json,
+            await daemon.call("project.trust.inspect", { path: folder(args.path) }),
+            inspectLines,
+          );
+        default: {
+          const { parts, template } = args;
+          const answer = await daemon.call("project.harness.preview", {
+            path: folder(args.path),
+            parts,
+            ...(template === undefined ? {} : { template }),
+          });
+          return shown(args.json, answer, previewLines);
         }
       }
-      if (args.action === "trust-state") {
-        const answer = await daemon.call("project.trust.state", { paths: args.paths.map(folder) });
-        return args.json ? json(answer) : said(...trustLines(answer));
-      }
-      if (args.action === "stack") {
-        const answer = await daemon.call("project.harness.stack", { path: folder(args.path) });
-        return args.json ? json(answer) : said(...stackLines(answer));
-      }
-      if (args.action === "trust-inspect") {
-        const answer = await daemon.call("project.trust.inspect", { path: folder(args.path) });
-        return args.json ? json(answer) : said(...inspectLines(answer));
-      }
-      const { parts, template } = args;
-      const answer = await daemon.call("project.harness.preview", {
-        path: folder(args.path),
-        parts,
-        ...(template === undefined ? {} : { template }),
-      });
-      return args.json ? json(answer) : said(...previewLines(answer));
     },
   });
+}
+
+/**
+ * `harness-apply` and `harness-commit` (#3515): the digests come from the answer the person saved, and a typed
+ * `--confirm` stands for their word. The reasons the CLI cannot meet (a device proof) or tells in its own words
+ * (a reformat) are refused here; any other refusal goes up as the daemon said it.
+ */
+async function writeHarness(
+  args: Extract<ProjectCliArgs, { action: "harness-apply" | "harness-commit" }>,
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+  folder: (path: string) => string,
+): Promise<CliResult> {
+  const read = await readSaved(args.digestsFile);
+  if (typeof read !== "string") return read;
+  const saved: SavedDigests =
+    args.action === "harness-apply"
+      ? previewDigests(args.digestsFile, read)
+      : appliedDigests(args.digestsFile, read);
+  if ("problem" in saved) return failure(1, saved.problem);
+  note.wrote = true;
+  try {
+    if (args.action === "harness-commit") {
+      const committed = await daemon.call("project.harness.commit", {
+        path: folder(args.path),
+        digests: saved.digests,
+        confirm: true,
+      });
+      return shown(args.json, committed, committedLines);
+    }
+    const applied = await daemon.call("project.harness.apply", {
+      path: folder(args.path),
+      parts: args.parts,
+      digests: saved.digests,
+      confirm: true,
+      ...(args.reformat ? { reformat: true } : {}),
+      ...(args.template === undefined ? {} : { template: args.template }),
+    });
+    return shown(args.json, applied, appliedLines);
+  } catch (error) {
+    const reason = error instanceof DaemonRefusal ? error.reason : undefined;
+    if (reason === undefined || !Object.hasOwn(REFUSALS, reason)) throw error;
+    return failure(1, `${args.path} ${REFUSALS[reason]}`);
+  }
+}
+
+/** A project the person names (its name or its id): `update` changes it, `detect-provider` asks which host it is on. */
+async function changeProject(
+  args: Extract<ProjectCliArgs, { action: "update" | "detect-provider" }>,
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+): Promise<CliResult> {
+  const { projects } = await daemon.call("project.list", {});
+  const found = resolveProject(projects, args.project);
+  if ("refusal" in found) return found.refusal;
+  note.wrote = true;
+  if (args.action === "detect-provider") {
+    const answer = await daemon.call("project.detectProvider", { projectId: found.id });
+    return shown(args.json, answer, (detected) => detectLines(found.name, detected));
+  }
+  // The daemon fills a missing model or low-risk rule of the patch with its default, so the
+  // project's own values go along with the switch.
+  const current = projects.find((p) => p.id === found.id)?.autoApprove;
+  const fields = args.fields.autoApprove
+    ? { ...args.fields, autoApprove: { ...current, ...args.fields.autoApprove } }
+    : args.fields;
+  const answer = await daemon.call("project.update", { projectId: found.id, ...fields });
+  return shown(args.json, answer, (updated) => projectLines("updated", updated, args.fields));
 }

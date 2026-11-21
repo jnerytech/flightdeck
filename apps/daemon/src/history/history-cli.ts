@@ -6,6 +6,7 @@
  */
 import {
   type CliResult,
+  type DaemonClient,
   DaemonRefusal,
   failure,
   json,
@@ -51,75 +52,95 @@ export async function runHistoryCli(
     // Only a resume can leave its result unknown; a read has nothing to say.
     unsure: args.action === "resume" ? UNSURE : "",
     perform: async (daemon, note, flow) => {
-      if (args.action === "list") {
-        const { cwd, projectKey, from, to, origin, hideAutomated, limit, cursor } = args;
-        const list = await daemon.call(
-          "history.list",
-          given({ cwd, projectKey, from, to, origin, hideAutomated, limit, cursor }),
-        );
-        if (args.json) return json(list);
-        const more = list.nextCursor ? [`more: history list --cursor ${list.nextCursor}`] : [];
-        return said(...list.sessions.map(summaryLine), ...more);
-      }
-      if (args.action === "search") {
-        const { query = "", cwd, from, to, limit } = args;
-        const found = await daemon.call("history.search", {
-          query,
-          ...given({ cwd, from, to, limit }),
-        });
-        if (args.json) return json(found);
-        return said(...(found.hits.length ? found.hits.map(hitLine) : ["no session matches"]));
-      }
-      if (args.action === "get") {
-        const { claudeSessionId = "", cursor, tail, limit } = args;
-        const page = await daemon.call("history.get", {
-          claudeSessionId,
-          ...given({ cursor, tail, limit }),
-        });
-        if (args.json) return json(page);
-        const next = page.nextCursor
-          ? [`more: history get ${claudeSessionId} --cursor ${page.nextCursor}`]
-          : [];
-        const earlier = page.prevCursor
-          ? [`earlier: history get ${claudeSessionId} --cursor ${page.prevCursor}`]
-          : [];
-        return said(...page.messages.flatMap(messageLines), ...earlier, ...next);
-      }
-      if (args.action === "watch")
-        return streamFrames({
-          daemon,
-          flow,
-          signal: options.signal ?? new AbortController().signal,
-          write: options.write ?? (() => undefined),
-          open: () => daemon.call("history.watch", {}),
-          type: "history.changed",
-          line: (change) => (args.json ? changeJson(change) : watchLine(change)),
-        });
-      if (args.action === "resume") {
-        const { claudeSessionId = "", name, permissionMode, force } = args;
-        note.wrote = true;
-        try {
-          const created = await daemon.call("history.resume", {
-            claudeSessionId,
-            ...given({ name, permissionMode, force }),
+      switch (args.action) {
+        case "list":
+          return listOut(args, daemon);
+        case "search":
+          return searchOut(args, daemon);
+        case "get":
+          return getOut(args, daemon);
+        case "watch":
+          return streamFrames({
+            daemon,
+            flow,
+            signal: options.signal ?? new AbortController().signal,
+            write: options.write ?? (() => undefined),
+            open: () => daemon.call("history.watch", {}),
+            type: "history.changed",
+            line: (change) => (args.json ? changeJson(change) : watchLine(change)),
           });
-          return args.json ? json(created) : said(`resumed as session ${created.sessionId}`);
-        } catch (error) {
-          // The daemon words this for the protocol (`force: true`); a terminal types `--force`.
-          if (error instanceof DaemonRefusal && error.reason === "session_maybe_active")
-            return failure(
-              1,
-              "session possibly in use elsewhere; add --force to resume anyway",
-              error.reason,
-            );
-          throw error;
-        }
+        case "resume":
+          return resumeOut(args, daemon, note);
+        default:
+          return toolOut(args, daemon);
       }
-      const { claudeSessionId = "", uuid = "", index = 0 } = args;
-      const found = await daemon.call("history.tool", { claudeSessionId, uuid, index });
-      if (!found.tool)
-        return failure(1, "no tool call at that place in the transcript", "not_found");
-      return args.json ? json(found) : said(...toolLines(found.tool));
     },
   });
+}
+
+async function listOut(args: HistoryCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { cwd, projectKey, from, to, origin, hideAutomated, limit, cursor } = args;
+  const list = await daemon.call(
+    "history.list",
+    given({ cwd, projectKey, from, to, origin, hideAutomated, limit, cursor }),
+  );
+  if (args.json) return json(list);
+  const more = list.nextCursor ? [`more: history list --cursor ${list.nextCursor}`] : [];
+  return said(...list.sessions.map(summaryLine), ...more);
+}
+
+async function searchOut(args: HistoryCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { query = "", cwd, from, to, limit } = args;
+  const found = await daemon.call("history.search", { query, ...given({ cwd, from, to, limit }) });
+  if (args.json) return json(found);
+  return said(...(found.hits.length ? found.hits.map(hitLine) : ["no session matches"]));
+}
+
+async function getOut(args: HistoryCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { claudeSessionId = "", cursor, tail, limit } = args;
+  const page = await daemon.call("history.get", {
+    claudeSessionId,
+    ...given({ cursor, tail, limit }),
+  });
+  if (args.json) return json(page);
+  const next = page.nextCursor
+    ? [`more: history get ${claudeSessionId} --cursor ${page.nextCursor}`]
+    : [];
+  const earlier = page.prevCursor
+    ? [`earlier: history get ${claudeSessionId} --cursor ${page.prevCursor}`]
+    : [];
+  return said(...page.messages.flatMap(messageLines), ...earlier, ...next);
+}
+
+/** The one write of `history`: it is marked as written before the daemon is asked. */
+async function resumeOut(
+  args: HistoryCliArgs,
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+): Promise<CliResult> {
+  const { claudeSessionId = "", name, permissionMode, force } = args;
+  note.wrote = true;
+  try {
+    const created = await daemon.call("history.resume", {
+      claudeSessionId,
+      ...given({ name, permissionMode, force }),
+    });
+    return args.json ? json(created) : said(`resumed as session ${created.sessionId}`);
+  } catch (error) {
+    // The daemon words this for the protocol (`force: true`); a terminal types `--force`.
+    if (error instanceof DaemonRefusal && error.reason === "session_maybe_active")
+      return failure(
+        1,
+        "session possibly in use elsewhere; add --force to resume anyway",
+        error.reason,
+      );
+    throw error;
+  }
+}
+
+async function toolOut(args: HistoryCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const { claudeSessionId = "", uuid = "", index = 0 } = args;
+  const found = await daemon.call("history.tool", { claudeSessionId, uuid, index });
+  if (!found.tool) return failure(1, "no tool call at that place in the transcript", "not_found");
+  return args.json ? json(found) : said(...toolLines(found.tool));
 }
