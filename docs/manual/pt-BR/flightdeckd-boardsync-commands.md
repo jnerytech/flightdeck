@@ -26,8 +26,9 @@ pausado, o último erro, um aviso de que o quadro tem mais itens do que uma leit
 para as colunas e os status que o quadro tem. Um projeto sem quadro imprime `not linked to a board` e sai com `0`. Um
 nome que dois projetos têm é recusado com os ids deles.
 
-`log <card>` imprime o log de sincronização de um card, do mais antigo ao mais novo, uma linha para cada entrada:
-quando aconteceu, o tipo e, no que se aplica, quem ganhou, o que foi mantido, o que foi perdido e o motivo.
+`log <card>` imprime o log de sincronização de um card, do mais novo ao mais antigo, uma linha para cada entrada:
+quando aconteceu, o tipo e, no que se aplica, quem ganhou, o que foi mantido, o que foi perdido e o motivo. Um card
+sem entradas (ou que o host não conhece) imprime `no sync log`.
 
 Com `--json` os comandos imprimem o valor que o daemon devolve, com `null` para um campo ausente. `--host <nome>` lê
 um host pareado.

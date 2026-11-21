@@ -26,8 +26,9 @@ error, a warning that the board has more items than one read takes, the map from
 columns, and the statuses the board has. A project with no board prints `not linked to a board` and exits `0`. A
 name that two projects share is refused with their ids.
 
-`log <card>` prints the sync log of a card, oldest first, one line for each entry: when it happened, its kind, and
-what applies of who won, what was kept, what was lost and why.
+`log <card>` prints the sync log of a card, newest first, one line for each entry: when it happened, its kind, and
+what applies of who won, what was kept, what was lost and why. A card with no entry (or one the host does not
+know) prints `no sync log`.
 
 With `--json` the commands print the value the daemon returns, with `null` for a missing field. `--host <name>` reads
 a paired host.

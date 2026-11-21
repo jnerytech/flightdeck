@@ -13,9 +13,10 @@ change nothing.
   (`gh_missing`, `gh_logged_out`): exit `1`, one line on stderr. No boards is `no boards` and exit `0`.
 - `status` for a project with no board is `not linked to a board` and exit `0`: the lookup worked and the answer is
   "no". A script reads `linked` in `--json`.
-- `--json` keeps every key and prints `null` where the daemon sends none. A project with no board carries only
-  `linked`, so its other keys are `null`.
-- `log` prints the entries in the order the daemon gives (oldest first), one line each: the time, the kind, and only
+- `--json` keeps every key and prints `null` where the daemon sends none (a log entry too). A project with no board
+  carries only `linked`, so its other keys are `null`. A card the daemon has no log for, known or not, is an empty list:
+  `no sync log`, exit `0`.
+- `log` prints the entries in the order the daemon gives (newest first), one line each: the time, the kind, and only
   the parts the entry has (who won, what was kept, what was lost, the detail).
 - `boardsync` joined the commands that take `--json` and `--host`. The risk rules need no new entry: nothing here
   writes, so `fd boardsync` from a session's shell stays ordinary.

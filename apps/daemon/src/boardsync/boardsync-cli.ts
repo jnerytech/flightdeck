@@ -11,7 +11,13 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
-import { boardLines, logLines, statusJson, statusLines } from "./domain/boardsync-cli-view.ts";
+import {
+  boardLines,
+  logJson,
+  logLines,
+  statusJson,
+  statusLines,
+} from "./domain/boardsync-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -40,7 +46,9 @@ export function runBoardsyncCli(
       }
       if (args.action === "log") {
         const { entries } = await daemon.call("boardsync.log", { cardId: args.target });
-        return args.json ? json({ entries }) : said(...logLines(args.target, entries));
+        return args.json
+          ? json({ entries: logJson(entries) })
+          : said(...logLines(args.target, entries));
       }
       const { projects } = await daemon.call("project.list", {});
       const chosen = resolveProject(projects, args.target);

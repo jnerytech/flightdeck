@@ -45,15 +45,27 @@ export function statusLines(project: string, status: BoardSyncStatus): string[] 
 
 /** One entry: when, what kind, then only the parts it has (who won, what was kept, what was lost, the detail). */
 function entryLine(entry: BoardSyncLogEntry): string {
-  const kept = entry.keptValue === null ? [] : [`kept ${entry.keptValue}${at(entry.keptAt)}`];
-  const lost = entry.lostValue === null ? [] : [`lost ${entry.lostValue}${at(entry.lostAt)}`];
+  const kept = entry.keptValue == null ? [] : [`kept ${entry.keptValue}${at(entry.keptAt)}`];
+  const lost = entry.lostValue == null ? [] : [`lost ${entry.lostValue}${at(entry.lostAt)}`];
   const parts = [...(entry.winner ? [`${entry.winner} won`] : []), ...kept, ...lost];
   const tail = [parts.join(", "), entry.detail ?? ""].filter((part) => part !== "").join("; ");
   return tail === "" ? `${entry.at}  ${entry.kind}` : `${entry.at}  ${entry.kind}: ${tail}`;
 }
 
-const at = (when: string | null): string => (when === null ? "" : ` (${when})`);
+const at = (when: string | null | undefined): string => (when == null ? "" : ` (${when})`);
 
-/** The card's sync log, in the order the daemon gives (oldest first). */
+/** The log as the protocol returns it, with the fields an older daemon leaves out as `null`. */
+export const logJson = (entries: BoardSyncLogEntry[]) =>
+  entries.map((entry) => ({
+    ...entry,
+    winner: entry.winner ?? null,
+    lostValue: entry.lostValue ?? null,
+    lostAt: entry.lostAt ?? null,
+    keptValue: entry.keptValue ?? null,
+    keptAt: entry.keptAt ?? null,
+    detail: entry.detail ?? null,
+  }));
+
+/** The card's sync log, in the order the daemon gives (newest first). */
 export const logLines = (card: string, entries: BoardSyncLogEntry[]): string[] =>
   entries.length === 0 ? [`${card}: no sync log`] : entries.map(entryLine);
