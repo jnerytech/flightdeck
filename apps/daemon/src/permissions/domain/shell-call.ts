@@ -78,8 +78,16 @@ const program = (word: string) =>
     .replace(/\.(exe|cmd|ps1)$/, "");
 
 /** A group or a substitution opens the word (`(fd`, `$(fd`, a backtick) or closes it (`on)`, `}`); `{}` is xargs's own. */
-const opened = (word: string) =>
-  word === "{}" ? word : word.replace(/^(?:\$\(|[<>]\(|[({`])+/, "");
+const OPENERS = ["$(", "<(", ">(", "(", "{", "`"];
+const openerOf = (text: string) => OPENERS.find((opener) => text.startsWith(opener));
+const opened = (word: string) => {
+  if (word === "{}") return word;
+  let rest = word;
+  for (let opener = openerOf(rest); opener !== undefined; opener = openerOf(rest)) {
+    rest = rest.slice(opener.length);
+  }
+  return rest;
+};
 const closed = (word: string) => (word === "{}" ? word : word.replace(/[)}`]+$/, ""));
 
 /** The index of the word that closes the quote a word at `at` leaves open (`X="a b"`, `-d ' '`), or `at` itself. */
