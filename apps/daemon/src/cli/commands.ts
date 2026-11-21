@@ -14,6 +14,7 @@ import { type CliArgs, USAGE } from "./domain/args.ts";
 import { automationCliArgs } from "./domain/automation-args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { changesCliArgs } from "./domain/changes-args.ts";
+import { checkpointsCliArgs, traceCliArgs } from "./domain/checkpoints-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
@@ -611,6 +612,24 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const live = liveStream(args, deps);
     return asking(args, deps, (config, remote) =>
       runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
+    );
+  },
+  snapshots: async (args, deps) => {
+    const { runCheckpointsCli } = await import("../checkpoints/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runCheckpointsCli(checkpointsCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  rewind: async (args, deps) => {
+    const { runCheckpointsCli } = await import("../checkpoints/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runCheckpointsCli(checkpointsCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  trace: async (args, deps) => {
+    const { runTraceCli } = await import("../trace/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runTraceCli(traceCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   file: (args, deps) => asking(args, deps, fileRun(args, deps.stdin)),
