@@ -82,6 +82,12 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 
 - [fd file](flightdeckd-file-commands.md#fd-file)
 
+## Comandos do flightdeckd: as ações de um projeto
+
+[Ler o capítulo.](flightdeckd-action-commands.md) Suas seções:
+
+- [fd action](flightdeckd-action-commands.md#fd-action)
+
 ## Comandos do flightdeckd: as automações de um projeto
 
 [Ler o capítulo.](flightdeckd-automation-commands.md) Suas seções:

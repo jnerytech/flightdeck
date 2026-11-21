@@ -3,6 +3,7 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
+import { ACTION_FLAGS, actionProblem, readAction } from "./action-args.ts";
 import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
@@ -74,22 +75,6 @@ function startCommand(args: CliArgs, command: CliArgs["command"]): void {
     throw new Error(`one command at a time: ${args.command}, then ${command}\n${USAGE}`);
   args.command = command;
 }
-
-/** `action list|run <name>`, `snippet list|get <name>`: the second word may take a name. */
-const withNamedAction =
-  (
-    command: CliArgs["command"],
-    allowed: readonly ["list", "run" | "get"],
-    what: string,
-    nameWhat: string,
-    keep: (args: CliArgs, name: string) => void,
-  ): Handler =>
-  (args, reader) => {
-    args.command = command;
-    const action = subAction(reader, allowed, what);
-    args.action = action as never;
-    if (action === allowed[1]) keep(args, operand(reader, nameWhat));
-  };
 
 /** The words of `fd` that are not subcommands but are still Flightdeck's own. */
 const FD_FLAGS = new Set(["--version", "--help", "-h"]);
@@ -178,15 +163,7 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "remove") args.rule = operand(reader, "rule");
   },
   autoapprove: withAction("autoapprove", ["list", "resume"], "invalid autoapprove action"),
-  action: withNamedAction(
-    "action",
-    ["list", "run"],
-    "invalid action",
-    "the action name",
-    (args, name) => {
-      args.actionName = name;
-    },
-  ),
+  action: readAction,
   snippet: readSnippet,
   message: (args, reader) => {
     args.command = "message";
@@ -572,6 +549,7 @@ const HANDLERS: Record<string, Handler> = {
     args.limit = n;
   }),
   ...BUDGET_FLAGS,
+  ...ACTION_FLAGS,
   ...AUTOMATION_FLAGS,
   ...PLUGINS_FLAGS,
   ...SNIPPET_FLAGS,
@@ -684,6 +662,7 @@ function takeOption(args: CliArgs, reader: ArgReader, arg: string): void {
 function refuseStrayFlags(args: CliArgs): void {
   if (args.json) refuseOutside("--json", JSON_COMMANDS, args.command);
   if (args.host !== undefined) refuseOutside("--host", HOST_COMMANDS, args.command);
+  if (args.plain) refuseOutside("--plain", ["action"], args.command);
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (
@@ -707,15 +686,15 @@ function refuseStrayFlags(args: CliArgs): void {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests, message, autoapprove, vault and mcp toggle\n${USAGE}`,
     );
-  // `history`, `vault`, `snippet` and `automation` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts, automation-args.ts).
+  // `history`, `vault`, `snippet`, `automation` and `action` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts, automation-args.ts, action-args.ts).
   if (
-    !["autoapprove", "history", "vault", "snippet", "message", "automation"].includes(
+    !["autoapprove", "history", "vault", "snippet", "message", "automation", "action"].includes(
       args.command,
     ) &&
     args.limit !== undefined
   )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet and automation runs\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet, automation runs and action runs\n${USAGE}`,
     );
 }
 
@@ -755,6 +734,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     runenvProblem(args) ??
     changesProblem(args) ??
     fileProblem(args) ??
+    actionProblem(args) ??
     automationProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
