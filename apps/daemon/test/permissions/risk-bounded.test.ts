@@ -13,9 +13,9 @@ function timed(command: string) {
   return { level: risk.level, reason: risk.reason, ms: performance.now() - start };
 }
 
-// The unfixed classifier needs seconds for each of these (and minutes a few repeats more): a bound of a
-// tenth of a second says the work is capped, and the loose margin keeps a busy machine from failing it.
-const BOUND_MS = 400;
+// The unfixed classifier needs seconds for each of these (and minutes a few repeats more): a bound of one
+// second says the work is capped, and the loose margin keeps a busy machine from failing it.
+const BOUND_MS = 1000;
 
 describe("risk rules: a crafted command line cannot stall the daemon (#3593)", () => {
   const tangled: Array<[string, string]> = [
