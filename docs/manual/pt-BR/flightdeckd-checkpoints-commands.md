@@ -5,7 +5,7 @@
 Os verbos que leem os snapshots git que o Flightdeck tira em volta de cada turno de uma sessão do Claude, o que voltar
 a um deles mudaria, e o trace da sessão: seus turnos, chamadas de ferramenta e subagentes com tempo e custo. Funcionam
 como os outros comandos do `flightdeckd`: veja [o que todos têm em comum](flightdeckd-commands.md#o-que-todos-têm-em-comum).
-Todos só leem: nada aqui volta uma sessão no tempo nem muda um arquivo. Aceitam `--host <nome>` para ler um host
+Todos só leem, exceto `rewind apply` e `rewind undo`, que devolvem arquivos e exigem `--confirm`. Aceitam `--host <nome>` para ler um host
 pareado e `--json` para imprimir o valor que o daemon devolve.
 
 `<sessão>` é o id da sessão do Claude, o que os comandos de histórico imprimem. Uma sessão que o daemon não conhece é
@@ -36,6 +36,20 @@ fd rewind preview 3f9c1a 2
 
 `preview <sessão> <turno>` diz o que voltar a sessão àquele turno mudaria, e se o daemon faria isso pelo checkpoint do
 SDK ou por um snapshot: os arquivos e as linhas adicionadas e removidas. Não muda arquivo nem referência; no caminho do snapshot o git pode guardar os objetos da árvore de trabalho, e depois os coleta.
+
+```sh
+fd rewind apply 3f9c1a 2 --confirm
+fd rewind undo 3f9c1a --confirm
+```
+
+`apply <sessão> <turno>` devolve os arquivos do checkout da sessão ao estado daquele turno, e `undo <sessão>` os devolve
+ao estado anterior ao último rewind. Cada um imprime os arquivos que devolveu e as linhas adicionadas e removidas, e se
+passou pelo checkpoint do SDK ou por um snapshot. Os dois exigem `--confirm`; sem ele o comando é recusado com saída
+`1` e o daemon não é consultado. Leia o `preview` antes. O daemon recusa com saída `1` enquanto a sessão está em um
+turno, e quando não há nada para desfazer. Se a conexão cair depois de o pedido sair, o comando diz que os arquivos
+podem ou não ter sido devolvidos e sai com `2`: olhe os arquivos antes de tentar de novo.
+
+O shell de uma sessão não roda `rewind apply` nem `rewind undo` sem a pessoa aprovar no app.
 
 ## fd trace
 

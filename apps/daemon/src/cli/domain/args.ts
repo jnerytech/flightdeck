@@ -18,6 +18,7 @@ import {
   readRewind,
   readSnapshots,
   readTrace,
+  takeCheckpointsFlags,
 } from "./checkpoints-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
@@ -708,6 +709,7 @@ function refuseStrayFlags(args: CliArgs): void {
     );
   takeTerminalFlags(args);
   takeChangesFlags(args);
+  takeCheckpointsFlags(args);
   takeFileFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);

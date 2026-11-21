@@ -26,12 +26,19 @@ export function readSnapshots(args: CliArgs, reader: ArgReader): void {
   if (args.action === "files") args.checkpointTurn = turnOf(reader);
 }
 
-/** `rewind preview <id> <turn>`. */
+/** `rewind preview <id> <turn>`, `rewind apply <id> <turn>` or `rewind undo <id>`. */
 export function readRewind(args: CliArgs, reader: ArgReader): void {
   args.command = "rewind";
-  args.action = subAction(reader, ["preview"] as const, "invalid rewind action");
+  args.action = subAction(reader, ["preview", "apply", "undo"] as const, "invalid rewind action");
   args.checkpointSession = operand(reader, "the Claude session id");
-  args.checkpointTurn = turnOf(reader);
+  if (args.action !== "undo") args.checkpointTurn = turnOf(reader);
+}
+
+/** On `rewind` the `--confirm` the card reads moves into a field of its own, so the card check leaves it alone. */
+export function takeCheckpointsFlags(args: CliArgs): void {
+  if (args.command !== "rewind" || args.confirm === undefined) return;
+  args.rewindConfirm = args.confirm;
+  delete args.confirm;
 }
 
 /** `trace get <id>` or `trace export <id> [--include-content]`. */
@@ -50,6 +57,13 @@ export const CHECKPOINT_FLAGS: Record<string, Handler> = {
 
 /** What is wrong with the flag, or undefined: `--include-content` belongs to `trace export` only. */
 export function checkpointsProblem(args: CliArgs): string | undefined {
+  if (args.command === "rewind") {
+    const writes = args.action === "apply" || args.action === "undo";
+    if (args.rewindConfirm !== undefined && !writes)
+      return "--confirm: this flag only applies to flightdeckd rewind apply and undo";
+    if (writes && args.rewindConfirm === undefined)
+      return `rewind ${args.action} needs --confirm, since it puts the files of the checkout back`;
+  }
   if (args.includeContent && !(args.command === "trace" && args.action === "export"))
     return "--include-content: this flag only applies to flightdeckd trace export";
   return undefined;
@@ -62,6 +76,8 @@ export function checkpointsCliArgs(args: CliArgs): CheckpointsCliArgs {
   const turn = args.checkpointTurn ?? 0;
   if (args.action === "list") return { action: "list", session, ...json };
   if (args.action === "files") return { action: "files", session, n: turn, ...json };
+  if (args.action === "apply") return { action: "apply", session, turn, ...json };
+  if (args.action === "undo") return { action: "undo", session, ...json };
   return { action: "preview", session, turn, ...json };
 }
 
