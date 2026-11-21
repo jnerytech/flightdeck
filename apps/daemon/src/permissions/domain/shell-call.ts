@@ -371,10 +371,8 @@ export function invocations(segment: string[], scan: Scan = new Scan(), chain = 
 /** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */
 export const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCase();
 
-/**
- * The options of `fd` that take a value, which can stand before the command (`fd --project p card
- * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import.
- */
+/** The options of `fd` that take a value, which can stand before the command (`fd --project p card
+ * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import. */
 export const OPTIONS_WITH_VALUE = [
   "--message",
   "--position",
@@ -388,6 +386,7 @@ export const OPTIONS_WITH_VALUE = [
   "--fingerprint",
   "--max-rounds",
   "--check-timeout-min",
+  "--mode",
   "--budget-usd",
   "--max-turns",
   "--max-failures",
@@ -495,6 +494,10 @@ export const OPTIONS_WITH_VALUE = [
   "--resume",
   "--cols",
   "--rows",
+  "--automation",
+  "--max-runs",
+  "--external-authors",
+  "--definition-file",
   "--digest",
   "--branch",
   "--remote",
@@ -639,31 +642,11 @@ export function shellReadings(args: string[]): string[][] {
 }
 
 /** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
-const VERB_NOUNS = new Set([
-  "card",
-  "history",
-  "approvers",
-  "persona",
-  "team",
-  "quota",
-  "budget",
-  "costs",
-  "session",
-  "rules",
-  "autoapprove",
-  "plugins",
-  "project",
-  "agentcfg",
-  "ssh",
-  "watch",
-  "snippet",
-  "boardsync",
-  "review",
-  "runenv",
-  "message",
-  "mcp",
-  "changes",
-]);
+export const VERB_NOUNS = new Set(
+  "card history approvers persona team quota budget costs session rules autoapprove plugins project agentcfg ssh watch snippet boardsync review runenv automation message mcp changes file".split(
+    " ",
+  ),
+);
 
 /**
  * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,

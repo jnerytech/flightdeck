@@ -11,8 +11,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { type Turn, turnsOf } from "@/features/sessions/index.ts";
-import { IconActionButton, InlineNotice } from "@/shared/feedback/index.ts";
-import { EmptyState, LoadingState } from "@/shared/layout/index.ts";
+import { ActionButton, IconActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { EmptyState, ErrorState, LoadingState } from "@/shared/layout/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { ForkDialog, RewindDialog, type Target } from "./checkpoint-dialogs.tsx";
@@ -116,6 +116,8 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const { t } = store.i18n;
   const busyId = useId();
   const [snapshots, setSnapshots] = useState<SnapshotInfo[] | null>(null);
+  // The first load was refused: the sheet says so and offers a new try, instead of loading for ever.
+  const [failed, setFailed] = useState(false);
   const [files, setFiles] = useState<Record<number, SnapshotFiles>>({});
   const [rewinding, setRewinding] = useState<Turn | null>(null);
   const [forking, setForking] = useState<Turn | null>(null);
@@ -123,8 +125,10 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const [undoable, setUndoable] = useState(false);
 
   const load = useCallback(async () => {
+    setFailed(false);
     const result = await store.hostCommand(hostId, "snapshots.list", { claudeSessionId });
     if (result) setSnapshots(result.snapshots);
+    else setFailed(true);
   }, [store, hostId, claudeSessionId]);
 
   useEffect(() => {
@@ -161,22 +165,31 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
     }
   };
 
-  if (snapshots === null) return <LoadingState label={t("timeline.loading")} />;
-  const turns = turnsOf(snapshots);
+  if (snapshots === null && !failed) return <LoadingState label={t("timeline.loading")} />;
+  const turns = turnsOf(snapshots ?? []);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
       {notice && (
         <InlineNotice tone="info">
           <span>{notice}</span>{" "}
           {undoable && (
-            <Button variant="outline" size="sm" onClick={() => void undo()}>
+            <ActionButton variant="outline" size="sm" onClick={() => undo()}>
               {t("timeline.undo")}
-            </Button>
+            </ActionButton>
           )}
         </InlineNotice>
       )}
       {props.busy && <InlineNotice id={busyId}>{t("timeline.busy")}</InlineNotice>}
-      {turns.length === 0 && <EmptyState icon={History} title={t("timeline.empty")} />}
+      {snapshots === null && (
+        <ErrorState
+          message={t("timeline.loadFailed")}
+          retryLabel={t("timeline.retry")}
+          onRetry={() => void load()}
+        />
+      )}
+      {snapshots !== null && turns.length === 0 && (
+        <EmptyState icon={History} title={t("timeline.empty")} />
+      )}
       <ul aria-label={t("timeline.list")} className="flex flex-col gap-2">
         {turns.map((turn) => (
           <TurnRow

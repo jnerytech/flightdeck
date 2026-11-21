@@ -6,6 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
+import { AUTOMATION_FLAGS, automationProblem, readAutomation } from "./automation-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
@@ -14,6 +15,7 @@ import { CHANGES_FLAGS, changesProblem, readChanges, takeChangesFlags } from "./
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
+import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
@@ -344,6 +346,8 @@ const HANDLERS: Record<string, Handler> = {
   memory: readMemory,
   runenv: readRunenv,
   changes: readChanges,
+  file: readFile,
+  automation: readAutomation,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
   requests: (args) => {
@@ -566,6 +570,7 @@ const HANDLERS: Record<string, Handler> = {
     args.limit = n;
   }),
   ...BUDGET_FLAGS,
+  ...AUTOMATION_FLAGS,
   ...PLUGINS_FLAGS,
   ...SNIPPET_FLAGS,
   ...SSH_FLAGS,
@@ -574,6 +579,7 @@ const HANDLERS: Record<string, Handler> = {
   ...BOARDSYNC_FLAGS,
   ...REVIEW_FLAGS,
   ...CHANGES_FLAGS,
+  ...FILE_FLAGS,
   "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
@@ -689,6 +695,7 @@ function refuseStrayFlags(args: CliArgs): void {
     );
   takeTerminalFlags(args);
   takeChangesFlags(args);
+  takeFileFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);
   if (
@@ -698,13 +705,15 @@ function refuseStrayFlags(args: CliArgs): void {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests, message, autoapprove, vault and mcp toggle\n${USAGE}`,
     );
-  // `history`, `vault` and `snippet` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts).
+  // `history`, `vault`, `snippet` and `automation` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts, automation-args.ts).
   if (
-    !["autoapprove", "history", "vault", "snippet", "message"].includes(args.command) &&
+    !["autoapprove", "history", "vault", "snippet", "message", "automation"].includes(
+      args.command,
+    ) &&
     args.limit !== undefined
   )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault and snippet\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet and automation runs\n${USAGE}`,
     );
 }
 
@@ -743,6 +752,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     reviewProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
+    fileProblem(args) ??
+    automationProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??

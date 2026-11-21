@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import {
   EmptyState,
+  ErrorState,
   Field,
   FieldRow,
   Form,
@@ -19,6 +20,7 @@ import {
   TwoPane,
 } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
+import { nameProblem, newBaseName } from "./domain/memory-name.ts";
 
 /** The file being edited; `hash` is `null` for one that does not exist yet. */
 interface Opened {
@@ -27,8 +29,6 @@ interface Opened {
   /** The text as last read or saved, to tell what changed. */
   saved: string;
 }
-
-const NEW_NAME = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,90}$/;
 
 /**
  * Phase 26: the auto memory Claude Code keeps for the project. Read and edited only on an explicit
@@ -50,20 +50,31 @@ export function AgentMemory(
   const [creating, setCreating] = useState(false);
   const [typed, setTyped] = useState("");
   const [confirming, setConfirming] = useState<"save" | { remove: MemoryFile } | null>(null);
+  /** What is waiting for the person to say the edits of the open file may go (#3708). */
+  const [discarding, setDiscarding] = useState<(() => void) | null>(null);
+  /** The list could not be read: that is not the same as a project with no memory. */
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
     const listed = await store.hostCommand(hostId, "memory.list", { projectId });
     if (listed) {
       setFiles(listed.files);
       setExists(listed.exists);
-    } else setFiles([]);
+    } else setFiles((kept) => kept ?? []);
+    setFailed(listed === null);
     const suggested = await store.hostCommand(hostId, "memory.suggest", { projectId });
-    setSuggestions(suggested?.suggestions ?? []);
+    setSuggestions(suggested ? suggested.suggestions : null);
   }, [store, hostId, projectId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** Something that replaces the open file asks first when the person typed into it and has not saved. */
+  const replacing = (action: () => void) => {
+    if (opened && text !== opened.saved) setDiscarding(() => action);
+    else action();
+  };
 
   const show = (file: Opened, content: string) => {
     setOpened(file);
@@ -72,16 +83,24 @@ export function AgentMemory(
     setJustSaved(false);
   };
 
-  const open = async (name: string) => {
-    const read = await store.hostCommand(hostId, "memory.read", { projectId, name });
-    if (read) show({ name, hash: read.hash, saved: read.content }, read.content);
-  };
+  const open = (name: string) =>
+    replacing(() => {
+      void (async () => {
+        const read = await store.hostCommand(hostId, "memory.read", { projectId, name });
+        if (read) show({ name, hash: read.hash, saved: read.content }, read.content);
+      })();
+    });
+
+  const problem = nameProblem(typed, files?.map((file) => file.name) ?? []);
+  const canCreate = typed.trim() !== "" && problem === null;
 
   const create = () => {
-    if (!NEW_NAME.test(typed.trim())) return;
-    show({ name: `${typed.trim()}.md`, hash: null, saved: "" }, "");
-    setCreating(false);
-    setTyped("");
+    if (!canCreate) return;
+    replacing(() => {
+      show({ name: `${newBaseName(typed)}.md`, hash: null, saved: "" }, "");
+      setCreating(false);
+      setTyped("");
+    });
   };
 
   const save = async () => {
@@ -134,16 +153,27 @@ export function AgentMemory(
       {creating && (
         <Panel size="sm">
           <Form variant="inline" onSubmit={create}>
-            <Field label={t("memoryUi.fileName")}>
+            <Field
+              label={t("memoryUi.fileName")}
+              help={problem === null ? t("memoryUi.nameRule") : undefined}
+              error={problem === null ? undefined : t(`memoryUi.name.${problem}`)}
+            >
               {(control) => (
                 <Input {...control} value={typed} onChange={(e) => setTyped(e.target.value)} />
               )}
             </Field>
-            <FormActions submit={t("memoryUi.create")} disabled={!NEW_NAME.test(typed.trim())} />
+            <FormActions submit={t("memoryUi.create")} disabled={!canCreate} />
           </Form>
         </Panel>
       )}
-      {(!exists || files.length === 0) && <EmptyState title={t("memoryUi.empty")} />}
+      {failed && (
+        <ErrorState
+          message={t("memoryUi.loadFailed")}
+          retryLabel={t("agent.retry")}
+          onRetry={() => void load()}
+        />
+      )}
+      {!failed && (!exists || files.length === 0) && <EmptyState title={t("memoryUi.empty")} />}
       <Stack as="ul" gap={1} label={t("memoryUi.list")}>
         {files.map((file) => (
           <li key={file.name}>
@@ -154,7 +184,7 @@ export function AgentMemory(
                 <button
                   type="button"
                   aria-label={t("memoryUi.open", { name: file.name })}
-                  onClick={() => void open(file.name)}
+                  onClick={() => open(file.name)}
                   className="hit-inline text-left"
                 >
                   <span data-name className="font-medium">
@@ -199,7 +229,9 @@ export function AgentMemory(
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      show({ ...opened, hash: stale.hash, saved: stale.content }, stale.content)
+                      replacing(() =>
+                        show({ ...opened, hash: stale.hash, saved: stale.content }, stale.content),
+                      )
                     }
                   >
                     {t("memoryUi.reload")}
@@ -243,7 +275,7 @@ export function AgentMemory(
                           type="button"
                           aria-label={t("memoryUi.view", { name })}
                           className="hit-inline underline"
-                          onClick={() => void open(name)}
+                          onClick={() => open(name)}
                         >
                           {name}
                         </button>
@@ -258,6 +290,19 @@ export function AgentMemory(
         </Stack>
       </TwoPane>
 
+      {discarding && opened && (
+        <ConfirmDialog
+          message={t("memoryUi.discardMessage", { name: opened.name })}
+          confirmLabel={t("memoryUi.discardConfirm")}
+          destructive
+          onConfirm={() => {
+            const action = discarding;
+            setDiscarding(null);
+            action();
+          }}
+          onCancel={() => setDiscarding(null)}
+        />
+      )}
       {confirming === "save" && opened && (
         <ConfirmDialog
           message={t("memoryUi.saveMessage", { name: opened.name })}

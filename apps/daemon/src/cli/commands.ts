@@ -3,7 +3,6 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CardCliArgs } from "../board/index.ts";
 import { loadConfig, userHome } from "../config.ts";
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
-import type { HistoryCliArgs } from "../history/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
@@ -12,9 +11,11 @@ import type { TeamCliArgs } from "../teams/index.ts";
 import { configPath } from "./config-path.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
+import { automationCliArgs } from "./domain/automation-args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { changesCliArgs } from "./domain/changes-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
+import { historyCliArgs } from "./domain/history-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
 import { memoryCliArgs } from "./domain/memory-args.ts";
 import { messageAdminCliArgs } from "./domain/message-args.ts";
@@ -27,6 +28,7 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
@@ -262,31 +264,6 @@ function cardCliArgs(args: CliArgs): CardCliArgs {
   };
   const present = Object.entries(typed).filter(([, value]) => value !== undefined);
   return { action: args.action, ...Object.fromEntries(present) } as CardCliArgs;
-}
-
-/** What the person typed for `history list|search|get|tool|resume|watch`, as `runHistoryCli` takes it: what they left out stays out. */
-function historyCliArgs(args: CliArgs): HistoryCliArgs {
-  const typed: Record<string, unknown> = {
-    query: args.query,
-    claudeSessionId: args.claudeSessionId,
-    uuid: args.uuid,
-    index: args.index,
-    cwd: args.cwd,
-    projectKey: args.projectKey,
-    from: args.from,
-    to: args.until,
-    origin: args.origin,
-    hideAutomated: args.hideAutomated,
-    limit: args.limit,
-    cursor: args.cursor,
-    tail: args.tail,
-    name: args.personaName,
-    permissionMode: args.permissionMode,
-    force: args.force,
-    json: args.json || undefined,
-  };
-  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
-  return { action: args.action, ...Object.fromEntries(present) } as HistoryCliArgs;
 }
 
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
@@ -635,6 +612,13 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const live = liveStream(args, deps);
     return asking(args, deps, (config, remote) =>
       runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
+    );
+  },
+  file: (args, deps) => asking(args, deps, fileRun(args, deps.stdin)),
+  automation: async (args, deps) => {
+    const { runAutomationCli } = await import("../automations/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runAutomationCli(automationCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   boardsync: async (args, deps) => {

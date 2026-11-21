@@ -24,7 +24,13 @@ const REFUSED = {
 function banner(onPairAgain: (input: string) => Promise<string | null>) {
   render(
     <TContext.Provider value={translator("en")}>
-      <HostOfflineBanner host={REFUSED} onReconnect={() => undefined} onPairAgain={onPairAgain} />
+      <HostOfflineBanner
+        host={REFUSED}
+        onReconnect={() => undefined}
+        formatTime={() => ""}
+        onCopy={async () => true}
+        onPairAgain={onPairAgain}
+      />
     </TContext.Provider>,
   );
   return screen.queryByLabelText("New pairing link or token") as HTMLInputElement | null;
