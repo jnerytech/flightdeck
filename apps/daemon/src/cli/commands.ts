@@ -637,7 +637,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
   },
-  file: (args, deps) => asking(args, deps, fileRun(args)),
+  file: (args, deps) => asking(args, deps, fileRun(args, deps.stdin)),
   boardsync: async (args, deps) => {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
     return askingWith(args, deps, boardsyncCliArgs, runBoardsyncCli);

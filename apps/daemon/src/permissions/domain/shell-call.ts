@@ -664,6 +664,7 @@ const VERB_NOUNS = new Set([
   "message",
   "mcp",
   "changes",
+  "file",
 ]);
 
 /**

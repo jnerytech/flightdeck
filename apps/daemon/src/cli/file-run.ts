@@ -8,11 +8,12 @@ import { fileCliArgs } from "./domain/file-args.ts";
  * test). It lives apart from `commands.ts`, which is at the size limit.
  */
 export const fileRun =
-  (args: CliArgs) =>
+  (args: CliArgs, stdin?: ReadableStream<Uint8Array>) =>
   async (
     config: { bind: string; port: number; token: string },
     remote?: RemoteTarget,
   ): Promise<CliResult> =>
     (await import("../files/index.ts")).runFileCli(fileCliArgs(args), config, {
       ...(remote ? { remote } : {}),
+      stdin,
     });

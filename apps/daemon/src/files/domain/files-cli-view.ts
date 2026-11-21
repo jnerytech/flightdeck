@@ -81,6 +81,17 @@ export function readLines(file: FileRead): string[] {
   return [`${file.path} (${file.size} bytes, hash ${file.hash})`, ...lines];
 }
 
+/** What the daemon wrote: the path, the new hash to repeat on the next write, and the size in bytes. */
+export const wroteJson = (written: { path: string; hash: string; size: number }) => ({
+  path: written.path,
+  hash: written.hash,
+  size: written.size,
+});
+
+export const wroteLines = (written: { path: string; hash: string; size: number }): string[] => [
+  `wrote ${written.path}  ${written.size} bytes  hash: ${written.hash}`,
+];
+
 export const searchJson = (result: FileSearchResult) => ({
   mode: result.mode,
   query: result.query,

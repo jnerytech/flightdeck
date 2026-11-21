@@ -21,7 +21,7 @@ describe("risk rules: a session writing a file of a checkout from its shell (#36
         ["fd file read card:c1 a.ts && fd file write card:c1 a.ts --file x", REASON],
         ['bash -c "fd file write card:c1 a.ts --file x"', REASON],
         ["fd --host pc file write card:c1 a.ts --file x", REASON],
-        ['sh -c "fd --hash \\"a b\\" file write c a.ts"', REASON],
+        ["fd --hash 'a b' file write c a.ts", REASON],
       ]),
     ).toEqual([]);
   });

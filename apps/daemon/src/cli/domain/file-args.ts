@@ -16,6 +16,7 @@ const FILE_ACTIONS = ["list", "read", "write", "search", "dirs", "files"] as con
 /** The most characters of a search text and the most matches, as the daemon takes them. */
 const MOST_QUERY = 200;
 const MOST_MATCHES = 200;
+const SHA256 = /^[0-9a-f]{64}$/;
 
 /** `file list|read|search <target> ...`, `file dirs [<path>]` or `file files <path>`. */
 export function readFile(args: CliArgs, reader: ArgReader): void {
@@ -75,6 +76,9 @@ const flagged = (args: CliArgs): Array<[string, boolean, readonly string[]]> => 
   ["--mode", args.fileMode !== undefined, ["search"]],
   ["--limit", args.fileLimit !== undefined, ["search"]],
   ["--hidden", args.fileHidden !== undefined, ["dirs", "files"]],
+  ["--file", args.fileText !== undefined, ["write"]],
+  ["--hash", args.fileHash !== undefined, ["write"]],
+  ["--confirm", args.fileConfirm !== undefined, ["write"]],
 ];
 
 /** What is wrong with a search: the flags it needs, and the text and limit the daemon would refuse. */
@@ -90,6 +94,19 @@ function searchProblem(args: CliArgs): string | undefined {
   return undefined;
 }
 
+/** What `file write` needs besides its target and path: where the text comes from, the version it replaces, and `--confirm`. */
+function writeProblem(args: CliArgs): string | undefined {
+  if (args.fileText === undefined)
+    return "file write: missing --file <path> (or --file - for standard input)";
+  if (args.fileHash === undefined)
+    return "file write: missing --hash <hash> (the one file read printed)";
+  if (!SHA256.test(args.fileHash))
+    return "--hash: a sha256 hash of 64 hex digits, as file read prints it";
+  if (args.fileConfirm !== true)
+    return "file write: needs --confirm, since it replaces a file of the checkout";
+  return undefined;
+}
+
 /**
  * What is wrong with the `file` flags, or undefined: each flag belongs to its verbs, a search names its mode and
  * text, and a folder of another host is its own absolute path, in the style of either OS (this machine's current folder means nothing there).
@@ -101,6 +118,7 @@ export function fileProblem(args: CliArgs): string | undefined {
       return `${flag}: this flag only applies to flightdeckd file ${verbs.join(", ")}`;
   if (!onFile) return undefined;
   if (args.action === "search") return searchProblem(args);
+  if (args.action === "write") return writeProblem(args);
   if (args.host !== undefined && args.filePath !== undefined && args.action !== "read")
     return posix.isAbsolute(args.filePath) || win32.isAbsolute(args.filePath)
       ? undefined
