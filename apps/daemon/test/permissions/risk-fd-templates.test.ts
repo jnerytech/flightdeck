@@ -45,6 +45,17 @@ describe("risk rules: template start and harness templates delete, from a sessio
     ).toEqual([]);
   });
 
+  test("a harness templates line that xargs finishes with delete is high (#3738)", () => {
+    expect(
+      wrongReasons([
+        [
+          "echo delete node-api --confirm | xargs fd harness templates",
+          "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does",
+        ],
+      ]),
+    ).toEqual([]);
+  });
+
   test("the reads stay ordinary", () => {
     expect(
       notHigh([
