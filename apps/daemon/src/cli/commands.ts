@@ -27,6 +27,7 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
+import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
@@ -612,6 +613,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
     );
   },
+  file: (args, deps) => asking(args, deps, fileRun(args, deps.stdin)),
   automation: async (args, deps) => {
     const { runAutomationCli } = await import("../automations/index.ts");
     return asking(args, deps, (config, remote) =>

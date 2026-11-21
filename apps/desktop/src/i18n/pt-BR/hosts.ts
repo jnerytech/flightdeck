@@ -423,6 +423,8 @@ export const hosts = {
     reconnectNow: "Reconectar agora",
     reconnecting: "Reconectando…",
     still: "Continua desconectado.",
+    copy: "Copiar o comando {command}",
+    copied: "Copiado",
     hintLinux: "No host, confira se o daemon está rodando e se ele sobe no boot:",
     hintWsl:
       "No WSL, ligue também o systemd em /etc/wsl.conf (depois rode wsl --shutdown no Windows):",
@@ -463,6 +465,7 @@ export const hosts = {
     uptime: "no ar há {n} s",
     latency: "latência: {value}",
     unavailable: "informações indisponíveis",
+    offlineInfo: "Os detalhes do host aparecem aqui quando ele responder.",
     hooks: "Hooks do Claude Code",
     hooksInstalled: "instalados",
     hooksAbsent: "ausentes",

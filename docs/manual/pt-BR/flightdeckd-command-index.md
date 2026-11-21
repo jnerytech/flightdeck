@@ -70,6 +70,12 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 
 - [fd changes](flightdeckd-changes-commands.md#fd-changes)
 
+## Comandos do flightdeckd: os arquivos de um repositório e as pastas de um host
+
+[Ler o capítulo.](flightdeckd-file-commands.md) Suas seções:
+
+- [fd file](flightdeckd-file-commands.md#fd-file)
+
 ## Comandos do flightdeckd: as automações de um projeto
 
 [Ler o capítulo.](flightdeckd-automation-commands.md) Suas seções:

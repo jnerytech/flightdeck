@@ -70,6 +70,12 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 
 - [fd changes](flightdeckd-changes-commands.md#fd-changes)
 
+## flightdeckd commands: the files of a repository and the folders of a host
+
+[Read the chapter.](flightdeckd-file-commands.md) Its sections:
+
+- [fd file](flightdeckd-file-commands.md#fd-file)
+
 ## flightdeckd commands: the automations of a project
 
 [Read the chapter.](flightdeckd-automation-commands.md) Its sections:

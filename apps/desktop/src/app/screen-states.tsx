@@ -63,6 +63,8 @@ export function hostWaitScreen(props: {
         <HostOfflineBanner
           host={waitHost}
           onReconnect={() => void store.roster.reconnect(waitHost.id)}
+          formatTime={(iso) => store.formatTime(iso)}
+          onCopy={(text) => store.system.copyText(text)}
         />
       </ScreenState>
     );

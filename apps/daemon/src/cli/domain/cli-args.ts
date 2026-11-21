@@ -58,6 +58,7 @@ export interface CliArgs {
     | "review"
     | "runenv"
     | "changes"
+    | "file"
     | "automation"
     | "requests"
     | "send"
@@ -169,6 +170,7 @@ export interface CliArgs {
     | "edit"
     | "test"
     | "files"
+    | "dirs"
     | "interrupt"
     | "sleep"
     | "set-model"
@@ -260,6 +262,24 @@ export interface CliArgs {
   changesTitle?: string;
   changesBody?: string;
   changesConfirm?: true;
+  /** `file list|read|search <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  fileTarget?: string;
+  /** `file read <target> <path>`, `file dirs [<path>]` and `file files <path>`: the path. */
+  filePath?: string;
+  /** `file list --dir`: the folder of the repository, "" for its root. */
+  fileDir?: string;
+  /** `file search --query`, `--mode` and `--limit`. */
+  fileQuery?: string;
+  fileMode?: "name" | "content";
+  fileLimit?: number;
+  /** `file dirs|files --hidden`. */
+  fileHidden?: true;
+  /** `file write --file`: the new text's file, or `-` for standard input. */
+  fileText?: string;
+  /** `file write --hash`: the sha256 `file read` printed, the version the write replaces. */
+  fileHash?: string;
+  /** `file write --confirm`. */
+  fileConfirm?: true;
   /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
   /** `review update|remove <comment>`: the comment's id. */

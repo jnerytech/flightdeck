@@ -118,6 +118,8 @@ export function HostPage(
           <HostOfflineBanner
             host={host}
             onReconnect={props.onReconnect}
+            formatTime={(iso) => store.formatTime(iso)}
+            onCopy={(text) => store.system.copyText(text)}
             {...(props.onPairAgain ? { onPairAgain: props.onPairAgain } : {})}
           />
         )}
