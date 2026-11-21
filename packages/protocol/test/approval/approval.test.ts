@@ -462,6 +462,45 @@ describe("command-approve: a device signs the command and a hash of what it carr
     ]).toEqual([true, true, true]);
   });
 
+  test("Given the snippets.trust payloads the Rust crate also reads, Then their digests and hashes are the shared literals", () => {
+    const cases: Array<[Record<string, unknown>, string, string]> = [
+      [
+        { projectPath: "/work/app", hash: "a".repeat(64) },
+        '{"hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","projectPath":"/work/app"}',
+        "806ce00e17fd22b999d21804f3a49945e98211f9ffe9651d9c10c2667e69e1d9",
+      ],
+      [
+        { projectPath: "/srv/flightdeck app", hash: "0123456789abcdef".repeat(4) },
+        '{"hash":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","projectPath":"/srv/flightdeck app"}',
+        "684bc21ef06bcde0cb6af55be1fdaeb58f291f0133ded2ac39012d0e0058a5cf",
+      ],
+    ];
+    for (const [payload, digest, hash] of cases) {
+      expect(commandDigest(payload)).toBe(digest);
+      expect(new Bun.CryptoHasher("sha256").update(digest).digest("hex")).toBe(hash);
+    }
+  });
+
+  test("Given snippets.trust, Then every payload needs the proof (there is no untrust to leave open) and a challenge for it is one of the gate's", () => {
+    expect([
+      commandNeedsProof("snippets.trust", { projectPath: "/work/app", hash: "a".repeat(64) }),
+      commandNeedsProof("snippets.trust", {}),
+      challenge({ purpose: "command", command: "snippets.trust" }),
+    ]).toEqual([true, true, true]);
+  });
+
+  test("Given snippets.trust, Then it takes an optional proof and still refuses a field it does not know", () => {
+    const base = { projectPath: "/work/app", hash: "a".repeat(64) };
+    const proof = { keyId: "k1", nonce: "n1", signature: "c2ln" };
+    const parse = (payload: unknown) =>
+      Command.safeParse({ id: "1", type: "snippets.trust", payload }).success;
+    expect([parse(base), parse({ ...base, proof }), parse({ ...base, extra: 1 })]).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
+
   test("Given the plugin commands, Then every payload of install and update needs the proof, and a challenge for each is one of the gate's", () => {
     expect([
       commandNeedsProof("plugins.install", { plugin: "deploy-tools@acme", confirmHash: "x" }),
