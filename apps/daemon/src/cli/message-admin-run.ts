@@ -24,6 +24,6 @@ export function messageAdminRun(
     (await import("../messaging/index.ts")).runMessageAdminCli(admin, config, {
       ...(remote ? { remote } : {}),
       signal: stop.signal,
-      write: (line) => deps.log.log(line),
+      write: deps.log.log.bind(deps.log),
     });
 }
