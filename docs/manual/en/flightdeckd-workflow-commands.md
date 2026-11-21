@@ -48,7 +48,7 @@ the reason, and exits `1`. The reason is a stable word a script can read; over `
 `trust <project> <workflow> --hash <hash>` gives the workflow the trust to run its shell commands, and prints it as
 `validate` does. The hash is the whole 64 characters `list` printed: the command never reads one for you. A workflow
 that changed since you read the hash, or has errors, is refused with exit `1`. Trusting lets the workflow's commands run on
-the host, so it needs a near connection like `template-add`: over `--host` the daemon refuses it.
+the host, so it needs a near connection like `template-add`: over a far connection (not this computer or Tailscale) the daemon refuses it.
 
 `template-add <project> <template> --confirm` commits the template on a new branch of the project and opens its pull
 request, then prints the file, the branch, the base and the pull request. Without `--confirm` it exits `1` and changes

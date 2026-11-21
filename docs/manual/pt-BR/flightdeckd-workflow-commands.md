@@ -48,7 +48,7 @@ retomar, imprime o motivo, com os parâmetros dele, e sai com `1`. O motivo é u
 `trust <projeto> <workflow> --hash <hash>` dá ao workflow a confiança para rodar seus comandos de shell e o imprime como
 `validate`. O hash são os 64 caracteres inteiros que `list` imprimiu: o comando nunca lê um por você. Um workflow que
 mudou desde que você leu o hash, ou que tem erros, é recusado com saída `1`. Confiar deixa os comandos do workflow
-rodarem no host, então exige uma conexão próxima, como `template-add`: por `--host` o daemon recusa.
+rodarem no host, então exige uma conexão próxima, como `template-add`: por uma conexão distante (nem este computador nem a Tailscale) o daemon recusa.
 
 `template-add <projeto> <modelo> --confirm` faz o commit do modelo em uma branch nova do projeto e abre o pull request,
 depois imprime o arquivo, a branch, a base e o pull request. Sem `--confirm` sai com `1` e não muda nada. Pede uma
