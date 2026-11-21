@@ -31,6 +31,9 @@ const KINDS: WebhookKind[] = [
 ];
 const TYPES: WebhookType[] = ["slack", "discord", "generic", "ntfy"];
 
+/** The types that take a second secret: a generic webhook's signing secret, an ntfy access token. */
+const takesSecret = (type: WebhookType) => type === "generic" || type === "ntfy";
+
 /** The URL field's help: what an edit keeps, or how an ntfy topic URL looks. */
 function urlHelp(editing: boolean, type: WebhookType, t: (key: Key) => string): string | undefined {
   if (editing) return t("webhooks.urlKeep");
@@ -104,7 +107,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           hostScope: scope,
           kinds: draft.kinds,
           ...(draft.url.trim() ? { url: draft.url.trim() } : {}),
-          ...(draft.signing ? { signingSecret: draft.signing } : {}),
+          ...(draft.signing && takesSecret(draft.type) ? { signingSecret: draft.signing } : {}),
         });
       } else {
         await store.webhooks.targets.add({
@@ -114,7 +117,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           hostScope: scope,
           kinds: draft.kinds,
           clientId: null,
-          ...(draft.signing ? { signingSecret: draft.signing } : {}),
+          ...(draft.signing && takesSecret(draft.type) ? { signingSecret: draft.signing } : {}),
         });
       }
       setDraft(EMPTY);
@@ -157,6 +160,9 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
       refresh();
       return;
     }
+    // A form that was editing this webhook goes back to an empty Add form, without its save error.
+    setDraft((current) => (current.id === target.id ? EMPTY : current));
+    setError(null);
     // The next row's first button, the one before it for the last row, else the Add form.
     focusAfter.current = (section) => {
       const rows = section.querySelectorAll<HTMLElement>("[data-webhook]");
@@ -327,7 +333,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                 />
               )}
             </Field>
-            {(draft.type === "generic" || draft.type === "ntfy") && (
+            {takesSecret(draft.type) && (
               <Field label={draft.type === "ntfy" ? t("webhooks.token") : t("webhooks.signing")}>
                 {(control) => (
                   <Input

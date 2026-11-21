@@ -265,6 +265,73 @@ describe("webhook-ui", () => {
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
 
+  test("a signing secret typed for a generic webhook is not saved once the type is switched to Slack", async () => {
+    const { store } = await open("en");
+    await fill("Name", "Hook");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "generic" } });
+    });
+    await fill("Signing secret", "s3cret");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "slack" } });
+    });
+    expect(screen.queryByLabelText("Signing secret")).toBeNull();
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => store.webhooks.targets.list().length === 1);
+    const [target] = store.webhooks.targets.list();
+    const secrets = await store.webhooks.targets.secrets(target?.id as string);
+    expect(secrets?.signingSecret ?? null).toBeNull();
+  });
+
+  test("removing the webhook being edited empties the form instead of leaving its values in an Add form", async () => {
+    await open("en");
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    await click("Edit Team");
+    await click("Remove Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    });
+    await settle(() => screen.queryByText("Team") === null);
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("");
+    expect((screen.getByRole("checkbox", { name: "Needs you" }) as HTMLInputElement).checked).toBe(
+      false,
+    );
+  });
+
+  test("removing the webhook being edited also clears the save error of the form", async () => {
+    await open("en");
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    await click("Edit Team");
+    await fill("Webhook URL", "http://example.com/h");
+    await click("Save changes");
+    const refused = "Use an https:// URL (http:// only works for this machine).";
+    await settle(() => screen.queryByText(refused) !== null);
+    await click("Remove Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    });
+    await settle(() => screen.queryByText("Team") === null);
+    expect(screen.queryByText(refused)).toBeNull();
+  });
+
   test("Cancel in the remove question keeps the webhook", async () => {
     const { store } = await open("en");
     await fill("Name", "Team");
