@@ -28,6 +28,20 @@ describe("risk rules: a session changing its own checkout through flightdeckd fr
     ).toEqual([]);
   });
 
+  test("a value flag with a quoted value that holds a blank does not hide the verb from a runner's text", () => {
+    expect(
+      wrongReasons([
+        [
+          'sh -c "fd --message \\"a b\\" changes commit s --branch b --digest f=d --confirm"',
+          REASON,
+        ],
+        ['bash -c "fd --digest \\"a b\\" changes commit s"', REASON],
+        ['sh -c "fd --title \\"a b\\" changes pr s --remote r"', REASON],
+        ["bash -c 'fd --message \"a b\" changes revert s a.ts'", REASON],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a verb the shell expands could be any of them, so it is high", () => {
     expect(
       wrongReasons([

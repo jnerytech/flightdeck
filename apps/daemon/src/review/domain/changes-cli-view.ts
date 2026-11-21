@@ -122,3 +122,6 @@ export const committedLines = (done: ChangesCommitted) => [
 export const openedLines = (done: ChangesPrOpened) => [
   `opened ${done.url} (${done.branch} into ${done.base})`,
 ];
+
+/** How long a `changes` verb waits for the daemon's answer, in milliseconds. */
+export const timeoutOf = (_action: string): number => 15_000;
