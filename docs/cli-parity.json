@@ -352,7 +352,7 @@
   "review.send": { "cli": "review" },
   "review.update": { "cli": "review" },
   "rewind.apply": {},
-  "rewind.preview": {},
+  "rewind.preview": { "cli": "rewind" },
   "rewind.undo": {},
   "roi.summary": { "cli": "roi" },
   "roots.add": {},
@@ -419,8 +419,8 @@
   "sessions.watch": {
     "cli": "requests"
   },
-  "snapshots.files": {},
-  "snapshots.list": {},
+  "snapshots.files": { "cli": "snapshots" },
+  "snapshots.list": { "cli": "snapshots" },
   "snippets.favorite": {
     "cli": "snippet"
   },
@@ -569,8 +569,8 @@
   "terminal.write": {
     "appOnly": "types into a terminal from the app's own view, the keyboard of that terminal; a session that could type into one would drive a shell the person did not hand it (#3538)"
   },
-  "trace.export": {},
-  "trace.get": {},
+  "trace.export": { "cli": "trace" },
+  "trace.get": { "cli": "trace" },
   "ui.set": {},
   "usage.summary": { "cli": "usage" },
   "vault.approve": {},

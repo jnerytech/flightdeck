@@ -70,6 +70,14 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 
 - [fd changes](flightdeckd-changes-commands.md#fd-changes)
 
+## Comandos do flightdeckd: os snapshots e o trace de uma sessão do Claude
+
+[Ler o capítulo.](flightdeckd-checkpoints-commands.md) Suas seções:
+
+- [fd snapshots](flightdeckd-checkpoints-commands.md#fd-snapshots)
+- [fd rewind](flightdeckd-checkpoints-commands.md#fd-rewind)
+- [fd trace](flightdeckd-checkpoints-commands.md#fd-trace)
+
 ## Comandos do flightdeckd: os arquivos de um repositório e as pastas de um host
 
 [Ler o capítulo.](flightdeckd-file-commands.md) Suas seções:
