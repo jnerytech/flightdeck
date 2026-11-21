@@ -79,7 +79,7 @@ const withNamedAction =
   };
 
 /** The words of `fd` that are not subcommands but are still Flightdeck's own. */
-const FD_FLAGS = ["--version", "--help", "-h"];
+const FD_FLAGS = new Set(["--version", "--help", "-h"]);
 
 /** The pack personas a shortcut word opens: the word is the persona's id (#3413, #3441). */
 const SHORTCUTS = ["architect", "reviewer", "security", "coordinator"] as const;
@@ -136,7 +136,7 @@ const HANDLERS: Record<string, Handler> = {
     const rest = reader.takeRest();
     const word = rest[0] ?? "";
     const own = word !== "fd" && Object.hasOwn(HANDLERS, word) && !word.startsWith("-");
-    if (own || FD_FLAGS.includes(word)) Object.assign(args, parseArgs(rest));
+    if (own || FD_FLAGS.has(word)) Object.assign(args, parseArgs(rest));
     else Object.assign(args, { command: "claude", claudeArgs: rest });
   },
   "--help": setCommand("help"),
@@ -656,27 +656,28 @@ const HANDLERS: Record<string, Handler> = {
   }),
 };
 
-export function parseArgs(argv: readonly string[]): CliArgs {
-  const args: CliArgs = { command: "start" };
-  const reader = new ArgReader(argv);
-  for (let arg = reader.current(); arg !== undefined; reader.advance(), arg = reader.current()) {
-    const cut = arg.startsWith("--") ? arg.indexOf("=") : -1;
-    const flag = cut < 0 ? arg : arg.slice(0, cut);
-    const inline = cut < 0 ? undefined : arg.slice(cut + 1);
-    const value = () => {
-      const v = inline ?? reader.next();
-      if (v === undefined || v.startsWith("--")) throw new Error(`${flag} needs a value\n${USAGE}`);
-      return v;
-    };
-    const handler = Object.hasOwn(HANDLERS, flag) ? HANDLERS[flag] : undefined;
-    if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
-    // A second command word would re-target the parse, past the risk rating of the first (`fd` has its own refusal).
-    if (!flag.startsWith("--") && flag !== "fd" && args.command !== "start")
-      throw new Error(`one command at a time: ${args.command}, then ${flag}\n${USAGE}`);
-    if (inline !== undefined && FLAGS.has(handler))
-      throw new Error(`${flag} needs no value\n${USAGE}`);
-    handler(args, reader, value);
-  }
+/** One word of the command line: its flag, an inline `=value` if any, and the handler that applies it. */
+function takeOption(args: CliArgs, reader: ArgReader, arg: string): void {
+  const cut = arg.startsWith("--") ? arg.indexOf("=") : -1;
+  const flag = cut < 0 ? arg : arg.slice(0, cut);
+  const inline = cut < 0 ? undefined : arg.slice(cut + 1);
+  const value = () => {
+    const v = inline ?? reader.next();
+    if (v === undefined || v.startsWith("--")) throw new Error(`${flag} needs a value\n${USAGE}`);
+    return v;
+  };
+  const handler = Object.hasOwn(HANDLERS, flag) ? HANDLERS[flag] : undefined;
+  if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
+  // A second command word would re-target the parse, past the risk rating of the first (`fd` has its own refusal).
+  if (!flag.startsWith("--") && flag !== "fd" && args.command !== "start")
+    throw new Error(`one command at a time: ${args.command}, then ${flag}\n${USAGE}`);
+  if (inline !== undefined && FLAGS.has(handler))
+    throw new Error(`${flag} needs no value\n${USAGE}`);
+  handler(args, reader, value);
+}
+
+/** The flags that only some commands take, refused on the rest (the per-command files check their own). */
+function refuseStrayFlags(args: CliArgs): void {
   if (args.json) refuseOutside("--json", JSON_COMMANDS, args.command);
   if (args.host !== undefined) refuseOutside("--host", HOST_COMMANDS, args.command);
   if (args.hold && args.command !== "approve")
@@ -703,10 +704,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error(
       `--limit: this flag only applies to flightdeckd autoapprove, history and vault\n${USAGE}`,
     );
-  // `card new` takes its title as an operand: the flag is the title of an update.
-  if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
-    args.cardTitle = args.titleFlag;
-  takeSessionFlags(args);
+}
+
+/** The `card` flags with the actions that take each one; any other command or action is refused. */
+function refuseCardFlags(args: CliArgs): void {
   const flagged: Array<[string, unknown, readonly string[] | null]> = [
     ["--title", args.titleFlag, ["update", "pr-create"]],
     ["--description", args.description, ["new", "update", "pr-create"]],
@@ -747,6 +748,19 @@ export function parseArgs(argv: readonly string[]): CliArgs {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
+}
+
+export function parseArgs(argv: readonly string[]): CliArgs {
+  const args: CliArgs = { command: "start" };
+  const reader = new ArgReader(argv);
+  for (let arg = reader.current(); arg !== undefined; reader.advance(), arg = reader.current())
+    takeOption(args, reader, arg);
+  refuseStrayFlags(args);
+  // `card new` takes its title as an operand: the flag is the title of an update.
+  if (args.titleFlag !== undefined && ["update", "pr-create"].includes(args.action as string))
+    args.cardTitle = args.titleFlag;
+  takeSessionFlags(args);
+  refuseCardFlags(args);
   if (args.rounds !== undefined && args.loop === "off")
     throw new Error(`--rounds: only with check-loop on\n${USAGE}`);
   // `team update` takes its goal as a flag, `team new` as its operand: the flag is refused on the rest.

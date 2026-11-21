@@ -202,6 +202,31 @@ async function rulesCli(
   );
 }
 
+/** The persona verb of the command line as the persona CLI takes it: each flag given, nothing else. */
+function personaCliArgs(args: CliArgs): PersonaCliArgs {
+  return {
+    action: args.action as PersonaCliArgs["action"],
+    ...(args.personaId === undefined ? {} : { id: args.personaId }),
+    ...(args.personaName === undefined ? {} : { name: args.personaName }),
+    ...(args.description === undefined ? {} : { description: args.description }),
+    ...(args.body === undefined ? {} : { body: args.body }),
+    ...(args.bodyFile === undefined ? {} : { bodyFile: args.bodyFile }),
+    ...(args.model === undefined ? {} : { model: args.model }),
+    ...(args.effort === undefined ? {} : { effort: args.effort }),
+    ...(args.tools === undefined ? {} : { tools: args.tools }),
+    ...(args.permissionMode === undefined
+      ? {}
+      : { permissionMode: args.permissionMode as PersonaCliArgs["permissionMode"] }),
+    ...(args.icon === undefined ? {} : { icon: args.icon }),
+    ...(args.hash === undefined ? {} : { hash: args.hash }),
+    ...(args.confirm ? { confirm: true } : {}),
+    ...(args.scope === undefined ? {} : { scope: args.scope }),
+    ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),
+    ...(args.language === undefined ? {} : { language: args.language }),
+    ...(args.json ? { json: true } : {}),
+  };
+}
+
 /** What the person typed for `card`, as `runCardCli` takes it: what they left out stays out. */
 function cardCliArgs(args: CliArgs): CardCliArgs {
   const typed: Record<string, unknown> = {
@@ -557,34 +582,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   persona: async (args, deps) => {
     const { runPersonaCli } = await import("../personas/index.ts");
     const config = await localConfig(args);
-    return reported(
-      deps,
-      await runPersonaCli(
-        {
-          action: args.action as PersonaCliArgs["action"],
-          ...(args.personaId === undefined ? {} : { id: args.personaId }),
-          ...(args.personaName === undefined ? {} : { name: args.personaName }),
-          ...(args.description === undefined ? {} : { description: args.description }),
-          ...(args.body === undefined ? {} : { body: args.body }),
-          ...(args.bodyFile === undefined ? {} : { bodyFile: args.bodyFile }),
-          ...(args.model === undefined ? {} : { model: args.model }),
-          ...(args.effort === undefined ? {} : { effort: args.effort }),
-          ...(args.tools === undefined ? {} : { tools: args.tools }),
-          ...(args.permissionMode === undefined
-            ? {}
-            : { permissionMode: args.permissionMode as PersonaCliArgs["permissionMode"] }),
-          ...(args.icon === undefined ? {} : { icon: args.icon }),
-          ...(args.hash === undefined ? {} : { hash: args.hash }),
-          ...(args.confirm ? { confirm: true } : {}),
-          ...(args.scope === undefined ? {} : { scope: args.scope }),
-          ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),
-          ...(args.language === undefined ? {} : { language: args.language }),
-          ...(args.json ? { json: true } : {}),
-        },
-        config,
-      ),
-      args.json,
-    );
+    return reported(deps, await runPersonaCli(personaCliArgs(args), config), args.json);
   },
   rules: async (args, deps) => rulesCli("rules", args, deps),
   autoapprove: async (args, deps) => rulesCli("autoapprove", args, deps),
