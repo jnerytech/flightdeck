@@ -5,6 +5,7 @@
  * once the line is read (as `takeSessionFlags` does), and `bgProblem` checks them against the verb. `--json` and
  * `--host` are checked in `args.ts` with the other commands'.
  */
+import { posix, win32 } from "node:path";
 import type { BgCliArgs } from "../../bg/index.ts";
 import { type ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
@@ -102,6 +103,8 @@ export function bgProblem(args: CliArgs): string | undefined {
   if (flags.card === undefined && !hasPair) return "bg start needs --cwd and --prompt, or --card";
   if (flags.card !== undefined && (flags.cwd !== undefined || flags.prompt !== undefined))
     return "bg start takes --card, or --cwd and --prompt, not both";
+  if (flags.cwd !== undefined && !posix.isAbsolute(flags.cwd) && !win32.isAbsolute(flags.cwd))
+    return "--cwd: must be an absolute path (the daemon resolves a relative one against its own folder)";
   if (flags.persona !== undefined && !PERSONA_ID.test(flags.persona))
     return `--persona: ${flags.persona} is not a persona id`;
   return (
