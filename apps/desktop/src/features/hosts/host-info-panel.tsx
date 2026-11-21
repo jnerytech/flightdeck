@@ -1,4 +1,5 @@
 import { useT } from "@/i18n/context";
+import type { T } from "@/i18n/index";
 import { useHostLatency } from "@/lib/use-store";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
@@ -39,14 +40,17 @@ export function HostInfoPanel(
           <HostLatency store={store} hostId={host.id} />
         </ul>
       ) : (
-        <p className="text-muted-foreground text-sm">
-          {offline && host.status !== "unauthorized"
-            ? t("hostPage.offlineInfo")
-            : t("hostPage.unavailable")}
-        </p>
+        <p className="text-muted-foreground text-sm">{unavailableText(host.status, offline, t)}</p>
       )}
     </Panel>
   );
+}
+
+/** What the panel says while the host has no details to show: each state names its own reason (issue #3786). */
+function unavailableText(status: string, offline: boolean, t: T): string {
+  if (status === "incompatible") return t("hostPage.unavailableIncompatible");
+  if (status === "unauthorized") return t("hostPage.unavailableUnauthorized");
+  return offline ? t("hostPage.offlineInfo") : t("hostPage.unavailable");
 }
 
 /** The heartbeat latency line: the only part of the page that renders on a ping. */

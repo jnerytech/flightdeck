@@ -17,12 +17,12 @@ afterEach(cleanup);
 
 type Store = InstanceType<typeof AppStore>;
 
-const host = (id: string, name: string) => ({
+const host = (id: string, name: string, status = "online") => ({
   id,
   name,
   url: "ws://x",
   token: "",
-  status: "online",
+  status,
   info: null,
   hostInfo: { daemonVersion: "x", features: [] },
   latencyMs: null,
@@ -48,14 +48,14 @@ const external = (id: string, cwd: string, status: string, at: string, hostName:
   projectKey: `host:${hostName}:${cwd}`,
 });
 
-function setup(forHost: "h1" | "h2" | "h3") {
+function setup(forHost: "h1" | "h2" | "h3", gamaStatus = "online") {
   const store: Store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.palette.load = async () => {};
   store.hostCommand = (async () => null) as never;
   const state = {
     ...store.getState(),
-    hosts: [host("h1", "alfa"), host("h2", "beta"), host("h3", "gama")],
+    hosts: [host("h1", "alfa"), host("h2", "beta"), host("h3", "gama", gamaStatus)],
     projects: {
       h1: [project("p-api", "api", "alfa"), project("p-web", "web", "alfa")],
       h2: [project("p-docs", "docs", "beta")],
@@ -70,7 +70,11 @@ function setup(forHost: "h1" | "h2" | "h3") {
   } as never as ReturnType<Store["getState"]>;
   const calls: string[] = [];
   const opened: Array<HubRow | ProjectCard> = [];
-  const target = state.hosts.find((h) => h.id === forHost) as { id: string; name: string };
+  const target = state.hosts.find((h) => h.id === forHost) as {
+    id: string;
+    name: string;
+    status: string;
+  };
   const view = (
     <TooltipProvider>
       <HostOverview
@@ -160,6 +164,25 @@ describe("host-overview-ui: a host page leads with its sessions and projects", (
     expect(calls).toEqual(["new"]);
     expect(screen.queryByRole("button", { name: "See all sessions" })).toBeNull();
   });
+});
+
+describe("host-overview-ui: a host that does not answer (issue #3786)", () => {
+  for (const status of ["offline", "connecting", "incompatible", "unauthorized"]) {
+    test(`a ${status} host says its lists show once it answers, and New session says why it cannot start`, async () => {
+      const { view, calls } = setup("h3", status);
+      render(view);
+      await waitFor(() =>
+        expect(screen.queryByText("The sessions show here once gama answers.")).not.toBeNull(),
+      );
+      expect(screen.queryByText("The projects show here once gama answers.")).not.toBeNull();
+      expect(document.body.textContent?.includes("No sessions on this host yet.")).toBe(false);
+      expect(document.body.textContent?.includes("No projects on this host yet.")).toBe(false);
+      const button = screen.getByRole("button", { name: "New session" }) as HTMLButtonElement;
+      expect(button.disabled || button.getAttribute("aria-disabled") === "true").toBe(true);
+      await act(async () => void fireEvent.click(button));
+      expect(calls).toEqual([]);
+    });
+  }
 });
 
 describe("host-overview-ui: the Projects list filtered by a host", () => {
