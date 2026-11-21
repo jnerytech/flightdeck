@@ -92,7 +92,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   findings, so the skill text never enters your own context; fix what they find (user, 2026-11-10,
   #1670, #1973). `/code-review` runs at its default level, never `max` or `ultra` unless asked. The
   `security-reviewer` agent and its trailer still apply. Record both runs in an empty commit with the
-  trailers `Code-Review: <sha> <summary>` and `Security-Review: <sha> <summary>`: `pr open` refuses a head without it (#1707). A later merge of the base needs no new record: the check compares the branch's own change, not the tree; a commit that changes the branch does (#3731).
+  trailers `Code-Review: <sha> <summary>` and `Security-Review: <sha> <summary>`: `pr open` refuses a head without it (#1707). A later merge of the base needs no new record: the check also accepts a head that is the reviewed commit cleanly merged onto the head's merge base with the base; a commit that changes the branch does (#3731).
 - Only the coordinator pushes `main`, `rc/*` and tags, merges by hand (`bun run pr -- merge <n>`)
   and publishes releases. The guard hook refuses the rest: pushes of main, `rc/*`, tags,
   `--tags`/`--all`/`--mirror`, a bare `--force`, a `--force-with-lease` to any branch but the one

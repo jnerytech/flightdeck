@@ -36,17 +36,16 @@ const HOW = [
  * base, a git older than 2.38 (no `merge-tree --write-tree`), or a merge that conflicts, whose resolution is
  * a change nobody reviewed. Exact, so a reviewed hunk moved elsewhere, a mode change or a binary cannot match.
  */
-async function reviewedMergedOntoBase(
-  git: ReviewGit,
-  base: string,
-  branch: string,
-  sha: string,
-): Promise<string | null> {
-  const mergeBase = await git(["merge-base", `origin/${base}`, `origin/${branch}`]);
-  const onto = mergeBase.stdout.trim();
-  if (mergeBase.code !== 0 || !/^[0-9a-f]{40}$/.test(onto)) return null;
+async function reviewedMergedOntoBase(git: ReviewGit, onto: string, sha: string) {
   const merged = await git(["merge-tree", "--write-tree", "--no-messages", onto, sha]);
   return merged.code === 0 ? (merged.stdout.split("\n")[0] ?? "").trim() || null : null;
+}
+
+/** The merge base of the head with the base branch, or null when git has none. */
+async function mergeBaseOf(git: ReviewGit, base: string, branch: string) {
+  const found = await git(["merge-base", `origin/${base}`, `origin/${branch}`]);
+  const onto = found.stdout.trim();
+  return found.code === 0 && /^[0-9a-f]{40}$/.test(onto) ? onto : null;
 }
 
 /** Why `pr open` refuses a branch, or null when both reviews are on record for its head. */
@@ -73,6 +72,7 @@ export async function reviewProblem(
   // A review counts when a commit it names has the tree of the head (the record's own commit is empty), or
   // merged onto the head's merge base with the base gives it: a merge of the base moves the tree, not the change.
   // `git log -1 --format=%T` prints nothing for a name that is no commit (a tree sha passes rev-parse).
+  let mergeBase: Promise<string | null> | undefined;
   const reviewed = async (shas: string[]): Promise<boolean> => {
     for (const sha of new Set(shas)) {
       const tree = await git([
@@ -85,7 +85,9 @@ export async function reviewProblem(
       ]);
       if (tree.code !== 0 || tree.stdout.trim() === "") continue;
       if (tree.stdout.trim() === head.stdout.trim()) return true;
-      if ((await reviewedMergedOntoBase(git, base, branch, sha)) === head.stdout.trim())
+      mergeBase ??= mergeBaseOf(git, base, branch);
+      const onto = await mergeBase;
+      if (onto !== null && (await reviewedMergedOntoBase(git, onto, sha)) === head.stdout.trim())
         return true;
     }
     return false;
