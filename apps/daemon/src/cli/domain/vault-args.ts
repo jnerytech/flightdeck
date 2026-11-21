@@ -3,6 +3,7 @@
  * `args.ts` adds the usage text to the problem this names. The words and ranges are the protocol's and
  * are checked as each flag is read; this is which verb takes which flag, and what a verb needs.
  */
+import type { VaultCliArgs } from "../../vault/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { USAGE } from "./usage.ts";
@@ -103,4 +104,27 @@ export function atTime(value: string): number {
   if (Number.isNaN(at))
     throw new Error(`--at: a date and time, like 2026-11-20T03:00:00Z, got ${value}\n${USAGE}`);
   return at;
+}
+
+/** What the person typed for `vault decisions|report|rules`, as `runVaultCli` takes it: what they left out stays out. */
+export function vaultCliArgs(args: CliArgs): VaultCliArgs {
+  const typed: Record<string, unknown> = {
+    secretId: args.secretId,
+    days: args.days,
+    limit: args.limit,
+    csv: args.csv,
+    requester: args.requester,
+    purpose: args.purpose,
+    useAction: args.useAction,
+    host: args.host,
+    project: args.project,
+    session: args.session,
+    tags: args.tags,
+    risk: args.risk,
+    approval: args.approval,
+    at: args.at,
+    json: args.json || undefined,
+  };
+  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
+  return { action: args.action, ...Object.fromEntries(present) } as VaultCliArgs;
 }
