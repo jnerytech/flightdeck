@@ -309,6 +309,29 @@ describe("webhook-ui", () => {
     );
   });
 
+  test("removing the webhook being edited also clears the save error of the form", async () => {
+    await open("en");
+    await fill("Name", "Team");
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => screen.queryByRole("button", { name: "Edit Team" }) !== null);
+    await click("Edit Team");
+    await fill("Webhook URL", "http://example.com/h");
+    await click("Save changes");
+    const refused = "Use an https:// URL (http:// only works for this machine).";
+    await settle(() => screen.queryByText(refused) !== null);
+    await click("Remove Team");
+    const dialog = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    });
+    await settle(() => screen.queryByText("Team") === null);
+    expect(screen.queryByText(refused)).toBeNull();
+  });
+
   test("Cancel in the remove question keeps the webhook", async () => {
     const { store } = await open("en");
     await fill("Name", "Team");
