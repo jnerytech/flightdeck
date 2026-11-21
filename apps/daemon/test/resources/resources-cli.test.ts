@@ -57,7 +57,7 @@ describe("the resources command line (issue #3699)", () => {
 });
 
 describe("flightdeckd resources (issue #3699)", () => {
-  test("it prints memory, disk and load, the pause share, then a line per session or terminal and per orphan with the numbers end-orphan takes", async () => {
+  test("it prints memory, disk and load, the pause share, then a line per session or terminal and per orphan with its pid and start ticks", async () => {
     const daemon = fakeDaemon(base());
     const run = await flightdeckd(["resources"], daemon.port);
     expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: [] });
@@ -67,7 +67,7 @@ describe("flightdeckd resources (issue #3699)", () => {
       "load  35%",
       "pause  new cards wait from 80% of memory",
       "session  s1  fd-qa  900 MiB  cpu 12.5%  4 processes  claude, bun",
-      "terminal  t1  -  40 MiB  cpu -  1 processes  bash",
+      "terminal  t1  -  40 MiB  cpu -  1 process  bash",
       "orphan  pid 4242  start-ticks 987654  node  300 MiB  age 3600s",
     ]);
     expect(daemon.calls.filter((c) => c.type === "resources.get")).toHaveLength(1);

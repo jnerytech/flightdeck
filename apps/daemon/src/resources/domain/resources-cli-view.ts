@@ -17,7 +17,7 @@ export const resourcesJson = (snapshot: ResourcesSnapshot) => ({
 /** `used of total MiB used (share%)`, for memory and disk. */
 function usage(label: string, bytes: Bytes | null): string {
   if (bytes === null) return `${label}  not read`;
-  const used = bytes.totalBytes - bytes.freeBytes;
+  const used = Math.min(Math.max(bytes.totalBytes - bytes.freeBytes, 0), bytes.totalBytes);
   const share = bytes.totalBytes > 0 ? Math.round((used / bytes.totalBytes) * 100) : 0;
   return `${label}  ${mib(used)} of ${mib(bytes.totalBytes)} MiB used (${share}%)`;
 }
@@ -29,13 +29,13 @@ const rowLine = (row: ResourceRow): string =>
     row.name ?? "-",
     `${mib(row.rssBytes)} MiB`,
     `cpu ${row.cpuPercent === null ? "-" : `${row.cpuPercent}%`}`,
-    `${row.processes} processes`,
+    `${row.processes} ${row.processes === 1 ? "process" : "processes"}`,
     row.names.join(", "),
   ]
     .filter((field) => field !== "")
     .join("  ");
 
-/** The two numbers `resources end-orphan` takes are the pid and the start ticks. */
+/** The pid and the start ticks name one orphan: the pair the daemon's `resources.endOrphan` request takes. */
 const orphanLine = (orphan: ResourceOrphan): string =>
   `orphan  pid ${orphan.pid}  start-ticks ${orphan.startTicks}  ${orphan.name}  ${mib(orphan.rssBytes)} MiB  age ${orphan.ageSec}s`;
 
