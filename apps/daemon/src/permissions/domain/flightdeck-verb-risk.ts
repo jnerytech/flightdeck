@@ -7,6 +7,7 @@ import { CHANGES_RULES } from "./changes-risk.ts";
 import { EXTERNAL_RULES } from "./external-risk.ts";
 import { FILE_RULES } from "./file-risk.ts";
 import { KNOWLEDGE_RULES } from "./knowledge-risk.ts";
+import { LOGS_RULES } from "./logs-risk.ts";
 import { MCP_RULES } from "./mcp-risk.ts";
 import { MEMORY_RULES } from "./memory-risk.ts";
 import { MESSAGE_RULES } from "./message-risk.ts";
@@ -31,6 +32,7 @@ export const FLIGHTDECK_VERB_RULES = [
   ...REVIEW_RULES,
   ...EXTERNAL_RULES,
   ...MEMORY_RULES,
+  ...LOGS_RULES,
   ...MCP_RULES,
   ...CHANGES_RULES,
   ...REWIND_RULES,

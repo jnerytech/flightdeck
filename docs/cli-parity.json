@@ -22,7 +22,7 @@
   "actions.trust": {
     "cli": "action"
   },
-  "activity.since": {},
+  "activity.since": { "cli": "activity" },
   "agentcfg.list": {
     "cli": "agentcfg"
   },
@@ -32,7 +32,7 @@
   "agentcfg.write": {
     "cli": "agentcfg"
   },
-  "alert.list": {},
+  "alert.list": { "cli": "alert" },
   "approval.challenge": {
     "appOnly": "a device signs the nonce with a key that never leaves it; a terminal has no such key"
   },
@@ -239,7 +239,7 @@
   "knowledge.list": { "cli": "knowledge" },
   "knowledge.setFeed": { "cli": "knowledge" },
   "knowledge.setStatus": { "cli": "knowledge" },
-  "logs.tail": {},
+  "logs.tail": { "cli": "logs" },
   "maintenance.backup": {},
   "maintenance.prune": {},
   "maintenance.status": {},
@@ -352,7 +352,7 @@
   "quota.history": { "cli": "quota" },
   "quota.setPauseAt": { "cli": "quota" },
   "quota.watch": { "cli": "quota" },
-  "releases.list": {},
+  "releases.list": { "cli": "releases" },
   "resources.endOrphan": {},
   "resources.get": { "cli": "resources" },
   "resources.setPauseAt": {},

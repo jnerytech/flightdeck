@@ -21,6 +21,7 @@ export const VERB_NOUNS = new Set([
   "history",
   "issues",
   "knowledge",
+  "logs",
   "mcp",
   "memory",
   "message",

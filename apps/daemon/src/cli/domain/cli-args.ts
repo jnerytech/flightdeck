@@ -64,6 +64,10 @@ export interface CliArgs {
     | "memory"
     | "worktree"
     | "issues"
+    | "logs"
+    | "releases"
+    | "alert"
+    | "activity"
     | "runenv"
     | "changes"
     | "snapshots"
@@ -128,6 +132,8 @@ export interface CliArgs {
     | "review"
     | "budget"
     | "suggest"
+    | "tail"
+    | "since"
     | "message"
     | "respawn"
     | "templates"
@@ -308,6 +314,12 @@ export interface CliArgs {
   issuesProject?: string;
   /** `issues get <project> <id>` and `issues create-card <project> <ref>`: the issue's id or reference. */
   issuesId?: string;
+  /** `logs tail --lines <n>`: how many lines of the daemon log, 1 to 500. */
+  logLines?: number;
+  /** `alert list <project>`: the project, by name or id. */
+  alertProject?: string;
+  /** `activity since <time>`: the instant, as UTC ISO text. */
+  activitySince?: string;
   /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
   changesOperand?: string;
   /** `changes revert|undo-revert <target> <file>`: the file. */

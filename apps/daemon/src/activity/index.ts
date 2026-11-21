@@ -4,4 +4,6 @@
  * `wiring.ts`, which stays out of this entry: its type import of `server/index.ts` would make a
  * cycle for dependency-cruiser.
  */
+export { runActivityCli } from "./activity-cli.ts";
+export type { ActivityCliArgs } from "./domain/activity-cli-view.ts";
 export { DEFAULT_ACTIVITY_LIMIT } from "./since.ts";

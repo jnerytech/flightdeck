@@ -8,7 +8,9 @@ import { USAGE } from "./usage.ts";
  */
 export const JSON_COMMANDS = [
   "action",
+  "activity",
   "agentcfg",
+  "alert",
   "approve",
   "approvers",
   "autoapprove",
@@ -27,6 +29,7 @@ export const JSON_COMMANDS = [
   "host",
   "issues",
   "knowledge",
+  "logs",
   "mcp",
   "memory",
   "message",
@@ -35,6 +38,7 @@ export const JSON_COMMANDS = [
   "plugins",
   "project",
   "quota",
+  "releases",
   "requests",
   "resources",
   "review",
@@ -59,7 +63,9 @@ export const JSON_COMMANDS = [
 ];
 export const HOST_COMMANDS = [
   "action",
+  "activity",
   "agentcfg",
+  "alert",
   "approve",
   "automation",
   "bg",
@@ -71,12 +77,14 @@ export const HOST_COMMANDS = [
   "host",
   "issues",
   "knowledge",
+  "logs",
   "mcp",
   "memory",
   "message",
   "names",
   "plugins",
   "project",
+  "releases",
   "requests",
   "resources",
   "review",
@@ -95,6 +103,10 @@ export const HOST_COMMANDS = [
   "workflow",
   "worktree",
 ];
+
+/** The commands that take `--limit`; a flag on any other is refused. */
+export const LIMIT_COMMANDS: readonly string[] =
+  "autoapprove history vault snippet message automation action releases activity".split(" ");
 
 /** The commands that check their own `--confirm` (their verbs say which take it), so the `card` check skips them. */
 export const CONFIRM_OWNERS = [
