@@ -122,6 +122,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd runenv](en/flightdeckd-runenv-commands.md#fd-runenv)
 
+## flightdeckd commands: the changes of a session, a card, a terminal or a project
+
+[Read the chapter.](en/flightdeckd-changes-commands.md) Its sections:
+
+- [fd changes](en/flightdeckd-changes-commands.md#fd-changes)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)

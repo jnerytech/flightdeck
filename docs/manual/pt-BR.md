@@ -115,6 +115,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd runenv](pt-BR/flightdeckd-runenv-commands.md#fd-runenv)
 
+## Comandos do flightdeckd: as mudanças de uma sessão, de um cartão, de um terminal ou de um projeto
+
+[Ler o capítulo.](pt-BR/flightdeckd-changes-commands.md) Suas seções:
+
+- [fd changes](pt-BR/flightdeckd-changes-commands.md#fd-changes)
+
 ## Aprovações e permitir sempre
 
 [Ler o capítulo.](pt-BR/approvals-and-always-allow.md)
