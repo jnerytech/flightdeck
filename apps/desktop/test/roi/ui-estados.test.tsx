@@ -7,6 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { RoiTable } = await import("../../src/features/roi/roi-table.tsx");
 const { RoiCard } = await import("../../src/features/roi/roi-card.tsx");
+const { RoiPeople } = await import("../../src/features/roi/roi-people.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 
@@ -25,7 +26,7 @@ const MONEY = {
 };
 
 /** The part of the store the ROI screens read; `summaries` is held until the test answers it. */
-function roiStore(answered: Answers) {
+function roiStore(answered: Answers, people: unknown[] = []) {
   const waiting: Array<() => void> = [];
   const saved: Array<number | null> = [];
   const store = {
@@ -36,7 +37,7 @@ function roiStore(answered: Answers) {
     system: { saveFile: async () => {} },
     viewPrefs: { roiOpen: () => true, saveRoiOpen: () => {} },
     roi: {
-      data: () => ({ projectRates: {} }),
+      data: () => ({ projectRates: {}, people }),
       setProjectRate: (_key: string, rate: number | null) => saved.push(rate),
     },
     roiFigures: {
@@ -85,6 +86,27 @@ for (const lang of ["en", "pt-BR"] as const) {
       expect(screen.queryByText(t("roiUi.table.empty"))).toBeNull();
       await act(async () => answer());
       await settle(() => screen.queryByText(t("roiUi.table.empty")) !== null);
+      expect(screen.queryByRole("status", { name: t("roiUi.loading") })).toBeNull();
+    });
+
+    test("the people table says it is loading until the hosts answer, then sits in a table that scrolls sideways (#3767)", async () => {
+      const ana = { id: "p1", name: "Ana", hostIds: ["h1"], tokenLimit: null, costLimit: null };
+      const { store, answer } = roiStore([{ hostId: "h1", result: { projects: [] } as never }], [ana]);
+      render(withLang(lang, <RoiPeople store={store} />));
+      await settleMaybe(
+        () => screen.queryByRole("status", { name: t("roiUi.loading") }) !== null,
+        600,
+      );
+      expect(screen.queryByRole("status", { name: t("roiUi.loading") })).not.toBeNull();
+      expect(screen.queryByRole("table")).toBeNull();
+      await act(async () => answer());
+      await settle(() => screen.queryByRole("table", { name: t("roiUi.people.title") }) !== null);
+      const frame = screen.queryByRole("region", {
+        name: t("common.scrollsSideways", { name: t("roiUi.people.title") }),
+      });
+      expect(frame?.contains(screen.queryByRole("table", { name: t("roiUi.people.title") }))).toBe(
+        true,
+      );
       expect(screen.queryByRole("status", { name: t("roiUi.loading") })).toBeNull();
     });
 
