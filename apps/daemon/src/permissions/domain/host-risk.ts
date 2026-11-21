@@ -1,4 +1,4 @@
-import { runsFlightdeckWords } from "./shell-call.ts";
+import { runsCliVerb, runsFlightdeckWords } from "./shell-call.ts";
 
 /**
  * `host bypass on` lets every session on the host run without permission prompts, and `host updates on` has the
@@ -8,19 +8,19 @@ import { runsFlightdeckWords } from "./shell-call.ts";
  * waits and stay ordinary; `resources end-orphan` ends a process by its pid, which the session did not start.
  */
 function turnsOn(prog: string, args: string[], verb: string): boolean {
-  return runsFlightdeckWords(
-    prog,
-    args,
-    ([command, action, word]) => command === "host" && action === verb && word !== "off",
+  // The first call is the cheap one: a runner's text that never names `host` is skipped before its walk (#3566).
+  return (
+    runsCliVerb(prog, args, "host", [verb]) &&
+    runsFlightdeckWords(
+      prog,
+      args,
+      ([command, action, word]) => command === "host" && action === verb && word !== "off",
+    )
   );
 }
 
 const endsAnOrphan = (prog: string, args: string[]) =>
-  runsFlightdeckWords(
-    prog,
-    args,
-    ([command, action]) => command === "resources" && action === "end-orphan",
-  );
+  runsCliVerb(prog, args, "resources", ["end-orphan"]);
 
 /** The `host` and `resources` verbs that are high from a shell, with what each is stopped for. */
 export const HOST_RULES: Array<{
