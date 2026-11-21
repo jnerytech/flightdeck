@@ -129,7 +129,7 @@ function afterLabel(words: string[]): string[] {
   if (/^[\w.-]+\(\)\{?$/.test(words[0] ?? "")) return words.slice(1);
   if (first !== "case") return words;
   const arm = words.findIndex((w, i) => i > words.indexOf("in") && w.endsWith(")"));
-  return words.indexOf("in") < 0 || arm < 0 ? words : words.slice(arm + 1);
+  return !words.includes("in") || arm < 0 ? words : words.slice(arm + 1);
 }
 
 /** Where the program of a segment starts, past what may come before it: the keywords, groups and wrappers. */
@@ -343,6 +343,16 @@ export const OPTIONS_WITH_VALUE = [
   "--session",
   "--host",
   "--fingerprint",
+  "--max-rounds",
+  "--check-timeout-min",
+  "--budget-usd",
+  "--max-turns",
+  "--max-failures",
+  "--daily-usd",
+  "--check-rounds",
+  "--check-env",
+  "--check-loop-default",
+  "--drift-allow",
   "--alias",
   "--address",
   "--user",
@@ -425,6 +435,8 @@ export const OPTIONS_WITH_VALUE = [
   "--cols",
   "--rows",
 ];
+/** The same list, for the lookup: the list stays an array so a test can compare it with the parser's. */
+const VALUE_OPTIONS = new Set(OPTIONS_WITH_VALUE);
 
 /**
  * One step of the shell's reading of quotes (#3559): the quote in force after the character at `i` (`"`, `'`, `$'`
@@ -448,6 +460,9 @@ export function stepQuote(open: string, text: string, i: number): { open: string
 
 /** Ends a word the shell expands (`$V`, `r*`, `{a,b}`): kept by `readArguments`, tested by `hidesItsVerb`. */
 const EXPANDS = "\u0000";
+
+/** Whether the shell expands the word (a variable, a glob, a brace list, an ANSI-C quote) before the command reads it. */
+export const isExpanded = (word: string | undefined): boolean => (word ?? "").includes(EXPANDS);
 
 /**
  * Whether the shell expands something in a word as written (#3559): a variable, a command, a glob, a brace list or
@@ -523,6 +538,7 @@ const VERB_NOUNS = [
   "autoapprove",
   "plugins",
   "project",
+  "watch",
 ];
 
 /**
@@ -533,11 +549,11 @@ const VERB_NOUNS = [
  * (Braces are already cut off the word by `invocations`, which leaves the comma or the dots of the expansion.)
  */
 export function hidesItsVerb(args: string[], unresolved: boolean): boolean {
-  const expands = (word: string | undefined) => (word ?? "").includes(EXPANDS);
   return shellReadings(args).some((own) => {
     const [command, verb] = flightdeckWords(own);
     return (
-      (!unresolved && expands(command)) || (VERB_NOUNS.includes(command ?? "") && expands(verb))
+      (!unresolved && isExpanded(command)) ||
+      (VERB_NOUNS.includes(command ?? "") && isExpanded(verb))
     );
   });
 }
@@ -554,7 +570,7 @@ export function flightdeckWords(args: string[]): string[] {
   const words: string[] = [];
   for (let i = 0; i < args.length && words.length < MAX_CLI_WORDS; i++) {
     const arg = args[i] as string;
-    if (OPTIONS_WITH_VALUE.includes(arg)) i++;
+    if (VALUE_OPTIONS.has(arg)) i++;
     else if (!arg.startsWith("-")) words.push(arg);
   }
   return words[0] === "fd" ? words.slice(1) : words;

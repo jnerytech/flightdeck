@@ -66,20 +66,38 @@ export function cycleBaseline(onMain: string | null, head: string | null): numbe
   return base === null ? own : Math.min(base, own);
 }
 
+/** One row per key found on either side, named by `label`; a missing key counts 0. */
+function keyedRows(
+  baseline: Record<string, number>,
+  today: Record<string, number>,
+  label: (key: string) => string,
+): RatchetRow[] {
+  return [...new Set([...Object.keys(baseline), ...Object.keys(today)])].map((key) => ({
+    ratchet: label(key),
+    baseline: baseline[key] ?? 0,
+    today: today[key] ?? 0,
+  }));
+}
+
+/** The dependency-cruiser rows: one per rule, from the known-violations files of main and of the head. */
+function depcruiseRows(inputs: ArchInputs): RatchetRow[] {
+  if (inputs.knownBase === null && inputs.knownHead === null) return [];
+  const head = ruleCounts(inputs.knownHead);
+  // no file on main yet (arch-ratchet.ts agrees): today is the first baseline
+  const base = inputs.knownBase === null ? head : ruleCounts(inputs.knownBase);
+  // a rule new in the head has no baseline on main: today is its first one (#1624)
+  const baseline = Object.fromEntries(
+    [...new Set([...Object.keys(base), ...Object.keys(head)])].map((rule) => [
+      rule,
+      (inputs.newRules?.has(rule) ? head[rule] : base[rule]) ?? 0,
+    ]),
+  );
+  return keyedRows(baseline, head, (rule) => `depcruise ${rule}`);
+}
+
 /** One row per ratchet figure, sorted by name. */
 export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
-  const rows: RatchetRow[] = [];
-  if (inputs.knownBase !== null || inputs.knownHead !== null) {
-    const head = ruleCounts(inputs.knownHead);
-    // no file on main yet (arch-ratchet.ts agrees): today is the first baseline
-    const base = inputs.knownBase === null ? head : ruleCounts(inputs.knownBase);
-    for (const rule of new Set([...Object.keys(base), ...Object.keys(head)]))
-      rows.push({
-        ratchet: `depcruise ${rule}`,
-        baseline: inputs.newRules?.has(rule) ? (head[rule] ?? 0) : (base[rule] ?? 0),
-        today: head[rule] ?? 0,
-      });
-  }
+  const rows: RatchetRow[] = depcruiseRows(inputs);
   if (inputs.desktopCycles)
     rows.push({
       ratchet: "desktop-cycles files in a cycle",
@@ -115,34 +133,14 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
       baseline: sum(inputs.jsonParseBaseline),
       today: sum(inputs.jsonParseCounts),
     },
+    ...keyedRows(
+      inputs.shapeBaseline,
+      inputs.shapeShares,
+      (tier) => `test-shape ${tier} share (basis points)`,
+    ),
+    ...keyedRows(inputs.knipBaseline, inputs.knipCounts, (kind) => `knip ${kind}`),
+    ...keyedRows(inputs.flatBaseline, inputs.flatCounts, (workspace) => `test-layout ${workspace}`),
   );
-  for (const tier of new Set([
-    ...Object.keys(inputs.shapeBaseline),
-    ...Object.keys(inputs.shapeShares),
-  ]))
-    rows.push({
-      ratchet: `test-shape ${tier} share (basis points)`,
-      baseline: inputs.shapeBaseline[tier] ?? 0,
-      today: inputs.shapeShares[tier] ?? 0,
-    });
-  for (const kind of new Set([
-    ...Object.keys(inputs.knipBaseline),
-    ...Object.keys(inputs.knipCounts),
-  ]))
-    rows.push({
-      ratchet: `knip ${kind}`,
-      baseline: inputs.knipBaseline[kind] ?? 0,
-      today: inputs.knipCounts[kind] ?? 0,
-    });
-  for (const workspace of new Set([
-    ...Object.keys(inputs.flatBaseline),
-    ...Object.keys(inputs.flatCounts),
-  ]))
-    rows.push({
-      ratchet: `test-layout ${workspace}`,
-      baseline: inputs.flatBaseline[workspace] ?? 0,
-      today: inputs.flatCounts[workspace] ?? 0,
-    });
   return rows.sort((a, b) => (a.ratchet < b.ratchet ? -1 : Number(a.ratchet > b.ratchet)));
 }
 

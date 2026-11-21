@@ -28,7 +28,7 @@ import {
 } from "./terminal-args.ts";
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
-import { readWatch } from "./watch-args.ts";
+import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -580,6 +580,7 @@ const HANDLERS: Record<string, Handler> = {
   ...PLUGINS_FLAGS,
   ...SSH_FLAGS,
   ...TERMINAL_FLAGS,
+  ...WATCH_FLAGS,
   ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
@@ -690,6 +691,7 @@ function refuseStrayFlags(args: CliArgs): void {
       `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
     );
   takeTerminalFlags(args);
+  takeWatchFlags(args);
   if (
     !["requests", "message", "autoapprove", "vault"].includes(args.command) &&
     args.session !== undefined
@@ -774,6 +776,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     pluginsProblem(args) ??
     sshProblem(args) ??
     terminalProblem(args) ??
+    watchProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??

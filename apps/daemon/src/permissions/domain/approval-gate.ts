@@ -95,8 +95,8 @@ export interface ApprovalCheck {
   risk: RiskLevel;
   answer: ApprovalAnswer;
   /** The Approve was held (`held: true`): the whole guard of a host with no enrolled key. */
-  held?: boolean | undefined;
-  proof?: ApprovalProof | undefined;
+  held?: boolean;
+  proof?: ApprovalProof;
 }
 
 /**
