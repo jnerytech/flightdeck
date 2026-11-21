@@ -6,6 +6,7 @@
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
+import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
   EXPANDS,
@@ -508,19 +509,22 @@ function gitRisks(args: string[]): Candidate[] {
 }
 
 /** What one segment of a shell command adds, given whether a pipe feeds it: one reading for each program it may run. */
-function segmentRisks(segment: string[], piped: boolean): Candidate[] {
-  const out = invocations(segment).flatMap((call) => invocationRisks(call, piped));
+function segmentRisks(all: string[], piped: boolean, scan: Scan): Candidate[] {
+  const segment = scan.within(all);
+  const out = invocations(segment, scan).flatMap((call) => invocationRisks(call, piped, scan));
   // A process substitution (`cat <(fd card delete c1)`) runs a command of its own.
   segment.forEach((word, i) => {
-    if (/^[<>]\(/.test(word))
-      out.push(...segmentRisks([word.slice(2), ...segment.slice(i + 1)], false));
+    if (/^[<>]\(/.test(word) && scan.reread())
+      out.push(...segmentRisks([word.slice(2), ...segment.slice(i + 1)], false, scan));
   });
   return out;
 }
 
-function invocationRisks(call: Invocation, piped: boolean): Candidate[] {
+function invocationRisks(call: Invocation, piped: boolean, scan: Scan): Candidate[] {
   const { prog, args, sudo } = call;
   const out: Candidate[] = [];
+  // A command is charged when it is read; the readings a variable program multiplies are charged each.
+  if (call.unresolved && !scan.spend(args.length)) return out;
   if (sudo) out.push(["high", "sudo"]);
   if (
     call.hidden ||
@@ -535,19 +539,19 @@ function invocationRisks(call: Invocation, piped: boolean): Candidate[] {
   if (prog === "git") out.push(...gitRisks(args));
   // A shell given text (`sh -c '$FD card delete c1'`) runs it as a command line of its own (#3499).
   const text = shellText(prog, args);
-  if (text !== undefined) out.push(...statementRisks(text));
+  if (text !== undefined && scan.reread()) out.push(...statementRisks(text, scan));
   // `find -exec <command> ;` runs the command for each file.
-  if (prog === "find") out.push(...execRisks(args));
+  if (prog === "find") out.push(...execRisks(args, scan));
   return out;
 }
 
 /** The commands `find` runs with `-exec`, `-execdir` or `-ok`, up to their `;` or `+`. */
-function execRisks(args: string[]): Candidate[] {
+function execRisks(args: string[], scan: Scan): Candidate[] {
   const out: Candidate[] = [];
   args.forEach((arg, i) => {
-    if (!["-exec", "-execdir", "-ok", "-okdir"].includes(arg)) return;
+    if (!["-exec", "-execdir", "-ok", "-okdir"].includes(arg) || !scan.reread()) return;
     const end = args.findIndex((a, j) => j > i && [";", String.raw`\;`, "+"].includes(a));
-    out.push(...segmentRisks(args.slice(i + 1, end < 0 ? undefined : end), false));
+    out.push(...segmentRisks(args.slice(i + 1, end < 0 ? undefined : end), false, scan));
   });
   return out;
 }
@@ -567,7 +571,7 @@ function shellText(prog: string, args: string[]): string | undefined {
 }
 
 /** What each command of a shell line adds: a pipe hands its output to the next command, so a part knows if it is fed. */
-function statementRisks(command: string): Candidate[] {
+function statementRisks(command: string, scan: Scan): Candidate[] {
   const out: Candidate[] = [];
   const read = (
     statements: string[],
@@ -576,7 +580,7 @@ function statementRisks(command: string): Candidate[] {
   ) => {
     for (const statement of statements) {
       pipes(statement).forEach((part, i) => {
-        for (const segment of cut(part)) out.push(...segmentRisks(segment, i > 0));
+        for (const segment of cut(part)) out.push(...segmentRisks(segment, i > 0, scan));
       });
     }
   };
@@ -694,7 +698,12 @@ export class RiskClassifier {
 
   private shell(command: string, cwd: string): Candidate[] {
     const out: Candidate[] = [["medium", "comando de shell"]];
-    out.push(...statementRisks(command));
+    const scan = new Scan();
+    if (scan.tooLong(command)) return [...out, ["high", UNREADABLE]];
+    const read = statementRisks(command, scan);
+    // The first high reason wins a tie, so a line the rules could not finish reading says so first (#3593).
+    if (scan.spent) out.push(["high", UNREADABLE]);
+    out.push(...read);
     if (/\$\(|`/.test(command)) out.push(["high", "substituição de comando"]);
     if (/(^|\s)-encodedcommand(\s|$)/i.test(command)) out.push(["high", "-EncodedCommand"]);
     if (/\bbase64\b[^|;&\n]*\s(-d|-D|--decode)\b[^|;&\n]*\|/.test(command)) {
@@ -738,14 +747,18 @@ export class RiskClassifier {
     // A command that is not text fails closed, as its level does (`candidates`).
     if (oddCommand(input)) return true;
     const command = typeof input.command === "string" ? input.command : "";
-    return [command, joinContinuations(command)].some((text) =>
-      segments(text).some((segment) => {
-        return invocations(segment).some(({ prog, args }) => {
+    return [command, joinContinuations(command)].some((text) => {
+      const scan = new Scan();
+      if (scan.tooLong(text)) return true;
+      const uses = segments(text).some((segment) =>
+        invocations(segment, scan).some(({ prog, args }) => {
           const sub = prog === "git" ? gitCommand(args).sub : "";
           return NETWORK_PROGRAMS.has(prog) || ["push", "pull", "fetch", "clone"].includes(sub);
-        });
-      }),
-    );
+        }),
+      );
+      // A line the rules gave up on may hide a program that uses the network (#3593).
+      return uses || scan.spent;
+    });
   }
 
   /** Inside the cwd or one of `allowedRoots`. */
