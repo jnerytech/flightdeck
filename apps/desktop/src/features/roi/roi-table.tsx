@@ -1,11 +1,12 @@
 import type { RoiSummaryResult } from "@flightdeck/protocol";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
-import { WideTable } from "@/shared/layout/index.ts";
+import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { usd } from "../costs/index.ts";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./domain/roi-table.ts";
 
@@ -60,7 +61,11 @@ export function RoiTable(
   const t = useT();
   // The money is the app's own settings: a saved rate shows at once.
   useStoreSlice(store, ["roiRevision"]);
-  const [answers, setAnswers] = useState<Array<{ hostId: string; result: RoiSummaryResult }>>([]);
+  // Null until a host answers, so a slow read is never shown as "no project".
+  const [answers, setAnswers] = useState<Array<{
+    hostId: string;
+    result: RoiSummaryResult;
+  }> | null>(null);
   const [sort, setSort] = useState<{ column: RoiColumn; direction: "asc" | "desc" } | null>(null);
   const hostKey = props.hostIds.join("|");
 
@@ -82,19 +87,21 @@ export function RoiTable(
 
   const scope = store.clientScope.get();
   const rows = rowsFrom({
-    summaries: answers,
+    summaries: answers ?? [],
     inScope: (key) => scope.includes(selection, key),
     moneyOf: (key) => store.roiFigures.moneyOf(key),
     nameOf: (key, name) => projectName(key) || name,
     lang: t.lang,
   });
-  const shown = sort ? sortRows(rows, sort.column, sort.direction) : sortRows(rows, "cost", "desc");
+  // Before any click the rows are sorted by cost, high to low, and the header says so.
+  const order = sort ?? { column: "cost", direction: "desc" };
+  const shown = sortRows(rows, order.column, order.direction);
   const totals = totalsOf(rows);
   const label = (column: RoiColumn) => t(`roiUi.table.${column}` as Key);
   const click = (column: RoiColumn) =>
     setSort(
-      sort?.column === column
-        ? { column, direction: sort.direction === "asc" ? "desc" : "asc" }
+      order.column === column
+        ? { column, direction: order.direction === "asc" ? "desc" : "asc" }
         : { column, direction: "asc" },
     );
 
@@ -115,9 +122,11 @@ export function RoiTable(
           </Button>
         )}
       </div>
-      {rows.length === 0 ? (
+      {answers === null && <LoadingState label={t("roiUi.loading")} />}
+      {answers !== null && rows.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("roiUi.table.empty")}</p>
-      ) : (
+      )}
+      {rows.length > 0 && (
         // Nine columns that only mean something side by side: they scroll inside the frame (#641).
         <WideTable name={t("roiUi.tableTitle")}>
           <table
@@ -130,7 +139,7 @@ export function RoiTable(
                   <th
                     key={column}
                     scope="col"
-                    aria-sort={ariaSort(sort, column)}
+                    aria-sort={ariaSort(order, column)}
                     className={index === 0 ? HEAD_CELL_STICKY : HEAD_CELL}
                   >
                     <Button
@@ -140,6 +149,12 @@ export function RoiTable(
                       onClick={() => click(column)}
                     >
                       {label(column)}
+                      {order.column === column &&
+                        (order.direction === "asc" ? (
+                          <ArrowUp aria-hidden="true" />
+                        ) : (
+                          <ArrowDown aria-hidden="true" />
+                        ))}
                     </Button>
                   </th>
                 ))}

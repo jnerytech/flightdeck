@@ -60,6 +60,8 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   const [hours, setHours] = useState(
     project.defaultHours === null ? "" : String(project.defaultHours),
   );
+  // A typed amount that is not a number is told, never dropped without a word.
+  const [badNumber, setBadNumber] = useState(false);
   const hoursId = useId();
   const rateId = useId();
   const key = project.projectKey ?? project.path;
@@ -117,7 +119,8 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
 
   const saveHours = async () => {
     const parsed = hours.trim() === "" ? null : Number(hours);
-    if (parsed !== null && !Number.isFinite(parsed)) return;
+    if (parsed !== null && !Number.isFinite(parsed)) return setBadNumber(true);
+    setBadNumber(false);
     await store.hostCommand(props.hostId, "project.update", {
       projectId: project.id,
       defaultHours: parsed,
@@ -134,7 +137,8 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   };
   const saveRate = () => {
     const parsed = rateText.trim() === "" ? null : Number(rateText);
-    if (parsed !== null && !Number.isFinite(parsed)) return;
+    if (parsed !== null && !Number.isFinite(parsed)) return setBadNumber(true);
+    setBadNumber(false);
     store.roi.setProjectRate(key, parsed);
   };
 
@@ -284,6 +288,11 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
           </div>
           <details>
             <summary className="cursor-pointer text-sm">{t("roiUi.settings")}</summary>
+            {badNumber && (
+              <p role="alert" className="mt-2 text-destructive text-xs">
+                {t("roiUi.settingsPanel.error.number")}
+              </p>
+            )}
             <div className="mt-2 flex flex-wrap items-end gap-4">
               <div className="flex flex-col gap-1 text-xs">
                 <label htmlFor={hoursId}>{t("roiUi.defaultHours")}</label>
