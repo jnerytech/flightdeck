@@ -256,12 +256,9 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
     let fields = value.as_object().ok_or("the payload to sign is not an object")?;
     match name {
         "card.pr.merge" => read_pr_merge(fields),
-        // Only the turn-on is signed (turning it off is open and never asks a key), and only once confirmed.
         "host.bypass" => read_bypass(fields),
         "project.trust.set" => read_trust(fields),
         "autoapprove.resume" => read_resume(fields),
-        // Every payload of the command is signed: adding a folder has no value that lowers risk. Only a confirmed
-        // add of a path the dialog can show whole is.
         "roots.add" => read_roots_add(fields),
         // Every payload of the command is signed. The dialog says the folder, the parts, the template and whether
         // hooks or a rewritten settings file are in; the digests are signed but not shown, and each one is a plain
@@ -318,7 +315,7 @@ fn read_pr_merge(
     Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
 }
 
-    // Only the turn-on is signed (turning it off is open and never asks a key), and only once confirmed.
+/// Only the turn-on is signed (turning it off is open and never asks a key), and only once confirmed.
 fn read_bypass(
     fields: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<(CommandAsk, String), String> {
@@ -380,8 +377,8 @@ fn read_resume(
     Ok((CommandAsk::ResumeApproval { session: key.into() }, canonical))
 }
 
-    // Every payload of the command is signed: adding a folder has no value that lowers risk. Only a confirmed
-    // add of a path the dialog can show whole is.
+/// Every payload of the command is signed: adding a folder has no value that lowers risk. Only a confirmed
+/// add of a path the dialog can show whole is.
 fn read_roots_add(
     fields: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<(CommandAsk, String), String> {
