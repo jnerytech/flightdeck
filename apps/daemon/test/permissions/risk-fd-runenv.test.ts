@@ -14,12 +14,12 @@ describe("risk rules: a session trusting or starting a run environment from its 
         ["fd runenv trust api --hash 9f3a1c --confirm", REASON],
         ["fd runenv start c1 --confirm", REASON],
         ["flightdeckd --host pi runenv start c1 --confirm --json", REASON],
-        ["FLIGHTDECK_X=1 fd runenv trust api --hash h --confirm", REASON],
+        ["FLIGHTDECK_X=1 fd runenv trust api --hash 9f3a1c4e7b2d --confirm", REASON],
         ['fd "runenv" start c1 --confirm', REASON],
         ["fd runenv get c1 && fd runenv start c1 --confirm", REASON],
-        ["bun run apps/daemon/src/bin.ts runenv trust api --hash h --confirm", REASON],
+        ["bun run apps/daemon/src/bin.ts runenv trust api --hash 9f3a1c4e7b2d --confirm", REASON],
         ["bash -c 'fd runenv start c1 --confirm'", REASON],
-        ["sh -c 'flightdeckd runenv trust api --hash h --confirm'", REASON],
+        ["sh -c 'flightdeckd runenv trust api --hash 9f3a1c4e7b2d --confirm'", REASON],
       ]),
     ).toEqual([]);
   });

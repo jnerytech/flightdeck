@@ -74,18 +74,18 @@ describe("flightdeckd runenv trust (issue #3621)", () => {
   test("--hash names the file the person reviewed; the project is looked up first and the answer is its run.yaml", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(
-      ["runenv", "trust", "api", "--hash", "9f3a1c", "--confirm"],
+      ["runenv", "trust", "api", "--hash", "9f3a1c4e7b2d", "--confirm"],
       daemon.port,
     );
     expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: [] });
     expect(run.out[0]).toBe("api: run.yaml, hash 9f3a1c, trusted");
-    expect(callsOf(daemon, "runenv.trust")).toEqual([{ projectId: "p1", hash: "9f3a1c" }]);
+    expect(callsOf(daemon, "runenv.trust")).toEqual([{ projectId: "p1", hash: "9f3a1c4e7b2d" }]);
   });
 
   test("--json prints the file the daemon answers with", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(
-      ["runenv", "trust", "p1", "--hash", "9f3a1c", "--confirm", "--json"],
+      ["runenv", "trust", "p1", "--hash", "9f3a1c4e7b2d", "--confirm", "--json"],
       daemon.port,
     );
     expect(printed(run.out)).toMatchObject({ exists: true, trusted: true });
@@ -94,7 +94,7 @@ describe("flightdeckd runenv trust (issue #3621)", () => {
   test("a name two projects share is refused, and nothing is trusted", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(
-      ["runenv", "trust", "web", "--hash", "9f3a1c", "--confirm"],
+      ["runenv", "trust", "web", "--hash", "9f3a1c4e7b2d", "--confirm"],
       daemon.port,
     );
     expect(run.code).toBe(1);
@@ -112,7 +112,7 @@ describe("flightdeckd runenv trust (issue #3621)", () => {
       }),
     });
     const run = await flightdeckd(
-      ["runenv", "trust", "api", "--hash", "old", "--confirm"],
+      ["runenv", "trust", "api", "--hash", "deadbeef0000", "--confirm"],
       daemon.port,
     );
     expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
@@ -122,7 +122,7 @@ describe("flightdeckd runenv trust (issue #3621)", () => {
   test("a daemon that dies after the trust was sent: exit 2, and it may or may not have gone in", async () => {
     const daemon = fakeDaemon({ ...OPEN, "runenv.trust": () => CLOSE });
     const run = await flightdeckd(
-      ["runenv", "trust", "api", "--hash", "9f3a1c", "--confirm"],
+      ["runenv", "trust", "api", "--hash", "9f3a1c4e7b2d", "--confirm"],
       daemon.port,
     );
     expect(run.code).toBe(2);
@@ -173,7 +173,7 @@ describe("flightdeckd runenv start and stop (issue #3621)", () => {
 
 describe("the flags of the runenv write verbs (issue #3621)", () => {
   test("trust and start refuse to run without --confirm, and trust without --hash", () => {
-    expect(refused(["runenv", "trust", "api", "--hash", "9f3a1c"])).toContain(
+    expect(refused(["runenv", "trust", "api", "--hash", "9f3a1c4e7b2d"])).toContain(
       "runenv trust lets the project's run.yaml run: pass --confirm",
     );
     expect(refused(["runenv", "start", "c1"])).toContain(
@@ -186,21 +186,21 @@ describe("the flags of the runenv write verbs (issue #3621)", () => {
     expect(refused(["runenv", "stop", "c1", "--confirm"])).toContain(
       "--confirm: this flag only applies to flightdeckd runenv trust or start",
     );
-    expect(refused(["runenv", "start", "c1", "--confirm", "--hash", "x"])).toContain(
+    expect(refused(["runenv", "start", "c1", "--confirm", "--hash", "9f3a1c4e7b2d"])).toContain(
       "--hash: this flag only applies to flightdeckd runenv trust",
     );
     expect(refused(["runenv", "get", "c1", "--confirm"])).toContain(
       "--confirm: this flag only applies to flightdeckd runenv trust or start",
     );
-    expect(refused(["card", "list", "--hash", "x"])).toContain("--hash");
+    expect(refused(["card", "list", "--hash", "9f3a1c4e7b2d"])).toContain("--hash");
   });
 
   test("the words parse into the target, the hash and the confirmation", () => {
-    expect(parsed(["runenv", "trust", "api", "--hash", "9f3a1c", "--confirm"])).toMatchObject({
+    expect(parsed(["runenv", "trust", "api", "--hash", "9f3a1c4e7b2d", "--confirm"])).toMatchObject({
       command: "runenv",
       action: "trust",
       runenvTarget: "api",
-      hash: "9f3a1c",
+      hash: "9f3a1c4e7b2d",
       confirm: true,
     });
     expect(parsed(["runenv", "stop", "c1"])).toMatchObject({
