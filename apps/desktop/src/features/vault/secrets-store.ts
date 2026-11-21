@@ -90,15 +90,19 @@ export class VaultSecretsSlice {
     let value: string | null;
     try {
       value = await this.core.vault.value(id);
-    } catch (error) {
-      this.core.fail(error);
+    } catch {
+      // The keyring's own text can carry a key id or a path: the toast and the log get a fixed one.
+      this.tell("vault.readFailed", id, "keyring read refused");
       return null;
     }
-    if (value === null) {
-      const name = this.core.vault.list().find((s) => s.id === id)?.name ?? "";
-      this.core.fail(new Error("no value"), this.core.t()("vault.noValue", { name }));
-    }
+    if (value === null) this.tell("vault.noValue", id, "no value");
     return value;
+  }
+
+  /** Tells the person a fixed text that names the secret; a secret that left the list has nothing to tell. */
+  private tell(key: "vault.noValue" | "vault.readFailed", id: string, reason: string): void {
+    const name = this.core.vault.list().find((s) => s.id === id)?.name;
+    if (name !== undefined) this.core.fail(new Error(reason), this.core.t()(key, { name }));
   }
 
   /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */

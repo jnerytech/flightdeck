@@ -23,9 +23,8 @@ afterEach(async () => {
 
 const VALUE = "missing-value-0123456789";
 const TEXT = {
-  en: "github has no value in the system vault. Edit the secret to set it again, or remove it.",
-  "pt-BR":
-    "github não tem valor no cofre do sistema. Edite o segredo para defini-lo de novo ou remova-o.",
+  en: "github has no value in the system vault. Remove the secret and add it again.",
+  "pt-BR": "github não tem valor no cofre do sistema. Remova o segredo e adicione-o de novo.",
 } as const;
 const WORDS = {
   en: {
@@ -120,16 +119,23 @@ for (const lang of ["en", "pt-BR"] as const) {
 }
 
 describe("vault: a keyring that refuses and a clipboard that refuses are told as they are (#3603)", () => {
-  test("a rejected read of the value is shown through the error toast", async () => {
+  test("a rejected read is told with a fixed text that names the secret, never the keyring's own", async () => {
     const { store } = await open("en", {
       get: async () => {
-        throw new Error("keyring locked");
+        throw new Error(
+          "Ambiguous(user=key-7f3a, service=/org/freedesktop/secrets/collection/login)",
+        );
       },
     });
     await confirmReveal("en");
     await click("Copy github");
     await settleMaybe(() => errors(store).length > 0, 600);
-    expect(errors(store)).toEqual(["keyring locked"]);
+    expect(errors(store)).toEqual([
+      "The system vault did not give the value of github. Try again.",
+    ]);
+    expect(store.getState().error).toBe(
+      "The system vault did not give the value of github. Try again.",
+    );
   });
 
   test("a clipboard that fails for a secret that has a value is not told as a missing value", async () => {
