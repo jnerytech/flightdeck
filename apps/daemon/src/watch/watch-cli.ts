@@ -99,23 +99,28 @@ export function runWatchCli(
   });
 }
 
+type WatchChange = Extract<WatchCliArgs, { action: "set" | "extend" | "resolve-held" }>;
+
+function applyChange(daemon: DaemonClient, args: WatchChange) {
+  if (args.action === "set")
+    return daemon.call("watch.set", { cardId: args.target, enabled: args.enabled });
+  if (args.action === "extend")
+    return daemon.call("watch.extend", { cardId: args.target, rounds: args.rounds });
+  return daemon.call("watch.resolveHeld", {
+    cardId: args.target,
+    roundId: args.round,
+    action: args.resolution,
+  });
+}
+
 /** `set`, `extend` and `resolve-held` change what the watch does unattended, so the result is unknown when the daemon does not answer. */
 async function changeWatch(
-  args: Extract<WatchCliArgs, { action: "set" | "extend" | "resolve-held" }>,
+  args: WatchChange,
   daemon: DaemonClient,
   note: { wrote: boolean },
 ): Promise<CliResult> {
   note.wrote = true;
-  const info =
-    args.action === "set"
-      ? await daemon.call("watch.set", { cardId: args.target, enabled: args.enabled })
-      : args.action === "extend"
-        ? await daemon.call("watch.extend", { cardId: args.target, rounds: args.rounds })
-        : await daemon.call("watch.resolveHeld", {
-            cardId: args.target,
-            roundId: args.round,
-            action: args.resolution,
-          });
+  const info = await applyChange(daemon, args);
   if (args.json) return json(watchJson(info));
   return said(
     ...(args.action === "resolve-held" ? [resolvedLine(args.resolution, args.round)] : []),

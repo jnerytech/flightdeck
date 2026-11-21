@@ -245,22 +245,36 @@
   "memory.read": {},
   "memory.suggest": {},
   "memory.write": {},
-  "messages.directory": {},
-  "messages.list": {},
-  "messages.peers": {},
+  "messages.directory": {
+    "appOnly": "the app asks each host's daemon for its sessions to hand them to the other daemons; a terminal has no second host to tell"
+  },
+  "messages.list": {
+    "cli": "message"
+  },
+  "messages.peers": {
+    "appOnly": "the app tells a daemon about the sessions of another host it paired with; a terminal has no second host to describe"
+  },
   "messages.read": {
     "cli": "message"
   },
-  "messages.relay": {},
-  "messages.relayed": {},
+  "messages.relay": {
+    "appOnly": "the app carries one message between two hosts' daemons; a terminal sends with flightdeckd message send, which does its own relaying"
+  },
+  "messages.relayed": {
+    "appOnly": "the app tells the sending daemon how a relayed message ended at the other host; a terminal has no relay to report on"
+  },
   "messages.send": {
     "cli": "message"
   },
   "messages.sessions": {
     "cli": "message"
   },
-  "messages.watch": {},
-  "messaging.rules.get": {},
+  "messages.watch": {
+    "cli": "message"
+  },
+  "messaging.rules.get": {
+    "cli": "message"
+  },
   "messaging.rules.set": {},
   "names.list": {},
   "permission.respond": {
