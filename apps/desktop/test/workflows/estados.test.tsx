@@ -49,9 +49,7 @@ test("a host that does not answer leaves a message saying so, not an endless loa
     render(page(async () => null));
   });
   expect(
-    screen.queryByText(
-      "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
-    ),
+    screen.queryByText("Não deu para ler os workflows. Veja se o host está conectado."),
   ).not.toBeNull();
   expect(screen.queryByRole("status", { name: "Carregando workflows" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
 });
