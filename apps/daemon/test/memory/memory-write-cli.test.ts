@@ -9,8 +9,8 @@ import { tempDir } from "../support/helpers.ts";
 setDefaultTimeout(20_000);
 
 const folders: string[] = [];
-afterEach(() => {
-  stopAll();
+afterEach(async () => {
+  await stopAll();
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
 });
 
@@ -241,7 +241,7 @@ describe("flightdeckd memory delete (issue #3618)", () => {
       expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
       expect(run.err.join("\n")).toContain(message);
       expect(run.err.join("\n")).not.toContain("may or may not");
-      stopAll();
+      await stopAll();
     }
   });
 
