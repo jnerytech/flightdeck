@@ -1,4 +1,4 @@
-import { runsFlightdeckWords } from "./shell-call.ts";
+import { runsCliVerb } from "./shell-call.ts";
 
 /**
  * A text put into a terminal session from a shell (#3735). `external message` hands the text to the channel of a
@@ -13,12 +13,8 @@ export const EXTERNAL_RULES: Array<{
   reason: (prog: string) => string;
 }> = [
   {
-    when: (prog, args) =>
-      runsFlightdeckWords(
-        prog,
-        args,
-        ([command, action]) => command === "external" && action === "message",
-      ),
+    // `runsCliVerb` skips a runner's text that never names `external` (#3566): a line of thousands of CLI starts stays fast.
+    when: (prog, args) => runsCliVerb(prog, args, "external", ["message"]),
     reason: () =>
       "puts text into a terminal session as the person's next prompt, with no sender, no message rules and no loop guard (flightdeckd external message)",
   },
