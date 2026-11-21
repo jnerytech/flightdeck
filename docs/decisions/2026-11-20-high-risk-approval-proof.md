@@ -102,7 +102,7 @@ A token holder could enroll its own key, so enrollment is closed unless a person
 - **The barrier is the high tier only.** The classifier is a text heuristic: anything it does not know is
   medium. A session can approve its own medium requests with no proof, for example a script it wrote and then
   runs. This barrier raises the cost of the high tier; it is not a boundary of the host. Follow-up issue to
-  decide: the proof for every non-low allow.
+  decide: the proof for every non-low allow. Decided in `2026-11-21-approval-proof-scope.md` (#3451): it stays on high.
 - **Other self-asserted approvals.** `vault.approve` takes `via: "app"` and `heldMs` from the caller
   (`actions/domain/approval-check.ts`), so a token holder approves its own use of a secret. `card.pr.merge`,
   `project.trust.set`, `rules.remove` and `autoapprove.resume` are also open to a token holder. Follow-up
