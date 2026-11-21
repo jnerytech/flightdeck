@@ -1,12 +1,19 @@
-import type { Card, RunConfigInfo } from "@flightdeck/protocol";
+import type { Card, RunConfigInfo, RunProcessState } from "@flightdeck/protocol";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 
 const LIVE = new Set(["setup", "running"]);
+
+/** How a process is doing, in words: a process that ended with no exit code (a signal) says so. */
+function processState(process: RunProcessState, t: ReturnType<typeof useT>): string {
+  if (process.status === "running") return t("runEnv.procRunning");
+  if (process.exitCode === null) return t("runEnv.procEndedNoCode");
+  return t("runEnv.procExited", { code: String(process.exitCode) });
+}
 
 /** A card's run environment: trust the run.yaml, Run and Stop, its processes and their preview. */
 export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {
@@ -81,21 +88,27 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
           <>
             <Inline gap={2}>
               {live ? (
-                <Button
+                <ActionButton
                   size="sm"
                   variant="outline"
-                  onClick={() => void store.runEnv.stop(hostId, card.id)}
+                  onClick={() => store.runEnv.stop(hostId, card.id)}
                 >
                   {t("runEnv.stop")}
-                </Button>
+                </ActionButton>
               ) : (
-                <Button size="sm" onClick={() => void store.runEnv.start(hostId, card.id)}>
+                <ActionButton size="sm" onClick={() => store.runEnv.start(hostId, card.id)}>
                   {t("runEnv.run")}
-                </Button>
+                </ActionButton>
               )}
-              <span className="text-sm">{t(`runEnv.status.${status}`)}</span>
+              <span role="status" className="text-sm">
+                {t(`runEnv.status.${status}`)}
+              </span>
             </Inline>
-            {state?.error && <p className="text-status-error text-sm">{state.error}</p>}
+            {state?.error && (
+              <p role="alert" className="text-status-error text-sm">
+                {state.error}
+              </p>
+            )}
             {state && Object.keys(state.ports).length > 0 && (
               <p className="text-muted-foreground text-sm">
                 {t("runEnv.ports", {
@@ -120,10 +133,14 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                 <li key={process.terminalId}>
                   <Inline gap={2}>
                     <span className="font-medium">{process.name}</span>
-                    <span className="text-muted-foreground">
-                      {process.status === "running"
-                        ? t("runEnv.procRunning")
-                        : t("runEnv.procExited", { code: String(process.exitCode) })}
+                    <span
+                      className={
+                        process.status === "exited" && process.exitCode !== 0
+                          ? "text-status-error"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {processState(process, t)}
                     </span>
                     <Button
                       size="sm"
