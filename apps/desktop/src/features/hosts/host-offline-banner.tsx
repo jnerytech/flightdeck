@@ -62,7 +62,9 @@ export function HostOfflineBanner(
         <p>{reason}</p>
         {retry && !connecting && (
           <p className="text-muted-foreground">
-            {t("hostOffline.lastTry", { time: new Date(retry.lastTryAt).toLocaleTimeString() })}
+            {t("hostOffline.lastTry", {
+              time: props.formatTime(new Date(retry.lastTryAt).toISOString()),
+            })}
             {" · "}
             {t("hostOffline.nextTry", { n: seconds })}
           </p>
