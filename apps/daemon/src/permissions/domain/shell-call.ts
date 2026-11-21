@@ -371,10 +371,8 @@ export function invocations(segment: string[], scan: Scan = new Scan(), chain = 
 /** Quotes and backslashes cut out, as the shell does: `fd "appr"ove` is `fd approve`. */
 export const unquoted = (word: string) => word.replace(/["'\\]/g, "").toLowerCase();
 
-/**
- * The options of `fd` that take a value, which can stand before the command (`fd --project p card
- * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import.
- */
+/** The options of `fd` that take a value, which can stand before the command (`fd --project p card
+ * discard c1`). A test keeps this list equal to the parser's, which this domain cannot import. */
 export const OPTIONS_WITH_VALUE = [
   "--message",
   "--position",
@@ -388,6 +386,7 @@ export const OPTIONS_WITH_VALUE = [
   "--fingerprint",
   "--max-rounds",
   "--check-timeout-min",
+  "--mode",
   "--budget-usd",
   "--max-turns",
   "--max-failures",
@@ -466,6 +465,8 @@ export const OPTIONS_WITH_VALUE = [
   "--team",
   "--with-host",
   "--status",
+  "--policy-file",
+  "--unpause",
   "--requester",
   "--purpose",
   "--action",
@@ -493,6 +494,13 @@ export const OPTIONS_WITH_VALUE = [
   "--resume",
   "--cols",
   "--rows",
+  "--automation",
+  "--max-runs",
+  "--external-authors",
+  "--definition-file",
+  "--digest",
+  "--branch",
+  "--remote",
 ];
 /** The same list, for the lookup: the list stays an array so a test can compare it with the parser's. */
 const VALUE_OPTIONS = new Set(OPTIONS_WITH_VALUE);
@@ -634,30 +642,11 @@ export function shellReadings(args: string[]): string[][] {
 }
 
 /** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
-const VERB_NOUNS = new Set([
-  "card",
-  "history",
-  "approvers",
-  "persona",
-  "team",
-  "quota",
-  "budget",
-  "costs",
-  "session",
-  "rules",
-  "autoapprove",
-  "plugins",
-  "project",
-  "agentcfg",
-  "ssh",
-  "watch",
-  "snippet",
-  "boardsync",
-  "review",
-  "runenv",
-  "mcp",
-  "knowledge",
-]);
+export const VERB_NOUNS = new Set(
+  "card history approvers persona team quota budget costs session rules autoapprove plugins project agentcfg ssh watch snippet boardsync review runenv automation message mcp knowledge changes file".split(
+    " ",
+  ),
+);
 
 /**
  * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,
@@ -705,16 +694,27 @@ export function flightdeckWords(args: string[]): string[] {
   return words[0] === "fd" ? words.slice(1) : words;
 }
 
-/**
- * Whether the word at `i` of a runner's text starts the CLI: its name, or `bun start` or `bun run [options] start`, the script of
- * `apps/daemon/package.json` that runs `bin.ts` (#3566).
- */
+/** Whether the word at `i` of a runner's text starts the CLI: its name, or the `start` script that runs `bin.ts` (`bun start`, `bun run [options] start`, `bun --cwd "my dir" start`: after an option or an expansion that opens the text, whose value is not told apart from the script, #3566, #3718). */
 export const startsCli = (words: string[], i: number) =>
   isCliProgram(program(words[i] ?? "")) ||
-  (words[i] === "start" && (i === 0 || words.slice(0, i).includes("run")));
+  (words[i] === "start" &&
+    (i === 0 ||
+      /(?:^-)|(?:[$`*?[{])/.test(words[0] ?? "") ||
+      (words.indexOf("run") + 1 || Infinity) <= i));
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
+
+/** A runner's text read two ways, high when either says so: cut on blanks, and a quoted argument as its shell cuts it (#3712). */
+function runnerReadings(args: string[]): string[][] {
+  const cut = (a: string) => unquoted(a).split(/\s+/);
+  const shell = (a: string) => {
+    const dq = /^"([\s\S]*)"$/.exec(a)?.[1]?.replace(/\\(["\\$`])/g, "$1");
+    const text = dq ?? /^'([\s\S]*)'$/.exec(a)?.[1];
+    return text === undefined ? cut(a) : shellWords(text).map(unquoted);
+  };
+  return [args.flatMap(cut).filter(Boolean), args.flatMap(shell).filter(Boolean)];
+}
 
 /**
  * Whether a command line runs the CLI with words that `matches` accepts, as the CLI itself, or under a
@@ -732,25 +732,25 @@ export function runsFlightdeckWords(
   if (!RUNNERS.includes(prog)) return false;
   // A runner is given the text of a command, not its words, so a word the shell expands (`$X`, `*`, `{a,b}`) is marked
   // here as `readArguments` marks it for the CLI itself: a rule reads it as unknown, not as the word it looks like.
-  const words = args
-    .flatMap((a) => unquoted(a).split(/\s+/))
-    .filter(Boolean)
-    .map((w) => (/[$`*?[{]/.test(w) ? w + EXPANDS : w));
-  return words.some(
-    (_, i) =>
-      startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1)), words.slice(i + 1)),
-  );
+  return runnerReadings(args).some((reading) => {
+    const words = reading.map((w) => (/[$`*?[{]/.test(w) ? w + EXPANDS : w));
+    return words.some(
+      (_, i) =>
+        startsCli(words, i) && matches(flightdeckWords(words.slice(i + 1)), words.slice(i + 1)),
+    );
+  });
 }
 
 /** A runner (`bunx fd persona $V qa`, `sh -c 'fd ...'`) given the CLI and a noun or verb the shell expands. */
 export const runnerHidesAVerb = (prog: string, args: string[], fed = false) => {
   if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const at = words.findIndex((w, i) => startsCli(words, i) && !program(w).includes("$"));
-  // Building or testing the entry file does not run it: what follows `bin.ts` in `bun build bin.ts --outfile $OUT`
-  // is no command. Run, its words are the CLI's, so a command the shell expands hides it (#3570).
-  const runs = !words.slice(0, Math.max(at, 0)).some((w) => w === "build" || w === "test");
-  return at >= 0 && hidesItsVerb(words.slice(at + 1), !runs, fed);
+  return runnerReadings(args).some((words) => {
+    const at = words.findIndex((w, i) => startsCli(words, i) && !program(w).includes("$"));
+    // Building or testing the entry file does not run it: what follows `bin.ts` in `bun build bin.ts --outfile $OUT`
+    // is no command. Run, its words are the CLI's, so a command the shell expands hides it (#3570).
+    const runs = !words.slice(0, Math.max(at, 0)).some((w) => w === "build" || w === "test");
+    return at >= 0 && hidesItsVerb(words.slice(at + 1), !runs, fed);
+  });
 };
 
 /**
@@ -771,14 +771,12 @@ export function runsCliVerb(
   command: string,
   verbs: string[],
 ): boolean {
-  if (isCliProgram(prog)) {
-    return shellReadings(args).some((own) => {
-      const [first, verb] = flightdeckWords(own);
-      return first === command && verbs.includes(verb ?? "");
-    });
-  }
-  if (!RUNNERS.includes(prog)) return false;
-  const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
-  const runsCli = words.some((_, i) => startsCli(words, i));
-  return runsCli && words.some((w, i) => w === command && verbs.includes(words[i + 1] ?? ""));
+  // A runner's text that never names the command is no run of it: skip the walk over its CLI starts (#3566).
+  if (!isCliProgram(prog) && !args.some((a) => unquoted(a).split(/\s+/).includes(command)))
+    return false;
+  return runsFlightdeckWords(
+    prog,
+    args,
+    ([first, verb]) => first === command && verbs.includes(verb ?? ""),
+  );
 }

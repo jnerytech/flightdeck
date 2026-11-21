@@ -375,7 +375,7 @@ describe("flightdeckd changes words (issue #3620)", () => {
     expect(JSON.stringify(argsOf(["changes", "get"]))).toContain("missing the target");
     expect(JSON.stringify(argsOf(["changes", "sessions"]))).toContain("missing the file");
     expect(JSON.stringify(argsOf(["changes", "get", "main"]))).toContain("invalid target");
-    expect(JSON.stringify(argsOf(["changes", "revert", "session:s1"]))).toContain(
+    expect(JSON.stringify(argsOf(["changes", "remove", "session:s1"]))).toContain(
       "invalid changes action",
     );
   });

@@ -267,6 +267,7 @@ export const costs = {
     tokens: "Tokens",
     turns: "Turnos",
     turnCount: { one: "{n} turno", other: "{n} turnos" },
+    openHistory: "Abrir o Histórico de {project} em {day}",
     allSessions: "Todas as sessões do host; custo estimado em preços de API.",
     managedOnly: "Só sessões gerenciadas; o custo é a estimativa que o SDK informa.",
     empty:

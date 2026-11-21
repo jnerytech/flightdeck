@@ -125,4 +125,55 @@ describe("conexoes-ui: the screen", () => {
     expect(rows()).toHaveLength(1);
     expect(within(rows()[0] as HTMLElement).queryByText("lab")).not.toBeNull();
   });
+
+  test("a search that matches nothing says so and a button clears the three filters (#3705)", async () => {
+    await open();
+    const search = screen.queryByLabelText("Buscar destino") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(search, { target: { value: "zzz" } });
+    });
+    expect(screen.queryByText("Nenhum destino corresponde aos filtros.")).not.toBeNull();
+    const clear = screen.queryByRole("button", { name: "Limpar filtros" });
+    expect(clear).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(clear as HTMLElement);
+    });
+    expect(rows()).toHaveLength(3);
+    expect((screen.queryByLabelText("Buscar destino") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText("Nenhum destino corresponde aos filtros.")).toBeNull();
+  });
+
+  test("with no host that announces ssh the page says so, offers no dead button and has no empty host name (#3705)", async () => {
+    const { store, hostId } = await open({ targets: [] });
+    const plain = sshDaemon(cleanups, { feature: false });
+    await store.roster.add({ name: "plain", url: plain.url, token: TOKEN });
+    await settle(() =>
+      store.getState().hosts.some((h) => h.name === "plain" && h.hostInfo != null),
+    );
+    await act(async () => {
+      await store.roster.remove(hostId);
+    });
+    await settle(() => store.getState().hosts.length === 1);
+    await uiIdle();
+    expect(
+      screen.queryByText(
+        "Nenhum host conectado oferece SSH. Atualize o daemon de um host ou conecte um que ofereça.",
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Cadastrar o primeiro destino" })).toBeNull();
+    expect(screen.queryByText(/do host \./)).toBeNull();
+  });
+
+  test("when the ssh host is offline the page names it and says to reconnect it (#3705)", async () => {
+    const { d, store } = await open({ targets: [] });
+    d.stop();
+    await settle(() => store.getState().hosts.every((h) => h.status !== "online"));
+    await uiIdle();
+    expect(
+      screen.queryByText(
+        "O host pc, que guarda os destinos, está offline. Reconecte-o para gerenciá-los.",
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Cadastrar o primeiro destino" })).toBeNull();
+  });
 });

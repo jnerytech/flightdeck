@@ -47,11 +47,11 @@
   "assistant.run": {},
   "autoapprove.list": { "cli": "autoapprove" },
   "autoapprove.resume": { "cli": "autoapprove" },
-  "automation.list": {},
-  "automation.remove": {},
-  "automation.runs": {},
-  "automation.save": {},
-  "automation.toggle": {},
+  "automation.list": { "cli": "automation" },
+  "automation.remove": { "cli": "automation" },
+  "automation.runs": { "cli": "automation" },
+  "automation.save": { "cli": "automation" },
+  "automation.toggle": { "cli": "automation" },
   "bg.list": {},
   "bg.message": {},
   "bg.respawn": {},
@@ -153,11 +153,11 @@
   "card.validationTemplate": {
     "cli": "card"
   },
-  "changes.commit": {},
+  "changes.commit": { "cli": "changes" },
   "changes.get": { "cli": "changes" },
-  "changes.pr": {},
-  "changes.revert": {},
-  "changes.undoRevert": {},
+  "changes.pr": { "cli": "changes" },
+  "changes.revert": { "cli": "changes" },
+  "changes.undoRevert": { "cli": "changes" },
   "changes.unwatch": { "cli": "changes" },
   "changes.watch": { "cli": "changes" },
   "costs.card": { "cli": "costs" },
@@ -176,13 +176,13 @@
   "external.list": {},
   "external.message": {},
   "external.watch": {},
-  "file.list": {},
-  "file.read": {},
-  "file.search": {},
-  "file.write": {},
+  "file.list": { "cli": "file" },
+  "file.read": { "cli": "file" },
+  "file.search": { "cli": "file" },
+  "file.write": { "cli": "file" },
   "files.sessions": { "cli": "changes" },
-  "fs.dirs": {},
-  "fs.files": {},
+  "fs.dirs": { "cli": "file" },
+  "fs.files": { "cli": "file" },
   "gate.respond": {},
   "github.issues": {},
   "github.login.cancel": {},
@@ -275,7 +275,9 @@
   "messaging.rules.get": {
     "cli": "message"
   },
-  "messaging.rules.set": {},
+  "messaging.rules.set": {
+    "cli": "message"
+  },
   "names.list": {},
   "permission.respond": {
     "cli": "approve"

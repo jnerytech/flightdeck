@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { VALUE_FLAGS } from "../../src/cli/domain/args.ts";
-import { OPTIONS_WITH_VALUE } from "../../src/permissions/domain/shell-call.ts";
+import { OPTIONS_WITH_VALUE, VERB_NOUNS } from "../../src/permissions/domain/shell-call.ts";
 import { bash, MEDIUM } from "../support/permissions-risk-rules.ts";
 
 /** Each line is rated as `plain` is, and `plain` is high: the form only changes how the CLI is reached. */
@@ -92,10 +92,33 @@ describe("risk rules: the CLI reached without its name in the line (#3566)", () 
     ).toEqual([]);
   });
 
+  test("bun with options before the script (--cwd <dir> start) is rated as the CLI itself (#3718)", () => {
+    expect(
+      ratedAsTheDirectForm([
+        ["bun --cwd apps/daemon start changes revert s a.ts", "fd changes revert s a.ts"],
+        ["bun --cwd=apps/daemon start changes revert s a.ts", "fd changes revert s a.ts"],
+        ["bun --cwd=apps/daemon run start mcp remove p f --confirm", "fd mcp remove p f --confirm"],
+        ["bun --silent --cwd d start persona remove qa", "fd persona remove qa"],
+        ["bun --bun start persona remove qa", "fd persona remove qa"],
+        ["sh -c 'bun --cwd d start persona remove qa'", "fd persona remove qa"],
+        ["bunx --bun --cwd d flightdeckd mcp remove p f --confirm", "fd mcp remove p f --confirm"],
+        ['bun --cwd "my dir" start persona remove qa', "fd persona remove qa"],
+        ["bun --cwd 'my dir' start persona remove qa", "fd persona remove qa"],
+        ["bun --cwd=my\\ dir start persona remove qa", "fd persona remove qa"],
+        ["bun --cwd my\\ dir start changes revert s a.ts", "fd changes revert s a.ts"],
+        ["bun $OPT start persona remove qa", "fd persona remove qa"],
+        ['bun "$OPT" start persona remove qa', "fd persona remove qa"],
+      ]),
+    ).toEqual([]);
+  });
+
   test("a start script of another command, and a read, are ordinary shell commands", () => {
     const wrong = [
       "bun run start",
       "bun run start card list --json",
+      "bun --cwd d start",
+      "bun --cwd d start card list --json",
+      "echo bun --cwd d start persona remove qa",
       "bun run start:web",
       "npm run start",
       "echo bun run start persona remove qa",
@@ -133,5 +156,18 @@ describe("the option list of the shell rules (#3566)", () => {
   test("it holds exactly the options of the parser that take a value, each once", () => {
     expect([...new Set(OPTIONS_WITH_VALUE)].sort()).toEqual([...VALUE_FLAGS].sort());
     expect(OPTIONS_WITH_VALUE.filter((f, i) => OPTIONS_WITH_VALUE.indexOf(f) !== i)).toEqual([]);
+  });
+});
+
+describe("the nouns whose verb the shell rules read (#3627)", () => {
+  test("it holds exactly these nouns: none lost, none new, each once", () => {
+    const nouns = [
+      ...["card", "history", "approvers", "persona", "team", "quota", "budget", "costs"],
+      ...["session", "rules", "autoapprove", "plugins", "project", "agentcfg", "ssh", "watch"],
+      ...["snippet", "boardsync", "review", "runenv", "automation", "message", "mcp"],
+      ...["changes", "file"],
+    ];
+    expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());
+    expect(new Set(nouns).size).toBe(nouns.length);
   });
 });

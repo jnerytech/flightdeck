@@ -16,6 +16,12 @@ export const hosts = {
   connections: {
     title: "Connections",
     subtitle: "SSH destinations, opened in a terminal tab with the ssh of host {host}.",
+    subtitleNoHost: "SSH destinations, opened in a terminal tab.",
+    noHost: "No connected host supports SSH. Update a host's daemon or connect one that does.",
+    hostOffline:
+      "The host {host}, which keeps the destinations, is offline. Reconnect it to manage them.",
+    noMatch: "No destination matches the filters.",
+    clearFilters: "Clear filters",
     empty: "No SSH destination saved.",
     emptyAction: "Add the first destination",
     list: "Destinations",
@@ -46,6 +52,7 @@ export const hosts = {
       name: "Name",
       host: "Host",
       port: "Port",
+      portInvalid: "Use a whole number from 1 to 65535.",
       user: "User",
       auth: "Authentication",
       authOption: {
@@ -62,6 +69,8 @@ export const hosts = {
       noJump: "None",
       tags: "Tags (comma separated)",
       alive: "Keep the connection alive (seconds)",
+      aliveInvalid: "Use a whole number of 0 or more, or leave it empty.",
+      fixFields: "Fix the marked fields to save.",
       compression: "Compression",
       forwards: "Local forwards (one per line)",
       forwardAgent: "Forward the agent (ForwardAgent)",
@@ -416,6 +425,8 @@ export const hosts = {
     reconnectNow: "Reconnect now",
     reconnecting: "Reconnecting…",
     still: "Still offline.",
+    copy: "Copy the command {command}",
+    copied: "Copied",
     hintLinux: "On the host, check that the daemon runs, and that it starts at boot:",
     hintWsl: "On WSL, also turn on systemd in /etc/wsl.conf (then run wsl --shutdown on Windows):",
     hintWindows:
@@ -457,6 +468,7 @@ export const hosts = {
     uptime: "up for {n} s",
     latency: "latency: {value}",
     unavailable: "information unavailable",
+    offlineInfo: "The host's details show here once it answers.",
     hooks: "Claude Code hooks",
     hooksInstalled: "installed",
     hooksAbsent: "absent",
@@ -523,5 +535,9 @@ export const hosts = {
     renameDuplicate: "Another host already has this name.",
     reconnect: "Reconnect",
     remove: "Remove host",
+    groupsLabel: "Settings groups",
+    group_connection: "Connection",
+    group_sessions: "Sessions and work",
+    group_upkeep: "Maintenance and logs",
   },
 };
