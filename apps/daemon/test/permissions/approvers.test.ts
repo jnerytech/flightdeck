@@ -166,7 +166,7 @@ describe("approvers: the first key is enrolled only inside a window the host ter
     expect(reasonOf(() => approvers.enroll(enrollFirst(device(), "the-code"), ASKER))).toBe(
       "approval_proof_required",
     );
-    expect(approvers.keys().length).toBe(1);
+    expect(approvers.keys()).toHaveLength(1);
   });
 
   test("Given a window past its ten minutes, Then enrolling is closed", () => {
@@ -238,7 +238,7 @@ describe("approvers: later keys are added and revoked by a key already enrolled"
     );
     const bad = { ...enrollAdd(phone, device()), publicKey: "Z2FyYmFnZQ==" };
     expect(reasonOf(() => approvers.enroll(bad, ASKER))).toBe("approval_proof_required");
-    expect(approvers.keys().length).toBe(1);
+    expect(approvers.keys()).toHaveLength(1);
   });
 
   test("Given two keys, When one revokes the other, Then one is left; the last key cannot be revoked", () => {
@@ -250,7 +250,7 @@ describe("approvers: later keys are added and revoked by a key already enrolled"
     expect(reasonOf(() => approvers.revoke(revokeOf(laptop, laptop.keyId)))).toBe(
       "approval_last_key",
     );
-    expect(approvers.keys().length).toBe(1);
+    expect(approvers.keys()).toHaveLength(1);
   });
 
   test("Given a revoke signed by a key that is not enrolled, Then it is refused and nothing goes", () => {
@@ -259,7 +259,7 @@ describe("approvers: later keys are added and revoked by a key already enrolled"
     expect(reasonOf(() => approvers.revoke(revokeOf(device(), phone.keyId)))).toBe(
       "approval_proof_required",
     );
-    expect(approvers.keys().length).toBe(2);
+    expect(approvers.keys()).toHaveLength(2);
   });
 
   test("Given the host terminal's reset, Then every key goes, the daemon keeps its id and protection is off", () => {
@@ -330,7 +330,7 @@ describe("approvers: a listener hears the devices enrolled and revoked (#3476)",
     const heard: unknown[] = [];
     approvers.onChange((change) => heard.push(change));
     approvers.enroll(enrollAdd(phone, laptop), ASKER);
-    expect(approvers.keys().length).toBe(2);
+    expect(approvers.keys()).toHaveLength(2);
     expect(heard).toEqual([]);
   });
 
@@ -348,7 +348,7 @@ describe("approvers: a listener hears the devices enrolled and revoked (#3476)",
     approvers.onChange((change) => heard.push(change));
     approvers.enroll(enrollAdd(phone, device()), ASKER);
     expect(stopped).toEqual([]);
-    expect(heard.length).toBe(1);
-    expect(approvers.keys().length).toBe(2);
+    expect(heard).toHaveLength(1);
+    expect(approvers.keys()).toHaveLength(2);
   });
 });

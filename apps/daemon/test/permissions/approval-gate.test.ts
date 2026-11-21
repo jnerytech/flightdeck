@@ -337,7 +337,7 @@ describe("approval-command: a command that moves code or trust takes the proof o
           ?.reason,
       ).toBe("approval_proof_required");
     }
-    expect(keys.length).toBe(1);
+    expect(keys).toHaveLength(1);
   });
 
   test("Given a forged signature, Then the nonce is not burned: the real proof with it still passes", () => {
