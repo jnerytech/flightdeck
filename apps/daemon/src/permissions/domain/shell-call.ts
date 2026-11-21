@@ -493,6 +493,9 @@ export const OPTIONS_WITH_VALUE = [
   "--resume",
   "--cols",
   "--rows",
+  "--digest",
+  "--branch",
+  "--remote",
 ];
 /** The same list, for the lookup: the list stays an array so a test can compare it with the parser's. */
 const VALUE_OPTIONS = new Set(OPTIONS_WITH_VALUE);
@@ -656,6 +659,7 @@ const VERB_NOUNS = new Set([
   "review",
   "runenv",
   "mcp",
+  "changes",
 ]);
 
 /**
