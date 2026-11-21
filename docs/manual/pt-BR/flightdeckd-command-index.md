@@ -87,3 +87,9 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-mcp-commands.md) Suas seções:
 
 - [fd mcp](flightdeckd-mcp-commands.md#fd-mcp)
+
+## Comandos do flightdeckd: a biblioteca de documentos de um projeto
+
+[Ler o capítulo.](flightdeckd-knowledge-commands.md) Suas seções:
+
+- [fd knowledge](flightdeckd-knowledge-commands.md#fd-knowledge)

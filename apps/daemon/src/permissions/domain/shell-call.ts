@@ -694,13 +694,13 @@ export function flightdeckWords(args: string[]): string[] {
   return words[0] === "fd" ? words.slice(1) : words;
 }
 
-/**
- * Whether the word at `i` of a runner's text starts the CLI: its name, or `bun start` or `bun run [options] start`, the script of
- * `apps/daemon/package.json` that runs `bin.ts` (#3566).
- */
+/** Whether the word at `i` of a runner's text starts the CLI: its name, or the `start` script that runs `bin.ts` (`bun start`, `bun run [options] start`, `bun --cwd "my dir" start`: after an option or an expansion that opens the text, whose value is not told apart from the script, #3566, #3718). */
 export const startsCli = (words: string[], i: number) =>
   isCliProgram(program(words[i] ?? "")) ||
-  (words[i] === "start" && (i === 0 || words.slice(0, i).includes("run")));
+  (words[i] === "start" &&
+    (i === 0 ||
+      /(?:^-)|(?:[$`*?[{])/.test(words[0] ?? "") ||
+      (words.indexOf("run") + 1 || Infinity) <= i));
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
