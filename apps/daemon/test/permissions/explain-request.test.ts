@@ -83,6 +83,38 @@ describe("a request that carries an extra sentence about itself (#3752)", () => 
   });
 });
 
+describe("a hook that throws before it returns a promise (#3752)", () => {
+  const boom = (): Promise<string> => {
+    throw new Error("no session");
+  };
+
+  test("the request is still announced with the rule's reason", async () => {
+    const { broker, asked } = setup(boom);
+    broker.request("s", "Bash", { command: "x" }, new AbortController().signal).catch(() => {});
+    await flush();
+    expect(asked().map((e) => e.riskReason)).toEqual(["saves, trusts or removes an action"]);
+  });
+
+  test("an external request is still held", async () => {
+    const permissions = new ExternalPermissions({ explain: boom });
+    const states: unknown[] = [];
+    permissions.watch((frame) => states.push((frame as unknown as { state: unknown }).state));
+    permissions
+      .hold(
+        {
+          session_id: "s1",
+          cwd: "/p",
+          tool_name: "Bash",
+          tool_input: { command: "fd action save --definition-file d.json" },
+        } as never,
+        new AbortController().signal,
+      )
+      .catch(() => {});
+    await flush();
+    expect(states).toEqual(["open"]);
+  });
+});
+
 describe("an external session's request carries the same sentence (#3752)", () => {
   function held(explain?: (command: string, cwd: string) => Promise<string> | undefined) {
     const permissions = new ExternalPermissions(explain ? { explain } : {});

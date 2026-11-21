@@ -193,6 +193,14 @@ describe("describeDefinition: what the person reads in the request (#3752)", () 
     expect(/[\u202a-\u202e\u2028\u2029\u2066-\u2069\u0080-\u009f]/.test(out)).toBe(false);
   });
 
+  test("soft hyphens and tag characters never reach the person raw", () => {
+    const out = describeDefinition(
+      "d.json",
+      JSON.stringify({ name: "a\u00adb\u{e0041}c", run: ["x"], env: {} }),
+    );
+    expect(out.includes("\u00ad") || out.includes("\u{e0041}")).toBe(false);
+  });
+
   test("a run that is not a list of text is said, not hidden", () => {
     expect(
       describeDefinition("d.json", JSON.stringify({ name: "a", run: "rm -rf /", env: {} })),
