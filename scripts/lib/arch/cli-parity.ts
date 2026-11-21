@@ -76,17 +76,19 @@ export function parityCheck(input: {
   return { gaps, problems };
 }
 
-/** The gap baseline: the lower of main's file and the branch's, so a PR cannot raise it (#3428). */
-export function gapsBaseline(onMain: string | null, head: string | null): number {
-  const gaps = (text: string | null): number | null => {
-    if (text === null) return null;
-    try {
-      const value = (JSON.parse(text) as { gaps?: unknown }).gaps; // NOSONAR: a repo file of ours
-      return typeof value === "number" ? value : null;
-    } catch {
-      return null;
-    }
-  };
-  const counts = [gaps(onMain), gaps(head)].filter((n): n is number => n !== null);
-  return counts.length > 0 ? Math.min(...counts) : 0;
+/**
+ * The commands that are a gap now (`headGaps`) and were not one in the table at the merge base with main:
+ * a new command with an empty row, or a covered row emptied. There is no baseline file to rewrite: two PRs
+ * that each close a gap, or add a row, no longer conflict (#3759). With no readable table at the base,
+ * nothing is compared, as the other ratchets that read the merge base do.
+ */
+export function newGaps(baseTable: string | null, headGaps: readonly string[]): string[] {
+  const rows = parseTable(baseTable);
+  if (!rows) return [];
+  const before = new Set(
+    Object.entries(rows).flatMap(([name, row]) =>
+      row && typeof row === "object" && Object.keys(row).length === 0 ? [name] : [],
+    ),
+  );
+  return headGaps.filter((name) => !before.has(name));
 }
