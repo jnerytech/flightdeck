@@ -368,6 +368,8 @@ export const secretsCommands = [
       secretId: z.string().min(1),
       tags: z.array(z.string().min(1)).max(16).optional(),
       rules: z.array(z.unknown()).max(200),
+      /** The signed proof of an enrolled device over the whole request, for a set that loosens (#3754). */
+      proof: ApprovalProof.optional(),
     }),
   ),
   cmd("vault.rules.get", z.object({ secretId: z.string().min(1) })),
@@ -530,7 +532,8 @@ export interface SecretsResults {
   "actions.runFree": ActionResult;
   "actions.runs": { runs: ActionRunInfo[] };
   "vault.watch": undefined;
-  "vault.deny": undefined;
+  /** `denied` is false when no request waited under that id (answered, expired or never there); optional for older daemons. */
+  "vault.deny": { denied?: boolean };
   "vault.rules.set": { rules: number };
   "vault.rules.get": { secretId: string; tags: string[]; rules: unknown[] };
   "vault.rules.preview": VaultVerdict;

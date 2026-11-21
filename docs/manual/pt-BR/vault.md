@@ -81,10 +81,12 @@ fd vault decisions [<segredo>] [--days <1-365>] [--limit <1-1000>] [--json]
 fd vault report [--days <1-365>] [--csv] [--json]
 fd vault rules <segredo> [--json]
 fd vault rules preview <segredo> --requester <you|claude|automation|workflow> --purpose <ssh|action|run_with_secret> [--action <nome>] [--host <h>] [--project <p>] [--session <s>] [--tag <t>]... [--risk <low|medium|high>] [--approval <always|never|first-per-session>] [--at <hora>] [--json]
+fd vault watch [--json]
+fd vault deny <requestId> [--json]
 ```
 
-O lado de leitura do cofre, como a tela de Segredos mostra. Nenhum imprime o valor de um segredo e
-nenhum muda nada: entregar um segredo e usá-lo continuam no app.
+O cofre, como a tela de Segredos mostra. Nenhum imprime o valor de um segredo. Só o `deny` muda algo, e só
+recusa: entregar um segredo e usá-lo continuam no app.
 
 - **`decisions [<segredo>]`:** uma linha por decisão, na ordem do daemon: hora, segredo, quem pediu,
   finalidade (e a ação) em um host, `decisão/resultado` com quem aprovou, e o motivo. `--days` e `--limit`
@@ -97,5 +99,15 @@ nenhum muda nada: entregar um segredo e usá-lo continuam no app.
   `[limit reached]` quando valem. `--requester` e `--purpose` são obrigatórios; `--at` aceita data e hora ISO
   com fuso, como `2026-11-20T03:00:00Z` (agora por padrão). Não grava nada na auditoria. Um segredo chamado
   `preview` não pode ser lido com `rules <segredo>`.
+- **`watch`:** cada pedido de segredo e cada uso de um segredo entregue, na hora em que chegam, até Ctrl-C.
+  A linha de um pedido é `request <id>`, o segredo, quem pede, a finalidade (e a ação) em um host, o que as
+  regras decidiram (`ask`, ou `allow by rule <id>`) e o motivo, com `[once per session]` ou
+  `[approval must be held 2 s]`, e `runs: <comando>` em `run_with_secret`. A linha de um uso é `used`, o
+  segredo, quem, para quê e quando. `--json` escreve um frame por linha. Os alertas não aparecem, e nenhum
+  parâmetro nem valor aparece.
+- **`deny <requestId>`:** recusa um pedido que espera por você, e a execução que o espera falha na hora.
+  O id vem do `watch`. Diz `denied <id>` (saída `0`), ou saída `1` quando nenhum pedido espera com esse id
+  (já respondido, expirado ou inexistente): nunca diz "denied" para um que não recusou. Um host anterior a
+  essa resposta vale pela palavra dele.
 
 Os códigos de saída são os mesmos dos outros comandos: `0` feito, `1` recusado, `2` sem daemon.

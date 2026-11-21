@@ -132,14 +132,14 @@ describe("acoes-servico: pedidos ao app", () => {
     });
     const running = failure(actions.run({ projectId: "p1", name: "echo", requestedBy: "claude" }));
     const frame = (await poll(() => requests()[0])) as VaultRequestFrame;
-    actions.deny(frame.requestId);
+    expect(actions.deny(frame.requestId)).toBe(true);
     const error = await running;
     expect(error).toContain("invalid_state");
     expect(error).toContain("[action_secret_refused]");
     expect(existsSync(marker)).toBe(false);
     // Denying twice, or something that never existed, is harmless.
-    actions.deny(frame.requestId);
-    actions.deny("nada");
+    // A request that is gone says so, so a terminal never reports a refusal that did not happen.
+    expect([actions.deny(frame.requestId), actions.deny("nada")]).toEqual([false, false]);
   });
 
   test("o app não responde: estoura o prazo e nada roda", async () => {
