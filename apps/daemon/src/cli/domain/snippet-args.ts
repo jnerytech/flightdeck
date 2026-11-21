@@ -25,6 +25,7 @@ const SNIPPET_ACTIONS = [
 ] as const;
 /** The verbs that follow the CLI-first rules: they take `--json` and `--host`. `list` and `get` are the mod's readers. */
 const NEW_VERBS: string[] = SNIPPET_ACTIONS.filter((verb) => verb !== "list" && verb !== "get");
+const NEW_VERB_SET = new Set(NEW_VERBS);
 /** The verbs that change what the host keeps or runs: each needs `--confirm`. */
 const WRITES = ["save", "remove", "trust", "use"];
 /** The verbs that take the snippet's name. */
@@ -126,9 +127,9 @@ export function snippetProblem(args: CliArgs): string | undefined {
     );
   if (writes && !confirmed)
     return `snippet ${action}${action === "import-history" ? " --select" : ""} needs --confirm`;
-  if (args.host !== undefined && !NEW_VERBS.includes(action))
+  if (args.host !== undefined && !NEW_VERB_SET.has(action))
     return only("--host", `flightdeckd snippet ${NEW_VERBS.join(", ")}`);
-  if (args.json && !NEW_VERBS.includes(action))
+  if (args.json && !NEW_VERB_SET.has(action))
     return only("--json", `flightdeckd snippet ${NEW_VERBS.join(", ")}`);
   if (args.limit !== undefined) {
     if (action !== "import-history") return only("--limit", "flightdeckd snippet import-history");

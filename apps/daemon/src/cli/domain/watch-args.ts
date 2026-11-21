@@ -9,7 +9,7 @@ import { WatchSettings } from "@flightdeck/protocol";
 import type { WatchCliArgs } from "../../watch/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
-import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
+import { type Handler, setFlag } from "./flag-handlers.ts";
 import { USAGE } from "./usage.ts";
 
 const WATCH_ACTIONS = [
@@ -214,12 +214,15 @@ export function takeWatchFlags(args: CliArgs): void {
 }
 
 /** The flag that sets a field of the patch, for a refusal that names it. */
-const flagOf = (field: string): string =>
-  field === "checks"
-    ? "--check"
-    : field === "enabled"
-      ? "--enable"
-      : `--${field.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+const FLAG_NAMES = new Map([
+  ["checks", "--check"],
+  ["enabled", "--enable"],
+]);
+
+const flagOf = (field: string): string => {
+  const kebab = field.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+  return FLAG_NAMES.get(field) ?? `--${kebab}`;
+};
 
 /** What is wrong with the watch words and flags, or undefined. */
 export function watchProblem(args: CliArgs): string | undefined {
