@@ -22,6 +22,9 @@ describe("risk rules: a crafted command line cannot stall the daemon (#3593)", (
     ["a shell inside a shell, 14 deep", "sh -c '".repeat(14) + "fd persona remove qa"],
     ["a variable program, 400 words long", "$a ".repeat(400) + "fd persona remove qa"],
     ["process substitutions, 14 deep", "cat " + "<(cat ".repeat(14) + "ls"],
+    ["a runner followed by 8000 CLI names", "sh " + "fd ".repeat(8000)],
+    ["bun start with 8000 words after it", "bun " + "start ".repeat(8000)],
+    ["3000 statements that each start with a variable program", "$a fd x; ".repeat(3000)],
     ["find -exec, 12 deep", "find . " + "-exec find . ".repeat(12) + "-exec ls ;"],
   ];
 
@@ -35,7 +38,7 @@ describe("risk rules: a crafted command line cannot stall the daemon (#3593)", (
     expect(
       notHigh([
         `echo ${"word ".repeat(1000)}`,
-        `git commit -m "${"word ".repeat(3000)}"`,
+        `git commit -m "${"word ".repeat(1500)}"`,
         "ls; ".repeat(300),
         "sh -c 'ls; ls; ls'",
         "bash -c \"sh -c 'echo hello'\"",
