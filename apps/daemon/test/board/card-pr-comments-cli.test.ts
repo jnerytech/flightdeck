@@ -174,6 +174,13 @@ describe("flightdeckd card pr-comments-send (issue #3702)", () => {
     });
   });
 
+  test("an id typed twice is sent once, so the count says what went and nothing looks missing", async () => {
+    const daemon = fakeDaemon(sending({ "pr.comments.send": () => ({ sent: 1 }) }));
+    const run = await flightdeckd(["card", "pr-comments-send", "k1", "c1", "c1"], daemon.port);
+    expect(run.out).toEqual(["sent 1 comment of k1 to its session"]);
+    expect(callsOf(daemon, "pr.comments.send")).toEqual([{ cardId: "k1", ids: ["c1"] }]);
+  });
+
   test("--json prints what the daemon answered", async () => {
     const daemon = fakeDaemon(sending());
     const run = await flightdeckd(
