@@ -7,7 +7,7 @@ import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.t
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
-import { readBoardsync } from "./boardsync-args.ts";
+import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import { refuseCardFlags } from "./card-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -580,6 +580,7 @@ const HANDLERS: Record<string, Handler> = {
   ...SSH_FLAGS,
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
+  ...BOARDSYNC_FLAGS,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   "--project": setValue((args, v) => {
@@ -738,6 +739,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     terminalProblem(args) ??
     agentcfgProblem(args) ??
     watchProblem(args) ??
+    boardsyncProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
