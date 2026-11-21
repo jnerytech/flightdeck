@@ -81,6 +81,8 @@ export interface CliArgs {
     | "reindex"
     | "index"
     | "feed"
+    | "set-status"
+    | "set-feed"
     | "templates"
     | "validate"
     | "enable"
@@ -246,8 +248,15 @@ export interface CliArgs {
   mcpWords?: string[];
   /** `workflow list|templates <project>`, `validate <project> <name>`, `run|resume <run>` (#3628): the operands; `watch` has none. */
   workflowWords?: string[];
-  /** `knowledge list|index|feed <project>` (#3623): a project's name or id, or its folder. */
+  /** `knowledge <verb> <project>` (#3623): a project's name or id, or its folder. */
   knowledgeProject?: string;
+  /** `knowledge set-status <project> <file> --status <status> --hash <hash>` and `create <project> <kind> <title>`. */
+  knowledgeFile?: string;
+  knowledgeStatus?: "valid" | "transitional" | "obsolete";
+  knowledgeKind?: "adr" | "rfc" | "prd";
+  knowledgeTitle?: string;
+  /** `knowledge set-feed --on|--off`. */
+  knowledgeFeed?: boolean;
   /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
   mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */
