@@ -129,7 +129,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `changes`, `mcp` (its verbs), `message` (history, watch and rules), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `changes`, `mcp` (its verbs), `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
