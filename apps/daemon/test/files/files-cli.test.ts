@@ -154,8 +154,7 @@ describe("flightdeckd file list (issue #3624)", () => {
       }),
     });
     const run = await flightdeckd(["file", "list", "card:c1"], daemon.port);
-    expect(run.out.join("\n")).toContain("a");
-    expect(run.out.join("\n").includes("\u001b")).toBe(false);
+    expect(run.out).toEqual(["card:c1 s [2Jrc", "  file a [2J.ts"]);
   });
 });
 
