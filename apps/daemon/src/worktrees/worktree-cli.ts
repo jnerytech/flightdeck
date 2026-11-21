@@ -1,8 +1,17 @@
 /**
  * Issue #3702: `flightdeckd worktree list`, the worktrees the app's cleanup screen shows, from a terminal.
- * Exit codes: 0 done, 1 refused, 2 no daemon.
+ * It changes nothing. Exit codes: 0 done, 1 refused, 2 no daemon.
  */
-import { type CliResult, type RemoteTarget, said } from "../daemon-client/index.ts";
+import {
+  type CliResult,
+  type RemoteTarget,
+  resolveProject,
+  runOnLocalDaemon,
+  shown,
+} from "../daemon-client/index.ts";
+import { worktreeLines } from "./domain/worktree-cli-view.ts";
+
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 export interface WorktreeCliArgs {
   action: "list";
@@ -11,10 +20,25 @@ export interface WorktreeCliArgs {
   json?: boolean;
 }
 
-export async function runWorktreeCli(
-  _args: WorktreeCliArgs,
-  _config: { bind: string; port: number; token: string },
-  _options: { timeoutMs?: number; remote?: RemoteTarget | undefined } = {},
+export function runWorktreeCli(
+  args: WorktreeCliArgs,
+  config: { bind: string; port: number; token: string },
+  options: { timeoutMs?: number; remote?: RemoteTarget | undefined } = {},
 ): Promise<CliResult> {
-  return said("");
+  return runOnLocalDaemon({
+    config,
+    ...(options.remote ? { remote: options.remote } : {}),
+    clientName: "flightdeck-worktree",
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    perform: async (daemon) => {
+      let payload: { projectId?: string } = {};
+      if (args.project !== undefined) {
+        const { projects } = await daemon.call("project.list", {});
+        const found = resolveProject(projects, args.project);
+        if ("refusal" in found) return found.refusal;
+        payload = { projectId: found.id };
+      }
+      return shown(args.json, await daemon.call("worktree.list", payload), worktreeLines);
+    },
+  });
 }

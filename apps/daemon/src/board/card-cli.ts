@@ -16,6 +16,7 @@ import {
   arenaLines,
   type CardCliArgs,
   columnOf,
+  commentsLines,
   confirmed,
   diffLines,
   loopLine,
@@ -362,8 +363,9 @@ function perform(args: CardCliArgs, daemon: DaemonClient, note: Note): Promise<C
 }
 
 /** The comments on the card's pull request. */
-async function commentsOf(_args: CardCliArgs, _daemon: DaemonClient): Promise<CliResult> {
-  return said("");
+async function commentsOf(args: CardCliArgs, daemon: DaemonClient): Promise<CliResult> {
+  const found = await daemon.call("pr.comments", { cardId: args.id ?? "" });
+  return args.json ? json(found) : said(...commentsLines(found.comments));
 }
 
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */

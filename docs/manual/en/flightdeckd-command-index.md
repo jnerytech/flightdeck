@@ -65,6 +65,14 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 - [fd memory](flightdeckd-memory-commands.md#fd-memory)
 - [Changing a note](flightdeckd-memory-commands.md#changing-a-note)
 
+## flightdeckd commands: worktrees, issues and PR comments
+
+[Read the chapter.](flightdeckd-worktree-commands.md) Its sections:
+
+- [fd worktree](flightdeckd-worktree-commands.md#fd-worktree)
+- [fd issues](flightdeckd-worktree-commands.md#fd-issues)
+- [fd card pr-comments](flightdeckd-worktree-commands.md#fd-card-pr-comments)
+
 ## flightdeckd commands: the run environment of a card
 
 [Read the chapter.](flightdeckd-runenv-commands.md) Its sections:
