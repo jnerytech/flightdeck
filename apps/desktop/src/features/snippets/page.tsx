@@ -1,6 +1,6 @@
 import type { SnippetFileInfo } from "@flightdeck/protocol";
 import { SquareCode, Star } from "lucide-react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { selectedClient, tagsFirst } from "@/features/clients/index.ts";
@@ -52,7 +52,13 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const [editing, setEditing] = useState<AppSnippet | "new" | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const openSettings = () => props.go({ name: "settings", section: "assistant" });
+  const clearFilters = () => {
+    setQuery("");
+    setType("");
+    searchRef.current?.focus();
+  };
 
   useEffect(() => {
     if (hostId) void store.projectList.load(hostId);
@@ -123,10 +129,26 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
     project && hasFeature(host?.hostInfo?.features, "actions", false)
       ? projects.find((p) => p.path === project)
       : undefined;
+  // Why the list is empty decides what it offers: a button that cannot work is never shown.
+  const emptyText = !hostId
+    ? { title: t("snippets.noHost"), detail: t("snippets.noHostDetail") }
+    : query || type
+      ? {
+          title: t("snippets.noMatch"),
+          action: (
+            <Button variant="outline" onClick={clearFilters}>
+              {t("snippets.clearFilters")}
+            </Button>
+          ),
+        }
+      : {
+          title: t("snippets.empty"),
+          action: <Button onClick={() => setEditing("new")}>{t("snippets.emptyAction")}</Button>,
+        };
   return (
     <Page
       title={t("snippets.title")}
-      subtitle={t("snippets.subtitle", { host: host?.name ?? "" })}
+      subtitle={host ? t("snippets.subtitle", { host: host.name }) : t("snippets.subtitleNoHost")}
       actions={
         hostId &&
         editing === null && (
@@ -192,7 +214,12 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
         </Field>
         <Field label={t("snippets.search")}>
           {(control) => (
-            <Input {...control} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <Input
+              {...control}
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
           )}
         </Field>
         <Field label={t("snippets.type")}>
@@ -228,11 +255,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
         </div>
       )}
       {ordered.length === 0 ? (
-        <EmptyState
-          icon={SquareCode}
-          title={t("snippets.empty")}
-          action={<Button onClick={() => setEditing("new")}>{t("snippets.emptyAction")}</Button>}
-        />
+        <EmptyState icon={SquareCode} {...emptyText} />
       ) : (
         <ul aria-label={t("snippets.list")} className="flex flex-col gap-2">
           {ordered.map((snippet) => (
