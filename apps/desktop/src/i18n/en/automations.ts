@@ -221,8 +221,8 @@ export const automations = {
     none: "none",
     loading: "Loading workflows",
     empty: "No workflows on the base branch yet.",
-    failed:
-      "Could not read the workflows. Check that the host is connected, then open the page again.",
+    failed: "Could not read the workflows. Check that the host is connected.",
+    retry: "Try again",
     templates: {
       open: "Add from a template",
       title: "Workflow templates",

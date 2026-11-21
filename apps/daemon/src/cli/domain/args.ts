@@ -21,7 +21,7 @@ import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
 import { readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
-import { readMemory } from "./memory-args.ts";
+import { memoryProblem, readMemory } from "./memory-args.ts";
 import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
@@ -734,6 +734,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     watchProblem(args) ??
     boardsyncProblem(args) ??
     reviewProblem(args) ??
+    memoryProblem(args) ??
     runenvProblem(args) ??
     changesProblem(args) ??
     fileProblem(args) ??

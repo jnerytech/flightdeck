@@ -244,11 +244,11 @@
   "mcp.test": { "cli": "mcp" },
   "mcp.toggle": { "cli": "mcp" },
   "memory.budget": { "cli": "memory" },
-  "memory.delete": {},
+  "memory.delete": { "cli": "memory" },
   "memory.list": { "cli": "memory" },
   "memory.read": { "cli": "memory" },
   "memory.suggest": { "cli": "memory" },
-  "memory.write": {},
+  "memory.write": { "cli": "memory" },
   "messages.directory": {
     "appOnly": "the app asks each host's daemon for its sessions to hand them to the other daemons; a terminal has no second host to tell"
   },
