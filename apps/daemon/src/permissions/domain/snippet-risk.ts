@@ -1,7 +1,7 @@
 import { EXPANDS, isCliProgram, runsFlightdeckWords } from "./shell-call.ts";
 
 /** The verbs that make the host keep or run something chosen by the caller: they are high however they are reached. */
-const POWER = ["save", "trust", "use"];
+const POWER = new Set(["save", "trust", "use"]);
 
 /**
  * A session changing what a snippet makes the host run (#3615): `snippet save` writes a command the person
@@ -18,7 +18,7 @@ function changesASnippet(prog: string, args: string[]): boolean {
   const expands = (w: string) => (isCliProgram(prog) ? w.includes(EXPANDS) : /[$`*?[{]/.test(w));
   return runsFlightdeckWords(prog, args, ([command, action], own) => {
     if (command !== "snippet") return false;
-    if (POWER.includes(action as string)) return true;
+    if (POWER.has(action as string)) return true;
     return (
       action === "import-history" &&
       own.some((w) => w === "--select" || w.startsWith("--select=") || expands(w))

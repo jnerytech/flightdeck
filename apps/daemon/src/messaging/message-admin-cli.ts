@@ -56,7 +56,7 @@ export async function runMessageAdminCli(
     /** `watch` stops when this aborts (Ctrl-C). */
     signal?: AbortSignal;
     /** `rules-set --policy-file -` reads the policy from here. */
-    stdin?: ReadableStream<Uint8Array> | undefined;
+    stdin?: ReadableStream<Uint8Array>;
     /** `watch` writes each line here as it comes. */
     write?: (line: string) => void;
   } = {},
