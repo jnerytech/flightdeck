@@ -196,13 +196,15 @@ describe("the flags of the runenv write verbs (issue #3621)", () => {
   });
 
   test("the words parse into the target, the hash and the confirmation", () => {
-    expect(parsed(["runenv", "trust", "api", "--hash", "9f3a1c4e7b2d", "--confirm"])).toMatchObject({
-      command: "runenv",
-      action: "trust",
-      runenvTarget: "api",
-      hash: "9f3a1c4e7b2d",
-      confirm: true,
-    });
+    expect(parsed(["runenv", "trust", "api", "--hash", "9f3a1c4e7b2d", "--confirm"])).toMatchObject(
+      {
+        command: "runenv",
+        action: "trust",
+        runenvTarget: "api",
+        hash: "9f3a1c4e7b2d",
+        confirm: true,
+      },
+    );
     expect(parsed(["runenv", "stop", "c1"])).toMatchObject({
       command: "runenv",
       action: "stop",
