@@ -28,7 +28,7 @@ export type CheckpointsCliArgs =
 
 /** What a write that lost its connection may have done: the person looks before trying again. */
 const UNSURE =
-  "; the files may or may not have been put back: look at them, or run `rewind undo`, before trying again";
+  "; the files may or may not have been put back: look at them with `rewind preview` and `snapshots list` before trying again";
 
 export function runCheckpointsCli(
   args: CheckpointsCliArgs,

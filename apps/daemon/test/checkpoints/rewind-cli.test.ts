@@ -115,6 +115,7 @@ describe("flightdeckd rewind apply and undo (issue #3701)", () => {
       const run = await flightdeckd(argv, gone.port);
       expect(run.code).toBe(2);
       expect(run.err.join("\n")).toContain("may or may not");
+      expect(run.err.join("\n")).not.toContain("rewind undo");
     }
   });
 });
@@ -134,14 +135,14 @@ describe("flightdeckd rewind apply and undo words (issue #3701)", () => {
       action: "apply",
       checkpointSession: "s1",
       checkpointTurn: 2,
-      rewindConfirm: true,
+      confirm: true,
       host: "pi",
     });
     expect(argsOf(["rewind", "undo", "s1", "--confirm"])).toMatchObject({
       command: "rewind",
       action: "undo",
       checkpointSession: "s1",
-      rewindConfirm: true,
+      confirm: true,
     });
   });
 

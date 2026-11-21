@@ -270,8 +270,6 @@ export interface CliArgs {
   checkpointTurn?: number;
   /** `trace export --include-content`: the prompts and results too, with secrets replaced. */
   includeContent?: true;
-  /** `rewind apply|undo --confirm`: the flag moved off `confirm` so the card check leaves it alone. */
-  rewindConfirm?: true;
   /** `memory list|read|budget|suggest <project>`: the project, by name or id. */
   memoryProject?: string;
   /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */

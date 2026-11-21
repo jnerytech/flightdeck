@@ -34,13 +34,6 @@ export function readRewind(args: CliArgs, reader: ArgReader): void {
   if (args.action !== "undo") args.checkpointTurn = turnOf(reader);
 }
 
-/** On `rewind` the `--confirm` the card reads moves into a field of its own, so the card check leaves it alone. */
-export function takeCheckpointsFlags(args: CliArgs): void {
-  if (args.command !== "rewind" || args.confirm === undefined) return;
-  args.rewindConfirm = args.confirm;
-  delete args.confirm;
-}
-
 /** `trace get <id>` or `trace export <id> [--include-content]`. */
 export function readTrace(args: CliArgs, reader: ArgReader): void {
   args.command = "trace";
@@ -59,9 +52,9 @@ export const CHECKPOINT_FLAGS: Record<string, Handler> = {
 export function checkpointsProblem(args: CliArgs): string | undefined {
   if (args.command === "rewind") {
     const writes = args.action === "apply" || args.action === "undo";
-    if (args.rewindConfirm !== undefined && !writes)
+    if (args.confirm !== undefined && !writes)
       return "--confirm: this flag only applies to flightdeckd rewind apply and undo";
-    if (writes && args.rewindConfirm === undefined)
+    if (writes && args.confirm === undefined)
       return `rewind ${args.action} needs --confirm, since it puts the files of the checkout back`;
   }
   if (args.includeContent && !(args.command === "trace" && args.action === "export"))

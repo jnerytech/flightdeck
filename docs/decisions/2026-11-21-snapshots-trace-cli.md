@@ -31,10 +31,13 @@ Over `rewind.apply` and `rewind.undo`. They put the files of a session's checkou
 the person has read the files and confirmed in its dialog.
 
 - Both need `--confirm`, checked before the daemon is asked, and the CLI always sends `confirm: true` after it. The flag
-  is moved into its own field (`rewindConfirm`) so the card check that reads `confirm` leaves it alone, as `file` does.
+  is read from `confirm`, and `rewind` is one of the `CONFIRM_OWNERS`, so the card check leaves it alone.
 - `rewind apply` and `rewind undo` are rated high from a session's shell (`rewind-risk.ts`, by the noun `rewind`, like
   the `changes` rules); `rewind preview`, `snapshots` and `trace` stay ordinary reads. A typed `--confirm` is not the
   person, so the rating holds however the flag is written.
+- `undo` takes no snapshot of its own: it restores the newest safety snapshot, which `apply` took, so edits made since
+  that rewind are lost. The usage line and the manuals say so. A cut connection therefore never suggests `undo`: the
+  person looks with `preview` and `snapshots list` first.
 - A connection cut after the request left is exit 2 with a message that the files may or may not have been put back;
   the timeout is 60 s because a rewind through a snapshot touches the working tree.
 - The daemon's refusals (`rewind_turn_running`, `rewind_nothing`) are exit 1 with its words. The handlers do not call
