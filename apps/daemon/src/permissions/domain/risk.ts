@@ -521,7 +521,8 @@ function gitRisks(args: string[]): Candidate[] {
 }
 
 /** What one segment of a shell command adds, given whether a pipe feeds it: one reading for each program it may run. */
-function segmentRisks(segment: string[], piped: boolean, scan: Scan): Candidate[] {
+function segmentRisks(all: string[], piped: boolean, scan: Scan): Candidate[] {
+  const segment = scan.within(all);
   const out = invocations(segment, scan).flatMap((call) => invocationRisks(call, piped, scan));
   // A process substitution (`cat <(fd card delete c1)`) runs a command of its own.
   segment.forEach((word, i) => {
@@ -534,7 +535,8 @@ function segmentRisks(segment: string[], piped: boolean, scan: Scan): Candidate[
 function invocationRisks(call: Invocation, piped: boolean, scan: Scan): Candidate[] {
   const { prog, args, sudo } = call;
   const out: Candidate[] = [];
-  if (!scan.spend(args.length)) return out;
+  // A command is charged when it is read; the readings a variable program multiplies are charged each.
+  if (call.unresolved && !scan.spend(args.length)) return out;
   if (sudo) out.push(["high", "sudo"]);
   if (
     call.hidden ||

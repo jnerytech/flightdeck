@@ -9,7 +9,7 @@ const MAX_WORDS_AFTER_VARIABLE = 256;
 const MAX_SEGMENT_WORDS = 4096;
 
 /** The longest command line that is read at all: every rule walks the text, so the work grows with its size. */
-const MAX_LINE_CHARS = 262_144;
+const MAX_LINE_CHARS = 100_000;
 
 /** The most words one line may have read in all, each word counted once for every time a rule reads the command that holds it. */
 const MAX_WORDS_READ = 100_000;
@@ -18,7 +18,7 @@ const MAX_WORDS_READ = 100_000;
 const MAX_VARIABLE_CHAIN = 16;
 
 /** How many times one line may be read again inside itself (a shell's text, a substitution, a `find -exec` command). */
-const MAX_REREADS = 256;
+const MAX_REREADS = 1024;
 
 /**
  * The work one command line may cost (#3593). Each read of a part of the line inside the line (the text of
@@ -45,9 +45,18 @@ export class Scan {
     return this.cut(words, MAX_WORDS_AFTER_VARIABLE);
   }
 
-  /** The words of one command, cut to the most that are read and charged to the line's total; undefined when the total is gone. */
-  segment(words: string[]): string[] | undefined {
-    const kept = this.cut(words, MAX_SEGMENT_WORDS);
+  /** The words of one command as read, before they are tidied: more than twice the most that are read are cut off, and none are read once the line's total is gone. */
+  within(raw: string[]): string[] {
+    return this.words < 0 ? [] : this.cut(raw, 2 * MAX_SEGMENT_WORDS);
+  }
+
+  /**
+   * The words of one command, tidied by `tidy` and cut to the most that are read, then charged to the line's
+   * total; undefined when the total is gone. The raw words are cut first, so a tidy pass never walks a word
+   * list the cut would throw away.
+   */
+  segment(raw: string[], tidy: (words: string[]) => string[]): string[] | undefined {
+    const kept = this.cut(tidy(this.within(raw)), MAX_SEGMENT_WORDS);
     return this.spend(kept.length) ? kept : undefined;
   }
 

@@ -317,8 +317,8 @@ export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || nam
  * or a wrapper, so it gives one reading for each, and the rest of the line is read as a command again.
  */
 export function invocations(segment: string[], scan: Scan = new Scan(), chain = 0): Invocation[] {
-  const words = scan.segment(
-    withoutRedirections(afterLabel(segment).map(closed).map(opened)).filter((w) => w !== ""),
+  const words = scan.segment(segment, (raw) =>
+    withoutRedirections(afterLabel(raw).map(closed).map(opened)).filter((w) => w !== ""),
   );
   if (!words) return [];
   const { at, sudo, xargs } = programStart(words);
