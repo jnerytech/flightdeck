@@ -114,6 +114,48 @@ describe("conexoes-ui: the form", () => {
     expect(save().disabled).toBe(false);
   });
 
+  test("a port that is not a whole number from 1 to 65535 is flagged and blocks the save (#3705)", async () => {
+    const { d } = await open({ targets: [] });
+    await click("Novo destino");
+    await fill("Nome", "x");
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    const save = () =>
+      screen.queryByRole("button", { name: "Salvar destino" }) as HTMLButtonElement;
+    for (const bad of ["abc", "0", "70000", "-1"]) {
+      await fill("Porta", bad);
+      expect(screen.queryByText("Use um número inteiro de 1 a 65535.")).not.toBeNull();
+      expect(screen.queryByText("Corrija os campos marcados para salvar.")).not.toBeNull();
+      expect(save().disabled).toBe(true);
+    }
+    await fill("Porta", "2222");
+    expect(screen.queryByText("Use um número inteiro de 1 a 65535.")).toBeNull();
+    expect(save().disabled).toBe(false);
+    await click("Salvar destino");
+    expect(d.sent("ssh.save").map((s) => s.port)).toEqual([2222]);
+  });
+
+  test("a keep-alive that is not a whole number of 0 or more is flagged, and an empty one is allowed (#3705)", async () => {
+    const { d } = await open({ targets: [] });
+    await click("Novo destino");
+    await fill("Nome", "x");
+    await fill("Host", "x.example.com");
+    await fill("Usuário", "me");
+    const save = () =>
+      screen.queryByRole("button", { name: "Salvar destino" }) as HTMLButtonElement;
+    for (const bad of ["abc", "-1", "1.5", "99999999999999999999"]) {
+      await fill("Manter a conexão viva (segundos)", bad);
+      expect(
+        screen.queryByText("Use um número inteiro de 0 ou mais, ou deixe em branco."),
+      ).not.toBeNull();
+      expect(save().disabled).toBe(true);
+    }
+    await fill("Manter a conexão viva (segundos)", "");
+    expect(save().disabled).toBe(false);
+    await click("Salvar destino");
+    expect(d.sent("ssh.save").map((s) => s.options)).toEqual([{}]);
+  });
+
   test("Editar opens the destino filled in and saves the change under the same id", async () => {
     const { d } = await open();
     await click("Editar vps");

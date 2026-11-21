@@ -194,5 +194,7 @@ export function sshDaemon(cleanups: Array<() => unknown>, options: SshDaemonOpti
       for (const ws of sockets) ws.send(JSON.stringify(frame));
     },
     sent: (type: string) => commands.filter((c) => c.type === type).map((c) => c.payload),
+    /** Closes the daemon and every connection to it: the host goes offline. */
+    stop: () => server.stop(true),
   };
 }
