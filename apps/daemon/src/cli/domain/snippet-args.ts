@@ -91,7 +91,7 @@ const FLAG_VERBS: Array<[flag: string, given: (args: CliArgs) => boolean, verbs:
   [
     "--project-path",
     (a) => a.projectPath !== undefined,
-    ["list", "get", "render", "save", "trust"],
+    ["list", "get", "render", "save", "remove", "favorite", "trust", "use"],
   ],
 ];
 
