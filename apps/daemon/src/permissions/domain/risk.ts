@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
 import { AGENTCFG_RULES } from "./agentcfg-risk.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
+import { CHANGES_RULES } from "./changes-risk.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
@@ -473,6 +474,7 @@ const DANGEROUS: Array<{
   ...PROJECT_RULES,
   ...AGENTCFG_RULES,
   ...BOARDSYNC_RULES,
+  ...CHANGES_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>
