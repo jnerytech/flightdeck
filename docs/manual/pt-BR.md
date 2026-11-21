@@ -62,75 +62,9 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [Como funciona](pt-BR/flightdeckd-claude-and-the-channel.md#como-funciona)
 - [Por que a extensão do VS Code fica de fora](pt-BR/flightdeckd-claude-and-the-channel.md#por-que-a-extensão-do-vs-code-fica-de-fora)
 
-## Comandos do flightdeckd: host, sessions, requests, approve e send
+## Comandos do flightdeckd
 
-[Ler o capítulo.](pt-BR/flightdeckd-commands.md) Suas seções:
-
-- [O que todos têm em comum](pt-BR/flightdeckd-commands.md#o-que-todos-têm-em-comum)
-- [fd host](pt-BR/flightdeckd-commands.md#fd-host)
-- [fd sessions](pt-BR/flightdeckd-commands.md#fd-sessions)
-- [fd requests](pt-BR/flightdeckd-commands.md#fd-requests)
-- [fd approve e fd deny](pt-BR/flightdeckd-commands.md#fd-approve-e-fd-deny)
-- [fd send](pt-BR/flightdeckd-commands.md#fd-send)
-
-## Comandos do flightdeckd: uma sessão
-
-[Ler o capítulo.](pt-BR/flightdeckd-session-commands.md) Suas seções:
-
-- [fd session](pt-BR/flightdeckd-session-commands.md#fd-session)
-
-## Comandos do flightdeckd: destinos ssh
-
-[Ler o capítulo.](pt-BR/flightdeckd-ssh-commands.md) Suas seções:
-
-- [fd ssh](pt-BR/flightdeckd-ssh-commands.md#fd-ssh)
-
-## Comandos do flightdeckd: arquivos de configuração de agentes
-
-[Ler o capítulo.](pt-BR/flightdeckd-agentcfg-commands.md) Suas seções:
-
-- [fd agentcfg](pt-BR/flightdeckd-agentcfg-commands.md#fd-agentcfg)
-
-## Comandos do flightdeckd: terminais
-
-[Ler o capítulo.](pt-BR/flightdeckd-terminal-commands.md) Suas seções:
-
-- [fd terminal](pt-BR/flightdeckd-terminal-commands.md#fd-terminal)
-
-## Comandos do flightdeckd: a vigia de PR de um card
-
-[Ler o capítulo.](pt-BR/flightdeckd-watch-commands.md) Suas seções:
-
-- [fd watch](pt-BR/flightdeckd-watch-commands.md#fd-watch)
-
-## Comandos do flightdeckd: a sincronização de quadro de um projeto
-
-[Ler o capítulo.](pt-BR/flightdeckd-boardsync-commands.md) Suas seções:
-
-- [fd boardsync](pt-BR/flightdeckd-boardsync-commands.md#fd-boardsync)
-
-## Comandos do flightdeckd: os comentários de revisão
-
-[Ler o capítulo.](pt-BR/flightdeckd-review-commands.md) Suas seções:
-
-- [fd review](pt-BR/flightdeckd-review-commands.md#fd-review)
-- [Escrever os comentários](pt-BR/flightdeckd-review-commands.md#escrever-os-comentários)
-
-## Comandos do flightdeckd: o ambiente de execução de um cartão
-
-[Ler o capítulo.](pt-BR/flightdeckd-runenv-commands.md)
-
-## Comandos do flightdeckd: as mudanças de uma sessão, de um cartão, de um terminal ou de um projeto
-
-[Ler o capítulo.](pt-BR/flightdeckd-changes-commands.md)
-
-## Comandos do flightdeckd: os servidores MCP de um projeto
-
-[Ler o capítulo.](pt-BR/flightdeckd-mcp-commands.md)
-
-## Comandos do flightdeckd: a biblioteca de documentos de um projeto
-
-[Ler o capítulo.](pt-BR/flightdeckd-knowledge-commands.md)
+[Leia o índice.](pt-BR/flightdeckd-command-index.md) Ele lista um capítulo para cada grupo de comandos do `flightdeckd`: host, sessions, requests, approve e send, uma sessão, ssh, arquivos de configuração de agentes, terminais, a vigia de PR, a sincronização de quadro, os comentários de revisão, o ambiente de execução, as mudanças, os servidores MCP e a biblioteca de documentos.
 
 ## Aprovações e permitir sempre
 
