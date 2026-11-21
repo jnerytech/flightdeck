@@ -40,23 +40,25 @@ export function takeMcpFlags(args: CliArgs): void {
   delete args.terminalDisable;
 }
 
-const CONFIRMED = ["test", "save", "remove", "toggle"];
+const CONFIRMED = new Set(["test", "save", "remove", "toggle"]);
 const ONLY = "this flag only applies to flightdeckd mcp";
 
-/** What is wrong with the `mcp` flags and verbs: each flag belongs to its verbs, and the server takes none. */
-export function mcpProblem(args: CliArgs): string | undefined {
-  if (args.command !== "mcp") return undefined;
-  const verb = args.action;
+/** Each flag belongs to its verbs: `--confirm` to the four that change something, `--session` and the switch to toggle. */
+function flagProblem(args: CliArgs, verb: CliArgs["action"]): string | undefined {
   const switchFlag = args.mcpEnabled ? "--enable" : "--disable";
-  if (args.confirm !== undefined && !CONFIRMED.includes(verb ?? ""))
+  if (args.confirm !== undefined && !CONFIRMED.has(verb ?? ""))
     return `--confirm: ${ONLY} test, remove, save and toggle`;
   if (args.session !== undefined && verb !== "toggle") return `--session: ${ONLY} toggle`;
   if (args.mcpEnabled !== undefined && verb !== "toggle") return `${switchFlag}: ${ONLY} toggle`;
-  if (verb === undefined) {
-    if (args.json) return "--json: this flag only applies to flightdeckd mcp list, status and test";
-    if (args.host !== undefined)
-      return "--host: this flag only applies to flightdeckd mcp list, status and test";
-  }
+  if (verb !== undefined) return undefined;
+  if (args.json) return "--json: this flag only applies to flightdeckd mcp list, status and test";
+  if (args.host !== undefined)
+    return "--host: this flag only applies to flightdeckd mcp list, status and test";
+  return undefined;
+}
+
+/** What a verb that changes the project's `.mcp.json` asks for before it runs: `--confirm`, and the switch for toggle. */
+function confirmProblem(args: CliArgs, verb: CliArgs["action"]): string | undefined {
   if (verb === "remove" && !args.confirm)
     return "mcp remove deletes the server from the project's .mcp.json: pass --confirm";
   if (verb === "save" && !args.confirm)
@@ -67,6 +69,12 @@ export function mcpProblem(args: CliArgs): string | undefined {
     return "mcp toggle --enable lets the server run in the project's sessions: pass --confirm";
   if (!args.mcpEnabled && args.confirm) return "--confirm: only with mcp toggle --enable";
   return undefined;
+}
+
+/** What is wrong with the `mcp` flags and verbs: each flag belongs to its verbs, and the server takes none. */
+export function mcpProblem(args: CliArgs): string | undefined {
+  if (args.command !== "mcp") return undefined;
+  return flagProblem(args, args.action) ?? confirmProblem(args, args.action);
 }
 
 /** What the mcp runner takes from the parsed arguments (checked by `readMcp`). */

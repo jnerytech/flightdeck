@@ -25,6 +25,8 @@ export async function stopAll(): Promise<void> {
 export const CLOSE = Symbol("close");
 /** A handler that answers with this closes with 4401, as a daemon does when the token is revoked mid-command. */
 export const REVOKE = Symbol("revoke");
+/** A handler that answers with this acks the command with no data at all, as a daemon older than the command's answer does. */
+export const EMPTY_ACK = Symbol("empty-ack");
 
 export function fakeDaemon(
   handlers: Handlers,
@@ -63,6 +65,8 @@ export function fakeDaemon(
             : await handlers[type]?.(payload, { push: (frame) => ws.send(JSON.stringify(frame)) });
         if (answer === CLOSE) return void ws.close();
         if (answer === REVOKE) return void ws.close(4401);
+        if (answer === EMPTY_ACK)
+          return void ws.send(JSON.stringify({ type: "ack", id, ok: true }));
         if (answer === undefined && type !== "hello") return; // a daemon that never answers
         // A refusal is `{ error: { code, message } }`; a result may carry an `error` string (ssh.test).
         const said = (answer as { error?: unknown } | undefined)?.error;

@@ -27,9 +27,9 @@ const SNIPPET_ACTIONS = [
 const NEW_VERBS: string[] = SNIPPET_ACTIONS.filter((verb) => verb !== "list" && verb !== "get");
 const NEW_VERB_SET = new Set(NEW_VERBS);
 /** The verbs that change what the host keeps or runs: each needs `--confirm`. */
-const WRITES = ["save", "remove", "trust", "use"];
+const WRITES = new Set(["save", "remove", "trust", "use"]);
 /** The verbs that take the snippet's name. */
-const NAMED = ["get", "render", "save", "remove", "favorite", "use"];
+const NAMED = new Set(["get", "render", "save", "remove", "favorite", "use"]);
 /** `snippets.importHistory` takes at most this many candidates. */
 const MOST_HISTORY = 200;
 
@@ -41,7 +41,7 @@ export function readSnippet(args: CliArgs, reader: ArgReader): void {
   args.command = "snippet";
   const action = subAction(reader, SNIPPET_ACTIONS, "invalid snippet action");
   args.action = action;
-  if (NAMED.includes(action)) args.snippetName = operand(reader, "the snippet name");
+  if (NAMED.has(action)) args.snippetName = operand(reader, "the snippet name");
   if (action === "parse") args.snippetFile = operand(reader, "the file (or - for stdin)");
 }
 
@@ -84,7 +84,7 @@ export const OFF_FLAG: Handler = (args, reader, value) =>
 FLAGS.add(OFF_FLAG);
 
 /** The flags another command takes too. */
-const SHARED = ["--hash", "--tag", "--project-path"];
+const SHARED = new Set(["--hash", "--tag", "--project-path"]);
 
 /** Each flag of the snippet verbs, with the verbs it belongs to. */
 const FLAG_VERBS: Array<[flag: string, given: (args: CliArgs) => boolean, verbs: string[]]> = [
@@ -105,21 +105,23 @@ const FLAG_VERBS: Array<[flag: string, given: (args: CliArgs) => boolean, verbs:
   ],
 ];
 
-/** What is wrong with the snippet flags, or undefined: each flag belongs to its verbs, and a verb that writes needs --confirm. */
-export function snippetProblem(args: CliArgs): string | undefined {
-  const snippet = args.command === "snippet";
-  const action = snippet ? (args.action as string) : "";
-  const only = (flag: string, verbs: string) => `${flag}: this flag only applies to ${verbs}`;
+const only = (flag: string, verbs: string) => `${flag}: this flag only applies to ${verbs}`;
+
+/** A flag given to a verb that does not take it. */
+function strayFlag(args: CliArgs, snippet: boolean, action: string): string | undefined {
   for (const [flag, given, verbs] of FLAG_VERBS) {
     if (!given(args) || verbs.includes(action)) continue;
     // `--hash`, `--tag` and `--project-path` are also another command's, which checks them.
-    if (snippet || !SHARED.includes(flag))
-      return only(flag, `flightdeckd snippet ${verbs.join(", ")}`);
+    if (snippet || !SHARED.has(flag)) return only(flag, `flightdeckd snippet ${verbs.join(", ")}`);
   }
-  if (!snippet) return undefined;
+  return undefined;
+}
+
+/** A verb that writes needs `--confirm`, and `--confirm` belongs to the verbs that write. */
+function confirmProblem(args: CliArgs, action: string): string | undefined {
   const confirmed = args.confirm !== undefined;
   const writes =
-    WRITES.includes(action) || (action === "import-history" && args.snippetSelect !== undefined);
+    WRITES.has(action) || (action === "import-history" && args.snippetSelect !== undefined);
   if (confirmed && !writes)
     return only(
       "--confirm",
@@ -127,10 +129,19 @@ export function snippetProblem(args: CliArgs): string | undefined {
     );
   if (writes && !confirmed)
     return `snippet ${action}${action === "import-history" ? " --select" : ""} needs --confirm`;
-  if (args.host !== undefined && !NEW_VERB_SET.has(action))
-    return only("--host", `flightdeckd snippet ${NEW_VERBS.join(", ")}`);
-  if (args.json && !NEW_VERB_SET.has(action))
-    return only("--json", `flightdeckd snippet ${NEW_VERBS.join(", ")}`);
+  return undefined;
+}
+
+/** `--host` and `--json` belong to the verbs that have a daemon request of their own. */
+function remoteFlagProblem(args: CliArgs, action: string): string | undefined {
+  if (NEW_VERB_SET.has(action)) return undefined;
+  if (args.host !== undefined) return only("--host", `flightdeckd snippet ${NEW_VERBS.join(", ")}`);
+  if (args.json) return only("--json", `flightdeckd snippet ${NEW_VERBS.join(", ")}`);
+  return undefined;
+}
+
+/** `--limit`, `--select` and `--reveal` belong to `import-history`, and `--select` takes the place of the other two. */
+function historyProblem(args: CliArgs, action: string): string | undefined {
   if (args.limit !== undefined) {
     if (action !== "import-history") return only("--limit", "flightdeckd snippet import-history");
     if (args.limit > MOST_HISTORY) return `--limit: at most ${MOST_HISTORY}`;
@@ -141,7 +152,21 @@ export function snippetProblem(args: CliArgs): string | undefined {
     if (args.limit !== undefined) return "--limit: this flag does not apply with --select";
     if (args.snippetReveal !== undefined) return "--reveal: this flag does not apply with --select";
   }
-  return missingOperand(args, action);
+  return undefined;
+}
+
+/** What is wrong with the snippet flags, or undefined: each flag belongs to its verbs, and a verb that writes needs --confirm. */
+export function snippetProblem(args: CliArgs): string | undefined {
+  const snippet = args.command === "snippet";
+  const action = snippet ? (args.action as string) : "";
+  const stray = strayFlag(args, snippet, action);
+  if (stray !== undefined || !snippet) return stray;
+  return (
+    confirmProblem(args, action) ??
+    remoteFlagProblem(args, action) ??
+    historyProblem(args, action) ??
+    missingOperand(args, action)
+  );
 }
 
 /** `save`, `trust` and `use` need more than a name: what is missing says so. */

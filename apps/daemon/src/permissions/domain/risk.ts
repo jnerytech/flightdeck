@@ -163,11 +163,14 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
   return { sub: args[i] ?? "", rest: args.slice(i + 1) };
 }
 
-/** Whether the command runs `fd`/`flightdeckd` with one of `verbs`, directly or through a runtime or a shell given the text. */
+/** Whether the command runs `fd`/`flightdeckd` with one of `verbs` (a noun, or `noun verb`), directly or through a runtime or a shell given the text. */
 function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string[]): boolean {
   const words = args.flatMap((a) => unquoted(a).split(/\s+/)).filter(Boolean);
   if (isCliProgram(prog))
-    return shellReadings(args).some((own) => verbs.includes(flightdeckWords(own)[0] ?? ""));
+    return shellReadings(args).some((own) => {
+      const [noun = "", verb = ""] = flightdeckWords(own);
+      return verbs.includes(noun) || verbs.includes(`${noun} ${verb}`);
+    });
   if (!RUNNERS.includes(prog)) return false;
   const runsCli = words.some((_, i) => startsCli(words, i));
   return runsCli && words.some((w) => verbs.includes(w));
@@ -176,10 +179,11 @@ function runsFlightdeckVerb(prog: string, args: string[], verbs: readonly string
 /**
  * The person's answer to a permission request is theirs: a session that runs `fd approve --hold` from
  * its own shell, directly or through a runtime or a shell, would answer for them (#3425). This is a
- * heuristic over the command text: the daemon cannot tell who holds the shell.
+ * heuristic over the command text: the daemon cannot tell who holds the shell. `vault deny` refuses a
+ * person's request for a secret the same way (#3753).
  */
 const answersARequest = (prog: string, args: string[]) =>
-  runsFlightdeckVerb(prog, args, ["approve", "deny"]);
+  runsFlightdeckVerb(prog, args, ["approve", "deny", "vault deny"]);
 
 /** `approvers enroll|reset` decide which devices may approve (#3439): a session must not run them for the person. */
 const changesApprovers = (prog: string, args: string[]) =>
