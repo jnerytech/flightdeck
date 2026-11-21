@@ -2,6 +2,8 @@
  * Issue #3499: a shell command read as the program it runs and its arguments, and the Flightdeck CLI
  * as one of those programs. Pure: the risk rules in `risk.ts` ask here what a segment runs.
  */
+import { Scan } from "./scan.ts";
+
 /** A prefix assignment (`A=1`, `A+=1`, `A[0]=1`): it comes before the program and is not it. */
 const ASSIGNMENT = /^\w+(?:\[[^\]]*\])?\+?=/;
 
@@ -324,10 +326,11 @@ export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || nam
  * like (#3499). A program that is a variable (`$FD`, `"${BIN}"`) cannot be resolved: it may be the CLI, a shell
  * or a wrapper, so it gives one reading for each, and the rest of the line is read as a command again.
  */
-export function invocations(segment: string[]): Invocation[] {
-  const words = withoutRedirections(afterLabel(segment).map(closed).map(opened)).filter(
-    (w) => w !== "",
+export function invocations(segment: string[], scan: Scan = new Scan(), chain = 0): Invocation[] {
+  const words = scan.segment(segment, (raw) =>
+    withoutRedirections(afterLabel(raw).map(closed).map(opened)).filter((w) => w !== ""),
   );
+  if (!words) return [];
   const { at, sudo, xargs } = programStart(words);
   const fed = xargs ? { xargs: true } : {};
   const written = words[at] ?? "";
@@ -348,10 +351,13 @@ export function invocations(segment: string[]): Invocation[] {
           { prog: escaped, args, sudo, unresolved: false, ...fed },
         ];
   }
+  const rest = scan.afterVariable(args);
   return [
-    { prog: "flightdeckd", args, sudo, unresolved: true, ...hidden, ...fed },
-    { prog: "sh", args, sudo, unresolved: true },
-    ...invocations(args).map((i) => ({ ...i, sudo: i.sudo || sudo })),
+    { prog: "flightdeckd", args: rest, sudo, unresolved: true, ...hidden, ...fed },
+    { prog: "sh", args: rest, sudo, unresolved: true },
+    ...(scan.chained(chain)
+      ? invocations(rest, scan, chain + 1).map((i) => ({ ...i, sudo: i.sudo || sudo }))
+      : []),
   ];
 }
 
