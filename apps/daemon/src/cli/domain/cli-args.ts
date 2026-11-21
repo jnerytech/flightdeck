@@ -98,6 +98,7 @@ export interface CliArgs {
     | "resume"
     | "publish-agent"
     | "trust"
+    | "toggle"
     | "diff"
     | "spec"
     | "review"
@@ -216,6 +217,8 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
+  /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
+  mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */
   terminalId?: string;
   /** `terminal open|open-session --cols <n> --rows <n>`: the size the terminal opens at. */

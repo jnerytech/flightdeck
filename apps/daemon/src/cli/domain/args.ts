@@ -15,7 +15,7 @@ import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
-import { mcpProblem, readMcp } from "./mcp-args.ts";
+import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
 import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
@@ -683,12 +683,13 @@ function refuseStrayFlags(args: CliArgs): void {
     );
   takeTerminalFlags(args);
   takeWatchFlags(args);
+  takeMcpFlags(args);
   if (
-    !["requests", "message", "autoapprove", "vault"].includes(args.command) &&
+    !["requests", "message", "autoapprove", "vault", "mcp"].includes(args.command) &&
     args.session !== undefined
   )
     throw new Error(
-      `--session: this flag only applies to flightdeckd requests, message, autoapprove and vault\n${USAGE}`,
+      `--session: this flag only applies to flightdeckd requests, message, autoapprove, vault and mcp toggle\n${USAGE}`,
     );
   // `history`, `vault` and `snippet` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts).
   if (
