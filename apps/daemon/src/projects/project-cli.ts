@@ -143,9 +143,9 @@ export function runProjectCli(
           });
           return args.json ? json(answer) : said(...appliedLines(answer));
         } catch (error) {
-          const said = error instanceof DaemonRefusal ? REFUSALS[error.reason ?? ""] : undefined;
-          if (said === undefined) throw error;
-          return failure(1, `${args.path} ${said}`);
+          const reason = error instanceof DaemonRefusal ? error.reason : undefined;
+          if (reason === undefined || !Object.hasOwn(REFUSALS, reason)) throw error;
+          return failure(1, `${args.path} ${REFUSALS[reason]}`);
         }
       }
       if (args.action === "trust-state") {

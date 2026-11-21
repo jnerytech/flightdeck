@@ -82,7 +82,7 @@ const fieldsOf = (args: CliArgs): ProjectFields => {
   return args.projectFields;
 };
 
-/** The flags of `project harness-preview`, for the parser's table of flags. */
+/** The flags only `project` verbs take (`--parts`, `--template`, `--digests`, `--reformat`), for the parser's table of flags. */
 export const PROJECT_FLAGS: Record<string, Handler> = {
   "--digests": (args, _reader, value) => {
     args.projectDigests = value();

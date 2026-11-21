@@ -233,4 +233,4 @@ resposta de `harness-apply --json` e rode `fd project harness-commit <pasta> --d
 fazer o commit dos arquivos gravados em uma branch nova; sua branch, seu índice e seus arquivos ficam como estão.
 `--confirm` é só uma opção digitada, não a sua aprovação: um host com dispositivo cadastrado recusa `harness-apply` pelo
 terminal e diz para fazer no app, e uma sessão que executa qualquer um dos dois pelo shell para até você aprovar.
-Confiar numa pasta (`project.trust.set`) continua só no app.
+`harness-commit` não pede assinatura do dispositivo, então só a regra do shell o protege. Um CLAUDE.md rascunhado com `harness-draft` e confiar numa pasta (`project.trust.set`) continuam só no app.

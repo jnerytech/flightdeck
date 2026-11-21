@@ -369,7 +369,7 @@ export interface CliArgs {
   /** `plugins detail|preview|preview-update <plugin>`, `plugins preview --dir <folder>` (#3516). */
   plugin?: string;
   pluginDir?: string;
-  /** `project <verb> <folder>...`, `project harness-preview --parts a,b [--template id]` (#3515). */
+  /** `project <verb> <folder>...`, `project harness-preview|harness-apply --parts a,b [--template id]` (#3515). */
   projectPaths?: string[];
   projectParts?: string[];
   projectTemplate?: string;

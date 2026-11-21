@@ -224,5 +224,6 @@ with another layout). The host makes the proposals again and refuses with `harne
 the preview. Save the answer of `harness-apply --json` and run `fd project harness-commit <folder> --digests
 applied.json --confirm` to commit the files it wrote on a new branch; your own branch, index and files stay as they are.
 `--confirm` is a typed flag, not your approval: a host with a device enrolled refuses `harness-apply` from a terminal and
-says to do it in the app, and a session that runs either verb from its shell is stopped for your approval. Trusting a
-folder (`project.trust.set`) stays in the app.
+says to do it in the app, and a session that runs either verb from its shell is stopped for your approval. `harness-commit` takes
+no device signature, so only the shell rule guards it. A CLAUDE.md drafted with `harness-draft`, and trusting a
+folder (`project.trust.set`), stay in the app.

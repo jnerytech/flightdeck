@@ -36,5 +36,9 @@ Without a key enrolled the typed `--confirm` is all a person at a terminal has. 
 
 ## Not done
 
-`project.trust.set` (above). The left-out fields of #3515 (`issues`, `personaByColumn`, `contractByColumn`,
+A CLAUDE.md drafted with `harness-draft` cannot be applied from the CLI: the host holds a draft by its digest and
+applies it only when the request names that digest, and the CLI sends the preview's digests. Applying a draft stays
+in the app until a flag for it is asked for.
+
+Also `project.trust.set` (see Decision). The left-out fields of #3515 (`issues`, `personaByColumn`, `contractByColumn`,
 `roiSignals`) belong to other verbs and are not touched here.
