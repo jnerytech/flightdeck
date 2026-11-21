@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import { AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
-import { Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
+import { ErrorState, Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -56,7 +56,13 @@ export function WorkflowTemplates(
   }, [shown, restore]);
 
   const load = async () => {
-    const result = await store.hostCommand(hostId, "workflow.templates", { projectId });
+    // The dialog has its own error and Try again (the toast's retry would drop the answer).
+    const result = await store.hostCommand(
+      hostId,
+      "workflow.templates",
+      { projectId },
+      { retry: false },
+    );
     setFailed(result === null);
     setTemplates(result?.templates ?? null);
   };
@@ -97,7 +103,13 @@ export function WorkflowTemplates(
             {t(canAdd ? "workflowsUi.templates.introAdd" : "workflowsUi.templates.intro")}
           </DialogDescription>
         </DialogHeader>
-        {failed && <InlineNotice tone="error">{t("workflowsUi.templates.failed")}</InlineNotice>}
+        {failed && (
+          <ErrorState
+            message={t("workflowsUi.templates.failed")}
+            retryLabel={t("workflowsUi.retry")}
+            onRetry={() => void load()}
+          />
+        )}
         {!failed && templates === null && (
           <LoadingState label={t("workflowsUi.templates.loading")} />
         )}
