@@ -38,10 +38,10 @@ export interface RulesRefusal {
   items?: readonly RuleIssue[];
 }
 
-/** The refusal a person's "no" in the device's dialog is: the host would have refused the set for the missing proof. */
 /** The signer failed instead of answering. */
 type ProofRefused = { kind: "refused"; message: string };
 
+/** The refusal a person's "no" in the device's dialog is: the host would have refused the set for the missing proof. */
 const DECLINED: RulesRefusal = {
   ok: false,
   code: "approval_proof_required",
