@@ -18,7 +18,6 @@ import { changesCliArgs } from "./domain/changes-args.ts";
 import { checkpointsCliArgs, traceCliArgs } from "./domain/checkpoints-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
-import { issuesCliArgs } from "./domain/issues-args.ts";
 import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
 import { memoryCliArgs } from "./domain/memory-args.ts";
@@ -32,12 +31,12 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
-import { worktreeCliArgs } from "./domain/worktree-args.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 import { liveStream, watchStop } from "./watch-stop.ts";
+import { issuesRun, worktreeRun } from "./worktree-run.ts";
 
 /**
  * The commands of `flightdeckd` that are not the daemon (issue #1593): what each prints and does.
@@ -646,12 +645,8 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   memory: (args, deps) =>
     import("../memory/index.ts").then((m) => askingWith(args, deps, memoryCliArgs, m.runMemoryCli)),
-  worktree: (args, deps) =>
-    import("../worktrees/index.ts").then((m) =>
-      askingWith(args, deps, worktreeCliArgs, m.runWorktreeCli),
-    ),
-  issues: (args, deps) =>
-    import("../issues/index.ts").then((m) => askingWith(args, deps, issuesCliArgs, m.runIssuesCli)),
+  worktree: (args, deps) => asking(args, deps, worktreeRun(args)),
+  issues: (args, deps) => asking(args, deps, issuesRun(args)),
   review: (args, deps) =>
     import("../review/index.ts").then((m) => askingWith(args, deps, reviewCliArgs, m.runReviewCli)),
   terminal: async (args, deps) => {
