@@ -44,17 +44,19 @@ export function stateLines(state: QuotaState): string[] {
 /** The line `watch` prints for a reading: the windows and the guard of `quota get`, on one line. */
 export const watchLine = (state: QuotaState): string => stateLines(state).join(" | ");
 
+/** When the window reaches 100%, or why it does not say. */
+function outlookOf(projection: QuotaHistory["projection"]): string {
+  if (!projection) return "no projection yet: it needs 3 samples of the window";
+  if (projection.exhaustsAt === null) return "does not reach 100% before it resets";
+  const resets = projection.resetsAt === null ? "" : ` (resets ${projection.resetsAt})`;
+  return `reaches 100% at ${projection.exhaustsAt}${resets}`;
+}
+
 /** The samples, the projection to 100% (or why there is none) and who spent the window. */
 export function historyLines(history: QuotaHistory): string[] {
-  const { projection } = history;
-  const outlook = !projection
-    ? "no projection yet: it needs 3 samples of the window"
-    : projection.exhaustsAt === null
-      ? "does not reach 100% before it resets"
-      : `reaches 100% at ${projection.exhaustsAt}${projection.resetsAt === null ? "" : ` (resets ${projection.resetsAt})`}`;
   return [
     `${history.window}, last ${history.hours} h: ${history.samples.length} samples`,
-    outlook,
+    outlookOf(history.projection),
     ...history.consumers.map(
       (c) => `${c.projectKey}  $${c.costUsd.toFixed(2)}  ${percent(c.share)}`,
     ),

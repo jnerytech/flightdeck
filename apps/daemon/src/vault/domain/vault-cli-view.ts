@@ -36,7 +36,8 @@ export type VaultCliArgs =
 
 /** One decision of `vault decisions`: when, which secret, who for what and where, how it went, and why. */
 export function decisionLine(d: VaultDecisionInfo): string {
-  const use = `${d.purpose}${d.action ? ` ${d.action}` : ""} on ${d.host}`;
+  const action = d.action ? ` ${d.action}` : "";
+  const use = `${d.purpose}${action} on ${d.host}`;
   const by = d.approver ? ` (${d.approver})` : "";
   return `${d.at}  ${d.secretId}  ${d.requester}  ${use}  ${d.decision}/${d.outcome}${by}  ${d.reason}`;
 }
