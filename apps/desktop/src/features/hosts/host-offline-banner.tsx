@@ -55,23 +55,32 @@ export function HostOfflineBanner(
   // How many copies landed: the live region says "Copied" once per press, even on the same command.
   const [copied, setCopied] = useState(0);
   const trying = useRef(false);
+  // How many times Reconnect now was pressed: a copy that resolves after one belongs to the old try.
+  const reconnects = useRef(0);
   const retry = host.retry;
   const connecting = host.status === "connecting";
   const kind = retry?.kind ?? "refused";
   const seconds = retry ? Math.max(0, Math.ceil((retry.nextRetryAt - now) / 1000)) : 0;
   const hint = offlineHint(kind, host.url, host.hostInfo?.os ?? null);
   const answered = asked !== null && !connecting && (retry?.lastTryAt ?? 0) > asked;
+  const waitingForAnswer = connecting && asked !== null;
+  const waiting = useRef(waitingForAnswer);
+  waiting.current = waitingForAnswer;
   const copy = (command: string) => {
-    // A copy during a try is not announced: the live region keeps the try's own words, then its answer.
-    const during = connecting;
+    // A copy made while Reconnect now waits for its answer, or before it was pressed, is not announced:
+    // the live region keeps the try's own words, then its answer.
+    const press = reconnects.current;
     void props
       .onCopy(command)
-      .then((landed) => landed && !during && setCopied((n) => n + 1))
+      .then(
+        (landed) =>
+          landed && press === reconnects.current && !waiting.current && setCopied((n) => n + 1),
+      )
       // A refusal is already reported by the store's own failure notice; the live region only confirms.
       .catch(() => {});
   };
   const status = (() => {
-    if (connecting && asked !== null) return t("hostOffline.connecting");
+    if (waitingForAnswer) return t("hostOffline.connecting");
     if (copied > 0) return t("hostOffline.copied");
     return answered ? t("hostOffline.still") : "";
   })();
@@ -104,6 +113,7 @@ export function HostOfflineBanner(
             size="sm"
             disabled={connecting}
             onClick={() => {
+              reconnects.current += 1;
               setAsked(retry?.lastTryAt ?? 0);
               setCopied(0);
               props.onReconnect();
