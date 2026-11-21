@@ -110,6 +110,17 @@ describe("flightdeckd worktree list (issue #3702)", () => {
     expect({ code: run.code, out: run.out }).toEqual({ code: 0, out: ["no worktrees"] });
   });
 
+  test("no worktree still says what the disk has left", async () => {
+    const daemon = fakeDaemon(
+      base({ "worktree.list": () => ({ worktrees: [], disks: RESULT.disks }) }),
+    );
+    const run = await flightdeckd(["worktree", "list"], daemon.port);
+    expect({ code: run.code, out: run.out }).toEqual({
+      code: 0,
+      out: ["no worktrees", "disk p1: 37.3 GB free of 93.1 GB"],
+    });
+  });
+
   test("a path or a branch that holds terminal controls cannot drive the terminal", async () => {
     const daemon = fakeDaemon(
       base({
@@ -163,6 +174,12 @@ describe("flightdeckd worktree arguments (issue #3702)", () => {
       host: "pi",
     });
     expect(parseArgs(["worktree", "list"]).worktreeProject).toBeUndefined();
+  });
+
+  test("--query is refused on worktree list, which has no text to look for", () => {
+    expect(() => parseArgs(["worktree", "list", "--query", "x"])).toThrow(
+      "this flag only applies to flightdeckd issues list",
+    );
   });
 
   test("an unknown worktree action is refused", () => {

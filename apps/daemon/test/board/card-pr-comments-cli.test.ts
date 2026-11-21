@@ -73,10 +73,23 @@ describe("flightdeckd card pr-comments (issue #3702)", () => {
     expect(callsOf(daemon, "pr.comments")).toEqual([{ cardId: "k1" }]);
   });
 
-  test("a comment with no association from the host is not marked external", async () => {
+  test("a comment with an identity and no association (Azure DevOps) is not marked external", async () => {
     const daemon = fakeDaemon(base());
     const run = await flightdeckd(["card", "pr-comments", "k1"], daemon.port);
     expect(run.out.filter((line) => line.includes("EXTERNAL")).length).toBe(1);
+    expect(run.out.find((line) => line.startsWith("c3"))?.includes("EXTERNAL")).toBe(false);
+  });
+
+  test("a comment with neither association nor identity is marked external, never trusted by default", async () => {
+    const daemon = fakeDaemon(
+      base({
+        "pr.comments": () => ({
+          comments: [comment({ id: "c9", authorAssociation: null, authorIdentity: null })],
+        }),
+      }),
+    );
+    const run = await flightdeckd(["card", "pr-comments", "k1"], daemon.port);
+    expect(run.out[0]?.includes("EXTERNAL")).toBe(true);
   });
 
   test("--json keeps every key of every comment", async () => {
