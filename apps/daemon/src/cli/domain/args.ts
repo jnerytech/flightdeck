@@ -50,6 +50,7 @@ import {
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
+import { readWorkflow, workflowProblem } from "./workflow-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
 export { USAGE } from "./usage.ts";
@@ -118,6 +119,7 @@ const HANDLERS: Record<string, Handler> = {
   channel: setCommand("channel"),
   mcp: readMcp,
   knowledge: readKnowledge,
+  workflow: readWorkflow,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {
@@ -746,6 +748,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     messageProblem(args) ??
     mcpProblem(args) ??
     knowledgeProblem(args) ??
+    workflowProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
     reviewProblem(args) ??

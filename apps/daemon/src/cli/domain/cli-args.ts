@@ -35,6 +35,7 @@ export interface CliArgs {
     | "askpass"
     | "mcp"
     | "knowledge"
+    | "workflow"
     | "statusline"
     | "action"
     | "snippet"
@@ -82,6 +83,8 @@ export interface CliArgs {
     | "feed"
     | "set-status"
     | "set-feed"
+    | "templates"
+    | "validate"
     | "enable"
     | "disable"
     | "enroll"
@@ -243,6 +246,8 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
+  /** `workflow list|templates <project>`, `validate <project> <name>`, `run|resume <run>` (#3628): the operands; `watch` has none. */
+  workflowWords?: string[];
   /** `knowledge <verb> <project>` (#3623): a project's name or id, or its folder. */
   knowledgeProject?: string;
   /** `knowledge set-status <project> <file> --status <status> --hash <hash>` and `create <project> <kind> <title>`. */

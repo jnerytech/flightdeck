@@ -84,7 +84,7 @@ describe("inbox-ui", () => {
     const { store } = await setup(ENTRIES);
     await open();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /Orçamento/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^(?!Marcar).*Orçamento/ }));
     });
     expect(store.getState().inbox.find((e) => e.id === "1")?.read).toBe(true);
     await waitFor(() =>
@@ -136,7 +136,7 @@ describe("inbox-ui", () => {
     };
     await open();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /PR em observação/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^(?!Marcar).*PR em observação/ }));
     });
     expect(opened).toEqual(["https://git.test/acme/api/pull/7"]);
   });

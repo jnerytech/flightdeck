@@ -93,7 +93,7 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     ]);
     const panel = await open();
     await act(async () => {
-      fireEvent.click(within(panel).getByRole("button", { name: /Sessão A/ }));
+      fireEvent.click(within(panel).getByRole("button", { name: /^(?!Marcar).*Sessão A/ }));
     });
     expect(store.getState().inbox.map((e) => [e.id, e.read])).toEqual([
       ["1", true],
@@ -112,7 +112,7 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     const panel = await open();
     const [first] = rows(panel) as [HTMLElement];
     await act(async () => {
-      fireEvent.click(within(first).getByRole("button", { name: "Marcar como lida" }));
+      fireEvent.click(within(first).getByRole("button", { name: "Marcar Sessão A como lida" }));
     });
     expect(store.getState().inbox.map((e) => [e.id, e.read])).toEqual([
       ["1", true],
@@ -126,7 +126,7 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     expect(again).toEqual(["Sessão B", "Sessão A"]);
     expect(
       within(rows(screen.getByRole("dialog"))[1] as HTMLElement).queryByRole("button", {
-        name: "Marcar como lida",
+        name: "Marcar Sessão A como lida",
       }),
     ).toBeNull();
   });
@@ -153,7 +153,7 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     expect(collapsed.textContent).toContain("3 vezes");
     expect(bell()?.getAttribute("aria-label")).toBe("Notificações, 2 não lidas");
     await act(async () => {
-      fireEvent.click(within(collapsed).getByRole("button", { name: /Sessão A/ }));
+      fireEvent.click(within(collapsed).getByRole("button", { name: /^(?!Marcar).*Sessão A/ }));
     });
     expect(store.getState().inbox.map((e) => [e.id, e.read])).toEqual([
       ["1", true],
@@ -188,7 +188,7 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     const [gone] = rows(panel) as [HTMLElement];
     expect(gone.textContent).toContain("O que isto citava não existe mais.");
     await act(async () => {
-      fireEvent.click(within(gone).getByRole("button", { name: "Descartar" }));
+      fireEvent.click(within(gone).getByRole("button", { name: "Descartar Card X" }));
     });
     expect(store.getState().inbox.map((e) => e.id)).toEqual(["2"]);
   });
