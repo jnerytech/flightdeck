@@ -10,7 +10,7 @@ import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import { refuseCardFlags } from "./card-args.ts";
-import { readChanges } from "./changes-args.ts";
+import { CHANGES_FLAGS, changesProblem, readChanges, takeChangesFlags } from "./changes-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
@@ -571,6 +571,7 @@ const HANDLERS: Record<string, Handler> = {
   ...WATCH_FLAGS,
   ...BOARDSYNC_FLAGS,
   ...REVIEW_FLAGS,
+  ...CHANGES_FLAGS,
   "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
@@ -678,12 +679,14 @@ function refuseStrayFlags(args: CliArgs): void {
   if (
     args.answerMessage !== undefined &&
     !["approve", "deny"].includes(args.command) &&
-    !(args.command === "card" && args.action === "merge-local")
+    !(args.command === "card" && args.action === "merge-local") &&
+    args.command !== "changes"
   )
     throw new Error(
       `--message: this flag only applies to flightdeckd approve and deny, and to card merge-local\n${USAGE}`,
     );
   takeTerminalFlags(args);
+  takeChangesFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);
   if (
@@ -737,6 +740,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     boardsyncProblem(args) ??
     reviewProblem(args) ??
     runenvProblem(args) ??
+    changesProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
