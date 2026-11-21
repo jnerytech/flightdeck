@@ -198,6 +198,12 @@ describe("risk: a session rewriting the message rules from its shell (issue #362
         ["fd message rules --json && fd message rules-set --policy-file p.json --confirm", REASON],
         ['bash -c "fd message rules-set --policy-file p.json --confirm"', REASON],
         ["bunx flightdeckd message rules-set --policy-file p.json --confirm", REASON],
+        [
+          "bun run apps/daemon/src/bin.ts message --host h rules-set --policy-file p --confirm",
+          REASON,
+        ],
+        ["bun run apps/daemon/src/bin.ts message --json rules-set --policy-file p", REASON],
+        ["bunx flightdeckd message --config c.json rules-set --policy-file p --confirm", REASON],
       ]),
     ).toEqual([]);
   });
@@ -223,6 +229,7 @@ describe("risk: a session rewriting the message rules from its shell (issue #362
         ["V=rules-set; fd message $V --policy-file p.json --confirm", HIDDEN],
         ["fd message rules-* --policy-file p.json", HIDDEN],
         ["bash -c 'fd message $V'", HIDDEN],
+        ["fd message $V", HIDDEN],
       ]),
     ).toEqual([]);
   });
