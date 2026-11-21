@@ -458,6 +458,10 @@ export interface CliArgs {
   budgetAction?: "notify" | "queue";
   /** `costs session|card|run <id>`: the Claude session, card or run id. */
   costsId?: string;
+  /** `costs sessions <id>...`: the Claude session ids. */
+  costsIds?: string[];
+  /** `telemetry session <id>`: the Claude session id. */
+  telemetryId?: string;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */

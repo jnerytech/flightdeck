@@ -129,7 +129,7 @@ estimated cost, tokens and turns.
   above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
 
-- **From a shell:** `fd usage --days 30` prints the same rows, one line per day and project; `fd costs summary --from <day> --to <day>` prints the totals and the groups (see [flightdeckd commands](flightdeckd-commands.md#fd-costs-and-fd-roi)).
+- **From a shell:** `fd usage --days 30` prints the same rows, one line per day and project; `fd costs summary --from <day> --to <day>` prints the totals and the groups (see [flightdeckd commands](flightdeckd-commands.md#fd-costs-and-fd-roi)). `fd costs sessions <session id>...` prints one line per session, with its cost in dollars (`$0.00` for one the host has no cost for), for up to 500 sessions in one call; add `--host <name>` for a paired host or `--json` for the daemon's answer.
 
 ## Costs
 

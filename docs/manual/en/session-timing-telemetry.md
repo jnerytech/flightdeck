@@ -36,6 +36,7 @@ tool, the time Claude waited for you to answer a permission, an API error.
   and the slowest tools (average, maximum, calls). A notice appears when a session's cost in the
   telemetry is far (over 10% and US$ 0.05) from the one computed from the transcripts, for the
   stretch of the session the exporter was on.
+- **From a shell:** `fd telemetry session <session id>` prints each prompt of a session with one line per step (kind, time, tool, duration, cost, whether it worked, the error, who decided a permission and how long it waited); `fd telemetry summary` prints, per project, the permission wait and the slowest tools, or `no telemetry` when nothing was received. Both take `--host <name>` for a paired host and `--json` for the daemon's answer, and neither shows prompt or tool text. Only `telemetry install` and `uninstall` change anything, and they work on this machine alone.
 - **Limits:** only sessions that sent telemetry have data; the metrics the exporter sends are
   accepted and not kept. For developers, `bun run smoke:otel` runs the whole path with a fake
   claude.

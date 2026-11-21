@@ -8,3 +8,4 @@ export { type TelemetryTarget, wrapperTelemetryEnv } from "./domain/env.ts";
 export { TelemetryOptIn } from "./optin.ts";
 export type { TelemetryStatus } from "./otlp-env.ts";
 export type { TelemetryStore } from "./store.ts";
+export { runTelemetryCli } from "./telemetry-cli.ts";
