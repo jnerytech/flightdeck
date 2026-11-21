@@ -11,6 +11,7 @@ import type { TeamCliArgs } from "../teams/index.ts";
 import { configPath } from "./config-path.ts";
 import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
+import { automationCliArgs } from "./domain/automation-args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
@@ -128,7 +129,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `mcp` (its verbs), `message` (history, watch and rules), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `automation`, `mcp` (its verbs), `message` (history, watch and rules), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -600,6 +601,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
         signal: stop.signal,
         write: (line) => deps.log.log(line),
       }),
+    );
+  },
+  automation: async (args, deps) => {
+    const { runAutomationCli } = await import("../automations/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runAutomationCli(automationCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   boardsync: async (args, deps) => {

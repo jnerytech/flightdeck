@@ -122,6 +122,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
 - [fd runenv](pt-BR/flightdeckd-runenv-commands.md#fd-runenv)
 
+## Comandos do flightdeckd: as automações de um projeto
+
+[Ler o capítulo.](pt-BR/flightdeckd-automation-commands.md) Suas seções:
+
+- [fd automation](pt-BR/flightdeckd-automation-commands.md#fd-automation)
+
 ## Comandos do flightdeckd: os servidores MCP de um projeto
 
 [Ler o capítulo.](pt-BR/flightdeckd-mcp-commands.md) Suas seções:
