@@ -16,6 +16,13 @@ export const hosts = {
   connections: {
     title: "Conexões",
     subtitle: "Destinos SSH, abertos numa aba de terminal com o ssh do host {host}.",
+    subtitleNoHost: "Destinos SSH, abertos numa aba de terminal.",
+    noHost:
+      "Nenhum host conectado oferece SSH. Atualize o daemon de um host ou conecte um que ofereça.",
+    hostOffline:
+      "O host {host}, que guarda os destinos, está offline. Reconecte-o para gerenciá-los.",
+    noMatch: "Nenhum destino corresponde aos filtros.",
+    clearFilters: "Limpar filtros",
     empty: "Nenhum destino SSH cadastrado.",
     emptyAction: "Cadastrar o primeiro destino",
     list: "Destinos",
@@ -46,6 +53,7 @@ export const hosts = {
       name: "Nome",
       host: "Host",
       port: "Porta",
+      portInvalid: "Use um número inteiro de 1 a 65535.",
       user: "Usuário",
       auth: "Autenticação",
       authOption: {
@@ -62,6 +70,8 @@ export const hosts = {
       noJump: "Nenhum",
       tags: "Etiquetas (separadas por vírgula)",
       alive: "Manter a conexão viva (segundos)",
+      aliveInvalid: "Use um número inteiro de 0 ou mais, ou deixe em branco.",
+      fixFields: "Corrija os campos marcados para salvar.",
       compression: "Compressão",
       forwards: "Encaminhamentos locais (um por linha)",
       forwardAgent: "Encaminhar o agente (ForwardAgent)",

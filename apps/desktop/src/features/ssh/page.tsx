@@ -76,6 +76,15 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
     wanted: props.connect,
   });
   const hostId = host?.id;
+  /** No online host keeps the destinations: one that announces ssh but is offline, or none at all. */
+  const offlineHost = hostId
+    ? undefined
+    : state.hosts.find((h) => hasFeature(h.hostInfo?.features, "ssh", false));
+  const clearFilters = () => {
+    setSearch("");
+    setTag("");
+    setVia("");
+  };
 
   const tags = [...new Set(targets.flatMap((target) => target.tags))].sort((a, b) =>
     a.localeCompare(b, "en"),
@@ -92,7 +101,9 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
   return (
     <Page
       title={t("connections.title")}
-      subtitle={t("connections.subtitle", { host: host?.name ?? "" })}
+      subtitle={
+        host ? t("connections.subtitle", { host: host.name }) : t("connections.subtitleNoHost")
+      }
       actions={
         hostId &&
         editing === null && (
@@ -141,49 +152,77 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
           onClose={() => setEditing(null)}
         />
       )}
-      <div className="flex flex-wrap gap-3">
-        <Field label={t("connections.search")}>
-          {(control) => (
-            <Input
-              {...control}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          )}
-        </Field>
-        <Field label={t("connections.tag")}>
-          {(control) => (
-            <NativeSelect {...control} value={tag} onChange={(event) => setTag(event.target.value)}>
-              <option value="">{t("connections.all")}</option>
-              {tags.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-        </Field>
-        <Field label={t("connections.via")}>
-          {(control) => (
-            <NativeSelect {...control} value={via} onChange={(event) => setVia(event.target.value)}>
-              <option value="">{t("connections.all")}</option>
-              <option value={LOCAL}>{t("connections.thisHost")}</option>
-              {vias.map((id) => (
-                <option key={id} value={id}>
-                  {viaName(id)}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-        </Field>
-      </div>
-      {targets.length === 0 ? (
+      {hostId && (
+        <div className="flex flex-wrap gap-3">
+          <Field label={t("connections.search")}>
+            {(control) => (
+              <Input
+                {...control}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field label={t("connections.tag")}>
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={tag}
+                onChange={(event) => setTag(event.target.value)}
+              >
+                <option value="">{t("connections.all")}</option>
+                {tags.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </Field>
+          <Field label={t("connections.via")}>
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={via}
+                onChange={(event) => setVia(event.target.value)}
+              >
+                <option value="">{t("connections.all")}</option>
+                <option value={LOCAL}>{t("connections.thisHost")}</option>
+                {vias.map((id) => (
+                  <option key={id} value={id}>
+                    {viaName(id)}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </Field>
+        </div>
+      )}
+      {hostId ? null : (
+        <EmptyState
+          icon={Network}
+          title={
+            offlineHost
+              ? t("connections.hostOffline", { host: offlineHost.name })
+              : t("connections.noHost")
+          }
+        />
+      )}
+      {hostId && targets.length === 0 && (
         <EmptyState
           icon={Network}
           title={t("connections.empty")}
           action={<Button onClick={() => setEditing("new")}>{t("connections.emptyAction")}</Button>}
         />
-      ) : (
+      )}
+      {hostId && targets.length > 0 && shown.length === 0 && (
+        <EmptyState
+          icon={Network}
+          title={t("connections.noMatch")}
+          action={<Button onClick={clearFilters}>{t("connections.clearFilters")}</Button>}
+        />
+      )}
+      {hostId && shown.length > 0 && (
         <ul aria-label={t("connections.list")} className="flex flex-col gap-2">
           {shown.map((target) => (
             <li key={target.id} className="flex flex-col gap-2 rounded-lg border p-3">
