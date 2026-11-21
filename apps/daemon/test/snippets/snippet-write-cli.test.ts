@@ -86,6 +86,15 @@ describe("flightdeckd snippet save (issue #3615)", () => {
     ]);
   });
 
+  test("remove, favorite and use look the name up in the project folder they are given", () => {
+    for (const argv of [
+      ["snippet", "remove", "review", "--project-path", "/srv/app", "--confirm"],
+      ["snippet", "favorite", "review", "--project-path", "/srv/app"],
+      ["snippet", "use", "review", "--terminal", "t7", "--project-path", "/srv/app", "--confirm"],
+    ])
+      expect(parseArgs(argv)).toMatchObject({ projectPath: "/srv/app" });
+  });
+
   test("a prompt takes --text, and a folder makes it the project's", async () => {
     const daemon = fakeDaemon(writeDaemon());
     const run = await flightdeckd(
