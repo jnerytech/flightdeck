@@ -20,10 +20,11 @@ import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
+import { readReview } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readRunenv } from "./runenv-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
-import { readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
+import { OFF_FLAG, readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import {
@@ -355,6 +356,7 @@ const HANDLERS: Record<string, Handler> = {
   ssh: readSsh,
   watch: readWatch,
   boardsync: readBoardsync,
+  review: readReview,
   runenv: readRunenv,
   terminal: readTerminal,
   agentcfg: readAgentcfg,
@@ -584,6 +586,7 @@ const HANDLERS: Record<string, Handler> = {
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
   ...BOARDSYNC_FLAGS,
+  "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   ...MESSAGE_FLAGS,

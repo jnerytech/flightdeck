@@ -68,7 +68,7 @@ export const github = {
     updateLeftOut: "Left out: {items}.",
     refused: "{title}: {reason}",
     noHosts: "No host is online.",
-    watchOff: "Watch and fix is off",
+    watchOff: "Watch and fix is off: turn it on from the card",
     conflict: "Conflicts with the base",
     mergeClean: "No conflicts",
     mergeBlocked: "Blocked from merging",
@@ -78,6 +78,7 @@ export const github = {
     opened: "Opened {ago}",
     conflictHint: "This PR conflicts with its base: bring the branch up to date, then merge.",
     heldHint: "GitHub may refuse this merge: {why}.",
+    checksFailingHint: "Checks are failing: merge is off until they pass.",
     heldWhy: {
       blocked: "the branch rules hold it",
       changes: "changes were requested",

@@ -55,6 +55,7 @@ export interface CliArgs {
     | "agentcfg"
     | "watch"
     | "boardsync"
+    | "review"
     | "runenv"
     | "requests"
     | "send"
@@ -133,6 +134,8 @@ export interface CliArgs {
     | "interrupted"
     | "import-preview"
     | "import-history"
+    | "favorite"
+    | "use"
     | "render"
     | "parse"
     | "trace"
@@ -229,6 +232,8 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
+  /** `review list <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  reviewTarget?: string;
   /** `runenv config <project>` or `runenv get <card>`: the operand. */
   runenvTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
@@ -368,6 +373,18 @@ export interface CliArgs {
   snippetValues?: Record<string, string>;
   /** `snippet import-history --reveal`: show the commands the secret scan hid. */
   snippetReveal?: boolean;
+  /** `snippet save --run <command>`: a command snippet. */
+  snippetRun?: string;
+  /** `snippet save --text <prompt>`: a prompt snippet. */
+  snippetText?: string;
+  /** `snippet import-history --select <id,id,...>`: the candidates to make snippets. */
+  snippetSelect?: string[];
+  /** `snippet use --terminal <id>`: the terminal the command is typed into. */
+  snippetTerminal?: string;
+  /** `snippet use --enter`: also press Enter, which runs the command. */
+  snippetEnter?: boolean;
+  /** `snippet favorite --off`: clear the mark. */
+  snippetOff?: boolean;
   /** `action run ... --param k=v`, repeatable. */
   params?: Record<string, string>;
   /** `service ... --dry-run`: print, change nothing. */

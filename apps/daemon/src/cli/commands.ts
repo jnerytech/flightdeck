@@ -17,6 +17,7 @@ import { exitWhenClosed } from "./domain/exit.ts";
 import { messageAdminCliArgs } from "./domain/message-args.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
+import { reviewCliArgs } from "./domain/review-args.ts";
 import { runenvCliArgs } from "./domain/runenv-args.ts";
 import { snippetCliArgs } from "./domain/snippet-args.ts";
 import { sshCliArgs } from "./domain/ssh-args.ts";
@@ -24,6 +25,7 @@ import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
+import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 import { watchStop } from "./watch-stop.ts";
 
@@ -125,7 +127,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `message` (history, watch and rules), `watch`, `boardsync`, `runenv`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `message` (history, watch and rules), `watch`, `boardsync`, `review`, `runenv`, `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -376,21 +378,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   message: async (args, deps) => {
     const admin = messageAdminCliArgs(args);
-    if (admin) {
-      const { runMessageAdminCli } = await import("../messaging/index.ts");
-      // `watch` runs until Ctrl-C; elsewhere Ctrl-C keeps its default, which ends the process.
-      const stop = new AbortController();
-      if (admin.action === "watch")
-        for (const signal of ["SIGINT", "SIGTERM"] as const)
-          deps.onSignal(signal, async () => stop.abort());
-      return asking(args, deps, (config, remote) =>
-        runMessageAdminCli(admin, config, {
-          ...(remote ? { remote } : {}),
-          signal: stop.signal,
-          write: (line) => deps.log.log(line),
-        }),
-      );
-    }
+    if (admin) return asking(args, deps, messageAdminRun(admin, deps));
     const { identityOf } = await import("../mcp/index.ts");
     const { runMessageCli } = await import("../messaging/index.ts");
     const config = await loadConfig(configPath(args));
@@ -635,6 +623,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
     return asking(args, deps, (config, remote) =>
       runBoardsyncCli(boardsyncCliArgs(args), config, remote ? { remote } : {}),
+    );
+  },
+  review: async (args, deps) => {
+    const { runReviewCli } = await import("../review/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runReviewCli(reviewCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   terminal: async (args, deps) => {

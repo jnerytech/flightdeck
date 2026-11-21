@@ -13,14 +13,25 @@ import {
   runOnLocalDaemon,
   said,
 } from "../daemon-client/index.ts";
-import { historyLines, parseLines, renderLines } from "./domain/snippet-cli-view.ts";
+import {
+  favoriteLine,
+  historyLines,
+  importedLines,
+  parseLines,
+  renderLines,
+  savedLine,
+  trustedLine,
+  usedLines,
+} from "./domain/snippet-cli-view.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+const UNSURE =
+  "; the host may or may not have made the change: run snippet list, and look at the terminal for use, before you run it again";
 /** What `snippets.parse` takes (the protocol's limit). */
 const MOST_TEXT = 1_000_000;
 
 export interface SnippetVerbArgs {
-  action: "render" | "parse" | "import-history";
+  action: "render" | "parse" | "import-history" | "save" | "remove" | "favorite" | "trust" | "use";
   /** `render`: the snippet's name, or its id. */
   name?: string;
   projectPath?: string;
@@ -29,6 +40,19 @@ export interface SnippetVerbArgs {
   text?: string;
   limit?: number;
   reveal?: boolean;
+  /** `save`: the command of a command snippet, or the text of a prompt snippet. */
+  run?: string;
+  prompt?: string;
+  tags?: string[];
+  /** `trust`: the hash of the project's file, as `snippet list` shows it. */
+  hash?: string;
+  /** `import-history`: the candidates to make snippets of; without it the verb only reads. */
+  select?: string[];
+  /** `use`: the terminal to type into, and whether to press Enter. */
+  terminalId?: string;
+  enter?: boolean;
+  /** `favorite`: clear the mark. */
+  off?: boolean;
   json?: boolean;
 }
 
@@ -62,6 +86,81 @@ async function resolve(daemon: DaemonClient, name: string, projectPath: string |
   }
 }
 
+/**
+ * The snippet a write by name means. A name the host and the project both have is two snippets, and the host's
+ * would win in `resolve`: a write refuses it and names the ids, so none is changed or typed by mistake.
+ */
+async function resolveOne(daemon: DaemonClient, name: string, projectPath: string | undefined) {
+  if (projectPath) {
+    const { snippets } = await daemon.call("snippets.list", { projectPath });
+    const same = snippets.filter((s) => s.name === name);
+    if (same.length > 1)
+      throw new DaemonRefusal(
+        "invalid_request",
+        `${plain(name)} names ${same.length} snippets (${same.map((s) => s.id).join(", ")}): give one of the ids`,
+      );
+  }
+  return await resolve(daemon, name, projectPath);
+}
+
+/** The verbs that change what the host keeps or runs. */
+const WRITING = ["save", "remove", "favorite", "trust", "use"];
+
+/** One write: the snippet is resolved first (a read), `note.wrote` is set right before the call that changes something. */
+async function write(
+  daemon: DaemonClient,
+  note: { wrote: boolean },
+  args: SnippetVerbArgs,
+): Promise<CliResult> {
+  if (args.action === "save") {
+    const { name, run, prompt, tags, projectPath } = args;
+    note.wrote = true;
+    const saved = await daemon.call("snippets.save", {
+      name: name as string,
+      ...(run === undefined
+        ? { type: "prompt", text: prompt as string }
+        : { type: "command", run }),
+      ...(tags ? { tags } : {}),
+      scope: projectPath ? "project" : "host",
+      target: "daemon",
+      ...(projectPath ? { projectPath } : {}),
+    });
+    return args.json ? json(saved) : said(savedLine(saved));
+  }
+  if (args.action === "trust") {
+    note.wrote = true;
+    const info = await daemon.call("snippets.trust", {
+      projectPath: args.projectPath as string,
+      hash: args.hash as string,
+    });
+    return args.json ? json(info) : said(trustedLine(info));
+  }
+  const snippet = await resolveOne(daemon, args.name as string, args.projectPath);
+  if (args.action === "remove") {
+    note.wrote = true;
+    await daemon.call("snippets.remove", { id: snippet.id });
+    return args.json
+      ? json({ id: snippet.id, name: snippet.name, removed: true })
+      : said(`removed ${snippet.name}`);
+  }
+  if (args.action === "favorite") {
+    note.wrote = true;
+    const marked = await daemon.call("snippets.favorite", { id: snippet.id, favorite: !args.off });
+    return args.json ? json(marked) : said(favoriteLine(marked));
+  }
+  if (args.action !== "use") throw new Error(`snippet ${args.action} is not a write`);
+  note.wrote = true;
+  const terminalId = args.terminalId as string;
+  const used = await daemon.call("snippets.use", {
+    id: snippet.id,
+    action: "paste",
+    terminalId,
+    ...(args.values ? { values: args.values } : {}),
+    ...(args.enter ? { enter: true } : {}),
+  });
+  return args.json ? json(used) : said(...usedLines(terminalId, args.enter === true, used.text));
+}
+
 export function runSnippetVerbCli(
   args: SnippetVerbArgs,
   config: { bind: string; port: number; token: string },
@@ -72,7 +171,9 @@ export function runSnippetVerbCli(
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-snippet",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    perform: async (daemon) => {
+    unsure: UNSURE,
+    perform: async (daemon, note) => {
+      if (WRITING.includes(args.action)) return await write(daemon, note, args);
       if (args.action === "render") {
         const snippet = await resolve(daemon, args.name as string, args.projectPath);
         const { text, fields } = await daemon.call("snippets.render", {
@@ -93,11 +194,14 @@ export function runSnippetVerbCli(
           ? { code: 1, out: [], err: reasons }
           : { ...said(...parseLines(read.snippets)), err: reasons };
       }
+      if (args.select) note.wrote = true;
       const result = await daemon.call("snippets.importHistory", {
         ...(args.limit ? { limit: args.limit } : {}),
         ...(args.reveal ? { reveal: true } : {}),
+        ...(args.select ? { select: args.select } : {}),
       });
-      return args.json ? json(result) : said(...historyLines(result));
+      if (args.json) return json(result);
+      return said(...(args.select ? importedLines(result) : historyLines(result)));
     },
   });
 }
