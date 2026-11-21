@@ -234,6 +234,44 @@ describe("host-offline-ui", () => {
     expect(live.textContent).toContain("Copiado");
   });
 
+  test("a copy pressed while Reconnect now is trying does not hide the answer: it still says Continua desconectado (#3694)", async () => {
+    const { HostOfflineBanner } = await import("../../src/features/hosts/host-offline-banner.tsx");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
+    const store = new AppStore(memoryPlatform().platform, { timeZone: "America/Sao_Paulo" });
+    store.i18n.start();
+    cleanups.push(() => store.dispose());
+    const view = (host: Record<string, unknown>) => (
+      <TContext.Provider value={translator("pt-BR")}>
+        <HostOfflineBanner
+          host={{ id: "h1", name: "pc", hostInfo: null, ...host } as never}
+          onReconnect={() => {}}
+          formatTime={(iso) => store.formatTime(iso)}
+          onCopy={async () => true}
+        />
+      </TContext.Provider>
+    );
+    const { rerender } = render(view(OFFLINE));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Reconectar agora" }));
+    });
+    rerender(view({ ...OFFLINE, status: "connecting" }));
+    const button = screen.queryByRole("button", { name: "Copiar o comando systemd=true" });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    rerender(
+      view({
+        ...OFFLINE,
+        retry: { ...OFFLINE.retry, lastTryAt: LAST_TRY + 5_000, nextRetryAt: LAST_TRY + 65_000 },
+      }),
+    );
+    const live = screen.getByRole("status");
+    expect(live.textContent).toContain("Continua desconectado.");
+    expect(live.textContent).not.toContain("Copiado");
+  });
+
   test("the copy buttons are named in English for an app in English (#3694)", async () => {
     await banner(OFFLINE, { language: "en" });
     expect(
