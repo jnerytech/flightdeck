@@ -98,7 +98,7 @@ describe("card cli: flightdeckd card (issue #1507)", () => {
     // --json is shared with every command of JSON_COMMANDS, so its refusal lists them, card among them (#3759).
     for (const flag of [["--json"], ["--description", "x"], ["--workflow", "x"]]) {
       const refusal = /only applies to flightdeckd (.*, )?card\b/;
-      expect(() => parseArgs(["doctor", ...flag])).toThrow(refusal);
+      expect(() => parseArgs(["restore", "backup.db", ...flag])).toThrow(refusal);
       expect(() => parseArgs(["service", "status", ...flag])).toThrow(refusal);
     }
     expect(parseArgs(["card", "list", "--json"]).json).toBe(true);

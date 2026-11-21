@@ -184,7 +184,13 @@ binary to update, and the default `manifestUrl` is `null`.
   The history index follows the transcripts and is left out.
 - **When:** at daemon boot and every 24 h. By hand, `flightdeckd db prune [--dry-run]` shows the
   count per table; in the app, the host page's **Maintenance** section has **Simulate** and
-  **Clean** (which asks for confirmation).
+  **Clean** (which asks for confirmation). `flightdeckd db status` prints what that section shows:
+  the database size, the counts, the backups kept (newest first) and the last cleanup. They read the
+  files on the machine where you type them, with the daemon running or not, and take no `--host`.
+  With `--json`, `db status` prints the maintenance status as one value (`dbBytes`, `lastBackup`,
+  `backups`, `lastPrune`, `counts`; `lastBackup` and `lastPrune` are `null` when there is none) and
+  `db prune` prints `{ "dryRun": <true|false>, "counts": { "<table>": <n> } }`.
+  From a session's shell, `db prune` without `--dry-run` is a high-risk command.
 - A cleaned conversation shows up as "conversation removed by retention".
 - Cost usage has its own retention: `retention.usageDays` (see [Costs](costs-budgets-and-quota.md#costs)).
 
@@ -197,10 +203,12 @@ binary to update, and the default `manifestUrl` is `null`.
 - **Automatic:** once a day, `VACUUM INTO <dataDir>/backups/flightdeck-<YYYYMMDD-HHmmss>.db`
   (UTC time), keeping the last `keep`. Works with the daemon running.
 - **By hand:** `flightdeckd backup [--out <file>]`, or **Back up now** in the Maintenance
-  section. The files are owner-only (0600 outside Windows).
+  section. The files are owner-only (0600 outside Windows). `--json` prints
+  `{ "path", "at", "bytes" }` instead of the line.
 - **Restoring:** `flightdeckd service stop`, then `flightdeckd restore <file>`, then
   `flightdeckd service start`. Without a service, stop the daemon by hand before `restore`. The
   command refuses to run with the daemon up, checks integrity and that the backup does not come
   from a newer version, and keeps the current database as `flightdeck.db.before-restore`. Any
-  missing migrations run on the next boot.
+  missing migrations run on the next boot. `restore` takes no `--json` and, from a session's
+  shell, is a high-risk command.
 - **`config.json` is not in the backup**, because it holds the tokens: keep a copy separately.
