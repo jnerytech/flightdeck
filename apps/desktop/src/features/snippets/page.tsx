@@ -130,21 +130,27 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
       ? projects.find((p) => p.path === project)
       : undefined;
   // Why the list is empty decides what it offers: a button that cannot work is never shown.
-  const emptyText = !hostId
-    ? { title: t("snippets.noHost"), detail: t("snippets.noHostDetail") }
-    : query || type
-      ? {
-          title: t("snippets.noMatch"),
-          action: (
-            <Button variant="outline" onClick={clearFilters}>
-              {t("snippets.clearFilters")}
-            </Button>
-          ),
-        }
-      : {
-          title: t("snippets.empty"),
-          action: <Button onClick={() => setEditing("new")}>{t("snippets.emptyAction")}</Button>,
-        };
+  const emptyStateFor = () => {
+    if (!hostId && project !== GLOBAL) {
+      return { title: t("snippets.noHost"), detail: t("snippets.noHostDetail") };
+    }
+    if (query || type) {
+      return {
+        title: t("snippets.noMatch"),
+        action: (
+          <Button variant="outline" onClick={clearFilters}>
+            {t("snippets.clearFilters")}
+          </Button>
+        ),
+      };
+    }
+    // The app's own Globals list without a host: writing a snippet still needs one.
+    if (!hostId) return { title: t("snippets.empty") };
+    return {
+      title: t("snippets.empty"),
+      action: <Button onClick={() => setEditing("new")}>{t("snippets.emptyAction")}</Button>,
+    };
+  };
   return (
     <Page
       title={t("snippets.title")}
@@ -255,7 +261,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
         </div>
       )}
       {ordered.length === 0 ? (
-        <EmptyState icon={SquareCode} {...emptyText} />
+        <EmptyState icon={SquareCode} {...emptyStateFor()} />
       ) : (
         <ul aria-label={t("snippets.list")} className="flex flex-col gap-2">
           {ordered.map((snippet) => (
