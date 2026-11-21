@@ -642,7 +642,7 @@ export function shellReadings(args: string[]): string[][] {
 }
 
 /** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
-const VERB_NOUNS = new Set(
+export const VERB_NOUNS = new Set(
   "card history approvers persona team quota budget costs session rules autoapprove plugins project agentcfg ssh watch snippet boardsync review runenv automation message mcp changes file".split(
     " ",
   ),
