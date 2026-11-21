@@ -237,13 +237,32 @@ function endOfBrackets(pattern: string, at: number): number {
   let i = at + 1;
   if ("!^".includes(pattern.charAt(i))) i++;
   if (pattern.charAt(i) === "]") i++;
-  for (; i < pattern.length; i++) {
+  while (i < pattern.length) {
     if (pattern.startsWith("[:", i)) {
       const close = pattern.indexOf(":]", i + 2);
-      if (close >= 0) i = close + 1;
+      i = close >= 0 ? close + 2 : i + 1;
     } else if (pattern.charAt(i) === "]") return i;
+    else i++;
   }
   return -1;
+}
+
+/** The glob as tokens: `*`, `?` (a bracket expression is one), or `=` and a character that stands for itself. */
+function globTokens(pattern: string): string[] {
+  const tokens: string[] = [];
+  let i = 0;
+  while (i < pattern.length) {
+    const c = pattern.charAt(i);
+    const end = c === "[" ? endOfBrackets(pattern, i) : -1;
+    if (end >= 0) {
+      tokens.push("?");
+      i = end + 1;
+    } else {
+      tokens.push(c === "*" || c === "?" ? c : `=${c}`);
+      i++;
+    }
+  }
+  return tokens;
 }
 
 /**
@@ -251,16 +270,7 @@ function endOfBrackets(pattern: string, at: number): number {
  * No RegExp: the classic two-pointer walk takes time in the product of the two lengths, however many `*` it holds.
  */
 function globMatches(pattern: string, name: string): boolean {
-  const tokens: string[] = [];
-  for (let i = 0; i < pattern.length; i++) {
-    const c = pattern.charAt(i);
-    const end = c === "[" ? endOfBrackets(pattern, i) : -1;
-    if (end < 0) tokens.push(c === "*" || c === "?" ? c : `=${c}`);
-    else {
-      tokens.push("?");
-      i = end;
-    }
-  }
+  const tokens = globTokens(pattern);
   let t = 0;
   let n = 0;
   let star = -1;
@@ -330,7 +340,7 @@ export function invocations(segment: string[]): Invocation[] {
       return [{ prog: "flightdeckd", args, sudo, unresolved: false, ...hidden, ...fed }];
     // Outside quotes a backslash escapes the next character (`f\d` is `fd`), and `program` reads it as a folder:
     // the word without its backslashes is a second reading.
-    const escaped = program(written.replace(/\\/g, ""));
+    const escaped = program(written.replaceAll("\\", ""));
     return escaped === prog
       ? [{ prog, args, sudo, unresolved: false, ...fed }]
       : [
@@ -458,6 +468,12 @@ export const OPTIONS_WITH_VALUE = [
 /** The same list, for the lookup: the list stays an array so a test can compare it with the parser's. */
 const VALUE_OPTIONS = new Set(OPTIONS_WITH_VALUE);
 
+/** Inside single quotes everything is literal up to the close; an ANSI-C quote lets a backslash escape anything. */
+function stepInSingles(open: string, c: string, i: number): { open: string; next: number } {
+  if (open === "$'" && c === "\\") return { open, next: i + 2 };
+  return { open: c === "'" ? "" : open, next: i + 1 };
+}
+
 /**
  * One step of the shell's reading of quotes (#3559): the quote in force after the character at `i` (`"`, `'`, `$'`
  * for an ANSI-C quote, or "" outside one) and where the next step starts. A backslash escapes the next character
@@ -466,11 +482,7 @@ const VALUE_OPTIONS = new Set(OPTIONS_WITH_VALUE);
  */
 function stepQuote(open: string, text: string, i: number): { open: string; next: number } {
   const c = text.charAt(i);
-  if (open === "'") return { open: c === "'" ? "" : open, next: i + 1 };
-  if (open === "$'") {
-    if (c === "\\") return { open, next: i + 2 };
-    return { open: c === "'" ? "" : open, next: i + 1 };
-  }
+  if (open === "'" || open === "$'") return stepInSingles(open, c, i);
   if (c === "\\" && (open === "" || '"\\$`'.includes(text.charAt(i + 1))))
     return { open, next: i + 2 };
   if (open === '"') return { open: c === '"' ? "" : open, next: i + 1 };
@@ -593,7 +605,7 @@ export function shellReadings(args: string[]): string[][] {
 }
 
 /** The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`. */
-const VERB_NOUNS = [
+const VERB_NOUNS = new Set([
   "card",
   "history",
   "approvers",
@@ -609,7 +621,7 @@ const VERB_NOUNS = [
   "project",
   "ssh",
   "watch",
-];
+]);
 
 /**
  * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,
@@ -627,12 +639,12 @@ export function hidesItsVerb(args: string[], unresolved: boolean, fed = false): 
     const unfinished =
       fed &&
       (command === undefined ||
-        (VERB_NOUNS.includes(command) && verb === undefined) ||
+        (VERB_NOUNS.has(command) && verb === undefined) ||
         (command === "history" && verb === "resume"));
     return (
       unfinished ||
       (!unresolved && isExpanded(command)) ||
-      (VERB_NOUNS.includes(command ?? "") && isExpanded(verb))
+      (VERB_NOUNS.has(command ?? "") && isExpanded(verb))
     );
   });
 }

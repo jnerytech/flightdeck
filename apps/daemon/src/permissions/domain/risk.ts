@@ -216,7 +216,7 @@ function endsACard(prog: string, args: string[]): boolean {
   );
 }
 
-const HOSTKEY_WRITES = ["confirm", "forget"];
+const HOSTKEY_WRITES = new Set(["confirm", "forget"]);
 
 /**
  * Which server keys a host trusts is the person's call (#3537): `ssh hostkey confirm` pins a key, and
@@ -226,7 +226,7 @@ const HOSTKEY_WRITES = ["confirm", "forget"];
  */
 function changesTrustedHostKeys(prog: string, args: string[]): boolean {
   return runsFlightdeckWords(prog, args, ([command, action, verb]) => {
-    return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.includes(verb ?? "");
+    return command === "ssh" && action === "hostkey" && HOSTKEY_WRITES.has(verb ?? "");
   });
 }
 
@@ -700,7 +700,7 @@ export class RiskClassifier {
     const out = joined === command ? written : [...written, ...this.shell(joined, cwd)];
     // PowerShell's backslash is a path separator and its escape is the backtick (#3559): the line is read once more
     // with the two swapped, so `"C:\work\" persona remove qa` does not read as one open string.
-    const swapped = command.replace(/\\/g, "/").replace(/`/g, "\\");
+    const swapped = command.replaceAll("\\", "/").replaceAll("`", "\\");
     return powershell && swapped !== command ? [...out, ...this.shell(swapped, cwd)] : out;
   }
 
