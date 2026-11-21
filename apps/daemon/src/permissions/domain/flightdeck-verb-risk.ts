@@ -18,6 +18,7 @@ import { REWIND_RULES } from "./rewind-risk.ts";
 import { RUNENV_RULES } from "./runenv-risk.ts";
 import { SEND_RULES } from "./send-risk.ts";
 import { SNIPPET_RULES } from "./snippet-risk.ts";
+import { WORKFLOW_RULES } from "./workflow-risk.ts";
 import { WORKTREE_RULES } from "./worktree-risk.ts";
 
 /** The rules of the `flightdeckd` verbs that change or send something, in the order `risk.ts` reads them. */
@@ -35,6 +36,7 @@ export const FLIGHTDECK_VERB_RULES = [
   ...MEMORY_RULES,
   ...LOGS_RULES,
   ...HOST_RULES,
+  ...WORKFLOW_RULES,
   ...MCP_RULES,
   ...CHANGES_RULES,
   ...REWIND_RULES,
