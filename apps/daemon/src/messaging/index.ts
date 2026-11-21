@@ -15,4 +15,5 @@ export {
   teamStatus,
 } from "./domain/tools.ts";
 export { LocalEndpoints, type LocalEndpointsOptions, MANAGED_STATE } from "./endpoints.ts";
+export { type MessageAdminCliArgs, runMessageAdminCli } from "./message-admin-cli.ts";
 export { Messaging } from "./messages.ts";
