@@ -6,12 +6,12 @@ import { RuntimeKind } from "../../config.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
-import { readBoardsync } from "./boardsync-args.ts";
+import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
-import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
+import { CONFIRM_OWNERS, HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
-import { type Handler, OWN_CONFIRM, setFlag, setValue } from "./flag-handlers.ts";
+import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem } from "./history-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
@@ -579,6 +579,7 @@ const HANDLERS: Record<string, Handler> = {
   ...SSH_FLAGS,
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
+  ...BOARDSYNC_FLAGS,
   ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
@@ -736,8 +737,8 @@ function refuseCardFlags(args: CliArgs): void {
       continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s and `project harness-apply`'s, which check their own flags below.
-    if (flag === "--confirm" && OWN_CONFIRM.has(args.command)) continue;
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s, `project harness-apply`'s and `boardsync set-push --on`'s, which check their own flags below.
+    if (flag === "--confirm" && CONFIRM_OWNERS.includes(args.command)) continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
@@ -775,6 +776,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     sshProblem(args) ??
     terminalProblem(args) ??
     watchProblem(args) ??
+    boardsyncProblem(args) ??
     runenvProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??

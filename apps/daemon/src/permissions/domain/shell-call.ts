@@ -432,6 +432,7 @@ export const OPTIONS_WITH_VALUE = [
   "--persona-subagents",
   "--plugin-scope",
   "--parts",
+  "--map",
   "--template",
   "--digests",
   "--limit",
@@ -629,6 +630,7 @@ const VERB_NOUNS = new Set([
   "project",
   "ssh",
   "watch",
+  "boardsync",
   "runenv",
 ]);
 

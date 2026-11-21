@@ -2,7 +2,12 @@
  * Issue #3540: what `flightdeckd boardsync` prints, as pure rules over the daemon's answers. A `--json`
  * value keeps every key: `null` where the daemon sends none (a project with no board carries only `linked`).
  */
-import type { BoardSyncBoard, BoardSyncLogEntry, BoardSyncStatus } from "@flightdeck/protocol";
+import type {
+  BoardSyncBoard,
+  BoardSyncLogEntry,
+  BoardSyncReport,
+  BoardSyncStatus,
+} from "@flightdeck/protocol";
 
 /** One line a board: the id a later `boardsync link` takes, who owns it, its number, its title and its link. */
 export const boardLines = (boards: BoardSyncBoard[]): string[] =>
@@ -69,3 +74,29 @@ export const logJson = (entries: BoardSyncLogEntry[]) =>
 /** The card's sync log, in the order the daemon gives (newest first). */
 export const logLines = (card: string, entries: BoardSyncLogEntry[]): string[] =>
   entries.length === 0 ? [`${card}: no sync log`] : entries.map(entryLine);
+
+/** What a sync did, in the order the report lists it; the kinds that are zero are left out. */
+const REPORT_KINDS = [
+  "created",
+  "moved",
+  "updated",
+  "conflicts",
+  "unmapped",
+  "gone",
+  "skipped",
+  "pushed",
+  "redacted",
+] as const;
+
+/** A sync's result: what changed, or that nothing did, or that the board had not changed since the last read. */
+export function reportLines(project: string, report: BoardSyncReport): string[] {
+  if (report.notModified) return [`${project}: the board has not changed since the last read`];
+  const counts = REPORT_KINDS.filter((kind) => report[kind] > 0).map(
+    (kind) => `${kind} ${report[kind]}`,
+  );
+  return [
+    `${project}: synced`,
+    counts.length === 0 ? "  nothing to change" : `  ${counts.join(", ")}`,
+    ...(report.truncated ? ["  the board has more items than one pull reads"] : []),
+  ];
+}
