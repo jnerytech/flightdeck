@@ -397,13 +397,19 @@
   "snippets.get": {
     "cli": "snippet"
   },
-  "snippets.importHistory": {},
+  "snippets.importHistory": {
+    "cli": "snippet"
+  },
   "snippets.list": {
     "cli": "snippet"
   },
-  "snippets.parse": {},
+  "snippets.parse": {
+    "cli": "snippet"
+  },
   "snippets.remove": {},
-  "snippets.render": {},
+  "snippets.render": {
+    "cli": "snippet"
+  },
   "snippets.save": {},
   "snippets.trust": {},
   "snippets.use": {},
