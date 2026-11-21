@@ -56,6 +56,12 @@ describe("risk rules: a session answering a permission request from its shell (#
         ["bun run apps/daemon/src/bin.ts send fd-qa hi", SENDS],
         ['bash -c "fd send fd-qa hi"', SENDS],
         ['fd send fd-qa "approvers reset"', SENDS],
+        ["bunx flightdeckd send fd-qa hi", SENDS],
+        ["env X=1 fd send fd-qa hi", SENDS],
+        ["echo fd-qa | xargs fd send", SENDS],
+        ['fd "send" fd-qa hi', SENDS],
+        ["fd --session fd-qa send hi", SENDS],
+        ["fd send", SENDS],
       ]),
     ).toEqual([]);
     expect(
