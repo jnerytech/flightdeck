@@ -117,7 +117,10 @@ describe("flightdeckd mcp remove (issue #3616)", () => {
   });
 
   test("a silent daemon leaves the result unknown: exit 2, and it says to check with mcp list", async () => {
-    const silent = fakeDaemon({});
+    // The project is found, then the write gets no answer.
+    const silent = fakeDaemon({
+      "project.list": () => ({ projects: [project("p1", "api")], maxParallelRuns: 2 }),
+    });
     const result = await runMcpCli(
       { action: "remove", project: "p1", server: "files" },
       config(silent.port),
