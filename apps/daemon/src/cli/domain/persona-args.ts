@@ -70,7 +70,10 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
     // `automation save --name` is the automation's, checked by `automationProblem`.
     if (
       flag === "--name" &&
-      (args.command === "team" || args.command === "project" || args.command === "automation")
+      (args.command === "team" ||
+        args.command === "project" ||
+        args.command === "automation" ||
+        args.command === "template")
     )
       continue;
     // `budget set` takes the scope too: `budgetProblem` checks it.

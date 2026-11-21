@@ -1,5 +1,6 @@
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import type { CliArgs } from "./domain/cli-args.ts";
+import { harnessCliArgs, templatesCliArgs } from "./domain/templates-args.ts";
 import { workflowCliArgs } from "./domain/workflow-args.ts";
 
 /**
@@ -40,6 +41,35 @@ export const resourcesRun =
             }
           : {}),
       },
+      config,
+      remote ? { remote } : {},
+    );
+
+/**
+ * What `template list|start` and `task results|preview` run once `asking` has the daemon's config (or the paired
+ * host's). The templates domain loads only when the verb runs (cli-startup test).
+ */
+export const templatesRun =
+  (args: CliArgs) =>
+  async (
+    config: { bind: string; port: number; token: string },
+    remote?: RemoteTarget,
+  ): Promise<CliResult> =>
+    (await import("../templates/index.ts")).runTemplatesCli(
+      templatesCliArgs(args),
+      config,
+      remote ? { remote } : {},
+    );
+
+/** What `harness templates list|delete` run once `asking` has the daemon's config (or the paired host's). */
+export const harnessRun =
+  (args: CliArgs) =>
+  async (
+    config: { bind: string; port: number; token: string },
+    remote?: RemoteTarget,
+  ): Promise<CliResult> =>
+    (await import("../harness/index.ts")).runHarnessCli(
+      harnessCliArgs(args),
       config,
       remote ? { remote } : {},
     );

@@ -1,5 +1,5 @@
 import type { CliArgs } from "./domain/cli-args.ts";
-import { resourcesRun, workflowRun } from "./domain-runs.ts";
+import { harnessRun, resourcesRun, templatesRun, workflowRun } from "./domain-runs.ts";
 import { externalRun, namesRun } from "./external-run.ts";
 import { feedCommands } from "./feed-run.ts";
 import { liveStream } from "./watch-stop.ts";
@@ -17,8 +17,11 @@ export const daemonRuns = <D extends Deps>(
   ...feedCommands(asking),
   external: (args: CliArgs, deps: D) =>
     asking(args, deps, externalRun(args, liveStream(args, deps))),
+  harness: (args: CliArgs, deps: D) => asking(args, deps, harnessRun(args)),
   names: (args: CliArgs, deps: D) => asking(args, deps, namesRun(args)),
   resources: (args: CliArgs, deps: D) => asking(args, deps, resourcesRun(args)),
+  task: (args: CliArgs, deps: D) => asking(args, deps, templatesRun(args)),
+  template: (args: CliArgs, deps: D) => asking(args, deps, templatesRun(args)),
   workflow: (args: CliArgs, deps: D) =>
     asking(args, deps, workflowRun(args, liveStream(args, deps))),
 });

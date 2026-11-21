@@ -310,7 +310,7 @@ describe("flightdeckd task results and preview (issue #3738)", () => {
   test("an unknown session is exit 1 and nothing is asked of the task", async () => {
     const daemon = fakeDaemon(OPEN);
     const run = await flightdeckd(["task", "results", "nobody"], daemon.port);
-    expect([run.code, run.err.join("\n")]).toEqual([1, "no such session: nobody"]);
+    expect([run.code, run.err.join("\n")]).toEqual([1, "flightdeckd: no such session: nobody"]);
     expect(sent(daemon, "task.results")).toEqual([]);
   });
 
