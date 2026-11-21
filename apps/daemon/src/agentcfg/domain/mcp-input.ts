@@ -10,6 +10,20 @@ import { parseJsonText } from "../../kernel/index.ts";
 
 export type ServerFile = { server: z.infer<typeof McpServerInput> } | { problem: string };
 
+/**
+ * The schema leaves `command` and `url` optional (the app fills them in as it goes), but a saved server must say
+ * what it runs: a command for stdio (the default), a URL for http and sse. A blank value says nothing.
+ */
+function runnableProblem(server: z.infer<typeof McpServerInput>): string | undefined {
+  const command = server.command?.trim();
+  const url = server.url?.trim();
+  // With no type, the daemon connects to the url when there is one and runs the command otherwise.
+  const remote = server.type === undefined ? !!url && !command : server.type !== "stdio";
+  if (!remote) return command ? undefined : "the server needs a command (stdio)";
+  if (!url) return "the server needs a url (http, sse)";
+  return URL.canParse(url) ? undefined : "url: not a URL";
+}
+
 /** The server a file describes, or the first thing wrong with it. */
 export function serverFromText(text: string): ServerFile {
   let value: unknown;
@@ -20,11 +34,8 @@ export function serverFromText(text: string): ServerFile {
   }
   const checked = McpServerInput.strict().safeParse(value);
   if (checked.success) {
-    const { command, url } = checked.data;
-    // The schema leaves both optional (the app fills them in as it goes), but a saved server with neither runs nothing.
-    if (!command && !url)
-      return { problem: "the server needs a command (stdio) or a url (http, sse)" };
-    return { server: checked.data };
+    const wrong = runnableProblem(checked.data);
+    return wrong ? { problem: wrong } : { server: checked.data };
   }
   const issue = checked.error.issues[0];
   if (issue === undefined) return { problem: "the content is not a server" };
