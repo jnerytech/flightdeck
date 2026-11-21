@@ -153,7 +153,7 @@ describe("flightdeckd external message (issue #3735)", () => {
       ["external", "message", "ext-1", "--text", "go on", "--json"],
       daemon.port,
     );
-    expect(printed(json.out)).toEqual({ session: "ext-1", delivered: true });
+    expect(printed(json.out)).toEqual({ session: "ext-1", sent: true });
   });
 
   test("an unknown session and a session with no channel are exit 1 with the daemon's text", async () => {

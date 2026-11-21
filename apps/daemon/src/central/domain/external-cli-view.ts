@@ -42,8 +42,8 @@ export const externalLines = (sessions: ExternalSession[]): string[] =>
         ...sessions.map((session) => `  ${externalLine(session)}`),
       ];
 
-/** The JSON a script reads: which session got the text. A refusal never reaches here. */
-export const sentJson = (session: string) => ({ session, delivered: true });
+/** The JSON a script reads: which session the text was sent to. The daemon does not say more than that it took it. */
+export const sentJson = (session: string) => ({ session, sent: true });
 
 export const sentLine = (session: string): string => `sent to ${session}`;
 

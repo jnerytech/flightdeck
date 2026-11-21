@@ -29,7 +29,7 @@ press Ctrl-C, which ends it with exit `0`. With `--json` each line is one JSON r
 `message` puts the text into the session, as the input box of the app does. Only a session opened with
 `flightdeckd claude` has the channel for it: any other is refused with exit `1`, and so is a session the host does not
 know. An empty text is refused before the command connects. It prints `sent to <id>`; with `--json` it prints `session`
-and `delivered`. If the host is cut off after the text left, the exit is `2` and the text may or may not have gone in:
+and `sent`. If the host is cut off after the text left, the exit is `2` and the text may or may not have gone in:
 look at the session before you send it again.
 
 ## fd names

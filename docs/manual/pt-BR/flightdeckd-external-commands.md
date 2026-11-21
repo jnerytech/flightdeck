@@ -29,7 +29,7 @@ apertar Ctrl-C, que o encerra com saída `0`. Com `--json` cada linha é uma lin
 `message` coloca o texto na sessão, como a caixa de entrada do app faz. Só uma sessão aberta com
 `flightdeckd claude` tem o canal para isso: qualquer outra é recusada com saída `1`, e também uma sessão que o host não
 conhece. Um texto vazio é recusado antes de o comando conectar. Imprime `sent to <id>`; com `--json` imprime `session`
-e `delivered`. Se o host cair depois que o texto saiu, a saída é `2` e o texto pode ou não ter entrado:
+e `sent`. Se o host cair depois que o texto saiu, a saída é `2` e o texto pode ou não ter entrado:
 olhe a sessão antes de enviar de novo.
 
 ## fd names
