@@ -311,6 +311,8 @@ describe("the arguments of message history, watch and rules (issue #3622)", () =
       [["message", "rules", "--status", "queued"], "--status"],
       [["message", "watch", "--limit", "5"], "--limit"],
       [["message", "rules", "--with-host", "laptop"], "--with-host"],
+      [["message", "watch", "--session", "s-dev"], "--session"],
+      [["message", "rules", "--session", "s-dev"], "--session"],
     ] as const)
       expect(parsed([...argv])).toMatchObject({
         refusedWith: expect.stringContaining(
