@@ -9,10 +9,8 @@ import {
   type CliResult,
   type DaemonClient,
   failure,
-  json,
   type RemoteTarget,
   runOnLocalDaemon,
-  said,
   shown,
 } from "../daemon-client/index.ts";
 import {
