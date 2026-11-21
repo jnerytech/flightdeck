@@ -12,7 +12,7 @@ import { BG_FLAGS, bgProblem, readBg, takeBgFlags } from "./bg-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
-import { refuseCardFlags } from "./card-args.ts";
+import { readCommentIds, refuseCardFlags } from "./card-args.ts";
 import { CHANGES_FLAGS, changesProblem, readChanges, takeChangesFlags } from "./changes-args.ts";
 import {
   CHECKPOINT_FLAGS,
@@ -240,15 +240,7 @@ const HANDLERS: Record<string, Handler> = {
     }
     if (action === "message") args.text = operand(reader, "the text");
     if (action === "new") args.cardTitle = operand(reader, "the title");
-    if (action === "pr-comments-send") {
-      args.commentIds = [];
-      while (reader.peek() !== undefined && !(reader.peek() ?? "").startsWith("--"))
-        args.commentIds.push(reader.next() ?? "");
-      if (args.commentIds.length === 0)
-        throw new Error(
-          `card pr-comments-send: missing the id of a comment (see card pr-comments)\n${USAGE}`,
-        );
-    }
+    if (action === "pr-comments-send") readCommentIds(args, reader);
   },
   board: (args, reader) => {
     args.command = "board";

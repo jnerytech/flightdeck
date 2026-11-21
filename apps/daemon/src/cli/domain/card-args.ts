@@ -2,6 +2,7 @@
  * What the `card` flags take (#1589 split of `args.ts`): each flag with the actions that take it, refused on
  * any other. The parser in `args.ts` runs this after reading every option.
  */
+import type { ArgReader } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 import { CONFIRM_OWNERS } from "./command-sets.ts";
 import { USAGE } from "./usage.ts";
@@ -50,4 +51,15 @@ export function refuseCardFlags(args: CliArgs): void {
         `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
       );
   }
+}
+
+/** `card pr-comments-send <card> <comment id>...`: every word up to the first flag is a comment id, and at least one is needed. */
+export function readCommentIds(args: CliArgs, reader: ArgReader): void {
+  args.commentIds = [];
+  while (reader.peek() !== undefined && !(reader.peek() ?? "").startsWith("--"))
+    args.commentIds.push(reader.next() ?? "");
+  if (args.commentIds.length === 0)
+    throw new Error(
+      `card pr-comments-send: missing the id of a comment (see card pr-comments)\n${USAGE}`,
+    );
 }
