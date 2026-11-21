@@ -59,7 +59,12 @@ const TEXT = {
  * The dialog with a fake run the test drives: the person's answers and the move's end. `held` keeps
  * the source preparing until the test calls `ready`.
  */
-function open(lang: "en" | "pt-BR", summary: TeleportSummary = SUMMARY, held = false) {
+function open(
+  lang: "en" | "pt-BR",
+  summary: TeleportSummary = SUMMARY,
+  held = false,
+  targets: ReadonlyArray<{ id: string; name: string }> = [{ id: "h2", name: "pi" }],
+) {
   const calls = {
     opened: [] as string[][],
     closed: 0,
@@ -77,7 +82,7 @@ function open(lang: "en" | "pt-BR", summary: TeleportSummary = SUMMARY, held = f
   render(
     <TContext.Provider value={translator(lang)}>
       <TeleportDialog
-        targets={[{ id: "h2", name: "pi" }]}
+        targets={targets}
         repoField={(_hostId, value, onChange) => (
           <input aria-label="repo-path" value={value} onChange={(e) => onChange(e.target.value)} />
         )}
@@ -475,4 +480,53 @@ describe("teleport-dialog-ui: the person moves a session to another host (#100)"
       known.length < 200,
     ]).toEqual([true, false, true, false, true]);
   });
+});
+
+const REASONS = {
+  en: {
+    none: "No other connected host can receive a session. Connect a host that has teleport, then try again.",
+    pick: "Pick the host to move the session to.",
+    repo: "Type the repository on that host.",
+  },
+  "pt-BR": {
+    none: "Nenhum outro host conectado pode receber uma sessão. Conecte um host com teleport e tente de novo.",
+    pick: "Escolha o host para onde mover a sessão.",
+    repo: "Digite o repositório nesse host.",
+  },
+} as const;
+
+describe("teleport-dialog-ui: the dialog says why it cannot go on (#3725)", () => {
+  for (const lang of ["en", "pt-BR"] as const) {
+    const t = TEXT[lang];
+    const why = REASONS[lang];
+
+    test(`${lang}: with no host to move to, the dialog says so and offers no select or Continue`, async () => {
+      const { calls } = open(lang, SUMMARY, false, []);
+      expect(await shows(why.none)).toBe(true);
+      expect(screen.queryByRole("combobox", { name: t.host }) === null).toBe(true);
+      expect(screen.queryByRole("button", { name: t.next }) === null).toBe(true);
+      await click(lang === "en" ? "Cancel" : "Cancelar");
+      expect(calls.closed).toBe(1);
+    });
+
+    test(`${lang}: Continue off says to pick a host, then to type the repository, and the reason goes with the cause`, async () => {
+      open(lang);
+      expect(await shows(why.pick)).toBe(true);
+      expect(screen.queryByRole("button", { name: t.next })?.hasAttribute("disabled")).toBe(true);
+      const host = screen.queryByRole("combobox", { name: t.host });
+      expect(host).not.toBeNull();
+      await act(async () => {
+        fireEvent.change(host as HTMLElement, { target: { value: "h2" } });
+      });
+      expect(await shows(why.repo)).toBe(true);
+      expect((document.body.textContent ?? "").includes(why.pick)).toBe(false);
+      const repo = screen.queryByRole("textbox", { name: "repo-path" });
+      expect(repo).not.toBeNull();
+      await act(async () => {
+        fireEvent.change(repo as HTMLElement, { target: { value: "/work/app" } });
+      });
+      expect((document.body.textContent ?? "").includes(why.repo)).toBe(false);
+      expect(screen.queryByRole("button", { name: t.next })?.hasAttribute("disabled")).toBe(false);
+    });
+  }
 });
