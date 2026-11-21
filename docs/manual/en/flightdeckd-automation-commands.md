@@ -22,7 +22,7 @@ projects share is refused with their ids.
 
 `runs <automation>` prints the runs of an automation, newest first: the time, the status (`ok`, `failed`, `ignored`,
 `skipped`, `limited` or `missed`), the cause and the detail. `--limit` takes a whole number from 1 to 500. An
-automation the host does not know is refused with exit `1`.
+id the host does not know prints `no runs` too: the host answers an empty list, so check the id with `automation list`.
 
 With `--json` the commands print the value the daemon returns, with `null` for a missing field. `--host <name>` reads
 a paired host.

@@ -23,7 +23,7 @@ fd automation runs a1 --limit 20 --json
 
 `runs <automação>` imprime as execuções de uma automação, da mais nova para a mais antiga: a hora, o status (`ok`,
 `failed`, `ignored`, `skipped`, `limited` ou `missed`), a causa e o detalhe. `--limit` aceita um número inteiro de
-1 a 500. Uma automação que o host não conhece é recusada com saída `1`.
+1 a 500. Um id que o host não conhece também imprime `no runs`: o host responde com uma lista vazia, então confira o id com `automation list`.
 
 Com `--json` os comandos imprimem o valor que o daemon devolve, com `null` num campo ausente. `--host <nome>` lê um
 host pareado.

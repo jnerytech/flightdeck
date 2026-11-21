@@ -185,14 +185,16 @@ describe("flightdeckd automation runs (issue #3627)", () => {
     expect(callsOf(daemon, "automation.runs")).toEqual([{ id: "a1", limit: 500 }]);
   });
 
-  test("an automation the daemon does not know is one line on stderr and exit 1", async () => {
+  test("a refusal from the daemon is one line on stderr and exit 1", async () => {
     const daemon = fakeDaemon({
       ...OPEN,
-      "automation.runs": () => ({ error: { code: "not_found", message: "automation not found" } }),
+      "automation.runs": () => ({
+        error: { code: "invalid_state", message: "automations are off on this host" },
+      }),
     });
     const run = await flightdeckd(["automation", "runs", "nope"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({ code: 1, out: [] });
-    expect(run.err.join("\n")).toContain("automation not found");
+    expect(run.err.join("\n")).toContain("automations are off on this host");
   });
 });
 

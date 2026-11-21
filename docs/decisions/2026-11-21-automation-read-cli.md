@@ -14,8 +14,9 @@ high-risk rules and a security review.
   limit, and `external authors allowed` when it acts on third-party content. A project with none is
   `<project>: no automations` and exit `0`: the lookup worked and the answer is "none".
 - `runs` prints the number of runs and then one line for each, newest first as the daemon sends them: the time, the
-  status, the cause and the detail. An automation that never fired is `<id>: no runs`. An unknown automation is the
-  daemon's refusal: exit `1`, one line on stderr.
+  status, the cause and the detail. An automation that never fired is `<id>: no runs`. An id the daemon does not know
+  gets the same answer, because `automation.runs` returns an empty list for it: exit `0`. A refusal from the daemon is exit `1`,
+  one line on stderr.
 - `--limit` is the shared flag. The parser already refuses a value outside 1 to 1000; `automation` stops at the daemon's
   own bound of 500 and refuses the flag on `list`.
 - Names, labels and details are text a person or a repository wrote; the shared `shown` helper strips the control
