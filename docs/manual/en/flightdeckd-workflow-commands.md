@@ -38,6 +38,7 @@ step with its attempt, type, state and exit code. An unknown run exits `1`.
 `watch` writes one line for every change of a run on this host, starting with the runs that are active, until Ctrl-C
 (exit `0`). With `--json` each line is one run.
 
-`resume <run>` only checks: it prints where a failed run would resume, or why it cannot, and starts nothing.
+`resume <run>` only checks: it prints where a failed run would resume and starts nothing. When it cannot resume it prints why, with the parameters of
+the reason, and exits `1`.
 
 With `--json` the commands print what the daemon answered. `--host <name>` reads a paired host.

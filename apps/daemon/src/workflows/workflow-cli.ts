@@ -53,7 +53,9 @@ export function runWorkflowCli(
       if ("run" in args) {
         if (args.action === "resume") {
           const check = await daemon.call("run.resume", { runId: args.run });
-          return shown(args.json, check, () => resumeLines(args.run, check));
+          // A run that cannot resume is refused (exit 1), with the check printed all the same.
+          const result = shown(args.json, check, () => resumeLines(args.run, check));
+          return check.ok ? result : { ...result, code: 1 };
         }
         const run = await daemon.call("run.get", { runId: args.run });
         return shown(args.json, run, () => runLines(run));

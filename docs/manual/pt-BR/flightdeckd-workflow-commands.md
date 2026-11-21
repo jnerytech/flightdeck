@@ -38,7 +38,7 @@ passo com tentativa, tipo, estado e código de saída. Uma execução desconheci
 `watch` escreve uma linha a cada mudança de uma execução neste host, começando pelas que estão ativas, até Ctrl-C
 (saída `0`). Com `--json` cada linha é uma execução.
 
-`resume <execução>` só verifica: imprime de onde uma execução que falhou retomaria, ou por que não pode, e não inicia
-nada.
+`resume <execução>` só verifica: imprime de onde uma execução que falhou retomaria e não inicia nada. Quando não pode
+retomar, imprime o motivo, com os parâmetros dele, e sai com `1`.
 
 Com `--json` os comandos imprimem o que o daemon respondeu. `--host <nome>` lê um host pareado.

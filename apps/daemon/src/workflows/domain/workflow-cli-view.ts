@@ -67,8 +67,10 @@ export function watchLine(run: WorkflowRun): string {
   return `${run.id}  ${run.workflowName}  ${run.status}  ${at}${run.statusReason ? `  ${run.statusReason}` : ""}`;
 }
 
-export const resumeLines = (runId: string, check: RunResumeCheck): string[] => [
-  check.ok
-    ? `${runId} can resume from ${check.from}`
-    : `${runId} cannot resume: ${check.reason ?? "no reason given"}`,
-];
+export function resumeLines(runId: string, check: RunResumeCheck): string[] {
+  if (check.ok) return [`${runId} can resume from ${check.from}`];
+  const params = Object.entries(check.params ?? {}).map(([key, value]) => `${key}: ${value}`);
+  return [
+    `${runId} cannot resume: ${check.reason ?? "no reason given"}${params.length > 0 ? ` (${params.join(", ")})` : ""}`,
+  ];
+}

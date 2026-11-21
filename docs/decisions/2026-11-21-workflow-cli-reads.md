@@ -13,7 +13,7 @@ workflow, add a template, resume a run) come in a second slice with their risk r
 - **An invalid workflow is a result.** `validate` and `list` exit 0 for a workflow with errors and print them; `--json`
   prints what the daemon answered. Exit 1 is the daemon's refusal (an unknown project, workflow or run).
 - **`resume` here only checks.** It sends no `confirm`, so it changes nothing: it says where a failed run would resume,
-  or why it cannot. Over a connection the daemon does not trust for the vault it answers `transport_refused`, and the
+  or why it cannot (the reason and its parameters, exit 1). Over a connection the daemon does not trust for the vault it answers `transport_refused`, and the
   line says that. Actually resuming comes with the write slice.
 - **`--confirm` is refused for now.** A flag no verb of the slice reads is refused by the parser, so a script cannot
   believe it confirmed something.
