@@ -126,4 +126,50 @@ describe("risk rules: spellings of a flightdeckd line that the shell reads anoth
       ]),
     ).toEqual([]);
   });
+
+  test("a brace list that opens the program word expands to the CLI, whatever its alternatives and suffix", () => {
+    expect(
+      wrongReasons([
+        ["{f,car}d delete c1", HIDDEN],
+        ["{f,x}d persona remove qa", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a group or a substitution in front of a brace range does not hide it", () => {
+    expect(
+      wrongReasons([
+        ["({f..f}d persona remove qa)", HIDDEN],
+        ["`{f..f}d persona remove qa`", HIDDEN],
+        ["( {f..f}d persona remove qa )", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("an array element assigned in front of the program is no part of the command", () => {
+    expect(
+      wrongReasons([
+        ["A[0]=x fd persona remove qa", PERSONA],
+        ["A[$i]+=x fd persona remove qa", PERSONA],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("xargs gives a runner the words it reads, and a resume the flag it reads", () => {
+    expect(
+      wrongReasons([
+        ["echo persona remove qa | xargs bun bin.ts", HIDDEN],
+        ["echo persona remove qa | xargs bun run start", HIDDEN],
+        ["echo --force | xargs fd history resume s", HIDDEN],
+        ["echo --force | xargs bun run start history resume s", HIDDEN],
+      ]),
+    ).toEqual([]);
+    expect(
+      notHigh([
+        "echo x | xargs bun run build",
+        "echo qa | xargs bun run start persona show",
+        "echo s | xargs fd history list",
+      ]),
+    ).toEqual([]);
+  });
 });
