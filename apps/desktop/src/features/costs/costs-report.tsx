@@ -7,6 +7,7 @@ import { basename, uniqueKeys } from "@/shared/lib/index.ts";
 import { Breakdown } from "./costs-parts.tsx";
 import { usd } from "./domain/costs.ts";
 import { topModel } from "./domain/costs-scope.ts";
+import { originRows } from "./domain/origins.ts";
 
 const tokensOf = (t: CostsSummary["totals"]["tokens"]) =>
   t.input + t.output + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
@@ -84,10 +85,7 @@ export function CostsBreakdowns(
         name={t("costsUi.byModel")}
         rows={summary.byModel.map((m) => ({ label: m.model, costUsd: m.costUsd }))}
       />
-      <Breakdown
-        name={t("costsUi.byOrigin")}
-        rows={summary.byOrigin.map((o) => ({ label: o.origin, costUsd: o.costUsd }))}
-      />
+      <Breakdown name={t("costsUi.byOrigin")} rows={originRows(summary.byOrigin, t)} />
       {props.withPersonas && (
         <Breakdown
           name={t("costsUi.byPersona")}
