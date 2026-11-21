@@ -28,7 +28,12 @@ function host(status: "offline" | "connecting", lastTryAt: number) {
 function page(lang: "en" | "pt-BR", state: ReturnType<typeof host>) {
   return (
     <TContext.Provider value={translator(lang)}>
-      <HostOfflineBanner host={state} onReconnect={() => {}} />
+      <HostOfflineBanner
+        host={state}
+        onReconnect={() => {}}
+        formatTime={() => ""}
+        onCopy={async () => true}
+      />
     </TContext.Provider>
   );
 }
