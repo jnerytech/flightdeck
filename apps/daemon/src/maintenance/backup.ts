@@ -31,6 +31,7 @@ export async function backupNow(
   dir: string,
   now: number,
   out?: string,
+  force?: boolean,
 ): Promise<BackupInfo> {
   const path = out ?? join(dir, backupName(now));
   await mkdir(dirname(path), { recursive: true });
