@@ -272,6 +272,36 @@ describe("host-offline-ui", () => {
     expect(live.textContent).not.toContain("Copiado");
   });
 
+  test("a copy while an automatic retry is trying is still announced, since no Reconnect answer is waiting (#3694)", async () => {
+    const region = await banner({ ...OFFLINE, status: "connecting" });
+    const button = screen.queryByRole("button", { name: "Copiar o comando systemd=true" });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    expect(within(region).getByRole("status").textContent).toContain("Copiado");
+  });
+
+  test("the Information panel of a host that refused the token does not promise it will answer (#3698)", async () => {
+    const { HostInfoPanel } = await import("../../src/features/hosts/host-info-panel.tsx");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
+    const store = new AppStore(memoryPlatform().platform);
+    cleanups.push(() => store.dispose());
+    render(
+      <TContext.Provider value={translator("pt-BR")}>
+        <HostInfoPanel
+          store={store}
+          host={{ id: "h1", name: "pc", hostInfo: null, status: "unauthorized" } as never}
+          offline
+        />
+      </TContext.Provider>,
+    );
+    const panel = screen.getByRole("region", { name: "Informações" });
+    expect(panel.textContent).not.toContain("quando ele responder");
+    expect(panel.textContent).toContain("informações indisponíveis");
+  });
+
   test("the copy buttons are named in English for an app in English (#3694)", async () => {
     await banner(OFFLINE, { language: "en" });
     expect(
