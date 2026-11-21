@@ -387,8 +387,8 @@ A change that gets no answer exits `2` and says it may or may not have gone in: 
 fd message history --team core --status refused --days 3
 ```
 
-`history` lists the messages between sessions, newest first: id, time, `from to to`, status (a reason follows a refused or
-expired message) and the text. Narrow it with `--team`, `--session`, `--with-host`, `--status`, `--days`, `--limit`.
+`history` lists the messages between sessions, newest first: id, time, `from to to`, status (and a reason, when it has one)
+and the text. Narrow it with `--team`, `--session`, `--with-host`, `--status`, `--days`, `--limit`.
 `watch` prints a line per message, relay, loop alert and idle notice until Ctrl-C; `rules` prints the policy in force
 and the paused pairs. All take `--host` and `--json`; a refusal exits `1`.
 
