@@ -77,6 +77,14 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 
 - [fd changes](flightdeckd-changes-commands.md#fd-changes)
 
+## flightdeckd commands: the snapshots and the trace of a Claude session
+
+[Read the chapter.](flightdeckd-checkpoints-commands.md) Its sections:
+
+- [fd snapshots](flightdeckd-checkpoints-commands.md#fd-snapshots)
+- [fd rewind](flightdeckd-checkpoints-commands.md#fd-rewind)
+- [fd trace](flightdeckd-checkpoints-commands.md#fd-trace)
+
 ## flightdeckd commands: the files of a repository and the folders of a host
 
 [Read the chapter.](flightdeckd-file-commands.md) Its sections:

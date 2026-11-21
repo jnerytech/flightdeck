@@ -15,6 +15,7 @@ import { type CliArgs, USAGE } from "./domain/args.ts";
 import { automationCliArgs } from "./domain/automation-args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { changesCliArgs } from "./domain/changes-args.ts";
+import { checkpointsCliArgs, traceCliArgs } from "./domain/checkpoints-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
 import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
@@ -30,12 +31,12 @@ import { sshCliArgs } from "./domain/ssh-args.ts";
 import { terminalCliArgs } from "./domain/terminal-args.ts";
 import { vaultCliArgs } from "./domain/vault-args.ts";
 import { watchCliArgs } from "./domain/watch-args.ts";
-import { workflowCliArgs } from "./domain/workflow-args.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 import { liveStream, watchStop } from "./watch-stop.ts";
+import { workflowRun } from "./workflow-run.ts";
 
 /**
  * The commands of `flightdeckd` that are not the daemon (issue #1593): what each prints and does.
@@ -135,7 +136,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `mcp` (its verbs), `knowledge`, `workflow`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `workflow`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -271,6 +272,14 @@ function cardCliArgs(args: CliArgs): CardCliArgs {
   const present = Object.entries(typed).filter(([, value]) => value !== undefined);
   return { action: args.action, ...Object.fromEntries(present) } as CardCliArgs;
 }
+
+/** `snapshots` and `rewind` are two nouns of one domain: the checkpoints of a session's turns (#3701). */
+const checkpointsRun: CommandRun = async (args, deps) => {
+  const { runCheckpointsCli } = await import("../checkpoints/index.ts");
+  return asking(args, deps, (config, remote) =>
+    runCheckpointsCli(checkpointsCliArgs(args), config, remote ? { remote } : {}),
+  );
+};
 
 export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   backup: done(async (args, deps) => (await import("./maintenance.ts")).runBackup(args, deps)),
@@ -601,13 +610,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runKnowledgeCli } = await import("../knowledge/index.ts");
     return askingWith(args, deps, knowledgeCliArgs, runKnowledgeCli);
   },
-  workflow: async (args, deps) => {
-    const { runWorkflowCli } = await import("../workflows/index.ts");
-    const live = liveStream(args, deps);
-    return asking(args, deps, (config, remote) =>
-      runWorkflowCli(workflowCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
-    );
-  },
+  workflow: (args, deps) => asking(args, deps, workflowRun(args, liveStream(args, deps))),
   runenv: async (args, deps) => {
     const { runRunenvCli } = await import("../runenv/index.ts");
     const live = liveStream(args, deps);
@@ -620,6 +623,14 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const live = liveStream(args, deps);
     return asking(args, deps, (config, remote) =>
       runChangesCli(changesCliArgs(args), config, { ...(remote ? { remote } : {}), ...live }),
+    );
+  },
+  snapshots: checkpointsRun,
+  rewind: checkpointsRun,
+  trace: async (args, deps) => {
+    const { runTraceCli } = await import("../trace/index.ts");
+    return asking(args, deps, (config, remote) =>
+      runTraceCli(traceCliArgs(args), config, remote ? { remote } : {}),
     );
   },
   file: (args, deps) => asking(args, deps, fileRun(args, deps.stdin)),
