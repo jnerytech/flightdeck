@@ -593,6 +593,8 @@ export const sessions = {
     description:
       "Cada turno desta conversa e o que ele mudou nos arquivos. Voltar arquivos desfaz só arquivos do repositório: comandos externos (banco, rede, git push) não voltam.",
     loading: "Carregando os turnos…",
+    loadFailed: "Não deu para carregar os turnos desta sessão.",
+    retry: "Tentar de novo",
     empty:
       "Ainda não há turnos com snapshot nesta sessão. Os snapshots só existem em pastas de um repositório git.",
     list: "Turnos",
@@ -626,6 +628,8 @@ export const sessions = {
     },
     nothing: "Nada para voltar: os arquivos já estão como neste turno.",
     previewing: "Calculando o que muda…",
+    previewFailed: "Não deu para calcular o que a volta muda.",
+    applyFailed: "Não deu para voltar os arquivos: {reason}",
     nothingToRewind: "Nada a voltar: os arquivos já estão como estavam neste turno.",
     rewindConfirm: "Voltar arquivos",
     rewound: "Arquivos voltados ao turno {n}.",
@@ -640,6 +644,8 @@ export const sessions = {
     forkFilesNote:
       "Antes de abrir, os arquivos voltam ao estado deste turno. Dá para desfazer depois, pela linha do tempo.",
     forkConfirm: "Bifurcar",
+    forkNeedsPreview:
+      "Bifurcar precisa antes da lista de arquivos acima. Desmarque “Voltar os arquivos também” para bifurcar sem ela.",
     forkCommand: "Conversa bifurcada. Para abrir no terminal, rode:",
   },
 } as const;
