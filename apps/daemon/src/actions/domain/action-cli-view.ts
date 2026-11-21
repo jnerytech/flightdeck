@@ -5,7 +5,7 @@
  * masked by the daemon; it is still text a program wrote, so `said` strips the control characters, and the
  * lines are split here because that strips the line breaks too.
  */
-import type { ActionInfo, ActionRunInfo } from "@flightdeck/protocol";
+import type { ActionInfo, ActionList, ActionRunInfo } from "@flightdeck/protocol";
 
 /** One action as `--json` prints it: the same keys every time. */
 const actionJson = (action: ActionInfo) => ({
@@ -18,7 +18,12 @@ const actionJson = (action: ActionInfo) => ({
   changed: action.changed,
 });
 
-export const listJson = (actions: readonly ActionInfo[]) => ({ actions: actions.map(actionJson) });
+/** The actions and what is wrong with the actions file: an empty list must not hide a broken file. */
+export const listJson = (list: ActionList) => ({
+  actions: list.actions.map(actionJson),
+  errors: list.errors,
+  issues: list.issues ?? null,
+});
 
 export const runsJson = (runs: readonly ActionRunInfo[]) => ({ runs });
 
@@ -31,7 +36,7 @@ function joined(items: readonly string[]): string {
 /** One line for an action: its state, how it asks for approval and the hash that `trust` takes. */
 function actionLine(action: ActionInfo): string {
   const parts = [
-    action.description,
+    ...(action.description === "" ? [] : [action.description]),
     action.trusted ? "trusted" : "not trusted",
     `approval ${action.approval}`,
     `hash ${action.hash}`,
@@ -40,8 +45,9 @@ function actionLine(action: ActionInfo): string {
   return `${action.name}: ${parts.join(", ")}`;
 }
 
-export function listLines(actions: readonly ActionInfo[]): string[] {
-  return actions.length === 0 ? ["no actions"] : actions.map(actionLine);
+export function listLines(list: ActionList): string[] {
+  const lines = list.actions.length === 0 ? ["no actions"] : list.actions.map(actionLine);
+  return [...lines, ...list.errors.map((error) => `error: ${error}`)];
 }
 
 /** A run's header, then its output indented under it. */

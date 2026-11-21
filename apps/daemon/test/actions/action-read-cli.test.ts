@@ -156,6 +156,8 @@ describe("flightdeckd action list --json and --plain (issue #3629)", () => {
       actions: [TRUSTED, UNTRUSTED].map((a) =>
         Object.fromEntries(keys.map((key) => [key, (a as Record<string, unknown>)[key]])),
       ),
+      errors: [],
+      issues: null,
     });
     for (const secret of ["run", "env", "secrets", "cwd", "deploy.sh"])
       expect(run.out.join("\n")).not.toContain(`"${secret}"`);

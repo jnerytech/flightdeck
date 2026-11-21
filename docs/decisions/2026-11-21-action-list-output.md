@@ -9,7 +9,8 @@ takes, whether it is `trusted` and what `changed`.
 
 - With no flag, `action list` prints what it printed before: the raw, trusted-only JSON. A test pins it. The mod reads
   it, so changing its shape would break the mod and gain nothing for the new readers.
-- `action list --json` prints `{ "actions": [ ... ] }` for every action, with `name`, `description`, `approval`,
+- `action list --json` prints `{ "actions": [ ... ], "errors": [ ... ], "issues": ... }` (what is wrong with the actions
+  file; `issues` is `null` when absent) for every action, with `name`, `description`, `approval`,
   `params`, `hash`, `trusted` and `changed`. Never the command (`run`), the environment, the working folder or the
   secrets: a person decides to trust an action from its hash and what changed, and the declaration is in the file they
   already read.

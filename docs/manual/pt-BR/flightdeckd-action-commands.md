@@ -20,8 +20,10 @@ fd action runs --json
 
 `list --plain` imprime uma linha por ação, confiada ou não: o nome, a descrição, `trusted` ou `not trusted`, a regra de
 aprovação, o hash e, quando o arquivo mudou depois de confiado, o que mudou. `list --json` imprime
-`{ "actions": [ ... ] }` com as mesmas chaves em toda ação: `name`, `description`, `approval`, `params`, `hash`,
-`trusted` e `changed`. Nenhum dos dois mostra o comando, o ambiente, a pasta de trabalho nem um segredo. O hash é o que
+`{ "actions": [ ... ], "errors": [ ... ], "issues": ... }` com as mesmas chaves em toda ação: `name`,
+`description`, `approval`, `params`, `hash`, `trusted` e `changed`. `errors` e `issues` dizem o que há de errado no
+arquivo de ações (`null` quando o host não manda `issues`), e `--plain` imprime cada erro numa linha `error:`; assim uma
+lista vazia nunca esconde um arquivo quebrado. Nenhum dos dois mostra o comando, o ambiente, a pasta de trabalho nem um segredo. O hash é o que
 um `action trust --hash` futuro recebe.
 
 `list` sem nenhuma das duas flags é o que o mod `flightdeck` lê: JSON cru só com as ações confiadas, com nome, descrição,

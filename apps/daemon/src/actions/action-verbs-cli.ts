@@ -48,8 +48,8 @@ export function runActionVerbCli(
         });
         return shown(args.json, runsJson(runs), () => runsLines(runs));
       }
-      const { actions } = await daemon.call("actions.list", scope);
-      return shown(args.json, listJson(actions), () => listLines(actions));
+      const list = await daemon.call("actions.list", scope);
+      return shown(args.json, listJson(list), () => listLines(list));
     },
   });
 }

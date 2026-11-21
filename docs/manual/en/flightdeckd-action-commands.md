@@ -19,8 +19,10 @@ fd action runs --json
 
 `list --plain` prints one line for each action, trusted or not: its name, its description, `trusted` or `not trusted`,
 its approval rule, its hash and, when the file changed since it was trusted, what changed. `list --json` prints
-`{ "actions": [ ... ] }` with the same keys for every action: `name`, `description`, `approval`, `params`, `hash`,
-`trusted` and `changed`. Neither shows the command, the environment, the working folder or a secret. The hash is the one
+`{ "actions": [ ... ], "errors": [ ... ], "issues": ... }` with the same keys for every action: `name`,
+`description`, `approval`, `params`, `hash`, `trusted` and `changed`. `errors` and `issues` say what is wrong with the
+actions file (`null` when the host sends no issues), and `--plain` prints each error as an `error:` line, so an empty list
+is never a broken file in disguise. Neither shows the command, the environment, the working folder or a secret. The hash is the one
 a later `action trust --hash` takes.
 
 `list` with neither flag is the one the `flightdeck` mod reads: raw JSON with only the trusted actions, their name,
