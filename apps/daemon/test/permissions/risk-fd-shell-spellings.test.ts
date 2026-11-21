@@ -93,10 +93,12 @@ describe("risk rules: spellings of a flightdeckd line that the shell reads anoth
   });
 
   test("every noun a rule reads has its verb checked for an expansion", () => {
-    const source = readFileSync(
-      new URL("../../src/permissions/domain/risk.ts", import.meta.url),
-      "utf8",
-    );
+    // The rules live in risk.ts and in the files it takes a domain's rules from.
+    const source = ["risk.ts", "project-risk.ts"]
+      .map((file) =>
+        readFileSync(new URL(`../../src/permissions/domain/${file}`, import.meta.url), "utf8"),
+      )
+      .join("\n");
     const nouns = new Set([
       ...[...source.matchAll(/runsCliVerb\(\s*prog,\s*args,\s*"([a-z-]+)"/g)].map(
         (m) => m[1] as string,
