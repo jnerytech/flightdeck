@@ -54,9 +54,14 @@ const TRACE = {
 async function panel(language: "en" | "pt-BR", answers: Array<unknown>) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   await store.i18n.setLang(language);
-  const asked: string[] = [];
-  store.hostCommand = (async (_host: string, type: string) => {
-    asked.push(type);
+  const asked: Array<{ type: string; options: unknown }> = [];
+  store.hostCommand = (async (
+    _host: string,
+    type: string,
+    _payload: unknown,
+    options?: unknown,
+  ) => {
+    asked.push({ type, options });
     return answers.length > 1 ? answers.shift() : answers[0];
   }) as never;
   render(
@@ -90,7 +95,9 @@ const step = () => screen.queryByRole("status")?.textContent ?? "";
 
 describe("rastro-estados (#3706)", () => {
   test("a refused trace.get says so with Try again, then shows the trace, in both languages", async () => {
-    const { store } = await panel("en", [null, TRACE]);
+    const { store, asked } = await panel("en", [null, TRACE]);
+    // The tab has its own Try again, so the banner must not offer a second one for the same refusal.
+    expect(asked[0]).toEqual({ type: "trace.get", options: { retry: false } });
     expect(alertText().includes("Could not load the trace.")).toBe(true);
     expect(screen.queryByText(store.i18n.t("states.loading"))).toBeNull();
     await click("Try again");
@@ -119,8 +126,8 @@ describe("rastro-estados (#3706)", () => {
   test("Previous pauses the playback and the step stays where the person put it", async () => {
     await panel("en", [TRACE]);
     await click("Replay");
-    await click("Play");
     await click("Next");
+    await click("Play");
     await click("Previous");
     expect(screen.queryByRole("button", { name: "Play" })).not.toBeNull();
     const before = step();
@@ -129,16 +136,28 @@ describe("rastro-estados (#3706)", () => {
     await stays(() => step() === before, 1300);
   });
 
-  test("Next onto the last step ends the playback, and a playing replay is not read aloud", async () => {
+  test("Next pauses the playback too, and a playing replay is not read aloud", async () => {
     await panel("en", [TRACE]);
     await click("Replay");
     await click("Play");
     expect(screen.queryByRole("status")?.getAttribute("aria-live")).toBe("off");
     await click("Next");
-    await click("Next");
-    await click("Next");
-    expect(step()).toBe("Step 4 of 4");
+    expect(step()).toBe("Step 2 of 4");
     expect(screen.queryByRole("button", { name: "Play" })).not.toBeNull();
+    expect(screen.queryByRole("status")?.getAttribute("aria-live")).toBe("polite");
+  });
+
+  test("a playback that reaches the last step stops by itself", async () => {
+    await panel("en", [TRACE]);
+    await click("Replay");
+    const speed = screen.queryByRole("combobox", { name: "Speed" });
+    expect(speed).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(speed as HTMLElement, { target: { value: "4" } });
+    });
+    await click("Play");
+    await settle(() => step() === "Step 4 of 4");
+    await settle(() => screen.queryByRole("button", { name: "Play" }) !== null);
     expect(screen.queryByRole("status")?.getAttribute("aria-live")).toBe("polite");
   });
 });
