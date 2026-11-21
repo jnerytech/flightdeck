@@ -60,6 +60,7 @@ export interface CliArgs {
     | "runenv"
     | "changes"
     | "file"
+    | "automation"
     | "requests"
     | "send"
     | "approve"
@@ -90,6 +91,7 @@ export interface CliArgs {
     | "move"
     | "update"
     | "config"
+    | "runs"
     | "complete"
     | "delete"
     | "discard"
@@ -293,6 +295,8 @@ export interface CliArgs {
   reviewLines?: { start: number; end: number };
   /** `runenv config <project>` or `runenv get <card>`: the operand. */
   runenvTarget?: string;
+  /** `automation list <project>` or `automation runs <automation>`: the operand. */
+  automationTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
   boardsyncTarget?: string;
   /** `boardsync link <project> <board>`: the board's id. */

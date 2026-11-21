@@ -76,6 +76,12 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 
 - [fd file](flightdeckd-file-commands.md#fd-file)
 
+## flightdeckd commands: the automations of a project
+
+[Read the chapter.](flightdeckd-automation-commands.md) Its sections:
+
+- [fd automation](flightdeckd-automation-commands.md#fd-automation)
+
 ## flightdeckd commands: the MCP servers of a project
 
 [Read the chapter.](flightdeckd-mcp-commands.md) Its sections:
