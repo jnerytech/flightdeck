@@ -112,4 +112,29 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
     expect(screen.queryByText(t("quotaCharts.empty")) !== null).toBe(true);
     expect(screen.queryByRole("status", { name: t("quotaCharts.loading") }) === null).toBe(true);
   });
+
+  test("another host's charts start from loading, not from the previous host's charts", async () => {
+    const pending: Array<(value: QuotaHistory | null) => void> = [];
+    const store = {
+      i18n: { t },
+      formatTime: () => "16:00",
+      hostCommand: (host: string, _command: string, args: { window: string }) =>
+        host === "a"
+          ? Promise.resolve(history(args.window, null))
+          : new Promise<QuotaHistory | null>((resolve) => pending.push(resolve)),
+    } as never;
+    const view = (hostId: string) => (
+      <TContext.Provider value={t}>
+        <QuotaCharts store={store} hostId={hostId} />
+      </TContext.Provider>
+    );
+    const { rerender } = render(view("a"));
+    await settle(() => screen.queryAllByRole("region", { name: /./ }).length > 1);
+    rerender(view("b"));
+    await settleMaybe(
+      () => screen.queryByRole("status", { name: t("quotaCharts.loading") }) !== null,
+      600,
+    );
+    expect(screen.queryByRole("status", { name: t("quotaCharts.loading") }) !== null).toBe(true);
+  });
 });
