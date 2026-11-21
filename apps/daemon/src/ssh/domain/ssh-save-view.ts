@@ -43,10 +43,10 @@ export function addPayload(
 }
 
 /** `--no-forward-agent` turns it off, `--forward-agent` on, and neither keeps what the destination has. */
-function forwardAgentOf(fields: SshSaveFields, current: boolean | undefined): boolean | undefined {
+function forwardAgentOf(fields: SshSaveFields, existing: SshTarget): boolean | undefined {
   if (fields.noForwardAgent) return false;
   if (fields.forwardAgent) return true;
-  return current;
+  return existing.options.forwardAgent;
 }
 
 /**
@@ -64,7 +64,7 @@ export function editPayload(
   const authChanged = fields.auth !== undefined && fields.auth !== existing.auth;
   const keptRef = authChanged ? null : existing.secretRef;
   const secretRef = auth === "agent" ? null : (fields.secretRef ?? keptRef);
-  const forwardAgent = forwardAgentOf(fields, existing.options.forwardAgent);
+  const forwardAgent = forwardAgentOf(fields, existing);
   return {
     id: existing.id,
     name: existing.name,
