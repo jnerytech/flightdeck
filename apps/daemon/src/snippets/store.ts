@@ -151,8 +151,15 @@ export class Snippets {
     this.store.removeMark(id);
   }
 
-  /** Trusts the content of the project's versioned file, by the hash the app was shown. */
-  async trust(projectPath: string, hash: string): Promise<SnippetFileInfo> {
+  /**
+   * Trusts the content of the project's versioned file, by the hash the app was shown. `check` runs last, once
+   * the file is there and is the file shown, with the folder the host resolved: it may refuse (the device's proof).
+   */
+  async trust(
+    projectPath: string,
+    hash: string,
+    check: (project: string) => void = () => {},
+  ): Promise<SnippetFileInfo> {
     const project = await this.project(projectPath);
     const loaded = await this.loadFile(project);
     if (!loaded)
@@ -168,6 +175,7 @@ export class Snippets {
         "snippet_file_changed",
       );
     }
+    check(project);
     this.store.trust(project, hash, new Date(this.now()).toISOString());
     return { ...loaded.info, trusted: true };
   }

@@ -43,6 +43,8 @@ pub enum CommandAsk {
     PluginUpdate { plugin: String },
     /// `plugins.marketplaceAdd`: add this marketplace (a repository, a URL or a folder), at this scope (#3516).
     MarketplaceAdd { source: String, scope: Option<String> },
+    /// `snippets.trust`: the commands of this project's snippet file, at this hash, may run in terminals (#3647).
+    TrustSnippets { path: String, hash: String },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -274,6 +276,9 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         // The one payload with a boolean: `confirm` is the JSON `true` the person's press stands for. The dialog says
         // the source and the scope, so the source must be one it can show whole.
         "plugins.marketplaceAdd" => read_marketplace(fields),
+        // The folder and the hash of the snippet file the person was shown: the host trusts that folder's file only at
+        // that hash. Both are signed and both are shown, the hash short, the folder last on a line of its own (#3647).
+        "snippets.trust" => read_snippet_trust(fields),
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -348,6 +353,33 @@ fn read_trust(
         serde_json::to_string(path).unwrap_or_default()
     );
     Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
+}
+
+/// `snippets.trust`: exactly `projectPath` (a path the dialog can show) and `hash` (the 64 lowercase hex characters the
+/// host makes, so nothing in it can pad the text).
+fn read_snippet_trust(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.len() != 2 {
+        return Err("the snippet trust payload has the wrong fields".into());
+    }
+    let text = |key: &str| {
+        fields
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| format!("the snippet trust payload has no text for {key}"))
+    };
+    let path = text("projectPath")?;
+    let hash = text("hash")?;
+    if !is_shown_path(path) {
+        return Err("the folder is not a path the dialog can show".into());
+    }
+    if hash.len() != 64 || !hash.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')) {
+        return Err("the snippet file hash is not 64 lowercase hex characters".into());
+    }
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let canonical = format!("{{\"hash\":{},\"projectPath\":{}}}", quoted(hash), quoted(path));
+    Ok((CommandAsk::TrustSnippets { path: path.into(), hash: hash.into() }, canonical))
 }
 
 fn read_resume(
@@ -700,6 +732,11 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
     (title.to_string(), body)
 }
 
+/// The first 12 characters of a file hash: enough for a person to tell two versions of a file apart.
+fn short_hash(hash: &str) -> String {
+    hash.chars().take(12).collect()
+}
+
 /// The first 8 characters of an id, as the device list shows them.
 fn short(id: &str) -> String {
     id.chars().take(8).collect::<String>()
@@ -845,6 +882,14 @@ fn command_text(ask: &Ask, pt: bool) -> String {
         Some(CommandAsk::MarketplaceAdd { source, scope }) => {
             marketplace_text(&ask.host, source, scope.as_deref().unwrap_or("user"), pt)
         }
+        Some(CommandAsk::TrustSnippets { path, hash }) if pt => format!(
+            "Confiar no arquivo de snippets de uma pasta de projeto? Os comandos dele, como estão no arquivo {}, vão poder rodar em terminais sem pedir confirmação. Continue só se você acabou de apertar Confiar no arquivo no Flightdeck.\n\"{path}\"",
+            short_hash(hash)
+        ),
+        Some(CommandAsk::TrustSnippets { path, hash }) => format!(
+            "Trust the snippet file of a project folder? Its commands, as they are in file {}, will be able to run in terminals with no prompt. Continue only if you just pressed Trust the file in Flightdeck.\n\"{path}\"",
+            short_hash(hash)
+        ),
         None => String::new(),
     }
 }
@@ -948,6 +993,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustSnippets { .. })) => {
+            if pt { ("Confiar no arquivo", "Cancelar") } else { ("Trust file", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::RootsAdd { .. })) => {
             if pt { ("Adicionar pasta", "Cancelar") } else { ("Add folder", "Cancel") }
@@ -1578,6 +1626,103 @@ mod tests {
         assert!(en.contains("everything inside it") && pt.contains("tudo o que há dentro dela"), "{en} {pt}");
         assert_eq!(confirm_labels(&trust_ask(), "en").0, "Trust");
         assert_eq!(confirm_labels(&trust_ask(), "pt-BR").0, "Confiar");
+    }
+
+    /// The payloads that trust a project's snippet file, in canonical form, and the hashes both sides share
+    /// (the protocol test asserts the same literals, #3647).
+    const SNIP_HASH_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const SNIP_PAYLOAD_A: &str = "{\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"projectPath\":\"/work/app\"}";
+    const SNIP_DIGEST_A: &str = "806ce00e17fd22b999d21804f3a49945e98211f9ffe9651d9c10c2667e69e1d9";
+    const SNIP_HASH_B: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const SNIP_PAYLOAD_B: &str = "{\"hash\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\"projectPath\":\"/srv/flightdeck app\"}";
+    const SNIP_DIGEST_B: &str = "684bc21ef06bcde0cb6af55be1fdaeb58f291f0133ded2ac39012d0e0058a5cf";
+
+    fn snippet_trust_ask(path: &str, hash: &str) -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "snippets.trust".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::TrustSnippets { path: path.into(), hash: hash.into() }),
+        }
+    }
+
+    #[test]
+    fn the_snippet_trust_vectors_hash_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(SNIP_PAYLOAD_A), SNIP_DIGEST_A);
+        assert_eq!(sha256_hex(SNIP_PAYLOAD_B), SNIP_DIGEST_B);
+    }
+
+    #[test]
+    fn trusting_a_snippet_file_is_read_from_its_payload_in_any_key_order() {
+        let me = own();
+        let text = command(&me, DAEMON, "snippets.trust", SNIP_PAYLOAD_A);
+        assert_eq!(
+            describe_with(&text, DAEMON, &me, Some(SNIP_PAYLOAD_A)),
+            Ok(snippet_trust_ask("/work/app", SNIP_HASH_A))
+        );
+        let shuffled = format!("{{\"projectPath\":\"/work/app\",\"hash\":\"{SNIP_HASH_A}\"}}");
+        assert_eq!(
+            describe_with(&text, DAEMON, &me, Some(&shuffled)),
+            Ok(snippet_trust_ask("/work/app", SNIP_HASH_A))
+        );
+        let spaced = command(&me, DAEMON, "snippets.trust", SNIP_PAYLOAD_B);
+        assert_eq!(
+            describe_with(&spaced, DAEMON, &me, Some(SNIP_PAYLOAD_B)),
+            Ok(snippet_trust_ask("/srv/flightdeck app", SNIP_HASH_B))
+        );
+    }
+
+    #[test]
+    fn a_snippet_trust_payload_that_the_dialog_could_not_show_is_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "snippets.trust", payload), DAEMON, &me, Some(payload))
+        };
+        let with = |path: &str, hash: &str| format!("{{\"hash\":\"{hash}\",\"projectPath\":\"{path}\"}}");
+        for bad in [
+            // A field the dialog does not say, a missing field, a field that is no text.
+            format!("{{\"hash\":\"{SNIP_HASH_A}\",\"projectPath\":\"/work/app\",\"confirm\":true}}"),
+            format!("{{\"hash\":\"{SNIP_HASH_A}\"}}"),
+            "{\"projectPath\":\"/work/app\"}".to_string(),
+            format!("{{\"hash\":7,\"projectPath\":\"/work/app\"}}"),
+            format!("{{\"hash\":\"{SNIP_HASH_A}\",\"projectPath\":7}}"),
+            // A hash that is not the 64 lowercase hex characters the host makes: short, long, capitals, not hex.
+            with("/work/app", "abc"),
+            with("/work/app", &"a".repeat(63)),
+            with("/work/app", &"a".repeat(65)),
+            with("/work/app", &"A".repeat(64)),
+            with("/work/app", &"g".repeat(64)),
+            with("/work/app", &format!("{}\\nAllow", "a".repeat(58))),
+            // A folder the dialog could not show whole: a line break, a direction mark, a run of spaces, no absolute path.
+            with("/work/app\\nAllow everything", SNIP_HASH_A),
+            with("/work/\\u202eppa", SNIP_HASH_A),
+            with("/work/\\u200bapp", SNIP_HASH_A),
+            with("/work/app  Nothing will run", SNIP_HASH_A),
+            with("work/app", SNIP_HASH_A),
+            with("", SNIP_HASH_A),
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed(&with("/work/app", SNIP_HASH_A)).is_ok());
+        assert!(signed(&with("C:\\\\Users\\\\app", SNIP_HASH_B)).is_ok());
+    }
+
+    #[test]
+    fn the_dialog_of_a_snippet_trust_names_the_file_and_the_folder_and_has_a_button_of_its_own() {
+        let ask = snippet_trust_ask("/work/app", SNIP_HASH_B);
+        let (_, en) = confirm_text(&ask, "en");
+        assert!(en.starts_with("Trust the snippet file of a project folder?"), "{en}");
+        assert!(en.contains("terminal") && en.contains("0123456789ab"), "{en}");
+        assert!(!en.contains(SNIP_HASH_B), "the hash is shown short: {en}");
+        // The fixed warning comes first and the folder last, on a line of its own and in quotes.
+        assert!(en.ends_with("\n\"/work/app\""), "{en}");
+        let (_, pt) = confirm_text(&ask, "pt-BR");
+        assert!(pt.starts_with("Confiar no arquivo de snippets de uma pasta de projeto?"), "{pt}");
+        assert!(pt.contains("terminais") && pt.contains("Flightdeck") && pt.contains("0123456789ab"), "{pt}");
+        assert!(pt.ends_with("\n\"/work/app\""), "{pt}");
+        assert_eq!(confirm_labels(&ask, "en").0, "Trust file");
+        assert_eq!(confirm_labels(&ask, "pt-BR").0, "Confiar no arquivo");
     }
 
     /// The payload that resumes the automatic approver of a session, in canonical form, and the hash both sides

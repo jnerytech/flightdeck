@@ -157,6 +157,32 @@ describe("snippets-ui: the screen", () => {
     expect(screen.queryByText("Confiável: os comandos do arquivo podem rodar.")).not.toBeNull();
   });
 
+  test("trusting the file asks the approval slice for the folder and the hash it shows, and a no or a failed signing trusts nothing (#3647)", async () => {
+    const { store, repo } = await open(async ({ writeFile }) => {
+      writeFile('- name: testes\n  type: command\n  run: "bun test"\n');
+    });
+    await choose("Projeto", repo);
+    const asked: Array<[string, string]> = [];
+    const answers: Array<() => Promise<{ kind: "declined" }>> = [
+      async () => ({ kind: "declined" }),
+      async () => {
+        throw new Error("signing failed");
+      },
+    ];
+    store.approval.snippetTrustPayload = async (_host, path, hash) => {
+      asked.push([path, hash]);
+      return (await answers.shift()?.()) as never;
+    };
+    const trustedText = () =>
+      screen.queryByText("Confiável: os comandos do arquivo podem rodar.") !== null;
+    await click("Confiar no arquivo");
+    expect([asked.length, trustedText()]).toEqual([1, false]);
+    await click("Confiar no arquivo");
+    expect([asked.length, trustedText()]).toEqual([2, false]);
+    expect(asked.map(([path]) => path)).toEqual([repo, repo]);
+    expect(asked[0]?.[1]).toMatch(/^[0-9a-f]{64}$/);
+  });
+
   test("cancelling the removal keeps the snippet", async () => {
     await open(async ({ save }) => {
       await save({ name: "status", type: "command", run: "git status" });

@@ -3,6 +3,7 @@
 // secret scanner, so `snippets.ts` stays the one public entry (issue #1589).
 
 import { z } from "zod";
+import { ApprovalProof } from "./approval.ts";
 import { cmd } from "./command.ts";
 import { SnippetField, SnippetInput, SnippetVar } from "./snippet-model.ts";
 import { TerminalCols, type TerminalInfo, TerminalRows } from "./terminal.ts";
@@ -116,8 +117,16 @@ export const snippetsCommands = [
       .refine((p) => p.id !== undefined || p.name !== undefined, { message: "give id or name" }),
   ),
   cmd("snippets.remove", z.object({ id: z.string() }).strict()),
-  /** Trusts the content of the project's versioned file, by the hash `snippets.list` showed. */
-  cmd("snippets.trust", z.object({ projectPath: z.string(), hash: z.string() }).strict()),
+  /**
+   * Trusts the content of the project's versioned file, by the hash `snippets.list` showed. `proof` is the signed
+   * proof of an enrolled device over the whole request (#3647).
+   */
+  cmd(
+    "snippets.trust",
+    z
+      .object({ projectPath: z.string(), hash: z.string(), proof: ApprovalProof.optional() })
+      .strict(),
+  ),
   cmd("snippets.favorite", z.object({ id: z.string(), favorite: z.boolean() }).strict()),
   /** Reads a YAML or JSON list of snippets (an import from a file); saves nothing. */
   cmd("snippets.parse", z.object({ text: z.string().max(1_000_000) }).strict()),

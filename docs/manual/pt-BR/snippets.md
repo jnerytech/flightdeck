@@ -16,7 +16,10 @@ guardam) mostra os snippets do host; escolha um **Projeto** para somar os dele e
   ambiente para ele, cujo segredo do cofre você escolhe.
 - O arquivo versionado é compartilhado pelo repositório. Até você **Confiar no arquivo**, os
   comandos dele só colam, sem rodar; mudar o arquivo tira a confiança. As entradas que o app não
-  consegue ler aparecem com o motivo.
+  consegue ler aparecem com o motivo. Com um dispositivo cadastrado (veja Aprovações), confiar no
+  arquivo pede a esse dispositivo que confirme a pasta e a versão do arquivo: o host só confia no
+  arquivo como ele estava quando você confirmou. `fd snippet trust` num terminal é recusado num host
+  assim: confirme no app.
 - **Importar do histórico do shell** lista os comandos dos históricos de bash, zsh e PowerShell do
   host, os mais usados primeiro (só leitura). Uma linha com token, chave, senha ou um valor do cofre
   fica oculta e não pode ser importada; **Revelar linhas ocultas** mostra só as que os padrões

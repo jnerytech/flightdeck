@@ -56,6 +56,18 @@ export type TrustPayload =
     }
   | { kind: "declined" };
 
+/** The payload of `snippets.trust`, or the person's no (#3647). */
+export type SnippetTrustPayload =
+  | {
+      kind: "payload";
+      payload: {
+        projectPath: string;
+        hash: string;
+        proof?: { keyId: string; nonce: string; signature: string };
+      };
+    }
+  | { kind: "declined" };
+
 /** The payload of `autoapprove.resume`, or the person's no (#3453). */
 export type ResumePayload =
   | {
