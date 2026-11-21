@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CliResult } from "../../src/daemon-client/index.ts";
 import { parseArgs } from "../../src/main.ts";
 import { runMessageAdminCli } from "../../src/messaging/message-admin-cli.ts";
 import { CLOSE, config, fakeDaemon, stopAll } from "../board/card-cli-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 import { notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
 setDefaultTimeout(20_000);
@@ -22,7 +22,7 @@ function parsed(argv: string[]): unknown {
 }
 const stdin = (body: string) => ({ stdin: new Response(body).body as ReadableStream<Uint8Array> });
 const file = (body: string): string => {
-  const path = join(mkdtempSync(join(tmpdir(), "fd-rules-")), "policy.json");
+  const path = join(tempDir("fd-rules-"), "policy.json");
   writeFileSync(path, body);
   return path;
 };
@@ -93,7 +93,7 @@ describe("flightdeckd message rules-set (issue #3622)", () => {
   test("a file that is missing, is not JSON or is not an object exits 1 and asks the daemon nothing", async () => {
     const daemon = fakeDaemon({ "messaging.rules.set": () => ({ policy: POLICY, paused: [] }) });
     for (const policyFile of [
-      join(tmpdir(), "fd-no-such-policy.json"),
+      join(tempDir("fd-rules-"), "no-such-policy.json"),
       file("{nope"),
       file("[1]"),
     ]) {
