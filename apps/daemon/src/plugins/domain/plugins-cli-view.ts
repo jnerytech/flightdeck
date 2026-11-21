@@ -50,7 +50,20 @@ function withoutUserinfo(source: string): string {
  * the userinfo is cut, as `plugins list` does for a marketplace's source. Control characters are the printer's
  * to remove (`said`), and JSON escapes them.
  */
-const plain = (text: string): string => text.replace(/([a-z][a-z0-9+.-]*:\/\/)[^/@\s]*@/gi, "$1");
+const plain = (text: string): string =>
+  text.replace(USERINFO, (found, at: number) => (endsInScheme(text, at) ? "://" : found));
+
+/** `://` and the userinfo after it: what is cut, once a scheme is known to stand in front of it. */
+const USERINFO = /:\/\/[^/@\s]*@/g;
+
+/** Whether the scheme characters that end at `end` hold a letter: a scheme starts with one, so `1http` is `http` but `+` is none. */
+function endsInScheme(text: string, end: number): boolean {
+  let letter = false;
+  for (let i = end - 1; i >= 0 && /[a-z0-9+.-]/i.test(text.charAt(i)); i--) {
+    letter ||= /[a-z]/i.test(text.charAt(i));
+  }
+  return letter;
+}
 
 /** A change with the URLs of the text the daemon relayed cut of their userinfo; the outcome and the hash are left as they are. */
 export function plainChange(change: PluginChange): PluginChange {
