@@ -1,5 +1,5 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { bash, notHigh } from "../support/permissions-risk-rules.ts";
+import { bash, classify, notHigh } from "../support/permissions-risk-rules.ts";
 
 setDefaultTimeout(30_000);
 
@@ -41,5 +41,26 @@ describe("risk rules: a crafted command line cannot stall the daemon (#3593)", (
         "bash -c \"sh -c 'echo hello'\"",
       ]),
     ).toEqual([]);
+  });
+
+  test("a long script of ordinary reads and re-reads is not rated unreadable", () => {
+    const lines = (make: (i: number) => string, join: string) =>
+      Array.from({ length: 30 }, (_, i) => make(i)).join(join);
+    expect(
+      notHigh([
+        lines((i) => `$FD card list c${i}`, "; "),
+        lines((i) => `sh -c 'echo ${i}'`, "; "),
+        lines(() => String.raw`find . -name x -exec ls {} \;`, " && "),
+        `$GIT add ${"f ".repeat(70)}`,
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a line the rules gave up on still says it may use the network", () => {
+    const risk = classify("Bash", { command: `${"$a ".repeat(40)}git push origin main` });
+    expect([risk.level, risk.network]).toEqual(["high", true]);
+    expect(classify("Bash", { command: `${"$a ".repeat(5)}git push origin main` }).network).toBe(
+      true,
+    );
   });
 });
