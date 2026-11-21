@@ -83,6 +83,15 @@ export type ProjectCliArgs =
       template?: string;
     });
 
+/** How long the CLI waits for an answer: a clone runs `git` on the host, a preview reads files, the rest look up. */
+export const callTimeoutMs = (args: ProjectCliArgs): number =>
+  args.action === "clone" ? CLONE_WAIT_MS : LOOKUP_WAIT_MS;
+
+/** The host stops a clone's `git` after five minutes: wait a little longer, so its own answer arrives. */
+const CLONE_WAIT_MS = 6 * 60_000;
+/** A preview reads the folder's files and a template's, which takes longer than a lookup. */
+const LOOKUP_WAIT_MS = 30_000;
+
 /** One line a repository found, and a line when the scan stopped at its cap. */
 export const scanLines = (answer: ProjectsScanResult): string[] => [
   ...(answer.repos.length === 0

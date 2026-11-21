@@ -240,6 +240,7 @@ const CLONE_NAME_MAX = 100;
 function cloneProblem(args: ProjectArgs): string | undefined {
   if (args.action !== "clone") return undefined;
   const url = args.projectWords?.[0] ?? "";
+  if (url.trim() === "") return "project clone: the url is blank";
   if (url.length > CLONE_URL_MAX)
     return `project clone: the url is longer than ${CLONE_URL_MAX} characters`;
   if (args.projectRoot === undefined || args.projectRoot.trim() === "")
