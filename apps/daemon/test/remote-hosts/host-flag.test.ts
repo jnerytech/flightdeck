@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { HOST_COMMANDS } from "../../src/cli/domain/command-sets.ts";
 import { parseArgs } from "../../src/main.ts";
 import { CLOSE, fakeDaemon, REVOKE, stopAll } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
@@ -66,7 +67,7 @@ describe("--host on the command line (#3429)", () => {
       ["card", "list", "--host", "server"],
     ])
       expect(() => parseArgs(argv)).toThrow(
-        "--host: this flag only applies to flightdeckd host, sessions, session, snippet, ssh, terminal, watch, boardsync, review, memory, runenv, changes, snapshots, rewind, trace, bg, file, action, external, names, automation, mcp, knowledge, workflow, requests, send, approve, deny, vault, plugins, project, agentcfg and message",
+        `--host: this flag only applies to flightdeckd ${HOST_COMMANDS.slice(0, -1).join(", ")} and ${HOST_COMMANDS.at(-1)}`,
       );
     expect(() => parseArgs(["host", "--host"])).toThrow("--host needs a value");
   });
