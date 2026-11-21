@@ -2,8 +2,8 @@ import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import type { MessageAdminCliArgs } from "../messaging/index.ts";
 
 /**
- * What `message history|watch|rules` runs once `asking` has the daemon's config (or the paired host's). `watch` runs
- * until Ctrl-C or a termination request; the other two keep the default Ctrl-C, which ends the process. The messaging
+ * What `message history|watch|rules|rules-set` runs once `asking` has the daemon's config (or the paired host's). `watch` runs
+ * until Ctrl-C or a termination request; the others keep the default Ctrl-C, which ends the process. The messaging
  * service loads only when the verb runs: a hook, or a verb of another noun, starts without it (cli-startup test).
  */
 export function messageAdminRun(
@@ -11,6 +11,8 @@ export function messageAdminRun(
   deps: {
     onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
     log: { log(line: string): void };
+    /** `rules-set --policy-file -` reads the policy from here. */
+    stdin?: ReadableStream<Uint8Array> | undefined;
   },
 ) {
   const stop = new AbortController();
@@ -24,6 +26,7 @@ export function messageAdminRun(
     (await import("../messaging/index.ts")).runMessageAdminCli(admin, config, {
       ...(remote ? { remote } : {}),
       signal: stop.signal,
+      stdin: deps.stdin,
       write: deps.log.log.bind(deps.log),
     });
 }
