@@ -81,6 +81,13 @@ describe("flightdeckd mcp list (issue #3616)", () => {
     });
   });
 
+  test("a server with nothing to run has no empty column", async () => {
+    const bare = { ...FILES, command: undefined, args: undefined, env: undefined };
+    const daemon = fakeDaemon(base({ "mcp.list": () => ({ servers: [bare] }) }));
+    const run = await flightdeckd(["mcp", "list", "api"], daemon.port);
+    expect(run.out).toEqual(["files  project  stdio  on  editable"]);
+  });
+
   test("with none it says so, and --json prints an empty list", async () => {
     const daemon = fakeDaemon(base({ "mcp.list": () => ({ servers: [] }) }));
     const text = await flightdeckd(["mcp", "list", "api"], daemon.port);
@@ -164,6 +171,18 @@ describe("flightdeckd mcp test (issue #3616)", () => {
     expect(printed(asJson.out)).toEqual({
       preview: { command: null, args: null, url: "https://docs.example.com/mcp" },
     });
+  });
+
+  test("a preview with nothing to run says so, and a daemon that started the server is refused", async () => {
+    const empty = fakeDaemon(base({ "mcp.test": () => ({ preview: {} }) }));
+    const none = await flightdeckd(["mcp", "test", "api", "files"], empty.port);
+    expect([none.code, none.out]).toEqual([
+      0,
+      ["nothing to run: the server has no command and no link"],
+    ]);
+    const started = fakeDaemon(base({ "mcp.test": () => ({ tools: [], resources: [] }) }));
+    const run = await flightdeckd(["mcp", "test", "api", "files"], started.port);
+    expect([run.code, run.err.join("\n")]).toEqual([1, expect.stringContaining("only reads")]);
   });
 
   test("a server the project does not have is the daemon's refusal, exit 1", async () => {
