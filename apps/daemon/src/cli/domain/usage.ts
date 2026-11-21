@@ -87,6 +87,7 @@ export const USAGE = [
   "     fd team pause|resume <team> [--json] [--config <file>]",
   "     fd team close <team> --confirm [--json] [--config <file>]",
   "     fd team message <team> <text> [--json] [--config <file>]",
+  "     fd resources [--host <name>] [--json] [--config <file>]   (the host's memory, disk, sessions, terminals and orphans)",
   "     fd quota get [--json] [--config <file>]",
   "     fd quota history <window> [--hours <1-720>] [--json] [--config <file>]",
   "     fd quota pause-at <0-1|off> [--json] [--config <file>]   (the share of the plan from which new cards wait)",

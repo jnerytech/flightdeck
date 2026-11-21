@@ -8,6 +8,7 @@
 import { readFile } from "node:fs/promises";
 import {
   type CliResult,
+  type DaemonClient,
   failure,
   type RemoteTarget,
   resolveProject,
@@ -56,13 +57,83 @@ async function readServer(
   return serverFromText(text);
 }
 
+type Note = { wrote: boolean };
+type ServerFile = ReturnType<typeof serverFromText>;
+
+/** Saves the server the file described, and lists the project's servers. */
+async function saveServer(
+  args: Extract<McpCliArgs, { action: "save" }>,
+  daemon: DaemonClient,
+  note: Note,
+  projectId: string,
+  saved: ServerFile | undefined,
+): Promise<CliResult> {
+  // `saved` holds the server whenever the action is a save: the guard before this call returned any problem.
+  if (!saved || !("server" in saved)) return failure(1, "mcp save: no server to save");
+  note.wrote = true;
+  const { servers } = await daemon.call("mcp.save", {
+    projectId,
+    server: saved.server,
+    confirm: true,
+  });
+  return shown(args.json, { servers: servers.map(serverJson) }, () => [
+    `saved ${saved.server.name}`,
+    ...listLines(servers),
+  ]);
+}
+
+async function changeServer(
+  args: Extract<McpCliArgs, { action: "remove" | "toggle" }>,
+  daemon: DaemonClient,
+  note: Note,
+  projectId: string,
+): Promise<CliResult> {
+  note.wrote = true;
+  const { servers } =
+    args.action === "remove"
+      ? await daemon.call("mcp.remove", { projectId, name: args.server, confirm: true })
+      : await daemon.call("mcp.toggle", {
+          projectId,
+          name: args.server,
+          enabled: args.enabled,
+          confirm: true,
+          ...(args.session === undefined ? {} : { sessionId: args.session }),
+        });
+  const removed = args.action === "remove" ? [`removed ${args.server}`] : [];
+  return shown(args.json, { servers: servers.map(serverJson) }, () => [
+    ...removed,
+    ...listLines(servers),
+  ]);
+}
+
+async function testServer(
+  args: Extract<McpCliArgs, { action: "test" }>,
+  daemon: DaemonClient,
+  projectId: string,
+): Promise<CliResult> {
+  const confirm = args.confirm === true;
+  const tested = await daemon.call("mcp.test", {
+    projectId,
+    name: args.server,
+    ...(confirm ? { confirm } : {}),
+  });
+  if (confirm) {
+    if ("preview" in tested) return failure(1, "the daemon did not start the server");
+    return shown(args.json, testJson(tested), () => testLines(tested));
+  }
+  if (!("preview" in tested))
+    return failure(1, "the daemon started the server: this command only reads");
+  const { preview } = tested;
+  return shown(args.json, { preview: previewJson(preview) }, () => [previewLine(preview)]);
+}
+
 export async function runMcpCli(
   args: McpCliArgs,
   config: { bind: string; port: number; token: string },
   options: {
     timeoutMs?: number;
     remote?: RemoteTarget;
-    stdin?: ReadableStream<Uint8Array> | undefined;
+    stdin?: ReadableStream<Uint8Array>;
   } = {},
 ): Promise<CliResult> {
   // A save reads its file first: a refused file is exit 1 with no daemon asked, and `-` holds no connection open.
@@ -90,52 +161,10 @@ export async function runMcpCli(
         const { servers } = await daemon.call("mcp.list", { projectId });
         return shown(args.json, { servers: servers.map(serverJson) }, () => listLines(servers));
       }
-      if (args.action === "save") {
-        // `saved` holds the server whenever the action is a save: the guard before this call returned any problem.
-        if (!saved || !("server" in saved)) return failure(1, "mcp save: no server to save");
-        note.wrote = true;
-        const { servers } = await daemon.call("mcp.save", {
-          projectId,
-          server: saved.server,
-          confirm: true,
-        });
-        return shown(args.json, { servers: servers.map(serverJson) }, () => [
-          `saved ${saved.server.name}`,
-          ...listLines(servers),
-        ]);
-      }
-      if (args.action === "remove" || args.action === "toggle") {
-        note.wrote = true;
-        const { servers } =
-          args.action === "remove"
-            ? await daemon.call("mcp.remove", { projectId, name: args.server, confirm: true })
-            : await daemon.call("mcp.toggle", {
-                projectId,
-                name: args.server,
-                enabled: args.enabled,
-                confirm: true,
-                ...(args.session === undefined ? {} : { sessionId: args.session }),
-              });
-        const removed = args.action === "remove" ? [`removed ${args.server}`] : [];
-        return shown(args.json, { servers: servers.map(serverJson) }, () => [
-          ...removed,
-          ...listLines(servers),
-        ]);
-      }
-      const confirm = args.confirm === true;
-      const tested = await daemon.call("mcp.test", {
-        projectId,
-        name: args.server,
-        ...(confirm ? { confirm } : {}),
-      });
-      if (confirm) {
-        if ("preview" in tested) return failure(1, "the daemon did not start the server");
-        return shown(args.json, testJson(tested), () => testLines(tested));
-      }
-      if (!("preview" in tested))
-        return failure(1, "the daemon started the server: this command only reads");
-      const { preview } = tested;
-      return shown(args.json, { preview: previewJson(preview) }, () => [previewLine(preview)]);
+      if (args.action === "save") return saveServer(args, daemon, note, projectId, saved);
+      if (args.action === "remove" || args.action === "toggle")
+        return changeServer(args, daemon, note, projectId);
+      return testServer(args, daemon, projectId);
     },
   });
 }
