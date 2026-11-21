@@ -12,6 +12,7 @@ import {
   belowGate,
   COVERAGE_GATE,
   checkCoverage,
+  ENTRY_POINTS,
   type FileCoverage,
 } from "../coverage-gate/check.ts";
 import type { FunctionCoverage } from "../coverage-gate/funcs.ts";
@@ -245,9 +246,9 @@ export function shardGate(input: GateInput): GateResult {
     ? problems.filter((p) => judged.has(p.slice(0, p.indexOf(":"))))
     : problems;
   const unsettled = new Set(problems.map((p) => p.slice(0, p.indexOf(":"))));
-  const checked = [...new Set([...input.sources, ...(judged ? [] : report.keys())])].filter(
-    (p) => !unsettled.has(p),
-  );
+  // The whole suite judges every loaded file, but an entry point stays waived once a test imports it, as in isCoverageSource.
+  const loaded = judged ? [] : [...report.keys()].filter((p) => !ENTRY_POINTS.has(p));
+  const checked = [...new Set([...input.sources, ...loaded])].filter((p) => !unsettled.has(p));
   const all = [...ownProblems, ...checkCoverage(report, checked)].sort((a, b) =>
     a.localeCompare(b, "en"),
   );
