@@ -71,8 +71,8 @@ export class Actions {
   }
 
   /** The user refused a request: the run that waits for it fails at once. */
-  deny(requestId: string): void {
-    this.requests.deny(requestId);
+  deny(requestId: string): boolean {
+    return this.requests.deny(requestId);
   }
 
   /** The user approved a request that asked; the delivery of its secret is allowed after this. */

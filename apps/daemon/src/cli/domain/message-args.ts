@@ -35,9 +35,8 @@ const isAdmin = (args: CliArgs) =>
   args.command === "message" &&
   (MESSAGE_ADMIN_VERBS as readonly string[]).includes(args.action ?? "");
 
-/** A flag outside the verbs that take it, and what `rules-set` cannot go without. */
-export function messageProblem(args: CliArgs): string | undefined {
-  const onMessage = args.command === "message";
+/** A flag given to a verb that does not take it: `history` takes the filters, `rules-set` the policy. */
+function strayMessageFlag(args: CliArgs, onMessage: boolean): string | undefined {
   const typed: Array<[string, boolean, string]> = [
     ["--team", args.messageTeam !== undefined, "history"],
     ["--with-host", args.withHost !== undefined, "history"],
@@ -58,21 +57,38 @@ export function messageProblem(args: CliArgs): string | undefined {
   for (const [flag, given, owner] of typed)
     if (given && !(onMessage && args.action === owner))
       return `${flag}: this flag only applies to flightdeckd message ${owner}`;
-  if (onMessage && !isAdmin(args))
-    for (const [flag, given] of [
-      ["--json", args.json === true],
-      ["--host", args.host !== undefined],
-    ] as const)
-      if (given)
-        return `${flag}: this flag only applies to flightdeckd message history, watch, rules and rules-set`;
-  if (onMessage && args.action === "rules-set") {
-    if (args.policyFile === undefined)
-      return "message rules-set: missing --policy-file <path> (or --policy-file - for standard input)";
-    // The typed flag stands for the person's word, which a terminal cannot prove: the shell rates the verb high.
-    if (args.confirm !== true)
-      return "message rules-set: needs --confirm, since it replaces the rules that decide which sessions may message each other";
-  }
   return undefined;
+}
+
+/** `--json` and `--host` belong to the admin verbs only: the verbs of a session's tools take neither. */
+function adminOnlyFlag(args: CliArgs): string | undefined {
+  for (const [flag, given] of [
+    ["--json", args.json === true],
+    ["--host", args.host !== undefined],
+  ] as const)
+    if (given)
+      return `${flag}: this flag only applies to flightdeckd message history, watch, rules and rules-set`;
+  return undefined;
+}
+
+/** What `rules-set` cannot go without: the policy file, and the person's `--confirm`. */
+function rulesSetMissing(args: CliArgs): string | undefined {
+  if (args.policyFile === undefined)
+    return "message rules-set: missing --policy-file <path> (or --policy-file - for standard input)";
+  // The typed flag stands for the person's word, which a terminal cannot prove: the shell rates the verb high.
+  if (args.confirm !== true)
+    return "message rules-set: needs --confirm, since it replaces the rules that decide which sessions may message each other";
+  return undefined;
+}
+
+/** A flag outside the verbs that take it, and what `rules-set` cannot go without. */
+export function messageProblem(args: CliArgs): string | undefined {
+  const onMessage = args.command === "message";
+  const stray = strayMessageFlag(args, onMessage);
+  if (stray !== undefined) return stray;
+  if (!onMessage) return undefined;
+  if (!isAdmin(args)) return adminOnlyFlag(args);
+  return args.action === "rules-set" ? rulesSetMissing(args) : undefined;
 }
 
 /** What the runner takes for `message history|watch|rules`; undefined for the verbs of a session's tools. */

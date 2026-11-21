@@ -62,6 +62,8 @@ function setup(
     copyBy?: Array<(worked: boolean) => void>;
     /** The host's features (#1221); without them the store knows no host, as before. */
     features?: string[];
+    /** What `host.info` says of the app's connection (#3806); absent from an older host. */
+    near?: boolean;
     /** The answer to `workflow.template.add`; null is a refusal the store already showed. */
     added?: object | null;
     /** Answers the next adds by hand: each call waits for its resolver. */
@@ -82,7 +84,7 @@ function setup(
           token: "",
           status: "online",
           info: null,
-          hostInfo: { daemonVersion: "x", features: options.features },
+          hostInfo: { daemonVersion: "x", features: options.features, near: options.near },
           incompatibility: null,
           daemonUpdate: null,
           sessions: [],
@@ -451,6 +453,24 @@ describe("adding a template to the project from the app (issue #1221)", () => {
     expect(button("Copy the file")).not.toBeNull();
     expect(button("Add to the project") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(screen.queryByText(/Nothing is written for you/)).not.toBeNull();
+  });
+
+  test("on a far host Add to the project is off with its hint, and the copy stays (#3806)", async () => {
+    setup({ features: OFFERED, near: false });
+    await open("Add from a template", "Show Alert fixer");
+    const add = button("Add to the project");
+    expect(add).not.toBeNull();
+    expect(add?.hasAttribute("disabled")).toBe(true);
+    const hint = document.getElementById(add?.getAttribute("aria-describedby") ?? "");
+    expect(hint?.textContent).toBe("This works only from this computer or over Tailscale.");
+    expect(button("Copy the file")?.hasAttribute("disabled")).toBe(false);
+  });
+
+  test("on a near host Add to the project works as before (#3806)", async () => {
+    setup({ features: OFFERED, near: true });
+    await open("Add from a template", "Show Alert fixer");
+    expect(button("Add to the project")?.hasAttribute("disabled")).toBe(false);
+    expect(button("Add to the project")?.getAttribute("aria-describedby")).toBeNull();
   });
 
   test("in Portuguese the add, its question and its note follow the language", async () => {

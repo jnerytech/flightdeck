@@ -29,11 +29,11 @@ export function WorkflowTemplates(
   const t = useT();
   const { store, hostId, projectId } = props;
   const { hosts } = useStoreSlice(store, ["hosts"]);
-  const canAdd = hasFeature(
-    hosts.find((host) => host.id === hostId)?.hostInfo?.features,
-    "workflowTemplateAdd",
-    false,
-  );
+  const hostInfo = hosts.find((host) => host.id === hostId)?.hostInfo;
+  const canAdd = hasFeature(hostInfo?.features, "workflowTemplateAdd", false);
+  // Only a near connection may add a template (the host refuses it otherwise); an older host that
+  // does not say is asked as before (#3806).
+  const far = hostInfo?.near === false;
   /** Null until the host answers. */
   const [templates, setTemplates] = useState<WorkflowTemplate[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -126,7 +126,7 @@ export function WorkflowTemplates(
         {shown && (
           <TemplateFile
             template={shown}
-            add={canAdd ? { store, hostId, projectId } : null}
+            add={canAdd ? { store, hostId, projectId, far } : null}
             copied={copied}
             headingRef={heading}
             onCopy={() => void copy(shown)}
@@ -214,7 +214,7 @@ function TemplateFile(
   props: Readonly<{
     template: WorkflowTemplate;
     /** Where Add to the project sends the template; null when the host does not offer it. */
-    add: Readonly<{ store: AppStore; hostId: string; projectId: string }> | null;
+    add: Readonly<{ store: AppStore; hostId: string; projectId: string; far: boolean }> | null;
     copied: "worked" | "refused" | null;
     headingRef: React.RefObject<HTMLHeadingElement | null>;
     onCopy(): void;
@@ -226,6 +226,7 @@ function TemplateFile(
   const adding = useTemplateAdd(props.add, template);
   const name = template.title[t.lang];
   const questionId = useId();
+  const farId = useId();
   return (
     <Stack gap={3}>
       <h3 ref={props.headingRef} tabIndex={-1} className="font-semibold text-base outline-none">
@@ -255,7 +256,12 @@ function TemplateFile(
       </section>
       <Inline gap={2}>
         {props.add && adding.phase === "idle" && !adding.added && (
-          <Button ref={adding.addRef} onClick={adding.ask}>
+          <Button
+            ref={adding.addRef}
+            disabled={props.add.far}
+            aria-describedby={props.add.far ? farId : undefined}
+            onClick={adding.ask}
+          >
             {t("workflowsUi.templates.add")}
           </Button>
         )}
@@ -266,6 +272,11 @@ function TemplateFile(
           {t("workflowsUi.templates.back")}
         </Button>
       </Inline>
+      {props.add?.far && (
+        <p id={farId} className="text-muted-foreground text-xs">
+          {t("workflowsUi.farOnly")}
+        </p>
+      )}
       {adding.phase !== "idle" && (
         <fieldset aria-label={t("workflowsUi.templates.addAsk", { name })} className="min-w-0">
           <Stack gap={2}>

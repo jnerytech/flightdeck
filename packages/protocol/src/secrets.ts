@@ -532,7 +532,8 @@ export interface SecretsResults {
   "actions.runFree": ActionResult;
   "actions.runs": { runs: ActionRunInfo[] };
   "vault.watch": undefined;
-  "vault.deny": undefined;
+  /** `denied` is false when no request waited under that id (answered, expired or never there); optional for older daemons. */
+  "vault.deny": { denied?: boolean };
   "vault.rules.set": { rules: number };
   "vault.rules.get": { secretId: string; tags: string[]; rules: unknown[] };
   "vault.rules.preview": VaultVerdict;
