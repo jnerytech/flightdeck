@@ -9,4 +9,5 @@
 
 export { SecretScanner } from "./domain/model.ts";
 export type { HistoryImporter } from "./history.ts";
+export { readSnippetSource, runSnippetVerbCli, type SnippetVerbArgs } from "./snippet-cli.ts";
 export type { Snippets } from "./store.ts";

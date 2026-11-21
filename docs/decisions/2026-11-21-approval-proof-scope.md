@@ -109,6 +109,9 @@ An allow of any of these with `updatedPermissions` is already covered (a saved r
   `isControl`, changes the risk of those writes only, and needs a risk test per path kind. It covers those paths
   only: a source file the session writes and then runs through a medium shell command stays open (reason 2). It is
   a slice of (c) that the classifier can tell from the path alone, which is why it is taken and the rest of (c) is not.
+  Shipped in #3614: the write tools and a shell redirect (`>`, `>>`, `&>`, `2>`, `>|`, with quotes or an escape in the
+  target) onto a control path are high. Still medium, and named so: `tee`, `cp`, `mv`, `sed -i`, `ln`, `touch` and
+  `git config` onto one; a redirect after a `cd`; a symlink into a control folder; an NTFS short name with an extension.
 - **What (a) leaves open, stated plainly.** A session with the daemon token can answer its own medium request with
   `permission.respond`, so the person's prompt for a medium request is advisory against a hostile or
   prompt-injected session. (a) is the least bad choice now, not a boundary of the host. The guard that would close
