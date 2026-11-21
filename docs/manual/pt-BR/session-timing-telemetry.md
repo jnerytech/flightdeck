@@ -35,6 +35,7 @@ lenta, o tempo que o Claude esperou você responder uma permissão, um erro de A
   ferramentas mais lentas (média, máximo, chamadas). Um aviso aparece quando o custo de uma sessão
   na telemetria está longe (mais de 10% e US$ 0,05) do calculado pelos transcripts, no trecho da
   sessão em que o exportador estava ligado.
+- **Pelo terminal:** `fd telemetry session <id da sessão>` imprime cada prompt de uma sessão com uma linha por passo (tipo, hora, ferramenta, duração, custo, se funcionou, o erro, quem decidiu uma permissão e quanto ela esperou); `fd telemetry summary` imprime, por projeto, a espera por permissões e as ferramentas mais lentas, ou `no telemetry` quando nada foi recebido. Os dois aceitam `--host <nome>` para um host pareado e `--json` para a resposta do daemon, e nenhum mostra o texto de prompts ou de ferramentas. Só `telemetry install` e `uninstall` mudam algo, e só nesta máquina.
 - **Limites:** só sessões que mandaram telemetria têm dados; as métricas que o exportador manda são
   aceitas e não guardadas. Para quem desenvolve, `bun run smoke:otel` roda o caminho todo com um
   claude falso.

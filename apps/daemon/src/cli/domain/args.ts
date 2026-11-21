@@ -23,7 +23,7 @@ import {
 } from "./checkpoints-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, LIMIT_COMMANDS, refuseOutside } from "./command-sets.ts";
-import { costsProblem } from "./costs-args.ts";
+import { costsProblem, readCosts } from "./costs-args.ts";
 import { externalProblem, readExternal, readNames, TEXT_FLAG } from "./external-args.ts";
 import { FEED_READERS, feedProblem, LINES_FLAG, readFeedLimit } from "./feed-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
@@ -46,6 +46,7 @@ import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts
 import { OFF_FLAG, readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
+import { readTelemetry, telemetryProblem } from "./telemetry-args.ts";
 import {
   readTerminal,
   TERMINAL_FLAGS,
@@ -161,11 +162,7 @@ const HANDLERS: Record<string, Handler> = {
     args.askpassPrompt = reader.takeRest().join(" ");
   },
   hooks: withAction("hooks", ["install", "uninstall", "status"], "invalid hooks action"),
-  telemetry: withAction(
-    "telemetry",
-    ["install", "uninstall", "status"],
-    "invalid telemetry action",
-  ),
+  telemetry: readTelemetry,
   history: readHistory,
   vault: readVault,
   plugins: readPlugins,
@@ -298,15 +295,7 @@ const HANDLERS: Record<string, Handler> = {
   },
   quota: quotaHandler,
   usage: setCommand("usage"),
-  costs: (args, reader) => {
-    args.command = "costs";
-    const verbs = ["summary", "session", "card", "run", "status", "export", "reprice"] as const;
-    const action = subAction(reader, verbs, "invalid costs action");
-    args.action = action;
-    if (action === "session") args.costsId = operand(reader, "the session");
-    if (action === "card") args.costsId = operand(reader, "the card");
-    if (action === "run") args.costsId = operand(reader, "the run");
-  },
+  costs: readCosts,
   roi: setCommand("roi"),
   "--hours": setValue((args, v) => {
     args.hours = wholeFrom("--hours", v, 720);
@@ -774,7 +763,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     budgetProblem(args) ??
     rulesProblem(args) ??
     approversProblem(args) ??
-    costsProblem(args);
+    costsProblem(args) ??
+    telemetryProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;
   return args;
