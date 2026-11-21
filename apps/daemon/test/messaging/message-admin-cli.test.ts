@@ -321,12 +321,12 @@ describe("the arguments of message history, watch and rules (issue #3622)", () =
       });
     expect(parsed(["message", "send", "s-dev", "hi", "--json"])).toMatchObject({
       refusedWith: expect.stringContaining(
-        "--json: this flag only applies to flightdeckd message history, watch and rules",
+        "--json: this flag only applies to flightdeckd message history, watch, rules and rules-set",
       ),
     });
     expect(parsed(["message", "list", "--host", "pi"])).toMatchObject({
       refusedWith: expect.stringContaining(
-        "--host: this flag only applies to flightdeckd message history, watch and rules",
+        "--host: this flag only applies to flightdeckd message history, watch, rules and rules-set",
       ),
     });
   });
