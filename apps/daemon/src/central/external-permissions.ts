@@ -95,13 +95,22 @@ export class ExternalPermissions {
     const ask = { requestId, claudeSessionId, toolName, input, cwd, risk, auto };
     const pending =
       toolName === "Bash" || toolName === "PowerShell"
-        ? this.explain?.(textOf(input.command), cwd)
+        ? this.explainSafely(textOf(input.command), cwd)
         : undefined;
     // Nothing to explain: published at once, as before. Otherwise after the file the command names was read.
     if (pending === undefined) return this.announce(payload, signal, { ...ask, extra: undefined });
     return pending
       .catch(() => undefined)
       .then((extra) => this.announce(payload, signal, { ...ask, extra }));
+  }
+
+  /** The hook's sentence; a hook that throws before it returns a promise is the same as one that fails. */
+  private explainSafely(command: string, cwd: string): Promise<string> | undefined {
+    try {
+      return this.explain?.(command, cwd);
+    } catch {
+      return undefined;
+    }
   }
 
   /** Publishes the request and holds it until it is answered (#3752: after the note about its file was read). */

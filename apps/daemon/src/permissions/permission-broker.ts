@@ -137,7 +137,9 @@ export class PermissionBroker {
       // With the plain wording the request is announced once the host has looked at its files,
       // and only then can it be answered automatically (the answer follows the question).
       const noted = (): Promise<string | undefined> =>
-        Promise.resolve(this.hooks.explain?.(sessionId, toolName, input)).catch(() => undefined);
+        Promise.resolve()
+          .then(() => this.hooks.explain?.(sessionId, toolName, input))
+          .catch(() => undefined);
       if (this.hooks.plain || this.hooks.explain) {
         const worded = this.hooks.plain
           ? this.hooks.plain(sessionId, toolName, input, risk).catch(() => undefined)

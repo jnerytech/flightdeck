@@ -70,4 +70,8 @@ escreveria um comando que roda com segredos, deixaria um rodar ou apagaria um. `
 comuns de shell. No `save` o pedido também diz o que o arquivo de definição traz: o nome, o comando que ele roda (`run`, os primeiros
 300 caracteres), a pasta, os nomes das variáveis de ambiente (nunca os valores), os segredos que usa e o host em que roda.
 Um arquivo que não pode ser lido, passa de 256 KiB ou não é um único objeto JSON é dito como tal, e você deve negar.
-O arquivo é lido quando o pedido aparece, e uma sessão pode mudá-lo depois da sua resposta: negue o que você não puder ler.
+Um caminho relativo aparece com a pasta em que foi lido. Um comando que repete a opção, muda de pasta antes do save ou
+monta o caminho no shell é dito como sem arquivo legível, e um comando que roda outros passos antes do save avisa,
+porque esses passos podem mudar o arquivo depois de lido. O pedido também mostra `approval` e as tags quando o arquivo
+as define, e avisa quando a linha de `run` foi cortada. O arquivo é lido quando o pedido aparece, e uma sessão pode
+mudá-lo depois da sua resposta: negue o que você não puder ler.

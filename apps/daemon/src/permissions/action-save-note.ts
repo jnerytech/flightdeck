@@ -3,9 +3,13 @@
  * approves the saved command and not a path. This is the adapter: it reads the file (the rule that rates the
  * request stays pure, `domain/action-risk.ts`), and `domain/action-save-view.ts` words what it read.
  */
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { readRegularSized } from "../kernel/index.ts";
-import { describeDefinition, savedDefinitionFiles } from "./domain/action-save-view.ts";
+import {
+  describeDefinition,
+  hasStepsBeforeSave,
+  savedDefinitionFiles,
+} from "./domain/action-save-view.ts";
 import { SHELL_TOOLS } from "./domain/risk.ts";
 
 /** A definition is a few lines; a file past this is not shown, whatever it holds. */
@@ -50,11 +54,20 @@ export function actionSaveNote(
   const left = files.length - shown.length;
   return Promise.all(
     shown.map(async (file) =>
-      describeDefinition(file, file === null ? null : await readOrNull(read, resolve(cwd, file))),
+      describeDefinition(
+        file,
+        file === null ? null : await readOrNull(read, resolve(cwd, file)),
+        file === null || isAbsolute(file) ? undefined : cwd,
+      ),
     ),
   ).then((notes) =>
     [
       ...notes,
+      ...(hasStepsBeforeSave(command)
+        ? [
+            `the command also runs other steps before the save, which may change these files after this was read: deny it unless you know what they do`,
+          ]
+        : []),
       ...(left > 0
         ? [
             `${left} more saves in this command were not read: deny it unless you know what they hold`,
