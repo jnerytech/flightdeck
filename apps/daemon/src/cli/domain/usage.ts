@@ -145,4 +145,10 @@ export const USAGE = [
   "     fd snippet render <name or id> [--value <field>=<text> ...] [--project-path <folder>] [--host <name>] [--json] [--config <file>]   (the text the snippet would produce; nothing is pasted or run, and a field with no value is refused)",
   "     fd snippet parse <file or -> [--host <name>] [--json] [--config <file>]   (reads a YAML or JSON list of snippets, up to 1000000 characters, and saves none)",
   "     fd snippet import-history [--limit <1-200>] [--reveal] [--host <name>] [--json] [--config <file>]   (the most used commands of the shell histories; a command with a secret is hidden unless --reveal, and none is saved)",
+  "     fd snippet import-history --select <id,id,...> --confirm [--host <name>] [--json] [--config <file>]   (makes snippets of the candidates it listed, up to 200; one with a secret is skipped)",
+  "     fd snippet save <name> (--run <command> | --text <prompt>) [--tag <t> ...] [--project-path <folder>] --confirm [--host <name>] [--json] [--config <file>]   (a snippet of the host, or of the project with --project-path; one with a secret is refused)",
+  "     fd snippet remove <name or id> --confirm [--project-path <folder>] [--host <name>] [--json] [--config <file>]",
+  "     fd snippet favorite <name or id> [--off] [--project-path <folder>] [--host <name>] [--json] [--config <file>]",
+  "     fd snippet trust --project-path <folder> --hash <hash> --confirm [--host <name>] [--json] [--config <file>]   (the hash snippet list shows for the project's file: its commands may then run)",
+  "     fd snippet use <name or id> --terminal <id> [--value <field>=<text> ...] [--enter] --confirm [--project-path <folder>] [--host <name>] [--json] [--config <file>]   (types the text into the terminal; --enter also runs it)",
 ].join("\n");
