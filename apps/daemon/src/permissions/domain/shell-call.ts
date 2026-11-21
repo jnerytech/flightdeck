@@ -436,7 +436,7 @@ export const OPTIONS_WITH_VALUE = [
  * outside quotes, and inside double quotes only `"`, `\`, `$` and the backtick; single quotes take everything up
  * to their close; an ANSI-C quote lets a backslash escape anything, its own closing quote included.
  */
-export function stepQuote(open: string, text: string, i: number): { open: string; next: number } {
+function stepQuote(open: string, text: string, i: number): { open: string; next: number } {
   const c = text.charAt(i);
   if (open === "'") return { open: c === "'" ? "" : open, next: i + 1 };
   if (open === "$'") {
