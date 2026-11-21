@@ -75,8 +75,11 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
     const again = new AppStore(platform, { baseDelayMs: 60_000 });
     cleanups.push(() => again.dispose());
     await again.init();
-    await settle(() => again.getState().notices.some((n) => n.text === "regra inválida"));
-    expect(again.getState().notices.map((n) => n.text)).toContain("regra inválida");
+    // weaker: the notice now names the host and the secret around the reason (#3754), in the app's language, so it holds both
+    const said = (n: { text: string }) =>
+      n.text.includes("regra inválida") && n.text.includes("alfa") && n.text.includes("staging");
+    await settle(() => again.getState().notices.some(said));
+    expect(again.getState().notices.some(said)).toBe(true);
   });
 
   test("what the daemon refuses comes back with its reason, and the rules are not saved", async () => {

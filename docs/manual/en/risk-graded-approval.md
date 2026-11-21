@@ -96,6 +96,13 @@ until then the hold of the Approve button is the only check, as before.
   system. The window names the folder and says that its hooks and servers will then run with no prompt. Cancel it
   and nothing is sent. Revoking trust asks for nothing. A host that does not yet ask for the device when you
   trust a project shows a notice on its page: update it.
+- **Saving rules that allow a use.** With a device enrolled, **Save rules** on a secret whose rules allow a use
+  with no prompt (an `allow` decision, or an `allow` outside the time window) asks you once more in a window of the
+  system. The window names the secret, counts the rules that allow, and says when the secret is a production one.
+  Cancel it and nothing is saved. Rules that only ask or deny, and an empty list, need no window. A host that does
+  not yet ask for the device here shows a notice on its page: update it. After a host restarts, or when a secret's
+  allowed hosts change, the app does not open a window by itself: if the host refuses the rules for want of a
+  signature, the app says so, and you save the rules again.
 - **Turning automatic approval back on.** With a device enrolled, **Resume** on a suspended session in
   Automatic approvals asks you once more in a window of the system. The window names the session and says that
   it will approve requests again with no person seeing them. Cancel it and nothing is sent. The terminal

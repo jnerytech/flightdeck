@@ -36,6 +36,7 @@ function slice(
       all: () => saved,
     },
     secrets: () => [SECRET],
+    proveRules: async () => ({ kind: "none" }),
     hosts: () => hosts(...(over.status ?? ["online", "online"])),
     clients: () => [],
     projectKeysOf: () => [],

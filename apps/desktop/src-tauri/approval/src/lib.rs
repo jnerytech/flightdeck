@@ -45,6 +45,9 @@ pub enum CommandAsk {
     MarketplaceAdd { source: String, scope: Option<String> },
     /// `snippets.trust`: the commands of this project's snippet file, at this hash, may run in terminals (#3647).
     TrustSnippets { path: String, hash: String },
+    /// `vault.rules.set`: save these rules of a secret, some of which allow a use with no prompt (#3754). The dialog
+    /// says the secret and how many rules allow; the rules themselves are signed (their hash is in the digest).
+    VaultRules { secret: String, total: usize, allowing: usize, outside_window: usize, prod: bool },
 }
 
 /// What the text names: the request to allow, the key to add or the key to revoke.
@@ -90,6 +93,10 @@ const TAG_COMMAND: &str = "flightdeck/command/v1";
 const MAX_TEXT: usize = 2048;
 /// The payload a command signs is a few short fields; anything past this is not one of them.
 const MAX_PAYLOAD: usize = 1024;
+/// A secret's rules: up to 200 of them, each a few short fields (#3754).
+const MAX_RULES_PAYLOAD: usize = 131_072;
+/// How deep a rule may nest (a rule is an object with a window and a match, so a few levels).
+const MAX_RULE_DEPTH: usize = 8;
 /// A setup's payload also carries the digest of each file the host would write (up to 17 of them), so it may be longer.
 const MAX_HARNESS_PAYLOAD: usize = 8192;
 /// The parts of the Claude Code setup the host writes, as the protocol names them.
@@ -249,7 +256,11 @@ pub fn describe_with(message: &str, daemon_id: &str, own: &PublicInfo, payload: 
 /// Each command names its fields: one more, one less or one that is not plain is refused, so a field the
 /// dialog does not show can never be signed.
 fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), String> {
-    let longest = if name == "project.harness.apply" { MAX_HARNESS_PAYLOAD } else { MAX_PAYLOAD };
+    let longest = match name {
+        "project.harness.apply" => MAX_HARNESS_PAYLOAD,
+        "vault.rules.set" => MAX_RULES_PAYLOAD,
+        _ => MAX_PAYLOAD,
+    };
     if payload.len() > longest {
         return Err("the payload to sign is too long".into());
     }
@@ -279,6 +290,9 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         // The folder and the hash of the snippet file the person was shown: the host trusts that folder's file only at
         // that hash. Both are signed and both are shown, the hash short, the folder last on a line of its own (#3647).
         "snippets.trust" => read_snippet_trust(fields),
+        // The secret, its tags and its rules: the dialog says the secret and how many rules allow a use, and the whole
+        // payload is signed, so a rule the dialog does not spell out cannot change after the person said yes (#3754).
+        "vault.rules.set" => read_vault_rules(fields),
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -380,6 +394,106 @@ fn read_snippet_trust(
     let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
     let canonical = format!("{{\"hash\":{},\"projectPath\":{}}}", quoted(hash), quoted(path));
     Ok((CommandAsk::TrustSnippets { path: path.into(), hash: hash.into() }, canonical))
+}
+
+/// `vault.rules.set`: exactly `secretId` (a plain token), `tags` (a list of text) and `rules` (a list of objects).
+/// The rules are canonical JSON of what the host reads: objects, lists, text, booleans, null and whole numbers
+/// (a fraction or a number past 2^53 would print differently here and in JavaScript, so it is not signed).
+fn read_vault_rules(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.len() != 3 {
+        return Err("the vault rules payload has the wrong fields".into());
+    }
+    let secret = fields
+        .get("secretId")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("the vault rules payload has no secret id")?;
+    if secret.is_empty()
+        || secret.len() > 128
+        || !secret.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
+    {
+        return Err("the secret id is not a plain token the dialog can show".into());
+    }
+    let tags = fields
+        .get("tags")
+        .and_then(serde_json::Value::as_array)
+        .ok_or("the vault rules payload has no list of tags")?;
+    if tags.len() > 16 || tags.iter().any(|tag| !tag.is_string()) {
+        return Err("the tags of the vault rules payload are not a list of text".into());
+    }
+    let rules = fields
+        .get("rules")
+        .and_then(serde_json::Value::as_array)
+        .ok_or("the vault rules payload has no list of rules")?;
+    if rules.len() > 200 || rules.iter().any(|rule| !rule.is_object()) {
+        return Err("the rules of the vault rules payload are not a list of objects".into());
+    }
+    let count = |key: &str| {
+        rules.iter().filter(|rule| rule.get(key).and_then(serde_json::Value::as_str) == Some("allow")).count()
+    };
+    let ask = CommandAsk::VaultRules {
+        secret: secret.into(),
+        total: rules.len(),
+        allowing: count("decision"),
+        outside_window: count("outsideWindow"),
+        // The host's `isProdTag`: the tag in lower case is one of these three.
+        prod: tags.iter().any(|tag| matches!(tag.as_str().map(str::to_lowercase).as_deref(), Some("prod" | "produção" | "producao"))),
+    };
+    let mut canonical = String::from("{\"rules\":");
+    write_canonical(&serde_json::Value::Array(rules.clone()), 0, &mut canonical)?;
+    canonical.push_str(",\"secretId\":");
+    canonical.push_str(&serde_json::to_string(secret).unwrap_or_default());
+    canonical.push_str(",\"tags\":");
+    write_canonical(&serde_json::Value::Array(tags.clone()), 0, &mut canonical)?;
+    canonical.push('}');
+    Ok((ask, canonical))
+}
+
+/// RFC 8785 canonical JSON of a value made of objects, lists, text, booleans, null and whole numbers: keys in UTF-16
+/// code unit order, no spaces. Anything else is refused, so what is signed never prints differently in JavaScript.
+fn write_canonical(value: &serde_json::Value, depth: usize, out: &mut String) -> Result<(), String> {
+    if depth > MAX_RULE_DEPTH {
+        return Err("the rules nest too deep".into());
+    }
+    match value {
+        serde_json::Value::Null => out.push_str("null"),
+        serde_json::Value::Bool(flag) => out.push_str(if *flag { "true" } else { "false" }),
+        serde_json::Value::Number(number) => {
+            const SAFE: i64 = 9_007_199_254_740_991;
+            let whole = number.as_i64().filter(|n| (-SAFE..=SAFE).contains(n));
+            let Some(n) = whole else {
+                return Err("a number in the rules is not a whole number JavaScript prints the same".into());
+            };
+            out.push_str(&n.to_string());
+        }
+        serde_json::Value::String(text) => out.push_str(&serde_json::to_string(text).unwrap_or_default()),
+        serde_json::Value::Array(items) => {
+            out.push('[');
+            for (index, item) in items.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                write_canonical(item, depth + 1, out)?;
+            }
+            out.push(']');
+        }
+        serde_json::Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
+            out.push('{');
+            for (index, key) in keys.into_iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                out.push_str(&serde_json::to_string(key).unwrap_or_default());
+                out.push(':');
+                write_canonical(&map[key], depth + 1, out)?;
+            }
+            out.push('}');
+        }
+    }
+    Ok(())
 }
 
 fn read_resume(
@@ -890,7 +1004,25 @@ fn command_text(ask: &Ask, pt: bool) -> String {
             "Trust the snippet file of a project folder? Its commands, as they are in file {}, will be able to run in terminals with no prompt. Continue only if you just pressed Trust the file in Flightdeck.\n\"{path}\"",
             short_hash(hash)
         ),
+        Some(CommandAsk::VaultRules { secret, total, allowing, outside_window, prod }) => vault_rules_text(&ask.host, secret, *total, *allowing, *outside_window, *prod, pt),
         None => String::new(),
+    }
+}
+
+/// The dialog of `vault.rules.set`: the fixed warning first, the secret last on a line of its own and in quotes.
+fn vault_rules_text(host: &str, secret: &str, total: usize, allowing: usize, outside_window: usize, prod: bool, pt: bool) -> String {
+    if pt {
+        format!(
+            "Salvar regras que liberam o uso de um segredo sem perguntar? São {total} regras: {allowing} liberam o uso e {outside_window} liberam fora do horário{}. O host {} passa a aprovar esses usos sozinho. Continue só se você acabou de apertar Salvar regras no Flightdeck.\n\"{secret}\"",
+            if prod { "; o segredo é de produção" } else { "" },
+            short(host)
+        )
+    } else {
+        format!(
+            "Save rules that allow a secret to be used with no prompt? There are {total} rules: {allowing} allow the use and {outside_window} allow it outside their time window{}. Host {} will approve those uses by itself. Continue only if you just pressed Save rules in Flightdeck.\n\"{secret}\"",
+            if prod { "; the secret is a production one" } else { "" },
+            short(host)
+        )
     }
 }
 
@@ -993,6 +1125,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::VaultRules { .. })) => {
+            if pt { ("Salvar regras", "Cancelar") } else { ("Save rules", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustSnippets { .. })) => {
             if pt { ("Confiar no arquivo", "Cancelar") } else { ("Trust file", "Cancel") }
@@ -1723,6 +1858,129 @@ mod tests {
         assert!(pt.ends_with("\n\"/work/app\""), "{pt}");
         assert_eq!(confirm_labels(&ask, "en").0, "Trust file");
         assert_eq!(confirm_labels(&ask, "pt-BR").0, "Confiar no arquivo");
+    }
+
+    /// The payloads that save a secret's rules, in canonical form, and the digests both sides share (the protocol
+    /// test asserts the same literals, #3754). B has every kind of value a rule holds: accents, an emoji, an escape,
+    /// a whole number, and keys that are out of order.
+    const RULES_PAYLOAD_A: &str = r#"{"rules":[{"decision":"allow","id":"r1","match":{"purpose":"ssh"},"window":{"days":["mon"],"from":"09:00","to":"17:00"}}],"secretId":"token","tags":[]}"#;
+    const RULES_DIGEST_A: &str = "1817e1cbdc3e20f228ee6ac056cd0b507e14043f6e809b89ef27ea4244b44dd1";
+    const RULES_PAYLOAD_B: &str = r#"{"rules":[{"decision":"ask","expiresAt":1732000000000,"maxPerHour":3,"note":"a\"b\n","outsideWindow":"allow"},{"decision":"deny","id":"x"}],"secretId":"sec_1.a-b","tags":["prod","ünï🙂"]}"#;
+    const RULES_DIGEST_B: &str = "62f1d773bc7709ed39ab25777b9732ed56c1fa2543cd0866f0b1a0617220e83f";
+    /// B as the app may send it: keys in any order and spaces between them.
+    const RULES_SHUFFLED_B: &str = r#"{ "tags": ["prod","ünï🙂"], "secretId": "sec_1.a-b", "rules": [ {"note":"a\"b\n","outsideWindow":"allow","maxPerHour":3,"expiresAt":1732000000000,"decision":"ask"}, {"id":"x","decision":"deny"} ] }"#;
+
+    fn rules_ask(secret: &str, total: usize, allowing: usize, outside_window: usize, prod: bool) -> Ask {
+        Ask {
+            kind: Kind::Command,
+            host: DAEMON.into(),
+            subject: "vault.rules.set".into(),
+            also: Also::default(),
+            command: Some(CommandAsk::VaultRules { secret: secret.into(), total, allowing, outside_window, prod }),
+        }
+    }
+
+    #[test]
+    fn the_vault_rules_vectors_hash_the_same_in_both_languages() {
+        assert_eq!(sha256_hex(RULES_PAYLOAD_A), RULES_DIGEST_A);
+        assert_eq!(sha256_hex(RULES_PAYLOAD_B), RULES_DIGEST_B);
+    }
+
+    #[test]
+    fn saving_rules_is_read_from_its_payload_and_signed_in_canonical_form_in_any_key_order() {
+        let me = own();
+        let text = command(&me, DAEMON, "vault.rules.set", RULES_PAYLOAD_A);
+        assert_eq!(
+            describe_with(&text, DAEMON, &me, Some(RULES_PAYLOAD_A)),
+            Ok(rules_ask("token", 1, 1, 0, false))
+        );
+        // The digest in the text is the hash of the canonical form, whatever order or spacing the app sent.
+        let text = command(&me, DAEMON, "vault.rules.set", RULES_PAYLOAD_B);
+        assert_eq!(
+            describe_with(&text, DAEMON, &me, Some(RULES_SHUFFLED_B)),
+            Ok(rules_ask("sec_1.a-b", 2, 0, 1, true))
+        );
+    }
+
+    #[test]
+    fn rules_that_the_dialog_could_not_stand_behind_are_not_signed() {
+        let me = own();
+        let signed = |payload: &str| {
+            describe_with(&command(&me, DAEMON, "vault.rules.set", payload), DAEMON, &me, Some(payload))
+        };
+        let with = |secret: &str, tags: &str, rules: &str| {
+            format!(r#"{{"rules":{rules},"secretId":"{secret}","tags":{tags}}}"#)
+        };
+        for bad in [
+            // A field the dialog does not say, a missing field, a field of the wrong kind.
+            r#"{"rules":[],"secretId":"s","tags":[],"proof":{}}"#.to_string(),
+            r#"{"rules":[],"secretId":"s"}"#.to_string(),
+            r#"{"rules":{},"secretId":"s","tags":[]}"#.to_string(),
+            r#"{"rules":[],"secretId":7,"tags":[]}"#.to_string(),
+            // A secret id the dialog could not show whole.
+            with("", "[]", "[]"),
+            with("a\\nAllow", "[]", "[]"),
+            with("a b", "[]", "[]"),
+            with(&"a".repeat(129), "[]", "[]"),
+            // Tags that are not text, too many of them; a rule that is no object; too many rules.
+            with("s", "[1]", "[]"),
+            with("s", &format!("[{}]", vec!["\"t\""; 17].join(",")), "[]"),
+            with("s", "[]", "[1]"),
+            with("s", "[]", "[[]]"),
+            with("s", "[]", &format!("[{}]", vec!["{}"; 201].join(","))),
+            // A value that would print differently in JavaScript: a fraction, an exponent, a number past 2^53.
+            with("s", "[]", r#"[{"expiresAt":1.5}]"#),
+            with("s", "[]", r#"[{"expiresAt":1e3}]"#),
+            with("s", "[]", r#"[{"expiresAt":9007199254740992}]"#),
+            with("s", "[]", r#"[{"expiresAt":-9223372036854775808}]"#),
+            // Nesting past what a rule holds.
+            with("s", "[]", r#"[{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":1}}}}}}}}}]"#),
+        ] {
+            assert!(signed(&bad).is_err(), "signed: {bad}");
+        }
+        assert!(signed(&with("s", "[]", "[]")).is_ok());
+        assert!(signed(&with("s", "[]", r#"[{"decision":"allow","expiresAt":9007199254740991}]"#)).is_ok());
+    }
+
+    #[test]
+    fn a_secret_is_shown_as_a_production_one_for_every_tag_spelling_the_host_calls_production() {
+        let me = own();
+        let shown = |tags: &str| {
+            let payload = format!(r#"{{"rules":[],"secretId":"s","tags":{tags}}}"#);
+            let text = command(&me, DAEMON, "vault.rules.set", &payload);
+            describe_with(&text, DAEMON, &me, Some(&payload))
+        };
+        for tag in ["prod", "Prod", "PROD", "producao", "Producao", "produção", "PRODUÇÃO"] {
+            assert_eq!(shown(&format!("[\"{tag}\"]")), Ok(rules_ask("s", 0, 0, 0, true)), "tag {tag}");
+        }
+        for tag in ["staging", "production", "prod-eu", ""] {
+            assert_eq!(shown(&format!("[\"{tag}\"]")), Ok(rules_ask("s", 0, 0, 0, false)), "tag {tag}");
+        }
+    }
+
+    #[test]
+    fn a_payload_that_differs_from_the_one_the_text_hashes_is_not_signed() {
+        let me = own();
+        let text = command(&me, DAEMON, "vault.rules.set", RULES_PAYLOAD_A);
+        let looser = RULES_PAYLOAD_A.replace("\"mon\"", "\"mon\",\"tue\"");
+        assert!(describe_with(&text, DAEMON, &me, Some(&looser)).is_err());
+    }
+
+    #[test]
+    fn the_dialog_of_saving_rules_counts_the_rules_that_allow_and_names_the_secret_last() {
+        let ask = rules_ask("sec_1.a-b", 4, 2, 1, true);
+        let (_, en) = confirm_text(&ask, "en");
+        assert!(en.starts_with("Save rules that allow a secret to be used with no prompt?"), "{en}");
+        assert!(en.contains("4 rules: 2 allow the use and 1 allow it outside their time window"), "{en}");
+        assert!(en.contains("production"), "{en}");
+        assert!(en.ends_with("\n\"sec_1.a-b\""), "{en}");
+        let (_, pt) = confirm_text(&ask, "pt-BR");
+        assert!(pt.starts_with("Salvar regras que liberam o uso de um segredo sem perguntar?"), "{pt}");
+        assert!(pt.contains("São 4 regras: 2 liberam o uso e 1 liberam fora do horário"), "{pt}");
+        assert!(pt.ends_with("\n\"sec_1.a-b\""), "{pt}");
+        assert!(!confirm_text(&rules_ask("s", 1, 1, 0, false), "en").1.contains("production"));
+        assert_eq!(confirm_labels(&ask, "en").0, "Save rules");
+        assert_eq!(confirm_labels(&ask, "pt-BR").0, "Salvar regras");
     }
 
     /// The payload that resumes the automatic approver of a session, in canonical form, and the hash both sides

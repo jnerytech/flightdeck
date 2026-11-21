@@ -58,6 +58,8 @@ export const securityHandlers = {
   },
   "vault.rules.set": (payload, { server }) => {
     const { secretId, tags, rules } = payload;
+    // #3754: with a device enrolled, rules that loosen (an allow) are saved only with its proof over the whole request.
+    server.opts.approvers?.requireCommandProof("vault.rules.set", payload, ["secretId", "rules"]);
     return { rules: server.need("actions").setRules(secretId, tags ?? [], rules) };
   },
   "vault.rules.get": (payload, { server }) => {

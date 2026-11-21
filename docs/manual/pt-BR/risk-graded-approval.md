@@ -98,6 +98,13 @@ cadastrar um dispositivo: até lá, segurar o botão Aprovar é a única confer�
   em uma janela do sistema. A janela nomeia a pasta e diz que os hooks e os servidores dela vão rodar sem pedir
   confirmação. Cancele e nada é enviado. Revogar a confiança não pede nada. Um host que ainda não pede o
   dispositivo ao confiar em um projeto mostra um aviso na própria página: atualize-o.
+- **Salvar regras que liberam um uso.** Com um dispositivo cadastrado, **Salvar regras** em um segredo cujas regras
+  liberam o uso sem perguntar (decisão `allow`, ou `allow` fora do horário) pede mais uma confirmação em uma
+  janela do sistema. A janela nomeia o segredo, conta as regras que liberam e avisa quando o segredo é de produção.
+  Cancele e nada é salvo. Regras que só perguntam ou negam, e uma lista vazia, não pedem janela. Um host que ainda
+  não pede o dispositivo aqui mostra um aviso na própria página: atualize-o. Depois que um host reinicia, ou quando
+  os hosts permitidos de um segredo mudam, o app não abre uma janela sozinho: se o host recusa as regras por falta
+  de assinatura, o app avisa e você salva as regras de novo.
 - **Reativar a aprovação automática.** Com um dispositivo cadastrado, **Reativar** em uma sessão suspensa, em
   Aprovações automáticas, pede mais uma confirmação em uma janela do sistema. A janela nomeia a sessão e diz
   que ela volta a aprovar pedidos sem que nenhuma pessoa os veja. Cancele e nada é enviado. O comando

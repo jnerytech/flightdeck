@@ -232,6 +232,7 @@ export class AppStore {
           this.sessionRecap(hostId, claudeSessionId, extra),
         roiChanged: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
         prove: (hostId, requestId, scope) => this.approval.proveVault(hostId, requestId, scope),
+        proveRules: (hostId, body) => this.approval.proveCommand(hostId, "vault.rules.set", body),
       }),
     );
     this.personas = wirePersonas(this.kernel, {
