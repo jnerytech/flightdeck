@@ -15,7 +15,7 @@ import {
   runOnLocalDaemon,
   shown,
 } from "../daemon-client/index.ts";
-import { parseJsonWith } from "../kernel/json-text.ts";
+import { parseJsonWith } from "../kernel/index.ts";
 import {
   automationJson,
   changedLine,
