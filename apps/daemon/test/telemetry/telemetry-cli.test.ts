@@ -80,6 +80,10 @@ const SUMMARY: TelemetrySummary = {
   ],
 };
 
+/** The payload of the first command of a type the fake daemon received. */
+const sent = (daemon: { calls: Array<{ type: string; payload: unknown }> }, type: string) =>
+  daemon.calls.find((call) => call.type === type)?.payload;
+
 const run = (args: TelemetryCliArgs, daemon: { port: number }) =>
   runTelemetryCli(args, config(daemon.port));
 
@@ -87,28 +91,32 @@ describe("telemetry session (issue #3755)", () => {
   test("asks for the session and prints one block per prompt with a line per step", async () => {
     const daemon = fakeDaemon({ "telemetry.session": () => SESSION });
     const result = await run({ action: "session", id: "abc-123" }, daemon);
-    expect({ code: result.code, out: result.out, sent: daemon.calls[0]?.payload }).toEqual({
-      code: 0,
-      out: [
-        "prompt p-1  2026-11-20T12:00:00.000Z to 2026-11-20T12:00:09.000Z  $0.1234  permission wait 3000 ms",
-        "  tool  2026-11-20T12:00:01.000Z  Bash  1200 ms  ok",
-        "  tool  2026-11-20T12:00:02.000Z  Edit  80 ms  failed  error ENOENT",
-        "  permission  2026-11-20T12:00:05.000Z  Bash  accept by user_temporary  waited 3000 ms",
-        "  api  2026-11-20T12:00:08.000Z  4000 ms  $0.1000",
-        "prompt none  2026-11-20T12:00:20.000Z to 2026-11-20T12:00:21.000Z  $0.0000  permission wait 0 ms",
-      ],
-      sent: { claudeSessionId: "abc-123" },
-    });
+    expect({ code: result.code, out: result.out, sent: sent(daemon, "telemetry.session") }).toEqual(
+      {
+        code: 0,
+        out: [
+          "prompt p-1  2026-11-20T12:00:00.000Z to 2026-11-20T12:00:09.000Z  $0.1234  permission wait 3000 ms",
+          "  tool  2026-11-20T12:00:01.000Z  Bash  1200 ms  ok",
+          "  tool  2026-11-20T12:00:02.000Z  Edit  80 ms  failed  error ENOENT",
+          "  permission  2026-11-20T12:00:05.000Z  Bash  accept by user_temporary  waited 3000 ms",
+          "  api  2026-11-20T12:00:08.000Z  4000 ms  $0.1000",
+          "prompt none  2026-11-20T12:00:20.000Z to 2026-11-20T12:00:21.000Z  $0.0000  permission wait 0 ms",
+        ],
+        sent: { claudeSessionId: "abc-123" },
+      },
+    );
   });
 
   test("a session with no prompts prints nothing and still exits 0", async () => {
     const daemon = fakeDaemon({ "telemetry.session": () => ({ prompts: [] }) });
     const result = await run({ action: "session", id: "abc-123" }, daemon);
-    expect({ code: result.code, out: result.out, sent: daemon.calls[0]?.payload }).toEqual({
-      code: 0,
-      out: [],
-      sent: { claudeSessionId: "abc-123" },
-    });
+    expect({ code: result.code, out: result.out, sent: sent(daemon, "telemetry.session") }).toEqual(
+      {
+        code: 0,
+        out: [],
+        sent: { claudeSessionId: "abc-123" },
+      },
+    );
   });
 
   test("--json prints the daemon's answer as it is", async () => {
@@ -124,16 +132,18 @@ describe("telemetry summary (issue #3755)", () => {
   test("prints one block per project: the wait, then each slow tool", async () => {
     const daemon = fakeDaemon({ "telemetry.summary": () => SUMMARY });
     const result = await run({ action: "summary" }, daemon);
-    expect({ code: result.code, out: result.out, sent: daemon.calls[0]?.payload }).toEqual({
-      code: 0,
-      out: [
-        "flightdeck  permission wait 12000 ms",
-        "  Bash  3 calls  avg 120 ms  max 400 ms",
-        "  Edit  1 call  avg 80 ms  max 80 ms",
-        "other  permission wait 0 ms",
-      ],
-      sent: {},
-    });
+    expect({ code: result.code, out: result.out, sent: sent(daemon, "telemetry.summary") }).toEqual(
+      {
+        code: 0,
+        out: [
+          "flightdeck  permission wait 12000 ms",
+          "  Bash  3 calls  avg 120 ms  max 400 ms",
+          "  Edit  1 call  avg 80 ms  max 80 ms",
+          "other  permission wait 0 ms",
+        ],
+        sent: {},
+      },
+    );
   });
 
   test("with no events it says so and exits 0", async () => {

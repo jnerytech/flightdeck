@@ -2,6 +2,7 @@ import type { UsageOrigin } from "@flightdeck/protocol";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CardCliArgs } from "../board/index.ts";
 import { loadConfig, userHome } from "../config.ts";
+import type { CostsCliArgs } from "../costs/index.ts";
 import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
@@ -139,7 +140,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `resources`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `external` (list, message and watch), `names`, `workflow`, `worktree`, `issues`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `resources`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `external` (list, message and watch), `names`, `workflow`, `worktree`, `issues`, `costs` (its `sessions` verb), `telemetry` (its `session` and `summary` verbs), `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -485,29 +486,21 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   costs: async (args, deps) => {
     const { runCostsCli } = await import("../costs/index.ts");
-    const config = await localConfig(args);
-    return reported(
+    return askingWith(
+      args,
       deps,
-      await runCostsCli(
-        {
-          action: args.action as
-            | "summary"
-            | "session"
-            | "card"
-            | "run"
-            | "status"
-            | "export"
-            | "reprice",
-          ...(args.costsId === undefined ? {} : { id: args.costsId }),
-          ...(args.from === undefined ? {} : { from: args.from }),
-          ...(args.until === undefined ? {} : { to: args.until }),
-          ...(args.project === undefined ? {} : { projectKey: args.project }),
-          ...(args.model === undefined ? {} : { model: args.model }),
-          ...(args.origin === undefined ? {} : { origin: args.origin as UsageOrigin }),
-          ...(args.json ? { json: true } : {}),
-        },
-        config,
-      ),
+      (a): CostsCliArgs => ({
+        action: a.action as CostsCliArgs["action"],
+        ...(a.costsId === undefined ? {} : { id: a.costsId }),
+        ...(a.costsIds === undefined ? {} : { ids: a.costsIds }),
+        ...(a.from === undefined ? {} : { from: a.from }),
+        ...(a.until === undefined ? {} : { to: a.until }),
+        ...(a.project === undefined ? {} : { projectKey: a.project }),
+        ...(a.model === undefined ? {} : { model: a.model }),
+        ...(a.origin === undefined ? {} : { origin: a.origin as UsageOrigin }),
+        ...(a.json ? { json: true } : {}),
+      }),
+      runCostsCli,
     );
   },
   roi: async (args, deps) => {
@@ -725,9 +718,24 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     );
   },
   hooks: done(async (args, deps) => (await import("./claude-settings.ts")).runHooks(args, deps)),
-  telemetry: done(async (args, deps) =>
-    (await import("./claude-settings.ts")).runTelemetry(args, deps),
-  ),
+  telemetry: async (args, deps) => {
+    // `install`, `uninstall` and `status` edit and read this machine's Claude Code settings: no daemon is asked.
+    if (args.action !== "session" && args.action !== "summary") {
+      await (await import("./claude-settings.ts")).runTelemetry(args, deps);
+      return 0;
+    }
+    const { runTelemetryCli } = await import("../telemetry/index.ts");
+    return askingWith(
+      args,
+      deps,
+      (a) => ({
+        action: args.action as "session" | "summary",
+        ...(a.telemetryId === undefined ? {} : { id: a.telemetryId }),
+        ...(a.json ? { json: true } : {}),
+      }),
+      runTelemetryCli,
+    );
+  },
   history: async (args, deps) => {
     if (args.action === "reindex") {
       await (await import("./history.ts")).runReindex(args, deps);

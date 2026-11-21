@@ -12,6 +12,7 @@ import {
   type CostsCliArgs,
   csvLines,
   sessionLines,
+  sessionsLines,
   statusLines,
   summaryLines,
   UNSURE_REPRICE,
@@ -29,6 +30,7 @@ export async function runCostsCli(
     config,
     clientName: "flightdeck-costs",
     timeoutMs: options.timeoutMs ?? 15_000,
+    ...(options.remote ? { remote: options.remote } : {}),
     ...(args.action === "reprice" ? { unsure: UNSURE_REPRICE } : {}),
     perform: async (daemon, note) => {
       const id = args.id ?? "";
@@ -47,6 +49,14 @@ export async function runCostsCli(
             await daemon.call("costs.session", { claudeSessionId: id }),
             sessionLines,
           );
+        case "sessions": {
+          const ids = args.ids ?? [];
+          return shown(
+            args.json,
+            await daemon.call("costs.sessions", { claudeSessionIds: ids }),
+            (answer) => sessionsLines(ids, answer.costs),
+          );
+        }
         case "card":
           return shown(args.json, await daemon.call("costs.card", { cardId: id }), (card) => [
             `card ${id}: ${usd(card.costUsd)}`,

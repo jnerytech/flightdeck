@@ -47,9 +47,8 @@ export function summaryLines(summary: CostsSummary): string[] {
 }
 
 /** One line per asked session: its cost, or $0.00 when the daemon has none. */
-export function sessionsLines(_ids: string[], _costs: Record<string, number>): string[] {
-  return [];
-}
+export const sessionsLines = (ids: string[], costs: Record<string, number>): string[] =>
+  ids.map((id) => `${id}  ${usd(costs[id] ?? 0)}`);
 
 /** The session's cost, the part its subagents spent and each model. */
 export function sessionLines(session: CostsSession): string[] {

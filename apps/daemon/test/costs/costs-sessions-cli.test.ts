@@ -13,7 +13,11 @@ describe("costs sessions (issue #3755)", () => {
       config(daemon.port),
       { timeoutMs: 3_000 },
     );
-    expect({ code: result.code, out: result.out, sent: daemon.calls[0]?.payload }).toEqual({
+    expect({
+      code: result.code,
+      out: result.out,
+      sent: daemon.calls.find((call) => call.type === "costs.sessions")?.payload,
+    }).toEqual({
       code: 0,
       out: ["a1  $3.20", "b2  $0.50", "zz  $0.00"],
       sent: { claudeSessionIds: ["a1", "b2", "zz"] },

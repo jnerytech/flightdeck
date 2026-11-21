@@ -3,6 +3,9 @@
  * The parser in `args.ts` adds the usage text to the problem this names.
  */
 import { UsageOrigin } from "@flightdeck/protocol";
+import { type ArgReader, operand, subAction } from "./arg-reader.ts";
+import type { CliArgs } from "./cli-args.ts";
+import { USAGE } from "./usage.ts";
 
 /** The parsed arguments this check reads: `CliArgs` fits it. */
 export interface CostsArgs {
@@ -14,6 +17,52 @@ export interface CostsArgs {
   model?: string;
   origin?: string;
   confirm?: boolean;
+  costsIds?: string[];
+  host?: string;
+}
+
+/** The most sessions `costs sessions` asks for at once: the daemon's own limit (`costs.sessions`). */
+const MAX_SESSIONS = 500;
+
+/** `costs <verb>`: the verb, and the id of the session, card or run it names (`sessions` takes several). */
+export function readCosts(args: CliArgs, reader: ArgReader): void {
+  args.command = "costs";
+  const verbs = [
+    "summary",
+    "session",
+    "sessions",
+    "card",
+    "run",
+    "status",
+    "export",
+    "reprice",
+  ] as const;
+  const action = subAction(reader, verbs, "invalid costs action");
+  args.action = action;
+  if (action === "session") args.costsId = operand(reader, "the session");
+  if (action === "sessions") readCostsIds(args, reader);
+  if (action === "card") args.costsId = operand(reader, "the card");
+  if (action === "run") args.costsId = operand(reader, "the run");
+}
+
+/** `costs sessions <id>...`: every word up to the first flag is a Claude session id, and at least one is needed. */
+function readCostsIds(args: CliArgs, reader: ArgReader): void {
+  args.costsIds = [];
+  while (reader.peek() !== undefined && !(reader.peek() ?? "").startsWith("--"))
+    args.costsIds.push(reader.next() ?? "");
+  if (args.costsIds.length === 0)
+    throw new Error(`costs sessions: missing the id of a session\n${USAGE}`);
+}
+
+/** `--host` belongs to `costs sessions` alone, and that verb asks for at most 500 sessions. */
+function sessionsProblem(args: CostsArgs): string | undefined {
+  const sessions = args.command === "costs" && args.action === "sessions";
+  if (args.host !== undefined && !sessions)
+    return "--host: this flag only applies to flightdeckd costs sessions";
+  const count = args.costsIds?.length ?? 0;
+  if (sessions && count > MAX_SESSIONS)
+    return `costs sessions: at most ${MAX_SESSIONS} sessions at a time, ${count} given`;
+  return undefined;
 }
 
 /** The sources a message's usage can come from, as `--origin` names them. */
@@ -82,7 +131,11 @@ function filterFlagProblem(args: CostsArgs): string | undefined {
 export function costsProblem(args: CostsArgs): string | undefined {
   // `--to`, `--from` and `--origin` are `history`'s and `update`'s flags too: those commands are checked elsewhere.
   if (args.command !== "costs" && args.command !== "roi") return undefined;
-  const stray = confirmProblem(args) ?? periodFlagProblem(args) ?? filterFlagProblem(args);
+  const stray =
+    confirmProblem(args) ??
+    periodFlagProblem(args) ??
+    filterFlagProblem(args) ??
+    sessionsProblem(args);
   if (stray !== undefined) return stray;
   return takesPeriod(args) ? periodProblem(args) : undefined;
 }
