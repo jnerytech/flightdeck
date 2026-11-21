@@ -45,21 +45,25 @@ export interface BudgetsCore {
 export class BudgetsSlice {
   constructor(private readonly core: BudgetsCore) {}
 
-  /** Creates a budget or changes the one with `input.id`; the list follows the answer. */
-  async set(hostId: string, input: BudgetInput): Promise<void> {
+  /** Creates a budget or changes the one with `input.id`; the list follows the answer. True when the host took it. */
+  async set(hostId: string, input: BudgetInput): Promise<boolean> {
     const budget = await this.core.set(hostId, input);
     if (budget) this.keep(hostId, budget, false);
+    return budget !== null;
   }
 
   /** The same for a budget in terms of a plan quota window (issue #1248). */
-  async setQuota(hostId: string, input: QuotaBudgetInput): Promise<void> {
+  async setQuota(hostId: string, input: QuotaBudgetInput): Promise<boolean> {
     const budget = await this.core.setQuota(hostId, input);
     if (budget) this.keep(hostId, budget, false);
+    return budget !== null;
   }
 
-  async remove(hostId: string, budget: Budget): Promise<void> {
+  /** True when the host removed it. */
+  async remove(hostId: string, budget: Budget): Promise<boolean> {
     const removed = await this.core.remove(hostId, budget.id);
     if (removed !== null) this.keep(hostId, budget, true);
+    return removed !== null;
   }
 
   /** Keeps a host's whole list, as it answered when it connected. */
