@@ -121,6 +121,7 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 [Read the chapter.](en/flightdeckd-review-commands.md) Its sections:
 
 - [fd review](en/flightdeckd-review-commands.md#fd-review)
+- [Writing the comments](en/flightdeckd-review-commands.md#writing-the-comments)
 
 ## Approvals and always allow
 
