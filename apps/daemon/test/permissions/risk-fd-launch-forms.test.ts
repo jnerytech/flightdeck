@@ -165,7 +165,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       ...["card", "history", "approvers", "persona", "team", "quota", "budget", "costs"],
       ...["session", "rules", "autoapprove", "plugins", "project", "agentcfg", "ssh", "watch"],
       ...["snippet", "boardsync", "review", "memory", "runenv", "automation", "message", "mcp"],
-      ...["changes", "file", "rewind"],
+      ...["changes", "file", "rewind", "action"],
     ];
     expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());
     expect(new Set(nouns).size).toBe(nouns.length);
