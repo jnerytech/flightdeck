@@ -18,7 +18,7 @@ describe("the command lists of the parser (#3759)", () => {
     expect(() => parseArgs(["doctor", "--host", "server"])).toThrow(
       `--host: this flag only applies to flightdeckd ${names(HOST_COMMANDS)}`,
     );
-    expect(() => parseArgs(["doctor", "--json"])).toThrow(
+    expect(() => parseArgs(["restore", "backup.db", "--json"])).toThrow(
       `--json: this flag only applies to flightdeckd ${names(JSON_COMMANDS)}`,
     );
   });

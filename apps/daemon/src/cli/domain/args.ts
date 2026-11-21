@@ -109,7 +109,7 @@ const openWith =
 const HANDLERS: Record<string, Handler> = {
   db: (args, reader) => {
     args.command = "db";
-    subAction(reader, ["prune"], "invalid db action");
+    args.action = subAction(reader, ["status", "prune"] as const, "invalid db action");
   },
   backup: setCommand("backup"),
   restore: (args, reader) => {

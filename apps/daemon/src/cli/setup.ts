@@ -83,7 +83,7 @@ export async function runPair(args: CliArgs, deps: SetupCommandDeps): Promise<vo
   }
 }
 
-/** `flightdeckd doctor`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
+/** `flightdeckd doctor [--json]`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
 export async function runDoctorCommand(args: CliArgs, deps: SetupCommandDeps): Promise<number> {
   const file = configPath(args);
   let config: Config | null = null;
@@ -108,6 +108,13 @@ export async function runDoctorCommand(args: CliArgs, deps: SetupCommandDeps): P
     },
   });
   const report = await checks.doctor();
+  if (args.json) {
+    // A config that cannot be read leaves nothing to list: `deps` is null and the exit code is 1. `ok` is the
+    // checks'; the exit code also counts a required dependency that is lacking.
+    const listed = await checks.deps().catch(() => null);
+    deps.log.log(JSON.stringify({ ...report, deps: listed }, null, 2));
+    return listed ? doctorExitCode(report.ok, listed) : 1;
+  }
   for (const item of report.checks) {
     deps.log.log(`${item.status.toUpperCase().padEnd(4)} ${item.name.padEnd(16)} ${item.detail}`);
     if (item.fix) deps.log.log(`     -> ${item.fix}`);

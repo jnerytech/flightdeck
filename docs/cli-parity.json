@@ -242,7 +242,7 @@
   "logs.tail": { "cli": "logs" },
   "maintenance.backup": { "cli": "backup" },
   "maintenance.prune": { "cli": "db" },
-  "maintenance.status": {},
+  "maintenance.status": { "cli": "db" },
   "mcp.list": { "cli": "mcp" },
   "mcp.remove": { "cli": "mcp" },
   "mcp.save": { "cli": "mcp" },
