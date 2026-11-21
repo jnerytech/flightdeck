@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
+const HIDDEN =
+  "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
 const REASON =
   "writes a CLAUDE.md, an agent or a skill, which every later session of the project reads as its own instructions, without the person reading it in the app; a typed --confirm or --expected-hash is not the person (flightdeckd agentcfg write)";
 
@@ -36,6 +38,21 @@ describe("risk rules: a session writing agent configuration from its shell (#361
         "echo agentcfg write",
         "git write agentcfg",
         "ls agentcfg/write",
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a verb the shell expands, or an xargs line with no verb, is high with the reason that says why", () => {
+    expect(
+      wrongReasons([
+        ["V=write; fd agentcfg $V api --kind agent --path .claude/agents/x.md --new", HIDDEN],
+        ["fd agentcfg w* api", HIDDEN],
+        ["fd agentcfg wr[i]te api", HIDDEN],
+        ["fd agentcfg {write,list} api", HIDDEN],
+        [String.raw`fd agentcfg $'wr\x69te' api`, HIDDEN],
+        ["bash -c 'fd agentcfg $V api'", HIDDEN],
+        ["echo write api --kind agent --path x --new | xargs fd agentcfg", HIDDEN],
+        ["echo write | xargs -I{} fd agentcfg {} api", HIDDEN],
       ]),
     ).toEqual([]);
   });
