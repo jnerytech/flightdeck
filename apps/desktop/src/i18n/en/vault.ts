@@ -215,6 +215,9 @@ export const vault = {
     export: "Export CSV",
     decisions: "Vault decisions",
     noDecisions: "No decision in this period",
+    loading: "Loading the vault report",
+    failed: "Could not read the vault report. Check that the host is connected.",
+    retry: "Try again",
     outcomes: {
       pending: "waiting",
       allowed: "let through",
