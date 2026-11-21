@@ -24,6 +24,7 @@ import {
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, LIMIT_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem, readCosts } from "./costs-args.ts";
+import { daemonHandler, daemonProblem, updateHandler } from "./daemon-args.ts";
 import { externalProblem, readExternal, readNames, TEXT_FLAG } from "./external-args.ts";
 import { FEED_READERS, feedProblem, LINES_FLAG, readFeedLimit } from "./feed-args.ts";
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
@@ -117,7 +118,8 @@ const HANDLERS: Record<string, Handler> = {
     const next = reader.peek();
     if (next && !next.startsWith("--")) args.file = reader.next();
   },
-  update: setCommand("update"),
+  update: updateHandler,
+  daemon: daemonHandler,
   "--version": setCommand("version"),
   start: setCommand("start"),
   pair: setCommand("pair"),
@@ -764,6 +766,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     rulesProblem(args) ??
     approversProblem(args) ??
     costsProblem(args) ??
+    daemonProblem(args) ??
     telemetryProblem(args);
   if (fault !== undefined) throw new Error(`${fault}\n${USAGE}`);
   delete args.titleFlag;

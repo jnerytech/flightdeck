@@ -60,6 +60,30 @@ the new binary itself.
 - **Remote Linux (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` and, on the
   host, `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
 
+### Asking the daemon: update check, update apply and daemon stop
+
+`update --from` installs a file the caller already has and asks no daemon. Three other commands ask the daemon of
+this machine, never one named with `--host`:
+
+```sh
+flightdeckd update check [--json]
+flightdeckd update apply --confirm [--json]
+flightdeckd daemon stop --confirm [--json]
+```
+
+- `update check` asks what the release server has and prints one line: `available  <version>  checked <time>`,
+  `up to date  checked <time>` or `check failed  <reason>  checked <time>`. It exits 0 whenever the check ran, even
+  when it found nothing or failed; `--json` prints `available`, `version`, `checkedAt` and `error` (null when none).
+- `update apply --confirm` has the daemon download and install what the check found, and restart. It prints
+  `update started` (`{"started":true}`) as soon as the daemon accepts, and does not wait for the restart: run
+  `update check` or `host` afterwards to see the new version.
+- `daemon stop --confirm` makes the daemon exit, so every session and terminal it runs ends. It prints `stopping`
+  (`{"stopping":true}`) on the daemon's answer. Starting it again is `service start` or the app.
+
+`apply` and `stop` refuse without `--confirm` (exit 1, nothing sent). A connection cut after the request was
+sent exits 2 and says the daemon may or may not have acted. A model's shell is stopped at both, with or without the
+flag.
+
 ## Sessions a restart interrupted
 
 When a host's daemon restarts (an update, a reboot, a service restart), the sessions that were

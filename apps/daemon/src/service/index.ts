@@ -5,6 +5,7 @@
  */
 
 export { binaryVersion } from "./adapters/flightdeckd-process.ts";
+export { runDaemonStopCli } from "./daemon-stop-cli.ts";
 export {
   daemonCommand,
   installService,
