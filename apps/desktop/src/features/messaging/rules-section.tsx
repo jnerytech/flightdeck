@@ -3,9 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
-import { InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
-import { Field, Form, FormActions, Inline, NativeSelect, Panel } from "@/shared/layout/index.ts";
+import {
+  Field,
+  Form,
+  FormActions,
+  Inline,
+  NativeSelect,
+  Panel,
+  Stack,
+} from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
@@ -54,6 +62,8 @@ export function MessagingRulesSection(
   const t = useT();
   const { store, hostId } = props;
   const [rules, setRules] = useState<Rules | null>(null);
+  // Why the rules could not be read; null while they load or once they are shown (issue #3787).
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fromKind, setFromKind] = useState<Kind>("host");
   const [fromValue, setFromValue] = useState("");
@@ -68,11 +78,41 @@ export function MessagingRulesSection(
     setRules(next);
     setRetention(String(next.policy.retentionDays ?? ""));
   }, []);
+  const read = useCallback(async () => {
+    setLoadError(null);
+    const result = await store.hostRequest(hostId, "messaging.rules.get", {});
+    if (result.ok) show(result.data);
+    else setLoadError(refusalText(result.code, result.message, t, result));
+  }, [store, hostId, show, t]);
   useEffect(() => {
-    void store.hostCommand(hostId, "messaging.rules.get", {}).then((got) => got && show(got));
-  }, [store, hostId, show]);
+    void read();
+  }, [read]);
 
-  if (!rules) return null;
+  const title = t("messagingRulesUi.title", { host: props.hostName });
+  if (!rules) {
+    return (
+      <section aria-label={title}>
+        <Panel title={title}>
+          {loadError === null ? (
+            <output className="block text-sm">
+              {t("messagingRulesUi.loading", { host: props.hostName })}
+            </output>
+          ) : (
+            <>
+              <InlineNotice tone="error">
+                {t("messagingRulesUi.loadFailed", { host: props.hostName })} {loadError}
+              </InlineNotice>
+              <Inline>
+                <ActionButton variant="outline" onClick={read}>
+                  {t("messagingRulesUi.retry")}
+                </ActionButton>
+              </Inline>
+            </>
+          )}
+        </Panel>
+      </section>
+    );
+  }
   const exceptions = rules.policy.exceptions ?? [];
   const save = async (patch: Partial<Policy>): Promise<boolean> => {
     const result = await store.hostRequest(hostId, "messaging.rules.set", {
@@ -99,7 +139,6 @@ export function MessagingRulesSection(
       setBoth(false);
     }
   };
-  const title = t("messagingRulesUi.title", { host: props.hostName });
   const kindSelect = (id: string, value: Kind, onChange: (kind: Kind) => void) => (
     <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value as Kind)}>
       {KINDS.map((k) => (
@@ -111,6 +150,8 @@ export function MessagingRulesSection(
   );
   const ids = {
     both: `mr-both-${hostId}`,
+    fromHint: `rules-from-hint-${hostId}`,
+    toHint: `rules-to-hint-${hostId}`,
   };
   return (
     <section aria-label={title}>
@@ -141,30 +182,42 @@ export function MessagingRulesSection(
           <Inline gap={4}>
             <Field label={t("messagingRulesUi.from")}>
               {(control) => (
-                <Inline gap={2}>
-                  {kindSelect(control.id, fromKind, setFromKind)}
-                  <Input
-                    aria-label={t("messagingRulesUi.fromValue")}
-                    className="w-40"
-                    placeholder={t("messagingRulesUi.fromValue")}
-                    value={fromValue}
-                    onChange={(e) => setFromValue(e.target.value)}
-                  />
-                </Inline>
+                <Stack gap={1}>
+                  <Inline gap={2}>
+                    {kindSelect(control.id, fromKind, setFromKind)}
+                    <Input
+                      aria-label={t("messagingRulesUi.fromValue")}
+                      aria-describedby={ids.fromHint}
+                      className="w-40"
+                      placeholder={t("messagingRulesUi.fromValue")}
+                      value={fromValue}
+                      onChange={(e) => setFromValue(e.target.value)}
+                    />
+                  </Inline>
+                  <p id={ids.fromHint} className="text-muted-foreground text-xs">
+                    {t(`messagingRulesUi.hints.${fromKind}`)}
+                  </p>
+                </Stack>
               )}
             </Field>
             <Field label={t("messagingRulesUi.to")}>
               {(control) => (
-                <Inline gap={2}>
-                  {kindSelect(control.id, toKind, setToKind)}
-                  <Input
-                    aria-label={t("messagingRulesUi.toValue")}
-                    className="w-40"
-                    placeholder={t("messagingRulesUi.toValue")}
-                    value={toValue}
-                    onChange={(e) => setToValue(e.target.value)}
-                  />
-                </Inline>
+                <Stack gap={1}>
+                  <Inline gap={2}>
+                    {kindSelect(control.id, toKind, setToKind)}
+                    <Input
+                      aria-label={t("messagingRulesUi.toValue")}
+                      aria-describedby={ids.toHint}
+                      className="w-40"
+                      placeholder={t("messagingRulesUi.toValue")}
+                      value={toValue}
+                      onChange={(e) => setToValue(e.target.value)}
+                    />
+                  </Inline>
+                  <p id={ids.toHint} className="text-muted-foreground text-xs">
+                    {t(`messagingRulesUi.hints.${toKind}`)}
+                  </p>
+                </Stack>
               )}
             </Field>
           </Inline>

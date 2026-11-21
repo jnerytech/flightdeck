@@ -243,7 +243,8 @@ for (const [lang, t] of [
       expect(document.body.textContent).not.toContain(t.messagingRulesUi.none);
       daemon.refuse.delete("messaging.rules.get");
       await click(t.messagingRulesUi.retry);
-      await settle(() => document.body.textContent?.includes(failed) === false);
+      await settle(() => screen.queryByLabelText(t.messagingRulesUi.retention) !== null);
+      expect(document.body.textContent).not.toContain(failed);
       expect(screen.queryByLabelText(t.messagingRulesUi.retention)).not.toBeNull();
       expect(screen.queryByRole("button", { name: t.messagingRulesUi.retry })).toBeNull();
     });
