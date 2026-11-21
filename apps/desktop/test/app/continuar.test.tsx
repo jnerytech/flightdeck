@@ -94,7 +94,7 @@ describe("continuar", () => {
     expect(screen.queryByText(/pode estar em uso/)).toBeNull();
     await settle(() => screen.queryByLabelText("Mensagem") !== null);
     expect(screen.queryByLabelText("Mensagem")).not.toBeNull();
-    expect(screen.queryByRole("log", { name: "Transcript" })).toBeNull();
+    expect(screen.queryByRole("log", { name: "Transcrição" })).toBeNull();
     expect(store.getState().selected?.sessionId).toBeString();
   });
 
@@ -165,7 +165,7 @@ describe("continuar", () => {
     expect((button as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("note")?.textContent ?? "").toContain("/fora/dos/roots");
     expect(runtime.starts).toEqual([]);
-    expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
+    expect(screen.queryByRole("log", { name: "Transcrição" })).not.toBeNull();
   });
 
   test("continuing on a host the app does not know gives no session and tells the person", async () => {

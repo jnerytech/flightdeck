@@ -149,7 +149,7 @@ describe("historico-host", () => {
       fireEvent.click(first as HTMLElement);
     });
     await settle(() => document.querySelectorAll("[data-uuid]").length > 0);
-    expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
+    expect(screen.queryByRole("log", { name: "Transcrição" })).not.toBeNull();
     // Three columns: the list stays on the left with the open one marked.
     expect(
       screen
