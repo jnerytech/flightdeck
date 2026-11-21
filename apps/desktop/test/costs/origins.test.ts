@@ -40,6 +40,9 @@ describe.each(["en", "pt-BR"] as const)(
 
     test("an origin the dictionary does not know shows its id, never an empty label", () => {
       expect(originLabel("future-origin", t)).toBe("future-origin");
+      // A name that Object.prototype owns is no origin either.
+      expect(originLabel("constructor", t)).toBe("constructor");
+      expect(originLabel("__proto__", t)).toBe("__proto__");
     });
 
     test("the filter lists the five origins with their names and keeps the id as the value", () => {
