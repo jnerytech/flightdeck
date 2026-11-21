@@ -79,6 +79,7 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 - [fd requests](en/flightdeckd-commands.md#fd-requests)
 - [fd approve and fd deny](en/flightdeckd-commands.md#fd-approve-and-fd-deny)
 - [fd send](en/flightdeckd-commands.md#fd-send)
+- [fd agentcfg](en/flightdeckd-commands.md#fd-agentcfg)
 
 ## flightdeckd commands: one session
 
