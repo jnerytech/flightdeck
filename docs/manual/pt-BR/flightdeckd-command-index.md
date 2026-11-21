@@ -58,6 +58,12 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 - [fd review](flightdeckd-review-commands.md#fd-review)
 - [Escrever os comentários](flightdeckd-review-commands.md#escrever-os-comentários)
 
+## Comandos do flightdeckd: a memória automática de um projeto
+
+[Ler o capítulo.](flightdeckd-memory-commands.md) Suas seções:
+
+- [fd memory](flightdeckd-memory-commands.md#fd-memory)
+
 ## Comandos do flightdeckd: o ambiente de execução de um cartão
 
 [Ler o capítulo.](flightdeckd-runenv-commands.md) Suas seções:

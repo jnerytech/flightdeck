@@ -58,6 +58,12 @@ One chapter for each group of `flightdeckd` commands. Pick the group you need; e
 - [fd review](flightdeckd-review-commands.md#fd-review)
 - [Writing the comments](flightdeckd-review-commands.md#writing-the-comments)
 
+## flightdeckd commands: the auto memory of a project
+
+[Read the chapter.](flightdeckd-memory-commands.md) Its sections:
+
+- [fd memory](flightdeckd-memory-commands.md#fd-memory)
+
 ## flightdeckd commands: the run environment of a card
 
 [Read the chapter.](flightdeckd-runenv-commands.md) Its sections:
