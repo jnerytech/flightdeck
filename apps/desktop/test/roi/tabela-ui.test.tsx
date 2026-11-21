@@ -131,6 +131,21 @@ for (const [lang, t] of [
       expect(header(t.roiUi.table.cost).getAttribute("aria-sort")).toBeNull();
     });
 
+    test("the table is sorted by cost at first and the sorted header shows its direction", async () => {
+      await costsPage(lang);
+      await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
+      const header = (name: string) => screen.getByRole("columnheader", { name });
+      const arrow = (name: string) => header(name).querySelector("svg") !== null;
+      expect(header(t.roiUi.table.cost).getAttribute("aria-sort")).toBe("descending");
+      expect(arrow(t.roiUi.table.cost)).toBe(true);
+      expect(arrow(t.roiUi.table.project)).toBe(false);
+      await act(async () => {
+        fireEvent.click(within(header(t.roiUi.table.project)).getByRole("button"));
+      });
+      expect(arrow(t.roiUi.table.project)).toBe(true);
+      expect(arrow(t.roiUi.table.cost)).toBe(false);
+    });
+
     test("a host without roi shows no table", async () => {
       await costsPage(lang, { roi: false });
       await settle(() => screen.queryByText(t.costsUi.perDay) !== null);

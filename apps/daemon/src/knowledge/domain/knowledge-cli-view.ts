@@ -7,7 +7,7 @@ import type {
 } from "@flightdeck/protocol";
 
 /** A document with every key a script reads: what an older daemon leaves out is `null` or empty. */
-const entryJson = (entry: KnowledgeEntry) => ({
+export const entryJson = (entry: KnowledgeEntry) => ({
   ...entry,
   type: entry.type ?? null,
   supersedes: entry.supersedes ?? null,
@@ -33,6 +33,9 @@ const entryLine = (entry: KnowledgeEntry): string =>
   [entry.path, entry.status, entry.type ?? "-", entry.title, entry.hash ?? "", ...notes(entry)]
     .filter((field) => field !== "")
     .join("  ");
+
+/** A document the daemon wrote or changed, as `list` prints it. */
+export const entryLines = (entry: KnowledgeEntry): string[] => [entryLine(entry)];
 
 export const listLines = (list: KnowledgeListResult): string[] =>
   list.entries.length === 0 && !list.truncated
@@ -74,3 +77,7 @@ export function feedLines(feed: KnowledgeFeedState): string[] {
     `off  switched off for ${feed.offBy} (${feed.own ? "the project itself" : "a folder above the project"})`,
   ];
 }
+
+/** What a write that got no answer may have done: the next step is to look, not to repeat it. */
+export const unsure = (action: string): string =>
+  `; the change may or may not have gone in: check with \`knowledge ${action === "set-feed" ? "feed" : "list"}\` before trying again`;

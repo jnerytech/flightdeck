@@ -278,7 +278,8 @@ Every quota reading from a managed session is kept for 30 days. Identical readin
 - **Projection:** with at least 3 readings of the current window:
   - "at the current pace, the 5 h window runs out at HH:MM";
   - or "won't run out before HH:MM", when the pace does not reach 100% before the reset.
-- **Tooltip:** the bars at the top of the Sessions screen show the same projection.
+- **On the quota bars:** each bar with a reading shows the same projection as a line of text under its reset time.
+- **No readings:** until the host answers the section says it is loading, and when there is nothing to show it says so.
 - **Who used the window:** each project's share of the estimated cost since the start of the
   current 5-hour window. It is an approximate attribution, because the plan does not say who used
   the quota.
@@ -304,7 +305,9 @@ not a verified result. The screens never call it profit or savings.
   closed* (asked of the host's `gh`, kept for an hour; the card says when `gh` is missing or signed out). Both are off by
   default.
 - **The Costs table.** One row per project of the chosen client scope: cost, cards, PRs, cost per card and per PR,
-  estimated hours, estimated value and return on cost (estimate). Click a column header to sort, again to reverse. A
+  estimated hours, estimated value and return on cost (estimate). The table opens sorted by cost, high to low, and an arrow on the
+  header shows the sorted column and its direction. Click a column header to sort, again to reverse. While the hosts have
+  not answered it says it is loading, not that there is no project. A
   dash means the figure cannot be computed (no cards, no rate). The footer adds up the rows. **Export the project table
   as CSV** saves one row per project, with a column that says how each figure was made; the file always uses a dot as
   the decimal mark.

@@ -44,7 +44,7 @@ describe("risk rules: a session saving, trusting or removing an action from its 
         "fd action list --plain --host pi",
         "fd action runs deploy --limit 20 --json",
         "fd action run deploy",
-        "fd send fd-qa 'action remove deploy'",
+        "fd message send fd-qa 'action remove deploy'",
         "echo action save",
       ]),
     ).toEqual([]);

@@ -107,10 +107,8 @@ export const searchJson = (result: FileSearchResult) => ({
 /** What the search was, where, and one line for each match; a credential file by name only. */
 export function searchLines(target: string, result: FileSearchResult): string[] {
   const { matches } = result;
-  const count =
-    matches.length === 0
-      ? "no matches"
-      : `${matches.length} match${matches.length === 1 ? "" : "es"}`;
+  const noun = matches.length === 1 ? "match" : "matches";
+  const count = matches.length === 0 ? "no matches" : `${matches.length} ${noun}`;
   const found = matches.map((match) => {
     if (match.secret) return `  ${match.path} (may hold a credential, content not searched)`;
     return match.line === undefined

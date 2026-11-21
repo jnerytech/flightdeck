@@ -18,3 +18,4 @@ export { workflowTemplates } from "./domain/templates.ts";
 export { WorkflowEngine } from "./engine.ts";
 export { hashOf } from "./repo.ts";
 export { addWorkflowTemplate } from "./template-add.ts";
+export { runWorkflowCli, type WorkflowCliArgs } from "./workflow-cli.ts";

@@ -277,7 +277,8 @@ de 5 minutos viram uma só.
 - **Projeção:** com pelo menos 3 leituras da janela atual:
   - "no ritmo atual, a janela de 5 h esgota às HH:MM";
   - ou "não esgota antes de HH:MM", quando o ritmo não chega a 100% antes do reinício.
-- **Tooltip:** as barras do topo da tela Sessões mostram a mesma projeção.
+- **Nas barras da cota:** cada barra com leitura mostra a mesma projeção como uma linha de texto abaixo do horário do reinício.
+- **Sem leituras:** até o host responder a seção diz que está carregando, e quando não há nada para mostrar ela avisa.
 - **Quem consumiu a janela:** a fatia de cada projeto no custo estimado desde o início da janela
   de 5 horas atual. É uma atribuição aproximada, porque o plano não diz quem usou a cota.
 
@@ -302,8 +303,9 @@ medidos, e um card concluído não é um resultado verificado. As telas nunca fa
   fechadas* (perguntadas ao `gh` do host, guardadas por uma hora; o cartão diz quando o `gh` falta ou está sem login).
   Os dois vêm desligados.
 - **A tabela de Custos.** Uma linha por projeto do escopo de clientes escolhido: custo, cards, PRs, custo por card e por
-  PR, horas estimadas, valor estimado e retorno sobre o custo (estimativa). Clique no cabeçalho de uma coluna para
-  ordenar, e de novo para inverter. O traço quer dizer que o número não pode ser calculado (sem cards, sem valor da
+  PR, horas estimadas, valor estimado e retorno sobre o custo (estimativa). A tabela abre ordenada pelo custo, do maior para o menor, e uma seta no
+  cabeçalho mostra a coluna ordenada e o sentido. Clique no cabeçalho de uma coluna para
+  ordenar, e de novo para inverter. Enquanto os hosts não respondem, ela diz que está carregando, não que não há projeto. O traço quer dizer que o número não pode ser calculado (sem cards, sem valor da
   hora). O rodapé soma as linhas. **Exportar a tabela de projetos em CSV** salva uma linha por projeto, com uma coluna
   que diz como cada número foi feito; o arquivo sempre usa ponto como separador decimal.
 - **Pessoas.** *Tokens contra entrega, por pessoa* agrupa hosts numa pessoa com nome (por exemplo, o host em que os

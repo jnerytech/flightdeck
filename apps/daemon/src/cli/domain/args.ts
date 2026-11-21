@@ -8,6 +8,7 @@ import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.t
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { AUTOMATION_FLAGS, automationProblem, readAutomation } from "./automation-args.ts";
+import { BG_FLAGS, bgProblem, readBg, takeBgFlags } from "./bg-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
@@ -27,7 +28,7 @@ import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
 import { issuesProblem, readIssues } from "./issues-args.ts";
-import { readKnowledge } from "./knowledge-args.ts";
+import { knowledgeFlags, knowledgeProblem, readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
 import { memoryProblem, readMemory } from "./memory-args.ts";
 import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
@@ -51,6 +52,7 @@ import {
 import { USAGE } from "./usage.ts";
 import { atTime, oneOf, readVault, vaultProblem } from "./vault-args.ts";
 import { readWatch, takeWatchFlags, WATCH_FLAGS, watchProblem } from "./watch-args.ts";
+import { readWorkflow, workflowProblem } from "./workflow-args.ts";
 import { readWorktree, worktreeProblem } from "./worktree-args.ts";
 
 export type { CliArgs, ServiceAction } from "./cli-args.ts";
@@ -120,6 +122,8 @@ const HANDLERS: Record<string, Handler> = {
   channel: setCommand("channel"),
   mcp: readMcp,
   knowledge: readKnowledge,
+  resources: setCommand("resources"),
+  workflow: readWorkflow,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {
@@ -350,6 +354,7 @@ const HANDLERS: Record<string, Handler> = {
   snapshots: readSnapshots,
   rewind: readRewind,
   trace: readTrace,
+  bg: readBg,
   file: readFile,
   automation: readAutomation,
   terminal: readTerminal,
@@ -585,11 +590,18 @@ const HANDLERS: Record<string, Handler> = {
   ...REVIEW_FLAGS,
   ...CHANGES_FLAGS,
   ...CHECKPOINT_FLAGS,
+  ...BG_FLAGS,
   ...FILE_FLAGS,
   "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
   ...MESSAGE_FLAGS,
+  // `--status`, `--on` and `--off` are also `knowledge`'s: it reads them itself, the rest keep the handler above.
+  ...knowledgeFlags({
+    ...MESSAGE_FLAGS,
+    "--on": BOARDSYNC_FLAGS["--on"] as Handler,
+    "--off": OFF_FLAG,
+  }),
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -705,6 +717,7 @@ function refuseStrayFlags(args: CliArgs): void {
   takeFileFlags(args);
   takeWatchFlags(args);
   takeMcpFlags(args);
+  takeBgFlags(args);
   if (
     !["requests", "message", "autoapprove", "vault", "mcp"].includes(args.command) &&
     args.session !== undefined
@@ -754,6 +767,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     agentcfgProblem(args) ??
     messageProblem(args) ??
     mcpProblem(args) ??
+    knowledgeProblem(args) ??
+    workflowProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
     reviewProblem(args) ??
@@ -763,6 +778,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     runenvProblem(args) ??
     changesProblem(args) ??
     checkpointsProblem(args) ??
+    bgProblem(args) ??
     fileProblem(args) ??
     actionProblem(args) ??
     automationProblem(args) ??

@@ -20,7 +20,7 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   sai do sino, também o respondido em outro lugar (com o host offline a linha fica, pois nada diz que
   foi respondido). Depois de uma resposta o foco vai para a linha que ocupou o lugar, ou para o título
   do painel.
-- Passe o mouse numa linha (ou foque nela) para ver o controle **Marcar como lida**: ele marca
+- Passe o mouse numa linha (ou foque nela) para ver o controle **Marcar como lida** (com o nome da linha, como "Marcar Sessão A como lida"): ele marca
   aquela linha e não abre nada.
 - Clique numa entrada para marcar só ela como lida e abrir a tela dela (um pedido abre no card dele;
   um alerta de cota abre o host). Um alerta de orçamento abre os Custos já filtrados pelo host e
@@ -33,7 +33,7 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   soma nada. Ela volta com a contagem na próxima vez que o app abre.
 - **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
   (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
-- Uma linha lida tem **Marcar como não lida** (passe o mouse ou foque nela) para voltar a ela depois.
+- Uma linha lida tem **Marcar como não lida** (com o nome da linha; passe o mouse ou foque nela) para voltar a ela depois.
 - As notificações do sistema saem como antes, a menos que você as ajuste (abaixo). A central só
   guarda uma cópia: uma que nunca é enviada (a janela estava em foco) também não entra nela.
 - Clique na notificação do sistema de um pedido e o app vem à frente nesse pedido: a sessão abre

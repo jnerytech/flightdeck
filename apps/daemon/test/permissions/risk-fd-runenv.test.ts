@@ -42,7 +42,7 @@ describe("risk rules: a session trusting or starting a run environment from its 
         "fd runenv get c1 --json --host pi",
         "fd runenv watch",
         "fd runenv stop c1",
-        "fd send fd-qa 'runenv start c1'",
+        "fd message send fd-qa 'runenv start c1'",
         "echo runenv trust api",
       ]),
     ).toEqual([]);

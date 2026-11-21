@@ -402,6 +402,8 @@ export const en: Dictionary = {
     consumers: "Who used the 5-hour window",
     attribution: "approximate attribution: the plan does not say who used it",
     title: "Quota",
+    loading: "Loading quota readings",
+    empty: "No quota readings to show.",
   },
   prefs: {
     title: "Settings",

@@ -35,6 +35,8 @@ export interface CliArgs {
     | "askpass"
     | "mcp"
     | "knowledge"
+    | "resources"
+    | "workflow"
     | "statusline"
     | "action"
     | "snippet"
@@ -65,6 +67,7 @@ export interface CliArgs {
     | "snapshots"
     | "rewind"
     | "trace"
+    | "bg"
     | "file"
     | "automation"
     | "requests"
@@ -82,6 +85,10 @@ export interface CliArgs {
     | "reindex"
     | "index"
     | "feed"
+    | "set-status"
+    | "set-feed"
+    | "templates"
+    | "validate"
     | "enable"
     | "disable"
     | "enroll"
@@ -120,6 +127,7 @@ export interface CliArgs {
     | "budget"
     | "suggest"
     | "message"
+    | "respawn"
     | "templates"
     | "validation-template"
     | "pr-create"
@@ -246,8 +254,17 @@ export interface CliArgs {
   agentcfgNew?: true;
   /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
   mcpWords?: string[];
-  /** `knowledge list|index|feed <project>` (#3623): a project's name or id, or its folder. */
+  /** `workflow list|templates <project>`, `validate <project> <name>`, `run|resume <run>` (#3628): the operands; `watch` has none. */
+  workflowWords?: string[];
+  /** `knowledge <verb> <project>` (#3623): a project's name or id, or its folder. */
   knowledgeProject?: string;
+  /** `knowledge set-status <project> <file> --status <status> --hash <hash>` and `create <project> <kind> <title>`. */
+  knowledgeFile?: string;
+  knowledgeStatus?: "valid" | "transitional" | "obsolete";
+  knowledgeKind?: "adr" | "rfc" | "prd";
+  knowledgeTitle?: string;
+  /** `knowledge set-feed --on|--off`. */
+  knowledgeFeed?: boolean;
   /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
   mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */
@@ -487,6 +504,17 @@ export interface CliArgs {
   snippetRun?: string;
   /** `snippet save --text <prompt>`: a prompt snippet. */
   snippetText?: string;
+  /** `bg stop|respawn|message <id>`: the id of the background session. */
+  bgId?: string;
+  /** `bg start|message`'s flags, moved out of the shared fields by `takeBgFlags`; `--card` is theirs alone. */
+  bgFlags?: {
+    cwd?: string;
+    prompt?: string;
+    card?: string;
+    name?: string;
+    persona?: string;
+    text?: string;
+  };
   /** `snippet import-history --select <id,id,...>`: the candidates to make snippets. */
   snippetSelect?: string[];
   /** `snippet use --terminal <id>`: the terminal the command is typed into. */
