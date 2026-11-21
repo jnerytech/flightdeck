@@ -3218,6 +3218,14 @@ export async function layoutAbas(c: Context, problems: string[]) {
   const tabList = await tabListProblem(c.page);
   if (tabList)
     problems.push(`${c.lang} ${smallest.width}x${smallest.height} lista de abas: ${tabList}`);
+  // The strip keeps the start of every title in sight: no tab under 9 rem, 12 tabs or 2, where the
+  // strip is not the compact button (#3794).
+  await c.page.setViewportSize({ width: 1024, height: 700 });
+  for (const count of [12, 2]) {
+    await openCrowded(c, { name: "hub" }, count);
+    const floor = await tabWidthsProblem(c.page, 143);
+    if (floor) problems.push(`${c.lang} 1024x700 ${count} abas, piso de 9 rem: ${floor}`);
+  }
   // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
   await c.page.setViewportSize({ width: 1280, height: 800 });
   await openCrowded(c, { name: "hub" }, 2);
