@@ -128,6 +128,8 @@ export interface CliArgs {
     | "interrupted"
     | "import-preview"
     | "import-history"
+    | "favorite"
+    | "use"
     | "render"
     | "parse"
     | "trace"
@@ -361,6 +363,18 @@ export interface CliArgs {
   snippetValues?: Record<string, string>;
   /** `snippet import-history --reveal`: show the commands the secret scan hid. */
   snippetReveal?: boolean;
+  /** `snippet save --run <command>`: a command snippet. */
+  snippetRun?: string;
+  /** `snippet save --text <prompt>`: a prompt snippet. */
+  snippetText?: string;
+  /** `snippet import-history --select <id,id,...>`: the candidates to make snippets. */
+  snippetSelect?: string[];
+  /** `snippet use --terminal <id>`: the terminal the command is typed into. */
+  snippetTerminal?: string;
+  /** `snippet use --enter`: also press Enter, which runs the command. */
+  snippetEnter?: boolean;
+  /** `snippet favorite --off`: clear the mark. */
+  snippetOff?: boolean;
   /** `action run ... --param k=v`, repeatable. */
   params?: Record<string, string>;
   /** `service ... --dry-run`: print, change nothing. */

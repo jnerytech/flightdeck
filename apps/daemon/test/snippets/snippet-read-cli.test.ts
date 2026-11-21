@@ -400,11 +400,11 @@ describe("the arguments of snippet (issue #3615)", () => {
       [["snippet", "import-history", "--limit", "201"], "--limit: at most 200"],
       [
         ["snippet", "import-history", "--project-path", "/srv"],
-        "--project-path: this flag only applies to flightdeckd snippet list, get and render",
+        "--project-path: this flag only applies to flightdeckd snippet list, get, render, save, remove, favorite, trust, use",
       ],
       [
         ["snippet", "parse", "f", "--project-path", "/srv"],
-        "--project-path: this flag only applies to flightdeckd snippet list, get and render",
+        "--project-path: this flag only applies to flightdeckd snippet list, get, render, save, remove, favorite, trust, use",
       ],
     ] as const)
       expect(JSON.stringify(parsed([...argv]))).toContain(why);

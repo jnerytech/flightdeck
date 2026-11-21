@@ -1,5 +1,10 @@
-/** Issue #3615: what `flightdeckd snippet render`, `parse` and `import-history` print, as pure rules over the daemon's answers. */
-import type { SnippetHistoryResult, SnippetInput } from "@flightdeck/protocol";
+/** Issue #3615: what `flightdeckd snippet` prints, as pure rules over the daemon's answers. */
+import type {
+  Snippet,
+  SnippetFileInfo,
+  SnippetHistoryResult,
+  SnippetInput,
+} from "@flightdeck/protocol";
 
 /** The rendered text, line by line so that a multi-line prompt stays one text on stdout. */
 export const renderLines = (text: string): string[] => text.split("\n");
@@ -29,3 +34,28 @@ export function historyLines(result: SnippetHistoryResult): string[] {
     return [c.id, `${c.count}x`, c.shells.join(","), what].join("  ");
   });
 }
+
+/** A snippet the daemon saved. */
+export const savedLine = (s: Snippet): string => `saved ${s.name}  ${s.type}  ${s.id}`;
+
+/** A snippet's mark after `favorite`. */
+export const favoriteLine = (s: Snippet): string =>
+  `${s.name}  ${s.favorite ? "favorite" : "not a favorite"}`;
+
+/** The project file the person trusted, and the hash of the content that was trusted. */
+export const trustedLine = (info: SnippetFileInfo): string => `trusted ${info.path}  ${info.hash}`;
+
+/** What an import made and what it left, or a sentence when it did neither. */
+export function importedLines(result: Pick<SnippetHistoryResult, "created" | "skipped">): string[] {
+  const lines = [
+    ...result.created.map((s) => `imported ${s.name}  ${s.type}`),
+    ...result.skipped.map((s) => `skipped ${s.id}  ${s.reason}`),
+  ];
+  return lines.length ? lines : ["nothing imported"];
+}
+
+/** What went into the terminal, and whether Enter ran it: one line for each line of the text. */
+export const usedLines = (terminalId: string, ran: boolean, text: string): string[] => {
+  const [first, ...rest] = renderLines(text);
+  return [`${ran ? "ran in" : "typed into"} ${terminalId}  ${first}`, ...rest];
+};
