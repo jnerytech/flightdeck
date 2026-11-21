@@ -62,8 +62,8 @@ const typed = (verb: string) => (verb === "preview" ? "rules preview" : verb);
 export function vaultProblem(args: VaultArgs): string | undefined {
   for (const [flag, value, verbs, shared] of vaultFlags(args)) {
     if (value === undefined || (shared && args.command !== "vault")) continue;
-    // `usage --days` is the quota command's (quota-args.ts), which says so for `quota` too.
-    if (flag === "--days" && (args.command === "usage" || args.command === "quota")) continue;
+    // `usage --days` is the quota command's (quota-args.ts), which says so for `quota` too; `message history --days` is message-args.ts's.
+    if (flag === "--days" && ["usage", "quota", "message"].includes(args.command)) continue;
     if (args.command !== "vault" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd vault ${verbs.map(typed).join(", ")}`;
   }

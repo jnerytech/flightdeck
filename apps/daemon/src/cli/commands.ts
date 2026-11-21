@@ -14,6 +14,7 @@ import { agentcfgCliArgs } from "./domain/agentcfg-args.ts";
 import { type CliArgs, USAGE } from "./domain/args.ts";
 import { boardsyncCliArgs } from "./domain/boardsync-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
+import { messageAdminCliArgs } from "./domain/message-args.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
 import { runenvCliArgs } from "./domain/runenv-args.ts";
@@ -374,6 +375,22 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     return null;
   },
   message: async (args, deps) => {
+    const admin = messageAdminCliArgs(args);
+    if (admin) {
+      const { runMessageAdminCli } = await import("../messaging/index.ts");
+      // `watch` runs until Ctrl-C; elsewhere Ctrl-C keeps its default, which ends the process.
+      const stop = new AbortController();
+      if (admin.action === "watch")
+        for (const signal of ["SIGINT", "SIGTERM"] as const)
+          deps.onSignal(signal, async () => stop.abort());
+      return asking(args, deps, (config, remote) =>
+        runMessageAdminCli(admin, config, {
+          ...(remote ? { remote } : {}),
+          signal: stop.signal,
+          write: (line) => deps.log.log(line),
+        }),
+      );
+    }
     const { identityOf } = await import("../mcp/index.ts");
     const { runMessageCli } = await import("../messaging/index.ts");
     const config = await loadConfig(configPath(args));

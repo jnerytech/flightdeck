@@ -15,6 +15,7 @@ import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem } from "./history-args.ts";
+import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
@@ -202,7 +203,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "message";
     const action = subAction(
       reader,
-      ["list", "send", "idle", "read", "team"],
+      ["list", "send", "idle", "read", "team", ...MESSAGE_ADMIN_VERBS],
       "invalid message action",
     );
     args.action = action as never;
@@ -585,6 +586,7 @@ const HANDLERS: Record<string, Handler> = {
   ...BOARDSYNC_FLAGS,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
+  ...MESSAGE_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -704,11 +706,11 @@ function refuseStrayFlags(args: CliArgs): void {
     );
   // `history`, `vault` and `snippet` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts).
   if (
-    !["autoapprove", "history", "vault", "snippet"].includes(args.command) &&
+    !["autoapprove", "history", "vault", "snippet", "message"].includes(args.command) &&
     args.limit !== undefined
   )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history, vault and snippet\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault and snippet\n${USAGE}`,
     );
 }
 
@@ -740,6 +742,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     sshProblem(args) ??
     terminalProblem(args) ??
     agentcfgProblem(args) ??
+    messageProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
     projectProblem(args) ??
