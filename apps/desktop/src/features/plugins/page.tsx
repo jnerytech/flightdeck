@@ -83,45 +83,50 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
     await store.hostCommand(hostId, "plugins.pin", { plugin: plugin.id, pinned: !plugin.pinned });
     await reload();
   };
+  const removePlugin = async (id: string, plugin: InstalledPlugin) => {
+    const scope = ["user", "project", "local"].includes(plugin.scope)
+      ? (plugin.scope as "user" | "project" | "local")
+      : undefined;
+    const result = await store.hostCommand(id, "plugins.uninstall", {
+      plugin: plugin.id,
+      ...(scope ? { scope } : {}),
+      confirm: true,
+    });
+    await done(t("pluginsUi.removed"), result?.outcome === "ok");
+  };
+  const addMarketplace = async (id: string) => {
+    // With a device enrolled the add is signed in the system's dialog; a no, or a source that dialog cannot
+    // show, sends nothing and keeps what was typed (#3516).
+    let made: Awaited<ReturnType<typeof store.approval.marketplaceAddPayload>>;
+    try {
+      made = await store.approval.marketplaceAddPayload(id, { source: source.trim() });
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error);
+      // The forms hint belongs to the signer's refusal of the source, not to a failed challenge or an offline host.
+      store.reportError(
+        why.includes("the dialog can show") ? `${why} ${t("pluginsUi.addSigningHint")}` : why,
+      );
+      return;
+    }
+    if (made.kind === "declined") return;
+    const result = await store.hostCommand(id, "plugins.marketplaceAdd", made.payload);
+    setSource("");
+    await done(t("pluginsUi.marketplaceAdded"), result?.outcome === "ok");
+  };
+  const removeMarketplace = async (id: string, name: string) => {
+    const result = await store.hostCommand(id, "plugins.marketplaceRemove", {
+      name,
+      confirm: true,
+    });
+    await done(t("pluginsUi.marketplaceRemoved"), result?.outcome === "ok");
+  };
   const confirmed = async () => {
     const asked = asking;
     setAsking(null);
     if (!asked || !hostId) return;
-    if (asked.kind === "remove") {
-      const scope = ["user", "project", "local"].includes(asked.plugin.scope)
-        ? (asked.plugin.scope as "user" | "project" | "local")
-        : undefined;
-      const result = await store.hostCommand(hostId, "plugins.uninstall", {
-        plugin: asked.plugin.id,
-        ...(scope ? { scope } : {}),
-        confirm: true,
-      });
-      await done(t("pluginsUi.removed"), result?.outcome === "ok");
-    } else if (asked.kind === "add") {
-      // With a device enrolled the add is signed in the system's dialog; a no, or a source that dialog cannot
-      // show, sends nothing and keeps what was typed (#3516).
-      let made: Awaited<ReturnType<typeof store.approval.marketplaceAddPayload>>;
-      try {
-        made = await store.approval.marketplaceAddPayload(hostId, { source: source.trim() });
-      } catch (error) {
-        const why = error instanceof Error ? error.message : String(error);
-        // The forms hint belongs to the signer's refusal of the source, not to a failed challenge or an offline host.
-        store.reportError(
-          why.includes("the dialog can show") ? `${why} ${t("pluginsUi.addSigningHint")}` : why,
-        );
-        return;
-      }
-      if (made.kind === "declined") return;
-      const result = await store.hostCommand(hostId, "plugins.marketplaceAdd", made.payload);
-      setSource("");
-      await done(t("pluginsUi.marketplaceAdded"), result?.outcome === "ok");
-    } else {
-      const result = await store.hostCommand(hostId, "plugins.marketplaceRemove", {
-        name: asked.name,
-        confirm: true,
-      });
-      await done(t("pluginsUi.marketplaceRemoved"), result?.outcome === "ok");
-    }
+    if (asked.kind === "remove") await removePlugin(hostId, asked.plugin);
+    else if (asked.kind === "add") await addMarketplace(hostId);
+    else await removeMarketplace(hostId, asked.name);
   };
   const refreshMarketplace = async (name: string) => {
     if (!hostId) return;
