@@ -29,6 +29,7 @@ import { FEED_READERS, feedProblem, LINES_FLAG, readFeedLimit } from "./feed-arg
 import { FILE_FLAGS, fileProblem, readFile, takeFileFlags } from "./file-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem, readHistory } from "./history-args.ts";
+import { hostHandler, hostProblem, resourcesHandler } from "./host-args.ts";
 import { issuesProblem, readIssues } from "./issues-args.ts";
 import { knowledgeFlags, knowledgeProblem, readKnowledge } from "./knowledge-args.ts";
 import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
@@ -124,7 +125,7 @@ const HANDLERS: Record<string, Handler> = {
   channel: setCommand("channel"),
   mcp: readMcp,
   knowledge: readKnowledge,
-  resources: setCommand("resources"),
+  resources: resourcesHandler,
   workflow: readWorkflow,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
@@ -321,7 +322,7 @@ const HANDLERS: Record<string, Handler> = {
     if (action !== "list" && action !== "subagents")
       args.personaId = operand(reader, "the persona");
   },
-  host: setCommand("host"),
+  host: hostHandler,
   sessions: setCommand("sessions"),
   session: readSession,
   ssh: readSsh,
@@ -769,6 +770,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     automationProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
+    hostProblem(args) ??
     budgetProblem(args) ??
     rulesProblem(args) ??
     approversProblem(args) ??

@@ -151,6 +151,11 @@ export interface CliArgs {
     | "remove-member"
     | "history"
     | "pause-at"
+    | "sleep"
+    | "keep-awake"
+    | "updates"
+    | "bypass"
+    | "end-orphan"
     | "set"
     | "set-quota"
     | "summary"
@@ -433,6 +438,13 @@ export interface CliArgs {
   /** `quota history <window> [--hours n]`, `quota pause-at <0-1|off>` (null is off), `usage [--days n]` (#3460; `days` is also the `vault` window below). */
   quotaWindow?: string;
   quotaPauseAt?: number | null;
+  /** `host sleep <minutes>` and `host keep-awake|pause|updates|bypass <on|off>` (#3699). */
+  hostMinutes?: number;
+  hostSwitch?: "on" | "off";
+  /** `resources pause-at <0-1|off>` (null is off) and `resources end-orphan <pid> <start-ticks>` (#3699). */
+  resourcesPauseAt?: number | null;
+  orphanPid?: number;
+  orphanTicks?: number;
   hours?: number;
   /** `budget set|set-quota` and `budget remove <id>` (#3460); `--scope` and `--project` are the shared flags. */
   budgetId?: string;

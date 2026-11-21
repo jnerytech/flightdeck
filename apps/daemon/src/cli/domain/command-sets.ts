@@ -115,6 +115,7 @@ export const CONFIRM_OWNERS = [
   "automation",
   "boardsync",
   "costs",
+  "host",
   "mcp",
   "memory",
   "message",

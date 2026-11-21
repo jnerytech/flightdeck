@@ -21,6 +21,7 @@ import { changesCliArgs } from "./domain/changes-args.ts";
 import { checkpointsCliArgs, traceCliArgs } from "./domain/checkpoints-args.ts";
 import { exitWhenClosed } from "./domain/exit.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
+import { hostCliArgs } from "./domain/host-args.ts";
 import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
 import { memoryCliArgs } from "./domain/memory-args.ts";
@@ -562,7 +563,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   autoapprove: async (args, deps) => rulesCli("autoapprove", args, deps),
   host: async (args, deps) => {
     const { runHostCli } = await import("../hosts/index.ts");
-    return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runHostCli);
+    return askingWith(args, deps, hostCliArgs, runHostCli);
   },
   sessions: async (args, deps) => {
     const { runSessionsCli } = await import("../sessions/index.ts");
