@@ -191,6 +191,67 @@ describe("host-offline-ui", () => {
     expect(region.textContent).toMatch(/Last try: 0?3:04\s?PM ·/);
   });
 
+  test("each Linux and WSL command has a copy button that hands exactly that text to the clipboard (#3694)", async () => {
+    const copied: string[] = [];
+    await banner(OFFLINE, {
+      onCopy: async (text) => {
+        copied.push(text);
+        return true;
+      },
+    });
+    const commands = [
+      "systemctl --user status flightdeckd",
+      "sudo loginctl enable-linger $USER",
+      "systemd=true",
+    ];
+    for (const command of commands) {
+      const button = screen.queryByRole("button", { name: `Copiar o comando ${command}` });
+      expect(button).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(button as HTMLElement);
+      });
+    }
+    expect(copied).toEqual(commands);
+  });
+
+  test("a copy that lands says so in the banner's live region, and one the clipboard refuses says nothing (#3694)", async () => {
+    let lands = true;
+    const region = await banner(OFFLINE, { onCopy: async () => lands });
+    const live = within(region).getByRole("status");
+    const button = screen.queryByRole("button", { name: "Copiar o comando systemd=true" });
+    expect(button).not.toBeNull();
+    lands = false;
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    expect(live.textContent).not.toContain("Copiado");
+    lands = true;
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    expect(live.textContent).toContain("Copiado");
+  });
+
+  test("the copy buttons are named in English for an app in English (#3694)", async () => {
+    await banner(OFFLINE, { language: "en" });
+    expect(
+      screen.queryByRole("button", { name: "Copy the command sudo loginctl enable-linger $USER" }),
+    ).not.toBeNull();
+  });
+
+  test("a Windows host's two service commands have a copy button each (#3694)", async () => {
+    await banner({ ...OFFLINE, hostInfo: { os: "win32" } });
+    for (const command of ["flightdeckd service status", "flightdeckd service start"]) {
+      expect(screen.queryByRole("button", { name: `Copiar o comando ${command}` })).not.toBeNull();
+    }
+    expect(screen.queryByRole("button", { name: /systemctl/ })).toBeNull();
+  });
+
+  test("a host with only the generic hint has no command, so no copy button (#3694)", async () => {
+    await banner({ ...OFFLINE, hostInfo: { os: "darwin" } });
+    expect(screen.queryAllByRole("button", { name: /^Copiar o comando/ }).length).toBe(0);
+  });
+
   test("a refused connection to a non-loopback address says the daemon may have refused this machine", async () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
