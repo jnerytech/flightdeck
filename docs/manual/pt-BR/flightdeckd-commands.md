@@ -384,7 +384,7 @@ Uma mudança que fica sem resposta sai com `2` e avisa que pode ou não ter sido
 `autoapprove list` antes de tentar de novo. Rodados no shell de uma sessão, `rules remove` e
 `autoapprove resume` são classificados como comandos de risco alto.
 
-## fd message history, watch e rules
+## fd message history, watch, rules e rules-set
 
 ```sh
 fd message history --team core --status refused --days 3
@@ -392,7 +392,7 @@ fd message history --team core --status refused --days 3
 
 `history` lista as mensagens entre sessões, da mais nova à mais antiga: id, hora, `de para`, estado (com o motivo, se houver)
 e texto. Filtre com `--team`, `--session`, `--with-host`, `--status`, `--days`, `--limit`.
-`watch` imprime uma linha por mensagem, retransmissão, alerta e aviso de ociosidade até Ctrl-C; `rules` imprime a política em vigor e os pares pausados. Todos aceitam `--host` e `--json`; uma recusa sai com `1`.
+`watch` imprime uma linha por mensagem, retransmissão, alerta e aviso de ociosidade até Ctrl-C; `rules` imprime a política em vigor e os pares pausados; `rules-set --policy-file <caminho|-> --confirm [--unpause <par>]...` troca a política, libera os pares e imprime o que vale agora (política recusada sai com `1` e não muda nada; no shell de uma sessão vira pedido de risco alto). Todos aceitam `--host` e `--json`.
 
 ## Só no app
 

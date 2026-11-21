@@ -57,6 +57,8 @@ export interface CliArgs {
     | "boardsync"
     | "review"
     | "runenv"
+    | "changes"
+    | "file"
     | "automation"
     | "requests"
     | "send"
@@ -135,6 +137,7 @@ export interface CliArgs {
     | "decisions"
     | "report"
     | "rules"
+    | "rules-set"
     | "preview"
     | "interrupted"
     | "import-preview"
@@ -149,6 +152,7 @@ export interface CliArgs {
     | "boards"
     | "log"
     | "link"
+    | "sessions"
     | "unlink"
     | "set-map"
     | "set-push"
@@ -156,6 +160,10 @@ export interface CliArgs {
     | "extend"
     | "resolve-held"
     | "follow"
+    | "revert"
+    | "undo-revert"
+    | "commit"
+    | "pr"
     | "hostkey-check"
     | "hostkey-confirm"
     | "hostkey-forget"
@@ -164,6 +172,7 @@ export interface CliArgs {
     | "edit"
     | "test"
     | "files"
+    | "dirs"
     | "interrupt"
     | "sleep"
     | "set-model"
@@ -242,6 +251,37 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
+  /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
+  changesOperand?: string;
+  /** `changes revert|undo-revert <target> <file>`: the file. */
+  changesPath?: string;
+  /** `changes commit`: each `--digest <path>=<digest>` the person saw, in the order typed. */
+  changesDigests?: Array<[string, string]>;
+  changesBranch?: string;
+  changesRemote?: string;
+  /** `changes commit --message`, `changes pr --title` and `--body`, `--confirm` of the writes. */
+  changesMessage?: string;
+  changesTitle?: string;
+  changesBody?: string;
+  changesConfirm?: true;
+  /** `file list|read|search <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  fileTarget?: string;
+  /** `file read <target> <path>`, `file dirs [<path>]` and `file files <path>`: the path. */
+  filePath?: string;
+  /** `file list --dir`: the folder of the repository, "" for its root. */
+  fileDir?: string;
+  /** `file search --query`, `--mode` and `--limit`. */
+  fileQuery?: string;
+  fileMode?: "name" | "content";
+  fileLimit?: number;
+  /** `file dirs|files --hidden`. */
+  fileHidden?: true;
+  /** `file write --file`: the new text's file, or `-` for standard input. */
+  fileText?: string;
+  /** `file write --hash`: the sha256 `file read` printed, the version the write replaces. */
+  fileHash?: string;
+  /** `file write --confirm`. */
+  fileConfirm?: true;
   /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
   /** `review update|remove <comment>`: the comment's id. */
@@ -303,6 +343,8 @@ export interface CliArgs {
   messageTeam?: string;
   withHost?: string;
   messageStatus?: MessageStatus;
+  policyFile?: string;
+  unpause?: string[];
   /** `team show <team>`. */
   teamId?: string;
   /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */

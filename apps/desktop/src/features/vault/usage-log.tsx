@@ -75,7 +75,9 @@ export const UsageLog = memo(function UsageLog(props: { store: AppStore }) {
                 <span>{hostName(entry.hostId)}</span>
                 <span>{entry.purpose}</span>
                 <span>{who(entry)}</span>
-                <span className="text-muted-foreground">{new Date(entry.at).toLocaleString()}</span>
+                <span className="text-muted-foreground">
+                  {store.formatDateTime(new Date(entry.at).toISOString())}
+                </span>
               </div>
               <p className="text-muted-foreground">
                 {t(`vault.result.${entry.kind}`)}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CliArgs } from "../../src/cli/domain/cli-args.ts";
-import { watchStop } from "../../src/cli/watch-stop.ts";
+import { liveStream, watchStop } from "../../src/cli/watch-stop.ts";
 
 type Signal = "SIGINT" | "SIGTERM";
 
@@ -25,5 +25,19 @@ describe("watchStop (issue #3621)", () => {
     const { stop, handlers } = listening({ action: "get" });
     expect(handlers.size).toBe(0);
     expect(stop.signal.aborted).toBe(false);
+  });
+
+  test("liveStream gives a watch its stop and a writer that logs each line", async () => {
+    const lines: string[] = [];
+    const handlers = new Map<Signal, () => Promise<void>>();
+    const live = liveStream({ action: "watch" } as CliArgs, {
+      onSignal: (s, h) => void handlers.set(s, h),
+      log: { log: (line) => void lines.push(line) },
+    });
+    live.write("a change");
+    expect(lines).toEqual(["a change"]);
+    expect(live.signal.aborted).toBe(false);
+    await handlers.get("SIGTERM")?.();
+    expect(live.signal.aborted).toBe(true);
   });
 });
