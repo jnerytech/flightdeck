@@ -147,36 +147,34 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
     await done(t("pluginsUi.marketplaceUpdated"), result?.outcome === "ok");
   };
 
-  // `own`: the first load, or its Try again: the page has its own error, so the toast offers no
-  // retry. After an action the list on screen stays, and so does the toast's retry.
-  const reload = useCallback(
-    async (own = false) => {
-      if (!hostId) return;
-      const result = await store.hostCommand(hostId, "plugins.list", {}, { retry: !own });
-      // A refusal is not an empty host: keep what is on screen and say so only when nothing is.
-      if (result) setList(result);
-      setFailed(!result);
-    },
-    [store, hostId],
-  );
+  // The page has its own error and Try again (the toast's retry would drop the answer), so the
+  // toast offers none. A refusal is not an empty host: what is on screen stays.
+  const reload = useCallback(async () => {
+    if (!hostId) return;
+    const result = await store.hostCommand(hostId, "plugins.list", {}, { retry: false });
+    if (result) setList(result);
+    setFailed(!result);
+  }, [store, hostId]);
 
   useEffect(() => {
-    void reload(true);
+    // Another host (or the same one coming back) starts from nothing: never its predecessor's list or error.
+    setList(null);
+    setFailed(false);
+    void reload();
   }, [reload]);
+
+  const loadError = () => (
+    <ErrorState
+      message={t("pluginsUi.loadFailed")}
+      retryLabel={t("pluginsUi.retry")}
+      onRetry={() => void reload()}
+    />
+  );
 
   /** What stands in for the tabs until a list is on screen. */
   const standIn = () => {
     if (!hostId) return <EmptyState title={t("pluginsUi.noHost")} />;
-    if (failed) {
-      return (
-        <ErrorState
-          message={t("pluginsUi.loadFailed")}
-          retryLabel={t("pluginsUi.retry")}
-          onRetry={() => void reload(true)}
-        />
-      );
-    }
-    return <LoadingState label={t("agent.loading")} />;
+    return failed ? loadError() : <LoadingState label={t("agent.loading")} />;
   };
 
   return (
@@ -184,6 +182,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
       title={t("pluginsUi.title")}
       subtitle={host ? t("pluginsUi.subtitle", { host: host.name }) : undefined}
     >
+      {failed && list !== null && loadError()}
       {!hostId || list === null ? (
         standIn()
       ) : (

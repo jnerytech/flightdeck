@@ -46,7 +46,7 @@ const PLUGIN = {
 const LIST = { installed: [PLUGIN], available: [], marketplaces: [] };
 
 /** The command types asked, in order. */
-type Asked = string[];
+type Asked = Array<{ type: string; options: unknown }>;
 
 /**
  * The page on a store whose commands answer as `answer` says: a value, or `null` for a refusal.
@@ -57,9 +57,14 @@ async function page(lang: Lang, online: boolean, answer: (type: string, nth: num
   await store.i18n.setLang(lang);
   seedHosts(store, [{ id: "h1", name: "pc", online, features: ["plugins"] }]);
   const asked: Asked = [];
-  store.hostCommand = (async (_host: string, type: string) => {
-    asked.push(type);
-    return answer(type, asked.filter((a) => a === type).length);
+  store.hostCommand = (async (
+    _host: string,
+    type: string,
+    _payload: unknown,
+    options?: unknown,
+  ) => {
+    asked.push({ type, options });
+    return answer(type, asked.filter((a) => a.type === type).length);
   }) as never;
   render(
     <TContext.Provider value={store.i18n.t}>
@@ -93,15 +98,21 @@ describe.each(["en", "pt-BR"] as const)("the Plugins page states (%s)", (lang) =
     expect(screen.queryByRole("alert") === null).toBe(true);
   });
 
-  test("a refused refresh after an action keeps the list on screen", async () => {
-    await page(lang, true, (type, nth) => {
-      if (type === "plugins.list") return nth === 1 ? LIST : null;
+  test("a refused refresh after an action keeps the list and offers Try again, which refreshes it", async () => {
+    const { asked } = await page(lang, true, (type, nth) => {
+      if (type === "plugins.list") return nth === 2 ? null : LIST;
       return {};
     });
     await settle(() => screen.queryByText("deploy-tools") !== null);
     await click(w.pin);
-    await act(async () => {});
+    await settle(() => screen.queryByRole("alert") !== null);
     expect(screen.queryByText("deploy-tools") !== null).toBe(true);
     expect(screen.queryByText(w.none) === null).toBe(true);
+    await click(w.retry);
+    await settle(() => screen.queryByRole("alert") === null);
+    expect(screen.queryByText("deploy-tools") !== null).toBe(true);
+    // The page has its own Try again, so no toast retry (it would drop the answer).
+    const loads = asked.filter((a) => a.type === "plugins.list");
+    expect(loads.every((a) => JSON.stringify(a.options) === '{"retry":false}')).toBe(true);
   });
 });
