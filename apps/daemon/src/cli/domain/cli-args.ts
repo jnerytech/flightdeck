@@ -148,6 +148,10 @@ export interface CliArgs {
     | "extend"
     | "resolve-held"
     | "follow"
+    | "revert"
+    | "undo-revert"
+    | "commit"
+    | "pr"
     | "hostkey-check"
     | "hostkey-confirm"
     | "hostkey-forget"
@@ -231,6 +235,17 @@ export interface CliArgs {
   watchTarget?: string;
   /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
   changesOperand?: string;
+  /** `changes revert|undo-revert <target> <file>`: the file. */
+  changesPath?: string;
+  /** `changes commit`: each `--digest <path>=<digest>` the person saw, in the order typed. */
+  changesDigests?: Array<[string, string]>;
+  changesBranch?: string;
+  changesRemote?: string;
+  /** `changes commit --message`, `changes pr --title` and `--body`, `--confirm` of the writes. */
+  changesMessage?: string;
+  changesTitle?: string;
+  changesBody?: string;
+  changesConfirm?: true;
   /** `review list <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
   /** `runenv config <project>` or `runenv get <card>`: the operand. */

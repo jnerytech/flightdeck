@@ -8,7 +8,15 @@ import type { ChangesCliArgs } from "../../review/index.ts";
 import { type ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
 
-const CHANGES_ACTIONS = ["get", "sessions", "watch"] as const;
+const CHANGES_ACTIONS = [
+  "get",
+  "sessions",
+  "watch",
+  "revert",
+  "undo-revert",
+  "commit",
+  "pr",
+] as const;
 
 /** `changes get <target>`, `changes sessions <file>` or `changes watch <target>`. */
 export function readChanges(args: CliArgs, reader: ArgReader): void {
