@@ -27,6 +27,44 @@ const text = () => document.body.textContent ?? "";
 
 const DEAD = "ws://127.0.0.1:1/v1/ws";
 
+/** 15:04:05 in São Paulo, 18:04:05 UTC: a time the system's own locale and zone cannot guess. */
+const LAST_TRY = Date.parse("2026-10-30T18:04:05.000Z");
+
+/** The banner alone for a host, in the app's language (pt-BR or en) and the São Paulo time zone. */
+async function banner(
+  host: Record<string, unknown>,
+  over: { language?: "pt-BR" | "en"; onCopy?: (text: string) => Promise<boolean> } = {},
+) {
+  const { HostOfflineBanner } = await import("../../src/features/hosts/host-offline-banner.tsx");
+  const { TContext } = await import("../../src/i18n/context.tsx");
+  const { translator } = await import("../../src/i18n/index.ts");
+  const language = over.language ?? "pt-BR";
+  const store = new AppStore(memoryPlatform(false, language).platform, {
+    timeZone: "America/Sao_Paulo",
+  });
+  store.i18n.start();
+  cleanups.push(() => store.dispose());
+  render(
+    <TContext.Provider value={translator(language)}>
+      <HostOfflineBanner
+        host={{ id: "h1", name: "pc", hostInfo: null, ...host } as never}
+        onReconnect={() => {}}
+        formatTime={(iso) => store.formatTime(iso)}
+        onCopy={over.onCopy ?? (async () => true)}
+      />
+    </TContext.Provider>,
+  );
+  return screen.getByRole("region", {
+    name: language === "en" ? "Connection status" : "Estado da conexão",
+  });
+}
+
+const OFFLINE = {
+  url: "ws://127.0.0.1:7420/v1/ws",
+  status: "offline",
+  retry: { kind: "refused", lastTryAt: LAST_TRY, nextRetryAt: LAST_TRY + 60_000 },
+};
+
 /** A host that nothing answers for, its page open. The automatic retry is far away, so the page holds still. */
 async function offlineHost() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000, wakeDebounceMs: 0 });
@@ -125,50 +163,32 @@ describe("host-offline-ui", () => {
   });
 
   test("a host that refused the token says so, with no countdown to a retry that would be refused again", async () => {
-    const { HostOfflineBanner } = await import("../../src/features/hosts/host-offline-banner.tsx");
-    render(
-      <HostOfflineBanner
-        host={
-          {
-            id: "h1",
-            name: "pc",
-            url: "ws://10.0.0.5:7420/v1/ws",
-            status: "unauthorized",
-            retry: null,
-            hostInfo: null,
-          } as never
-        }
-        onReconnect={() => {}}
-      />,
-    );
-    const banner = screen.getByRole("region", { name: "Estado da conexão" });
-    expect(banner.textContent).toContain("O host recusou o token. Pareie este host de novo.");
-    expect(banner.textContent).not.toMatch(/Próxima tentativa/);
+    const region = await banner({
+      url: "ws://10.0.0.5:7420/v1/ws",
+      status: "unauthorized",
+      retry: null,
+    });
+    expect(region.textContent).toContain("O host recusou o token. Pareie este host de novo.");
+    expect(region.textContent).not.toMatch(/Próxima tentativa/);
   });
 
   test("a Windows host that refuses the connection gets the service commands, never the Linux ones (#3403)", async () => {
-    const { HostOfflineBanner } = await import("../../src/features/hosts/host-offline-banner.tsx");
-    render(
-      <HostOfflineBanner
-        host={
-          {
-            id: "h1",
-            name: "Windows",
-            url: "ws://127.0.0.1:7420/v1/ws",
-            status: "offline",
-            retry: { kind: "refused", lastTryAt: 1_000, nextRetryAt: 61_000 },
-            hostInfo: { os: "win32" },
-          } as never
-        }
-        onReconnect={() => {}}
-      />,
-    );
-    const banner = screen.getByRole("region", { name: "Estado da conexão" });
-    expect(banner.textContent).toContain("flightdeckd service status");
-    expect(banner.textContent).toContain("flightdeckd service start");
-    expect(banner.textContent).not.toContain("systemctl");
-    expect(banner.textContent).not.toContain("loginctl");
-    expect(banner.textContent).not.toContain("wsl.conf");
+    const region = await banner({ ...OFFLINE, name: "Windows", hostInfo: { os: "win32" } });
+    expect(region.textContent).toContain("flightdeckd service status");
+    expect(region.textContent).toContain("flightdeckd service start");
+    expect(region.textContent).not.toContain("systemctl");
+    expect(region.textContent).not.toContain("loginctl");
+    expect(region.textContent).not.toContain("wsl.conf");
+  });
+
+  test("the last try reads in the app's language and zone, not the system's (#3692)", async () => {
+    const region = await banner(OFFLINE);
+    expect(region.textContent).toContain("Última tentativa: 15:04 ·");
+  });
+
+  test("the last try of an app in English reads 12-hour with AM/PM, whatever the system's locale (#3692)", async () => {
+    const region = await banner(OFFLINE, { language: "en" });
+    expect(region.textContent).toMatch(/Last try: 0?3:04\s?PM ·/);
   });
 
   test("a refused connection to a non-loopback address says the daemon may have refused this machine", async () => {

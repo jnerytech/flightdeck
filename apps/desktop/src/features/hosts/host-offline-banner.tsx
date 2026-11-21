@@ -23,6 +23,10 @@ export function HostOfflineBanner(
   props: Readonly<{
     host: HostView;
     onReconnect(): void;
+    /** A time of day in the app's language and time zone. */
+    formatTime(iso: string): string;
+    /** Puts a command on the clipboard; true when it landed. */
+    onCopy(text: string): Promise<boolean>;
     /** Tries a new token or pairing link; the error text, or null when it worked. */
     onPairAgain?(input: string): Promise<string | null>;
   }>,
