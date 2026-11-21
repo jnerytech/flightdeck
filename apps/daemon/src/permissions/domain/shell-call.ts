@@ -432,6 +432,7 @@ export const OPTIONS_WITH_VALUE = [
   "--persona-subagents",
   "--plugin-scope",
   "--parts",
+  "--map",
   "--template",
   "--digests",
   "--limit",
@@ -441,6 +442,10 @@ export const OPTIONS_WITH_VALUE = [
   "--cwd",
   "--project-key",
   "--origin",
+  "--kind",
+  "--path",
+  "--file",
+  "--expected-hash",
   "--cursor",
   "--folders",
   "--launch",
@@ -453,6 +458,7 @@ export const OPTIONS_WITH_VALUE = [
   "--purpose",
   "--action",
   "--tag",
+  "--value",
   "--risk",
   "--approval",
   "--at",
@@ -626,8 +632,10 @@ const VERB_NOUNS = new Set([
   "autoapprove",
   "plugins",
   "project",
+  "agentcfg",
   "ssh",
   "watch",
+  "boardsync",
 ]);
 
 /**

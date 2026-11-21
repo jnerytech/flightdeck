@@ -203,6 +203,12 @@ export const costs = {
       "A chave é o endereço do repositório sem https:// (github.com/acme/app); sem repositório, host:<id>:<pasta>.",
     pickProject: "Escolha um projeto",
     save: "Salvar orçamento",
+    done: {
+      created: "Orçamento criado: {label}",
+      saved: "Orçamento salvo: {label}",
+      removed: "Orçamento removido: {label}",
+    },
+    projectsFailed: "Não foi possível listar os projetos: {reason}",
   },
   costsUi: {
     setBudget: "Definir um orçamento",

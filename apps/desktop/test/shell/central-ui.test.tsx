@@ -286,8 +286,8 @@ describe("central-ui", () => {
     await showEarlier();
     await settle(() => group("central").length === 3);
     await click("Do histórico");
-    await settle(() => screen.queryByRole("log", { name: "Transcript" }) !== null);
-    expect(screen.queryByRole("log", { name: "Transcript" })).not.toBeNull();
+    await settle(() => screen.queryByRole("log", { name: "Transcrição" }) !== null);
+    expect(screen.queryByRole("log", { name: "Transcrição" })).not.toBeNull();
     void hook("PermissionRequest", { tool_name: "Read", tool_input: {} });
     await sidebar.openQueue();
     await settle(() => screen.queryByRole("button", { name: "alfa · repo: Read" }) !== null);

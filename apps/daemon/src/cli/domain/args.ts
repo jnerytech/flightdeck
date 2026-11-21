@@ -3,11 +3,13 @@
  * with no effect; `main.ts` runs what they ask for.
  */
 import { RuntimeKind } from "../../config.ts";
+import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
 import { boardProblem } from "./board-args.ts";
-import { readBoardsync } from "./boardsync-args.ts";
+import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
+import { refuseCardFlags } from "./card-args.ts";
 import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
@@ -19,6 +21,7 @@ import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
+import { readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
 import { teamProblem } from "./team-args.ts";
 import {
@@ -193,15 +196,7 @@ const HANDLERS: Record<string, Handler> = {
       args.actionName = name;
     },
   ),
-  snippet: withNamedAction(
-    "snippet",
-    ["list", "get"],
-    "invalid snippet action",
-    "the snippet name",
-    (args, name) => {
-      args.snippetName = name;
-    },
-  ),
+  snippet: readSnippet,
   message: (args, reader) => {
     args.command = "message";
     const action = subAction(
@@ -359,6 +354,7 @@ const HANDLERS: Record<string, Handler> = {
   watch: readWatch,
   boardsync: readBoardsync,
   terminal: readTerminal,
+  agentcfg: readAgentcfg,
   requests: (args) => {
     startCommand(args, "requests");
   },
@@ -580,10 +576,13 @@ const HANDLERS: Record<string, Handler> = {
   }),
   ...BUDGET_FLAGS,
   ...PLUGINS_FLAGS,
+  ...SNIPPET_FLAGS,
   ...SSH_FLAGS,
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
+  ...BOARDSYNC_FLAGS,
   ...PROJECT_FLAGS,
+  ...AGENTCFG_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -701,55 +700,14 @@ function refuseStrayFlags(args: CliArgs): void {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests, message, autoapprove and vault\n${USAGE}`,
     );
-  // `history` and `vault` check their own limits (history-args.ts, vault-args.ts).
-  if (!["autoapprove", "history", "vault"].includes(args.command) && args.limit !== undefined)
+  // `history`, `vault` and `snippet` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts).
+  if (
+    !["autoapprove", "history", "vault", "snippet"].includes(args.command) &&
+    args.limit !== undefined
+  )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history and vault\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, vault and snippet\n${USAGE}`,
     );
-}
-
-/** The `card` flags with the actions that take each one; any other command or action is refused. */
-function refuseCardFlags(args: CliArgs): void {
-  const flagged: Array<[string, unknown, readonly string[] | null]> = [
-    ["--title", args.titleFlag, ["update", "pr-create"]],
-    ["--description", args.description, ["new", "update", "pr-create"]],
-    ["--workflow", args.workflow, ["start", "start-arena"]],
-    ["--variant", args.variants, ["start-arena"]],
-    ["--rounds", args.rounds, ["check-loop"]],
-    ["--force", args.force, ["move"]],
-    ["--position", args.position, ["move"]],
-    [
-      "--confirm",
-      args.confirm,
-      ["complete", "discard", "delete", "merge-local", "choose-variant", "check-loop"],
-    ],
-    ["--squash", args.squash, ["merge-local"]],
-    ["--estimate", args.estimate, ["update"]],
-    ["--validation-note", args.validationNote, ["update"]],
-    ["--spec-path", args.specPath, ["update"]],
-    ["--blocked-by", args.blockedBy, ["update"]],
-    ["--language", args.language, ["review"]],
-  ];
-  for (const [flag, value, actions] of flagged) {
-    if (value === undefined) continue;
-    // `--language` also belongs to `persona`, which checks its own flags below.
-    if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
-      continue;
-    // `--force` is also `history resume`'s, which checks its own flags.
-    if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`' and `project harness-apply`'s, which check their own flags below.
-    if (
-      flag === "--confirm" &&
-      ["rules", "autoapprove", "team", "costs", "plugins", "ssh", "project"].includes(args.command)
-    )
-      continue;
-    if (args.command !== "card")
-      throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
-    if (!actions?.includes(args.action as string))
-      throw new Error(
-        `${flag}: this flag only applies to flightdeckd card ${(actions ?? []).join(", ")}\n${USAGE}`,
-      );
-  }
 }
 
 export function parseArgs(argv: readonly string[]): CliArgs {
@@ -776,9 +734,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     historyProblem(args) ??
     vaultProblem(args) ??
     pluginsProblem(args) ??
+    snippetProblem(args) ??
     sshProblem(args) ??
     terminalProblem(args) ??
+    agentcfgProblem(args) ??
     watchProblem(args) ??
+    boardsyncProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??

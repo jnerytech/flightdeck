@@ -37,3 +37,28 @@ To use one:
 - Claude can read snippets with the `list_snippets` and `get_snippet` tools of the Flightdeck MCP.
   Flightdeck never runs a snippet for Claude: a command Claude runs goes through Claude Code's own
   permissions.
+
+## From a shell
+
+`flightdeckd snippet` (or `fd snippet`) reads a host's snippets. It works as the other `flightdeckd` commands do: see
+[what they all share](flightdeckd-commands.md#what-they-all-share).
+
+```sh
+fd snippet render review --value file=src/a.ts --value branch=dev
+fd snippet render review --project-path /home/pi/app --json
+fd snippet parse snippets.yaml
+cat snippets.yaml | fd snippet parse - --json
+fd snippet import-history --limit 20
+fd snippet import-history --reveal --json
+```
+
+- `render <name or id>` prints the text the snippet would produce, with each `--value field=text` filled in. It pastes and
+  runs nothing. A field with no value is refused with the daemon's reason and exit `1`. `--project-path` adds that
+  project's snippets to the search for the name. Terminal controls and tabs in the text print as spaces; `--json` (`{"id", "name", "text", "fields"}`) keeps the text exact, so use it to pipe a command.
+- `parse <file>` sends the text of a YAML or JSON list to the daemon and prints one line per snippet it read (name,
+  type and tags); `-` reads the text from stdin. It saves nothing. An entry the daemon left out is said on stderr; a text
+  with no snippet at all exits `1`. A text over 1000000 characters is refused before it is sent.
+- `import-history` lists the most used commands of the host's shell histories (`--limit` 1 to 200). A line with a
+  secret shows what was found, never the value, and cannot be imported; `--reveal` shows only the commands the scan
+  hid for a reason it can name. It saves nothing: importing the lines is a later verb.
+- `--host <name>` and `--json` work as everywhere. `list` and `get` keep their own raw output.

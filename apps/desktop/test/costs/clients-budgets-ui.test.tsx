@@ -106,7 +106,7 @@ describe("clients-budgets: the month limit on the Clients screen", () => {
     await typeLimit("Acme", "120");
     await click(within(itemOf("Acme")).queryByRole("button", { name: "Definir orçamento" }));
     expect(store.clients.budgets()).toEqual({ acme: 120 });
-    expect(limitField("Acme").value).toBe("");
+    expect(limitField("Acme").value).toBe("120");
     await settle(() => line("Acme") !== null);
     expect(line("Acme")).toMatch(/US\$ 120,00/);
   });
