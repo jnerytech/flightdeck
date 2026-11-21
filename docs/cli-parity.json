@@ -6,7 +6,9 @@
   "actions.list": {
     "cli": "action"
   },
-  "actions.remove": {},
+  "actions.remove": {
+    "cli": "action"
+  },
   "actions.run": {
     "cli": "action"
   },
@@ -14,8 +16,12 @@
   "actions.runs": {
     "cli": "action"
   },
-  "actions.save": {},
-  "actions.trust": {},
+  "actions.save": {
+    "cli": "action"
+  },
+  "actions.trust": {
+    "cli": "action"
+  },
   "activity.since": {},
   "agentcfg.list": {
     "cli": "agentcfg"
