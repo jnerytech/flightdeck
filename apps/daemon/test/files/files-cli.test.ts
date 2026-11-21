@@ -507,5 +507,7 @@ describe("flightdeckd file: the words and flags (issue #3624)", () => {
       "--host needs an absolute folder",
     );
     expect(argsOf(["file", "dirs", "/work", "--host", "pi"])).toMatchObject({ host: "pi" });
+    // A Windows host's own path is absolute there whatever the OS of this CLI is.
+    expect(argsOf(["file", "files", "C:\\work", "--host", "pi"])).toMatchObject({ host: "pi" });
   });
 });
