@@ -157,6 +157,10 @@ export const vault = {
       "{name}: {count} generated rules come before yours and are not edited here. Turn off the client's scope to remove them.",
     hint: "The first rule that matches a use decides. The hosts check the rules when you save them.",
     empty: "No rules: the defaults apply",
+    notPutBack:
+      "The host {host} could not be put back to the saved rules of the secret {secret}: {message}. It still holds the rules it was just given, not the saved ones. Save the rules again to sign them.",
+    notResent:
+      "The host {host} did not take the rules of the secret {secret}: {message}. The host keeps the rules it already held, which may be older than yours. If they allow a use and the host asks for your device's signature, save the rules again to sign them.",
     rule: "Rule {n}",
     at: "{label} in rule {n}",
     any: "Any",

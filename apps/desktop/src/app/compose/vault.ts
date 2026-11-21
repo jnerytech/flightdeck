@@ -24,6 +24,7 @@ import {
   type VaultApprovalsCore,
   type VaultApprovalsSlice,
   VaultRules,
+  type VaultRulesCore,
   type VaultRulesSlice,
   VaultScanSlice,
   type VaultSecretsSlice,
@@ -100,6 +101,8 @@ interface VaultDeps {
   ) => Promise<SessionRecap | null>;
   /** The device's proof of a prod or high-risk secret use (#3452). */
   prove: VaultApprovalsCore["prove"];
+  /** The device's proof of a set of rules that loosens (#3754). */
+  proveRules: VaultRulesCore["proveRules"];
   /** Tells the state the ROI settings changed. */
   roiChanged: () => void;
 }
@@ -196,6 +199,7 @@ export function composeVault(kernel: AppKernel<AppState>, deps: VaultDeps): Vaul
   const vaultRules: VaultRulesSlice = wireVaultRules(kernel, {
     rules: new VaultRules(platform.storage),
     secrets: () => vault.list(),
+    proveRules: deps.proveRules,
     clients: () => kernel.state().clientList,
     projectKeysOf: (clientId) => clientSlices.clientScope.get().projectKeysOf(clientId),
     fail: (error, text) => kernel.fail(error, text),
