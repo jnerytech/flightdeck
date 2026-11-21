@@ -9,6 +9,9 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/app/App.tsx");
+const { SnippetsPage } = await import("../../src/features/snippets/page.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
 setDefaultTimeout(30_000);
 
@@ -162,5 +165,72 @@ describe("snippets-ui: the screen", () => {
     await click("Cancelar");
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(rowNames()).toEqual(["status"]);
+  });
+});
+
+describe("snippets-ui: the empty states say why the list is empty (#3605, #3606)", () => {
+  const noHost = (lang: "en" | "pt-BR") => {
+    const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(
+      <TContext.Provider value={translator(lang)}>
+        <SnippetsPage store={store} go={() => {}} />
+      </TContext.Provider>,
+    );
+  };
+
+  test("with no online host that has snippets, the screen says so, names no host and offers no dead button (pt-BR)", async () => {
+    noHost("pt-BR");
+    await uiIdle();
+    expect(screen.queryByText("Nenhum host online guarda snippets.")).not.toBeNull();
+    expect(
+      screen.queryByText("Comandos e prompts salvos dos seus hosts e dos projetos deles."),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Criar o primeiro snippet" })).toBeNull();
+    expect(screen.queryByText("Nenhum snippet.")).toBeNull();
+  });
+
+  test("with no online host that has snippets, the screen says so, names no host and offers no dead button (en)", async () => {
+    noHost("en");
+    await uiIdle();
+    expect(screen.queryByText("No online host keeps snippets.")).not.toBeNull();
+    expect(
+      screen.queryByText("Saved commands and prompts of your hosts and their projects."),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Create the first snippet" })).toBeNull();
+    expect(screen.queryByText("No snippet.")).toBeNull();
+  });
+
+  test("a search with no match says no snippet matches, offers no first-snippet button and clears the filters", async () => {
+    await open(async ({ save }) => {
+      await save({ name: "status", type: "command", run: "git status" });
+    });
+    await choose("Buscar snippet", "zzz-sem-resultado");
+    expect(screen.queryByText("Nenhum snippet combina com a busca ou o tipo.")).not.toBeNull();
+    expect(screen.queryByText("Nenhum snippet.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Criar o primeiro snippet" })).toBeNull();
+    await click("Limpar filtros");
+    expect(rowNames()).toEqual(["status"]);
+    const search = screen.queryByLabelText("Buscar snippet") as HTMLInputElement | null;
+    expect(search?.value).toBe("");
+    expect(document.activeElement === search).toBe(true);
+  });
+
+  test("a type filter with no match says the same, and clearing it brings the list back", async () => {
+    await open(async ({ save }) => {
+      await save({ name: "status", type: "command", run: "git status" });
+    });
+    await choose("Tipo", "prompt");
+    expect(screen.queryByText("Nenhum snippet combina com a busca ou o tipo.")).not.toBeNull();
+    await click("Limpar filtros");
+    expect(rowNames()).toEqual(["status"]);
+    expect((screen.queryByLabelText("Tipo") as HTMLSelectElement | null)?.value).toBe("");
+  });
+
+  test("with no filter and no snippet the screen keeps its own empty text and button", async () => {
+    await open();
+    expect(screen.queryByText("Nenhum snippet.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Criar o primeiro snippet" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).toBeNull();
   });
 });
