@@ -39,7 +39,8 @@ exemplo `{ "trigger": { "type": "cron", "expr": "0 3 * * *", "tz": "Europe/Lisbo
 recusado com saída `1` antes de perguntar ao host. `--max-runs <n>` define quantas execuções por dia ela pode fazer
 (um número inteiro a partir de 1), `--external-authors on|off` diz se ela age sobre conteúdo de terceiros e
 `--automation <id>` altera essa automação em vez de criar uma nova. `save` sempre deixa a automação desligada, então
-nada dispara até o `enable`.
+nada dispara até o `enable`: salvar sobre uma automação que estava ligada a desliga, e você a liga de novo com
+`enable`. Um id de `--automation` que o projeto não tem é recusado.
 
 `enable <automação> --confirm` a liga: a partir daí ela dispara sozinha. `--confirm` é obrigatório e é só a sua
 palavra de que você leu o gatilho e a ação (`automation list` imprime o que a dispara e o que ela faz).
