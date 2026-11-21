@@ -16,13 +16,14 @@ import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
 import { historyProblem } from "./history-args.ts";
+import { mcpProblem, readMcp } from "./mcp-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { readReview } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
-import { readRunenv } from "./runenv-args.ts";
+import { readRunenv, runenvProblem } from "./runenv-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { OFF_FLAG, readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
@@ -118,7 +119,7 @@ const HANDLERS: Record<string, Handler> = {
   setup: setCommand("setup"),
   doctor: setCommand("doctor"),
   channel: setCommand("channel"),
-  mcp: setCommand("mcp"),
+  mcp: readMcp,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {
@@ -745,8 +746,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     sshProblem(args) ??
     terminalProblem(args) ??
     agentcfgProblem(args) ??
+    mcpProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
+    runenvProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??

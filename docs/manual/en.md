@@ -134,6 +134,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 
 - [fd changes](en/flightdeckd-changes-commands.md#fd-changes)
 
+## flightdeckd commands: the MCP servers of a project
+
+[Read the chapter.](en/flightdeckd-mcp-commands.md) Its sections:
+
+- [fd mcp](en/flightdeckd-mcp-commands.md#fd-mcp)
+
 ## Approvals and always allow
 
 [Read the chapter.](en/approvals-and-always-allow.md)
