@@ -11,10 +11,13 @@ const NOT_ASLEEP: Record<string, string> = {
 };
 
 /** The reason a session was not put to sleep, or undefined when it is asleep: only `slept` and `already` are. */
-export const sleepRefusal = (session: string, result: string): string | undefined =>
-  result === "slept" || result === "already"
-    ? undefined
-    : `${session} was not put to sleep: ${Object.hasOwn(NOT_ASLEEP, result) ? NOT_ASLEEP[result] : `the daemon answered ${result}`}`;
+export const sleepRefusal = (session: string, result: string): string | undefined => {
+  if (result === "slept" || result === "already") return undefined;
+  const why = Object.hasOwn(NOT_ASLEEP, result)
+    ? NOT_ASLEEP[result]
+    : `the daemon answered ${result}`;
+  return `${session} was not put to sleep: ${why}`;
+};
 
 export const sleepLine = (session: string, result: string): string =>
   result === "already" ? `${session} was already asleep` : `${session} is asleep`;

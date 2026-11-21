@@ -306,13 +306,14 @@ function variantLine(v: ArenaVariant): string[] {
   const added = v.files.reduce((sum, file) => sum + file.additions, 0);
   const removed = v.files.reduce((sum, file) => sum + file.deletions, 0);
   const files = `${v.files.length} ${plural(v.files.length, "file", "files")} +${added} -${removed}`;
+  const status = v.queued ? "queued" : v.sessionStatus;
   const parts = [
     v.id,
     v.label,
     v.column,
     [v.model ?? "default model", v.effort].filter(Boolean).join(" "),
     ...(v.persona ? [`persona ${v.persona}`] : []),
-    ...(v.queued ? ["queued"] : v.sessionStatus ? [v.sessionStatus] : []),
+    ...(status ? [status] : []),
     ...(v.costUsd === null ? [] : [`$${v.costUsd.toFixed(2)}`]),
     ...(v.files.length > 0 ? [files] : []),
   ];

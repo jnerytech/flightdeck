@@ -42,6 +42,13 @@ export function addPayload(
   };
 }
 
+/** `--no-forward-agent` turns it off, `--forward-agent` on, and neither keeps what the destination has. */
+function forwardAgentOf(fields: SshSaveFields, current: boolean | undefined): boolean | undefined {
+  if (fields.noForwardAgent) return false;
+  if (fields.forwardAgent) return true;
+  return current;
+}
+
 /**
  * An existing destination with the typed fields changed. A new auth drops the old reference unless one is
  * typed with it (a vault item is no key path), and `agent` has none; the daemon refuses a key file or a
@@ -55,13 +62,9 @@ export function editPayload(
 ): SshSavePayload {
   const auth = fields.auth ?? existing.auth;
   const authChanged = fields.auth !== undefined && fields.auth !== existing.auth;
-  const secretRef =
-    auth === "agent" ? null : (fields.secretRef ?? (authChanged ? null : existing.secretRef));
-  const forwardAgent = fields.noForwardAgent
-    ? false
-    : fields.forwardAgent
-      ? true
-      : existing.options.forwardAgent;
+  const keptRef = authChanged ? null : existing.secretRef;
+  const secretRef = auth === "agent" ? null : (fields.secretRef ?? keptRef);
+  const forwardAgent = forwardAgentOf(fields, existing.options.forwardAgent);
   return {
     id: existing.id,
     name: existing.name,

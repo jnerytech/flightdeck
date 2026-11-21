@@ -53,9 +53,11 @@ export type ProjectCliArgs =
 /** One line a folder: whether it is trusted and through which record, and the live sessions that still run with the setup they loaded. */
 export const trustLines = (answer: ProjectTrustStates): string[] =>
   answer.items.map((item) => {
-    const state = item.trusted ? `trusted${item.via ? `  via ${item.via}` : ""}` : "not trusted";
+    const via = item.via ? `  via ${item.via}` : "";
+    const state = item.trusted ? `trusted${via}` : "not trusted";
+    const sessions = item.staleSessions === 1 ? "session still runs" : "sessions still run";
     const stale = item.staleSessions
-      ? `  ${item.staleSessions} ${item.staleSessions === 1 ? "session still runs" : "sessions still run"} with the setup they loaded`
+      ? `  ${item.staleSessions} ${sessions} with the setup they loaded`
       : "";
     return `${item.path}  ${state}${stale}`;
   });
