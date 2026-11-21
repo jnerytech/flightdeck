@@ -71,6 +71,8 @@ export function QuotaCharts(props: Readonly<{ store: AppStore; hostId: string }>
   const { store, hostId } = props;
   const [histories, setHistories] = useState<QuotaHistory[] | null>(null);
   useEffect(() => {
+    // Another host starts from loading: its charts never show the previous host's.
+    setHistories(null);
     void Promise.all(
       SHOWN.map((window) =>
         store.hostCommand(hostId, "quota.history", {
