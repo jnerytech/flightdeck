@@ -23,7 +23,8 @@ options of a choice and whether it can be left out). A template file that did no
 
 `start <template>` starts a Claude session on the template. Every field the template asks for is given with `--field
 <id>=<value>`, once per field (a path for a folder or a file, a text, or the id of an option; a value may contain
-`=`). `--language en|pt-BR` picks the language of the prompt (default `en`) and `--name` names the task (1 to 100
+`=`; a folder or file is an absolute path, since the daemon has a folder of its own, and a relative one is refused
+before anything starts). `--language en|pt-BR` picks the language of the prompt (default `en`) and `--name` names the task (1 to 100
 characters). It prints `started  <session>  <permission mode>  working <folder>  results <folder>`; with `--json` it
 prints the whole answer. The daemon checks the template and the values: an unknown template, a missing value or a
 folder outside the allowed roots is a refusal with its text and exit 1. A connection lost while it starts says the task
@@ -40,7 +41,7 @@ fd task results docs-task --json
 fd task preview docs-task "/w/docs/Flightdeck results/summary.md"
 ```
 
-A session is its id or its name. `results` prints a line per file the task made or changed (`new  1234 B  <time>
+A session is its id or its name. The path of `preview` is absolute, as `results` prints it. `results` prints a line per file the task made or changed (`new  1234 B  <time>
 <path>`) or `no files yet`. `preview` prints the start of one of those files as plain lines; the daemon refuses a path
 that is not a result of the task. A list or a text cut short for size says so on stderr (`cut short`), so stdout stays
 what a script reads. Control characters in a file's text are replaced by spaces. `--json` prints the daemon's answer
@@ -58,6 +59,6 @@ fd harness templates delete node-api --confirm
 
 `delete <template> --confirm` removes the template's folder from the host and prints `deleted harness template
 <id>`. Without `--confirm` the command refuses before it connects. The daemon deletes only inside the harness
-templates folder and only over a connection from this computer: with `--host` it is refused. A connection lost while it
+templates folder and only over a near connection (this computer or a private tailnet address): any other address is refused. A connection lost while it
 deletes says it may or may not have been deleted: list the templates to see. From a session's own shell it is rated
 high.

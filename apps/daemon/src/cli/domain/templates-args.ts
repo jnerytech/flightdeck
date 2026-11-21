@@ -4,6 +4,7 @@
  * in `args.ts` reads the words after the noun here; `--json` and `--host` are checked there with the other
  * commands'.
  */
+import { posix, win32 } from "node:path";
 import type { HarnessCliArgs } from "../../harness/index.ts";
 import type { TemplatesCliArgs } from "../../templates/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
@@ -69,9 +70,17 @@ export function templatesProblem(args: CliArgs): string | undefined {
     return "--field: this flag only applies to flightdeckd template start";
   if (args.command === "template") return templateProblem(args, starting);
   if (args.command === "harness") return harnessProblem(args);
-  if (args.command === "task" && args.confirm !== undefined)
-    return "--confirm: this flag only applies to flightdeckd harness templates delete";
+  if (args.command === "task") return taskProblem(args);
   return undefined;
+}
+
+function taskProblem(args: CliArgs): string | undefined {
+  if (args.confirm !== undefined)
+    return "--confirm: this flag only applies to flightdeckd harness templates delete";
+  const path = args.action === "preview" ? args.taskWords?.[1] : undefined;
+  return path !== undefined && !posix.isAbsolute(path) && !win32.isAbsolute(path)
+    ? "the path: give an absolute path, as task results prints it"
+    : undefined;
 }
 
 function templateProblem(args: CliArgs, starting: boolean): string | undefined {

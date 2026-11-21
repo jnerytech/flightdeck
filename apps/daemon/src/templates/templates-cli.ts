@@ -2,8 +2,10 @@
  * Issue #3738: `flightdeckd template list|start` and `task results|preview`, the task templates of simple mode and
  * what a task made, from a shell. Exit codes: 0 done, 1 refused, 2 no daemon.
  */
+import { posix, win32 } from "node:path";
 import {
   type CliResult,
+  failure,
   type RemoteTarget,
   resolveSession,
   runOnLocalDaemon,
@@ -52,6 +54,15 @@ export async function runTemplatesCli(
         return shown(args.json, result, templateLines);
       }
       if (args.action === "start") {
+        const { templates } = await daemon.call("template.list", {});
+        const fields = templates.find((template) => template.id === args.templateId)?.fields ?? [];
+        const relative = fields.find(
+          (field) =>
+            (field.kind === "folder" || field.kind === "file") &&
+            args.values[field.id] !== undefined &&
+            !isAbsolute(args.values[field.id] as string),
+        );
+        if (relative) return failure(1, `--field ${relative.id}: give an absolute path`);
         note.wrote = true;
         const started = await daemon.call("template.start", {
           templateId: args.templateId,
@@ -85,3 +96,6 @@ export async function runTemplatesCli(
 /** A list or a text cut short says so on stderr, so stdout stays what a script reads. */
 const withCutShort = (result: CliResult, truncated: boolean, note: string): CliResult =>
   truncated ? { ...result, err: [...result.err, note] } : result;
+
+/** The daemon resolves a path against its own folder, not the shell's, so a path is given whole. */
+const isAbsolute = (path: string): boolean => posix.isAbsolute(path) || win32.isAbsolute(path);

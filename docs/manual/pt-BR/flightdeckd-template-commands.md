@@ -23,7 +23,8 @@ o tipo, as opções de uma escolha e se pode ficar de fora). Um arquivo de model
 
 `start <modelo>` inicia uma sessão do Claude no modelo. Cada campo que o modelo pede é dado com `--field
 <id>=<valor>`, uma vez por campo (um caminho para uma pasta ou um arquivo, um texto, ou o id de uma opção; o valor pode
-conter `=`). `--language en|pt-BR` escolhe o idioma do prompt (padrão `en`) e `--name` dá nome à tarefa (1 a 100
+conter `=`; uma pasta ou um arquivo é um caminho absoluto, pois o daemon tem uma pasta própria, e um caminho relativo é
+recusado antes de qualquer início). `--language en|pt-BR` escolhe o idioma do prompt (padrão `en`) e `--name` dá nome à tarefa (1 a 100
 caracteres). Imprime `started  <sessão>  <modo de permissão>  working <pasta>  results <pasta>`; com `--json` imprime a
 resposta inteira. O daemon confere o modelo e os valores: um modelo desconhecido, um valor faltando ou uma pasta fora
 das raízes permitidas é uma recusa com o texto dele e saída 1. Uma conexão perdida durante o início diz que a tarefa
@@ -40,7 +41,7 @@ fd task results docs-task --json
 fd task preview docs-task "/w/docs/Flightdeck results/summary.md"
 ```
 
-Uma sessão é o id ou o nome dela. `results` imprime uma linha por arquivo que a tarefa fez ou mudou (`new  1234 B  <hora>
+Uma sessão é o id ou o nome dela. O caminho de `preview` é absoluto, como `results` o imprime. `results` imprime uma linha por arquivo que a tarefa fez ou mudou (`new  1234 B  <hora>
 <caminho>`) ou `no files yet`. `preview` imprime o começo de um desses arquivos como linhas simples; o daemon recusa um
 caminho que não é resultado da tarefa. Uma lista ou um texto cortado por tamanho avisa no stderr (`cut short`), e o
 stdout continua sendo o que um script lê. Caracteres de controle no texto de um arquivo viram espaços. `--json` imprime
@@ -57,6 +58,6 @@ fd harness templates delete node-api --confirm
 (`node-api  Node API  2 files  2048 bytes`), nunca um conteúdo, ou `no harness template on this host`.
 
 `delete <modelo> --confirm` remove a pasta do modelo do host e imprime `deleted harness template <id>`. Sem `--confirm`
-o comando recusa antes de conectar. O daemon só apaga dentro da pasta de modelos de harness e só numa conexão deste
-computador: com `--host` é recusado. Uma conexão perdida durante a exclusão diz que o modelo pode ou não ter sido
+o comando recusa antes de conectar. O daemon só apaga dentro da pasta de modelos de harness e só numa conexão próxima (este
+computador ou um endereço de tailnet privada): qualquer outro endereço é recusado. Uma conexão perdida durante a exclusão diz que o modelo pode ou não ter sido
 apagado: liste os modelos para ver. No shell de uma sessão é classificado como alto.
