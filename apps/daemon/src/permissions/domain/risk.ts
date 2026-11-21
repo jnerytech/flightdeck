@@ -582,7 +582,8 @@ function statementRisks(command: string, scan: Scan): Candidate[] {
   ) => {
     for (const statement of statements) {
       pipes(statement).forEach((part, i) => {
-        for (const segment of cut(part)) out.push(...segmentRisks(segment, i > 0, scan));
+        for (const segment of cut(part))
+          if (scan.command()) out.push(...segmentRisks(segment, i > 0, scan));
       });
     }
   };

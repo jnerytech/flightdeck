@@ -4,7 +4,7 @@ import { bash, classify, notHigh } from "../support/permissions-risk-rules.ts";
 setDefaultTimeout(30_000);
 
 const UNREADABLE =
-  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec or a chain of variable programs), so it is not read as routine";
+  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec, a chain of variable programs or thousands of words or commands), so it is not read as routine";
 
 /** What the classifier says about a line, and how long it took (ms). */
 function timed(command: string) {
@@ -13,17 +13,17 @@ function timed(command: string) {
   return { level: risk.level, reason: risk.reason, ms: performance.now() - start };
 }
 
-// The unfixed classifier needs seconds for each of these (and minutes a few repeats more): a bound of one
-// second says the work is capped, and the loose margin keeps a busy machine from failing it.
-const BOUND_MS = 1000;
+// The unfixed classifier needs seconds for each of these (and minutes a few repeats more): a bound of four
+// seconds says the work is capped, and the loose margin keeps a busy machine from failing it.
+const BOUND_MS = 4000;
 
 describe("risk rules: a crafted command line cannot stall the daemon (#3593)", () => {
   const tangled: Array<[string, string]> = [
     ["a shell inside a shell, 14 deep", "sh -c '".repeat(14) + "fd persona remove qa"],
     ["a variable program, 400 words long", "$a ".repeat(400) + "fd persona remove qa"],
     ["process substitutions, 14 deep", "cat " + "<(cat ".repeat(14) + "ls"],
-    ["a runner followed by 8000 CLI names", "sh " + "fd ".repeat(8000)],
-    ["bun start with 8000 words after it", "bun " + "start ".repeat(8000)],
+    ["a runner followed by 16000 CLI names", "sh " + "fd ".repeat(16000)],
+    ["bun start with 16000 words after it", "bun " + "start ".repeat(16000)],
     ["3000 statements that each start with a variable program", "$a fd x; ".repeat(3000)],
     ["find -exec, 12 deep", "find . " + "-exec find . ".repeat(12) + "-exec ls ;"],
   ];

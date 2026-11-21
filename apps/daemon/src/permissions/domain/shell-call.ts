@@ -294,6 +294,12 @@ export const isCliProgram = (name: string) => CLI_PROGRAMS.includes(name) || nam
 /** The most words read after a program that is a variable: matching them against every verb grows with the square of their number. */
 const MAX_WORDS_AFTER_VARIABLE = 256;
 
+/** The most words of one command that are read: the rules match each start word against all that follows, so the work grows with the square of the count. */
+const MAX_SEGMENT_WORDS = 4096;
+
+/** The most commands of one line that are read, counting each of the two cuts of the line (`statementRisks`). */
+const MAX_COMMANDS = 1024;
+
 /** The most variable programs in a row that are read as the start of a command each: every one reads all that follows it. */
 const MAX_VARIABLE_CHAIN = 16;
 
@@ -302,20 +308,32 @@ const MAX_REREADS = 256;
 
 /**
  * The work one command line may cost (#3593). Each read of a part of the line inside the line (the text of
- * `sh -c`, a process substitution, a `find -exec` command, what follows a variable program) spends one of a
- * fixed number of re-reads, so nesting that doubles the work at every level (`sh -c 'sh -c '...`) stops at a
- * known size. When the re-reads run out the rest is not read, and `spent` says the line cannot be judged: the
- * caller rates it high.
+ * `sh -c`, a process substitution, a `find -exec` command) spends one of a fixed number of re-reads, so nesting
+ * that doubles the work at every level (`sh -c 'sh -c '...`) stops at a known size. A command with more words,
+ * a chain of variable programs and a line with more commands than the rules can read in bounded time are cut
+ * the same way. Whatever is cut leaves `spent` set, and the caller rates the line high.
  */
 export class Scan {
   private left = MAX_REREADS;
   spent = false;
 
-  /** More words than the rules read after a program they cannot resolve: the rest is cut off, and the line is spent. */
-  cap(words: string[]): string[] {
-    if (words.length <= MAX_WORDS_AFTER_VARIABLE) return words;
+  private commands = 0;
+
+  /** More than `max` words: the rest is cut off, and the line is spent. */
+  cap(words: string[], max = MAX_WORDS_AFTER_VARIABLE): string[] {
+    if (words.length <= max) return words;
     this.spent = true;
-    return words.slice(0, MAX_WORDS_AFTER_VARIABLE);
+    return words.slice(0, max);
+  }
+
+  /** Whether one more command of the line may be read; the first refusal marks the line as spent. */
+  command(): boolean {
+    if (this.commands < MAX_COMMANDS) {
+      this.commands++;
+      return true;
+    }
+    this.spent = true;
+    return false;
   }
 
   /** Whether a variable program may be followed by another one at this depth of the chain (`$a $b $c ...`). */
@@ -338,7 +356,7 @@ export class Scan {
 
 /** Why a line that spent its re-reads is high: it is not read as routine. */
 export const UNREADABLE =
-  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec or a chain of variable programs), so it is not read as routine";
+  "a command line too tangled to read in bounded time (nested shells, process substitutions, find -exec, a chain of variable programs or thousands of words or commands), so it is not read as routine";
 
 /**
  * What a segment runs, past `sudo`, `env X=1`, `timeout 5`, a subshell or brace group, a redirection and the
@@ -346,8 +364,9 @@ export const UNREADABLE =
  * or a wrapper, so it gives one reading for each, and the rest of the line is read as a command again.
  */
 export function invocations(segment: string[], scan: Scan = new Scan(), chain = 0): Invocation[] {
-  const words = withoutRedirections(afterLabel(segment).map(closed).map(opened)).filter(
-    (w) => w !== "",
+  const words = scan.cap(
+    withoutRedirections(afterLabel(segment).map(closed).map(opened)).filter((w) => w !== ""),
+    MAX_SEGMENT_WORDS,
   );
   const { at, sudo } = programStart(words);
   const written = words[at] ?? "";
