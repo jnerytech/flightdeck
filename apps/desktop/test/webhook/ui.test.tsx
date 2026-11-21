@@ -265,6 +265,28 @@ describe("webhook-ui", () => {
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
 
+  test("a signing secret typed for a generic webhook is not saved once the type is switched to Slack", async () => {
+    const { store } = await open("en");
+    await fill("Name", "Hook");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "generic" } });
+    });
+    await fill("Signing secret", "s3cret");
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Type"), { target: { value: "slack" } });
+    });
+    expect(screen.queryByLabelText("Signing secret")).toBeNull();
+    await fill("Webhook URL", SECRET);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("checkbox", { name: "Needs you" }));
+    });
+    await click("Save webhook");
+    await settle(() => store.webhooks.targets.list().length === 1);
+    const [target] = store.webhooks.targets.list();
+    const secrets = await store.webhooks.targets.secrets(target?.id as string);
+    expect(secrets?.signingSecret ?? null).toBeNull();
+  });
+
   test("Cancel in the remove question keeps the webhook", async () => {
     const { store } = await open("en");
     await fill("Name", "Team");
