@@ -48,8 +48,8 @@ laço. O `service install` também inicia o serviço agora, sozinho. O `doctor` 
 as pastas, o serviço, o `/health` do daemon, o `claude`, os hooks e a Tailscale, uma linha cada,
 e imprime o conserto de cada falha; sai com 1 quando uma checagem falha. Com `--json` imprime um
 valor, `{ ok, checks, deps }`, com o mesmo código de saída (`ok` é o resultado das checagens, e uma
-dependência obrigatória que falta também faz o código ser 1); `deps` é `null` quando a config não
-pode ser lida.
+dependência obrigatória que falta também faz o código ser 1); `deps` é `null` quando as dependências não
+podem ser listadas (uma config ilegível, por exemplo).
 
 ## Instalar como serviço
 

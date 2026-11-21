@@ -48,7 +48,7 @@ looping. `service install` also starts the service now on its own. `doctor` chec
 the folders, the service, the daemon's `/health`, `claude`, the hooks and Tailscale, one line
 each, and prints the fix of every failure; it exits 1 when a check fails. With `--json` it prints one
 value, `{ ok, checks, deps }`, with the same exit code (`ok` is the checks' result, and a lacking
-required dependency also makes the exit code 1); `deps` is `null` when the config cannot be read.
+required dependency also makes the exit code 1); `deps` is `null` when the dependencies cannot be listed (an unreadable config, for one).
 
 ## Installing as a service
 

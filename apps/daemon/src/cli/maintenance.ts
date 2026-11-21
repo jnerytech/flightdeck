@@ -61,7 +61,10 @@ export async function runRestore(args: CliArgs, deps: MaintenanceCommandDeps): P
 
 /** `flightdeckd db status|prune`: the two verbs of the database commands. */
 export async function runDb(args: CliArgs, deps: MaintenanceCommandDeps): Promise<void> {
-  await (args.action === "status" ? runDbStatus(args, deps) : runPrune(args, deps));
+  if (args.action === "status") return await runDbStatus(args, deps);
+  // A prune deletes: it runs only when it is asked for by name, never as the default of a missing action.
+  if (args.action === "prune") return await runPrune(args, deps);
+  throw new Error("invalid db action");
 }
 
 /** `flightdeckd db prune [--dry-run] [--json]`: the retention policy now, with the count per table. */
