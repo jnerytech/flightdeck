@@ -232,6 +232,8 @@ describe("flightdeckd bg start, stop, respawn and message (issue #3734)", () => 
       ["bg", "start", "--prompt", "x"],
       ["bg", "start", "--card", "c1", "--cwd", "/w", "--prompt", "x"],
       ["bg", "start", "--card", "c1", "--persona", "Bad Persona"],
+      ["bg", "start", "--cwd", ".", "--prompt", "x"],
+      ["bg", "start", "--cwd", "../work", "--prompt", "x"],
       ["bg", "start", "--card", "c1", "--name", "n".repeat(121)],
       ["bg", "stop", "bad id"],
       ["bg", "stop"],
