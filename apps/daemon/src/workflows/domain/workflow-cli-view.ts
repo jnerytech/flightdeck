@@ -4,6 +4,7 @@ import type {
   WorkflowInfo,
   WorkflowRun,
   WorkflowTemplate,
+  WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
 
 /** `invalid` (it has errors, so it can be neither trusted nor run), `trusted` or `untrusted`. */
@@ -74,3 +75,23 @@ export function resumeLines(runId: string, check: RunResumeCheck): string[] {
     `${runId} cannot resume: ${check.reason ?? "no reason given"}${params.length > 0 ? ` (${params.join(", ")})` : ""}`,
   ];
 }
+
+/** A resume that went ahead says from which step; one the daemon refused says why, as the check does. */
+export const resumedLines = (runId: string, check: RunResumeCheck): string[] =>
+  check.ok ? [`${runId} resumed from ${check.from}`] : resumeLines(runId, check);
+
+/** Where a template went: its file, the new branch and the base the PR targets, then the PR. */
+export const templateAddedLines = (added: WorkflowTemplateAdded): string[] => [
+  `${added.path}  branch ${added.branch}  base ${added.base}`,
+  `pr  ${added.url}`,
+];
+
+/** What a lost connection leaves open, per verb: what may have happened, and how to look before running it again. */
+export const UNSURE_WORKFLOW = {
+  trust:
+    "; the trust may or may not have been given: workflow list shows it, and trusting the same hash again is safe",
+  "template-add":
+    "; the branch and its PR may or may not have been made: look at the project's branches before you run it again",
+  resume:
+    "; the run may or may not have resumed: workflow run shows it, so look before you resume it again",
+} as const;

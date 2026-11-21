@@ -50,6 +50,9 @@ export class ExternalPermissions {
   private readonly risk: RiskClassifier;
   private readonly auto: Pick<AutoApprover, "decide"> | undefined;
   private readonly approval: ApprovalGate | undefined;
+  private readonly explain:
+    | ((command: string, cwd: string) => Promise<string> | undefined)
+    | undefined;
 
   /**
    * `risk`: the classifier of the daemon's config, built-in rules alone when absent. `auto`:
@@ -61,11 +64,14 @@ export class ExternalPermissions {
       auto?: Pick<AutoApprover, "decide">;
       /** #3439: the signed proof a high-risk allow needs once a device is enrolled. */
       approval?: ApprovalGate;
+      /** #3752: one more sentence for the reason of a request (what a file it names holds); undefined when it has none. */
+      explain?: (command: string, cwd: string) => Promise<string> | undefined;
     } = {},
   ) {
     this.risk = opts.risk ?? new RiskClassifier({ allowedRoots: [], home: userHome() });
     this.auto = opts.auto;
     this.approval = opts.approval;
+    this.explain = opts.explain;
   }
 
   /**
@@ -86,6 +92,45 @@ export class ExternalPermissions {
     if (this.watchers.size === 0) {
       return auto.then((decision) => (decision?.decision === "allow" ? ALLOW : ""));
     }
+    const ask = { requestId, claudeSessionId, toolName, input, cwd, risk, auto };
+    const pending =
+      toolName === "Bash" || toolName === "PowerShell"
+        ? this.explainSafely(textOf(input.command), cwd)
+        : undefined;
+    // Nothing to explain: published at once, as before. Otherwise after the file the command names was read.
+    if (pending === undefined) return this.announce(payload, signal, { ...ask, extra: undefined });
+    return pending
+      .catch(() => undefined)
+      .then((extra) => this.announce(payload, signal, { ...ask, extra }));
+  }
+
+  /** The hook's sentence; a hook that throws before it returns a promise is the same as one that fails. */
+  private explainSafely(command: string, cwd: string): Promise<string> | undefined {
+    try {
+      return this.explain?.(command, cwd);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Publishes the request and holds it until it is answered (#3752: after the note about its file was read). */
+  private announce(
+    payload: HookPayload,
+    signal: AbortSignal,
+    ask: {
+      requestId: string;
+      claudeSessionId: string;
+      toolName: string;
+      input: Record<string, unknown>;
+      cwd: string;
+      risk: { level: ExternalPermissionFrame["risk"]; reason: string };
+      auto: ReturnType<AutoApprover["decide"]>;
+      extra: string | undefined;
+    },
+  ): Promise<string> {
+    const { requestId, claudeSessionId, toolName, input, cwd, risk, auto, extra } = ask;
+    // Dropped while the file was read: nothing was published, so nothing is held.
+    if (signal.aborted) return Promise.resolve("");
     const suggestions = parseSuggestions(payload.permission_suggestions);
     const frame: ExternalPermissionFrame = {
       type: "external.permission",
@@ -95,7 +140,7 @@ export class ExternalPermissions {
       input: summarizeInput(payload.tool_input),
       ...(suggestions.length > 0 ? { suggestions } : {}),
       risk: risk.level,
-      riskReason: risk.reason,
+      riskReason: extra ? `${risk.reason}. ${extra}` : risk.reason,
       state: "open",
       createdAt: new Date().toISOString(),
     };

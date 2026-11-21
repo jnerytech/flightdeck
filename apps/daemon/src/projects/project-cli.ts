@@ -19,6 +19,8 @@ import {
 import {
   appliedDigests,
   appliedLines,
+  callTimeoutMs,
+  cloneLines,
   committedLines,
   detectLines,
   draftLines,
@@ -29,6 +31,7 @@ import {
   previewLines,
   projectLines,
   type SavedDigests,
+  scanLines,
   stackLines,
   trustLines,
 } from "./domain/project-cli-view.ts";
@@ -36,9 +39,6 @@ import {
 /** What a write that got no answer may have done: the person checks the projects before repeating it. */
 const UNSURE =
   "; the change may or may not have happened: look at the app's projects before repeating it";
-
-/** A preview reads the folder's files and a template's, which takes longer than a lookup. */
-const DEFAULT_TIMEOUT_MS = 30_000;
 
 /** The file the person saved an earlier answer in, read as text, or the line that says it cannot be. */
 async function readSaved(file: string): Promise<string | CliResult> {
@@ -71,7 +71,7 @@ export function runProjectCli(
     config,
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-project",
-    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    timeoutMs: options.timeoutMs ?? callTimeoutMs(args),
     unsure: UNSURE,
     perform: async (daemon, note) => {
       switch (args.action) {
@@ -82,6 +82,24 @@ export function runProjectCli(
             ...args.fields,
           });
           return shown(args.json, answer, (added) => projectLines("added", added, args.fields));
+        }
+        case "scan":
+          return shown(
+            args.json,
+            await daemon.call(
+              "projects.scan",
+              args.depth === undefined ? {} : { depth: args.depth },
+            ),
+            scanLines,
+          );
+        case "clone": {
+          note.wrote = true;
+          const answer = await daemon.call("projects.clone", {
+            url: args.url,
+            root: folder(args.root),
+            ...(args.name === undefined ? {} : { name: args.name }),
+          });
+          return shown(args.json, answer, cloneLines);
         }
         case "update":
         case "detect-provider":

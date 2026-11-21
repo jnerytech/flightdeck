@@ -5,7 +5,12 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { type SnapshotInput, snapshotForHook } from "../checkpoints/index.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { FlightdeckError, writeFileAtomic } from "../kernel/index.ts";
-import type { ApprovalGate, AutoApprover, RiskClassifier } from "../permissions/index.ts";
+import {
+  type ApprovalGate,
+  type AutoApprover,
+  actionSaveNote,
+  type RiskClassifier,
+} from "../permissions/index.ts";
 import type { SessionManager } from "../sessions/index.ts";
 import type { HookTarget } from "./domain/hook-entries.ts";
 import { ExternalSessions } from "./external.ts";
@@ -72,6 +77,7 @@ export class Central {
       risk: opts.risk,
       auto: opts.autoApprove,
       approval: opts.approval,
+      explain: actionSaveNote,
     });
     this.keys = opts.keys ?? new ProjectKeys(opts.hostName);
     this.meta = new SessionMetaStore(opts.db);

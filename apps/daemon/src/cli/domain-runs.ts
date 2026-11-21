@@ -29,7 +29,17 @@ export const resourcesRun =
     remote?: RemoteTarget,
   ): Promise<CliResult> =>
     (await import("../resources/index.ts")).runResourcesCli(
-      args.json ? { json: true } : {},
+      {
+        ...(args.json ? { json: true } : {}),
+        ...(args.action === "pause-at" || args.action === "end-orphan"
+          ? {
+              action: args.action,
+              ...(args.resourcesPauseAt !== undefined ? { pauseAt: args.resourcesPauseAt } : {}),
+              ...(args.orphanPid !== undefined ? { pid: args.orphanPid } : {}),
+              ...(args.orphanTicks !== undefined ? { startTicks: args.orphanTicks } : {}),
+            }
+          : {}),
+      },
       config,
       remote ? { remote } : {},
     );

@@ -244,7 +244,7 @@ describe("pagina-host", () => {
     await act(async () => {
       fireEvent.click(open as HTMLElement);
     });
-    await waitFor(() => expect(text()).toContain("informações indisponíveis"));
+    await waitFor(() => expect(text()).toContain("O host ainda não informou seus detalhes."));
   });
 
   // #785: Health sat below Sessions and Projects (y=1087 at 1280x800) in one column 770 px wide.

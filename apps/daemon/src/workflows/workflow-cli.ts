@@ -1,7 +1,9 @@
 /**
  * Issue #3628: `flightdeckd workflow`, the workflows of a project and their runs from a shell. `list`,
  * `templates` and `validate` read what the base branch holds, `run` one run, `watch` every change of a run and
- * `resume` says whether a failed run can resume. Exit codes: 0 done, 1 refused, 2 no daemon.
+ * `resume` says whether a failed run can resume. Three verbs write (#3628): `trust` gives a workflow's hash the
+ * trust to run its shell commands, `template-add` puts a template on a new branch with a PR, and `resume
+ * --confirm` runs a failed run's commands again from its failed step. Exit codes: 0 done, 1 refused, 2 no daemon.
  */
 import {
   type CliResult,
@@ -15,9 +17,12 @@ import {
 import {
   infoLines,
   listLines,
+  resumedLines,
   resumeLines,
   runLines,
+  templateAddedLines,
   templatesLines,
+  UNSURE_WORKFLOW,
   watchLine,
 } from "./domain/workflow-cli-view.ts";
 
@@ -27,7 +32,10 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 export type WorkflowCliArgs =
   | { action: "list" | "templates"; project: string; json?: boolean }
   | { action: "validate"; project: string; name: string; json?: boolean }
-  | { action: "run" | "resume"; run: string; json?: boolean }
+  | { action: "trust"; project: string; name: string; hash: string; json?: boolean }
+  | { action: "template-add"; project: string; templateId: string; confirm?: true; json?: boolean }
+  | { action: "run"; run: string; json?: boolean }
+  | { action: "resume"; run: string; confirm?: true; json?: boolean }
   | { action: "watch"; json?: boolean };
 
 export function runWorkflowCli(
@@ -40,7 +48,10 @@ export function runWorkflowCli(
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-workflow",
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    perform: async (daemon, _note, flow) => {
+    ...(args.action === "trust" || args.action === "template-add" || args.action === "resume"
+      ? { unsure: UNSURE_WORKFLOW[args.action] }
+      : {}),
+    perform: async (daemon, note, flow) => {
       if (args.action === "watch")
         return streamFrames({
           daemon,
@@ -52,9 +63,15 @@ export function runWorkflowCli(
         });
       if ("run" in args) {
         if (args.action === "resume") {
-          const check = await daemon.call("run.resume", { runId: args.run });
+          if (args.confirm) note.wrote = true;
+          const check = await daemon.call("run.resume", {
+            runId: args.run,
+            ...(args.confirm ? { confirm: true } : {}),
+          });
           // A run that cannot resume is refused (exit 1), with the check printed all the same.
-          const result = shown(args.json, check, () => resumeLines(args.run, check));
+          const result = shown(args.json, check, () =>
+            args.confirm ? resumedLines(args.run, check) : resumeLines(args.run, check),
+          );
           return check.ok ? result : { ...result, code: 1 };
         }
         const run = await daemon.call("run.get", { runId: args.run });
@@ -67,6 +84,25 @@ export function runWorkflowCli(
       if (args.action === "templates") {
         const { templates } = await daemon.call("workflow.templates", { projectId });
         return shown(args.json, { templates }, () => templatesLines(templates));
+      }
+      if (args.action === "trust") {
+        note.wrote = true;
+        const info = await daemon.call("workflow.trust", {
+          projectId,
+          name: args.name,
+          hash: args.hash,
+        });
+        return shown(args.json, info, () => infoLines(info));
+      }
+      if (args.action === "template-add") {
+        // Without --confirm the daemon always refuses, so nothing can have been written.
+        if (args.confirm) note.wrote = true;
+        const added = await daemon.call("workflow.template.add", {
+          projectId,
+          templateId: args.templateId,
+          ...(args.confirm ? { confirm: true } : {}),
+        });
+        return shown(args.json, added, () => templateAddedLines(added));
       }
       if (args.action === "validate") {
         const info = await daemon.call("workflow.validate", { projectId, name: args.name });

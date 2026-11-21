@@ -235,3 +235,10 @@ fazer o commit dos arquivos gravados em uma branch nova; sua branch, seu índice
 `--confirm` é só uma opção digitada, não a sua aprovação: um host com dispositivo cadastrado recusa `harness-apply` pelo
 terminal e diz para fazer no app, e uma sessão que executa qualquer um dos dois pelo shell para até você aprovar.
 `harness-commit` não pede assinatura do dispositivo, então só a regra do shell o protege. Um CLAUDE.md rascunhado com `harness-draft` e confiar numa pasta (`project.trust.set`) continuam só no app.
+
+Para achar e baixar projetos pelo terminal, `fd project scan` lista os repositórios git dentro das pastas que o host
+permite (`--depth 1` a `3`; avisa quando a varredura parou no limite), e `fd project clone <url> --root <pasta
+permitida> --confirm` clona o endereço numa pasta nova ali (`--name` escolhe o nome da pasta). O host decide quais
+endereços e pastas aceita e diz o motivo quando recusa. `--confirm` é uma flag digitada, não a sua aprovação: uma
+sessão que roda `project clone` no shell para e espera a sua aprovação. O clone não põe a pasta no quadro: rode
+`fd project add <pasta>` depois. Adicionar uma pasta permitida continua só no app.

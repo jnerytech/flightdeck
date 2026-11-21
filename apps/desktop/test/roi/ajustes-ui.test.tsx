@@ -119,7 +119,71 @@ for (const [lang, t] of [
       ]);
       await settle(() => screen.queryByRole("table", { name: t.roiUi.people.title }) !== null);
       await press(S.removePerson.replace("{name}", "Ana"));
+      await act(async () => {
+        fireEvent.click(
+          within(screen.getByRole("alertdialog")).getByRole("button", { name: S.removeConfirm }),
+        );
+      });
       expect(store.roi.data().people).toEqual([]);
+    });
+
+    test("removing a person asks first and names them: cancel keeps them, confirm removes them (#3767)", async () => {
+      const { store, hostId } = await costsPage(lang);
+      store.roi.addPerson({ name: "Ana", hostIds: [hostId] });
+      const remove = S.removePerson.replace("{name}", "Ana");
+      await settle(() => screen.queryByRole("button", { name: remove }) !== null);
+      await press(remove);
+      const asked = () => screen.queryByRole("alertdialog");
+      expect(asked()).not.toBeNull();
+      expect(
+        within(asked() as HTMLElement).queryByText(S.removeAsk.replace("{name}", "Ana")),
+      ).not.toBeNull();
+      expect(store.roi.data().people).toHaveLength(1);
+      await act(async () => {
+        fireEvent.click(
+          within(asked() as HTMLElement).getByRole("button", { name: t.common.cancel }),
+        );
+      });
+      await settle(() => asked() === null);
+      expect(store.roi.data().people).toHaveLength(1);
+      await press(remove);
+      await act(async () => {
+        fireEvent.click(
+          within(asked() as HTMLElement).getByRole("button", { name: S.removeConfirm }),
+        );
+      });
+      expect(store.roi.data().people).toEqual([]);
+      await settle(() => asked() === null);
+    });
+
+    test("a saved rate or cap says so in a status line, a refusal does not, and an edit clears it (#3767)", async () => {
+      await costsPage(lang);
+      await settle(() => screen.queryByLabelText(S.defaultRate) !== null);
+      const saidSaved = () => Boolean(screen.queryByText(S.saved)?.closest("[role='status']"));
+      expect(saidSaved()).toBe(false);
+      await type(S.defaultRate, "42.5");
+      await press(S.saveRate);
+      expect(saidSaved()).toBe(true);
+      await type(S.defaultRate, "43");
+      expect(saidSaved()).toBe(false);
+      await type(S.defaultRate, "abc");
+      await press(S.saveRate);
+      expect(screen.queryByText(S.error.number)).not.toBeNull();
+      expect(saidSaved()).toBe(false);
+      await type(S.reviewCap, "20");
+      await press(S.saveCap);
+      expect(saidSaved()).toBe(true);
+      await type(S.reviewCap, "999");
+      await press(S.saveCap);
+      expect(screen.queryByText(S.error.review_cap_invalid)).not.toBeNull();
+      expect(saidSaved()).toBe(false);
+      // A good save, then the refused cap pressed again with no edit: only the refusal shows.
+      await type(S.defaultRate, "44");
+      await press(S.saveRate);
+      expect(saidSaved()).toBe(true);
+      await press(S.saveCap);
+      expect(screen.queryByText(S.error.review_cap_invalid)).not.toBeNull();
+      expect(saidSaved()).toBe(false);
     });
 
     test("a name or a host that is taken is refused with the reason, and a taken host cannot be ticked", async () => {

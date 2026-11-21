@@ -66,3 +66,33 @@ describe("risk rules: a session changing a project's setup from its shell (#3515
     ).toEqual([]);
   });
 });
+
+const CLONE_REASON =
+  "clones a repository from an address the session gave into a folder on the host, which the app has the person read and confirm first; a typed --confirm is not the person (flightdeckd project clone)";
+
+describe("risk rules: a session cloning a repository from its shell (#3737)", () => {
+  test("project clone is high, however the CLI is reached", () => {
+    expect(
+      wrongReasons([
+        ["fd project clone https://example.com/a/b.git --root /srv/code --confirm", CLONE_REASON],
+        [
+          "flightdeckd --host pi project clone https://example.com/a/b.git --root /srv --confirm",
+          CLONE_REASON,
+        ],
+        ["fd --json project clone git@example.com:a/b.git --root /srv --confirm", CLONE_REASON],
+        ["bunx flightdeckd project clone https://example.com/a/b.git --root /srv", CLONE_REASON],
+        ['bash -c "fd project clone https://example.com/a/b.git --root /srv"', CLONE_REASON],
+        [
+          "fd project scan && fd project clone https://example.com/a/b.git --root /srv",
+          CLONE_REASON,
+        ],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("project scan only reads the allowed folders, so it is not high", () => {
+    expect(
+      notHigh(["fd project scan", "fd project scan --depth 2 --json", "flightdeckd project scan"]),
+    ).toEqual([]);
+  });
+});

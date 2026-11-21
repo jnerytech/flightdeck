@@ -23,6 +23,7 @@ import {
   type AutoApproveRequest,
   type AutoApprover,
   type DiskView,
+  explainShellRequest,
   PermissionBroker,
   type Risk,
   RiskClassifier,
@@ -93,6 +94,8 @@ export class SessionManager {
       classify: (sessionId, toolName, input) => this.classify(sessionId, toolName, input),
       plain: (sessionId, toolName, input, risk) =>
         this.plainOf(sessionId, toolName, input, risk.level),
+      explain: (sessionId, toolName, input) =>
+        explainShellRequest(toolName, input, this.get(sessionId).cwd),
       ...(opts.approval ? { approval: opts.approval } : {}),
       ...(opts.autoApprove
         ? {
@@ -215,8 +218,18 @@ export class SessionManager {
       .pendingPermissions(sessionId)
       .filter((p) => this.broker.isAnnounced(p.id))
       .map((p) =>
-        pendingView(p, this.classify(sessionId, p.toolName, p.input), this.broker.plainOf(p.id)),
+        pendingView(
+          p,
+          this.explained(this.classify(sessionId, p.toolName, p.input), p.id),
+          this.broker.plainOf(p.id),
+        ),
       );
+  }
+
+  /** The risk with the reason the request was announced with, when a sentence was added to it (#3752). */
+  private explained(risk: Risk, requestId: string): Risk {
+    const reason = this.broker.reasonOf(requestId);
+    return reason === undefined ? risk : { ...risk, reason };
   }
 
   /** A request's risk, against the session's cwd. */

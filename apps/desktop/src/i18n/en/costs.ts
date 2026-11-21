@@ -37,6 +37,10 @@ export const costs = {
       costLimit: "Monthly cost limit (US$)",
       addPerson: "Add person",
       removePerson: "Remove {name}",
+      removeAsk:
+        "Remove {name}? Their host grouping and limits are lost; the hosts stay. This cannot be undone.",
+      removeConfirm: "Remove person",
+      saved: "Saved.",
       error: {
         rate_invalid: "The rate must be a number from 0 to 1,000,000.",
         price_invalid: "The price must be a number from 0 to 1,000,000.",

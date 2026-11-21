@@ -228,3 +228,10 @@ applied.json --confirm` to commit the files it wrote on a new branch; your own b
 says to do it in the app, and a session that runs either verb from its shell is stopped for your approval. `harness-commit` takes
 no device signature, so only the shell rule guards it. A CLAUDE.md drafted with `harness-draft`, and trusting a
 folder (`project.trust.set`), stay in the app.
+
+To find and fetch projects from a terminal, `fd project scan` lists the git repositories inside the folders the host
+allows (`--depth 1` to `3`; it says when the scan stopped at its cap), and `fd project clone <url> --root <allowed
+folder> --confirm` clones an address into a new folder there (`--name` picks the folder's name). The host decides which
+addresses and folders it accepts and says why when it refuses. `--confirm` is a typed flag, not your approval, so a
+session that runs `project clone` from its shell is stopped for your approval. The clone does not add the folder to the
+board: run `fd project add <folder>` after it. Adding an allowed folder stays in the app.

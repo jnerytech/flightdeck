@@ -95,6 +95,7 @@ export interface CliArgs {
     | "set-status"
     | "set-feed"
     | "templates"
+    | "template-add"
     | "validate"
     | "enable"
     | "disable"
@@ -152,6 +153,11 @@ export interface CliArgs {
     | "remove-member"
     | "history"
     | "pause-at"
+    | "sleep"
+    | "keep-awake"
+    | "updates"
+    | "bypass"
+    | "end-orphan"
     | "set"
     | "set-quota"
     | "summary"
@@ -231,6 +237,8 @@ export interface CliArgs {
     | "detect-provider"
     | "harness-draft"
     | "harness-export"
+    | "scan"
+    | "clone"
     | "harness-apply"
     | "harness-commit";
   /** `external message <session> --text <text>`: the Claude session id of a terminal. */
@@ -434,6 +442,13 @@ export interface CliArgs {
   /** `quota history <window> [--hours n]`, `quota pause-at <0-1|off>` (null is off), `usage [--days n]` (#3460; `days` is also the `vault` window below). */
   quotaWindow?: string;
   quotaPauseAt?: number | null;
+  /** `host sleep <minutes>` and `host keep-awake|pause|updates|bypass <on|off>` (#3699). */
+  hostMinutes?: number;
+  hostSwitch?: "on" | "off";
+  /** `resources pause-at <0-1|off>` (null is off) and `resources end-orphan <pid> <start-ticks>` (#3699). */
+  resourcesPauseAt?: number | null;
+  orphanPid?: number;
+  orphanTicks?: number;
   hours?: number;
   /** `budget set|set-quota` and `budget remove <id>` (#3460); `--scope` and `--project` are the shared flags. */
   budgetId?: string;
@@ -444,6 +459,10 @@ export interface CliArgs {
   budgetAction?: "notify" | "queue";
   /** `costs session|card|run <id>`: the Claude session, card or run id. */
   costsId?: string;
+  /** `costs sessions <id>...`: the Claude session ids. */
+  costsIds?: string[];
+  /** `telemetry session <id>`: the Claude session id. */
+  telemetryId?: string;
   /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
   /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
@@ -590,6 +609,10 @@ export interface CliArgs {
   /** `project harness-apply|harness-commit --digests <file> [--reformat]` (#3515). */
   projectDigests?: string;
   projectReformat?: true;
+  /** `project scan --depth <1-3>` (#3737). */
+  projectDepth?: number;
+  /** `project clone <url> --root <folder>`: an allowed folder of the host (#3737). */
+  projectRoot?: string;
   /** `project update|detect-provider <name or id>`. */
   projectRef?: string;
   /** Every word of `project <verb>` before the first flag, whichever verb takes it as what. */
