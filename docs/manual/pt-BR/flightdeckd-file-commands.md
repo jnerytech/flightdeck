@@ -26,7 +26,7 @@ termina com `/`. Um arquivo que pode guardar uma credencial aparece pelo nome, m
 `read <alvo> <arquivo>` imprime o tamanho e o hash do arquivo e depois o texto, uma linha por vez. Um arquivo acima de
 1 MB, um arquivo binário e um arquivo que pode guardar uma credencial são recusados com saída `1` e o motivo do
 daemon, sem imprimir conteúdo. O comando imprime o arquivo inteiro: não há opção de tamanho. Na saída em texto, uma
-tabulação ou outro caractere de controle vira um espaço; `--json` imprime o texto como o host o tem.
+tabulação ou outro caractere de controle vira um espaço; `--json` imprime o texto como o host o tem, exceto DEL, os caracteres C1 e os de largura zero (uma marca de ordem de bytes entre eles), que também viram espaços ali, então o texto pode diferir do que o hash cobre.
 
 `search <alvo> --mode name|content --query <texto>` procura arquivos pelo nome ou pelo que guardam. O texto tem de 1
 a 200 caracteres e nenhum caractere de controle. `--limit` (1 a 200) limita os resultados. Cada resultado é uma linha:

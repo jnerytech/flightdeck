@@ -26,7 +26,7 @@ A folder ends with `/`. A file that may hold a credential is listed by name and 
 `read <target> <file>` prints the size and the hash of the file, then its text, one line at a time. A file over 1 MB,
 a binary file and a file that may hold a credential are refused with exit `1` and the daemon's reason, and print no
 content. The command prints the whole file: there is no size option. In the plain output a tab or another control
-character becomes a space; `--json` prints the text as the host has it.
+character becomes a space; `--json` prints the text as the host has it, except DEL, the C1 characters and the zero-width characters (a byte-order mark among them), which become spaces there too, so the text may differ from what the hash covers.
 
 `search <target> --mode name|content --query <text>` finds files by name or by what they hold. The text has 1 to 200
 characters and no control character. `--limit` (1 to 200) caps the matches. Each match is one line: the path, and for

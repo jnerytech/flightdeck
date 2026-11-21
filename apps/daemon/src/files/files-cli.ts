@@ -27,7 +27,7 @@ import {
 
 export type { FileCliArgs } from "./domain/files-cli-view.ts";
 
-/** The lines of an answer (a file may have many: no spread of them into one call), or its JSON when asked. */
+/** The lines of an answer, or its JSON when asked. */
 const shown = <T>(
   asJson: boolean | undefined,
   result: T,

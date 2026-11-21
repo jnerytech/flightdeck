@@ -4,7 +4,7 @@
  * `--host` are checked there with the other commands'. `--dir`, `--query` and `--limit` are other commands' flags
  * too: on `file` they move into fields of its own, so no other command's check reads them.
  */
-import { isAbsolute } from "node:path";
+import { posix, win32 } from "node:path";
 import { ReviewTarget } from "@flightdeck/protocol";
 import type { FileCliArgs } from "../../files/index.ts";
 import { type ArgReader, invalid, operand, subAction } from "./arg-reader.ts";
@@ -82,7 +82,7 @@ function searchProblem(args: CliArgs): string | undefined {
 
 /**
  * What is wrong with the `file` flags, or undefined: each flag belongs to its verbs, a search names its mode and
- * text, and a folder of another host is its own absolute path (this machine's current folder means nothing there).
+ * text, and a folder of another host is its own absolute path, in the style of either OS (this machine's current folder means nothing there).
  */
 export function fileProblem(args: CliArgs): string | undefined {
   const onFile = args.command === "file";
@@ -92,7 +92,7 @@ export function fileProblem(args: CliArgs): string | undefined {
   if (!onFile) return undefined;
   if (args.action === "search") return searchProblem(args);
   if (args.host !== undefined && args.filePath !== undefined && args.action !== "read")
-    return isAbsolute(args.filePath)
+    return posix.isAbsolute(args.filePath) || win32.isAbsolute(args.filePath)
       ? undefined
       : `--host needs an absolute folder, the host's own path: ${args.filePath}`;
   return undefined;
