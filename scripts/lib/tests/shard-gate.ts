@@ -12,6 +12,7 @@ import {
   belowGate,
   COVERAGE_GATE,
   checkCoverage,
+  ENTRY_POINTS,
   type FileCoverage,
 } from "../coverage-gate/check.ts";
 import type { FunctionCoverage } from "../coverage-gate/funcs.ts";
@@ -206,7 +207,10 @@ function functionsOf(
 export function shardGate(input: GateInput): GateResult {
   const { shards, problems: closed } = collect(input);
   if (closed.length > 0) return { problems: closed, lcov: "", closed: true, covered: [] };
-  const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))];
+  // An entry point stays waived once a test imports it, as in isCoverageSource: neither its counts nor its shards' disagreement close the gate.
+  const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))].filter(
+    (p) => !ENTRY_POINTS.has(p),
+  );
   const problems: string[] = [];
   const report = new Map<string, FileCoverage>();
   const records: string[] = [];
