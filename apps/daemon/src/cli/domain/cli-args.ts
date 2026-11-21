@@ -49,6 +49,7 @@ export interface CliArgs {
     | "terminal"
     | "agentcfg"
     | "watch"
+    | "boardsync"
     | "requests"
     | "send"
     | "approve"
@@ -127,6 +128,8 @@ export interface CliArgs {
     | "trace"
     | "describe"
     | "by-url"
+    | "boards"
+    | "log"
     | "extend"
     | "resolve-held"
     | "follow"
@@ -211,6 +214,8 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
+  /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
+  boardsyncTarget?: string;
   /** `watch resolve-held <card> <round>`: the round. */
   watchRound?: string;
   /** `watch set|settings`: `--enable` is true, `--disable` false and `--default` (set only) null. */
