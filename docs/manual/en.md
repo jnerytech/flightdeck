@@ -69,77 +69,9 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 - [How it works](en/flightdeckd-claude-and-the-channel.md#how-it-works)
 - [Why the VS Code extension is left out](en/flightdeckd-claude-and-the-channel.md#why-the-vs-code-extension-is-left-out)
 
-## flightdeckd commands: host, sessions, requests, approve and send
+## flightdeckd commands
 
-[Read the chapter.](en/flightdeckd-commands.md) Its sections:
-
-- [What they all share](en/flightdeckd-commands.md#what-they-all-share)
-- [fd host](en/flightdeckd-commands.md#fd-host)
-- [fd sessions](en/flightdeckd-commands.md#fd-sessions)
-- [fd requests](en/flightdeckd-commands.md#fd-requests)
-- [fd approve and fd deny](en/flightdeckd-commands.md#fd-approve-and-fd-deny)
-- [fd send](en/flightdeckd-commands.md#fd-send)
-
-## flightdeckd commands: one session
-
-[Read the chapter.](en/flightdeckd-session-commands.md) Its sections:
-
-- [fd session](en/flightdeckd-session-commands.md#fd-session)
-
-## flightdeckd commands: ssh destinations
-
-[Read the chapter.](en/flightdeckd-ssh-commands.md) Its sections:
-
-- [fd ssh](en/flightdeckd-ssh-commands.md#fd-ssh)
-
-## flightdeckd commands: agent setup files
-
-[Read the chapter.](en/flightdeckd-agentcfg-commands.md) Its sections:
-
-- [fd agentcfg](en/flightdeckd-agentcfg-commands.md#fd-agentcfg)
-
-## flightdeckd commands: terminals
-
-[Read the chapter.](en/flightdeckd-terminal-commands.md) Its sections:
-
-- [fd terminal](en/flightdeckd-terminal-commands.md#fd-terminal)
-
-## flightdeckd commands: the PR watch of a card
-
-[Read the chapter.](en/flightdeckd-watch-commands.md) Its sections:
-
-- [fd watch](en/flightdeckd-watch-commands.md#fd-watch)
-
-## flightdeckd commands: the board sync of a project
-
-[Read the chapter.](en/flightdeckd-boardsync-commands.md) Its sections:
-
-- [fd boardsync](en/flightdeckd-boardsync-commands.md#fd-boardsync)
-
-## flightdeckd commands: the review comments
-
-[Read the chapter.](en/flightdeckd-review-commands.md) Its sections:
-
-- [fd review](en/flightdeckd-review-commands.md#fd-review)
-- [Writing the comments](en/flightdeckd-review-commands.md#writing-the-comments)
-
-## flightdeckd commands: the run environment of a card
-
-[Read the chapter.](en/flightdeckd-runenv-commands.md) Its sections:
-
-- [fd runenv](en/flightdeckd-runenv-commands.md#fd-runenv)
-
-## flightdeckd commands: the changes of a session, a card, a terminal or a project
-
-[Read the chapter.](en/flightdeckd-changes-commands.md) Its sections:
-
-- [fd changes](en/flightdeckd-changes-commands.md#fd-changes)
-
-## flightdeckd commands: the MCP servers of a project
-
-[Read the chapter.](en/flightdeckd-mcp-commands.md) Its sections:
-
-- [fd mcp](en/flightdeckd-mcp-commands.md#fd-mcp)
+[Read the index.](en/flightdeckd-command-index.md) It lists one chapter for each group of `flightdeckd` commands: host, sessions, requests, approve and send, one session, ssh, agent setup files, terminals, the PR watch, the board sync, the review comments, the run environment, changes and the MCP servers.
 
 ## Approvals and always allow
 
