@@ -16,7 +16,9 @@ versioned `.flightdeck/snippets.yaml`, or **Global (this app)** for the ones kep
   environment variable for it, whose vault secret you choose.
 - The versioned file is shared with the repository. Until you **Trust the file**, its commands
   only paste, they do not run; changing the file takes the trust away. Entries the app cannot read
-  are listed with the reason.
+  are listed with the reason. With a device enrolled (see Approvals), trusting the file asks that
+  device to confirm the folder and the version of the file: the host trusts that file only as it was
+  when you confirmed. `fd snippet trust` from a terminal is refused on such a host: confirm it in the app.
 - **Import from the shell history** lists the commands of the host's bash, zsh and PowerShell
   histories, most used first (read only). A line with a token, a key, a password or a value of the
   vault is hidden and cannot be imported; **Reveal hidden lines** shows only the ones the patterns
