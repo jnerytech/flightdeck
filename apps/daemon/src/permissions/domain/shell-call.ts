@@ -3,6 +3,7 @@
  * as one of those programs. Pure: the risk rules in `risk.ts` ask here what a segment runs.
  */
 import { Scan } from "./scan.ts";
+import { VERB_NOUNS } from "./verb-nouns.ts";
 
 /** A prefix assignment (`A=1`, `A+=1`, `A[0]=1`): it comes before the program and is not it. */
 const ASSIGNMENT = /^\w+(?:\[[^\]]*\])?\+?=/;
@@ -641,41 +642,6 @@ export function shellReadings(args: string[]): string[][] {
   const separate = readArguments(args, false);
   return joined.length === separate.length ? [joined] : [joined, separate];
 }
-
-/**
- * The commands whose second word is a verb the rules read, and not an argument: `fd persona remove`, not `fd send $SID`.
- * One name per line in alphabetical order (a test checks it), so two PRs that add a noun do not conflict (#3759).
- */
-export const VERB_NOUNS = new Set([
-  "action",
-  "agentcfg",
-  "approvers",
-  "autoapprove",
-  "automation",
-  "boardsync",
-  "budget",
-  "card",
-  "changes",
-  "costs",
-  "file",
-  "history",
-  "mcp",
-  "memory",
-  "message",
-  "persona",
-  "plugins",
-  "project",
-  "quota",
-  "review",
-  "rewind",
-  "rules",
-  "runenv",
-  "session",
-  "snippet",
-  "ssh",
-  "team",
-  "watch",
-]);
 
 /**
  * Whether the CLI's command or verb is a word the shell expands before it runs (#3559): `$V`, `$'\x72emove'`,

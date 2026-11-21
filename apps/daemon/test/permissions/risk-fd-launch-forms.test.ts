@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { VALUE_FLAGS } from "../../src/cli/domain/args.ts";
-import { OPTIONS_WITH_VALUE, VERB_NOUNS } from "../../src/permissions/domain/shell-call.ts";
+import { OPTIONS_WITH_VALUE } from "../../src/permissions/domain/shell-call.ts";
+import { VERB_NOUNS } from "../../src/permissions/domain/verb-nouns.ts";
 import { bash, MEDIUM } from "../support/permissions-risk-rules.ts";
 
 /** Each line is rated as `plain` is, and `plain` is high: the form only changes how the CLI is reached. */
