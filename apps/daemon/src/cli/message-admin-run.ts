@@ -12,7 +12,7 @@ export function messageAdminRun(
     onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
     log: { log(line: string): void };
     /** `rules-set --policy-file -` reads the policy from here. */
-    stdin?: ReadableStream<Uint8Array> | undefined;
+    stdin?: ReadableStream<Uint8Array>;
   },
 ) {
   const stop = new AbortController();

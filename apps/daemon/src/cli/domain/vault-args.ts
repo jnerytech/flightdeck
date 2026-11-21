@@ -58,17 +58,29 @@ function vaultFlags(args: VaultArgs): Array<[string, unknown, readonly string[],
 /** `preview` is typed `rules preview`. */
 const typed = (verb: string) => (verb === "preview" ? "rules preview" : verb);
 
-/** What is wrong with the `vault` flags: one of another verb or command, or a use that lacks what the daemon needs. */
-export function vaultProblem(args: VaultArgs): string | undefined {
+/** A flag another command owns and checks itself, so the vault flags leave it alone. */
+function ownedElsewhere(flag: string, command: string): boolean {
+  // `usage --days` is the quota command's (quota-args.ts), which says so for `quota` too; `message history --days` is message-args.ts's.
+  if (flag === "--days" && ["usage", "quota", "message"].includes(command)) return true;
+  // `snippet save --tag` is the snippet's: `snippetProblem` checks it.
+  return flag === "--tag" && command === "snippet";
+}
+
+/** A vault flag given to another verb or command. */
+function strayVaultFlag(args: VaultArgs): string | undefined {
   for (const [flag, value, verbs, shared] of vaultFlags(args)) {
     if (value === undefined || (shared && args.command !== "vault")) continue;
-    // `usage --days` is the quota command's (quota-args.ts), which says so for `quota` too; `message history --days` is message-args.ts's.
-    if (flag === "--days" && ["usage", "quota", "message"].includes(args.command)) continue;
-    // `snippet save --tag` is the snippet's: `snippetProblem` checks it.
-    if (flag === "--tag" && args.command === "snippet") continue;
+    if (ownedElsewhere(flag, args.command)) continue;
     if (args.command !== "vault" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd vault ${verbs.map(typed).join(", ")}`;
   }
+  return undefined;
+}
+
+/** What is wrong with the `vault` flags: one of another verb or command, or a use that lacks what the daemon needs. */
+export function vaultProblem(args: VaultArgs): string | undefined {
+  const stray = strayVaultFlag(args);
+  if (stray) return stray;
   if (args.command === "vault" && args.action === "preview") {
     if (args.requester === undefined) return "--requester: needed, who asks to use the secret";
     if (args.purpose === undefined) return "--purpose: needed, what the secret is for";
