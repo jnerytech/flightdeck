@@ -56,7 +56,7 @@ describe("risk of a write to a file the host or a tool runs (#3614)", () => {
       write("Write", ".git/hooks/pre-commit"),
       write("Edit", join(ROOT, "package.json")),
       write("Write", join(CWD, ".GIT", "hooks", "x")),
-      write("Write", `${CWD}\\.husky\\pre-commit`),
+      write("Write", ".husky\\pre-commit"),
       write("Write", join(CWD, "GIT~1", "hooks", "x")),
       write("Write", join(CWD, "src", "..", ".claude", "settings.json")),
     ];
