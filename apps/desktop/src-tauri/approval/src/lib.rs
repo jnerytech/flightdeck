@@ -255,112 +255,14 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         serde_json::from_str(payload).map_err(|_| "the payload to sign is not JSON".to_string())?;
     let fields = value.as_object().ok_or("the payload to sign is not an object")?;
     match name {
-        "card.pr.merge" => {
-            if fields.len() != 5 {
-                return Err("the merge payload has the wrong fields".into());
-            }
-            let text = |key: &str| {
-                fields
-                    .get(key)
-                    .and_then(serde_json::Value::as_str)
-                    .ok_or_else(|| format!("the merge payload has no text for {key}"))
-            };
-            let (card, url, head, method) = (text("cardId")?, text("prUrl")?, text("headSha")?, text("method")?);
-            if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
-                return Err("a merge is signed only once it is confirmed".into());
-            }
-            let id = !card.is_empty()
-                && card.len() <= 64
-                && card.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
-            // The address of a pull request's page, plain: https://<host>/<owner>/<repo>/pull/<number>, with no
-            // userinfo, port, query or fragment, so the host the dialog shows is the one that is meant.
-            let address = url.len() <= 200 && is_pull_request_address(url);
-            let commit = matches!(head.len(), 40 | 64) && head.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f'));
-            if !id || !address || !commit || !matches!(method, "merge" | "squash") {
-                return Err("the merge payload names something that is not a card, an address, a commit or a method".into());
-            }
-            let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
-            let canonical = format!(
-                "{{\"cardId\":{},\"confirm\":true,\"headSha\":{},\"method\":{},\"prUrl\":{}}}",
-                quoted(card),
-                quoted(head),
-                quoted(method),
-                quoted(url)
-            );
-            Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
-        }
+        "card.pr.merge" => read_pr_merge(fields),
         // Only the turn-on is signed (turning it off is open and never asks a key), and only once confirmed.
-        "host.bypass" => {
-            let on = |key: &str| fields.get(key) == Some(&serde_json::Value::Bool(true));
-            if fields.len() != 2 || !on("allow") || !on("confirm") {
-                return Err("a bypass switch is signed only to turn it on, confirmed, with no other field".into());
-            }
-            Ok((CommandAsk::Bypass, "{\"allow\":true,\"confirm\":true}".to_string()))
-        }
-        "project.trust.set" => {
-            if fields.len() != 2 {
-                return Err("the trust payload has the wrong fields".into());
-            }
-            let path = fields
-                .get("path")
-                .and_then(serde_json::Value::as_str)
-                .ok_or("the trust payload has no text for path")?;
-            // Revoking trust lowers risk and takes no proof: only the grant is signed.
-            if fields.get("trusted") != Some(&serde_json::Value::Bool(true)) {
-                return Err("only trusting a folder is signed".into());
-            }
-            if !is_shown_path(path) {
-                return Err("the folder is not a path the dialog can show".into());
-            }
-            let canonical = format!(
-                "{{\"path\":{},\"trusted\":true}}",
-                serde_json::to_string(path).unwrap_or_default()
-            );
-            Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
-        }
-        "autoapprove.resume" => {
-            if fields.len() != 2 {
-                return Err("the resume payload has the wrong fields".into());
-            }
-            let key = fields
-                .get("sessionKey")
-                .and_then(serde_json::Value::as_str)
-                .ok_or("the resume payload has no text for sessionKey")?;
-            if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
-                return Err("a resume is signed only once it is confirmed".into());
-            }
-            // A session key is a plain token, like a card id: nothing in it can pad or continue the dialog.
-            let token = !key.is_empty()
-                && key.len() <= 128
-                && key.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
-            if !token {
-                return Err("the session key is not one the dialog can show".into());
-            }
-            let canonical = format!(
-                "{{\"confirm\":true,\"sessionKey\":{}}}",
-                serde_json::to_string(key).unwrap_or_default()
-            );
-            Ok((CommandAsk::ResumeApproval { session: key.into() }, canonical))
-        }
+        "host.bypass" => read_bypass(fields),
+        "project.trust.set" => read_trust(fields),
+        "autoapprove.resume" => read_resume(fields),
         // Every payload of the command is signed: adding a folder has no value that lowers risk. Only a confirmed
         // add of a path the dialog can show whole is.
-        "roots.add" => {
-            if fields.len() != 2 || fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
-                return Err("a folder is signed only confirmed, with a path and no other field".into());
-            }
-            let path = fields
-                .get("path")
-                .and_then(serde_json::Value::as_str)
-                .ok_or("the folder payload has no text for path")?;
-            if !is_shown_path(path) {
-                return Err("the folder is not a path the dialog can show".into());
-            }
-            let canonical = format!(
-                "{{\"confirm\":true,\"path\":{}}}",
-                serde_json::to_string(path).unwrap_or_default()
-            );
-            Ok((CommandAsk::RootsAdd { path: path.into() }, canonical))
-        }
+        "roots.add" => read_roots_add(fields),
         // Every payload of the command is signed. The dialog says the folder, the parts, the template and whether
         // hooks or a rewritten settings file are in; the digests are signed but not shown, and each one is a plain
         // token the host makes, so nothing in them can pad the text. The hook commands are not in the payload: the
@@ -377,6 +279,127 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         "plugins.marketplaceAdd" => read_marketplace(fields),
         _ => Err("this command is not one this key signs".into()),
     }
+}
+
+fn read_pr_merge(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.len() != 5 {
+        return Err("the merge payload has the wrong fields".into());
+    }
+    let text = |key: &str| {
+        fields
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| format!("the merge payload has no text for {key}"))
+    };
+    let (card, url, head, method) = (text("cardId")?, text("prUrl")?, text("headSha")?, text("method")?);
+    if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+        return Err("a merge is signed only once it is confirmed".into());
+    }
+    let id = !card.is_empty()
+        && card.len() <= 64
+        && card.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+    // The address of a pull request's page, plain: https://<host>/<owner>/<repo>/pull/<number>, with no
+    // userinfo, port, query or fragment, so the host the dialog shows is the one that is meant.
+    let address = url.len() <= 200 && is_pull_request_address(url);
+    let commit = matches!(head.len(), 40 | 64) && head.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f'));
+    if !id || !address || !commit || !matches!(method, "merge" | "squash") {
+        return Err("the merge payload names something that is not a card, an address, a commit or a method".into());
+    }
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let canonical = format!(
+        "{{\"cardId\":{},\"confirm\":true,\"headSha\":{},\"method\":{},\"prUrl\":{}}}",
+        quoted(card),
+        quoted(head),
+        quoted(method),
+        quoted(url)
+    );
+    Ok((CommandAsk::PrMerge { url: url.into(), head: head.into(), method: method.into() }, canonical))
+}
+
+    // Only the turn-on is signed (turning it off is open and never asks a key), and only once confirmed.
+fn read_bypass(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    let on = |key: &str| fields.get(key) == Some(&serde_json::Value::Bool(true));
+    if fields.len() != 2 || !on("allow") || !on("confirm") {
+        return Err("a bypass switch is signed only to turn it on, confirmed, with no other field".into());
+    }
+    Ok((CommandAsk::Bypass, "{\"allow\":true,\"confirm\":true}".to_string()))
+}
+
+fn read_trust(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.len() != 2 {
+        return Err("the trust payload has the wrong fields".into());
+    }
+    let path = fields
+        .get("path")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("the trust payload has no text for path")?;
+    // Revoking trust lowers risk and takes no proof: only the grant is signed.
+    if fields.get("trusted") != Some(&serde_json::Value::Bool(true)) {
+        return Err("only trusting a folder is signed".into());
+    }
+    if !is_shown_path(path) {
+        return Err("the folder is not a path the dialog can show".into());
+    }
+    let canonical = format!(
+        "{{\"path\":{},\"trusted\":true}}",
+        serde_json::to_string(path).unwrap_or_default()
+    );
+    Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
+}
+
+fn read_resume(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.len() != 2 {
+        return Err("the resume payload has the wrong fields".into());
+    }
+    let key = fields
+        .get("sessionKey")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("the resume payload has no text for sessionKey")?;
+    if fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+        return Err("a resume is signed only once it is confirmed".into());
+    }
+    // A session key is a plain token, like a card id: nothing in it can pad or continue the dialog.
+    let token = !key.is_empty()
+        && key.len() <= 128
+        && key.chars().all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c));
+    if !token {
+        return Err("the session key is not one the dialog can show".into());
+    }
+    let canonical = format!(
+        "{{\"confirm\":true,\"sessionKey\":{}}}",
+        serde_json::to_string(key).unwrap_or_default()
+    );
+    Ok((CommandAsk::ResumeApproval { session: key.into() }, canonical))
+}
+
+    // Every payload of the command is signed: adding a folder has no value that lowers risk. Only a confirmed
+    // add of a path the dialog can show whole is.
+fn read_roots_add(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.len() != 2 || fields.get("confirm") != Some(&serde_json::Value::Bool(true)) {
+        return Err("a folder is signed only confirmed, with a path and no other field".into());
+    }
+    let path = fields
+        .get("path")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("the folder payload has no text for path")?;
+    if !is_shown_path(path) {
+        return Err("the folder is not a path the dialog can show".into());
+    }
+    let canonical = format!(
+        "{{\"confirm\":true,\"path\":{}}}",
+        serde_json::to_string(path).unwrap_or_default()
+    );
+    Ok((CommandAsk::RootsAdd { path: path.into() }, canonical))
 }
 
 fn read_harness_apply(
@@ -672,34 +695,55 @@ fn is_pull_request_address(url: &str) -> bool {
 /// for anything else). Built here from the parsed message, never from text the webview sent.
 pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
     let pt = lang == "pt-BR";
-    let short = |id: &str| id.chars().take(8).collect::<String>();
-    // The fingerprint a person compares across two devices: 16 characters of the key id, in groups of four.
-    let fingerprint = |public_key: &str| {
-        let der = STANDARD.decode(public_key).unwrap_or_default();
-        let id: String = Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect();
-        id.chars().take(16).collect::<Vec<_>>().chunks(4).map(|c| c.iter().collect::<String>()).collect::<Vec<_>>().join("-")
+    let body = match ask.kind {
+        Kind::Command => command_text(ask, pt),
+        _ => request_text(ask, pt),
     };
-    // A key is shown by the id the device list shows: the SHA-256 of its public form, 8 characters.
-    let print = |public_key: &str| {
-        let der = STANDARD.decode(public_key).unwrap_or_default();
-        short(&Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect::<String>())
-    };
+    let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
+    (title.to_string(), body)
+}
+
+/// The first 8 characters of an id, as the device list shows them.
+fn short(id: &str) -> String {
+    id.chars().take(8).collect::<String>()
+}
+
+/// The fingerprint a person compares across two devices: 16 characters of the key id, in groups of four.
+fn fingerprint(public_key: &str) -> String {
+    let der = STANDARD.decode(public_key).unwrap_or_default();
+    let id: String = Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect();
+    id.chars().take(16).collect::<Vec<_>>().chunks(4).map(|c| c.iter().collect::<String>()).collect::<Vec<_>>().join("-")
+}
+
+/// A key is shown by the id the device list shows: the SHA-256 of its public form, 8 characters.
+fn print(public_key: &str) -> String {
+    let der = STANDARD.decode(public_key).unwrap_or_default();
+    short(&Sha256::digest(der).iter().map(|b| format!("{b:02x}")).collect::<String>())
+}
+
+/// What an allow carries besides the allow itself, in a sentence; empty when it carries nothing.
+fn also_words(also: Also, pt: bool) -> String {
     let mut saves = Vec::new();
-    if ask.also.rules {
+    if also.rules {
         saves.push(if pt { "salva regras de permissão" } else { "saves permission rules" });
     }
-    if ask.also.input {
+    if also.input {
         saves.push(if pt { "altera a entrada da ferramenta" } else { "changes the tool's input" });
     }
-    if ask.also.message {
+    if also.message {
         saves.push(if pt { "adiciona uma mensagem" } else { "adds a message" });
     }
-    let also = match (saves.is_empty(), pt) {
+    match (saves.is_empty(), pt) {
         (true, _) => String::new(),
         (false, false) => format!(" It also {}.", saves.join(", ")),
         (false, true) => format!(" Também {}.", saves.join(", ")),
-    };
-    let body = match (ask.kind, pt) {
+    }
+}
+
+/// The text of every confirmation that is not a command: an allow, a use of a secret, a device enrolled or removed.
+fn request_text(ask: &Ask, pt: bool) -> String {
+    let also = also_words(ask.also, pt);
+    match (ask.kind, pt) {
         (Kind::Approve, false) => format!(
             "Allow request {}?{also} Continue only if you just pressed Approve in Flightdeck.",
             ask.subject
@@ -744,131 +788,149 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
             ask.subject,
             if ask.also.session { "durante toda a sessão" } else { "uma vez" }
         ),
-        (Kind::Command, _) => match &ask.command {
-            Some(CommandAsk::PrMerge { url, head, method }) if pt => format!(
-                "Mesclar o pull request {url} no commit {} pelo método {method}? Continue só se você acabou de apertar Mesclar no Flightdeck.",
-                short(head)
-            ),
-            Some(CommandAsk::PrMerge { url, head, method }) => format!(
-                "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
-                short(head)
-            ),
-            Some(CommandAsk::Bypass) if pt => format!(
-                "Deixar as sessões do host {} rodarem sem nenhuma verificação de permissão? Continue só se você acabou de ligar isso no Flightdeck.",
-                short(&ask.host)
-            ),
-            Some(CommandAsk::Bypass) => format!(
-                "Let sessions on host {} run with every permission check off? Continue only if you just turned this on in Flightdeck.",
-                short(&ask.host)
-            ),
-            Some(CommandAsk::TrustProject { path }) if pt => format!(
-                "Confiar em uma pasta de projeto? Os hooks e os servidores dela, e os de tudo o que há dentro dela, vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck.\n\"{path}\""
-            ),
-            Some(CommandAsk::TrustProject { path }) => format!(
-                "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
-            ),
-            Some(CommandAsk::RootsAdd { path }) if pt => format!(
-                "Permitir sessões em uma pasta? Sessões do host {} poderão rodar nela e em tudo o que há dentro dela. Continue só se você acabou de apertar Adicionar às pastas permitidas no Flightdeck.\n\"{path}\"",
-                short(&ask.host)
-            ),
-            Some(CommandAsk::RootsAdd { path }) => format!(
-                "Allow sessions in a folder? Sessions on host {} will be able to run in it and in everything inside it. Continue only if you just pressed Add to allowed folders in Flightdeck.\n\"{path}\"",
-                short(&ask.host)
-            ),
-            Some(CommandAsk::ResumeApproval { session }) if pt => format!(
-                "Reativar a aprovação automática de uma sessão? Ela volta a aprovar pedidos sem que nenhuma pessoa os veja, depois de ter lido conteúdo de terceiros. Continue só se você acabou de apertar Reativar no Flightdeck.\n\"{session}\""
-            ),
-            Some(CommandAsk::ResumeApproval { session }) => format!(
-                "Turn automatic approval back on for a session? It will approve requests with no person seeing them, after it read third-party content. Continue only if you just pressed Resume in Flightdeck.\n\"{session}\""
-            ),
-            Some(CommandAsk::HarnessApply { path, parts, template, reformat }) => {
-                let names = parts
-                    .iter()
-                    .map(|part| match (part.as_str(), pt) {
-                        ("claudeMd", _) => "CLAUDE.md",
-                        ("permissions", true) => "permissões",
-                        (other, _) => other,
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let hooks = parts.iter().any(|part| part == "hooks");
-                let from = match (template, pt) {
-                    (Some(id), true) => format!(" do modelo \"{id}\""),
-                    (Some(id), false) => format!(" from template \"{id}\""),
-                    (None, _) => String::new(),
-                };
-                let runs = match (hooks, pt) {
-                    (true, true) => " Os hooks rodam como comandos em toda sessão do projeto.",
-                    (true, false) => " Hooks run as commands in every session of the project.",
-                    (false, _) => "",
-                };
-                let layout = match (*reformat, pt) {
-                    (true, true) => " O arquivo de configurações (settings) é reescrito com outro formato.",
-                    (true, false) => " The settings file is rewritten with another layout.",
-                    (false, _) => "",
-                };
-                if pt {
-                    format!(
-                        "Gravar a configuração do Claude Code de um projeto? O host {} grava: {names}{from}.{runs}{layout} Continue só se você acabou de apertar Aplicar a configuração no Flightdeck.\n\"{path}\"",
-                        short(&ask.host)
-                    )
-                } else {
-                    format!(
-                        "Write the Claude Code setup of a project? Host {} will write: {names}{from}.{runs}{layout} Continue only if you just pressed Apply the setup in Flightdeck.\n\"{path}\"",
-                        short(&ask.host)
-                    )
-                }
-            }
-            Some(CommandAsk::PluginInstall { plugin, dir, scope }) => {
-                let scope = plugin_scope_words(scope, pt);
-                match (plugin, dir, pt) {
-                    (Some(name), _, true) => format!(
-                        "Instalar um plugin? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar \"{name}\" {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.",
-                        short(&ask.host)
-                    ),
-                    (Some(name), _, false) => format!(
-                        "Install a plugin? A plugin runs code on this computer, in your sessions. Host {} will install \"{name}\" {scope}. Continue only if you just pressed Install in Flightdeck.",
-                        short(&ask.host)
-                    ),
-                    (None, path, true) => format!(
-                        "Instalar um plugin de uma pasta? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar o que está na pasta {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.\n\"{}\"",
-                        short(&ask.host),
-                        path.as_deref().unwrap_or_default()
-                    ),
-                    (None, path, false) => format!(
-                        "Install a plugin from a folder? A plugin runs code on this computer, in your sessions. Host {} will install what is in the folder {scope}. Continue only if you just pressed Install in Flightdeck.\n\"{}\"",
-                        short(&ask.host),
-                        path.as_deref().unwrap_or_default()
-                    ),
-                }
-            }
-            Some(CommandAsk::PluginUpdate { plugin }) if pt => format!(
-                "Atualizar um plugin? O plugin \"{plugin}\" vai passar para o conteúdo que você viu, e um plugin roda código neste computador, em suas sessões. O host {} faz a troca. Continue só se você acabou de apertar Atualizar no Flightdeck.",
-                short(&ask.host)
-            ),
-            Some(CommandAsk::PluginUpdate { plugin }) => format!(
-                "Update a plugin? The plugin \"{plugin}\" will change to the content you saw, and a plugin runs code on this computer, in your sessions. Host {} makes the change. Continue only if you just pressed Update in Flightdeck.",
-                short(&ask.host)
-            ),
-            Some(CommandAsk::MarketplaceAdd { source, scope }) => {
-                let scope = plugin_scope_words(scope.as_deref().unwrap_or("user"), pt);
-                if pt {
-                    format!(
-                        "Adicionar um marketplace de plugins? Os plugins dele passam a poder ser instalados, e um plugin roda código neste computador, em suas sessões. O host {} vai adicionar o marketplace {scope}. Continue só se você acabou de apertar Adicionar marketplace no Flightdeck.\n\"{source}\"",
-                        short(&ask.host)
-                    )
-                } else {
-                    format!(
-                        "Add a plugin marketplace? Its plugins become installable, and a plugin runs code on this computer, in your sessions. Host {} will add the marketplace {scope}. Continue only if you just pressed Add marketplace in Flightdeck.\n\"{source}\"",
-                        short(&ask.host)
-                    )
-                }
-            }
-            None => String::new(),
-        },
+        (Kind::Command, _) => String::new(),
+    }
+}
+
+/// The text of a signed command's confirmation, built from what its payload says.
+fn command_text(ask: &Ask, pt: bool) -> String {
+    match &ask.command {
+        Some(CommandAsk::PrMerge { url, head, method }) if pt => format!(
+            "Mesclar o pull request {url} no commit {} pelo método {method}? Continue só se você acabou de apertar Mesclar no Flightdeck.",
+            short(head)
+        ),
+        Some(CommandAsk::PrMerge { url, head, method }) => format!(
+            "Merge pull request {url} at commit {} by {method}? Continue only if you just pressed Merge in Flightdeck.",
+            short(head)
+        ),
+        Some(CommandAsk::Bypass) if pt => format!(
+            "Deixar as sessões do host {} rodarem sem nenhuma verificação de permissão? Continue só se você acabou de ligar isso no Flightdeck.",
+            short(&ask.host)
+        ),
+        Some(CommandAsk::Bypass) => format!(
+            "Let sessions on host {} run with every permission check off? Continue only if you just turned this on in Flightdeck.",
+            short(&ask.host)
+        ),
+        Some(CommandAsk::TrustProject { path }) if pt => format!(
+            "Confiar em uma pasta de projeto? Os hooks e os servidores dela, e os de tudo o que há dentro dela, vão rodar sem pedir confirmação. Continue só se você acabou de apertar Confiar no Flightdeck.\n\"{path}\""
+        ),
+        Some(CommandAsk::TrustProject { path }) => format!(
+            "Trust a project folder? Its hooks and servers, and those of everything inside it, will run with no prompt. Continue only if you just pressed Trust in Flightdeck.\n\"{path}\""
+        ),
+        Some(CommandAsk::RootsAdd { path }) if pt => format!(
+            "Permitir sessões em uma pasta? Sessões do host {} poderão rodar nela e em tudo o que há dentro dela. Continue só se você acabou de apertar Adicionar às pastas permitidas no Flightdeck.\n\"{path}\"",
+            short(&ask.host)
+        ),
+        Some(CommandAsk::RootsAdd { path }) => format!(
+            "Allow sessions in a folder? Sessions on host {} will be able to run in it and in everything inside it. Continue only if you just pressed Add to allowed folders in Flightdeck.\n\"{path}\"",
+            short(&ask.host)
+        ),
+        Some(CommandAsk::ResumeApproval { session }) if pt => format!(
+            "Reativar a aprovação automática de uma sessão? Ela volta a aprovar pedidos sem que nenhuma pessoa os veja, depois de ter lido conteúdo de terceiros. Continue só se você acabou de apertar Reativar no Flightdeck.\n\"{session}\""
+        ),
+        Some(CommandAsk::ResumeApproval { session }) => format!(
+            "Turn automatic approval back on for a session? It will approve requests with no person seeing them, after it read third-party content. Continue only if you just pressed Resume in Flightdeck.\n\"{session}\""
+        ),
+        Some(CommandAsk::HarnessApply { path, parts, template, reformat }) => {
+            harness_text(&ask.host, path, parts, template.as_deref(), *reformat, pt)
+        }
+        Some(CommandAsk::PluginInstall { plugin, dir, scope }) => {
+            plugin_install_text(&ask.host, plugin.as_deref(), dir.as_deref(), scope, pt)
+        }
+        Some(CommandAsk::PluginUpdate { plugin }) if pt => format!(
+            "Atualizar um plugin? O plugin \"{plugin}\" vai passar para o conteúdo que você viu, e um plugin roda código neste computador, em suas sessões. O host {} faz a troca. Continue só se você acabou de apertar Atualizar no Flightdeck.",
+            short(&ask.host)
+        ),
+        Some(CommandAsk::PluginUpdate { plugin }) => format!(
+            "Update a plugin? The plugin \"{plugin}\" will change to the content you saw, and a plugin runs code on this computer, in your sessions. Host {} makes the change. Continue only if you just pressed Update in Flightdeck.",
+            short(&ask.host)
+        ),
+        Some(CommandAsk::MarketplaceAdd { source, scope }) => {
+            marketplace_text(&ask.host, source, scope.as_deref().unwrap_or("user"), pt)
+        }
+        None => String::new(),
+    }
+}
+
+/// The setup write: the folder, the parts, the template, and whether hooks or a rewritten settings file are in.
+fn harness_text(host: &str, path: &str, parts: &[String], template: Option<&str>, reformat: bool, pt: bool) -> String {
+    let names = parts
+        .iter()
+        .map(|part| match (part.as_str(), pt) {
+            ("claudeMd", _) => "CLAUDE.md",
+            ("permissions", true) => "permissões",
+            (other, _) => other,
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    let hooks = parts.iter().any(|part| part == "hooks");
+    let from = match (template, pt) {
+        (Some(id), true) => format!(" do modelo \"{id}\""),
+        (Some(id), false) => format!(" from template \"{id}\""),
+        (None, _) => String::new(),
     };
-    let title = if pt { "Flightdeck: confirmar" } else { "Flightdeck: confirm" };
-    (title.to_string(), body)
+    let runs = match (hooks, pt) {
+        (true, true) => " Os hooks rodam como comandos em toda sessão do projeto.",
+        (true, false) => " Hooks run as commands in every session of the project.",
+        (false, _) => "",
+    };
+    let layout = match (reformat, pt) {
+        (true, true) => " O arquivo de configurações (settings) é reescrito com outro formato.",
+        (true, false) => " The settings file is rewritten with another layout.",
+        (false, _) => "",
+    };
+    if pt {
+        format!(
+            "Gravar a configuração do Claude Code de um projeto? O host {} grava: {names}{from}.{runs}{layout} Continue só se você acabou de apertar Aplicar a configuração no Flightdeck.\n\"{path}\"",
+            short(host)
+        )
+    } else {
+        format!(
+            "Write the Claude Code setup of a project? Host {} will write: {names}{from}.{runs}{layout} Continue only if you just pressed Apply the setup in Flightdeck.\n\"{path}\"",
+            short(host)
+        )
+    }
+}
+
+/// The plugin install: the plugin by id, or the folder it comes from, and the scope.
+fn plugin_install_text(host: &str, plugin: Option<&str>, dir: Option<&str>, scope: &str, pt: bool) -> String {
+    let scope = plugin_scope_words(scope, pt);
+    match (plugin, dir, pt) {
+        (Some(name), _, true) => format!(
+            "Instalar um plugin? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar \"{name}\" {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.",
+            short(host)
+        ),
+        (Some(name), _, false) => format!(
+            "Install a plugin? A plugin runs code on this computer, in your sessions. Host {} will install \"{name}\" {scope}. Continue only if you just pressed Install in Flightdeck.",
+            short(host)
+        ),
+        (None, path, true) => format!(
+            "Instalar um plugin de uma pasta? Um plugin roda código neste computador, em suas sessões. O host {} vai instalar o que está na pasta {scope}. Continue só se você acabou de apertar Instalar no Flightdeck.\n\"{}\"",
+            short(host),
+            path.unwrap_or_default()
+        ),
+        (None, path, false) => format!(
+            "Install a plugin from a folder? A plugin runs code on this computer, in your sessions. Host {} will install what is in the folder {scope}. Continue only if you just pressed Install in Flightdeck.\n\"{}\"",
+            short(host),
+            path.unwrap_or_default()
+        ),
+    }
+}
+
+/// The marketplace add: the source it is read from and the scope.
+fn marketplace_text(host: &str, source: &str, scope: &str, pt: bool) -> String {
+    let scope = plugin_scope_words(scope, pt);
+    if pt {
+        format!(
+            "Adicionar um marketplace de plugins? Os plugins dele passam a poder ser instalados, e um plugin roda código neste computador, em suas sessões. O host {} vai adicionar o marketplace {scope}. Continue só se você acabou de apertar Adicionar marketplace no Flightdeck.\n\"{source}\"",
+            short(host)
+        )
+    } else {
+        format!(
+            "Add a plugin marketplace? Its plugins become installable, and a plugin runs code on this computer, in your sessions. Host {} will add the marketplace {scope}. Continue only if you just pressed Add marketplace in Flightdeck.\n\"{source}\"",
+            short(host)
+        )
+    }
 }
 
 /// Where a plugin or a marketplace is kept, in words (the scope the daemon takes: user, project or local).
