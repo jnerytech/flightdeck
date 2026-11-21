@@ -161,7 +161,7 @@ const FOLDERS: Record<string, number> = {
 };
 
 /** The flags other commands read too: outside `project` they are theirs, so only a `project` verb checks them. */
-const SHARED_FLAGS = ["--name", "--confirm"];
+const SHARED_FLAGS = new Set(["--name", "--confirm"]);
 
 /** What is wrong with the operands of a `project` verb: a missing or extra folder, project, id or title. */
 function operandProblem(args: ProjectArgs): string | undefined {
@@ -194,7 +194,7 @@ function strayFlag(args: ProjectArgs, project: boolean): string | undefined {
     if (
       typed(args) &&
       !(project && verbs.includes(args.action ?? "")) &&
-      (project || !SHARED_FLAGS.includes(flag))
+      (project || !SHARED_FLAGS.has(flag))
     )
       return `${flag}: this flag only applies to flightdeckd project ${verbs.join(" or ")}`;
   return undefined;

@@ -31,8 +31,8 @@ export function parseShare(text: string): number | null | undefined {
 export function quotaProblem(args: QuotaArgs): string | undefined {
   if (args.hours !== undefined && !(args.command === "quota" && args.action === "history"))
     return "--hours: this flag only applies to flightdeckd quota history";
-  // `vault` has its own `--days` and checks it (vault-args.ts).
-  if (args.days !== undefined && args.command !== "usage" && args.command !== "vault")
+  // `vault` and `message` have their own `--days` and check it (vault-args.ts, message-args.ts).
+  if (args.days !== undefined && !["usage", "vault", "message"].includes(args.command))
     return "--days: this flag only applies to flightdeckd usage";
   return undefined;
 }

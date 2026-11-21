@@ -55,6 +55,7 @@ describe("--host on the command line (#3429)", () => {
       ["send", "api", "hello", "--host", "server"],
       ["approve", "r-1", "--host", "server"],
       ["deny", "r-1", "--host", "server", "--message", "no"],
+      ["message", "history", "--host", "server"],
     ]) {
       expect(() => parseArgs(argv)).not.toThrow();
       expect(parseArgs(argv)).toMatchObject({ host: "server" });
@@ -65,7 +66,7 @@ describe("--host on the command line (#3429)", () => {
       ["card", "list", "--host", "server"],
     ])
       expect(() => parseArgs(argv)).toThrow(
-        "--host: this flag only applies to flightdeckd host, sessions, session, snippet, ssh, terminal, watch, boardsync, review, runenv, changes, requests, send, approve, deny, vault, plugins, project and agentcfg",
+        "--host: this flag only applies to flightdeckd host, sessions, session, snippet, ssh, terminal, watch, boardsync, review, runenv, changes, mcp, requests, send, approve, deny, vault, plugins, project, agentcfg and message",
       );
     expect(() => parseArgs(["host", "--host"])).toThrow("--host needs a value");
   });

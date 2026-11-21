@@ -70,10 +70,12 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
     if (flag === "--name" && (args.command === "team" || args.command === "project")) continue;
     // `budget set` takes the scope too: `budgetProblem` checks it.
     if (flag === "--scope" && args.command === "budget") continue;
+    // `review add|update --body` is the comment's: `reviewProblem` checks it.
+    if (flag === "--body" && args.command === "review") continue;
     // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
     if (flag === "--model" && (args.command === "costs" || args.command === "roi")) continue;
-    // `snippet trust --hash` is the project file's: `snippetProblem` checks it.
-    if (flag === "--hash" && args.command === "snippet") continue;
+    // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`; `snippet trust --hash` is the project file's, checked by `snippetProblem`.
+    if (flag === "--hash" && (args.command === "runenv" || args.command === "snippet")) continue;
     if (args.command !== "persona" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}`;
   }

@@ -31,6 +31,9 @@ const KINDS: WebhookKind[] = [
 ];
 const TYPES: WebhookType[] = ["slack", "discord", "generic", "ntfy"];
 
+/** The types that take a second secret: a generic webhook's signing secret, an ntfy access token. */
+const takesSecret = (type: WebhookType) => type === "generic" || type === "ntfy";
+
 /** The URL field's help: what an edit keeps, or how an ntfy topic URL looks. */
 function urlHelp(editing: boolean, type: WebhookType, t: (key: Key) => string): string | undefined {
   if (editing) return t("webhooks.urlKeep");
@@ -67,6 +70,8 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
+  // The row whose test is out: its button shows it is sending.
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<WebhookTarget | null>(null);
   // #2677: what a row action did, said politely, and the problem of one that failed.
   const [said, setSaid] = useState("");
@@ -104,7 +109,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           hostScope: scope,
           kinds: draft.kinds,
           ...(draft.url.trim() ? { url: draft.url.trim() } : {}),
-          ...(draft.signing ? { signingSecret: draft.signing } : {}),
+          ...(draft.signing && takesSecret(draft.type) ? { signingSecret: draft.signing } : {}),
         });
       } else {
         await store.webhooks.targets.add({
@@ -114,11 +119,13 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           hostScope: scope,
           kinds: draft.kinds,
           clientId: null,
-          ...(draft.signing ? { signingSecret: draft.signing } : {}),
+          ...(draft.signing && takesSecret(draft.type) ? { signingSecret: draft.signing } : {}),
         });
       }
       setDraft(EMPTY);
       if (editing) {
+        // The last result was for the address before the edit.
+        setResults(({ [editing.id]: _stale, ...rest }) => rest);
         focusAfter.current = (section) => rowButton(section, editing.id, "edit");
         setSaid(t("webhooks.saved", { name: draft.name }));
       }
@@ -157,6 +164,9 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
       refresh();
       return;
     }
+    // A form that was editing this webhook goes back to an empty Add form, without its save error.
+    setDraft((current) => (current.id === target.id ? EMPTY : current));
+    setError(null);
     // The next row's first button, the one before it for the last row, else the Add form.
     focusAfter.current = (section) => {
       const rows = section.querySelectorAll<HTMLElement>("[data-webhook]");
@@ -173,7 +183,16 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
       : t(fallback, { name });
 
   const test = async (target: WebhookTarget) => {
-    const result = await store.webhooks.test(target.id);
+    setTestingId(target.id);
+    let result: { ok: boolean; httpStatus: number | null; at: string };
+    try {
+      result = await store.webhooks.test(target.id);
+    } catch {
+      // A call that never got an answer is shown like a refused one, not swallowed.
+      result = { ok: false, httpStatus: null, at: new Date().toISOString() };
+    } finally {
+      setTestingId(null);
+    }
     const time = new Date(result.at).toLocaleTimeString(t.lang);
     const status = result.httpStatus === null ? t("webhooks.noAnswer") : String(result.httpStatus);
     setResults((r) => ({
@@ -223,9 +242,12 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                             variant="ghost"
                             size="sm"
                             aria-label={t("webhooks.test", { name: target.name })}
+                            aria-busy={testing.busy && testingId === target.id ? true : undefined}
                             onClick={() => testing.run(() => test(target))}
                           >
-                            {t("webhooks.test", { name: "" }).trim()}
+                            {testing.busy && testingId === target.id
+                              ? t("webhooks.testing")
+                              : t("webhooks.test", { name: "" }).trim()}
                           </Button>
                           <Button
                             variant="ghost"
@@ -284,6 +306,9 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
           )}
           <output className="sr-only">{said}</output>
           {problem && <InlineNotice tone="error">{problem}</InlineNotice>}
+          <h4 className="font-medium text-sm">
+            {editing ? t("webhooks.edit", { name: editing.name }) : t("webhooks.add")}
+          </h4>
           <Form
             variant="inline"
             aria-label={editing ? t("webhooks.edit", { name: editing.name }) : t("webhooks.add")}
@@ -327,8 +352,15 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
                 />
               )}
             </Field>
-            {(draft.type === "generic" || draft.type === "ntfy") && (
-              <Field label={draft.type === "ntfy" ? t("webhooks.token") : t("webhooks.signing")}>
+            {takesSecret(draft.type) && (
+              <Field
+                label={draft.type === "ntfy" ? t("webhooks.token") : t("webhooks.signing")}
+                help={
+                  editing
+                    ? t(draft.type === "ntfy" ? "webhooks.tokenKeep" : "webhooks.signingKeep")
+                    : undefined
+                }
+              >
                 {(control) => (
                   <Input
                     {...control}

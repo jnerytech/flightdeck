@@ -1,5 +1,10 @@
 /** The words of the `flightdeckd` command line, parsed (issue #1593): what `parseArgs` returns. */
-import type { AgentCfgItem, BoardColumn, VaultRequester } from "@flightdeck/protocol";
+import type {
+  AgentCfgItem,
+  BoardColumn,
+  MessageStatus,
+  VaultRequester,
+} from "@flightdeck/protocol";
 import type { RuntimeKind } from "../../config.ts";
 import type { ProjectFields } from "../../projects/index.ts";
 import type { SessionStartOptions } from "../../sessions/index.ts";
@@ -94,6 +99,7 @@ export interface CliArgs {
     | "resume"
     | "publish-agent"
     | "trust"
+    | "toggle"
     | "diff"
     | "spec"
     | "review"
@@ -210,10 +216,15 @@ export interface CliArgs {
   /** `agentcfg list|read|write <project>` (#3617): the project word, `--kind`, `--path`, `--file`, `--expected-hash` and `--new`; `--origin` and `--confirm` are the shared fields. */
   agentcfgWords?: string[];
   agentcfgKind?: AgentCfgItem["kind"];
-  agentcfgPath?: string;
+  /** `--path`, of `agentcfg read|write` and `review add`. */
+  pathFlag?: string;
   agentcfgFile?: string;
   agentcfgHash?: string;
   agentcfgNew?: true;
+  /** `mcp list <project>`, `mcp status <session>` or `mcp test <project> <server>` (#3616): the operands; a bare `mcp` is the stdio server and has none. */
+  mcpWords?: string[];
+  /** `mcp toggle --enable|--disable` (#3616): the direction, moved off the terminal flags it shares. */
+  mcpEnabled?: boolean;
   /** `terminal close <terminal>`: the terminal to close, its id. */
   terminalId?: string;
   /** `terminal open|open-session --cols <n> --rows <n>`: the size the terminal opens at. */
@@ -246,8 +257,14 @@ export interface CliArgs {
   changesTitle?: string;
   changesBody?: string;
   changesConfirm?: true;
-  /** `review list <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
+  /** `review update|remove <comment>`: the comment's id. */
+  reviewComment?: string;
+  /** `review add --side new|old`: the side of the diff; `new` when absent. */
+  reviewSide?: "new" | "old";
+  /** `review add --lines <start>[-<end>]`: the lines the comment covers. */
+  reviewLines?: { start: number; end: number };
   /** `runenv config <project>` or `runenv get <card>`: the operand. */
   runenvTarget?: string;
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
@@ -287,6 +304,10 @@ export interface CliArgs {
   last?: number;
   /** `message team <team>`. */
   team?: string;
+  /** `message history` (#3622): `--team`, `--with-host` and `--status`; `--session`, `--days` and `--limit` are the shared fields. */
+  messageTeam?: string;
+  withHost?: string;
+  messageStatus?: MessageStatus;
   /** `team show <team>`. */
   teamId?: string;
   /** `team new <goal> --workers N | --worker <spec>... [--coordinator <spec>] [--check <command>...]`; `--name` is `personaName`, `--confirm` is `confirm`. */

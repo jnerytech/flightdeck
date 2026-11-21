@@ -114,6 +114,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 [Ler o capítulo.](pt-BR/flightdeckd-review-commands.md) Suas seções:
 
 - [fd review](pt-BR/flightdeckd-review-commands.md#fd-review)
+- [Escrever os comentários](pt-BR/flightdeckd-review-commands.md#escrever-os-comentários)
 
 ## Comandos do flightdeckd: o ambiente de execução de um cartão
 
@@ -126,6 +127,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 [Ler o capítulo.](pt-BR/flightdeckd-changes-commands.md) Suas seções:
 
 - [fd changes](pt-BR/flightdeckd-changes-commands.md#fd-changes)
+
+## Comandos do flightdeckd: os servidores MCP de um projeto
+
+[Ler o capítulo.](pt-BR/flightdeckd-mcp-commands.md) Suas seções:
+
+- [fd mcp](pt-BR/flightdeckd-mcp-commands.md#fd-mcp)
 
 ## Aprovações e permitir sempre
 
@@ -183,7 +190,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [O run.yaml](pt-BR/run-environment.md#o-runyaml)
 - [Confiança](pt-BR/run-environment.md#confiança)
 - [Portas](pt-BR/run-environment.md#portas)
-- [Run e Stop](pt-BR/run-environment.md#run-e-stop)
+- [Executar e Parar](pt-BR/run-environment.md#executar-e-parar)
 - [Preview](pt-BR/run-environment.md#preview)
 
 ## Workflows

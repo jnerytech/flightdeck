@@ -15,14 +15,16 @@ import type { CliArgs, ServiceAction } from "./cli-args.ts";
 import { HOST_COMMANDS, JSON_COMMANDS, refuseOutside } from "./command-sets.ts";
 import { costsProblem } from "./costs-args.ts";
 import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
-import { historyProblem } from "./history-args.ts";
+import { historyProblem, readHistory } from "./history-args.ts";
+import { mcpProblem, readMcp, takeMcpFlags } from "./mcp-args.ts";
+import { MESSAGE_ADMIN_VERBS, MESSAGE_FLAGS, messageProblem } from "./message-args.ts";
 import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
-import { readReview } from "./review-args.ts";
+import { REVIEW_FLAGS, readReview, reviewProblem } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
-import { readRunenv } from "./runenv-args.ts";
+import { readRunenv, runenvProblem } from "./runenv-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { OFF_FLAG, readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
@@ -118,7 +120,7 @@ const HANDLERS: Record<string, Handler> = {
   setup: setCommand("setup"),
   doctor: setCommand("doctor"),
   channel: setCommand("channel"),
-  mcp: setCommand("mcp"),
+  mcp: readMcp,
   statusline: setCommand("statusline"),
   service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {
@@ -158,26 +160,7 @@ const HANDLERS: Record<string, Handler> = {
     ["install", "uninstall", "status"],
     "invalid telemetry action",
   ),
-  history: (args, reader) => {
-    args.command = "history";
-    const action = subAction(
-      reader,
-      ["reindex", "list", "search", "get", "tool", "resume", "watch"] as const,
-      "invalid history action",
-    );
-    args.action = action;
-    if (action === "search") args.query = operand(reader, "the text");
-    if (action === "get" || action === "tool" || action === "resume")
-      args.claudeSessionId = operand(reader, "the session");
-    if (action === "tool") {
-      args.uuid = operand(reader, "the message");
-      const word = operand(reader, "the tool call index");
-      const index = /^\d{1,4}$/.test(word) ? Number(word) : -1;
-      if (index < 0 || index > 1000)
-        throw new Error(`history tool: the index is a whole number from 0 to 1000\n${USAGE}`);
-      args.index = index;
-    }
-  },
+  history: readHistory,
   vault: readVault,
   plugins: readPlugins,
   project: readProject,
@@ -204,7 +187,7 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "message";
     const action = subAction(
       reader,
-      ["list", "send", "idle", "read", "team"],
+      ["list", "send", "idle", "read", "team", ...MESSAGE_ADMIN_VERBS],
       "invalid message action",
     );
     args.action = action as never;
@@ -587,10 +570,12 @@ const HANDLERS: Record<string, Handler> = {
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
   ...BOARDSYNC_FLAGS,
+  ...REVIEW_FLAGS,
   ...CHANGES_FLAGS,
   "--off": OFF_FLAG,
   ...PROJECT_FLAGS,
   ...AGENTCFG_FLAGS,
+  ...MESSAGE_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
   }),
@@ -703,20 +688,21 @@ function refuseStrayFlags(args: CliArgs): void {
   takeTerminalFlags(args);
   takeChangesFlags(args);
   takeWatchFlags(args);
+  takeMcpFlags(args);
   if (
-    !["requests", "message", "autoapprove", "vault"].includes(args.command) &&
+    !["requests", "message", "autoapprove", "vault", "mcp"].includes(args.command) &&
     args.session !== undefined
   )
     throw new Error(
-      `--session: this flag only applies to flightdeckd requests, message, autoapprove and vault\n${USAGE}`,
+      `--session: this flag only applies to flightdeckd requests, message, autoapprove, vault and mcp toggle\n${USAGE}`,
     );
   // `history`, `vault` and `snippet` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts).
   if (
-    !["autoapprove", "history", "vault", "snippet"].includes(args.command) &&
+    !["autoapprove", "history", "vault", "snippet", "message"].includes(args.command) &&
     args.limit !== undefined
   )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history, vault and snippet\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault and snippet\n${USAGE}`,
     );
 }
 
@@ -748,8 +734,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     sshProblem(args) ??
     terminalProblem(args) ??
     agentcfgProblem(args) ??
+    messageProblem(args) ??
+    mcpProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
+    reviewProblem(args) ??
+    runenvProblem(args) ??
     changesProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??

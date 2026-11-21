@@ -14,7 +14,7 @@ const POWER = ["save", "trust", "use"];
  * A word the shell expands may be `--select` (`S=--select; fd snippet import-history $S abc`), and a
  * runner's words have lost their quotes, so there a `$`, a glob or a brace is the sign, as for `history resume` (#3570).
  */
-export function changesASnippet(prog: string, args: string[]): boolean {
+function changesASnippet(prog: string, args: string[]): boolean {
   const expands = (w: string) => (isCliProgram(prog) ? w.includes(EXPANDS) : /[$`*?[{]/.test(w));
   return runsFlightdeckWords(prog, args, ([command, action], own) => {
     if (command !== "snippet") return false;
@@ -25,3 +25,15 @@ export function changesASnippet(prog: string, args: string[]): boolean {
     );
   });
 }
+
+/** The `snippet` verbs that are high from a shell, with what they are stopped for. */
+export const SNIPPET_RULES: Array<{
+  when: (prog: string, args: string[]) => boolean;
+  reason: (prog: string) => string;
+}> = [
+  {
+    when: changesASnippet,
+    reason: () =>
+      "changes what a snippet makes the host run, without the person choosing it in the app (flightdeckd snippet save, trust, use or import-history --select)",
+  },
+];

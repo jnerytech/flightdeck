@@ -5,11 +5,8 @@
  */
 import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
-import { AGENTCFG_RULES } from "./agentcfg-risk.ts";
-import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
-import { CHANGES_RULES } from "./changes-risk.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
-import { PROJECT_RULES } from "./project-risk.ts";
+import { FLIGHTDECK_VERB_RULES } from "./flightdeck-verb-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -31,7 +28,6 @@ import {
   startsCli,
   unquoted,
 } from "./shell-call.ts";
-import { changesASnippet } from "./snippet-risk.ts";
 import { enablesTerminals, opensATerminal } from "./terminal-risk.ts";
 import { changesAWatch } from "./watch-risk.ts";
 
@@ -428,11 +424,6 @@ const DANGEROUS: Array<{
       "adds, changes or removes an ssh destination, or turns ~/.ssh/config hosts into destinations, without the person choosing it in the app (flightdeckd ssh add, edit, remove or import apply)",
   },
   {
-    when: changesASnippet,
-    reason: () =>
-      "changes what a snippet makes the host run, without the person choosing it in the app (flightdeckd snippet save, trust, use or import-history --select)",
-  },
-  {
     when: opensATerminal,
     reason: () =>
       "opens a terminal on the host, a shell that runs what is typed into it, without the person opening it in the app (flightdeckd terminal open or open-session)",
@@ -471,10 +462,7 @@ const DANGEROUS: Array<{
     reason: () =>
       "ends a session the person did not end, drops its queued messages and its open permission requests, and skips the team's guard on a coordinator (flightdeckd session close)",
   },
-  ...PROJECT_RULES,
-  ...AGENTCFG_RULES,
-  ...BOARDSYNC_RULES,
-  ...CHANGES_RULES,
+  ...FLIGHTDECK_VERB_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>
@@ -724,32 +712,34 @@ export class RiskClassifier {
     if (/\bbase64\b[^|;&\n]*\s(-d|-D|--decode)\b[^|;&\n]*\|/.test(command)) {
       out.push(["high", "base64 -d em pipe"]);
     }
-    // `>`, `>>`, `&>`, `&>>`, `>&file`, `>|file` and `<>file`; `>&2` and `>&-` copy or close a
-    // descriptor. The lookbehind (not a consumed character) lets a second adjacent redirect, `a>b>c`,
-    // match too, unless that first `>` is escaped. The target is one shell word: quoted and bare
-    // parts glued together (#2496).
-    for (const match of command.matchAll(REDIRECT)) {
-      const word = match[2] as string;
-      const target = word.replace(/["']/g, "");
-      if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) continue;
-      if (SINKS.has(target.toLowerCase())) continue;
-      // A `>` that is only quoted text can start a match whose "quoted target" runs over a real
-      // redirect further on; a quoted part with a shell operator in it is never a plain name.
-      const spans = /"[^"]*[;&|<>\n]|'[^']*[;&|<>\n]/.test(word);
-      if (
-        spans ||
-        /[$%{*?[]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) ||
-        !this.insideAny(target, cwd)
-      ) {
-        out.push(["high", "redirecionamento para fora do cwd"]);
-      } else if (redirectsToControlFile(target, cwd, this.opts.home)) {
-        out.push(["high", CONTROL_WRITE]);
-      }
-    }
+    // A second adjacent redirect, `a>b>c`, matches too (a lookbehind), unless that first `>` is escaped.
+    for (const match of command.matchAll(REDIRECT)) out.push(...this.redirectRisks(match, cwd));
     if (words(command).some(credential)) out.push(["high", "caminho de credencial"]);
     if (words(command).some(opencodeConfig)) out.push(["high", "writes OpenCode's configuration"]);
     if (this.extra.some((re) => re.test(command))) out.push(["high", "padrão de risk.extraHigh"]);
     return out;
+  }
+
+  /**
+   * The risk of one redirection: `>`, `>>`, `&>`, `&>>`, `>&file`, `>|file` and `<>file`; `>&2` and `>&-` copy or
+   * close a descriptor. The target is one shell word: quoted and bare parts glued together (#2496).
+   */
+  private redirectRisks(match: RegExpMatchArray, cwd: string): Candidate[] {
+    const word = match[2] as string;
+    const target = word.replace(/["']/g, "");
+    if (match[1] === "&" && /^(\d+-?|-)$/.test(target)) return [];
+    if (SINKS.has(target.toLowerCase())) return [];
+    // A `>` that is only quoted text can start a match whose "quoted target" runs over a real
+    // redirect further on; a quoted part with a shell operator in it is never a plain name.
+    const spans = /"[^"]*[;&|<>\n]|'[^']*[;&|<>\n]/.test(word);
+    if (
+      spans ||
+      /[$%{*?[]|^\(|^~(?![\\/]|$)|^!|^=\(/.test(target) ||
+      !this.insideAny(target, cwd)
+    ) {
+      return [["high", "redirecionamento para fora do cwd"]];
+    }
+    return redirectsToControlFile(target, cwd, this.opts.home) ? [["high", CONTROL_WRITE]] : [];
   }
 
   private network(toolName: string, input: Record<string, unknown>): boolean {
