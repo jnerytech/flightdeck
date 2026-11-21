@@ -1,5 +1,6 @@
 import { AGENTCFG_RULES } from "./agentcfg-risk.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
+import { MCP_RULES } from "./mcp-risk.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
 import { RUNENV_RULES } from "./runenv-risk.ts";
 import { SNIPPET_RULES } from "./snippet-risk.ts";
@@ -13,5 +14,6 @@ export const NOUN_RULES = [
   ...AGENTCFG_RULES,
   ...BOARDSYNC_RULES,
   ...RUNENV_RULES,
+  ...MCP_RULES,
   ...SNIPPET_RULES,
 ];

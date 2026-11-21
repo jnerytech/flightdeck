@@ -58,3 +58,17 @@ export const previewLine = (preview: McpPreview): string => {
   if (preview.command === undefined) return "nothing to run: the server has no command and no link";
   return `would run: ${[preview.command, ...(preview.args ?? [])].join(" ")}`;
 };
+
+/** What a started server offers, with both lists a script reads. */
+export const testJson = (result: { tools: string[]; resources: string[] }) => ({
+  tools: result.tools,
+  resources: result.resources,
+});
+
+const offered = (label: string, names: string[]) =>
+  `${label}: ${names.length === 0 ? "none" : names.join(", ")}`;
+
+export const testLines = (result: { tools: string[]; resources: string[] }): string[] => [
+  offered("tools", result.tools),
+  offered("resources", result.resources),
+];
