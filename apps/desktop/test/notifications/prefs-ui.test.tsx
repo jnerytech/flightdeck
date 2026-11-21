@@ -310,8 +310,10 @@ describe("notify-prefs-ui: the bell can mark an entry unread (issue #149)", () =
       fireEvent.click(screen.getByRole("button", { name: /^Notificações/ }));
     });
     const panelEl = await screen.findByRole("dialog");
-    await click(within(panelEl).getByRole("button", { name: "Marcar como não lida" }));
+    await click(within(panelEl).getByRole("button", { name: "Marcar Sessão A como não lida" }));
     expect(store.getState().inbox[0]?.read).toBe(false);
-    expect(within(panelEl).queryByRole("button", { name: "Marcar como não lida" })).toBeNull();
+    expect(
+      within(panelEl).queryByRole("button", { name: "Marcar Sessão A como não lida" }),
+    ).toBeNull();
   });
 });

@@ -319,7 +319,7 @@ describe("host-offline-ui", () => {
 
   test("a host with only the generic hint has no command, so no copy button (#3694)", async () => {
     await banner({ ...OFFLINE, hostInfo: { os: "darwin" } });
-    expect(screen.queryAllByRole("button", { name: /^Copiar o comando/ }).length).toBe(0);
+    expect(screen.queryAllByRole("button", { name: /^Copiar o comando/ })).toHaveLength(0);
   });
 
   test("a refused connection to a non-loopback address says the daemon may have refused this machine", async () => {
