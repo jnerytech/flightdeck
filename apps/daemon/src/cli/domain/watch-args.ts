@@ -9,7 +9,7 @@ import { WatchSettings } from "@flightdeck/protocol";
 import type { WatchCliArgs } from "../../watch/index.ts";
 import { type ArgReader, operand, subAction } from "./arg-reader.ts";
 import type { CliArgs } from "./cli-args.ts";
-import { type Handler, setFlag, setValue } from "./flag-handlers.ts";
+import { type Handler, setFlag } from "./flag-handlers.ts";
 import { USAGE } from "./usage.ts";
 
 const WATCH_ACTIONS = [
@@ -170,6 +170,15 @@ const SETTINGS_ONLY = [
 ];
 for (const flag of SETTINGS_ONLY) TAKEN_BY[flag] = ["settings"];
 
+/** `--enable` and `--disable` of the terminal command are the switch of `watch`: one of them, and not with `--default`. */
+function takeSwitch(args: CliArgs, flags: string[]): void {
+  if (!args.terminalEnable && !args.terminalDisable) return;
+  if ((args.terminalEnable && args.terminalDisable) || args.watchSwitch !== undefined)
+    throw new Error(`--enable, --disable or --default, not more than one\n${USAGE}`);
+  flags.push(args.terminalEnable ? "--enable" : "--disable");
+  args.watchSwitch = args.terminalEnable === true;
+}
+
 /**
  * On `watch`, the flags other commands share move into the fields of this one, and the originals go, so
  * no other command's check refuses them.
@@ -195,14 +204,7 @@ export function takeWatchFlags(args: CliArgs): void {
     flags.push("--rounds");
     args.watchRounds = args.rounds;
   }
-  if (args.terminalEnable || args.terminalDisable) {
-    if (args.terminalEnable && args.terminalDisable)
-      throw new Error(`--enable, --disable or --default, not more than one\n${USAGE}`);
-    if (args.watchSwitch !== undefined)
-      throw new Error(`--enable, --disable or --default, not more than one\n${USAGE}`);
-    flags.push(args.terminalEnable ? "--enable" : "--disable");
-    args.watchSwitch = args.terminalEnable === true;
-  }
+  takeSwitch(args, flags);
   if (flags.length > 0) args.watchFlags = flags;
   if (Object.keys(patch).length > 0) args.watchPatch = patch;
   delete args.teamChecks;
@@ -214,12 +216,15 @@ export function takeWatchFlags(args: CliArgs): void {
 }
 
 /** The flag that sets a field of the patch, for a refusal that names it. */
-const flagOf = (field: string): string =>
-  field === "checks"
-    ? "--check"
-    : field === "enabled"
-      ? "--enable"
-      : `--${field.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+const FLAG_NAMES = new Map([
+  ["checks", "--check"],
+  ["enabled", "--enable"],
+]);
+
+const flagOf = (field: string): string => {
+  const kebab = field.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+  return FLAG_NAMES.get(field) ?? `--${kebab}`;
+};
 
 /** What is wrong with the watch words and flags, or undefined. */
 export function watchProblem(args: CliArgs): string | undefined {
