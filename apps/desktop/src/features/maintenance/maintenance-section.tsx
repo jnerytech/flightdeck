@@ -1,9 +1,8 @@
 import type { MaintenanceStatus, PruneCounts } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
-import { Facts, Panel } from "@/shared/layout/index.ts";
+import { ErrorState, Facts, Panel } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -30,15 +29,29 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
   const [status, setStatus] = useState<MaintenanceStatus | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const refresh = useCallback(async () => {
-    const next = await store.hostCommand(hostId, "maintenance.status", {});
-    if (next) setStatus(next);
-  }, [store, hostId]);
+  // The real cleanup is going on: Clean is busy, so a second click starts no second one.
+  const [cleaning, setCleaning] = useState(false);
+  // The status was refused and none is on screen: the panel says so and Try again asks once more.
+  const [failed, setFailed] = useState(false);
+  // `own`: the load is the panel's own (first or Try again), which has a Try again, so the toast
+  // offers none that would throw the answer away; after an action the facts shown stay and the
+  // toast keeps its retry.
+  const refresh = useCallback(
+    async (own = false) => {
+      // The error stays up while Try again runs, so the keyboard focus is not dropped with it.
+      const next = await store.hostCommand(hostId, "maintenance.status", {}, { retry: !own });
+      setFailed(!next);
+      if (next) setStatus(next);
+    },
+    [store, hostId],
+  );
   useEffect(() => {
-    void refresh();
+    void refresh(true);
   }, [refresh]);
 
   const backup = async () => {
+    // The last outcome goes first, so a repeated one is announced again and a refusal leaves none.
+    setResult(null);
     const made = await store.hostCommand(hostId, "maintenance.backup", {});
     // Status first, so the message and the new numbers show up together.
     await refresh();
@@ -46,8 +59,15 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
   };
   const prune = async (dryRun: boolean) => {
     setConfirming(false);
-    const counts = await store.hostCommand(hostId, "maintenance.prune", { dryRun });
-    await refresh();
+    setResult(null);
+    if (!dryRun) setCleaning(true);
+    let counts: PruneCounts | null;
+    try {
+      counts = await store.hostCommand(hostId, "maintenance.prune", { dryRun });
+      await refresh();
+    } finally {
+      setCleaning(false);
+    }
     if (counts) {
       setResult(
         t(dryRun ? "maintenance.wouldDelete" : "maintenance.deleted", {
@@ -91,10 +111,19 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
               { id: "lastCleanup", label: t("maintenance.fields.lastCleanup"), value: cleanupText },
             ]}
           />
+        ) : failed ? (
+          <ErrorState
+            message={t("maintenance.loadFailed")}
+            retryLabel={t("maintenance.retry")}
+            onRetry={() => void refresh(true)}
+          />
         ) : (
           <p className="text-muted-foreground text-sm">{t("maintenance.asking")}</p>
         )}
-        {result && <p className="text-sm">{result}</p>}
+        {/* Always in the tree (empty, it takes no room but is not hidden), so a screen reader hears the outcome when it fills in. */}
+        <p role="status" className="text-sm empty:sr-only">
+          {result}
+        </p>
         <div className="flex gap-2">
           <ActionButton variant="outline" size="sm" onClick={() => backup()}>
             {t("maintenance.backup")}
@@ -102,9 +131,14 @@ export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: st
           <ActionButton variant="outline" size="sm" onClick={() => prune(true)}>
             {t("maintenance.dry")}
           </ActionButton>
-          <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
+          <ActionButton
+            variant="destructive"
+            size="sm"
+            pending={cleaning}
+            onClick={() => setConfirming(true)}
+          >
             {t("maintenance.clean")}
-          </Button>
+          </ActionButton>
         </div>
       </Panel>
       {confirming && (
