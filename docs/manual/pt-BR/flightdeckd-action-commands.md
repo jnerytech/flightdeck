@@ -67,4 +67,5 @@ sido feita: rode `fd action list --plain` antes de tentar de novo.
 
 Quando uma sessão roda `fd action save`, `trust` ou `remove` no próprio shell, o pedido é de **risco alto** e vem para você:
 escreveria um comando que roda com segredos, deixaria um rodar ou apagaria um. `list`, `runs` e `run` continuam comandos
-comuns de shell.
+comuns de shell. No `save` o pedido mostra o caminho do arquivo de definição, não o que há nele, e uma sessão pode mudar o arquivo
+depois da sua resposta: abra o arquivo e negue se não puder ler o que ele roda.

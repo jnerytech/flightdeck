@@ -80,10 +80,15 @@ async function changedRefusal(
   name: string,
   scope: { projectId?: string },
 ): Promise<CliResult> {
-  const { actions } = await daemon.call("actions.list", scope);
-  const current = actions.find((action) => action.name === name);
-  const now = current === undefined ? "" : `; its hash now is ${current.hash}`;
-  return failure(1, `${refusal.detail}${now}`);
+  try {
+    const { actions } = await daemon.call("actions.list", scope);
+    const current = actions.find((action) => action.name === name);
+    const now = current === undefined ? "" : `; its hash now is ${current.hash}`;
+    return failure(1, `${refusal.detail}${now}`);
+  } catch {
+    // The trust was refused, so nothing changed: a lookup that failed must not read as an unsure write.
+    return failure(1, refusal.detail);
+  }
 }
 
 export async function runActionVerbCli(

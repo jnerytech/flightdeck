@@ -28,7 +28,7 @@ export function readAction(args: CliArgs, reader: ArgReader): void {
 /** The flags of `action`: `--plain` prints lines for a person, `--secret-ids` is the secrets `save` may name. */
 export const ACTION_FLAGS: Record<string, Handler> = {
   "--secret-ids": setValue((args, v) => {
-    args.secretIds = v.split(",");
+    args.secretIds = v.split(",").map((id) => id.trim());
   }),
   "--plain": setFlag((args) => {
     args.plain = true;

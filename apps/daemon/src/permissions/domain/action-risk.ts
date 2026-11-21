@@ -5,7 +5,7 @@ const CHANGES = new Set(["save", "trust", "remove"]);
 /**
  * `action save` declares a command that runs with secrets in its environment, and the daemon trusts what is
  * saved this way as it is saved; `trust` lets a versioned command run; `remove` deletes one (#3629). A session
- * must not do any of them for the person, who reads the command in the app first. `--hash` is only a flag the
+ * must not do any of them without the person: the prompt shows the command line (for `save`, the path of the definition file, not its content), so the person opens the file first. `--hash` is only a flag the
  * caller types, so it proves nothing (#3439). The reads (`list`, `runs`) change nothing, and `run` is the
  * `flightdeck` mod's own way to start a trusted action: they stay ordinary shell commands.
  */

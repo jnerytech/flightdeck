@@ -65,4 +65,5 @@ or may not have been made: run `fd action list --plain` before trying again.
 ### From a session
 
 When a session runs `fd action save`, `trust` or `remove` in its own shell, the request is **high risk** and goes to you: it
-would write a command that runs with secrets, let one run, or delete one. `list`, `runs` and `run` stay ordinary shell commands.
+would write a command that runs with secrets, let one run, or delete one. `list`, `runs` and `run` stay ordinary shell commands. For `save` the request shows the path of the definition file, not what is in it, and
+a session can change the file after you answer: open the file, and deny if you cannot read what it runs.
