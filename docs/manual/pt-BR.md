@@ -72,7 +72,6 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 - [fd requests](pt-BR/flightdeckd-commands.md#fd-requests)
 - [fd approve e fd deny](pt-BR/flightdeckd-commands.md#fd-approve-e-fd-deny)
 - [fd send](pt-BR/flightdeckd-commands.md#fd-send)
-- [fd agentcfg](pt-BR/flightdeckd-commands.md#fd-agentcfg)
 
 ## Comandos do flightdeckd: uma sessão
 
@@ -85,6 +84,12 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 [Ler o capítulo.](pt-BR/flightdeckd-ssh-commands.md) Suas seções:
 
 - [fd ssh](pt-BR/flightdeckd-ssh-commands.md#fd-ssh)
+
+## Comandos do flightdeckd: arquivos de configuração de agentes
+
+[Ler o capítulo.](pt-BR/flightdeckd-agentcfg-commands.md) Suas seções:
+
+- [fd agentcfg](pt-BR/flightdeckd-agentcfg-commands.md#fd-agentcfg)
 
 ## Comandos do flightdeckd: terminais
 

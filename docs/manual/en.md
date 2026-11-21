@@ -79,7 +79,6 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 - [fd requests](en/flightdeckd-commands.md#fd-requests)
 - [fd approve and fd deny](en/flightdeckd-commands.md#fd-approve-and-fd-deny)
 - [fd send](en/flightdeckd-commands.md#fd-send)
-- [fd agentcfg](en/flightdeckd-commands.md#fd-agentcfg)
 
 ## flightdeckd commands: one session
 
@@ -92,6 +91,12 @@ binary lives in `~/.flightdeck/bin`, which the installer does not add to the `PA
 [Read the chapter.](en/flightdeckd-ssh-commands.md) Its sections:
 
 - [fd ssh](en/flightdeckd-ssh-commands.md#fd-ssh)
+
+## flightdeckd commands: agent setup files
+
+[Read the chapter.](en/flightdeckd-agentcfg-commands.md) Its sections:
+
+- [fd agentcfg](en/flightdeckd-agentcfg-commands.md#fd-agentcfg)
 
 ## flightdeckd commands: terminals
 
