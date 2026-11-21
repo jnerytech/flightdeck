@@ -32,5 +32,5 @@ export const validPort = (text: string): boolean => {
 /** A keep-alive is empty (no option) or a whole number of 0 or more. */
 export const validAlive = (text: string): boolean => {
   const value = text.trim();
-  return value === "" || WHOLE.test(value);
+  return value === "" || (WHOLE.test(value) && Number.isSafeInteger(Number(value)));
 };
