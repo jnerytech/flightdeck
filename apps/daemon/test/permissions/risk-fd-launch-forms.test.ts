@@ -102,6 +102,12 @@ describe("risk rules: the CLI reached without its name in the line (#3566)", () 
         ["bun --bun start persona remove qa", "fd persona remove qa"],
         ["sh -c 'bun --cwd d start persona remove qa'", "fd persona remove qa"],
         ["bunx --bun --cwd d flightdeckd mcp remove p f --confirm", "fd mcp remove p f --confirm"],
+        ['bun --cwd "my dir" start persona remove qa', "fd persona remove qa"],
+        ["bun --cwd 'my dir' start persona remove qa", "fd persona remove qa"],
+        ["bun --cwd=my\\ dir start persona remove qa", "fd persona remove qa"],
+        ["bun --cwd my\\ dir start changes revert s a.ts", "fd changes revert s a.ts"],
+        ["bun $OPT start persona remove qa", "fd persona remove qa"],
+        ['bun "$OPT" start persona remove qa', "fd persona remove qa"],
       ]),
     ).toEqual([]);
   });
