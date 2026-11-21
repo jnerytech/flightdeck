@@ -105,10 +105,12 @@ const parity = parityCheck({
   cliCommands: Object.keys((await import("../apps/daemon/src/cli/commands.ts")).COMMANDS),
 });
 // The gaps the head added since the merge base (#3759): the table at the base is the baseline, so no file to rewrite.
-const addedGaps = newGaps(
-  mergeBase ? git(["show", `${mergeBase}:docs/cli-parity.json`]) : null,
-  parity.gaps,
-);
+const parityAtBase = mergeBase ? git(["show", `${mergeBase}:docs/cli-parity.json`]) : null;
+if (parityAtBase === null)
+  console.warn(
+    "arch-report: no docs/cli-parity.json at the merge base with main: the CLI parity gaps are not compared",
+  );
+const addedGaps = newGaps(parityAtBase, parity.gaps);
 const rows = ratchetRows({
   cliParityGaps: { today: parity.gaps.length, baseline: parity.gaps.length - addedGaps.length },
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
