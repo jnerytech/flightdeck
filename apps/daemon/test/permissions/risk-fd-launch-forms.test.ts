@@ -198,6 +198,7 @@ describe("the nouns whose verb the shell rules read (#3627)", () => {
       "ssh",
       "team",
       "watch",
+      "workflow",
       "worktree",
     ];
     expect([...VERB_NOUNS].sort()).toEqual([...nouns].sort());
