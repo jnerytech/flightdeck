@@ -39,11 +39,12 @@ export function wireVaultApprovals(
 /** Builds the secrets' slice (#1596): the list in the app's state follows the vault's. */
 export function wireVaultSecrets(
   kernel: AppKernel<VaultState>,
-  deps: Omit<VaultSecretsCore, "secretsChanged">,
+  deps: Omit<VaultSecretsCore, "secretsChanged" | "t">,
 ): VaultSecretsSlice {
   return new VaultSecretsSlice({
     ...deps,
     secretsChanged: () => kernel.update({ secrets: deps.vault.list() }),
+    t: () => kernel.t(),
   });
 }
 

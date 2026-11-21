@@ -29,6 +29,8 @@ export const vault = {
     hidesSoon: "Hides in {seconds} seconds",
     hidden: "Hidden",
     copy: "Copy",
+    noValue: "{name} has no value in the system vault. Remove the secret and add it again.",
+    readFailed: "The system vault did not give the value of {name}. Try again.",
     copyFor: "Copy {name}",
     remove: "Remove",
     removeFor: "Remove {name}",

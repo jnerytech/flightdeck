@@ -117,7 +117,7 @@ export const VaultPage = memo(function VaultPage(props: {
 
   const reveal = async (secret: SecretMeta) => {
     setAsking(null);
-    const value = await store.vault.value(secret.id);
+    const value = await store.secrets.value(secret.id);
     if (value !== null) setShown({ id: secret.id, value });
   };
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { type VaultSecretsCore, VaultSecretsSlice } from "../../src/features/vault/index.ts";
 import type { SecretMeta } from "../../src/features/vault/vault.ts";
+import { translator } from "../../src/i18n/index.ts";
 
 const META = {
   id: "s1",
@@ -54,6 +55,7 @@ function slice(
     fail: (error) => {
       events.push(`fail ${(error as Error).message}`);
     },
+    t: () => translator("en"),
   };
   return { secrets: new VaultSecretsSlice(core), events, saved };
 }

@@ -226,7 +226,7 @@ export function composeVault(kernel: AppKernel<AppState>, deps: VaultDeps): Vaul
       workFactor: () => options.vaultWorkFactor,
       saveFile: (name, text) => platform.saveFile(name, text),
       pickFile: () => platform.vault.pickFile(),
-      fail: (error) => kernel.fail(error),
+      fail: (error, text) => kernel.fail(error, text),
       copyText: deps.copyText,
       clearClipboardIn: (ms) => {
         setTimeout(() => void platform.copyText("").catch(() => {}), ms);
