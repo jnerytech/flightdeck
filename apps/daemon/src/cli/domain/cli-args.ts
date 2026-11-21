@@ -57,6 +57,7 @@ export interface CliArgs {
     | "watch"
     | "boardsync"
     | "review"
+    | "memory"
     | "runenv"
     | "changes"
     | "snapshots"
@@ -114,6 +115,8 @@ export interface CliArgs {
     | "diff"
     | "spec"
     | "review"
+    | "budget"
+    | "suggest"
     | "message"
     | "templates"
     | "validation-template"
@@ -265,6 +268,10 @@ export interface CliArgs {
   checkpointTurn?: number;
   /** `trace export --include-content`: the prompts and results too, with secrets replaced. */
   includeContent?: true;
+  /** `memory list|read|budget|suggest <project>`: the project, by name or id. */
+  memoryProject?: string;
+  /** `memory read <project> <name>`: the file, a plain name inside the memory folder. */
+  memoryName?: string;
   /** `changes get|watch <target>` or `changes sessions <file>`: the operand. */
   changesOperand?: string;
   /** `changes revert|undo-revert <target> <file>`: the file. */

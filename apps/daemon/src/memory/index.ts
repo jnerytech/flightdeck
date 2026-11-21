@@ -4,3 +4,4 @@
  */
 export { exists } from "./exists.ts";
 export { decisionLog, ProjectMemory } from "./memory.ts";
+export { type MemoryCliArgs, runMemoryCli } from "./memory-cli.ts";

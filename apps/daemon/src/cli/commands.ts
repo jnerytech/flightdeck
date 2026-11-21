@@ -19,6 +19,7 @@ import { exitWhenClosed } from "./domain/exit.ts";
 import { historyCliArgs } from "./domain/history-args.ts";
 import { knowledgeCliArgs } from "./domain/knowledge-args.ts";
 import { mcpCliArgs } from "./domain/mcp-args.ts";
+import { memoryCliArgs } from "./domain/memory-args.ts";
 import { messageAdminCliArgs } from "./domain/message-args.ts";
 import { pluginsCliArgs } from "./domain/plugins-args.ts";
 import { projectCliArgs } from "./domain/project-args.ts";
@@ -133,7 +134,7 @@ async function remoteDeps(deps: CliDeps): Promise<ResolveDeps> {
   };
 }
 
-/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
+/** Where `host`, `sessions`, `session`, `snippet` (its render, parse and import-history), `ssh`, `terminal`, `agentcfg`, `watch`, `boardsync`, `review`, `memory`, `runenv`, `changes`, `snapshots`, `rewind`, `trace`, `mcp` (its verbs), `knowledge`, `message` (history, watch, rules and rules-set), `requests`, `send`, `approve` and `deny` ask: this machine's daemon, or the paired host `--host` names (#3429). */
 async function asking(
   args: CliArgs,
   deps: CliDeps,
@@ -640,10 +641,10 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
     return askingWith(args, deps, boardsyncCliArgs, runBoardsyncCli);
   },
-  review: async (args, deps) => {
-    const { runReviewCli } = await import("../review/index.ts");
-    return askingWith(args, deps, reviewCliArgs, runReviewCli);
-  },
+  memory: (args, deps) =>
+    import("../memory/index.ts").then((m) => askingWith(args, deps, memoryCliArgs, m.runMemoryCli)),
+  review: (args, deps) =>
+    import("../review/index.ts").then((m) => askingWith(args, deps, reviewCliArgs, m.runReviewCli)),
   terminal: async (args, deps) => {
     const { runTerminalCli } = await import("../terminal/index.ts");
     return askingWith(args, deps, terminalCliArgs, runTerminalCli);
