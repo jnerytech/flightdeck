@@ -29,10 +29,11 @@ export async function runApprovers(
       deps.log.log(args.json ? JSON.stringify(json) : text);
     if (args.action === "reset") {
       const removed = approvers.store.reset();
+      const devices = removed === 1 ? "device" : "devices";
       say(
         removed === 0
           ? "no enrolled device: protection is off"
-          : `removed ${removed} enrolled device${removed === 1 ? "" : "s"}: protection is off`,
+          : `removed ${removed} enrolled ${devices}: protection is off`,
         { removed },
       );
       return 0;
