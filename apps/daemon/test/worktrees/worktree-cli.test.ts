@@ -358,6 +358,12 @@ describe("flightdeckd worktree remove arguments (issue #3702)", () => {
     ).toMatchObject({ worktreePaths: ["/w/a", "C:\\w\\b", "D:/w/c"] });
   });
 
+  test("a path typed twice is sent once, so the answer does not say removed and not_listed for one folder", () => {
+    expect(
+      parsed(["worktree", "remove", "api", "/w/a", "/w/b", "/w/a", "--confirm"]),
+    ).toMatchObject({ worktreePaths: ["/w/a", "/w/b"] });
+  });
+
   test("a path typed after a flag is refused, never dropped: the removal would otherwise miss a folder the person named", () => {
     expect(parsed(["worktree", "remove", "api", "/w/a", "--confirm", "/w/b"])).toContain(
       "unknown argument: /w/b",

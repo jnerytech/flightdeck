@@ -170,7 +170,9 @@ describe("flightdeckd card pr-comments-send (issue #3702)", () => {
     const run = await flightdeckd(["card", "pr-comments-send", "k1", "c1", "zz"], daemon.port);
     expect({ code: run.code, out: run.out }).toEqual({
       code: 0,
-      out: ["sent 1 of 2 comments of k1 to its session; the others are not on the pull request"],
+      out: [
+        "sent 1 of 2 comments of k1 to its session; the others were not found among the comments the host last fetched",
+      ],
     });
   });
 
