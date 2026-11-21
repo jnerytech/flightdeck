@@ -35,7 +35,7 @@ describe("risk rules: a session opening a terminal from its shell (#3538)", () =
         "fd terminal close t7",
         "fd terminal close t7 --kill",
         "fd terminal settings --disable",
-        "fd send fd-qa 'please terminal open'",
+        "fd message send fd-qa 'please terminal open'",
         "echo terminal open --cwd /srv",
         "bash -c 'echo terminal open-session'",
       ]),
@@ -60,7 +60,10 @@ describe("risk rules: a session turning the host's terminals on from its shell (
 
   test("a bare enable word in another command is not it", () => {
     expect(
-      notHigh(["fd send fd-qa 'terminal settings --enable'", "echo terminal settings --enable"]),
+      notHigh([
+        "fd message send fd-qa 'terminal settings --enable'",
+        "echo terminal settings --enable",
+      ]),
     ).toEqual([]);
   });
 });

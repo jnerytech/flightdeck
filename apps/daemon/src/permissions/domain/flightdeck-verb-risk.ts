@@ -12,6 +12,7 @@ import { PROJECT_RULES } from "./project-risk.ts";
 import { REVIEW_RULES } from "./review-risk.ts";
 import { REWIND_RULES } from "./rewind-risk.ts";
 import { RUNENV_RULES } from "./runenv-risk.ts";
+import { SEND_RULES } from "./send-risk.ts";
 import { SNIPPET_RULES } from "./snippet-risk.ts";
 
 /** The rules of the `flightdeckd` verbs that change or send something, in the order `risk.ts` reads them. */
@@ -30,5 +31,6 @@ export const FLIGHTDECK_VERB_RULES = [
   ...CHANGES_RULES,
   ...REWIND_RULES,
   ...FILE_RULES,
+  ...SEND_RULES,
   ...KNOWLEDGE_RULES,
 ];

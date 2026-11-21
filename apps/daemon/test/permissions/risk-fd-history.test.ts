@@ -35,7 +35,7 @@ describe("risk rules: a session resuming a transcript from its shell (#3461)", (
         "fd history tool abc m1 0",
         "fd history watch --json",
         "fd history reindex",
-        "fd send s1 'run history resume abc --force'",
+        "fd message send s1 'run history resume abc --force'",
         "echo history resume abc --force",
         "bun test history resume --force",
         "fd card new 'history resume --permission-mode plan'",

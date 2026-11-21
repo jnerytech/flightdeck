@@ -12,6 +12,8 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   - `team_status`: o estado de um time.
 - **Quem manda** vem do ambiente da sessão: `FLIGHTDECK_SESSION` nas gerenciadas,
   `FLIGHTDECK_LAUNCH_ID` nas abertas por `flightdeckd claude`.
+- **No shell de uma sessão**, use `flightdeckd message send` para escrever a outra sessão. O `flightdeckd send`
+  coloca o texto como entrada da própria pessoa, então o shell de uma sessão pergunta à pessoa antes de rodá-lo.
 - **No mesmo host** a entrega não precisa do app:
   - uma sessão gerenciada no meio de um turno recebe quando o turno termina;
   - um terminal esperando uma permissão recebe depois disso.

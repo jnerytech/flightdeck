@@ -122,7 +122,7 @@ describe("risk rules: spellings of a flightdeckd line that the shell reads anoth
     expect(
       notHigh([
         "echo qa | xargs fd persona show",
-        "echo s1 | xargs fd send",
+        "echo s1 | xargs fd message send",
         "echo x | xargs echo fd",
         "echo f | xargs fd persona list",
       ]),
