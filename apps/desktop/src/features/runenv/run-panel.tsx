@@ -24,6 +24,8 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
   ];
   const [info, setInfo] = useState<RunConfigInfo | null>(null);
   const [trusting, setTrusting] = useState(false);
+  // Stop kills the processes, so their codes are not a crash: only the run after the last Stop can crash.
+  const [stoppedByPerson, setStoppedByPerson] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -89,14 +91,25 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
             <Inline gap={2}>
               {live ? (
                 <ActionButton
+                  key="stop"
                   size="sm"
                   variant="outline"
-                  onClick={() => store.runEnv.stop(hostId, card.id)}
+                  onClick={() => {
+                    setStoppedByPerson(true);
+                    return store.runEnv.stop(hostId, card.id);
+                  }}
                 >
                   {t("runEnv.stop")}
                 </ActionButton>
               ) : (
-                <ActionButton size="sm" onClick={() => store.runEnv.start(hostId, card.id)}>
+                <ActionButton
+                  key="run"
+                  size="sm"
+                  onClick={() => {
+                    setStoppedByPerson(false);
+                    return store.runEnv.start(hostId, card.id);
+                  }}
+                >
                   {t("runEnv.run")}
                 </ActionButton>
               )}
@@ -135,7 +148,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                     <span className="font-medium">{process.name}</span>
                     <span
                       className={
-                        process.status === "exited" && process.exitCode !== 0
+                        !stoppedByPerson && process.status === "exited" && process.exitCode !== 0
                           ? "text-status-error"
                           : "text-muted-foreground"
                       }
