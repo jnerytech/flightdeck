@@ -17,9 +17,9 @@ describe("DaemonClient: a frame this version cannot read (#3522)", () => {
         "test",
       );
       daemon.push({ type: "nothing-this-version-knows" });
-      // Reached by the event loop: the rejection, if it were unhandled, is reported by now.
-      await Bun.sleep(50);
-      await Bun.sleep(0);
+      // Let the event loop turn: an unhandled rejection is reported after the microtasks drain.
+      await new Promise((done) => setImmediate(done));
+      await new Promise((done) => setImmediate(done));
       expect(unhandled).toEqual([]);
       client.close();
     } finally {
