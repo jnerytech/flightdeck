@@ -192,19 +192,46 @@ describe("flightdeckd db status, db prune, backup and doctor: --json (#3756)", (
     expect(prune.out[0]).toBe("dry run of the cleanup (nothing was deleted):");
   });
 
-  test("doctor --json is one value: the checks with their fix, and the dependencies; exit 1 on a failure", async () => {
+  test("doctor --json is one value: the checks with their fix, and the dependencies", async () => {
+    const dir = tempDir("fd-doctor-json-");
+    const file = join(dir, "config.json");
+    writeFileSync(file, JSON.stringify({ token: "t".repeat(32), dataDir: dir, port: 1 }));
+    const lines = await run(["doctor", "--json", "--config", file], {
+      exec: async () => ({ code: 1, stdout: "" }),
+      serviceContext: (dryRun) => ({
+        platform: "linux",
+        home: dir,
+        user: "u",
+        command: ["/h/flightdeckd"],
+        systemRoot: "",
+        tempDir: "/tmp",
+        dryRun,
+        exec: async () => ({ code: 1, stdout: "" }),
+        writeFile: () => {},
+        removeFile: () => {},
+        which: () => null,
+      }),
+    });
+    expect(lines.out).toHaveLength(1);
+    expect(printed(lines.out)).toMatchObject({
+      ok: expect.any(Boolean),
+      checks: expect.arrayContaining([expect.objectContaining({ name: "config", status: "ok" })]),
+      deps: { items: expect.any(Array) },
+    });
+    expect(lines.out.join("\n")).not.toMatch(/^(OK|WARN|FAIL)\s/m);
+  });
+
+  test("a config that cannot be read is exit 1 with the failing check and no dependencies", async () => {
     // A config below a regular file cannot be read or created, on any platform.
     const blocker = join(tempDir("fd-doctor-json-"), "file");
     writeFileSync(blocker, "x");
-    const lines = await run(["doctor", "--json", "--config", join(blocker, "config.json")], {
-      exec: async () => ({ code: 1, stdout: "" }),
-    });
+    const lines = await run(["doctor", "--json", "--config", join(blocker, "config.json")]);
     expect(lines.code).toBe(1);
     expect(lines.out).toHaveLength(1);
     expect(printed(lines.out)).toMatchObject({
       ok: false,
       checks: expect.arrayContaining([expect.objectContaining({ name: "config", status: "fail" })]),
-      deps: { items: expect.any(Array) },
+      deps: null,
     });
   });
 });

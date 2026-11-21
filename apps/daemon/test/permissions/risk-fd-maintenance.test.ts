@@ -52,7 +52,7 @@ describe("risk rules: the maintenance commands from a session's shell (#3756)", 
         "fd backup --json --out /tmp/copy.db",
         "fd doctor",
         "fd doctor --json",
-        "fd send fd-qa restore",
+        "fd card show restore",
       ]),
     ).toEqual([]);
   });
