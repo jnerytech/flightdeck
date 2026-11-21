@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { isInside } from "../../kernel/index.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
+import { runsAProjectEnvironment } from "./runenv-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -432,6 +433,11 @@ const DANGEROUS: Array<{
     when: enablesTerminals,
     reason: () =>
       "turns the host's terminals on, a full shell for whoever reaches the daemon, without the person choosing it in the app (flightdeckd terminal settings --enable)",
+  },
+  {
+    when: runsAProjectEnvironment,
+    reason: () =>
+      "trusts a project's run.yaml or runs its commands, without the person choosing it in the app (flightdeckd runenv trust or start)",
   },
   {
     when: changesAWatch,

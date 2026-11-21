@@ -72,6 +72,8 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
     if (flag === "--scope" && args.command === "budget") continue;
     // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
     if (flag === "--model" && (args.command === "costs" || args.command === "roi")) continue;
+    // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`.
+    if (flag === "--hash" && args.command === "runenv") continue;
     if (args.command !== "persona" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}`;
   }

@@ -18,7 +18,7 @@ import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
 import { rulesProblem } from "./rules-args.ts";
-import { readRunenv } from "./runenv-args.ts";
+import { readRunenv, runenvProblem } from "./runenv-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
 import { readSsh, SSH_FLAGS, sshProblem } from "./ssh-args.ts";
@@ -736,10 +736,12 @@ function refuseCardFlags(args: CliArgs): void {
       continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`' and `project harness-apply`'s, which check their own flags below.
+    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s and `project harness-apply`'s, which check their own flags below.
     if (
       flag === "--confirm" &&
-      ["rules", "autoapprove", "team", "costs", "plugins", "ssh", "project"].includes(args.command)
+      ["rules", "autoapprove", "team", "costs", "plugins", "ssh", "project", "runenv"].includes(
+        args.command,
+      )
     )
       continue;
     if (args.command !== "card")
@@ -779,6 +781,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     sshProblem(args) ??
     terminalProblem(args) ??
     watchProblem(args) ??
+    runenvProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??
