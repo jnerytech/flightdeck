@@ -26,13 +26,23 @@ changes. Before this, a session on the host could save an `allow` rule for a sec
 - **CLI.** There is no `flightdeckd` verb that sets rules (`docs/cli-parity.json` keeps `vault.rules.set` as an app
   action), so the terminal gains no way around the proof.
 
-## Gap, stated plainly
+## Gaps, stated plainly
 
-The proof is asked only when a person presses **Save rules**. Two app paths send rules to a host without a person:
-the resync when the app connects, and the push when a secret's allowed hosts change (the scope push). They never open
-a signing window. On a host with a device enrolled, a set that carries an `allow` rule sent by either path is refused,
-and the app shows `vaultRulesUi.notResent` or, for a rollback to the saved rules, `vaultRulesUi.notPutBack`, which says to save the
-rules again to sign them. The consequence: after a daemon restart or a change of a secret's hosts on a host with a
-device, `allow` rules are not restored or widened until the person saves the rules again with a signature. The host
-keeps the stricter rules it holds. This is the safe side, and a retry loop that would open signing windows with nobody
-there was rejected.
+- **Restart and scope push never sign.** The proof is asked only when a person presses **Save rules**. Two app
+  paths send rules to a host without a person: the resync when the app connects, and the push when a secret's
+  allowed hosts change (the scope push). They never open a signing window. On a host with a device enrolled, a set
+  that carries an `allow` rule sent by either path is refused, and the app shows `vaultRulesUi.notResent` (or, for a
+  rollback, `vaultRulesUi.notPutBack`). The host then keeps the rules it already held. That is not always the
+  stricter side: when a scope push *narrows* a secret's reach, the rules the host keeps are the wider ones, so the
+  old scope stays live until the person saves the rules again with a signature. A retry loop that would open
+  signing windows with nobody there was rejected. After a daemon restart the same holds: `allow` rules are not
+  restored until the next signed save.
+- **A change of tags is not gated.** The proof covers `tags` (they are signed), but a set whose rules all ask or
+  deny, with the `prod` tag removed, needs none. A secret that stops being production stops needing the held
+  approval of #3452. The rule of this issue is "an allow", so this is left for a follow-up.
+- **Removing a deny is not gated.** The gate reads the new set only, not the held one. Replacing `deny` rules by an
+  empty set lets the secret fall back to the defaults, and an `ask` rule with `once: "session"` loosens a hold.
+  Comparing with the held rules is a follow-up.
+- **The dialog shows counts.** It names the secret, the number of rules, how many allow and how many allow outside
+  the window, and whether the secret is a production one (`prod`, `producao`, `produção`, any case, as the host's
+  `isProdTag`). It does not list rule bodies; the signed digest covers every field.

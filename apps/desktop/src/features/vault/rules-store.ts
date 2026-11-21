@@ -39,6 +39,9 @@ export interface RulesRefusal {
 }
 
 /** The refusal a person's "no" in the device's dialog is: the host would have refused the set for the missing proof. */
+/** The signer failed instead of answering. */
+type ProofRefused = { kind: "refused"; message: string };
+
 const DECLINED: RulesRefusal = {
   ok: false,
   code: "approval_proof_required",
@@ -249,7 +252,16 @@ export class VaultRulesSlice {
     body: RulesBody,
   ): Promise<{ ok: true; data: CommandResults["vault.rules.set"] } | RulesRefusal> {
     if (!body.rules.some(ruleLoosens)) return this.core.request(hostId, "vault.rules.set", body);
-    const proved = await this.core.proveRules(hostId, body);
+    // A device that cannot sign (no key, a failed challenge) is a refusal like a "no": the callers put back the
+    // hosts that took the set, and nothing is saved.
+    const proved = await this.core.proveRules(hostId, body).catch(
+      (error: unknown): ProofRefused => ({
+        kind: "refused",
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    if (proved.kind === "refused")
+      return { ok: false, code: "approval_proof_required", message: proved.message };
     if (proved.kind === "declined") return DECLINED;
     return this.core.request(
       hostId,

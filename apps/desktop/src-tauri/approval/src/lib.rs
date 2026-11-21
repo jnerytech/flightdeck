@@ -437,7 +437,8 @@ fn read_vault_rules(
         total: rules.len(),
         allowing: count("decision"),
         outside_window: count("outsideWindow"),
-        prod: tags.iter().any(|tag| tag.as_str() == Some("prod")),
+        // The host's `isProdTag`: the tag in lower case is one of these three.
+        prod: tags.iter().any(|tag| matches!(tag.as_str().map(str::to_lowercase).as_deref(), Some("prod" | "produção" | "producao"))),
     };
     let mut canonical = String::from("{\"rules\":");
     write_canonical(&serde_json::Value::Array(rules.clone()), 0, &mut canonical)?;
@@ -460,7 +461,7 @@ fn write_canonical(value: &serde_json::Value, depth: usize, out: &mut String) ->
         serde_json::Value::Bool(flag) => out.push_str(if *flag { "true" } else { "false" }),
         serde_json::Value::Number(number) => {
             const SAFE: i64 = 9_007_199_254_740_991;
-            let whole = number.as_i64().filter(|n| n.abs() <= SAFE);
+            let whole = number.as_i64().filter(|n| (-SAFE..=SAFE).contains(n));
             let Some(n) = whole else {
                 return Err("a number in the rules is not a whole number JavaScript prints the same".into());
             };
@@ -1931,6 +1932,7 @@ mod tests {
             with("s", "[]", r#"[{"expiresAt":1.5}]"#),
             with("s", "[]", r#"[{"expiresAt":1e3}]"#),
             with("s", "[]", r#"[{"expiresAt":9007199254740992}]"#),
+            with("s", "[]", r#"[{"expiresAt":-9223372036854775808}]"#),
             // Nesting past what a rule holds.
             with("s", "[]", r#"[{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":1}}}}}}}}}]"#),
         ] {
@@ -1938,6 +1940,22 @@ mod tests {
         }
         assert!(signed(&with("s", "[]", "[]")).is_ok());
         assert!(signed(&with("s", "[]", r#"[{"decision":"allow","expiresAt":9007199254740991}]"#)).is_ok());
+    }
+
+    #[test]
+    fn a_secret_is_shown_as_a_production_one_for_every_tag_spelling_the_host_calls_production() {
+        let me = own();
+        let shown = |tags: &str| {
+            let payload = format!(r#"{{"rules":[],"secretId":"s","tags":{tags}}}"#);
+            let text = command(&me, DAEMON, "vault.rules.set", &payload);
+            describe_with(&text, DAEMON, &me, Some(&payload))
+        };
+        for tag in ["prod", "Prod", "PROD", "producao", "Producao", "produção", "PRODUÇÃO"] {
+            assert_eq!(shown(&format!("[\"{tag}\"]")), Ok(rules_ask("s", 0, 0, 0, true)), "tag {tag}");
+        }
+        for tag in ["staging", "production", "prod-eu", ""] {
+            assert_eq!(shown(&format!("[\"{tag}\"]")), Ok(rules_ask("s", 0, 0, 0, false)), "tag {tag}");
+        }
     }
 
     #[test]
@@ -1958,7 +1976,7 @@ mod tests {
         assert!(en.ends_with("\n\"sec_1.a-b\""), "{en}");
         let (_, pt) = confirm_text(&ask, "pt-BR");
         assert!(pt.starts_with("Salvar regras que liberam o uso de um segredo sem perguntar?"), "{pt}");
-        assert!(pt.contains("4 regras: 2 liberam o uso e 1 libera fora do horário") || pt.contains("2 liberam o uso e 1 liberam fora do horário"), "{pt}");
+        assert!(pt.contains("São 4 regras: 2 liberam o uso e 1 liberam fora do horário"), "{pt}");
         assert!(pt.ends_with("\n\"sec_1.a-b\""), "{pt}");
         assert!(!confirm_text(&rules_ask("s", 1, 1, 0, false), "en").1.contains("production"));
         assert_eq!(confirm_labels(&ask, "en").0, "Save rules");

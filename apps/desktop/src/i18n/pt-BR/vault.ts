@@ -156,9 +156,9 @@ export const vault = {
     hint: "A primeira regra que casa com um uso decide. Os hosts conferem as regras quando você salva.",
     empty: "Nenhuma regra: valem os padrões",
     notPutBack:
-      "O host {host} não voltou às regras salvas do segredo {secret}: {message}. Ele fica com as regras mais estritas que acabou de receber. Salve as regras de novo para assiná-las.",
+      "O host {host} não voltou às regras salvas do segredo {secret}: {message}. Ele ainda tem as regras que acabou de receber, não as salvas. Salve as regras de novo para assiná-las.",
     notResent:
-      "O host {host} não aceitou as regras do segredo {secret}: {message}. Se elas permitem um uso e o host pede a assinatura do seu dispositivo, salve as regras de novo para assiná-las.",
+      "O host {host} não aceitou as regras do segredo {secret}: {message}. O host fica com as regras que já tinha, que podem ser mais antigas que as suas. Se elas permitem um uso e o host pede a assinatura do seu dispositivo, salve as regras de novo para assiná-las.",
     rule: "Regra {n}",
     at: "{label} na regra {n}",
     any: "Qualquer",

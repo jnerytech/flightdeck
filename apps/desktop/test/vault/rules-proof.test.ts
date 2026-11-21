@@ -29,6 +29,8 @@ function slice(
     refuse?: string[];
     /** Refuses one send, named as `sent` writes it without the proof mark: `host rule ids`. */
     refuseSend?: string[];
+    /** The hosts whose device cannot sign at all (no key, a failed challenge): the signer throws. */
+    signerThrows?: string[];
   } = {},
 ) {
   const saved: Record<string, unknown[]> = { s1: over.saved ?? ASK };
@@ -54,6 +56,7 @@ function slice(
     secretsChanged: () => {},
     proveRules: async (hostId, payload) => {
       asked.push(`${hostId} ${idsOf(payload.rules)}`);
+      if (over.signerThrows?.includes(hostId)) throw new Error(`${hostId} cannot sign`);
       return over.answers?.[hostId] ?? { kind: "none" };
     },
     request: (async (
@@ -93,6 +96,19 @@ describe("vault rules proof: saving rules that loosen asks the device to sign th
       asked: ["a r1", "b r1"],
       sent: ["a r1 proof", "b r1 proof"],
     });
+  });
+
+  test("a device that cannot sign on a later host is a refusal: the host that took the set goes back and nothing is saved", async () => {
+    const s = slice({
+      answers: { a: { kind: "proof", proof: PROOF } },
+      signerThrows: ["b"],
+    });
+    const result = await s.rules.set("s1", ALLOW);
+    expect({
+      refused: result.ok === false && result.message.includes("b cannot sign"),
+      sent: s.sent,
+      saved: s.saved.s1,
+    }).toEqual({ refused: true, sent: ["a r1 proof", "a r2"], saved: ASK });
   });
 
   test("an outsideWindow of allow is signed too", async () => {
