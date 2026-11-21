@@ -715,7 +715,9 @@ export function flightdeckWords(args: string[]): string[] {
 export const startsCli = (words: string[], i: number) =>
   isCliProgram(program(words[i] ?? "")) ||
   (words[i] === "start" &&
-    (i === 0 || /^-|[$`*?[{]/.test(words[0] ?? "") || (words.indexOf("run") + 1 || Infinity) <= i));
+    (i === 0 ||
+      /(?:^-)|(?:[$`*?[{])/.test(words[0] ?? "") ||
+      (words.indexOf("run") + 1 || Infinity) <= i));
 
 /** The programs that can run the CLI for a session: a runtime or a shell given the text. */
 export const RUNNERS = ["bun", "bunx", "npx", "node", ...SHELLS];
