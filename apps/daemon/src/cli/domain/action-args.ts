@@ -35,6 +35,8 @@ export const ACTION_FLAGS: Record<string, Handler> = {
   }),
 };
 
+const FULL_HASH = 64;
+
 /** The most runs the daemon returns (`actions.runs`). */
 const MOST_RUNS = 500;
 
@@ -49,9 +51,31 @@ export function actionProblem(args: CliArgs): string | undefined {
     if (args.action !== "runs") return "--limit: this flag only applies to flightdeckd action runs";
     if (args.limit > MOST_RUNS) return `--limit: at most ${MOST_RUNS}`;
   }
+  const written = writeProblem(args);
+  if (written !== undefined) return written;
   if (raw && args.json) return "--json: this flag only applies to flightdeckd action list or runs";
   if (raw && args.host !== undefined)
     return "--host: this flag only applies to flightdeckd action list --json or --plain, and runs";
+  return undefined;
+}
+
+/** The flags of `save` and `trust` belong to those verbs, and each cannot go without what it needs. */
+function writeProblem(args: CliArgs): string | undefined {
+  const save = args.action === "save";
+  const trust = args.action === "trust";
+  if (args.definitionFile !== undefined && !save)
+    return "--definition-file: this flag only applies to flightdeckd action save";
+  if (args.secretIds !== undefined && !save)
+    return "--secret-ids: this flag only applies to flightdeckd action save";
+  if (args.hash !== undefined && !trust)
+    return "--hash: this flag only applies to flightdeckd action trust";
+  if (save && args.definitionFile === undefined) return "missing --definition-file";
+  if (save && args.secretIds?.some((id) => id.trim() === "") === true)
+    return "--secret-ids: a comma-separated list of secret ids";
+  if (trust && args.hash === undefined) return "missing --hash";
+  // The daemon compares the whole sha256, so a prefix would always read as "the action changed".
+  if (trust && args.hash?.length !== FULL_HASH)
+    return "--hash: the 64 hex characters that action list --plain prints";
   return undefined;
 }
 
@@ -82,5 +106,23 @@ export function actionVerbCliArgs(args: CliArgs): ActionVerbCliArgs {
       ...(args.limit === undefined ? {} : { limit: args.limit }),
       ...json,
     };
+  if (args.action === "save")
+    return {
+      action: "save",
+      ...project,
+      definitionFile: args.definitionFile as string,
+      ...(args.secretIds === undefined ? {} : { secretIds: args.secretIds }),
+      ...json,
+    };
+  if (args.action === "trust")
+    return {
+      action: "trust",
+      ...project,
+      name: args.actionName as string,
+      hash: args.hash as string,
+      ...json,
+    };
+  if (args.action === "remove")
+    return { action: "remove", ...project, name: args.actionName as string, ...json };
   return { action: "list", ...project, ...(args.plain ? { plain: true as const } : {}), ...json };
 }
