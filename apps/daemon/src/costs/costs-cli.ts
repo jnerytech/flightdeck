@@ -2,7 +2,12 @@
  * Issue #3460: `flightdeckd costs summary|session|card|run|status|export`, what the host's sessions cost.
  * Exit codes: 0 done, 1 refused, 2 no daemon.
  */
-import { type CliResult, runOnLocalDaemon, shown } from "../daemon-client/index.ts";
+import {
+  type CliResult,
+  type RemoteTarget,
+  runOnLocalDaemon,
+  shown,
+} from "../daemon-client/index.ts";
 import {
   type CostsCliArgs,
   csvLines,
@@ -18,7 +23,7 @@ export type { CostsCliArgs } from "./domain/costs-cli-view.ts";
 export async function runCostsCli(
   args: CostsCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; remote?: RemoteTarget } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
