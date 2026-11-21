@@ -276,6 +276,9 @@ fn read_command(name: &str, payload: &str) -> Result<(CommandAsk, String), Strin
         // The one payload with a boolean: `confirm` is the JSON `true` the person's press stands for. The dialog says
         // the source and the scope, so the source must be one it can show whole.
         "plugins.marketplaceAdd" => read_marketplace(fields),
+        // The folder and the hash of the snippet file the person was shown: the host trusts that folder's file only at
+        // that hash. Both are signed and both are shown, the hash short, the folder last on a line of its own (#3647).
+        "snippets.trust" => read_snippet_trust(fields),
         _ => Err("this command is not one this key signs".into()),
     }
 }
@@ -350,6 +353,33 @@ fn read_trust(
         serde_json::to_string(path).unwrap_or_default()
     );
     Ok((CommandAsk::TrustProject { path: path.into() }, canonical))
+}
+
+/// `snippets.trust`: exactly `projectPath` (a path the dialog can show) and `hash` (the 64 lowercase hex characters the
+/// host makes, so nothing in it can pad the text).
+fn read_snippet_trust(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(CommandAsk, String), String> {
+    if fields.len() != 2 {
+        return Err("the snippet trust payload has the wrong fields".into());
+    }
+    let text = |key: &str| {
+        fields
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| format!("the snippet trust payload has no text for {key}"))
+    };
+    let path = text("projectPath")?;
+    let hash = text("hash")?;
+    if !is_shown_path(path) {
+        return Err("the folder is not a path the dialog can show".into());
+    }
+    if hash.len() != 64 || !hash.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')) {
+        return Err("the snippet file hash is not 64 lowercase hex characters".into());
+    }
+    let quoted = |text: &str| serde_json::to_string(text).unwrap_or_default();
+    let canonical = format!("{{\"hash\":{},\"projectPath\":{}}}", quoted(hash), quoted(path));
+    Ok((CommandAsk::TrustSnippets { path: path.into(), hash: hash.into() }, canonical))
 }
 
 fn read_resume(
@@ -702,6 +732,11 @@ pub fn confirm_text(ask: &Ask, lang: &str) -> (String, String) {
     (title.to_string(), body)
 }
 
+/// The first 12 characters of a file hash: enough for a person to tell two versions of a file apart.
+fn short_hash(hash: &str) -> String {
+    hash.chars().take(12).collect()
+}
+
 /// The first 8 characters of an id, as the device list shows them.
 fn short(id: &str) -> String {
     id.chars().take(8).collect::<String>()
@@ -847,7 +882,14 @@ fn command_text(ask: &Ask, pt: bool) -> String {
         Some(CommandAsk::MarketplaceAdd { source, scope }) => {
             marketplace_text(&ask.host, source, scope.as_deref().unwrap_or("user"), pt)
         }
-        Some(CommandAsk::TrustSnippets { .. }) => String::new(),
+        Some(CommandAsk::TrustSnippets { path, hash }) if pt => format!(
+            "Confiar no arquivo de snippets de uma pasta de projeto? Os comandos dele, como estão no arquivo {}, vão poder rodar em terminais sem pedir confirmação. Continue só se você acabou de apertar Confiar no arquivo no Flightdeck.\n\"{path}\"",
+            short_hash(hash)
+        ),
+        Some(CommandAsk::TrustSnippets { path, hash }) => format!(
+            "Trust the snippet file of a project folder? Its commands, as they are in file {}, will be able to run in terminals with no prompt. Continue only if you just pressed Trust file in Flightdeck.\n\"{path}\"",
+            short_hash(hash)
+        ),
         None => String::new(),
     }
 }
@@ -951,6 +993,9 @@ pub fn confirm_labels(ask: &Ask, lang: &str) -> (String, String) {
     let (yes, no) = match (ask.kind, lang == "pt-BR") {
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustProject { .. })) => {
             if pt { ("Confiar", "Cancelar") } else { ("Trust", "Cancel") }
+        }
+        (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::TrustSnippets { .. })) => {
+            if pt { ("Confiar no arquivo", "Cancelar") } else { ("Trust file", "Cancel") }
         }
         (Kind::Command, pt) if matches!(ask.command, Some(CommandAsk::RootsAdd { .. })) => {
             if pt { ("Adicionar pasta", "Cancelar") } else { ("Add folder", "Cancel") }
