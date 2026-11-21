@@ -1,4 +1,5 @@
 import { AGENTCFG_RULES } from "./agentcfg-risk.ts";
+import { AUTOMATION_RULES } from "./automation-risk.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
 import { MCP_RULES } from "./mcp-risk.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
@@ -12,6 +13,7 @@ export const FLIGHTDECK_VERB_RULES = [
   ...AGENTCFG_RULES,
   ...BOARDSYNC_RULES,
   ...RUNENV_RULES,
+  ...AUTOMATION_RULES,
   ...SNIPPET_RULES,
   ...REVIEW_RULES,
   ...MCP_RULES,

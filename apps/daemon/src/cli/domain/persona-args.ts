@@ -67,7 +67,12 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
   for (const [flag, value, verbs] of personaFlags(args)) {
     if (value === undefined) continue;
     // `team new --name` is the team's name, checked by `teamProblem`; `project add|update --name` is the project's, by `projectProblem`.
-    if (flag === "--name" && (args.command === "team" || args.command === "project")) continue;
+    // `automation save --name` is the automation's, checked by `automationProblem`.
+    if (
+      flag === "--name" &&
+      (args.command === "team" || args.command === "project" || args.command === "automation")
+    )
+      continue;
     // `budget set` takes the scope too: `budgetProblem` checks it.
     if (flag === "--scope" && args.command === "budget") continue;
     // `review add|update --body` is the comment's: `reviewProblem` checks it.

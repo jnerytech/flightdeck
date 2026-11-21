@@ -6,7 +6,7 @@ import { RuntimeKind } from "../../config.ts";
 import { AGENTCFG_FLAGS, agentcfgProblem, readAgentcfg } from "./agentcfg-args.ts";
 import { approversProblem } from "./approvers-args.ts";
 import { ArgReader, FLAGS, operand, subAction } from "./arg-reader.ts";
-import { automationProblem, readAutomation } from "./automation-args.ts";
+import { AUTOMATION_FLAGS, automationProblem, readAutomation } from "./automation-args.ts";
 import { boardProblem } from "./board-args.ts";
 import { BOARDSYNC_FLAGS, boardsyncProblem, readBoardsync } from "./boardsync-args.ts";
 import { BUDGET_FLAGS, budgetProblem, takeBudgetAction } from "./budget-args.ts";
@@ -564,6 +564,7 @@ const HANDLERS: Record<string, Handler> = {
     args.limit = n;
   }),
   ...BUDGET_FLAGS,
+  ...AUTOMATION_FLAGS,
   ...PLUGINS_FLAGS,
   ...SNIPPET_FLAGS,
   ...SSH_FLAGS,
