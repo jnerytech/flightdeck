@@ -143,12 +143,15 @@ export function HistoryList(
   const clearFilters = () => {
     const empty: Draft = { cwd: "", projectKey: "", from: "", to: "", origin: "" };
     setDraft(empty);
+    setReversed(false);
     setFilter(toFilter(empty));
   };
   const clearProject = () => {
     const next = { ...draft, projectKey: "" };
+    // A reversed period is said, not sent; the chip stays until the dates are fixed.
+    if (periodReversed(next)) return setReversed(true);
     setDraft(next);
-    setFilter(toFilter(next));
+    apply(next);
   };
 
   return (
@@ -198,10 +201,11 @@ export function HistoryList(
                 inline
                 value={draft.origin}
                 onChange={(e) => {
-                  // A pick is one click: it applies at once. A typed field waits for Enter or Filter.
-                  const next = { ...draft, origin: e.target.value as Draft["origin"] };
-                  setDraft(next);
-                  apply(next);
+                  // A pick is one click: it applies at once, and only itself. A typed field waits for Enter or Filter.
+                  const origin = e.target.value as Draft["origin"];
+                  setDraft({ ...draft, origin });
+                  const { origin: _before, ...rest } = filter;
+                  setFilter(origin ? { ...rest, origin } : rest);
                 }}
               >
                 <option value="">{t("historyUi.allOrigins")}</option>
