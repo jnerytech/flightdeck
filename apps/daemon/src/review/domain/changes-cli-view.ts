@@ -123,5 +123,10 @@ export const openedLines = (done: ChangesPrOpened) => [
   `opened ${done.url} (${done.branch} into ${done.base})`,
 ];
 
-/** How long a `changes` verb waits for the daemon's answer, in milliseconds. */
-export const timeoutOf = (_action: string): number => 15_000;
+/**
+ * How long a `changes` verb waits for the daemon's answer, in milliseconds. A commit runs the person's git hooks,
+ * which the daemon lets take 120 s, and a pr pushes the branch over the network before it opens the pull request:
+ * a shorter wait would say "may or may not have happened" about a write that is still running.
+ */
+export const timeoutOf = (action: string): number =>
+  action === "commit" ? 130_000 : action === "pr" ? 300_000 : 15_000;

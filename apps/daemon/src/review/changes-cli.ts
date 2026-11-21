@@ -24,10 +24,9 @@ import {
   revertedLines,
   sessionsJson,
   sessionsLines,
+  timeoutOf,
   UNSURE,
 } from "./domain/changes-cli-view.ts";
-
-const DEFAULT_TIMEOUT_MS = 15_000;
 
 /** A review target (`session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`), or a file's absolute path. */
 export type ChangesCliArgs =
@@ -67,7 +66,7 @@ export function runChangesCli(
     config,
     ...(options.remote ? { remote: options.remote } : {}),
     clientName: "flightdeck-changes",
-    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    timeoutMs: options.timeoutMs ?? timeoutOf(args.action),
     ...(args.action in UNSURE ? { unsure: UNSURE[args.action as keyof typeof UNSURE] } : {}),
     perform: async (daemon, note, flow) => {
       if (args.action === "sessions") {
