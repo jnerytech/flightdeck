@@ -38,7 +38,8 @@ export const costs = {
       costLimit: "Limite mensal de custo (US$)",
       addPerson: "Adicionar pessoa",
       removePerson: "Remover {name}",
-      removeAsk: "Remover {name}? Os hosts e os limites se perdem, e isso não pode ser desfeito.",
+      removeAsk:
+        "Remover {name}? O agrupamento de hosts e os limites se perdem; os hosts continuam. Isso não pode ser desfeito.",
       removeConfirm: "Remover pessoa",
       saved: "Salvo.",
       error: {

@@ -177,6 +177,13 @@ for (const [lang, t] of [
       await press(S.saveCap);
       expect(screen.queryByText(S.error.review_cap_invalid)).not.toBeNull();
       expect(saidSaved()).toBe(false);
+      // A good save, then the refused cap pressed again with no edit: only the refusal shows.
+      await type(S.defaultRate, "44");
+      await press(S.saveRate);
+      expect(saidSaved()).toBe(true);
+      await press(S.saveCap);
+      expect(screen.queryByText(S.error.review_cap_invalid)).not.toBeNull();
+      expect(saidSaved()).toBe(false);
     });
 
     test("a name or a host that is taken is refused with the reason, and a taken host cannot be ticked", async () => {

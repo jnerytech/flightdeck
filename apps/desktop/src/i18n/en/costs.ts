@@ -37,7 +37,8 @@ export const costs = {
       costLimit: "Monthly cost limit (US$)",
       addPerson: "Add person",
       removePerson: "Remove {name}",
-      removeAsk: "Remove {name}? Their hosts and limits are lost, and this cannot be undone.",
+      removeAsk:
+        "Remove {name}? Their host grouping and limits are lost; the hosts stay. This cannot be undone.",
       removeConfirm: "Remove person",
       saved: "Saved.",
       error: {
