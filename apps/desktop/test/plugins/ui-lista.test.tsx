@@ -71,7 +71,8 @@ describe("plugins-ui: a tela", () => {
     expect(text).toContain("deploy-tools");
     expect(text).toContain("1.2.0");
     expect(text).toContain("Usuário");
-    expect(text).not.toContain("user");
+    const badge = row?.querySelector('[title*="todos os projetos"]');
+    expect(badge?.firstChild?.textContent).toBe("Usuário");
     expect(row?.querySelector('[title*="todos os projetos"]')).not.toBeNull();
     expect(text).toContain("Instalado para você");
     expect(text).toContain("Ativo");
