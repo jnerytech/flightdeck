@@ -101,6 +101,27 @@ const flagged = (args: CliArgs): Array<[string, boolean, readonly string[]]> => 
   ["--persona", args.terminalPersona !== undefined, OPENS],
 ];
 
+/** What is wrong with the words and flags of `terminal open`. */
+function openProblem(args: CliArgs): string | undefined {
+  if (args.terminalCwd === undefined) return "missing --cwd";
+  if (args.terminalClaude && args.terminalArgv !== undefined)
+    return "--claude and a program after -- cannot go together";
+  if (args.terminalArgv?.length === 0) return "--: give the program to run after it";
+  if (!args.terminalClaude && args.terminalResume !== undefined)
+    return "--resume: only with --claude";
+  if (!args.terminalClaude && args.terminalPersona !== undefined)
+    return "--persona: only with --claude";
+  return undefined;
+}
+
+/** What is wrong with the switch of `terminal settings`. */
+function settingsProblem(args: CliArgs): string | undefined {
+  if (args.terminalEnable && args.terminalDisable) return "--enable or --disable, not both";
+  if (!args.terminalEnable && !args.terminalDisable)
+    return "terminal settings needs --enable or --disable";
+  return undefined;
+}
+
 /** What is wrong with the terminal words and flags, or undefined. */
 export function terminalProblem(args: CliArgs): string | undefined {
   const terminal = args.command === "terminal";
@@ -110,23 +131,12 @@ export function terminalProblem(args: CliArgs): string | undefined {
       return `${flag}: this flag only applies to flightdeckd terminal ${verbs.join(", ")}`;
   }
   if (!terminal) return undefined;
-  if (args.action === "open") {
-    if (args.terminalCwd === undefined) return "missing --cwd";
-    if (args.terminalClaude && args.terminalArgv !== undefined)
-      return "--claude and a program after -- cannot go together";
-    if (args.terminalArgv?.length === 0) return "--: give the program to run after it";
-    if (!args.terminalClaude && args.terminalResume !== undefined)
-      return "--resume: only with --claude";
-    if (!args.terminalClaude && args.terminalPersona !== undefined)
-      return "--persona: only with --claude";
-  }
+  const verb =
+    (args.action === "open" ? openProblem(args) : undefined) ??
+    (args.action === "settings" ? settingsProblem(args) : undefined);
+  if (verb !== undefined) return verb;
   if (args.action === "open-session" && args.terminalSession === undefined)
     return "missing --session";
-  if (args.action === "settings") {
-    if (args.terminalEnable && args.terminalDisable) return "--enable or --disable, not both";
-    if (!args.terminalEnable && !args.terminalDisable)
-      return "terminal settings needs --enable or --disable";
-  }
   if (args.terminalConfirm && !(args.action === "settings" && args.terminalEnable))
     return "--confirm: only with terminal settings --enable";
   return undefined;

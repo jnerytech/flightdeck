@@ -33,12 +33,8 @@ const flagged = (args: PluginsArgs): Array<[string, boolean, readonly string[]]>
   ["--confirm", args.confirm === true, CONFIRMED],
 ];
 
-/**
- * What is wrong with the `plugins` words and flags: a flag outside its verbs, a preview or an install that
- * names no plugin or two, and an install or an update without the hash of the preview the person read.
- */
-export function pluginsProblem(args: PluginsArgs): string | undefined {
-  const plugins = args.command === "plugins";
+/** A flag outside the verbs that take it. */
+function strayFlag(args: PluginsArgs, plugins: boolean): string | undefined {
   for (const [flag, typed, verbs] of flagged(args)) {
     if (!typed) continue;
     // `--confirm` is also the other commands' own, which check it themselves.
@@ -46,6 +42,17 @@ export function pluginsProblem(args: PluginsArgs): string | undefined {
     if (!plugins || !verbs.includes(args.action ?? ""))
       return `${flag}: this flag only applies to flightdeckd plugins ${verbs.join(", ")}`;
   }
+  return undefined;
+}
+
+/**
+ * What is wrong with the `plugins` words and flags: a flag outside its verbs, a preview or an install that
+ * names no plugin or two, and an install or an update without the hash of the preview the person read.
+ */
+export function pluginsProblem(args: PluginsArgs): string | undefined {
+  const plugins = args.command === "plugins";
+  const stray = strayFlag(args, plugins);
+  if (stray !== undefined) return stray;
   if (!plugins) return undefined;
   const names = args.action === "preview" || args.action === "install";
   if (names && (args.plugin === undefined) === (args.pluginDir === undefined))
@@ -107,6 +114,25 @@ export const PLUGINS_FLAGS: Record<
   },
 };
 
+/** The `marketplace-*` verbs as `runPluginsCli` takes them, or undefined for another verb. */
+function marketplaceCliArgs(args: CliArgs): PluginsCliArgs | undefined {
+  const printed = args.json ? { json: true as const } : {};
+  const scope = args.pluginScope === undefined ? {} : { scope: args.pluginScope };
+  const confirmed = args.confirm ? { confirm: true as const } : {};
+  const target = args.marketplace ?? "";
+  if (args.action === "marketplace-add")
+    return { action: "marketplace-add", source: target, ...scope, ...confirmed, ...printed };
+  if (args.action === "marketplace-remove")
+    return { action: "marketplace-remove", name: target, ...confirmed, ...printed };
+  if (args.action === "marketplace-update")
+    return {
+      action: "marketplace-update",
+      ...(args.marketplace === undefined ? {} : { name: args.marketplace }),
+      ...printed,
+    };
+  return undefined;
+}
+
 /** What the person typed for `plugins`, as `runPluginsCli` takes it: a preview names a plugin or a folder, the parser checked which. */
 export function pluginsCliArgs(args: CliArgs): PluginsCliArgs {
   const printed = args.json ? { json: true as const } : {};
@@ -120,7 +146,6 @@ export function pluginsCliArgs(args: CliArgs): PluginsCliArgs {
     confirmHash: args.confirmHash ?? "",
     ...(args.acceptCommand === undefined ? {} : { acceptCommand: args.acceptCommand }),
   };
-  const target = args.marketplace ?? "";
   if (args.action === "install")
     return args.pluginDir === undefined
       ? { action: "install", plugin, ...hash, ...scope, ...printed }
@@ -130,16 +155,8 @@ export function pluginsCliArgs(args: CliArgs): PluginsCliArgs {
     return { action: "uninstall", plugin, ...scope, ...confirmed, ...printed };
   if (args.action === "pin" || args.action === "unpin")
     return { action: args.action, plugin, ...printed };
-  if (args.action === "marketplace-add")
-    return { action: "marketplace-add", source: target, ...scope, ...confirmed, ...printed };
-  if (args.action === "marketplace-remove")
-    return { action: "marketplace-remove", name: target, ...confirmed, ...printed };
-  if (args.action === "marketplace-update")
-    return {
-      action: "marketplace-update",
-      ...(args.marketplace === undefined ? {} : { name: args.marketplace }),
-      ...printed,
-    };
+  const marketplace = marketplaceCliArgs(args);
+  if (marketplace !== undefined) return marketplace;
   if (args.pluginDir !== undefined) return { action: "preview", dir: args.pluginDir, ...printed };
   return { action: "preview", plugin, ...printed };
 }

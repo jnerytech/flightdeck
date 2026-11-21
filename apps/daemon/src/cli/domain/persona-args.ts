@@ -62,8 +62,8 @@ function personaFlags(args: PersonaArgs): Array<[string, unknown, readonly strin
   ];
 }
 
-/** What is wrong with the `persona` flags: a flag of another verb, or one the verb cannot do without. */
-export function personaProblem(args: PersonaArgs): string | undefined {
+/** A flag of another verb; the commands that share a flag name check their own. */
+function personaStrayFlag(args: PersonaArgs): string | undefined {
   for (const [flag, value, verbs] of personaFlags(args)) {
     if (value === undefined) continue;
     // `team new --name` is the team's name, checked by `teamProblem`; `project add|update --name` is the project's, by `projectProblem`.
@@ -75,18 +75,32 @@ export function personaProblem(args: PersonaArgs): string | undefined {
     if (args.command !== "persona" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd persona ${verbs.join(", ")}`;
   }
+  return undefined;
+}
+
+/** What `persona save` cannot do without: a scope is checked by the caller; here the name, text and body. */
+function personaSaveMissing(args: PersonaArgs): string | undefined {
+  if (args.personaName === undefined) return "missing --name";
+  if (args.description === undefined) return "missing --description";
+  if (args.body === undefined && args.bodyFile === undefined)
+    return "missing --body or --body-file";
+  if (args.body !== undefined && args.bodyFile !== undefined)
+    return "--body or --body-file, not both";
+  return undefined;
+}
+
+/** What is wrong with the `persona` flags: a flag of another verb, or one the verb cannot do without. */
+export function personaProblem(args: PersonaArgs): string | undefined {
+  const stray = personaStrayFlag(args);
+  if (stray !== undefined) return stray;
   if (args.command !== "persona") return undefined;
   if (args.action === "save" || args.action === "remove") {
     if (args.scope === undefined) return "missing --scope";
     if (args.scope === "all") return "--scope: host or project";
   }
   if (args.action === "save") {
-    if (args.personaName === undefined) return "missing --name";
-    if (args.description === undefined) return "missing --description";
-    if (args.body === undefined && args.bodyFile === undefined)
-      return "missing --body or --body-file";
-    if (args.body !== undefined && args.bodyFile !== undefined)
-      return "--body or --body-file, not both";
+    const missing = personaSaveMissing(args);
+    if (missing !== undefined) return missing;
   }
   if (
     (args.action === "publish-agent" || args.action === "trust") &&

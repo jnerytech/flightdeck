@@ -24,7 +24,7 @@ export interface HistoryArgs {
 }
 
 /** The verbs that print JSON for a script (`reindex` prints a sentence). */
-const JSON_VERBS = ["list", "search", "get", "tool", "resume", "watch"];
+const JSON_VERBS = new Set(["list", "search", "get", "tool", "resume", "watch"]);
 
 /** The flags of `history`, each with the verbs that take it (`--from` is `update`'s, `--name` the persona's, `--force` the card's and `--limit` `autoapprove`'s too: only `history` is checked). */
 function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly string[]]> {
@@ -48,11 +48,10 @@ function historyFlags(args: HistoryArgs): Array<[string, unknown, readonly strin
   ];
 }
 
-/** What is wrong with the `history` flags: one of another verb, or a value outside what the daemon takes. */
-export function historyProblem(args: HistoryArgs): string | undefined {
+/** A flag of another verb: `costs` and `roi` take `--to` and `--origin` too, checked by `costsProblem`. */
+function historyStrayFlag(args: HistoryArgs): string | undefined {
   for (const [flag, value, verbs] of historyFlags(args)) {
     if (value === undefined) continue;
-    // `costs summary|export` and `roi` take `--to` and `--origin` too: checked by `costsProblem`.
     if (
       (flag === "--to" || flag === "--origin") &&
       (args.command === "costs" || args.command === "roi")
@@ -61,8 +60,15 @@ export function historyProblem(args: HistoryArgs): string | undefined {
     if (args.command !== "history" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd history ${verbs.join(", ")}`;
   }
+  return undefined;
+}
+
+/** What is wrong with the `history` flags: one of another verb, or a value outside what the daemon takes. */
+export function historyProblem(args: HistoryArgs): string | undefined {
+  const stray = historyStrayFlag(args);
+  if (stray !== undefined) return stray;
   if (args.command !== "history") return undefined;
-  if (args.json && !JSON_VERBS.includes(args.action as string))
+  if (args.json && !JSON_VERBS.has(args.action as string))
     return "--json: this flag only applies to flightdeckd history list, search, get, tool, resume and watch";
   if (args.origin !== undefined && args.origin !== "flightdeck" && args.origin !== "external")
     return "--origin: flightdeck or external";
