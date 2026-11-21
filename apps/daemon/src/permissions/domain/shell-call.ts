@@ -385,6 +385,7 @@ export const OPTIONS_WITH_VALUE = [
   "--session",
   "--host",
   "--fingerprint",
+  "--field",
   "--max-rounds",
   "--check-timeout-min",
   "--mode",
