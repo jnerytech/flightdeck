@@ -8,7 +8,7 @@
 import type { ActionInfo, ActionList, ActionRunInfo } from "@flightdeck/protocol";
 
 /** One action as `--json` prints it: the same keys every time. */
-const actionJson = (action: ActionInfo) => ({
+export const actionJson = (action: ActionInfo) => ({
   name: action.name,
   description: action.description,
   approval: action.approval,
@@ -45,10 +45,20 @@ function actionLine(action: ActionInfo): string {
   return `${action.name}: ${parts.join(", ")}`;
 }
 
+/** What a save or a trust did, then the action as `list --plain` shows it: `saved deploy: ..., hash ...`. */
+export const changedLine = (verb: "saved" | "trusted", action: ActionInfo): string =>
+  `${verb} ${actionLine(action)}`;
+
 export function listLines(list: ActionList): string[] {
   const lines = list.actions.length === 0 ? ["no actions"] : list.actions.map(actionLine);
   return [...lines, ...list.errors.map((error) => `error: ${error}`)];
 }
+
+/** A removal, then what is left. */
+export const removedLines = (name: string, list: ActionList): string[] => [
+  `removed ${name}`,
+  ...listLines(list),
+];
 
 /** A run's header, then its output indented under it. */
 function runLines(run: ActionRunInfo): string[] {

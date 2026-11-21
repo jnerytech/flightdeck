@@ -82,7 +82,10 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
     // `runenv trust --hash` is the run.yaml's hash, checked by `runenvProblem`; `snippet trust --hash` is the project file's, checked by `snippetProblem`.
     if (
       flag === "--hash" &&
-      (args.command === "runenv" || args.command === "snippet" || args.command === "knowledge")
+      (args.command === "runenv" ||
+        args.command === "snippet" ||
+        args.command === "action" ||
+        args.command === "knowledge")
     )
       continue;
     // `knowledge create --body-file` is the document's text: `knowledgeProblem` checks it.
