@@ -49,9 +49,21 @@ const MOST_TEXT_BYTES = 1024 * 1024;
 /** A text file that is refused for what it is, with the reason to tell the person. */
 class RefusedText extends Error {}
 
+/** Standard input up to 1 MB: a longer stream (`yes |`) is refused as soon as it passes the cap, not buffered. */
+async function stdinText(stdin: ReadableStream<Uint8Array>): Promise<string> {
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  for await (const chunk of stdin) {
+    bytes += chunk.byteLength;
+    if (bytes > MOST_TEXT_BYTES) throw new RefusedText("over 1 MB");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 /** The new text: a file, or standard input for `-`. A file that is no regular file (`/dev/zero`) or is over 1 MB is not read. */
 async function textOf(file: string, stdin: ReadableStream<Uint8Array>): Promise<string> {
-  if (file === "-") return new Response(stdin).text();
+  if (file === "-") return stdinText(stdin);
   const info = await stat(file);
   if (!info.isFile()) throw new RefusedText("not a regular file");
   if (info.size > MOST_TEXT_BYTES) throw new RefusedText("over 1 MB");
@@ -67,13 +79,14 @@ export async function runFileCli(
     stdin?: ReadableStream<Uint8Array> | undefined;
   } = {},
 ): Promise<CliResult> {
-  // A write reads its text first: a file that cannot be read is exit 1 with no daemon asked, and `-` holds no connection open.
+  // A write reads its text first: a file or a stream that cannot be read is exit 1 with no daemon asked, and `-` holds no connection open.
   let text = "";
   if (args.action === "write") {
     try {
       text = await textOf(args.file, options.stdin ?? Bun.stdin.stream());
     } catch (error) {
-      const why = error instanceof RefusedText ? ` (${error.message})` : "";
+      const code = (error as NodeJS.ErrnoException).code;
+      const why = error instanceof RefusedText ? ` (${error.message})` : code ? ` (${code})` : "";
       return failure(1, `file write: cannot read the text from ${args.file}${why}`);
     }
   }
