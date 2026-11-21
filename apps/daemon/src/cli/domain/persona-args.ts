@@ -70,6 +70,8 @@ function personaStrayFlag(args: PersonaArgs): string | undefined {
     if (flag === "--name" && (args.command === "team" || args.command === "project")) continue;
     // `budget set` takes the scope too: `budgetProblem` checks it.
     if (flag === "--scope" && args.command === "budget") continue;
+    // `review add|update --body` is the comment's: `reviewProblem` checks it.
+    if (flag === "--body" && args.command === "review") continue;
     // `costs summary|export --model` filters by model; `roi` refuses it: both checked by `costsProblem`.
     if (flag === "--model" && (args.command === "costs" || args.command === "roi")) continue;
     if (args.command !== "persona" || !verbs.includes(args.action as string))

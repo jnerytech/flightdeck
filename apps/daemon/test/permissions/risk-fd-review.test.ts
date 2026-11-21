@@ -31,7 +31,7 @@ describe("risk rules: a session sending a review from its shell (#3619)", () => 
       wrongReasons([
         ["fd review $V card:k1", HIDDEN],
         ["bunx fd review se[n]d card:k1", HIDDEN],
-        ["fd review $(echo send) card:k1 --confirm", HIDDEN],
+        ["fd review $(echo send) card:k1 --confirm", "substituição de comando"],
       ]),
     ).toEqual([]);
   });

@@ -17,7 +17,7 @@ import { EFFORTS, PERMISSION_MODES, personaProblem } from "./persona-args.ts";
 import { PLUGINS_FLAGS, pluginsProblem, readPlugins } from "./plugins-args.ts";
 import { PROJECT_FLAGS, projectProblem, readProject } from "./project-args.ts";
 import { parseShare, quotaProblem, wholeFrom } from "./quota-args.ts";
-import { readReview } from "./review-args.ts";
+import { REVIEW_FLAGS, readReview, reviewProblem } from "./review-args.ts";
 import { rulesProblem } from "./rules-args.ts";
 import { readSession, sessionProblem, takeSessionFlags } from "./session-args.ts";
 import { readSnippet, SNIPPET_FLAGS, snippetProblem } from "./snippet-args.ts";
@@ -561,6 +561,7 @@ const HANDLERS: Record<string, Handler> = {
   ...TERMINAL_FLAGS,
   ...WATCH_FLAGS,
   ...BOARDSYNC_FLAGS,
+  ...REVIEW_FLAGS,
   ...PROJECT_FLAGS,
   "--project": setValue((args, v) => {
     args.project = v;
@@ -716,6 +717,8 @@ function refuseCardFlags(args: CliArgs): void {
     // `--language` also belongs to `persona`, which checks its own flags below.
     if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
       continue;
+    // `--language` is also `review send`'s, which checks its own flags.
+    if (flag === "--language" && args.command === "review") continue;
     // `--force` is also `history resume`'s, which checks its own flags.
     if (flag === "--force" && args.command === "history") continue;
     // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `project harness-apply`'s and `boardsync set-push --on`'s, which check their own flags below.
@@ -758,6 +761,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     terminalProblem(args) ??
     watchProblem(args) ??
     boardsyncProblem(args) ??
+    reviewProblem(args) ??
     projectProblem(args) ??
     quotaProblem(args) ??
     budgetProblem(args) ??

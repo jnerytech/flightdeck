@@ -188,7 +188,7 @@ describe("flightdeckd review update (issue #3619)", () => {
     expect({ code: run.code, out: run.out, err: run.err }).toEqual({
       code: 1,
       out: [],
-      err: ["comment c1 no longer exists"],
+      err: ["flightdeckd: comment c1 no longer exists"],
     });
   });
 
@@ -285,7 +285,7 @@ describe("flightdeckd review send (issue #3619)", () => {
     const run = await flightdeckd(["review", "send", "session:s1", "--confirm"], daemon.port);
     expect(run.code).toBe(0);
     expect(run.out[0]).toBe("sent 1 comment, but nobody takes it: copy the review below");
-    expect(run.out.slice(1)).toEqual(["Review", "- a.ts:1 fix  this"]);
+    expect(run.out.slice(1)).toEqual(["Review", "- a.ts:1 fix [2J this"]);
   });
 
   test("--json prints the answer as the protocol returns it", async () => {

@@ -214,8 +214,16 @@ export interface CliArgs {
   sshSave?: SshSaveFields;
   /** `watch get|trace|describe|set|extend|resolve-held|follow <card>`, `watch by-url <link>` or `watch settings <project>`: the operand. */
   watchTarget?: string;
-  /** `review list <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
+  /** `review list|add|send <target>`: `session:<id>`, `card:<id>`, `terminal:<id>` or `project:<id>`. */
   reviewTarget?: string;
+  /** `review update|remove <comment>`: the comment's id. */
+  reviewComment?: string;
+  /** `review add --path <file>`: the file the comment is on, as the diff names it. */
+  reviewPath?: string;
+  /** `review add --side new|old`: the side of the diff; `new` when absent. */
+  reviewSide?: "new" | "old";
+  /** `review add --lines <start>[-<end>]`: the lines the comment covers. */
+  reviewLines?: { start: number; end: number };
   /** `boardsync status <project>` or `boardsync log <card>`: the operand. */
   boardsyncTarget?: string;
   /** `boardsync link <project> <board>`: the board's id. */

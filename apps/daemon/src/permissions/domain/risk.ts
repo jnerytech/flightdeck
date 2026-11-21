@@ -8,6 +8,7 @@ import { isInside } from "../../kernel/index.ts";
 import { BOARDSYNC_RULES } from "./boardsync-risk.ts";
 import { CONTROL_WRITE, redirectsToControlFile, writesControlFile } from "./control-write.ts";
 import { PROJECT_RULES } from "./project-risk.ts";
+import { REVIEW_RULES } from "./review-risk.ts";
 import { Scan, UNREADABLE } from "./scan.ts";
 import { credential } from "./sensitive-paths.ts";
 import {
@@ -465,6 +466,7 @@ const DANGEROUS: Array<{
   },
   ...PROJECT_RULES,
   ...BOARDSYNC_RULES,
+  ...REVIEW_RULES,
   {
     when: startsOrReshapesASession,
     reason: () =>
