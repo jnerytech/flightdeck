@@ -60,14 +60,20 @@ describe("flightdeckd watch follow (issue #3539)", () => {
 
   test("--json writes one watch per line, with the keys an older daemon leaves out as null", async () => {
     const daemon = fakeDaemon({ "watch.watch": () => ({}) });
-    const withoutReason = { ...info() } as Record<string, unknown>;
-    delete withoutReason.reason;
+    const olderDaemon = { ...info() } as Record<string, unknown>;
+    delete olderDaemon.roundsUsed;
+    delete olderDaemon.maxRounds;
     const { lines } = await follow(daemon, {
       json: true,
-      after: () => daemon.push({ type: "watch.updated", watch: withoutReason }),
+      after: () => daemon.push({ type: "watch.updated", watch: olderDaemon }),
     });
     expect(lines).toHaveLength(1);
-    expect(JSON.parse(lines[0] ?? "")).toMatchObject({ cardId: "c1", reason: null, rounds: [] });
+    expect(JSON.parse(lines[0] ?? "")).toMatchObject({
+      cardId: "c1",
+      roundsUsed: null,
+      maxRounds: null,
+      rounds: [],
+    });
   });
 
   test("a daemon that never acks the watch exits 2 in the time limit and writes nothing", async () => {
