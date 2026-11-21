@@ -105,7 +105,7 @@ describe("risk rules: a session changing a card's PR watch from its shell (#3539
         "fd watch set c1 --disable --json",
         "fd watch resolve-held c1 r1 --drop",
         "fd watch resolve-held c1 r1 --drop --json",
-        "fd send fd-qa 'please watch extend c1 --rounds 3'",
+        "fd message send fd-qa 'please watch extend c1 --rounds 3'",
         "echo watch set c1 --enable",
         "bash -c 'echo watch extend c1 --rounds 3'",
       ]),

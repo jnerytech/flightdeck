@@ -44,7 +44,7 @@ describe("risk rules: a session switching a project's document feed from its she
         "fd knowledge create api adr 'Use a queue'",
         "fd knowledge create api rfc Queue --body-file draft.md --json",
         "fd knowledge set-status api docs/adr/0001.md --status obsolete --hash abc123abc123",
-        "fd send fd-qa 'knowledge set-feed api --on'",
+        "fd message send fd-qa 'knowledge set-feed api --on'",
         "echo knowledge set-feed api --on",
       ]),
     ).toEqual([]);

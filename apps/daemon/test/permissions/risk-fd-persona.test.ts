@@ -41,7 +41,7 @@ describe("risk rules: a session saving, removing, resetting, trusting or publish
         "fd persona show qa",
         "fd persona subagents --project-path /w",
         "fd persona list --scope host --language en",
-        "fd send fd-qa 'please remove the persona'",
+        "fd message send fd-qa 'please remove the persona'",
         "fd card list --json",
         "echo persona remove",
         "bun test persona remove",

@@ -82,9 +82,9 @@ describe("risk rules: a flightdeckd verb the line hides from the reader (#3559)"
       notHigh([
         "fd persona list --scope $SCOPE",
         'fd card list --project "$P"',
-        "fd send fd-qa $MESSAGE",
+        "fd message send fd-qa $MESSAGE",
         'fd persona show "$NAME"',
-        "fd send $SID hello",
+        "fd message send $SID hello",
         "fd open ../repo",
         "fd status *",
         'fd say "hello, world"',
