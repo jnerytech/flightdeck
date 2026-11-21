@@ -247,7 +247,7 @@ describe("snippets-ui: the empty states say why the list is empty (#3605, #3606)
     expect(rowNames()).toEqual(["status"]);
     const search = screen.queryByLabelText("Buscar snippet") as HTMLInputElement | null;
     expect(search?.value).toBe("");
-    expect(document.activeElement === search).toBe(true);
+    expect(document.activeElement).toBe(search);
   });
 
   test("a type filter with no match says the same, and clearing it brings the list back", async () => {

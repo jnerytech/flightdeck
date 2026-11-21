@@ -35,6 +35,8 @@ export function ClientBudget(
     setRefocus(false);
   }, [refocus]);
   const percent = seen ? Math.round(seen.fraction * 100) : 0;
+  const budgetLine =
+    seen && seen.spentUsd > 0 && percent === 0 ? "clients.budgetLineSmall" : "clients.budgetLine";
 
   return (
     <Stack gap={2}>
@@ -42,16 +44,11 @@ export function ClientBudget(
         <Inline gap={2}>
           <span data-budget-line className="text-sm">
             {seen
-              ? t(
-                  seen.spentUsd > 0 && percent === 0
-                    ? "clients.budgetLineSmall"
-                    : "clients.budgetLine",
-                  {
-                    spent: usd(seen.spentUsd, t.lang),
-                    limit: usd(seen.limitUsd, t.lang),
-                    percent,
-                  },
-                )
+              ? t(budgetLine, {
+                  spent: usd(seen.spentUsd, t.lang),
+                  limit: usd(seen.limitUsd, t.lang),
+                  percent,
+                })
               : t("clients.budgetLimitOnly", { limit: usd(limit, t.lang) })}
           </span>
           <Button
