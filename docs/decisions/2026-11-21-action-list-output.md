@@ -23,3 +23,16 @@ takes, whether it is `trusted` and what `changed`.
 
 `--hash` on a future `action trust` is only the caller's own word (#3439); the hash `list` prints is the one the host
 holds now, and `trust` will refuse when it no longer matches.
+
+## The reads in short (slice 1)
+
+`2026-11-19-cli-first.md` is at the Markdown size limit, so the record of this slice lives here. Slice 1 of `action`:
+`action runs` over `actions.runs`, and `action list --json|--plain` over `actions.list`. The write side (`save`,
+`trust`, `remove`) is the second slice.
+
+- `runs [<name>] [--project] [--limit 1-500]`: the project is named by name or id (`resolveProject`); without
+  `--project` the host's own runs are asked for. The limit is checked on the CLI before the host is asked.
+- The output of a run is text a program wrote: it goes through `said`, which strips control characters, and the host
+  has already masked the secrets in it.
+- `--plain` is the text form of `list`. `--text` is already the body of `snippet save --text`, so a second meaning
+  would confuse the same word across nouns.
