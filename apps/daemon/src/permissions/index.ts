@@ -3,6 +3,7 @@
  * rules behind them. Another domain imports from here, never a file inside.
  */
 
+export { actionSaveNote, explainShellRequest } from "./action-save-note.ts";
 export { runAnswerCli } from "./answer-cli.ts";
 export { Approvers } from "./approvers.ts";
 export { runApproversCli } from "./approvers-cli.ts";
