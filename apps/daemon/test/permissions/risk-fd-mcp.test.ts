@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { notHigh, wrongReasons } from "../support/permissions-risk-rules.ts";
 
 const STARTS =
-  "starts or changes an MCP server of a project, a command the project's .mcp.json names, without the person choosing it in the app; a typed --confirm is not the person (flightdeckd mcp test --confirm, remove or toggle)";
+  "starts or changes an MCP server of a project, a command the project's .mcp.json names, without the person choosing it in the app; a typed --confirm is not the person (flightdeckd mcp test --confirm, save, remove or toggle)";
 
 const HIDDEN =
   "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
@@ -13,6 +13,9 @@ describe("risk rules: a session changing a project's MCP servers from its shell 
       wrongReasons([
         ["fd mcp test api files --confirm", STARTS],
         ["fd mcp remove api files --confirm", STARTS],
+        ["fd mcp save api server.json --confirm", STARTS],
+        ["fd mcp save api - --confirm", STARTS],
+        ["fd mcp save api server.json", STARTS],
         ["fd mcp toggle api files --enable --confirm", STARTS],
         ["flightdeckd --host pi mcp test api files --confirm --json", STARTS],
         ["FLIGHTDECK_X=1 fd mcp remove api files --confirm", STARTS],

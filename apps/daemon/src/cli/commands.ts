@@ -151,6 +151,15 @@ async function asking(
 type LocalConfig = { bind: string; port: number; token: string };
 const NO_LOCAL_DAEMON: LocalConfig = { bind: "", port: 0, token: "" };
 
+/** A command that asks a daemon with the arguments its noun reads off the command line: `asking` for the usual runner. */
+const askingWith = <A>(
+  args: CliArgs,
+  deps: CliDeps,
+  toArgs: (args: CliArgs) => A,
+  run: (a: A, config: LocalConfig, options: { remote?: RemoteTarget }) => Promise<CliResult>,
+): Promise<number> =>
+  asking(args, deps, (config, remote) => run(toArgs(args), config, remote ? { remote } : {}));
+
 /** `approve` and `deny`: one answer to one open permission request. */
 async function answered(decision: "allow" | "deny", args: CliArgs, deps: CliDeps): Promise<number> {
   const { runAnswerCli } = await import("../permissions/index.ts");
@@ -201,27 +210,26 @@ async function rulesCli(
 
 /** The persona verb of the command line as the persona CLI takes it: each flag given, nothing else. */
 function personaCliArgs(args: CliArgs): PersonaCliArgs {
-  return {
-    action: args.action as PersonaCliArgs["action"],
-    ...(args.personaId === undefined ? {} : { id: args.personaId }),
-    ...(args.personaName === undefined ? {} : { name: args.personaName }),
-    ...(args.description === undefined ? {} : { description: args.description }),
-    ...(args.body === undefined ? {} : { body: args.body }),
-    ...(args.bodyFile === undefined ? {} : { bodyFile: args.bodyFile }),
-    ...(args.model === undefined ? {} : { model: args.model }),
-    ...(args.effort === undefined ? {} : { effort: args.effort }),
-    ...(args.tools === undefined ? {} : { tools: args.tools }),
-    ...(args.permissionMode === undefined
-      ? {}
-      : { permissionMode: args.permissionMode as PersonaCliArgs["permissionMode"] }),
-    ...(args.icon === undefined ? {} : { icon: args.icon }),
-    ...(args.hash === undefined ? {} : { hash: args.hash }),
-    ...(args.confirm ? { confirm: true } : {}),
-    ...(args.scope === undefined ? {} : { scope: args.scope }),
-    ...(args.projectPath === undefined ? {} : { projectPath: args.projectPath }),
-    ...(args.language === undefined ? {} : { language: args.language }),
-    ...(args.json ? { json: true } : {}),
+  const typed: Record<string, unknown> = {
+    id: args.personaId,
+    name: args.personaName,
+    description: args.description,
+    body: args.body,
+    bodyFile: args.bodyFile,
+    model: args.model,
+    effort: args.effort,
+    tools: args.tools,
+    permissionMode: args.permissionMode,
+    icon: args.icon,
+    hash: args.hash,
+    confirm: args.confirm || undefined,
+    scope: args.scope,
+    projectPath: args.projectPath,
+    language: args.language,
+    json: args.json || undefined,
   };
+  const present = Object.entries(typed).filter(([, value]) => value !== undefined);
+  return { action: args.action, ...Object.fromEntries(present) } as PersonaCliArgs;
 }
 
 /** What the person typed for `card`, as `runCardCli` takes it: what they left out stays out. */
@@ -368,7 +376,10 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     if (args.action !== undefined) {
       const { runMcpCli } = await import("../agentcfg/index.ts");
       return asking(args, deps, (config, remote) =>
-        runMcpCli(mcpCliArgs(args), config, remote ? { remote } : {}),
+        runMcpCli(mcpCliArgs(args), config, {
+          ...(remote ? { remote } : {}),
+          stdin: deps.stdin,
+        }),
       );
     }
     const { daemonUrl } = await import("../daemon-client/index.ts");
@@ -601,9 +612,7 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   ssh: async (args, deps) => {
     const { runSshCli } = await import("../ssh/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runSshCli(sshCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, sshCliArgs, runSshCli);
   },
   watch: async (args, deps) => {
     const { runWatchCli } = await import("../watch/index.ts");
@@ -629,21 +638,15 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   boardsync: async (args, deps) => {
     const { runBoardsyncCli } = await import("../boardsync/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runBoardsyncCli(boardsyncCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, boardsyncCliArgs, runBoardsyncCli);
   },
   review: async (args, deps) => {
     const { runReviewCli } = await import("../review/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runReviewCli(reviewCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, reviewCliArgs, runReviewCli);
   },
   terminal: async (args, deps) => {
     const { runTerminalCli } = await import("../terminal/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runTerminalCli(terminalCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, terminalCliArgs, runTerminalCli);
   },
   agentcfg: async (args, deps) => {
     const { runAgentcfgCli } = await import("../agentcfg/index.ts");
@@ -763,15 +766,11 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
   },
   plugins: async (args, deps) => {
     const { runPluginsCli } = await import("../plugins/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runPluginsCli(pluginsCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, pluginsCliArgs, runPluginsCli);
   },
   project: async (args, deps) => {
     const { runProjectCli } = await import("../projects/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runProjectCli(projectCliArgs(args), config, remote ? { remote } : {}),
-    );
+    return askingWith(args, deps, projectCliArgs, runProjectCli);
   },
   approvers: async (args, deps) => {
     // `enroll` and `reset` write the host's store from its terminal; `watch` asks the local daemon.

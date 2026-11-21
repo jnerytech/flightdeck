@@ -6,6 +6,19 @@ import type { CliArgs } from "./cli-args.ts";
 import { CONFIRM_OWNERS } from "./command-sets.ts";
 import { USAGE } from "./usage.ts";
 
+/** A `card` flag that another command reads too: that command checks its own flags, so `card` leaves it alone. */
+function isAnotherCommandsFlag(flag: string, args: CliArgs): boolean {
+  // `--language` also belongs to `persona`, which checks its own flags below.
+  if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
+    return true;
+  // `--language` is also `review send`'s, which checks its own flags.
+  if (flag === "--language" && args.command === "review") return true;
+  // `--force` is also `history resume`'s, which checks its own flags.
+  if (flag === "--force" && args.command === "history") return true;
+  // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s, `project harness-apply`'s, `boardsync set-push --on`'s, `agentcfg write`'s `snippet`'s and `message rules-set`'s writes, which check their own flags below.
+  return flag === "--confirm" && CONFIRM_OWNERS.includes(args.command);
+}
+
 /** The `card` flags with the actions that take each one; any other command or action is refused. */
 export function refuseCardFlags(args: CliArgs): void {
   const flagged: Array<[string, unknown, readonly string[] | null]> = [
@@ -29,16 +42,7 @@ export function refuseCardFlags(args: CliArgs): void {
     ["--language", args.language, ["review"]],
   ];
   for (const [flag, value, actions] of flagged) {
-    if (value === undefined) continue;
-    // `--language` also belongs to `persona`, which checks its own flags below.
-    if (["--language", "--description", "--confirm"].includes(flag) && args.command === "persona")
-      continue;
-    // `--language` is also `review send`'s, which checks its own flags.
-    if (flag === "--language" && args.command === "review") continue;
-    // `--force` is also `history resume`'s, which checks its own flags.
-    if (flag === "--force" && args.command === "history") continue;
-    // `--confirm` is also `rules remove`'s, `autoapprove resume`'s, `team new`'s, `costs reprice`'s, `ssh remove`'s, `plugins`', `runenv trust|start`'s, `project harness-apply`'s, `boardsync set-push --on`'s, `agentcfg write`'s `snippet`'s and `message rules-set`'s writes, which check their own flags below.
-    if (flag === "--confirm" && CONFIRM_OWNERS.includes(args.command)) continue;
+    if (value === undefined || isAnotherCommandsFlag(flag, args)) continue;
     if (args.command !== "card")
       throw new Error(`${flag}: this flag only applies to flightdeckd card\n${USAGE}`);
     if (!actions?.includes(args.action as string))
