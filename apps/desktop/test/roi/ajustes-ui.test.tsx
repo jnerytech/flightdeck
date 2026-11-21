@@ -135,10 +135,14 @@ for (const [lang, t] of [
       await press(remove);
       const asked = () => screen.queryByRole("alertdialog");
       expect(asked()).not.toBeNull();
-      expect(within(asked() as HTMLElement).queryByText(S.removeAsk.replace("{name}", "Ana"))).not.toBeNull();
+      expect(
+        within(asked() as HTMLElement).queryByText(S.removeAsk.replace("{name}", "Ana")),
+      ).not.toBeNull();
       expect(store.roi.data().people).toHaveLength(1);
       await act(async () => {
-        fireEvent.click(within(asked() as HTMLElement).getByRole("button", { name: t.common.cancel }));
+        fireEvent.click(
+          within(asked() as HTMLElement).getByRole("button", { name: t.common.cancel }),
+        );
       });
       await settle(() => asked() === null);
       expect(store.roi.data().people).toHaveLength(1);

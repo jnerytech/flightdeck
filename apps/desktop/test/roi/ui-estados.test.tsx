@@ -91,7 +91,10 @@ for (const lang of ["en", "pt-BR"] as const) {
 
     test("the people table says it is loading until the hosts answer, then sits in a table that scrolls sideways (#3767)", async () => {
       const ana = { id: "p1", name: "Ana", hostIds: ["h1"], tokenLimit: null, costLimit: null };
-      const { store, answer } = roiStore([{ hostId: "h1", result: { projects: [] } as never }], [ana]);
+      const { store, answer } = roiStore(
+        [{ hostId: "h1", result: { projects: [] } as never }],
+        [ana],
+      );
       render(withLang(lang, <RoiPeople store={store} />));
       await settleMaybe(
         () => screen.queryByRole("status", { name: t("roiUi.loading") }) !== null,
