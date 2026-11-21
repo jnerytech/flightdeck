@@ -190,6 +190,90 @@ describe("memoria-ui: a memória do projeto", () => {
   });
 });
 
+const box = (name: string) =>
+  (screen.queryByLabelText(`Conteúdo de ${name}`) as HTMLTextAreaElement | null)?.value;
+const SEEDED = (put: (name: string, text: string) => void) => {
+  put("MEMORY.md", INDEX);
+  put("user_role.md", ROLE);
+  put("solta.md", "solta\n");
+};
+const EDITED = `${ROLE}Minha edição.\n`;
+
+describe("memoria-ui: edições não salvas (#3708)", () => {
+  test("abrir outro arquivo com edições pergunta antes: cancelar mantém o texto, descartar abre o outro", async () => {
+    await open(SEEDED);
+    await settle(() => names().length === 3);
+    await click("Abrir user_role.md");
+    await fill("Conteúdo de user_role.md", EDITED);
+    await click("Abrir solta.md");
+    expect(screen.queryByRole("alertdialog")?.textContent ?? "").toContain("Descartar as edições");
+    await click("Cancelar");
+    expect(box("user_role.md")).toBe(EDITED);
+    await click("Abrir solta.md");
+    await click("Descartar");
+    expect(box("solta.md")).toBe("solta\n");
+    expect(box("user_role.md")).toBeUndefined();
+  });
+
+  test("um arquivo de uma sugestão, Criar e Recarregar fazem a mesma pergunta antes", async () => {
+    const { put } = await open(SEEDED);
+    await settle(() => names().length === 3);
+    await click("Abrir user_role.md");
+    await fill("Conteúdo de user_role.md", EDITED);
+    await click("Ver solta.md");
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
+    await click("Cancelar");
+    await click("Nova memória");
+    await fill("Nome do arquivo", "nova");
+    await click("Criar");
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
+    await click("Cancelar");
+    expect(box("user_role.md")).toBe(EDITED);
+    put("user_role.md", `${ROLE}Mudou por fora.\n`);
+    await click("Salvar");
+    await click("Salvar na memória", "button");
+    await settle(() => screen.queryByRole("button", { name: "Recarregar" }) !== null);
+    await click("Recarregar");
+    expect(screen.queryByRole("alertdialog")).not.toBeNull();
+    await click("Cancelar");
+    expect(box("user_role.md")).toBe(EDITED);
+    await click("Recarregar");
+    await click("Descartar");
+    expect(box("user_role.md")).toBe(`${ROLE}Mudou por fora.\n`);
+  });
+
+  test("sem edições, abrir outro arquivo não pergunta nada", async () => {
+    await open(SEEDED);
+    await settle(() => names().length === 3);
+    await click("Abrir user_role.md");
+    await click("Abrir solta.md");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(box("solta.md")).toBe("solta\n");
+  });
+});
+
+describe("memoria-ui: o nome de uma memória nova (#3708)", () => {
+  test("a regra aparece antes de digitar, e um nome recusado ou repetido diz por quê", async () => {
+    await open(SEEDED);
+    await settle(() => names().length === 3);
+    await click("Nova memória");
+    expect(screen.queryByText("Letras, números, espaço, _ e -. O .md é acrescentado.")).not.toBeNull();
+    const create = () => screen.queryByRole("button", { name: "Criar" }) as HTMLButtonElement;
+    await fill("Nome do arquivo", "a/b");
+    expect(screen.queryByText("Use só letras, números, espaço, _ e -.")).not.toBeNull();
+    expect(create().disabled).toBe(true);
+    await fill("Nome do arquivo", "user_role");
+    expect(screen.queryByText("Já existe uma memória com este nome.")).not.toBeNull();
+    expect(create().disabled).toBe(true);
+    await fill("Nome do arquivo", "user_role.md");
+    expect(screen.queryByText("Já existe uma memória com este nome.")).not.toBeNull();
+    await fill("Nome do arquivo", "notas.md");
+    expect(create().disabled).toBe(false);
+    await click("Criar");
+    expect(box("notas.md")).toBe("");
+  });
+});
+
 describe("memoria-ui: sugestões de limpeza", () => {
   test("aponta duplicadas, links quebrados, soltas, antigas e contradições, e não muda nada sozinha", async () => {
     const { dir } = await open((put) => {
@@ -227,9 +311,9 @@ describe("memoria-ui: sugestões de limpeza", () => {
 });
 
 describe("memoria-ui: quando a memória não pode ser lida", () => {
-  test("uma pasta de memória que leva para fora é recusada pelo daemon, e a aba mostra que não há memória", async () => {
+  test("uma pasta de memória que leva para fora é recusada pelo daemon: a aba diz que falhou, com Tentar de novo, e não que não há memória", async () => {
     const outside = tempDir("fd-outside-");
-    const { dir } = await open((put) => put("MEMORY.md", INDEX));
+    const { dir, put } = await open((put) => put("MEMORY.md", INDEX));
     rmSync(dir, { recursive: true, force: true });
     symlinkSync(outside, dir);
     const tab = screen.queryByRole("tab", { name: "Memória" });
@@ -239,7 +323,14 @@ describe("memoria-ui: quando a memória não pode ser lida", () => {
     await act(async () => {
       fireEvent.mouseDown(tab as HTMLElement, { button: 0 });
     });
-    await settle(() => screen.queryByText("Ainda não há memória neste projeto.") !== null);
-    expect(screen.queryByText("Ainda não há memória neste projeto.")).not.toBeNull();
+    const failed = "Não foi possível ler a memória deste projeto.";
+    await settle(() => screen.queryByText(failed) !== null);
+    expect(screen.queryByText(failed)).not.toBeNull();
+    expect(screen.queryByText("Ainda não há memória neste projeto.")).toBeNull();
+    rmSync(dir, { force: true });
+    put("MEMORY.md", INDEX);
+    await click("Tentar de novo");
+    await settle(() => names().length === 1);
+    expect(screen.queryByText(failed)).toBeNull();
   });
 });
