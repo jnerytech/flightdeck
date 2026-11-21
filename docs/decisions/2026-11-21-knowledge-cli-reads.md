@@ -38,7 +38,7 @@ gets its public entry, `index.ts`, which the command table imports.
 
 `flightdeckd knowledge set-status|create|set-feed`, over `knowledge.setStatus`, `knowledge.create` and `knowledge.setFeed`,
 in the same `knowledge/knowledge-cli.ts`. The three rows of the parity map now name `knowledge`, so the gap count falls by
-three more (131).
+three more (127).
 
 - **`set-status <project> <file> --status valid|transitional|obsolete --hash <hash>`.** The hash is what `list` printed;
   the CLI never reads it, so a file that changed since is the daemon's `file_conflict` refusal (exit `1`) and nothing is
