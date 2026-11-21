@@ -53,6 +53,18 @@ describe("risk rules: a session changing a project's MCP servers from its shell 
     ).toEqual([]);
   });
 
+  test("a test whose flag a runner's shell expands, or that xargs raises, is high", () => {
+    expect(
+      wrongReasons([
+        ["X=--confirm; bun run apps/daemon/src/bin.ts mcp test api files $X", STARTS],
+        ["sh -c 'bunx flightdeckd mcp test api files $X'", STARTS],
+        ["echo --confirm | xargs fd mcp test api files", HIDDEN],
+        ["cat f | xargs -n1 fd mcp test api files", HIDDEN],
+        ["echo --confirm | xargs bun run apps/daemon/src/bin.ts mcp test api files", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
   test("the reads, the preview test and the stdio server stay ordinary shell commands", () => {
     expect(
       notHigh([
