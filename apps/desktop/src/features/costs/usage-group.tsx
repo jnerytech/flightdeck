@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/context";
 import type { UsageGroup, UsageHistoryTarget } from "./domain/usage-rows.ts";
 
 interface Row {
@@ -20,6 +21,7 @@ export function UsageGroupRows(
   }>,
 ) {
   const { group, format } = props;
+  const t = useT();
   return (
     <tbody>
       <tr className="border-t">
@@ -38,7 +40,8 @@ export function UsageGroupRows(
           <td className="whitespace-nowrap py-1 pl-4">
             <button
               type="button"
-              className="underline-offset-2 hover:underline"
+              aria-label={t("usageUi.openHistory", { project: group.label, day: row.day })}
+              className="rounded-sm underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() =>
                 props.onOpenHistory?.({
                   ...(group.cwd ? { cwd: group.cwd } : { projectKey: group.projectKey }),
