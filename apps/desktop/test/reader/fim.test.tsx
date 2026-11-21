@@ -85,7 +85,7 @@ const shown = () =>
 
 /** The log, with the sizes a browser would give it (the test DOM has no layout). */
 function sized(height: { scroll: number; client: number; top: number }) {
-  const el = screen.queryByRole("log", { name: "Transcript" }) as HTMLElement;
+  const el = screen.queryByRole("log", { name: "Transcrição" }) as HTMLElement;
   expect(el).not.toBeNull();
   const size = { ...height };
   Object.defineProperty(el, "scrollHeight", { get: () => size.scroll, configurable: true });
