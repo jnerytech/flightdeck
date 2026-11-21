@@ -171,6 +171,7 @@ export interface CliArgs {
     | "search"
     | "tool"
     | "decisions"
+    | "deny"
     | "report"
     | "rules"
     | "rules-set"

@@ -25,7 +25,13 @@ function given<T extends Record<string, unknown>>(fields: T): Partial<T> {
 export async function runVaultCli(
   args: VaultCliArgs,
   config: { bind: string; port: number; token: string },
-  options: { timeoutMs?: number } = {},
+  options: {
+    timeoutMs?: number;
+    /** `watch` stops when this aborts (Ctrl-C). */
+    signal?: AbortSignal;
+    /** `watch` writes each line here as it comes. */
+    write?: (line: string) => void;
+  } = {},
 ): Promise<CliResult> {
   return runOnLocalDaemon({
     config,
@@ -49,6 +55,9 @@ export async function runVaultCli(
           });
           return shown(args.json, answer, (found) => reportOut(found, csv));
         }
+        case "watch":
+        case "deny":
+          return { code: 0, out: [], err: [] };
         case "rules":
           return shown(
             args.json,

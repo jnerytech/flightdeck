@@ -6,6 +6,8 @@ import type {
   VaultDecisionInfo,
   VaultReportRow,
   VaultRequester,
+  VaultRequestFrame,
+  VaultUsed,
   VaultVerdict,
 } from "@flightdeck/protocol";
 
@@ -17,6 +19,8 @@ export type VaultCliArgs =
   | (Printed & { action: "decisions"; secretId?: string; days?: number; limit?: number })
   | (Printed & { action: "report"; days?: number; csv?: boolean })
   | (Printed & { action: "rules"; secretId: string })
+  | (Printed & { action: "watch" })
+  | (Printed & { action: "deny"; requestId: string })
   | (Printed & {
       action: "preview";
       secretId: string;
@@ -63,4 +67,14 @@ export function verdictLine(v: VaultVerdict): string {
     v.limited ? " [limit reached]" : "",
   ].join("");
   return `${v.decision} ${by}: ${v.reason}${notes}`;
+}
+
+/** The line `vault watch` prints for a use that asks, or is let through by a rule, and waits for the app. */
+export function requestLine(_frame: VaultRequestFrame): string {
+  return "";
+}
+
+/** The line `vault watch` prints for a delivered secret that was used. It never holds the value. */
+export function usedLine(_frame: VaultUsed): string {
+  return "";
 }

@@ -102,11 +102,12 @@ export class SecretRequests {
   }
 
   /** The user refused a request: the run that waits for it fails at once. */
-  deny(requestId: string): void {
+  deny(requestId: string): boolean {
     const waiting = this.pending.get(requestId);
-    if (!waiting) return;
+    if (!waiting) return false;
     waiting.denied = true;
     waiting.controller.abort();
+    return false;
   }
 
   /** The user approved a request that asked; the delivery of its secret is allowed after this. */
