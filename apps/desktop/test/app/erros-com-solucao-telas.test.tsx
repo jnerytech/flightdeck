@@ -43,8 +43,10 @@ describe("erros-com-solucao: refusals shown by forms", () => {
 
   test("the messaging rules section says what the code means, then the daemon's message", async () => {
     const store = {
-      hostCommand: async () => ({ policy: { exceptions: [], retentionDays: 30 }, paused: [] }),
-      hostRequest: async () => REFUSED,
+      hostRequest: async (_host: string, type: string) =>
+        type === "messaging.rules.get"
+          ? { ok: true, data: { policy: { exceptions: [], retentionDays: 30 }, paused: [] } }
+          : REFUSED,
       i18n: { t: (key: string) => key },
     } as unknown as AppStore;
     const view = render(<MessagingRulesSection store={store} hostId="h" hostName="alfa" />);
