@@ -106,14 +106,16 @@ describe("host-offline-ui", () => {
     expect(text()).toContain("systemd=true");
   });
 
-  test("the sections that need the connection say Host desconectado, not checking or unavailable", async () => {
+  test("the Information panel of an offline host says what it will show, not the banner's title again, and Hooks say Host desconectado", async () => {
     await offlineHost();
     const info = await waitFor(() => {
       const found = screen.queryByRole("region", { name: "Informações" });
       expect(found).not.toBeNull();
       return found as HTMLElement;
     });
-    expect(info.textContent).toContain("Host desconectado");
+    // The banner above already says "Host desconectado": the panel says what it will hold instead (#3698).
+    expect(info.textContent).not.toContain("Host desconectado");
+    expect(info.textContent).toContain("Os detalhes do host aparecem aqui quando ele responder.");
     expect(text()).not.toContain("informações indisponíveis");
     await act(async () => {
       fireEvent.mouseDown(screen.getByRole("tab", { name: "Configurações" }));
