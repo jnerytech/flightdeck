@@ -36,7 +36,7 @@ fn paired() -> Fake {
 }
 
 fn args(words: &[&str]) -> Vec<String> {
-    words.iter().map(|w| w.to_string()).collect()
+    words.iter().map(ToString::to_string).collect()
 }
 
 fn refused() -> (i32, String) {
