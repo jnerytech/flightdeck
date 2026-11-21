@@ -658,6 +658,7 @@ function takeOption(args: CliArgs, reader: ArgReader, arg: string): void {
 function refuseStrayFlags(args: CliArgs): void {
   if (args.json) refuseOutside("--json", JSON_COMMANDS, args.command);
   if (args.host !== undefined) refuseOutside("--host", HOST_COMMANDS, args.command);
+  if (args.plain) refuseOutside("--plain", ["action"], args.command);
   if (args.hold && args.command !== "approve")
     throw new Error(`--hold: this flag only applies to flightdeckd approve\n${USAGE}`);
   if (
@@ -681,15 +682,15 @@ function refuseStrayFlags(args: CliArgs): void {
     throw new Error(
       `--session: this flag only applies to flightdeckd requests, message, autoapprove, vault and mcp toggle\n${USAGE}`,
     );
-  // `history`, `vault`, `snippet` and `automation` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts, automation-args.ts).
+  // `history`, `vault`, `snippet`, `automation` and `action` check their own limits (history-args.ts, vault-args.ts, snippet-args.ts, automation-args.ts, action-args.ts).
   if (
-    !["autoapprove", "history", "vault", "snippet", "message", "automation"].includes(
+    !["autoapprove", "history", "vault", "snippet", "message", "automation", "action"].includes(
       args.command,
     ) &&
     args.limit !== undefined
   )
     throw new Error(
-      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet and automation runs\n${USAGE}`,
+      `--limit: this flag only applies to flightdeckd autoapprove, history, message, vault, snippet, automation runs and action runs\n${USAGE}`,
     );
 }
 
