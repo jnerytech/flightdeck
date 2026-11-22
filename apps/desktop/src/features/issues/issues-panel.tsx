@@ -91,12 +91,28 @@ function IssueRow(
     store: AppStore;
     issue: Issue;
     card: Card | null;
-    onCreate(): void;
+    /** Makes the card; the refusal's text, or null once it was made. */
+    onCreate(): Promise<string | null>;
     onOpenCard(cardId: string): void;
   }>,
 ) {
   const { store, issue, card } = props;
   const { t } = store.i18n;
+  const [error, setError] = useState<string | null>(null);
+  /** The host made the card: the button stays off until the card arrives, and the focus follows it. */
+  const [made, setMade] = useState(false);
+  const open = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!made || !card || !open.current) return;
+    open.current.focus();
+    setMade(false);
+  }, [made, card]);
+  const create = async () => {
+    setError(null);
+    const refusal = await props.onCreate();
+    if (refusal) setError(refusal);
+    else setMade(true);
+  };
   return (
     <li
       aria-label={t("issuesUi.row", { number: issueNumber(issue.ref), title: issue.title })}
@@ -133,16 +149,29 @@ function IssueRow(
         {card ? (
           <>
             <span className="text-muted-foreground text-xs">{t("issuesUi.cardCreated")}</span>
-            <Button variant="outline" size="sm" onClick={() => props.onOpenCard(card.id)}>
+            <Button
+              ref={open}
+              variant="outline"
+              size="sm"
+              aria-label={t("issuesUi.openCardOf", { issue: issueLabel(issue.ref) })}
+              onClick={() => props.onOpenCard(card.id)}
+            >
               {t("issuesUi.openCard")}
             </Button>
           </>
         ) : (
-          <Button variant="outline" size="sm" onClick={props.onCreate}>
+          <ActionButton
+            variant="outline"
+            size="sm"
+            disabled={made}
+            aria-label={t("issuesUi.createCardFor", { issue: issueLabel(issue.ref) })}
+            onClick={create}
+          >
             {t("issuesUi.createCard")}
-          </Button>
+          </ActionButton>
         )}
       </div>
+      {error && <InlineNotice tone="error">{error}</InlineNotice>}
     </li>
   );
 }
@@ -224,11 +253,13 @@ export function IssuesPanel(
     // A project that was not connected loads in the effect above, as its `configured` turns on.
     if (configured) void load();
   };
-  const create = (issue: Issue) =>
-    void store.hostCommand(hostId, "issues.createCard", {
+  const create = async (issue: Issue) => {
+    const result = await store.hostRequest(hostId, "issues.createCard", {
       projectId: project.id,
       issueRef: issue.ref,
     });
+    return result.ok ? null : refusalText(result.code, result.message, t, result);
+  };
 
   const shown = filterIssues(issues ?? [], filter);
   const provider = project.issues?.provider === "azure" ? "azure" : "github";

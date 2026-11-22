@@ -275,6 +275,8 @@ export const board = {
     cardCreated: "Card created",
     openCard: "Open card",
     openIssue: "Open issue {issue}",
+    createCardFor: "Create card for {issue}",
+    openCardOf: "Open card of {issue}",
     connect: "Connect GitHub or Azure Boards issues",
     provider: "Issues provider",
     github: "GitHub",
