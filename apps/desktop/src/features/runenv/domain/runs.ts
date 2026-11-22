@@ -1,4 +1,5 @@
 import type { StepRun, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
+import { formatDecimal } from "../../../i18n/format.ts";
 import { type T, translator } from "../../../i18n/index.ts";
 import { usd } from "../../costs/index.ts";
 
@@ -47,7 +48,7 @@ export function budgetLines(run: WorkflowRun, t: T = PT): BudgetLine[] {
     line(
       t("runUi.budgetMinutes"),
       usage.minutes,
-      usage.minutes.toFixed(1),
+      formatDecimal(usage.minutes, t.lang),
       budget.maxMinutes,
       String(budget.maxMinutes),
     ),

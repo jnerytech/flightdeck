@@ -181,7 +181,7 @@ describe("rastro-ui: the Rastro tab of a session", () => {
     expect(at("turn:1")?.textContent).toContain("US$ 0,73");
     expect(at("turn:1")?.textContent).toContain("3170");
     expect(at("tool:toolu_2")?.textContent).toContain("Bash");
-    expect(at("tool:toolu_2")?.textContent).toContain("10.0 s");
+    expect(at("tool:toolu_2")?.textContent).toContain("10,0 s");
     expect(at("tool:toolu_2")?.textContent).toContain("3 testes falharam");
     // A subagent hangs from the turn, and its own subagent from it.
     expect(at("turn:1")?.querySelector('[data-node="agent:a1"]')).not.toBeNull();

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { formatDecimal } from "@/i18n/format";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
@@ -219,7 +220,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
             )}
             {f.roi !== null && (
               <li className="flex items-center gap-1">
-                <span>{t("roiUi.roi", { roi: f.roi.toFixed(1) })}</span>
+                <span>{t("roiUi.roi", { roi: formatDecimal(f.roi, t.lang) })}</span>
                 <Badge variant="outline">{t("roiUi.estimate")}</Badge>
               </li>
             )}

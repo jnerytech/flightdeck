@@ -1,4 +1,5 @@
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
+import type { Lang } from "../../../i18n/types.ts";
 import { type Figures, figures, mergePeriods, type RoiMoney } from "./roi.ts";
 
 export type RoiColumn =
@@ -25,7 +26,7 @@ export interface RowsInput {
   /** The name the screen shows for a project. */
   nameOf: (projectKey: string, fallback: string) => string;
   /** The language the derivation numbers are written in. */
-  lang: string;
+  lang: Lang;
 }
 
 /** One row per project of the scope; a project on several hosts is one row. */

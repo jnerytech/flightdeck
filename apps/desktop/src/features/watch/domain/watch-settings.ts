@@ -139,3 +139,7 @@ export function watchPatchOf(draft: WatchDraft, saved: WatchSettings): Partial<W
   );
   return Object.fromEntries(changed) as Partial<WatchSettings>;
 }
+
+/** Whether a Save would send something: the patch is empty when the draft only differs in blanks or repeats (#3864). */
+export const watchDraftChanged = (draft: WatchDraft, saved: WatchSettings): boolean =>
+  Object.keys(watchPatchOf(draft, saved)).length > 0;

@@ -2,6 +2,7 @@ import { memo } from "react";
 import { ApprovalCard } from "@/features/permissions/ui.ts";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/shared/markdown/index.ts";
+import { formatDecimal } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
 import type { ChatItem, SessionState } from "./domain/session-state.ts";
@@ -107,7 +108,7 @@ function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   // The turn's own cost; a turn that cost nothing says nothing (the total repeats it, #3408).
   const spent = item.turnCostUsd ?? item.costUsd;
   const cost = spent ? ` · ${usd(spent, props.t.lang, 4)}` : "";
-  const seconds = (item.durationMs / 1000).toFixed(1);
+  const seconds = formatDecimal(item.durationMs / 1000, props.t.lang);
   const known = TURN_REASONS.has(item.subtype);
   let line = props.t("session.turnDone", { seconds });
   if (item.isError) {

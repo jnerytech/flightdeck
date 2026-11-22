@@ -4,6 +4,8 @@
  * app. Every figure carries how it was made, and what is an estimate says so.
  */
 import type { RoiPeriod } from "@flightdeck/protocol";
+import { formatDecimal } from "../../../i18n/format.ts";
+import type { Lang } from "../../../i18n/types.ts";
 
 export const EMPTY_PERIOD: RoiPeriod = {
   costUsd: 0,
@@ -124,7 +126,7 @@ function derivationOf(
   period: RoiPeriod,
   money: RoiMoney,
   d: Derived,
-  lang: string,
+  lang: Lang,
 ): Figures["derivation"] {
   const { costUsd, agentsCostUsd, planShareUsd, reviewCostUsd, costPerCard, costPerPr } = d;
   const { valueUsd, roi } = d;
@@ -169,13 +171,17 @@ function derivationOf(
   if (roi !== null && valueUsd !== null) {
     derivation.push({
       key: "roiUi.derive.roi",
-      vars: { value: money2(valueUsd, lang), cost: money2(costUsd, lang), roi: roi.toFixed(1) },
+      vars: {
+        value: money2(valueUsd, lang),
+        cost: money2(costUsd, lang),
+        roi: formatDecimal(roi, lang),
+      },
     });
   }
   return derivation;
 }
 
-export function figures(period: RoiPeriod, money: RoiMoney, lang: string): Figures {
+export function figures(period: RoiPeriod, money: RoiMoney, lang: Lang): Figures {
   const agentsCostUsd = period.costUsd;
   const planShareUsd = money.planShareUsd ?? 0;
   // Each decision counts at most the cap: the totals give the most it can come to.

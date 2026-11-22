@@ -55,6 +55,7 @@ export const watch = {
     checks: "Local checks (one command per line)",
     save: "Save",
     saved: "PR settings saved",
+    unchanged: "Change a setting to save.",
     timeout: "Time limit per check (min)",
     badTimeout: "Time limit per check: from 1 to 60 minutes",
     badRounds: "Rounds per PR: from 1 to 10",
