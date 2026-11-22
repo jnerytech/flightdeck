@@ -43,8 +43,9 @@ function mount(reply: Reply, language: "en" | "pt-BR") {
   return { count: (type: string) => sent.filter((s) => s === type).length };
 }
 
-const has = (role: string, name: string | RegExp) =>
-  screen.queryByRole(role, { name }) !== null;
+const has = (role: string, name: string | RegExp) => screen.queryByRole(role, { name }) !== null;
+/** An alert is named by its author, not its content: look at what it says. */
+const alerted = (text: string) => screen.queryByRole("alert")?.textContent?.includes(text) === true;
 const hasText = (text: string) => screen.queryByText(text) !== null;
 
 const press = async (name: string) => {
@@ -91,7 +92,7 @@ describe.each([
 
   test("a refused read says so with a retry, and no empty state", async () => {
     mount(() => null, language);
-    await settle(() => has("alert", words.failed));
+    await settle(() => alerted(words.failed));
     expect(has("button", words.retry)).toBe(true);
     expect(hasText(words.empty)).toBe(false);
     expect(has("status", words.loading)).toBe(false);
@@ -100,11 +101,11 @@ describe.each([
   test("the retry reads again and shows what the host answers", async () => {
     let answer: unknown = null;
     const page = mount(() => answer, language);
-    await settle(() => has("alert", words.failed));
+    await settle(() => alerted(words.failed));
     answer = { personas: [qa] };
     await press(words.retry);
     await settle(() => hasText("QA"));
-    expect(has("alert", words.failed)).toBe(false);
+    expect(alerted(words.failed)).toBe(false);
     expect(page.count("personas.list")).toBe(2);
   });
 });
