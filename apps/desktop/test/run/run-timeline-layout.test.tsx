@@ -79,23 +79,36 @@ describe("a step line of the run timeline wraps inside the window (#4286)", () =
 });
 
 describe("the time of a running step moves (#4286)", () => {
-  test("it advances each second while a step has no end, and no timer runs when none is open", async () => {
+  const shown = () => screen.queryAllByRole("button")[0]?.textContent ?? "";
+
+  test("it advances each second while a step has no end", async () => {
     jest.useFakeTimers();
     try {
       jest.setSystemTime(at(5));
       await timeline("en", [step({})]);
-      const shown = () => screen.queryAllByRole("button")[0]?.textContent ?? "";
       expect(shown().includes("· 5 s")).toBe(true);
       await act(async () => {
-        jest.setSystemTime(at(8));
+        // Advancing the timers moves the fake clock by the same second.
+        jest.setSystemTime(at(7));
         jest.advanceTimersByTime(1000);
       });
       expect(shown().includes("· 8 s")).toBe(true);
-      cleanup();
-      await timeline("en", [step({ status: "completed", endedAt: at(2).toISOString() })]);
-      expect(jest.getTimerCount()).toBe(0);
     } finally {
       jest.useRealTimers();
+    }
+  });
+
+  test("no one-second timer runs when every step has ended", async () => {
+    const every = (ms: number) => spy.mock.calls.filter((call) => call[1] === ms).length;
+    const spy = jest.spyOn(globalThis, "setInterval");
+    try {
+      await timeline("en", [step({ status: "completed", endedAt: at(2).toISOString() })]);
+      const idle = every(1000);
+      cleanup();
+      await timeline("en", [step({})]);
+      expect({ idle, running: every(1000) }).toEqual({ idle: 0, running: 1 });
+    } finally {
+      spy.mockRestore();
     }
   });
 });
