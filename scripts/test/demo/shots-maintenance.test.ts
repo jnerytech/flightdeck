@@ -30,6 +30,14 @@ describe("the Maintenance prints (#4001)", () => {
     ]);
   });
 
+  // The prints wait for every busy region to clear; the held cleanup is busy on purpose, so its print says so.
+  test("only the print of the cleanup in progress is a busy screen the print does not wait out", () => {
+    const busy = hostShots(IDS)
+      .filter((shot) => shot.name.startsWith("host-manutencao") && shot.busy === true)
+      .map((shot) => shot.name);
+    expect(busy).toEqual(["host-manutencao-limpando"]);
+  });
+
   test("the status reads the same facts on every machine, a backup and a real cleanup among them", () => {
     const out = heard(maintenanceRewriter(), "maintenance.status", { dbBytes: 1 });
     expect([
