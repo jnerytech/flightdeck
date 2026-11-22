@@ -68,6 +68,40 @@ describe("demo-prints", () => {
     expect(loadHosts(platform.storage)).toEqual([]);
   });
 
+  // #3987: the Teleport prints need a demo with one host (no target to move to) and one that is not this machine's (a plain ws:// note).
+  test("?hosts=<ids> keeps only those hosts, in the demo's order; none and all still mean none and every host", () => {
+    const beta = { ...HOST, id: "demo-beta", name: "beta" };
+    const gama = { ...HOST, id: "demo-gama", name: "gama" };
+    const json = JSON.stringify([HOST, beta, gama]);
+    const ids = (search: string) => parseDemoHosts(json, search).map((h) => h.id);
+    expect([
+      ids("?hosts=demo-alfa"),
+      ids("?hosts=demo-gama,demo-alfa"),
+      ids("?hosts=demo-nobody"),
+      ids("?hosts=all"),
+      ids("?hosts=none"),
+      ids(""),
+    ]).toEqual([
+      ["demo-alfa"],
+      ["demo-alfa", "demo-gama"],
+      [],
+      ["demo-alfa", "demo-beta", "demo-gama"],
+      [],
+      ["demo-alfa", "demo-beta", "demo-gama"],
+    ]);
+  });
+
+  test("?plain=<ids> reaches those hosts over <id>.localhost: the same port and path, a name that is not this machine's", () => {
+    const beta = { ...HOST, id: "demo-beta", name: "beta", url: "ws://127.0.0.1:7788/v1/ws?x=1" };
+    const json = JSON.stringify([HOST, beta]);
+    const urls = (search: string) => parseDemoHosts(json, search).map((h) => h.url);
+    expect([urls("?plain=demo-beta"), urls("?plain=demo-nobody"), urls("")]).toEqual([
+      [HOST.url, "ws://demo-beta.localhost:7788/v1/ws?x=1"],
+      [HOST.url, beta.url],
+      [HOST.url, beta.url],
+    ]);
+  });
+
   test("o app do demo abre já conectado ao host semeado, sem passar pelo formulário", async () => {
     const d = makeDaemon(cleanups);
     const url = d.listen().url;

@@ -125,6 +125,12 @@ export const notifications = {
     test: "Enviar notificação de teste",
     delivered: "Entregue.",
     notShown: "Não exibida.",
+    offNote:
+      "Mostrar notificações está desligado, então não há notificação do sistema nem som. O que você escolhe em Avise-me sobre, Juntar e Silenciar ainda decide o que o sino guarda.",
+    testOff: "Ligue Mostrar notificações para enviar um teste.",
+    muteNone: "Nada para silenciar ainda: adicione um host primeiro.",
+    mutedHostGone: "O host {name} está silenciado, mas não está na lista",
+    mutedProjectGone: "O projeto {name} está silenciado, mas não está na lista",
     blockedHint:
       "As notificações estão bloqueadas para o Flightdeck. No Windows, abra Configurações → Sistema → Notificações e ligue o Flightdeck.",
     mutedLabel: "Silenciar notificações",

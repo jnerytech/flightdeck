@@ -32,6 +32,8 @@ import { boardShots } from "./lib/shots/table-board.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
+import { teleportShots } from "./lib/shots/table-teleport.ts";
+import { teleportScript } from "./lib/shots/teleport-frames.ts";
 import { pickVariants } from "./lib/shots/variants.ts";
 import { wireScript } from "./lib/shots/wire.ts";
 import {
@@ -76,6 +78,7 @@ function shots(ids: DemoIds): Shot[] {
     ...hostShots(ids),
     ...automationShots(ids),
     ...snippetShots(ids),
+    ...teleportShots(ids),
   ];
 }
 
@@ -151,6 +154,8 @@ interface StorageSeed {
   /** The time the app was last active, long ago: Needs you shows "While you were away" (#1344). */
   away: string | null;
   simple: boolean;
+  /** The preview switch of Teleport is on (#3987). */
+  teleportPreview: boolean;
 }
 
 /** Runs in the page before it loads (so it holds no outside names): the storage of a print. */
@@ -174,6 +179,8 @@ function seedStorage(seed: StorageSeed): void {
       // configuracoes-backup-agenda (#1328) turns the schedule on and picks the demo folder: not for the next.
       "flightdeck.backupSchedule",
       "flightdeck.demoBackupFolder",
+      // The Teleport prints turn the preview on (#3987): not for the next print.
+      "flightdeck.teleportPreview",
     ]) {
       localStorage.removeItem(key);
     }
@@ -192,6 +199,7 @@ function seedStorage(seed: StorageSeed): void {
     if (seed.secrets) localStorage.setItem("flightdeck.vault", seed.secrets);
     if (seed.vaultUsage) localStorage.setItem("flightdeck.vault-usage", seed.vaultUsage);
     if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
+    if (seed.teleportPreview) localStorage.setItem("flightdeck.teleportPreview", "true");
   } catch {
     // No storage, no clients.
   }
@@ -246,6 +254,7 @@ async function printShot(
       vaultUsage: shot.vaultUsage ? demoVaultUsage(ALFA) : null,
       away: shot.away ? DEMO_AWAY_SINCE : null,
       simple: shot.simple === true,
+      teleportPreview: shot.teleportPreview === true,
     });
     const query = new URLSearchParams({
       theme,
@@ -260,6 +269,9 @@ async function printShot(
       await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
     if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
     if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
+    if (shot.teleport) {
+      await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
+    }
     await page.goto(`${url}?${query}`);
     // The hosts connect and the screen loads its data.
     await page.waitForTimeout(1500);

@@ -58,10 +58,12 @@ import {
   DEMO_AWAY_MERGED_CARD,
   DEMO_CLOSED_TEAM,
   DEMO_GATE_CARD,
+  DEMO_PAUSED_TEAM,
   DEMO_PR_BETA_CARD,
   DEMO_PR_BETA_URL,
   DEMO_PR_CARD,
   DEMO_PR_URL,
+  DEMO_QUOTA_TEAM,
   DEMO_TEAM_OUTCOME,
   DEMO_TEAM_REPORT,
 } from "./lib/e2e/journeys.ts";
@@ -588,6 +590,38 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
         sent,
         new Date(sent).toISOString(),
         activeTeam,
+      );
+  }
+  // Issue #4025: a team the person paused and one the plan quota paused, for the Teams footer's prints.
+  // Each has a coordinator with no session, so no session list gains a team chip and no count moves;
+  // the host acts only on active teams.
+  for (const [name, pausedBy] of [
+    [DEMO_PAUSED_TEAM, "user"],
+    [DEMO_QUOTA_TEAM, "quota"],
+  ] as const) {
+    teams
+      .query(
+        `INSERT INTO teams (id, name, project_id, goal, coordinator, members, checks, state,
+                            paused_by, instructions_version, created_at)
+         VALUES (?, ?, ?, ?, NULL, ?, '[]', 'paused', ?, ?, ?)`,
+      )
+      .run(
+        ulid(),
+        name,
+        project.id,
+        "Add the receipt export.",
+        JSON.stringify([
+          {
+            name: "coordenadora",
+            role: "coordinator",
+            persona: null,
+            cardId: null,
+            sessionId: null,
+          },
+        ]),
+        pausedBy,
+        INSTRUCTIONS_VERSION,
+        new Date().toISOString(),
       );
   }
   teams.close();

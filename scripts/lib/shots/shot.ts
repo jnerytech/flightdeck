@@ -43,6 +43,10 @@ export interface Shot {
    * `refuseStatus` refuses its first read, `holdClean` never answers the cleanup, so the print shows Clean busy.
    */
   maintenance?: { refuseStatus?: boolean; holdClean?: boolean };
+  /** #3987: the preview switch of Teleport is on, so a session's menu offers "Move to another host". */
+  teleportPreview?: boolean;
+  /** #3987: the hosts' teleport answers are faked in the page; `refuses`: the source's package is not a manifest, so the move fails (`teleportScript`). */
+  teleport?: "answers" | "refuses";
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */

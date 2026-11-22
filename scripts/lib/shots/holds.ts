@@ -8,6 +8,8 @@ export interface FrameRewriter {
   drops?(frame: string): boolean;
   /** Frames the host seems to send right after `frame`, which the app hears once it heard `frame` (#3943). */
   followUp?(frame: string): string[];
+  /** The host's answer to a frame the app sends, when the print answers for it: the frame then never leaves the page (#3987). */
+  answer?(frame: string): string | undefined;
 }
 
 type Data = Record<string, unknown> & { memory?: { totalBytes?: number }; budgets?: unknown[] };
@@ -106,8 +108,21 @@ export function installHolds(
   ) => void;
   class Held extends Base {
     readonly rewriter = make();
+    /** What the app's message listeners hear, to give them an answer the print makes in the host's place. */
+    readonly hear: Array<(data: string) => void> = [];
     override send(data: Parameters<WebSocket["send"]>[0]): void {
-      super.send(typeof data === "string" ? this.rewriter.fromApp(data) : data);
+      const sent = typeof data === "string" ? this.rewriter.fromApp(data) : data;
+      if (typeof sent === "string") {
+        const answer = this.rewriter.answer?.(sent);
+        if (answer !== undefined) {
+          // Never sent: the host would do what the print only shows (#3987).
+          queueMicrotask(() => {
+            for (const listener of this.hear) listener(answer);
+          });
+          return;
+        }
+      }
+      super.send(sent);
     }
     override addEventListener(
       type: string,
@@ -118,6 +133,7 @@ export function installHolds(
         listen.call(this, type, listener, options);
         return;
       }
+      this.hear.push((data) => listener.call(this, new MessageEvent("message", { data })));
       const rewritten = (event: Event) => {
         const data = (event as MessageEvent).data;
         if (typeof data !== "string") return listener.call(this, event);

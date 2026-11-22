@@ -119,6 +119,27 @@ describe("shots-holds: the page's WebSocket", () => {
     ]);
   });
 
+  // #3987: a print can answer for the host, so a move that would change the shared demo never happens.
+  test("a frame the print answers for never leaves the page, and the app hears that answer in the host's place", async () => {
+    const answered = ack("r1", { written: 1 });
+    const target = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    installHolds(target, () => ({
+      fromApp: (frame) => frame,
+      fromHost: (frame) => frame,
+      answer: (frame) => (frame.includes('"r1"') ? answered : undefined),
+    }));
+    const socket = new target.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "teleport.write"));
+    socket.send(ask("r2", "project.list"));
+    await Promise.resolve();
+    expect({ sent: socket.sent, heard: got }).toEqual({
+      sent: [ask("r2", "project.list")],
+      heard: [answered],
+    });
+  });
+
   test("the init script alone wraps the window's WebSocket", () => {
     const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
     new Function("window", holdsScript())(page);

@@ -4,6 +4,7 @@ import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { DEMO_CARD_TEMPLATE } from "../demo/card-templates.ts";
 import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "../e2e/journeys.ts";
+import { keepSaves } from "./save-file.ts";
 import { ALFA, openHostSettings, type Shot, showSection, showToast } from "./shot.ts";
 
 /** Opens one of the vault's tabs and waits for its panel to settle. */
@@ -42,6 +43,13 @@ function maintenancePanel(then?: NonNullable<Shot["prepare"]>): NonNullable<Shot
 }
 
 const SUBMIT = /^(Test and add|Testar e adicionar)$/;
+
+/** Settings > Backup: the passphrase of a new backup, typed and repeated (#4001). */
+async function fillExport(page: Page): Promise<void> {
+  const phrase = "a long enough passphrase";
+  await page.getByLabel(/^(Passphrase|Frase-senha)$/).fill(phrase);
+  await page.getByLabel(/^(Confirm passphrase|Confirmar frase-senha)$/).fill(phrase);
+}
 
 export function hostShots(ids: DemoIds): Shot[] {
   return [
@@ -263,6 +271,28 @@ export function hostShots(ids: DemoIds): Shot[] {
         await showSection(/^(Scheduled backups|Backups agendados)$/)(page);
       },
     },
+    {
+      // #4001: Back up everything, the passphrase typed and repeated, so Back up now is on.
+      name: "configuracoes-backup-exportar",
+      route: { name: "settings", section: "backup" },
+      prepare: async (page) => {
+        await fillExport(page);
+        await showSection(/^(Back up everything|Backup de tudo)$/)(page);
+      },
+    },
+    {
+      // #4001: the same form after Back up now: the page keeps the file the save dialog would take
+      // (`keepSaves`), and the panel says the backup was saved.
+      name: "configuracoes-backup-salvo",
+      route: { name: "settings", section: "backup" },
+      prepare: async (page) => {
+        await page.evaluate(`(${keepSaves.toString()})(window)`);
+        await fillExport(page);
+        await page.getByRole("button", { name: /^(Back up now|Fazer backup agora)$/ }).click();
+        await page.getByText(/^(Backup saved|Backup salvo)/).waitFor();
+        await showSection(/^(Back up everything|Backup de tudo)$/)(page);
+      },
+    },
     // Phase 29: the clients' screen, the switcher open, Sessões for one client, and Custos by client.
     { name: "clientes", route: { name: "clients" }, clients: {} },
     {
@@ -447,6 +477,45 @@ export function hostShots(ids: DemoIds): Shot[] {
       async prepare(page) {
         const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
         await team.getByText(DEMO_TEAM_REPORT).scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #4025: the running team's footer (Pause, Add worker, Close and the message field), which the
+      // print above scrolls past.
+      name: "times-rodape",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #4025: the same footer with Add worker open, so its form shows.
+      name: "times-adicionar",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) checkout-crew$/ });
+        // The button's name is its aria-label ("Add worker to <team>"), so the footer's own marker finds it.
+        await team.locator("[data-action='add']").click();
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #4025: a team the person paused: the Paused badge and Resume in the footer.
+      name: "times-pausado",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) paused-crew$/ });
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      // #4025: a team the plan quota paused: the badge and the "paused by the quota" line.
+      name: "times-cota",
+      route: { name: "teams", host: ALFA },
+      async prepare(page) {
+        const team = page.getByRole("listitem", { name: /^(Team|Time) quota-crew$/ });
+        await team.locator("[data-slot='team-footer']").scrollIntoViewIfNeeded();
       },
     },
     {

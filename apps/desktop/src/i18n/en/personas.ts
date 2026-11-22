@@ -164,6 +164,7 @@ export const personas = {
     states: { active: "Active", paused: "Paused", closed: "Closed" },
     pausedByQuota: "paused by the quota",
     sessionStates: { running: "Running", waiting: "Needs you", idle: "Idle", ended: "Ended" },
+    noSessionYet: "Waiting for a session",
     coordinator: "coordinator",
     worker: "worker",
     lastReport: "Last report",
@@ -196,6 +197,7 @@ export const personas = {
     persona: "Persona of {name}",
     setPersona: "Change persona of {name}",
     setPersonaButton: "Change persona",
+    personaUnchanged: "Pick another persona to change it.",
     remove: "Remove {name}",
     removeButton: "Remove",
     removeMessage:
