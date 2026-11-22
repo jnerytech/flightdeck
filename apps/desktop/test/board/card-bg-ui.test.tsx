@@ -59,13 +59,34 @@ describe("bg-ui: Iniciar em segundo plano on a card", () => {
     await chooseFromCardMenu(
       { act, fireEvent, screen } as never,
       label ?? "",
-      "Iniciar em segundo plano",
+      "Iniciar em segundo plano, sem terminal",
     );
     await settle(() => started.length > 0);
     expect(started).toEqual([{ cardId }]);
     // The hub shows it.
     await settle(() => store.router.current.name === "hub");
     expect(store.router.current.name).toBe("hub");
+  });
+
+  test("the start from the card says so in a notice naming the card (#4172)", async () => {
+    const { store } = await openCard(true);
+    const said: string[] = [];
+    const success = store.success.bind(store);
+    store.success = (text: string) => {
+      said.push(text);
+      success(text);
+    };
+    await settle(() => screen.queryByRole("button", { name: /^Ações de / }) !== null);
+    const label = screen.queryByRole("button", { name: /^Ações de / })?.getAttribute("aria-label");
+    await chooseFromCardMenu(
+      { act, fireEvent, screen } as never,
+      label ?? "",
+      "Iniciar em segundo plano, sem terminal",
+    );
+    await settle(() => said.length > 0);
+    expect(said[0]).toBe(
+      'Sessão "Somar o total" iniciada em segundo plano. Ela aparece em Sessões.',
+    );
   });
 
   test("a host without bg has no such button", async () => {
@@ -81,6 +102,8 @@ describe("bg-ui: Iniciar em segundo plano on a card", () => {
       });
     });
     await settle(() => screen.queryByRole("menuitem", { name: "Finalizar…" }) !== null);
-    expect(screen.queryByRole("menuitem", { name: "Iniciar em segundo plano" })).toBeNull();
+    expect(
+      screen.queryByRole("menuitem", { name: "Iniciar em segundo plano, sem terminal" }),
+    ).toBeNull();
   });
 });

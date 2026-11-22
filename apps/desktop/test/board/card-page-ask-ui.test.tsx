@@ -76,7 +76,9 @@ const startInBackground = async () => {
       pointerType: "mouse",
     });
   });
-  await click(await screen.findByRole("menuitem", { name: "Start in the background" }));
+  await click(
+    await screen.findByRole("menuitem", { name: "Start in the background, no terminal" }),
+  );
 };
 
 describe("card-page-ask-ui: the validation note on the card page", () => {

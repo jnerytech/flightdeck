@@ -8,6 +8,7 @@ import type { Route } from "../lib/router.ts";
 import type { Platform } from "../platform/types.ts";
 // The file, not the barrel: the e2e loads this module in Node.
 import { parseJsonText, readStored, validValues } from "../shared/lib/stored-json.ts";
+import { demoApprovalKeys } from "./approval-keys.ts";
 
 const DemoHost = z.object({ id: z.string(), name: z.string(), url: z.string(), token: z.string() });
 
@@ -165,17 +166,28 @@ export function demoBackupFolder(platform: Platform): NonNullable<Platform["back
  */
 export function demoPlatform(platform: Platform, search = ""): Platform {
   const params = new URLSearchParams(search);
-  const withFolder =
+  const folderPlatform =
     params.get("backupFolder") === "demo"
       ? { ...platform, backupFolder: demoBackupFolder(platform) }
       : platform;
+  // #4154: the prints of the approving-devices panel need a key store; the page's dataset tells them which host it asked about.
+  const keysMode = params.get("approvalKeys");
+  const withKeys =
+    keysMode === "enrolled" || keysMode === "empty"
+      ? {
+          ...folderPlatform,
+          approvalKeys: demoApprovalKeys(keysMode, (daemonId) => {
+            document.documentElement.dataset.demoDaemonId = daemonId;
+          }),
+        }
+      : folderPlatform;
   const version = params.get("update");
   const nothing = () => Promise.resolve();
   if (version === "fail") {
     // #4059: every check fails, so the update banner shows its error.
     const failing = () => Promise.reject(new Error("The update server did not answer"));
     return {
-      ...withFolder,
+      ...withKeys,
       updater: {
         supported: true,
         check: failing,
@@ -185,9 +197,9 @@ export function demoPlatform(platform: Platform, search = ""): Platform {
       },
     };
   }
-  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withFolder;
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withKeys;
   return {
-    ...withFolder,
+    ...withKeys,
     updater: {
       supported: true,
       check: () => Promise.resolve({ version, notes: "" }),

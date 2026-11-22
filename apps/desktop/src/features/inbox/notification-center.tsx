@@ -30,6 +30,8 @@ export interface RowRequest {
   says: string;
   risk: RiskLevel | undefined;
   reason?: string;
+  /** The command is drawn in part: it is not approved from the row, only denied or opened. */
+  cut: boolean;
   pending: boolean;
   /** Why the last answer from this row was not done, until the next try. */
   failure?: string;
@@ -64,7 +66,7 @@ function InboxItem(
     // A key that composes text for an input method is not a shortcut.
     if (e.nativeEvent.isComposing) return;
     const key = e.key.toLowerCase();
-    if (key === "a" && request.risk !== "high") props.onApprove(row, false);
+    if (key === "a" && request.risk !== "high" && !request.cut) props.onApprove(row, false);
     else if (key === "n") props.onDeny(row);
   };
   const stored = entry.ask ? `${entry.host ?? ""} · ${entry.ask}`.replace(/^ · /, "") : entry.body;
@@ -109,11 +111,13 @@ function InboxItem(
       {request && (
         <fieldset className="inbox-request" aria-label={title}>
           <span id={keysId} className="sr-only">
-            {t(request.risk === "high" ? "inbox.keysHigh" : "inbox.keys")}
+            {t(keysOf(request))}
           </span>
           {request.risk && <RiskSeal risk={request.risk} t={t} {...reason(request)} />}
+          {request.cut && <span className="text-muted-foreground text-xs">{t("inbox.cut")}</span>}
           <ApprovalActions
             risk={request.risk}
+            canApprove={!request.cut}
             pending={request.pending}
             size="sm"
             onApprove={(held) => props.onApprove(row, held)}
@@ -171,6 +175,11 @@ function InboxItem(
 
 /** How long an answer waits for its row to leave before it is let go, in ms. */
 const ANSWER_WAIT_MS = 15_000;
+
+const keysOf = (request: RowRequest): Key => {
+  if (request.cut) return "inbox.keysCut";
+  return request.risk === "high" ? "inbox.keysHigh" : "inbox.keys";
+};
 
 const reason = (request: RowRequest) => (request.reason ? { reason: request.reason } : {});
 

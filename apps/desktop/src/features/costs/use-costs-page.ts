@@ -22,6 +22,7 @@ function askCosts(store: AppStore, ids: string[], filter: CostsFilter, selection
  * projects are placed (a change to the clients asks again). Gives the period's summary, the same
  * period without filters (the filters offer its projects and models), which host each session came
  * from and the hosts that failed. An answer that arrives after the question changed is dropped.
+ * `pending` is true while the question now asked has no answer yet, and `reload` asks it again.
  */
 export function useCostsLoad(
   store: AppStore,
@@ -40,7 +41,11 @@ export function useCostsLoad(
   const [all, setAll] = useState<CostsSummary | null>(null);
   const [sessionHost, setSessionHost] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState<string[]>([]);
-  const keyed = useKeyed({ ids: hostIds, filter, selection, placed });
+  /** Each `reload` is a new round: the same question is asked again. */
+  const [round, setRound] = useState(0);
+  const keyed = useKeyed({ ids: hostIds, filter, selection, placed, round });
+  /** The question the numbers on screen answer; `reload` clears it so the page reads as pending. */
+  const [answered, setAnswered] = useState<typeof keyed | null>(null);
   useEffect(() => {
     const { ids, filter: asked } = keyed;
     if (ids.length === 0) {
@@ -57,12 +62,13 @@ export function useCostsLoad(
       if (Object.keys(asked).length === 2) setAll(loaded.summary);
       setSessionHost(loaded.sessionHost);
       setFailed(loaded.failed);
+      setAnswered(keyed);
     });
     return () => {
       live = false;
     };
   }, [store, keyed, selection]);
-  const daysKeyed = useKeyed({ ids: unfiltered ? [] : hostIds, days, selection, placed });
+  const daysKeyed = useKeyed({ ids: unfiltered ? [] : hostIds, days, selection, placed, round });
   useEffect(() => {
     const { ids, days: asked } = daysKeyed;
     if (ids.length === 0) return;
@@ -76,7 +82,12 @@ export function useCostsLoad(
       live = false;
     };
   }, [store, daysKeyed, selection]);
-  return { summary, all, sessionHost, failed };
+  const pending = keyed.ids.length > 0 && answered !== keyed;
+  const reload = () => {
+    setAnswered(null);
+    setRound((n) => n + 1);
+  };
+  return { summary, all, sessionHost, failed, pending, reload };
 }
 
 /** The cost status of the one host in view (price divergences and models without a price). */
