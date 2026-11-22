@@ -5,6 +5,7 @@ import type { HostDraft } from "@/lib/router.ts";
 import { InlineNotice, useBusy } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
 import { emptyDraft, FIELDS, type FieldName } from "./domain/host-draft.ts";
+import { hostDuplicates, type ListedHost } from "./domain/host-duplicate.ts";
 import { type BoundToken, maskOnLeave, readLinkEdit } from "./domain/pairing-mask.ts";
 import { pairingErrorText } from "./domain/pairing-text.ts";
 
@@ -19,6 +20,8 @@ export function HostForm(
     initial?: HostDraft;
     notice?: string;
     error?: string | null;
+    /** The hosts the app already lists: a name or an address of theirs is refused before the test (#3884). */
+    hosts?: readonly ListedHost[];
     /** May return a promise: the form is busy until it settles (the connection is tested). */
     onSubmit(draft: HostDraft): unknown;
   }>,
@@ -81,6 +84,14 @@ export function HostForm(
           problems.port = t("hostForm.badPort");
         }
         if (!draft.token.trim()) problems.token = t("hostForm.missingToken");
+        // Another host's name or address is said once the field itself is fine, before any connection is tried.
+        const taken = hostDuplicates(draft, props.hosts ?? []);
+        if (taken.name && !problems.name) {
+          problems.name = t("hostForm.duplicateName", { host: taken.name });
+        }
+        if (taken.address && !problems.address && !problems.port) {
+          problems.address = t("hostForm.duplicateAddress", { host: taken.address });
+        }
         setFieldErrors(problems);
         const first = FIELDS.find((key) => problems[key]);
         if (first) {
