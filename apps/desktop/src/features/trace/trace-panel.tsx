@@ -81,7 +81,8 @@ export function TracePanel(
   const [tool, setTool] = useState("");
   const [replaying, setReplaying] = useState(false);
   const [withContent, setWithContent] = useState(false);
-  const [hidden, setHidden] = useState<number | null>(null);
+  // What the last Export did: whether the file was saved, and how many fields were hidden.
+  const [outcome, setOutcome] = useState<{ saved: boolean; hidden: number } | null>(null);
 
   // The load was refused: the tab says so and Try again asks the host once more.
   const [failed, setFailed] = useState(false);
@@ -124,13 +125,15 @@ export function TracePanel(
     .join(" · ");
 
   const exportTrace = async () => {
+    setOutcome(null);
     const out = await store.hostCommand(hostId, "trace.export", {
       claudeSessionId,
       includeContent: withContent,
     });
     if (!out) return;
-    setHidden(out.redacted);
-    await store.system.saveFile(out.filename, out.json);
+    // `false` when the person dismissed the save dialog: nothing was written.
+    const saved = await store.system.saveFile(out.filename, out.json);
+    setOutcome({ saved, hidden: out.redacted });
   };
 
   return (
@@ -191,7 +194,10 @@ export function TracePanel(
               <input
                 type="checkbox"
                 checked={withContent}
-                onChange={(e) => setWithContent(e.target.checked)}
+                onChange={(e) => {
+                  setWithContent(e.target.checked);
+                  setOutcome(null);
+                }}
               />{" "}
               {t("trace.includeContent")}
             </label>
@@ -199,8 +205,17 @@ export function TracePanel(
           <p className="text-muted-foreground text-xs">
             {t(withContent ? "trace.contentNote" : "trace.structureNote")}
           </p>
-          {hidden !== null && hidden > 0 && (
-            <p className="text-sm">{t("trace.exported", { n: hidden })}</p>
+          {outcome && (
+            <p role="status" className="text-sm">
+              {outcome.saved
+                ? [
+                    t("trace.saved"),
+                    outcome.hidden > 0 && t("trace.exported", { n: outcome.hidden }),
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                : t("trace.notSaved")}
+            </p>
           )}
         </Panel>
       </Stack>
