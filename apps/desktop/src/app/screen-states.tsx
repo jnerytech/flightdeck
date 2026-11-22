@@ -16,6 +16,8 @@ export interface ScreenProps {
   theme: ThemeMode;
   density: Density;
   go(route: Route): void;
+  /** Opens the keyboard shortcut list, as the `?` key does. */
+  onShortcuts(): void;
   /** A request from the Precisa de você screen: its session, card or terminal view. */
   onOpenRequest(item: PendingItem): void;
 }

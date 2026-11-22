@@ -53,7 +53,9 @@ async function openSettings() {
 }
 
 async function saveShortcut(value: string) {
-  const input = screen.queryByRole("textbox", { name: "Atalho global" }) as HTMLInputElement | null;
+  const input = screen.queryByRole("textbox", {
+    name: "Combinação de teclas",
+  }) as HTMLInputElement | null;
   expect(input).not.toBeNull();
   await act(async () => {
     fireEvent.change(input as HTMLInputElement, { target: { value } });
@@ -107,7 +109,8 @@ describe("atalho-global", () => {
     await settle(() => calls.length > 0);
     await openSettings();
     expect(
-      (screen.queryByRole("textbox", { name: "Atalho global" }) as HTMLInputElement | null)?.value,
+      (screen.queryByRole("textbox", { name: "Combinação de teclas" }) as HTMLInputElement | null)
+        ?.value,
     ).toBe("Ctrl+Alt+F");
     await saveShortcut("Ctrl+K");
     expect(
@@ -133,9 +136,9 @@ describe("atalho-global", () => {
 
   test("falha de registro avisa e abre a configuração para escolher outro", async () => {
     const { calls, items } = setup({ taken: ["Ctrl+Alt+F", "Ctrl+Alt+G"] });
-    await settle(() => screen.queryByRole("textbox", { name: "Atalho global" }) !== null);
+    await settle(() => screen.queryByRole("textbox", { name: "Combinação de teclas" }) !== null);
     // Settings opened by itself, with the warning.
-    expect(screen.queryByRole("textbox", { name: "Atalho global" })).not.toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Combinação de teclas" })).not.toBeNull();
     const warning =
       "O atalho Ctrl+Alt+F não pôde ser registrado: outro programa já deve usá-lo. Escolha outro.";
     expect(screen.queryByText(warning)).not.toBeNull();
@@ -161,7 +164,7 @@ describe("atalho-global", () => {
     render(<App store={store} />);
     await openSettings();
     expect(
-      (screen.queryByRole("textbox", { name: "Atalho global" }) as HTMLInputElement | null)
+      (screen.queryByRole("textbox", { name: "Combinação de teclas" }) as HTMLInputElement | null)
         ?.disabled,
     ).toBe(true);
     expect(screen.queryByText("atalho global indisponível nesta plataforma")).not.toBeNull();

@@ -101,7 +101,7 @@ describe.each(["en", "pt-BR"] as const)("settings search words (%s)", (language)
       });
     });
 
-  test.each(WORDS[language].typed)(
+  test.each(WORDS[language].typed as ReadonlyArray<readonly [string, string]>)(
     "typing %p keeps the section %p, which holds a control with that name (#4008)",
     async (typed, section) => {
       setup(language);
