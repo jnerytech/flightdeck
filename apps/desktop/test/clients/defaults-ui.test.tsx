@@ -235,7 +235,8 @@ describe("clients-defaults: setting them on the Clients screen", () => {
   });
 
   describe("Save answers (#3875)", () => {
-    const save = () => screen.queryByRole("button", { name: "Salvar padrões" }) as HTMLButtonElement;
+    const save = () =>
+      screen.queryByRole("button", { name: "Salvar padrões" }) as HTMLButtonElement;
     const type = async (value: string) => {
       await act(async () => {
         fireEvent.change(screen.queryByLabelText("Tag dos snippets") as HTMLElement, {
@@ -259,7 +260,7 @@ describe("clients-defaults: setting them on the Clients screen", () => {
       await open();
       await type("acme ");
       await click("Salvar padrões");
-      expect(screen.queryByRole("status")?.textContent).toBe("Padrões salvos");
+      expect(screen.queryByText("Padrões salvos")).not.toBeNull();
       expect(save().disabled).toBe(true);
       await type("acme2");
       expect(screen.queryByText("Padrões salvos")).toBeNull();

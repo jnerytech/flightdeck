@@ -12,7 +12,12 @@ export function ClientRate(props: Readonly<{ store: AppStore; client: Client }>)
   const { t } = store.i18n;
   const saved = store.roi.data().clientRates[client.id];
   const [text, setText] = useState(saved === undefined ? "" : String(saved));
+  /** The rate as the field shows it once saved, so "changed" does not wait for a re-render of the page. */
+  const [base, setBase] = useState(text);
   const [invalid, setInvalid] = useState(false);
+  /** What the last save did: a polite line, not silence (#3875). */
+  const [done, setDone] = useState<string | null>(null);
+  const changed = text.trim() !== base;
   return (
     <Form
       variant="inline"
@@ -23,6 +28,9 @@ export function ClientRate(props: Readonly<{ store: AppStore; client: Client }>)
           if (rate !== null && !Number.isFinite(rate)) throw new RoiSettingsError("rate_invalid");
           store.roi.setClientRate(client.id, rate);
           setInvalid(false);
+          setBase(rate === null ? "" : String(rate));
+          setText(rate === null ? "" : String(rate));
+          setDone(t(rate === null ? "roiUi.clientRate.cleared" : "roiUi.clientRate.saved"));
         } catch (error) {
           if (!(error instanceof RoiSettingsError)) throw error;
           setInvalid(true);
@@ -35,11 +43,19 @@ export function ClientRate(props: Readonly<{ store: AppStore; client: Client }>)
             {...control}
             inputMode="decimal"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              setDone(null);
+            }}
           />
         )}
       </Field>
-      <FormActions submit={t("roiUi.clientRate.save")} />
+      <FormActions
+        submit={t("roiUi.clientRate.save")}
+        disabled={!changed}
+        disabledReason={t("clients.unchanged")}
+      />
+      {done && <InlineNotice tone="info">{done}</InlineNotice>}
       {invalid && <InlineNotice>{t("roiUi.clientRate.invalid")}</InlineNotice>}
     </Form>
   );

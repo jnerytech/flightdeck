@@ -171,7 +171,7 @@ describe("clients: each client's month limit form has a name of its own (#3875)"
       ...acme([]),
       clients: [
         ...acme([]).clients,
-        { id: "beta", name: "Beta", color: "green", rules: [], defaults: { vaultScope: false } },
+        { id: "beta", name: "Beta", color: "emerald", rules: [], defaults: { vaultScope: false } },
       ],
     });
     expect(screen.queryByRole("form", { name: "Limite mensal de Acme" })).not.toBeNull();
