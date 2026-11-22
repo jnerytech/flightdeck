@@ -3,12 +3,12 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { formatDecimal } from "@/i18n/format";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { LoadingState, WideTable } from "@/shared/layout/index.ts";
 import { usd } from "../costs/index.ts";
+import { roiMultiple } from "./domain/roi.ts";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./domain/roi-table.ts";
 
 const COLUMNS: RoiColumn[] = [
@@ -107,7 +107,9 @@ export function RoiTable(
     );
 
   const exportCsv = async () => {
-    const text = csvOf(shown, [...COLUMNS.map(label), t("roiUi.table.derivation")], (row) =>
+    // The cells stay plain numbers, so the file parses; the unit is in the Return on cost header.
+    const header = COLUMNS.map((c) => (c === "roi" ? t("roiUi.table.roiCsv") : label(c)));
+    const text = csvOf(shown, [...header, t("roiUi.table.derivation")], (row) =>
       row.figures.derivation.map((d) => t(d.key as Key, d.vars)).join("; "),
     );
     await store.system.saveFile(`roi-${from}_${to}.csv`, text);
@@ -172,10 +174,10 @@ export function RoiTable(
                   <td className="pr-3">{row.figures.prsMerged}</td>
                   <td className="pr-3">{money(row.figures.costPerCard, t.lang)}</td>
                   <td className="pr-3">{money(row.figures.costPerPr, t.lang)}</td>
-                  <td className="pr-3">{row.figures.hours}</td>
+                  <td className="pr-3">{row.figures.hours === 0 ? DASH : row.figures.hours}</td>
                   <td className="pr-3">{money(row.figures.valueUsd, t.lang)}</td>
                   <td className="pr-3">
-                    {row.figures.roi === null ? DASH : formatDecimal(row.figures.roi, t.lang)}
+                    {row.figures.roi === null ? DASH : roiMultiple(row.figures.roi, t.lang)}
                   </td>
                 </tr>
               ))}
@@ -190,10 +192,10 @@ export function RoiTable(
                 <td className="pr-3">{totals.prsMerged}</td>
                 <td className="pr-3">{money(totals.costPerCard, t.lang)}</td>
                 <td className="pr-3">{money(totals.costPerPr, t.lang)}</td>
-                <td className="pr-3">{totals.hours}</td>
+                <td className="pr-3">{totals.hours === 0 ? DASH : totals.hours}</td>
                 <td className="pr-3">{money(totals.valueUsd, t.lang)}</td>
                 <td className="pr-3">
-                  {totals.roi === null ? DASH : formatDecimal(totals.roi, t.lang)}
+                  {totals.roi === null ? DASH : roiMultiple(totals.roi, t.lang)}
                 </td>
               </tr>
             </tfoot>
