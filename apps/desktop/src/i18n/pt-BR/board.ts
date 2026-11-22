@@ -227,6 +227,7 @@ export const board = {
       ended: "Encerrado",
       failed: "Falhou",
     },
+    processes: "Processos",
     procRunning: "rodando",
     procExited: "encerrado (código {code})",
     procEndedNoCode: "encerrado sem código de saída",
