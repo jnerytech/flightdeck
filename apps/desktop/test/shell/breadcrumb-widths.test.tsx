@@ -86,7 +86,8 @@ describe("breadcrumb-widths: the header's path by window width (issue #641)", ()
       />,
     );
     const items = [...(nav() as HTMLElement).querySelectorAll("li")];
-    const [first, last] = [items[0], items.at(-1)] as HTMLElement[];
+    const first = items[0] as HTMLElement;
+    const last = items.at(-1) as HTMLElement;
     // The classes are the contract: happy-dom has no layout, the e2e `layout` journey measures the result.
     const shrink = (li: HTMLElement) => {
       const found = /(?:^|\s)shrink(?:-\[(\d+)\])?(?=\s|$)/.exec(li.className);
