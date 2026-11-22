@@ -109,7 +109,7 @@ export function NotificationPrefs(
         {t("notifyPrefs.teamFold")}
       </label>
 
-      <fieldset className="m-0 flex max-h-72 flex-col gap-2 overflow-y-auto border-0 p-0">
+      <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
         <legend className="mb-1 font-medium text-sm">{t("notifyPrefs.mute")}</legend>
         {nothingToMute && (
           <p className="text-muted-foreground text-sm">{t("notifyPrefs.muteNone")}</p>
