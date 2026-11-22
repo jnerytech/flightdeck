@@ -298,6 +298,22 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     },
   );
 
+  test("a refused answer typed with A keeps the focus on the row's own button, not on Approve (#4032)", async () => {
+    await setup({ refuse: "host offline" });
+    const panel = await open();
+    const pick = () => panelButton(/Backend tests/) as HTMLElement;
+    pick().focus();
+    await act(async () => {
+      fireEvent.keyDown(pick(), { key: "a" });
+    });
+    expect(
+      await settleMaybe(
+        () => within(panel).queryByRole("alert")?.textContent === "Not done: host offline",
+      ),
+    ).toBe(true);
+    expect(await settleMaybe(() => document.activeElement === pick())).toBe(true);
+  });
+
   test("the keys are said on the row, and a high-risk row says approving takes holding", async () => {
     await setup();
     await open();
