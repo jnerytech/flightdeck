@@ -490,8 +490,8 @@ describe("knowledge-status-ui: warnings, the last note and the counts (#4234)", 
     "a cut list says its counts are of what was loaded, next to the filters (%s)",
     async (language, name, words) => {
       render(setup({ language, list: WARNED }).view);
-      await listed();
-      const region = screen.getByRole("region", { name });
+      const region = await screen.findByRole("region", { name });
+      await waitFor(() => expect(within(region).queryByText(words)).not.toBeNull());
       const group = within(region).queryAllByRole("group")[0];
       expect({
         said: within(region).queryByText(words) !== null,

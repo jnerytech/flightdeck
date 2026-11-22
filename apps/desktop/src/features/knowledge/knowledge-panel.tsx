@@ -1,4 +1,5 @@
 import type { KnowledgeEntry, KnowledgeListResult, KnowledgeStatus } from "@flightdeck/protocol";
+import { TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ export function KnowledgePanel(
   // works test first. A card the host refuses is not named; the banner says why.
   const makeCard = async (entry: KnowledgeEntry, projectId: string) => {
     if (busy.current.has(entry.path)) return;
+    setNote(null);
     busy.current.add(entry.path);
     setMaking(new Set(busy.current));
     try {
@@ -156,6 +158,8 @@ export function KnowledgePanel(
   // the list is read again so the next try has what the file is now.
   const change = async (entry: KnowledgeEntry, status: KnowledgeStatus) => {
     if (writing.current.has(entry.path)) return;
+    // The note of the last action is over once the next one starts.
+    setNote(null);
     writing.current.add(entry.path);
     setWritingNow(new Set(writing.current));
     const result = await store.hostRequest(hostId, "knowledge.setStatus", {
@@ -280,7 +284,11 @@ export function KnowledgePanel(
                 size="sm"
                 variant="outline"
                 aria-pressed={filter === status}
-                onClick={() => setFilter(status)}
+                onClick={() => {
+                  setFilter(status);
+                  // What worked is old news; a failure stays until the next action, unread or not.
+                  setNote((now) => (now?.ok ? null : now));
+                }}
               >
                 {t("projectPage.knowledge.filter", {
                   status: status === "all" ? t("projectPage.knowledge.all") : word(status),
@@ -289,6 +297,9 @@ export function KnowledgePanel(
               </Button>
             ))}
           </fieldset>
+          {loaded.truncated && (
+            <p className="text-muted-foreground text-xs">{t("projectPage.knowledge.countsCut")}</p>
+          )}
           {shown.length === 0 && (
             <p className="text-sm">{t("projectPage.knowledge.noneWithStatus")}</p>
           )}
@@ -388,14 +399,16 @@ export function KnowledgePanel(
                   })}
                 </span>
                 {entry.warnings.map((warning) => (
-                  <span key={warning} className="text-sm">
+                  <span key={warning} className="flex items-center gap-1 font-medium text-sm">
+                    <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
                     {t("projectPage.knowledge.referencesObsolete", {
                       path: warning.slice(warning.indexOf(":") + 1),
                     })}
                   </span>
                 ))}
                 {entry.problems.map((problem) => (
-                  <span key={problem} className="text-sm">
+                  <span key={problem} className="flex items-center gap-1 font-medium text-sm">
+                    <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
                     {t(`projectPage.knowledge.problem.${problem}` as Key)}
                   </span>
                 ))}

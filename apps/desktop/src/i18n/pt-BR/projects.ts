@@ -78,6 +78,7 @@ export const projects = {
       },
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
+      countsCut: "As contagens são dos documentos carregados, não de toda a biblioteca.",
       failed: "Não foi possível ler os documentos neste host.",
       failedHint:
         "Confira se o host está online e se a pasta do projeto ainda existe, e tente de novo.",
