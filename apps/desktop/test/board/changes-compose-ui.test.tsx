@@ -46,7 +46,8 @@ function fakeStore(comments: ReviewComment[] = []) {
     hostRequest: async () => ({ ok: true, data: CHANGES }),
     hostCommand: async (_host: string, type: string, payload: Record<string, unknown>) => {
       calls.push({ type, payload });
-      if (type === "review.list") return { comments };
+      // A copy, as a host's answer is: the panel sees a new list after each change.
+      if (type === "review.list") return { comments: [...comments] };
       if (type === "review.add") {
         const added = { ...payload, id: `c${comments.length + 1}`, state: "draft" } as never;
         comments.push({

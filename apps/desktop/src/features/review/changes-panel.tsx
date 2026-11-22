@@ -1,7 +1,16 @@
 import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protocol";
 import { reviewMessage } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +26,9 @@ import { ReviewList } from "./review-list.tsx";
 
 // CodeMirror is ~800 KB of source and only opens with a file: it loads when an editor is opened.
 const FileEditor = lazy(() => import("./file-editor.tsx").then((m) => ({ default: m.FileEditor })));
+
+/** How long the status line about a comment stays: 6 s, by the store's clock. */
+const NOTICE_MS = 6000;
 
 /** What the host offers to take back a revert: the file and when the offer ends. */
 interface Undo {
@@ -58,6 +70,7 @@ export function ChangesPanel(
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
+  const hintId = useId();
   const panel = useRef<HTMLElement>(null);
   // Focus brings the draft into view: it sits after the whole diff (#1496). Once the drafts were
   // sent, the reviewer's first comment in the history is where they went.
@@ -81,6 +94,14 @@ export function ChangesPanel(
   useEffect(() => {
     if (selection) commentBox.current?.focus();
   }, [selection]);
+  // What the last add, save or remove did, said in a polite status line; it fades after a while.
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (notice === null) return;
+    return store.later(() => setNotice(null), NOTICE_MS);
+  }, [store, notice]);
+  // After a remove the pressed button is gone: the list (or the panel, when it is empty) takes the focus.
+  const refocus = useRef(false);
   const [reverting, setReverting] = useState<string | null>(null);
   const [undo, setUndo] = useState<Undo | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -89,6 +110,13 @@ export function ChangesPanel(
     const result = await store.hostCommand(hostId, "review.list", { target });
     if (result) setComments(result.comments);
   }, [store, hostId, target]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `comments` is the trigger
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    const list = panel.current?.querySelector<HTMLElement>("[data-review-list]");
+    (list ?? panel.current)?.focus();
+  }, [comments]);
 
   const refresh = useCallback(async () => {
     const result = await store.hostRequest(hostId, "changes.get", { target });
@@ -137,6 +165,22 @@ export function ChangesPanel(
     });
     if (!added) return;
     closeComposer();
+    setNotice(t("changes.commentAdded"));
+    await loadComments();
+  };
+
+  const updateComment = async (id: string, text: string) => {
+    const saved = await store.hostCommand(hostId, "review.update", { id, body: text });
+    if (saved) setNotice(t("changes.commentSaved"));
+    await loadComments();
+  };
+
+  const removeComment = async (id: string) => {
+    const removed = await store.hostCommand(hostId, "review.remove", { id });
+    if (removed) {
+      setNotice(t("changes.commentRemoved"));
+      refocus.current = true;
+    }
     await loadComments();
   };
 
@@ -186,6 +230,7 @@ export function ChangesPanel(
         .trim()
     : "";
 
+  const blank = body.trim() === "";
   const composer = selection && (
     <form aria-label={t("changes.composer")} className="flex flex-col gap-2 rounded-md border p-3">
       <p className="font-mono text-xs">{where}</p>
@@ -195,6 +240,7 @@ export function ChangesPanel(
         value={body}
         className="min-h-16"
         onChange={(e) => setBody(e.target.value)}
+        aria-describedby={hintId}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
@@ -206,8 +252,17 @@ export function ChangesPanel(
           }
         }}
       />
+      <p id={hintId} className="text-muted-foreground text-xs">
+        {blank ? t("changes.commentBlank") : t("changes.commentShortcut")}
+      </p>
       <div className="flex gap-2">
-        <Button type="button" size="sm" onClick={() => void addComment()}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={blank}
+          aria-describedby={hintId}
+          onClick={() => void addComment()}
+        >
           {t("changes.addComment")}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={closeComposer}>
@@ -278,7 +333,12 @@ export function ChangesPanel(
       }
     : {};
   return (
-    <section ref={panel} aria-label={t("changes.region")} className="flex flex-col gap-4">
+    <section
+      ref={panel}
+      aria-label={t("changes.region")}
+      tabIndex={-1}
+      className="flex flex-col gap-4 focus:outline-2 focus:outline-ring"
+    >
       {props.extra?.(changes, refresh, goToDrafts)}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => void refresh()}>
@@ -328,15 +388,12 @@ export function ChangesPanel(
           />
         </>
       )}
+      {notice && <output className="text-muted-foreground text-sm">{notice}</output>}
       {comments.length > 0 && (
         <ReviewList
           comments={comments}
-          onUpdate={(id, text) =>
-            void store.hostCommand(hostId, "review.update", { id, body: text }).then(loadComments)
-          }
-          onRemove={(id) =>
-            void store.hostCommand(hostId, "review.remove", { id }).then(loadComments)
-          }
+          onUpdate={(id, text) => void updateComment(id, text)}
+          onRemove={(id) => void removeComment(id)}
           onSend={() => void send()}
           {...(props.onCompose
             ? {
