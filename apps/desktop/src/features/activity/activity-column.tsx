@@ -6,6 +6,8 @@ export function ActivityColumnView(
     name: string;
     count: number;
     none: string;
+    /** One line under the head saying what the column holds, when its name does not (#4241). */
+    hint?: string;
     children: ReactNode;
   }>,
 ) {
@@ -17,6 +19,7 @@ export function ActivityColumnView(
           {props.count}
         </span>
       </div>
+      {props.hint && <p className="activity-column-hint">{props.hint}</p>}
       {props.count === 0 ? (
         <p className="activity-column-none">{props.none}</p>
       ) : (

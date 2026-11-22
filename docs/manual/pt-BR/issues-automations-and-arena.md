@@ -20,6 +20,8 @@ provedor).
   fecha a issue (`Fixes #n` ou `AB#id`).
 - Uma issue de **Autor externo** vem marcada. O texto é conteúdo de terceiro: a aprovação automática do
   card fica suspensa até você reativá-la.
+- A lista tem no máximo 50 issues. Quando o tracker tem mais, uma nota avisa: restrinja a busca em
+  **Configurar issues**.
 - Só endereços `http` e `https` são abertos.
 
 ## Automações

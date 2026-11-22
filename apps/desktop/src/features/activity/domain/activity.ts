@@ -15,6 +15,7 @@ import {
 
 /** The parts of the state the board is made of: its rows, the requests and what was not opened. */
 export const ACTIVITY_KEYS = [
+  "hostsLoaded",
   "cards",
   "externalRequests",
   "externals",
@@ -62,6 +63,28 @@ export interface ActivityBoardData {
   /** Cards that pass the filter, and all the cards of the columns on show. */
   shown: number;
   total: number;
+  /** The idle sessions that pass the filter and are left out because Idle is off (#4241). */
+  hiddenIdle: number;
+}
+
+/** What the board is: waiting for a first answer, empty of hosts, or the columns. */
+export type ActivityStage = "no_host" | "loading" | "board";
+
+/**
+ * With no host there is nothing to read; until the saved hosts are read, or while no host has
+ * answered yet and one is being reached, with no session known, the board is not a quiet day
+ * either (#4241). `known` counts every session the hosts told, the ones Idle hides too.
+ */
+export function activityStage(
+  state: { hosts: readonly { status: string }[]; hostsLoaded: boolean },
+  known: number,
+): ActivityStage {
+  if (!state.hostsLoaded) return "loading";
+  if (state.hosts.length === 0) return "no_host";
+  const reaching =
+    state.hosts.some((host) => host.status === "connecting") &&
+    !state.hosts.some((host) => host.status === "online");
+  return known === 0 && reaching ? "loading" : "board";
 }
 
 /** The rows the board is about: live sessions, not the history and not what was archived. */
@@ -110,8 +133,7 @@ export function activityBoard(
         pending,
         changedAt,
       };
-    })
-    .filter((card) => showIdle || card.column !== "idle");
+    });
   const text = filter.text.trim().toLowerCase();
   const passes = (card: ActivityCard) =>
     (text === "" ||
@@ -121,7 +143,10 @@ export function activityBoard(
     (!filter.host || card.row.hostName === filter.host) &&
     (!filter.project || card.project === filter.project) &&
     (!filter.persona || card.row.persona?.id === filter.persona);
-  const kept = cards.filter(passes).sort((a, b) => b.changedAt - a.changedAt);
+  const onShow = (card: ActivityCard) => showIdle || card.column !== "idle";
+  const kept = cards
+    .filter((card) => onShow(card) && passes(card))
+    .sort((a, b) => b.changedAt - a.changedAt);
   const columns: Record<ActivityColumn, ActivityCard[]> = {
     needs_you: [],
     working: [],
@@ -129,7 +154,12 @@ export function activityBoard(
     idle: [],
   };
   for (const card of kept) columns[card.column].push(card);
-  return { columns, shown: kept.length, total: cards.length };
+  return {
+    columns,
+    shown: kept.length,
+    total: cards.filter(onShow).length,
+    hiddenIdle: cards.filter((card) => !onShow(card) && passes(card)).length,
+  };
 }
 
 /** What the filters can pick: the hosts, projects and personas of the live sessions. */

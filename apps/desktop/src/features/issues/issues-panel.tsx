@@ -223,6 +223,8 @@ export function IssuesPanel(
   const { store, hostId, project } = props;
   const { t } = store.i18n;
   const [issues, setIssues] = useState<Issue[] | null>(null);
+  /** The host says the tracker holds more issues than the list shows. */
+  const [cut, setCut] = useState(false);
   /** Why the list could not be had, in the person's language; null while it can. */
   const [failure, setFailure] = useState<string | null>(null);
   /** Why the last save was refused: the form stays open with it. */
@@ -247,6 +249,7 @@ export function IssuesPanel(
     if (result.ok) {
       setFailure(null);
       setIssues(result.data.issues);
+      setCut(result.data.truncated === true);
     } else {
       // A failed list is shown alone: the old one would pass for the current one.
       setIssues(null);
@@ -401,6 +404,9 @@ export function IssuesPanel(
                     ) : undefined
                   }
                 />
+              )}
+              {issues && cut && (
+                <InlineNotice>{t("issuesUi.cut", { n: issues.length })}</InlineNotice>
               )}
               {issues && shown.some((issue) => issue.external) && (
                 <InlineNotice>{t("issuesUi.externalHint")}</InlineNotice>
