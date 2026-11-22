@@ -31,6 +31,7 @@ export function ExternalSeal({ t }: Readonly<{ t: AppStore["i18n"]["t"] }>) {
   return (
     <Badge variant="outline" className="text-status-needs-you" title={t("issuesUi.externalHint")}>
       {t("issuesUi.external")}
+      <span className="sr-only">{`. ${t("issuesUi.externalHint")}`}</span>
     </Badge>
   );
 }
@@ -147,7 +148,7 @@ function IssueRow(
     >
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 flex-col">
-          <strong className="font-medium">{issue.title}</strong>
+          <strong className="break-words font-medium">{issue.title}</strong>
           <span className="flex gap-1 text-muted-foreground text-xs">
             <span>{issueNumber(issue.ref)}</span>
             <span aria-hidden="true">·</span>
@@ -382,13 +383,13 @@ export function IssuesPanel(
                 />
               )}
               {/* Always mounted: a live region that appears already filled is not announced. */}
-              <p role="status" className="text-muted-foreground text-xs empty:sr-only">
+              <output className="text-muted-foreground text-xs empty:sr-only">
                 {issues &&
                   issues.length > 0 &&
                   (filtering
                     ? t("issuesUi.countOf", { shown: shown.length, n: issues.length })
                     : t("issuesUi.count", { n: issues.length }))}
-              </p>
+              </output>
               {issues && shown.length === 0 && (
                 <EmptyState
                   title={

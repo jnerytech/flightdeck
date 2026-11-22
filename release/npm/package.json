@@ -1,6 +1,6 @@
 {
   "name": "flightdeckd",
-  "version": "0.38.13",
+  "version": "0.38.14",
   "private": true,
   "description": "The Flightdeck daemon and its fd command, from a GitHub release tarball (no download at install time)",
   "license": "UNLICENSED",
