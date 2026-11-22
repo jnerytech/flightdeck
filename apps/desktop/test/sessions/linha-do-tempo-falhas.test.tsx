@@ -166,6 +166,21 @@ describe("linha-do-tempo-falhas", () => {
     expect(alerts()).toEqual([]);
   });
 
+  test("Try again stays in sight and busy while the new read goes on", async () => {
+    const again = pending();
+    let tries = 0;
+    await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": () => (++tries === 1 ? Promise.resolve(null) : again.promise),
+    });
+    await click("Show files of turn 1");
+    await click("Try again");
+    expect(isBusy("Try again")).toBe(true);
+    await act(async () => again.settle(PREVIEW));
+    expect(screen.queryByText("README.md")).not.toBeNull();
+    expect(alerts()).toEqual([]);
+  });
+
   test("a refused read of a turn's files reads the same in Portuguese", async () => {
     await timeline("pt-BR", {
       "snapshots.list": async () => SNAPSHOTS,
