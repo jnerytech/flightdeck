@@ -19,16 +19,21 @@ function layout(scrollHeight: number, clientHeight: number) {
     ["scrollHeight", scrollHeight],
     ["clientHeight", clientHeight],
   ] as const) {
-    const original = Object.getOwnPropertyDescriptor(Element.prototype, name);
-    Object.defineProperty(Element.prototype, name, {
+    // The getter lives on a different prototype per property: stub where the DOM defines it.
+    let owner: object | null = Object.getPrototypeOf(document.createElement("section"));
+    while (owner && !Object.getOwnPropertyDescriptor(owner, name))
+      owner = Object.getPrototypeOf(owner);
+    if (!owner) throw new Error(`no ${name} on the DOM`);
+    const target = owner;
+    const original = Object.getOwnPropertyDescriptor(target, name);
+    Object.defineProperty(target, name, {
       configurable: true,
       get(this: Element) {
         return this.getAttribute("data-slot") === "while-away" ? value : 0;
       },
     });
     restores.push(() => {
-      if (original) Object.defineProperty(Element.prototype, name, original);
-      else Reflect.deleteProperty(Element.prototype, name);
+      if (original) Object.defineProperty(target, name, original);
     });
   }
 }
@@ -336,6 +341,9 @@ describe("while-away-ui: the summary at the top of Needs you (#1344)", () => {
   test("in Portuguese the cue speaks Portuguese (#3919)", () => {
     layout(600, 300);
     open({ lang: "pt-BR" });
-    expect(cue()?.textContent).toBe("Role para ver mais");
+    const region = screen.queryByRole("region", { name: "Enquanto você esteve fora" });
+    expect(region?.querySelector('[data-slot="away-more"]')?.textContent).toBe(
+      "Role para ver mais",
+    );
   });
 });
