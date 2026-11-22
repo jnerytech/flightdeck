@@ -28,6 +28,7 @@ export const watch = {
     filter: "Filtrar decisões",
     filterPlaceholder: "Ferramenta ou motivo",
     loading: "Carregando as decisões",
+    retry: "Tentar de novo",
     empty: "Nenhuma decisão automática ainda",
     emptyHint:
       "As decisões aparecem quando um projeto liga a aprovação automática e uma sessão pede permissão.",
@@ -173,6 +174,9 @@ export const watch = {
     remove: "Remover {rule}",
     removeMessage: "Remover a regra {rule} do .claude/settings.local.json do projeto?",
     removeConfirm: "Remover regra",
+    removing: "Removendo…",
+    loading: "Carregando as regras",
+    retry: "Tentar de novo",
     empty:
       'Nenhuma regra ainda. Escolha "Sempre neste projeto" quando o Claude pedir permissão e a regra aparece aqui.',
   },

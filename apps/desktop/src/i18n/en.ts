@@ -232,6 +232,7 @@ export const en: Dictionary = {
   alwaysAllow: {
     rule: "Rule",
     saveRule: "Save rule",
+    ruleEmpty: "Type a rule to save it.",
     session: "Allow for this session",
     project: "Always in this project",
     refusedFolder:

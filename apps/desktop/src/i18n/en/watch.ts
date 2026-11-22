@@ -29,6 +29,7 @@ export const watch = {
     filter: "Filter decisions",
     filterPlaceholder: "Tool or reason",
     loading: "Loading the decisions",
+    retry: "Try again",
     empty: "No automatic decisions yet",
     emptyHint:
       "Decisions show up when a project turns automatic approval on and a session asks for permission.",
@@ -175,6 +176,9 @@ export const watch = {
     remove: "Remove {rule}",
     removeMessage: "Remove the rule {rule} from the project's .claude/settings.local.json?",
     removeConfirm: "Remove rule",
+    removing: "Removing…",
+    loading: "Loading the rules",
+    retry: "Try again",
     empty:
       'No rules yet. Choose "Always in this project" when Claude asks for permission and the rule shows up here.',
   },
