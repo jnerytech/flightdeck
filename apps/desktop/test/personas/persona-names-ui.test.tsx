@@ -68,6 +68,7 @@ function setup(lang: "en" | "pt-BR") {
             member={WORKER}
             report={null}
             open
+            removing={false}
             onPersona={async () => true}
             onRemove={() => {}}
           />

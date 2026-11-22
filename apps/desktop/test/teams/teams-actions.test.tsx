@@ -28,6 +28,9 @@ const WORDS = {
     removeW1: "Remove w1",
     removeW2: "Remove w2",
     removeConfirm: "Remove",
+    persona: "Persona of w1",
+    setPersona: "Change persona of w1",
+    personaDone: "Persona of w1 changed",
     paused: "Team login paused",
     resumed: "Team login resumed",
     closed: "Team login closed",
@@ -48,6 +51,9 @@ const WORDS = {
     removeW1: "Remover w1",
     removeW2: "Remover w2",
     removeConfirm: "Remover",
+    persona: "Persona de w1",
+    setPersona: "Trocar persona de w1",
+    personaDone: "Persona de w1 trocada",
     paused: "Time login pausado",
     resumed: "Time login retomado",
     closed: "Time login encerrado",
@@ -74,7 +80,12 @@ const member = (name: string, role: "coordinator" | "worker") => ({
  * dialog gave the focus back to a button that was gone. The host keeps one team; `refuse` makes
  * the next command of that type answer a refusal.
  */
-async function openTeam(language: "en" | "pt-BR", refuse: string | null = null) {
+async function openTeam(
+  language: "en" | "pt-BR",
+  refuse: string | null = null,
+  /** `teams.update` answers only once this settles, so a test can look at the screen meanwhile. */
+  held: Promise<void> = Promise.resolve(),
+) {
   let teams: TeamInfo[] = [
     {
       id: "t1",
@@ -116,12 +127,34 @@ async function openTeam(language: "en" | "pt-BR", refuse: string | null = null) 
         teams = [];
         return gone;
       }),
-      "teams.update": (payload: { removeMember?: string }) =>
-        change("teams.update", (t) => {
+      "teams.update": async (payload: {
+        removeMember?: string;
+        persona?: { member: string; persona: string | null };
+      }) => {
+        await held;
+        return change("teams.update", (t) => {
           if (payload.removeMember) {
             t.members = t.members.filter((m) => m.name !== payload.removeMember);
           }
-        })(),
+          const picked = payload.persona;
+          if (picked) {
+            for (const m of t.members) if (m.name === picked.member) m.persona = picked.persona;
+          }
+        })();
+      },
+      "personas.list": () => ({
+        personas: [
+          { id: "qa", name: "QA", description: "", scope: "host", trusted: true, modified: false },
+          {
+            id: "dev",
+            name: "Dev",
+            description: "",
+            scope: "host",
+            trusted: true,
+            modified: false,
+          },
+        ],
+      }),
     },
     { hostId: "h1", features: ["teams"], language, fallback: null },
   );
@@ -246,6 +279,101 @@ describe.each(["en", "pt-BR"] as const)("teams-actions (%s)", (language) => {
     await pressTwice(words.resume);
     await settleMaybe(() => button(words.pause) !== null, 3000);
     expect(calls).toEqual(["teams.pause", "teams.resume"]);
+  });
+
+  describe("Change persona and Remove (#4020)", () => {
+    const pick = async (label: string, value: string) => {
+      await settleMaybe(
+        () => (screen.queryByLabelText(label)?.querySelectorAll("option").length ?? 0) > 2,
+        3000,
+      );
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(label), { target: { value } });
+      });
+    };
+    const disabled = (name: string) => (button(name) as HTMLButtonElement).disabled;
+
+    test("Change persona waits for another persona, and waits again once it is saved", async () => {
+      const { words } = await openTeam(language);
+      await pick(words.persona, "qa");
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(words.persona), { target: { value: "" } });
+      });
+      expect(disabled(words.setPersona)).toBe(true);
+      await pick(words.persona, "qa");
+      expect(disabled(words.setPersona)).toBe(false);
+      await click(words.setPersona);
+      await settleMaybe(() => said(words.personaDone), 3000);
+      await settleMaybe(() => disabled(words.setPersona), 3000);
+      expect(said(words.personaDone)).toBe(true);
+      expect(disabled(words.setPersona)).toBe(true);
+    });
+
+    test("a double press on Change persona sends one command", async () => {
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const { words, calls } = await openTeam(language, null, held);
+      await pick(words.persona, "qa");
+      await act(async () => {
+        const target = screen.getByRole("button", { name: words.setPersona });
+        fireEvent.click(target);
+        fireEvent.click(target);
+      });
+      expect(disabled(words.setPersona)).toBe(true);
+      release();
+      await settleMaybe(() => said(words.personaDone), 3000);
+      expect(calls).toEqual(["teams.update"]);
+    });
+
+    test("a refused Change persona gives the button back, enabled and focused", async () => {
+      const { words } = await openTeam(language, "teams.update");
+      await pick(words.persona, "qa");
+      await click(words.setPersona);
+      await settleMaybe(() => said(words.notDone), 3000);
+      await settleMaybe(() => focused() === words.setPersona, 3000);
+      expect(focused()).toBe(words.setPersona);
+      expect(disabled(words.setPersona)).toBe(false);
+    });
+
+    test("Remove is busy from the confirm until the host answers", async () => {
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const { words, calls } = await openTeam(language, null, held);
+      await click(words.removeW1);
+      await confirm(words.removeConfirm);
+      expect(disabled(words.removeW1)).toBe(true);
+      release();
+      await settleMaybe(() => said(words.removed), 3000);
+      expect(calls).toEqual(["teams.update"]);
+    });
+
+    test("two removals at once keep both Remove buttons busy", async () => {
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const { words } = await openTeam(language, null, held);
+      await click(words.removeW1);
+      await confirm(words.removeConfirm);
+      await click(words.removeW2);
+      await confirm(words.removeConfirm);
+      expect([disabled(words.removeW1), disabled(words.removeW2)]).toEqual([true, true]);
+      release();
+      await settleMaybe(() => button(words.removeW1) === null, 3000);
+    });
+
+    test("a refused Remove gives the button back, enabled and focused", async () => {
+      const { words } = await openTeam(language, "teams.update");
+      await click(words.removeW1);
+      await confirm(words.removeConfirm);
+      await settleMaybe(() => said(words.notDone), 3000);
+      await settleMaybe(() => focused() === words.removeW1, 3000);
+      expect([focused(), disabled(words.removeW1)]).toEqual([words.removeW1, false]);
+    });
   });
 
   test("a refused Pause gives the button back, enabled and focused (#3933)", async () => {

@@ -5,7 +5,14 @@ import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import type { TeamConfirm } from "./domain/new-team.ts";
 
 /** Where the focus goes once an action's answer is on screen, as the control pressed may be gone (#2650). */
-type AfterFocus = "pause" | "resume" | "row" | "add" | { gone: string; next: string | null };
+type AfterFocus =
+  | "pause"
+  | "resume"
+  | "row"
+  | "add"
+  | { gone: string; next: string | null }
+  /** A member's row, or one of its buttons when `control` is set (#4020). */
+  | { member: string; control?: "persona" | "remove" };
 
 /** The element the focus goes to, or null while the answer has not reached the row yet. */
 function focusTarget(
@@ -17,12 +24,19 @@ function focusTarget(
   const control = (action: string) => row.querySelector<HTMLElement>(`[data-action="${action}"]`);
   if (focus === "row") return row;
   if (typeof focus === "string") return control(focus);
+  const memberRow = (name: string | null) =>
+    Array.from(row.querySelectorAll<HTMLElement>("[data-member]")).find(
+      (el) => el.dataset.member === name,
+    );
+  if ("member" in focus) {
+    const member = memberRow(focus.member);
+    return focus.control
+      ? (member?.querySelector<HTMLElement>(`[data-action="${focus.control}"]`) ?? null)
+      : (member ?? null);
+  }
   // A removed worker's row is gone once the host's answer is in the list.
   if (team.members.some((m) => m.name === focus.gone)) return null;
-  const next = Array.from(row.querySelectorAll<HTMLElement>("[data-member]")).find(
-    (el) => el.dataset.member === focus.next,
-  );
-  return next ?? control("add");
+  return memberRow(focus.next) ?? control("add");
 }
 
 /** What a team card does with the host: the commands, what came of the last one, and where the focus goes. */
@@ -43,6 +57,15 @@ export function useTeamActions(
   /** What the last action did, or why the host refused it: a polite line, not silence (#2650). */
   const [notice, setNotice] = useState<{ text: string; refused: boolean } | null>(null);
   const [focus, setFocus] = useState<AfterFocus | null>(null);
+  /** The workers whose removal the host is working on: their Remove buttons wait (#4020). */
+  const [removing, setRemoving] = useState<ReadonlySet<string>>(new Set());
+  const markRemoving = (name: string, on: boolean) =>
+    setRemoving((now) => {
+      const next = new Set(now);
+      if (on) next.add(name);
+      else next.delete(name);
+      return next;
+    });
   /** A text a worker took is sent; one every worker refused stays, to be sent again. */
   const sending = useRef(false);
   const sendAll = async () => {
@@ -105,13 +128,15 @@ export function useTeamActions(
     }
     const workers = team.members.filter((m) => m.role === "worker");
     const next = workers[workers.findIndex((m) => m.name === c.member) + 1]?.name ?? null;
+    markRemoving(c.member, true);
     return act(
       store.hostRequest(hostId, "teams.update", { team: team.id, removeMember: c.member }),
       {
         text: t("teamsUi.done.removed", { name: c.label ?? c.member }),
         focus: { gone: c.member, next },
+        retry: { member: c.member, control: "remove" },
       },
-    );
+    ).finally(() => markRemoving(c.member, false));
   };
-  return { rowRef, text, setText, notice, act, sendAll, runConfirmed };
+  return { rowRef, text, setText, notice, removing, act, sendAll, runConfirmed };
 }

@@ -94,6 +94,15 @@ describe.each(["en", "pt-BR"] as const)("teams-message-all (%s)", (language) => 
     expect(form?.contains(screen.getByRole("button", { name: words.send }))).toBe(true);
   });
 
+  test("the field has a visible label, not only an accessible name (#4024)", async () => {
+    const { field, words } = await openTeam(language, { delivered: 1, refused: 0 });
+    const label = field.id ? document.querySelector(`label[for="${field.id}"]`) : null;
+    expect([label?.textContent, label?.className.includes("sr-only")]).toEqual([
+      words.field,
+      false,
+    ]);
+  });
+
   test("Enter in the field sends the text to the team", async () => {
     const { field, messages } = await openTeam(language, { delivered: 2, refused: 0 });
     await type(field, "stand up");
