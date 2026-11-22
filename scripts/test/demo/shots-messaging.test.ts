@@ -107,8 +107,9 @@ describe("the Messaging state prints (#4297)", () => {
 
   test("the Messages tab prints a stalled read, a refused read and the open form, on the session the demo gives messages to", () => {
     expect(COMMANDS("sessao-mensagens-carregando")).toEqual(["messages.list"]);
+    // Held, not stalled: a held list keeps its status region, which the print waits out (#4190).
     const stalled = find("sessao-mensagens-carregando")?.wire?.[0];
-    expect(stalled && "stall" in stalled).toBe(true);
+    expect(stalled && "hold" in stalled).toBe(true);
     const refused = find("sessao-mensagens-falhou")?.wire?.[0];
     expect(refused && "refuse" in refused).toBe(true);
     for (const name of [
