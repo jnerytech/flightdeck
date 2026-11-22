@@ -12,9 +12,15 @@ export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Whether `day` is a real `YYYY-MM-DD` day (a date input that was cleared gives an empty string). */
+/** The first year a range may start in: a date input emits 0002-11-22 while the year 2026 is being typed. */
+const FIRST_YEAR = 2000;
+
+/** Whether `day` is a real `YYYY-MM-DD` day (a cleared date input gives an empty string) in a year a person means. */
 const isDay = (day: string): boolean =>
-  /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(Date.parse(day));
+  /^\d{4}-\d{2}-\d{2}$/.test(day) &&
+  Number(day.slice(0, 4)) >= FIRST_YEAR &&
+  !Number.isNaN(Date.parse(day)) &&
+  addDays(day, 0) === day;
 
 /** Every day from `from` to `to`, inclusive; none when either is not a day. */
 export function daysBetween(from: string, to: string): string[] {
