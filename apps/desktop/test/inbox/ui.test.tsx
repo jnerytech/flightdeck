@@ -61,6 +61,10 @@ const open = async () => {
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeNull());
 };
 
+/** What the panel's polite status says now. */
+const liveText = () =>
+  screen.getByRole("dialog").querySelector('[data-slot="inbox-live"]')?.textContent ?? "";
+
 describe("inbox-ui", () => {
   test("the bell shows the unread count in its name", async () => {
     await setup(ENTRIES);
@@ -107,6 +111,76 @@ describe("inbox-ui", () => {
     await waitFor(() =>
       expect(screen.getByRole("dialog").textContent).toContain("Nenhuma notificação."),
     );
+  });
+
+  test("mark all as read says so and puts the focus on the heading, not on the dead button", async () => {
+    await setup(ENTRIES);
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Marcar todas como lidas" }));
+    });
+    expect(liveText()).toBe("Todas marcadas como lidas");
+    expect(document.activeElement?.textContent).toBe("Notificações");
+    expect(document.activeElement?.tagName).toBe("H2");
+  });
+
+  test("clear says so, offers an undo and the undo brings the entries back as they were", async () => {
+    const { store } = await setup(ENTRIES);
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
+    });
+    expect(store.getState().inbox).toEqual([]);
+    expect(liveText()).toBe("Notificações limpas");
+    expect(document.activeElement?.tagName).toBe("H2");
+    const undo = screen.queryByRole("button", { name: "Desfazer" });
+    expect(undo).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(undo as HTMLElement);
+    });
+    expect(store.getState().inbox.map((e) => `${e.id}:${e.read}`)).toEqual([
+      "1:false",
+      "2:false",
+      "3:true",
+    ]);
+    expect(screen.queryByRole("button", { name: "Desfazer" })).toBeNull();
+    expect(liveText()).toBe("Notificações restauradas");
+  });
+
+  test("a second Clear keeps the first batch in the undo", async () => {
+    const { store } = await setup(ENTRIES);
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
+    });
+    await act(async () => {
+      store.inbox.notify({ title: "Nova", body: "" });
+    });
+    await waitFor(() => expect(store.getState().inbox).toHaveLength(1));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
+    });
+    expect(store.getState().inbox).toHaveLength(ENTRIES.length + 1);
+    expect(store.getState().inbox.some((e) => e.id === "3")).toBe(true);
+  });
+
+  test("the offer to undo ends when the panel closes", async () => {
+    const { store } = await setup(ENTRIES);
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Limpar" }));
+    });
+    expect(screen.queryByRole("button", { name: "Desfazer" })).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await open();
+    expect(screen.queryByRole("button", { name: "Desfazer" })).toBeNull();
+    expect(store.getState().inbox).toEqual([]);
   });
 
   test("Esc closes the panel", async () => {
