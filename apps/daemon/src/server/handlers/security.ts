@@ -29,13 +29,19 @@ export const securityHandlers = {
   "actions.list": async (payload, { server }) => {
     return await server.need("actions").list(payload.projectId);
   },
-  "actions.save": async (payload, { server }) => {
+  "actions.save": async (payload, { ws, server }) => {
+    // The app's own actions are trusted as they are saved, so a save is a trust: near only, as
+    // `actions.trust` is (#3807).
+    requireVaultTransport(ws.data.origin, "actions.save", server.opts.log);
     return await server.need("actions").save(payload);
   },
   "actions.remove": async (payload, { server }) => {
     return await server.need("actions").remove(payload.projectId, payload.name);
   },
-  "actions.trust": async (payload, { server }) => {
+  "actions.trust": async (payload, { ws, server }) => {
+    // Trusting an action lets its command run on this host: near only, as trusting a workflow is
+    // (#3807).
+    requireVaultTransport(ws.data.origin, "actions.trust", server.opts.log);
     const { projectId, name, hash } = payload;
     return await server.need("actions").trust(projectId, name, hash);
   },

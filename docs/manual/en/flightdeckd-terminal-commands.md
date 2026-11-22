@@ -35,7 +35,8 @@ session, named by its name or its id.
 `close <terminal> --kill` asks the host to end a terminal's process and prints `kill sent to`; the process may still be going a moment later. Without `--kill` it only removes a terminal that had already ended, and exits `1` when the terminal is still running, because detaching belongs to the app's window. A terminal keeps running after the command that
 opened it, so `list` is where you find it again. `settings` turns the host's terminals on or off and prints whether
 they are on, how many may run at once and which shell they use. Turning them on gives whoever reaches the daemon a
-full shell on the host, so it needs `--confirm`; without it the command exits `1` and sends nothing. A host with the
+full shell on the host, so it needs `--confirm`; without it the command exits `1` and sends nothing. It also needs a near connection
+(this computer or Tailscale): over a far one the daemon refuses to turn them on. Turning them off has no such limit. A host with the
 terminals off refuses `open`.
 
 If a write gets no answer, the command exits `2` and says a terminal may or may not have changed: run `list` before
