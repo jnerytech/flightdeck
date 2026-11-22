@@ -116,7 +116,7 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
     expect(
       [
         item("Start with a workflow or persona…"),
-        item("Start in the background"),
+        item("Start in the background, no terminal"),
         item("Finish…"),
         item("Discard"),
       ].map((el) => el !== null),
@@ -183,7 +183,7 @@ describe("card-primary-ui: the card leads with one button for its next step (#11
       [
         item("Start"),
         item("Start with a workflow or persona…"),
-        item("Start in the background"),
+        item("Start in the background, no terminal"),
         item("Finish…"),
         item("Discard"),
       ].map((el) => el !== null),
