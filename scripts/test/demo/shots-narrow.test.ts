@@ -15,6 +15,14 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
     expect(narrowSizes("dark", "sessao-aprovacao")).toHaveLength(3);
   });
 
+  test("#4163: the high-risk approval card, the project's rules and the automatic approvals are re-measured narrow, where their long rules and reasons must wrap", () => {
+    expect(
+      ["sessao-aprovacao-risco-alto", "projeto-regras", "aprovacoes-automaticas"].map(
+        (name) => narrowSizes("dark", name).length,
+      ),
+    ).toEqual([3, 3, 3]);
+  });
+
   test("a light print, or a print not in the list, is not", () => {
     expect(narrowSizes("light", "board")).toHaveLength(0);
     expect(narrowSizes("dark", "paleta")).toHaveLength(0);
