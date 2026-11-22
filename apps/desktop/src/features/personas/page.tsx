@@ -256,9 +256,18 @@ export const PersonasPage = memo(function PersonasPage(props: {
         />
       )}
       <div className="flex flex-wrap gap-3">
-        <Field label={t("personas.project")}>
+        {/* Off while an editor is open: another project is another list, and the editor's typed text would go with it (#4212). */}
+        <Field
+          label={t("personas.project")}
+          help={editing === null ? undefined : t("personas.projectLocked")}
+        >
           {(control) => (
-            <NativeSelect {...control} value={project} onChange={(e) => setProject(e.target.value)}>
+            <NativeSelect
+              {...control}
+              value={project}
+              disabled={editing !== null}
+              onChange={(e) => setProject(e.target.value)}
+            >
               <option value="">{t("personas.hostOnly")}</option>
               <option value={APP}>{t("personas.globals")}</option>
               {projects.map((p) => (

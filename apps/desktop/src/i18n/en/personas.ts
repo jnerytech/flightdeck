@@ -40,6 +40,7 @@ export const personas = {
     loadFailed: "Could not read this host's personas.",
     retry: "Try again",
     project: "Project",
+    projectLocked: "Finish or cancel the open editor to change the project.",
     hostOnly: "The host's",
     globals: "Global (this app)",
     origin: {
