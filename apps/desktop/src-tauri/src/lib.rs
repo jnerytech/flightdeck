@@ -364,15 +364,11 @@ fn tray_set_menu(
         needs_you.append(&rest).map_err(err)?;
     }
     // The first labels: the submenu and Quit join the menu now that they are translated and complete.
-    // The flag is taken first, so two calls never append the same items twice.
-    if state
-        .labelled
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_ok()
-    {
-        state.menu.append(&state.needs_you).map_err(err)?;
-        state.menu.append(&state.quit).map_err(err)?;
-    }
+    join_once(&state.labelled, || {
+        state.menu.append(&state.needs_you)?;
+        state.menu.append(&state.quit)
+    })
+    .map_err(err)?;
     Ok(())
 }
 
@@ -560,7 +556,17 @@ fn close_hides_to_tray(close_to_tray: bool, labelled: bool) -> bool {
 /// Runs `join` the first time only, and counts it as done only when it worked: a failed join is tried
 /// again by the next call, and the flag then still says the tray has no Quit (#4120).
 fn join_once<E>(done: &AtomicBool, join: impl FnOnce() -> Result<(), E>) -> Result<(), E> {
-    join()
+    if done
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Ok(());
+    }
+    let joined = join();
+    if joined.is_err() {
+        done.store(false, Ordering::SeqCst);
+    }
+    joined
 }
 
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
@@ -746,11 +752,20 @@ mod tray_startup_tests {
     fn the_join_runs_once_and_a_failed_one_is_tried_again() {
         let done = AtomicBool::new(false);
         let mut runs = 0;
-        assert!(join_once(&done, || -> Result<(), ()> { runs += 1; Err(()) }).is_err());
+        let failing = join_once(&done, || -> Result<(), ()> {
+            runs += 1;
+            Err(())
+        });
+        assert!(failing.is_err());
         assert!(!done.load(Ordering::SeqCst));
-        assert!(join_once(&done, || -> Result<(), ()> { runs += 1; Ok(()) }).is_ok());
+        for _ in 0..2 {
+            let working = join_once(&done, || -> Result<(), ()> {
+                runs += 1;
+                Ok(())
+            });
+            assert!(working.is_ok());
+        }
         assert!(done.load(Ordering::SeqCst));
-        assert!(join_once(&done, || -> Result<(), ()> { runs += 1; Ok(()) }).is_ok());
         assert_eq!(runs, 2);
     }
 
