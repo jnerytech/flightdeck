@@ -159,10 +159,15 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
     });
   }
 
-  test("the column name may take a second line instead of being cut after a few letters (#3878)", () => {
+  test("the column name may take a second line, and every head is as tall as two lines so the lanes line up (#3878)", () => {
     const css = readFileSync(join(import.meta.dir, "../../src/styles/board.css"), "utf8");
-    const rule = /@utility column-title \{([^}]*)\}/.exec(css)?.[1] ?? "";
-    expect(rule.includes("white-space: nowrap")).toBe(false);
-    expect(rule.includes("-webkit-line-clamp: 2")).toBe(true);
+    const rule = (name: string) =>
+      new RegExp(`@utility ${name} \\{([^}]*)\\}`).exec(css)?.[1] ?? "";
+    const title = rule("column-title");
+    expect(title.includes("white-space: nowrap")).toBe(false);
+    for (const line of ["display: -webkit-box", "-webkit-line-clamp: 2", "line-clamp: 2"]) {
+      expect(title.includes(line)).toBe(true);
+    }
+    expect(rule("column-head").includes("min-height:")).toBe(true);
   });
 });
