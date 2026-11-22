@@ -11,7 +11,7 @@ import { Bar, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import { useT } from "../../i18n/context.tsx";
 import { translateError } from "../../i18n/errors.ts";
-import { AppDialogContent } from "../../shared/feedback/index.ts";
+import { AppDialogContent, InlineNotice } from "../../shared/feedback/index.ts";
 import {
   plainText,
   type TeleportOutcome,
@@ -163,12 +163,6 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
         <DialogHeader>
           <DialogTitle>{t("teleportUi.title")}</DialogTitle>
         </DialogHeader>
-        {plain.length > 0 &&
-          (phase.at === "pick" || phase.at === "preparing" || phase.at === "confirm") && (
-            <p role="note" className="font-medium text-sm">
-              {t("teleportUi.plainWs", { n: plain.length, hosts: plain.join(", ") })}
-            </p>
-          )}
         {phase.at === "pick" && props.targets.length === 0 && (
           <Form variant="dialog" onSubmit={close}>
             <p role="note">{t("teleportUi.noTarget")}</p>
@@ -291,6 +285,13 @@ export const TeleportDialog = memo(function TeleportDialog(props: TeleportDialog
             )}
           </Form>
         )}
+        {/* After the form: showing it when a host is picked moves nothing the person is using. */}
+        {plain.length > 0 &&
+          (phase.at === "pick" || phase.at === "preparing" || phase.at === "confirm") && (
+            <InlineNotice>
+              {t("teleportUi.plainWs", { n: plain.length, hosts: plain.join(", ") })}
+            </InlineNotice>
+          )}
       </AppDialogContent>
     </Dialog>
   );
