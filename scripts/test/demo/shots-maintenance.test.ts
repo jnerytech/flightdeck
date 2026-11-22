@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DemoIds } from "../../demo-seed.ts";
+import { PENDING_SELECTOR, pendingSelectorFor } from "../../lib/shots/loaded.ts";
 import { maintenanceRewriter, maintenanceScript } from "../../lib/shots/maintenance.ts";
 import { hostShots } from "../../lib/shots/table-hosts.ts";
 
@@ -30,12 +31,13 @@ describe("the Maintenance prints (#4001)", () => {
     ]);
   });
 
-  // The prints wait for every busy region to clear; the held cleanup is busy on purpose, so its print says so.
-  test("only the print of the cleanup in progress is a busy screen the print does not wait out", () => {
-    const busy = hostShots(IDS)
-      .filter((shot) => shot.name.startsWith("host-manutencao") && shot.busy === true)
+  // The prints wait for every busy region to clear; the held cleanup is busy on purpose, so only its print waits less.
+  test("only the print of the cleanup in progress does not wait for a busy button", () => {
+    const waitsLess = hostShots(IDS)
+      .filter((shot) => shot.name.startsWith("host-manutencao"))
+      .filter((shot) => pendingSelectorFor(shot) !== PENDING_SELECTOR)
       .map((shot) => shot.name);
-    expect(busy).toEqual(["host-manutencao-limpando"]);
+    expect(waitsLess).toEqual(["host-manutencao-limpando"]);
   });
 
   test("the status reads the same facts on every machine, a backup and a real cleanup among them", () => {

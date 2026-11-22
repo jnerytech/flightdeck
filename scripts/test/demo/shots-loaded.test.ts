@@ -6,9 +6,10 @@ describe("what a print waits out before the shot (#4001)", () => {
     expect(pendingSelectorFor({})).toBe(PENDING_SELECTOR);
   });
 
-  test("a print of a task held in progress still waits for the skeletons, not for the busy region", () => {
-    const selector = pendingSelectorFor({ busy: true });
+  test("a print of a cleanup held in progress waits for skeletons and busy regions, but not for a busy button", () => {
+    const selector = pendingSelectorFor({ maintenance: { holdClean: true } });
     expect(selector).toContain('[data-slot="skeleton"]');
-    expect(selector).not.toContain("aria-busy");
+    expect(selector).toContain('[aria-busy="true"]:not(button)');
+    expect(selector).not.toBe(PENDING_SELECTOR);
   });
 });
