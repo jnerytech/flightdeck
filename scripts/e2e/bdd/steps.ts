@@ -2,10 +2,12 @@
  * The steps of the BDD scenarios: written once, in English. The UI text a step looks for comes from
  * the dictionaries, in the language of the run (the same scenarios run in en and pt-BR).
  */
+
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
+import type { Locator } from "@playwright/test";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
 import { SCHEDULE_KEY } from "../../../apps/desktop/src/features/backup/backup-schedule.ts";
 import { TOKEN_MASK } from "../../../apps/desktop/src/features/hosts/domain/pairing-mask.ts";
@@ -320,10 +322,8 @@ const cardMenuButton = (c: Context) =>
   });
 
 /**
- * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu,
- * with no wait for a dialog to be gone or for the focus to be back, and no second try: a person clicks Actions the
- * moment a card dialog closes, and the menu stays open (#4288). Only the open menu's item counts: one in the menu's
- * closing animation takes a click that selects nothing.
+ * Finish… sits under the card page's menu (#1197). The step clicks Actions and then the item of the open menu.
+ * Only the open menu's item counts: one in the menu's closing animation takes a click that selects nothing.
  */
 const fromCardMenu = async (c: Context, item: string) => {
   await cardMenuButton(c).click();
@@ -331,6 +331,22 @@ const fromCardMenu = async (c: Context, item: string) => {
     .locator('[role="menu"][data-state="open"]')
     .getByRole("menuitem", { name: item, exact: true })
     .click();
+};
+
+/**
+ * The card dialog is gone and the focus is back on Actions. The dialog hands the focus back a tick after it leaves
+ * (#4272); an Actions click that lands before that opens the menu and the late focus closes it again, and the one
+ * click then waits for an open menu until the test times out. #4328 dropped the wait on #4288's premise that a person
+ * clicks at once and the app copes: CI says it does not (runs 45080281643, 45081167601, 45080081263, 45081701723, the
+ * board journey on four PRs), so the app race is #4353 and the step waits for the focus.
+ */
+const dialogGone = async (c: Context, dialog: Locator) => {
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+  await c.page.waitForFunction(
+    (name) => document.activeElement?.getAttribute("aria-label") === name,
+    c.t("board.cardActions", { title: mine(c).card ?? "" }),
+    { timeout: WAIT },
+  );
 };
 
 step(When, "I open the card and read the three ways to finish it", async (c) => {
@@ -345,14 +361,14 @@ step(When, "I open the card and read the three ways to finish it", async (c) => 
   // No worktree yet: the merge is off, and the dialog says why.
   await dialog.getByText(c.t("cardUi.finishNeedWorktree"), { exact: true }).waitFor();
   await c.page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "detached", timeout: WAIT });
+  await dialogGone(c, dialog);
 });
 
 step(When, "I finish the card by moving it to Done", async (c) => {
   await fromCardMenu(c, c.t("cardUi.finish"));
   const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
   await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
-  await dialog.waitFor({ state: "detached", timeout: WAIT });
+  await dialogGone(c, dialog);
 });
 
 step(Then, "the card says it is already done", async (c) => {
