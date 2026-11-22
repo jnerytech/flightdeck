@@ -1874,7 +1874,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
 
     // 3b. The top bar and the status bar change at one width, 1024 px, the one `useBreakpoint()`
     // uses (#641, #1850): at 1023 the host's name, the search's text and keys, the version and the
-    // quota window are hidden and the host's icon stands in; at 1024 the full forms show.
+    // quota window are hidden and the host's icon stands in; at 1024 and 1280 the full forms show,
+    // and the search's text is not cut (#3954).
     const shown = () =>
       c.page.evaluate(() => {
         const display = (selector: string) => {
@@ -1891,9 +1892,15 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
           version: display(".top-bar-version"),
           quota: display(".status-quota-window"),
           search: document.querySelector(".top-bar-search")?.getBoundingClientRect().width ?? 0,
+          // The text is cut ("Search or jump t…") when its content is wider than its box (#3954).
+          searchCut: (() => {
+            const text = document.querySelector(".top-bar-search-text");
+            // One pixel of slack for the rounding of a fractional width.
+            return text ? text.scrollWidth > text.clientWidth + 1 : false;
+          })(),
         };
       });
-    for (const width of [1023, 1024]) {
+    for (const width of [1023, 1024, 1280]) {
       await c.page.setViewportSize({ width, height: 800 });
       await c.page.locator(".top-bar-search").waitFor({ timeout: WAIT });
       const now = await shown();
@@ -1907,6 +1914,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
           markHidden: now.mark === "none",
           quotaFits: hidden(now.quota),
           searchWide: now.search >= 150,
+          searchCut: now.searchCut,
         },
         `the top bar at ${width}px`,
       ).toEqual({
@@ -1914,6 +1922,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         markHidden: !compact,
         quotaFits: true,
         searchWide: !compact,
+        searchCut: false,
       });
     }
 
@@ -2353,6 +2362,19 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
     const panel = c.page.locator("[data-slot='board-files']");
     await panel.getByText("app.ts").first().waitFor({ timeout: WAIT });
+    // Beside the panel the columns scroll sideways: when one is cut at the edge, a fade says so (#3972).
+    const columns = c.page.locator("[data-slot='board-columns']");
+    const CSS_SCROLL_TIMELINE = await c.page.evaluate(() =>
+      CSS.supports("animation-timeline", "scroll()"),
+    );
+    const cut = await columns.evaluate((box) => ({
+      cut: box.scrollWidth > box.clientWidth,
+      fade: Number.parseFloat(getComputedStyle(box).getPropertyValue("--board-fade")) > 0,
+    }));
+    // An engine without scroll-driven animations has no fade to show: the native scrollbar stays.
+    if (cut.cut && !cut.fade && CSS_SCROLL_TIMELINE) {
+      throw new Error("a board column is cut at the Files panel edge with no cue that it scrolls");
+    }
     const results = panel.getByRole("list", { name: c.t("files.results"), exact: true });
     // By name: the file is found; a credential is listed as hidden and cannot be opened.
     const names = panel.getByRole("searchbox", { name: c.t("files.searchNames"), exact: true });
@@ -2367,6 +2389,19 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     if ((await results.getByRole("button", { name: ".env", exact: true }).count()) > 0) {
       throw new Error("um arquivo de credencial devia aparecer como oculto, sem botão para abrir");
+    }
+    // The tree: a credential's name starts where its siblings' names do, not left of them (#3971).
+    await names.fill("");
+    const nameBoxes = panel.locator("li [data-name].font-mono");
+    await nameBoxes.first().waitFor({ timeout: WAIT });
+    const lefts = await nameBoxes.evaluateAll((boxes) =>
+      boxes.map((box) => ({ name: box.textContent ?? "", left: box.getBoundingClientRect().left })),
+    );
+    const secret = lefts.find((box) => box.name === ".env");
+    const sibling = lefts.find((box) => box.name !== ".env");
+    if (!secret || !sibling) throw new Error("the tree should list .env and a sibling file");
+    if (Math.abs(secret.left - sibling.left) > 1) {
+      throw new Error(`.env starts at x=${secret.left} and its sibling at x=${sibling.left}`);
     }
     // By content: the key-shaped line is found, and nothing of the key shows.
     await panel.getByRole("button", { name: c.t("files.byContent"), exact: true }).click();

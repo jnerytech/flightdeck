@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
@@ -90,6 +91,7 @@ export function ActivityBoard(
     };
     return store.respondTo(request.hostId, request.requestId, decision, held ? { held } : {});
   };
+  const searchRef = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<ActivityFilter>) => setFilter({ ...filter, ...patch });
   return (
     <Page
@@ -101,6 +103,7 @@ export function ActivityBoard(
             aria-label={t("activityBoard.search")}
             placeholder={t("activityBoard.searchPlaceholder")}
             className="activity-search"
+            ref={searchRef}
             value={filter.text}
             onChange={(e) => set({ text: e.target.value })}
           />
@@ -167,6 +170,25 @@ export function ActivityBoard(
     >
       {data.total === 0 && state.hosts.length > 0 ? (
         <EmptyState title={t("activityBoard.emptyAll")} />
+      ) : null}
+      {/* Filters that match no card: say so and offer the way back (#3967). The idle switch is a view
+          choice, not a filter, so Clear filters leaves it. */}
+      {data.shown === 0 && data.total > 0 ? (
+        <EmptyState
+          title={t("activityBoard.emptyFiltered")}
+          action={
+            <Button
+              variant="link"
+              onClick={() => {
+                setFilter(NO_ACTIVITY_FILTER);
+                // The empty state leaves with its button: keep the focus on the toolbar.
+                searchRef.current?.focus();
+              }}
+            >
+              {t("activityBoard.clearFilters")}
+            </Button>
+          }
+        />
       ) : null}
       <output className="sr-only">{said}</output>
       <div className="activity-board">

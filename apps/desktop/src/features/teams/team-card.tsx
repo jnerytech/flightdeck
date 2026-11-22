@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { PermissionChoice } from "@/features/personas/index.ts";
-import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Form, FormActions } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import {
@@ -137,35 +137,39 @@ export function Team(
         <div data-slot="team-footer" className="team-footer">
           <div className="team-row">
             {team.state === "active" ? (
-              <Button
+              <ActionButton
+                key="pause"
                 variant="outline"
                 size="sm"
                 data-action="pause"
                 aria-label={t("teamsUi.pause", { name: team.name })}
                 onClick={() =>
-                  void act(store.hostRequest(hostId, "teams.pause", { team: team.id }), {
+                  act(store.hostRequest(hostId, "teams.pause", { team: team.id }), {
                     text: t("teamsUi.done.paused", { name: team.name }),
                     focus: "resume",
+                    retry: "pause",
                   })
                 }
               >
                 {t("teamsUi.pauseButton")}
-              </Button>
+              </ActionButton>
             ) : (
-              <Button
+              <ActionButton
+                key="resume"
                 variant="outline"
                 size="sm"
                 data-action="resume"
                 aria-label={t("teamsUi.resume", { name: team.name })}
                 onClick={() =>
-                  void act(store.hostRequest(hostId, "teams.resume", { team: team.id }), {
+                  act(store.hostRequest(hostId, "teams.resume", { team: team.id }), {
                     text: t("teamsUi.done.resumed", { name: team.name }),
                     focus: "pause",
+                    retry: "resume",
                   })
                 }
               >
                 {t("teamsUi.resumeButton")}
-              </Button>
+              </ActionButton>
             )}
             <Button
               variant="outline"
