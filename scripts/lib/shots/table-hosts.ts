@@ -84,7 +84,8 @@ export function hostShots(ids: DemoIds): Shot[] {
       ssh: true,
       askpass: true,
       prepare: async (page) => {
-        await listed(page);
+        // The open dialog hides the list from the accessibility tree: its rows are found by their text.
+        await page.getByText("docs-site", { exact: true }).waitFor();
         await page.getByRole("alertdialog").waitFor();
       },
     },
@@ -123,7 +124,7 @@ export function hostShots(ids: DemoIds): Shot[] {
           await page.getByRole("button", { name: /^(New secret|Novo segredo)$/ }).click();
           await page.getByLabel(/^(Name|Nome)$/).fill("demo-token");
           await page.getByLabel(/^(Value|Valor)$/).fill("demo-not-a-real-token");
-          await page.getByRole("button", { name: /^(Save|Salvar)$/ }).click();
+          await page.getByRole("button", { name: /^(Save|Guardar)$/ }).click();
           await page.getByRole("button", { name: /^(Copy|Copiar) demo-token$/ }).click();
           await page.getByText(/^(Copied|Copiado)$/).waitFor();
           // timing: sonner's enter animation (400 ms) ends before the shot.
