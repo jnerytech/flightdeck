@@ -117,18 +117,26 @@ export function demoSecrets(hostId: string): string {
 
 /** The vault's usage log of the prints: what `demoSecrets` asked for, one line each kind. No value. */
 export function demoVaultUsage(hostId: string): string {
-  const line = (n: string, kind: string, hours: number, purpose: string, detail: string) => ({
+  const line = (
+    n: string,
+    kind: string,
+    hours: number,
+    purpose: string,
+    detail: string,
+    requester: string,
+  ) => ({
     secretId: `demo-secret-${n}`,
     hostId,
     purpose,
-    requester: "session",
+    requester,
     at: hoursAgo(hours),
     kind,
     detail,
   });
   return JSON.stringify([
-    line("1", "delivered", 2, "git push", ""),
-    line("4", "delivered", 26, "deploy", ""),
-    line("2", "denied", 30, "publish", "not allowed on this host"),
+    line("1", "delivered", 2, "git push", "", "you"),
+    line("4", "delivered", 26, "deploy", "", "claude"),
+    line("2", "denied", 30, "publish", "not allowed on this host", "automation"),
+    line("3", "delivered", 50, "release", "", "workflow"),
   ]);
 }

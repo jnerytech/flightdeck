@@ -119,10 +119,15 @@ export function installHolds(
       const rewritten = (event: Event) => {
         const data = (event as MessageEvent).data;
         if (typeof data !== "string") return listener.call(this, event);
-        return listener.call(
+        const answer = listener.call(
           this,
           new MessageEvent("message", { data: this.rewriter.fromHost(data) }),
         );
+        // The frames that follow it (#3943), heard in order after it.
+        for (const next of this.rewriter.followUp?.(data) ?? []) {
+          listener.call(this, new MessageEvent("message", { data: next }));
+        }
+        return answer;
       };
       listen.call(this, type, rewritten, options);
     }

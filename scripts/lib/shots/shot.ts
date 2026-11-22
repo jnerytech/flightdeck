@@ -32,6 +32,8 @@ export interface Shot {
   vaultUsage?: boolean;
   /** #3943: the hosts answer Connections with fake destinos, config names and an askpass prompt (`sshScript`). */
   ssh?: boolean;
+  /** #3943: with `ssh`, an askpass prompt follows the first destinos answer, so the print shows it. */
+  askpass?: boolean;
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */

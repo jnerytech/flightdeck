@@ -15,7 +15,7 @@ const ask = (id: string, type: string) => JSON.stringify({ id, type, payload: {}
 const ack = (id: string, data: object) => JSON.stringify({ type: "ack", id, ok: true, data });
 
 /** What the app hears after it asked `type`: the rewritten answer and the frames that follow it. */
-function heard(type: string, data: object = {}, rewriter = sshRewriter()) {
+function heard(type: string, data: object = {}, rewriter = sshRewriter(true)) {
   rewriter.fromApp(ask("r1", type));
   const answer = ack("r1", data);
   return {
@@ -84,19 +84,23 @@ describe("shots-ssh: the askpass prompt", () => {
   });
 
   test("the prompt names a destino of the list", () => {
-    const rewriter = sshRewriter();
+    const rewriter = sshRewriter(true);
     const { out, after } = heard("ssh.list", { targets: [] }, rewriter);
     const names = targets(out.data).map((t) => t.name);
     expect(names).toContain(AskpassRequest.parse(after[0]).targetName);
   });
 
   test("a second ssh.list answer brings no second prompt: the person has one to answer", () => {
-    const rewriter = sshRewriter();
+    const rewriter = sshRewriter(true);
     heard("ssh.list", { targets: [] }, rewriter);
     rewriter.fromApp(ask("r2", "ssh.list"));
     const again = ack("r2", { targets: [] });
     rewriter.fromHost(again);
     expect(rewriter.followUp?.(again)).toEqual([]);
+  });
+
+  test("with the prompt off, the first ssh.list answer brings no frame after it", () => {
+    expect(heard("ssh.list", { targets: [] }, sshRewriter(false)).after).toEqual([]);
   });
 
   test("a frame that is no ssh.list answer brings no prompt", () => {
@@ -123,7 +127,7 @@ class FakeSocket {
 describe("shots-ssh: the page's WebSocket", () => {
   test("the app hears the rewritten answer, then the frame that follows it", () => {
     const target = { WebSocket: FakeSocket as unknown as typeof WebSocket };
-    installHolds(target, sshRewriter);
+    installHolds(target, () => sshRewriter(true));
     const socket = new target.WebSocket("ws://x") as unknown as FakeSocket;
     const got: unknown[] = [];
     socket.addEventListener("message", (event) => got.push(event.data));
@@ -135,7 +139,7 @@ describe("shots-ssh: the page's WebSocket", () => {
 
   test("the init script alone wraps the window's WebSocket for the ssh prints", () => {
     const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
-    new Function("window", sshScript())(page);
+    new Function("window", sshScript(true))(page);
     const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
     const got: unknown[] = [];
     socket.addEventListener("message", (event) => got.push(event.data));
@@ -145,7 +149,7 @@ describe("shots-ssh: the page's WebSocket", () => {
   });
 
   test("the init script calls no transpile helper", () => {
-    expect(sshScript().match(/\b__\w+/g) ?? []).toEqual([]);
+    expect(sshScript(true).match(/\b__\w+/g) ?? []).toEqual([]);
   });
 });
 
@@ -161,12 +165,12 @@ describe("shots-ssh: the table", () => {
     ]);
   });
 
-  test("each ssh print opens Connections with the socket rewriter on", () => {
-    expect(sshShots().map((shot) => [shot.route.name, shot.ssh])).toEqual([
-      ["connections", true],
-      ["connections", true],
-      ["connections", true],
-      ["connections", true],
+  test("each ssh print opens Connections with the socket rewriter on, the prompt only in the last", () => {
+    expect(sshShots().map((shot) => [shot.route.name, shot.ssh, shot.askpass === true])).toEqual([
+      ["connections", true, false],
+      ["connections", true, false],
+      ["connections", true, false],
+      ["connections", true, true],
     ]);
   });
 });
