@@ -28,7 +28,7 @@ export function AgentPage(
       subtitle={t(withMemory ? "agent.subtitleMemory" : "agent.subtitle")}
     >
       <Tabs defaultValue="mcp">
-        <TabsList aria-label={t("agent.tabs")}>
+        <TabsList aria-label={t("agent.tabs")} className="tabs-wrap">
           <TabsTrigger value="mcp">{t("agent.tabMcp")}</TabsTrigger>
           <TabsTrigger value="claudemd">{t("agent.tabClaudeMd")}</TabsTrigger>
           <TabsTrigger value="agent">{t("agent.tabAgents")}</TabsTrigger>

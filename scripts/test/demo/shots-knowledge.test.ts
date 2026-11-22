@@ -180,4 +180,9 @@ describe("the prints never let a command that writes reach the host (#4236)", ()
       [{ command: "knowledge.setStatus", stall: true }],
     ]);
   });
+
+  test("the Memory list and its name error are re-measured narrow once the tab strip fits (#4278)", () => {
+    expect(narrowSizes("dark", "agente-memoria")).toHaveLength(3);
+    expect(narrowSizes("dark", "agente-memoria-nome-erro")).toHaveLength(3);
+  });
 });
