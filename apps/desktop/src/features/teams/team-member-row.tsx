@@ -9,6 +9,7 @@ import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { FieldRow } from "@/shared/layout/index.ts";
+import { formatAgo } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /** What a member's row reads: the names and personas of its host (issue #101). */
@@ -71,6 +72,9 @@ export function TeamMemberRow(
       },
       t,
     ) ?? member.name;
+  // A report time the app cannot read shows the report without an age.
+  const parsedAt = props.report ? Date.parse(props.report.at) : Number.NaN;
+  const reportedAt = Number.isNaN(parsedAt) ? null : parsedAt;
   const sessionId = member.sessionId;
   const openSession = () =>
     store.router.push({ name: "session", host: props.hostId, id: sessionId ?? "" });
@@ -158,7 +162,20 @@ export function TeamMemberRow(
       </div>
       {props.report && (
         <p className="text-muted-foreground">
-          {t("teamsUi.lastReport")}: {props.report.text}
+          {t("teamsUi.lastReport")}
+          {reportedAt !== null && (
+            <>
+              {" · "}
+              <time
+                dateTime={props.report.at}
+                title={store.formatDateTime(props.report.at)}
+                className="tabular-nums"
+              >
+                {formatAgo(Math.max(0, store.now() - reportedAt), t)}
+              </time>
+            </>
+          )}
+          : {props.report.text}
         </p>
       )}
       {(branch || changed !== null) && (
