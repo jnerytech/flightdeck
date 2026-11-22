@@ -13,9 +13,16 @@ import {
 import { type Turn, turnsOf } from "@/features/sessions/index.ts";
 import { ActionButton, IconActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { EmptyState, ErrorState, Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
+import { refusalText } from "../../i18n/errors.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { ForkDialog, RewindDialog, type Target, UndoDialog } from "./checkpoint-dialogs.tsx";
+import {
+  ForkDialog,
+  type Refused,
+  RewindDialog,
+  type Target,
+  UndoDialog,
+} from "./checkpoint-dialogs.tsx";
 
 /** More than this many lines or characters and the prompt is clamped, with a button to read it whole (#4038). */
 // Keep PROMPT_LINES equal to the `line-clamp-3` class below: a Tailwind class cannot be built from it.
@@ -163,8 +170,10 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const { t } = store.i18n;
   const busyId = useId();
   const [snapshots, setSnapshots] = useState<SnapshotInfo[] | null>(null);
-  // The first load was refused: the sheet says so and offers a new try, instead of loading for ever.
-  const [failed, setFailed] = useState(false);
+  // The last load was refused: the sheet says why and offers a new try, instead of loading for ever
+  // (or, after a rewind, of showing the list from before as if it were current).
+  const [failure, setFailure] = useState<Refused | null>(null);
+  const [loading, setLoading] = useState(true);
   const [files, setFiles] = useState<Record<number, SnapshotFiles>>({});
   // The turns whose files the host refused to read: the row says so and offers a new try.
   const [filesFailed, setFilesFailed] = useState<Record<number, true>>({});
@@ -180,25 +189,44 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const loaded = snapshots !== null;
 
   const loads = useRef(0);
+  // The control a person pressed is gone once the load ends: the focus goes on to the list or to Try again.
+  const refocus = useRef(false);
+  const errorBox = useRef<HTMLDivElement>(null);
 
+  // A refusal comes back to the panel, which tells it once: through `hostCommand` it would also go to the banner.
   const load = useCallback(async () => {
     const id = ++loads.current;
-    setFailed(false);
-    const result = await store.hostCommand(hostId, "snapshots.list", { claudeSessionId });
-    if (!result) {
-      setFailed(true);
+    setFailure(null);
+    setLoading(true);
+    const result = await store.hostRequest(hostId, "snapshots.list", { claudeSessionId });
+    // An answer to an older load must not overwrite a newer one (a rewind or an undo reloads).
+    if (id !== loads.current) return;
+    if (!result.ok) {
+      setFailure(result);
+      setLoading(false);
       return;
     }
-    setSnapshots(result.snapshots);
+    setSnapshots(result.data.snapshots);
+    setLoading(false);
     // A refusal (an older host, a session with no rewind) is no error: there is just no Undo.
     const preview = await store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId });
-    // An answer to an older load must not overwrite a newer one (a rewind or an undo reloads).
     if (id === loads.current) setUndoPreview(preview.ok ? preview.data : null);
   }, [store, hostId, claudeSessionId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (loading || !refocus.current) return;
+    refocus.current = false;
+    (failure ? errorBox.current?.querySelector("button") : scroll.current)?.focus();
+  }, [loading, failure]);
+
+  const retry = () => {
+    refocus.current = true;
+    void load();
+  };
 
   // The list opens at the newest turn, which is the one a person came to act on (#4037).
   useEffect(() => {
@@ -228,12 +256,13 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const undone = () => {
     setNotice(t("timeline.undone"));
     setUndoPreview(null);
+    refocus.current = true;
     void load();
   };
 
   const banner = notice ?? (undoable ? t("timeline.rewoundEarlier") : null);
 
-  if (snapshots === null && !failed) return <LoadingState label={t("timeline.loading")} />;
+  if (snapshots === null && failure === null) return <LoadingState label={t("timeline.loading")} />;
   const turns = turnsOf(snapshots ?? []);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
@@ -254,17 +283,26 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
         </InlineNotice>
       )}
       {props.busy && <InlineNotice id={busyId}>{t("timeline.busy")}</InlineNotice>}
-      {snapshots === null && (
-        <ErrorState
-          message={t("timeline.loadFailed")}
-          retryLabel={t("timeline.retry")}
-          onRetry={() => void load()}
-        />
+      {failure !== null && (
+        <div ref={errorBox}>
+          <ErrorState
+            message={t("timeline.loadFailed", {
+              reason: refusalText(failure.code, failure.message, t, failure),
+            })}
+            retryLabel={t("timeline.retry")}
+            onRetry={retry}
+          />
+        </div>
       )}
-      {snapshots !== null && turns.length === 0 && (
+      {snapshots !== null && failure === null && turns.length === 0 && (
         <EmptyState icon={History} title={t("timeline.empty")} />
       )}
-      <div ref={scroll} data-slot="timeline-scroll" className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={scroll}
+        tabIndex={-1}
+        data-slot="timeline-scroll"
+        className="min-h-0 flex-1 overflow-y-auto focus-visible:outline-2 focus-visible:outline-ring"
+      >
         <ul aria-label={t("timeline.list")} className="flex flex-col gap-2">
           {turns.map((turn) => (
             <TurnRow
