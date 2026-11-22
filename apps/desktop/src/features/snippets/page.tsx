@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { selectedClient, tagsFirst } from "@/features/clients/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
 import {
   EmptyState,
@@ -59,6 +59,8 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const [failed, setFailed] = useState(false);
   const [file, setFile] = useState<SnippetFileInfo | null>(null);
   const [removing, setRemoving] = useState<AppSnippet | null>(null);
+  /** The snippet whose removal the host has not answered: its Remove is busy, so a second press has nothing to send. */
+  const [removingNow, setRemovingNow] = useState<string | null>(null);
   const [editing, setEditing] = useState<AppSnippet | "new" | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
@@ -124,7 +126,9 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
       return reload();
     }
     if (!hostId) return;
+    setRemovingNow(snippet.id);
     const done = await store.hostCommand(hostId, "snippets.remove", { id: snippet.id });
+    setRemovingNow(null);
     if (done !== null) await reload();
   };
 
@@ -274,9 +278,9 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           <p className="font-mono">{t("snippets.file.path", { path: file.path })}</p>
           <p>{file.trusted ? t("snippets.file.trusted") : t("snippets.file.untrusted")}</p>
           {!file.trusted && (
-            <Button size="sm" variant="outline" className="self-start" onClick={() => void trust()}>
+            <ActionButton size="sm" variant="outline" className="self-start" onClick={trust}>
               {t("snippets.file.trust")}
-            </Button>
+            </ActionButton>
           )}
           {file.errors.length > 0 && (
             <ul aria-label={t("snippets.file.errors")} className="list-disc pl-5 text-destructive">
@@ -324,16 +328,16 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
                 {snippet.run ?? snippet.text}
               </p>
               <div className="flex gap-2">
-                <Button
+                <ActionButton
                   variant="outline"
                   size="sm"
                   aria-label={t(snippet.favorite ? "snippets.unfavorite" : "snippets.favorite", {
                     name: snippet.name,
                   })}
-                  onClick={() => void favorite(snippet)}
+                  onClick={() => favorite(snippet)}
                 >
                   <Star className={snippet.favorite ? "fill-current" : ""} aria-hidden />
-                </Button>
+                </ActionButton>
                 <Button
                   variant="outline"
                   size="sm"
@@ -356,14 +360,15 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
                 >
                   {t("snippets.edit")}
                 </Button>
-                <Button
+                <ActionButton
                   variant="outline"
                   size="sm"
                   aria-label={t("snippets.removeFor", { name: snippet.name })}
+                  pending={removingNow === snippet.id}
                   onClick={() => setRemoving(snippet)}
                 >
                   {t("snippets.remove")}
-                </Button>
+                </ActionButton>
               </div>
             </li>
           ))}
@@ -376,6 +381,8 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
           destructive
           onConfirm={() => void remove(removing)}
           onCancel={() => setRemoving(null)}
+          // The row's own Remove is busy or gone once the dialog closes: the focus goes to a control that stays.
+          onRestoreFocus={() => searchRef.current?.focus()}
         />
       )}
     </Page>
