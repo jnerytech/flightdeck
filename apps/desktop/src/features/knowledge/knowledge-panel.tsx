@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/action-button.tsx";
 import { InlineNotice } from "@/shared/feedback/index.ts";
-import { LoadingState, Panel } from "@/shared/layout/index.ts";
+import { LoadingState, NativeSelect, Panel } from "@/shared/layout/index.ts";
 import { KnowledgeCreate } from "./knowledge-create.tsx";
 import { KnowledgeFeedSwitch } from "./knowledge-feed-switch.tsx";
 
@@ -72,6 +73,8 @@ export function KnowledgePanel(
   // A write is on its way until the list read again shows it: a second press (a double click, a held
   // Enter) comes before the host answers and would write with the hash the first one used up.
   const writing = useRef(new Set<string>());
+  // The same set as state, for the button: the ref answers two presses in one tick, this one shows the wait.
+  const [writingNow, setWritingNow] = useState<ReadonlySet<string>>(new Set());
   const pickers = useRef(new Map<string, HTMLSelectElement>());
   const filters = useRef<HTMLFieldSetElement>(null);
   const refocus = useRef<string | null>(null);
@@ -84,6 +87,7 @@ export function KnowledgePanel(
   useEffect(() => {
     if (loaded === null || loaded === "failed") return;
     writing.current.clear();
+    setWritingNow((now) => (now.size === 0 ? now : new Set()));
     setChosen((now) => {
       const kept = Object.entries(now).filter(
         ([file, status]) => loaded.entries.find((e) => e.path === file)?.status !== status,
@@ -153,6 +157,7 @@ export function KnowledgePanel(
   const change = async (entry: KnowledgeEntry, status: KnowledgeStatus) => {
     if (writing.current.has(entry.path)) return;
     writing.current.add(entry.path);
+    setWritingNow(new Set(writing.current));
     const result = await store.hostRequest(hostId, "knowledge.setStatus", {
       path,
       file: entry.path,
@@ -160,7 +165,10 @@ export function KnowledgePanel(
       expectedHash: entry.hash,
     });
     if (result.ok) refocus.current = entry.path;
-    else writing.current.delete(entry.path);
+    else {
+      writing.current.delete(entry.path);
+      setWritingNow(new Set(writing.current));
+    }
     setNote(
       result.ok
         ? {
@@ -291,7 +299,9 @@ export function KnowledgePanel(
                   <span className="font-medium">{entry.title}</span>
                   {!props.status && <Badge variant="outline">{word(entry.status)}</Badge>}
                   {props.status && (
-                    <select
+                    <NativeSelect
+                      inline
+                      compact
                       ref={(el) => {
                         if (el) pickers.current.set(entry.path, el);
                         else pickers.current.delete(entry.path);
@@ -299,7 +309,6 @@ export function KnowledgePanel(
                       aria-label={t("projectPage.knowledge.setStatus.label", {
                         title: entry.title,
                       })}
-                      className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                       value={
                         chosen[entry.path] ?? (entry.status === "unclassified" ? "" : entry.status)
                       }
@@ -320,15 +329,16 @@ export function KnowledgePanel(
                           {word(status)}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   )}
                   {props.status && (
-                    <Button
+                    <ActionButton
                       variant="outline"
                       size="sm"
                       aria-label={t("projectPage.knowledge.setStatus.applyLabel", {
                         title: entry.title,
                       })}
+                      pending={writingNow.has(entry.path)}
                       disabled={
                         chosen[entry.path] === undefined || chosen[entry.path] === entry.status
                       }
@@ -338,7 +348,7 @@ export function KnowledgePanel(
                       }}
                     >
                       {t("projectPage.knowledge.setStatus.apply")}
-                    </Button>
+                    </ActionButton>
                   )}
                   {/* #1105: the select shows the status. While another one is chosen and not yet
                       written, a badge after Change says what the file still says; after, so the
