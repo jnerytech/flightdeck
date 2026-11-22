@@ -2,9 +2,11 @@
  * What the print table is made of: the `Shot` type, and the helpers and fixtures its
  * tables and the print machinery of scripts/demo-shots.ts share.
  */
+
 import type { Page } from "playwright-core";
 import type { Route } from "../../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../../demo-seed.ts";
+import type { WireRule } from "./wire.ts";
 
 export interface Shot {
   name: string;
@@ -30,6 +32,8 @@ export interface Shot {
   secrets?: boolean;
   /** #3602: the vault's usage log kept in the page's storage before it loads. */
   vaultUsage?: boolean;
+  /** #3982: what the page's sockets do to a command (a host's answer refused or replaced, a request sent as another), for a state the demo's hosts cannot be left in. */
+  wire?: WireRule[];
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
