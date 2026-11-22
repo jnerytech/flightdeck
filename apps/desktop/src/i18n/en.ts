@@ -337,7 +337,7 @@ export const en: Dictionary = {
     noMatch: "No message matches the filter.",
     clearFilter: "Clear filter",
     countOf: { one: "{shown} of {n} message", other: "{shown} of {n} messages" },
-    cut: "Showing {n} messages. A host has more: each host lists its newest {limit}, from the last {days} days.",
+    cut: "Showing {n} messages. A host may have more: each host lists its newest {limit}, from the last {days} days.",
     loading: "Loading messages",
     to: "to",
     open: "Open the session",

@@ -337,7 +337,7 @@ export const ptBR = {
     noMatch: "Nenhuma mensagem corresponde ao filtro.",
     clearFilter: "Limpar filtro",
     countOf: { one: "{shown} de {n} mensagem", other: "{shown} de {n} mensagens" },
-    cut: "Mostrando {n} mensagens. Um host tem mais: cada host lista as {limit} mais recentes, dos últimos {days} dias.",
+    cut: "Mostrando {n} mensagens. Um host pode ter mais: cada host lista as {limit} mais recentes, dos últimos {days} dias.",
     loading: "Carregando mensagens",
     to: "para",
     open: "Abrir a sessão",

@@ -234,7 +234,7 @@ describe("conversas-ui: a cut list says so (#4292)", () => {
     return opened;
   }
   const cutText =
-    "Mostrando 200 mensagens. Um host tem mais: cada host lista as 200 mais recentes, dos últimos 30 dias.";
+    "Mostrando 200 mensagens. Um host pode ter mais: cada host lista as 200 mais recentes, dos últimos 30 dias.";
 
   test("a host that answers as many messages as the limit asked makes the page say the list is cut", async () => {
     await openWith(200);
@@ -243,7 +243,7 @@ describe("conversas-ui: a cut list says so (#4292)", () => {
 
   test("a host that answers fewer than the limit leaves the page without the notice", async () => {
     await openWith(2);
-    expect(screen.queryByText(/Um host tem mais/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(screen.queryByText(/Um host pode ter mais/) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the page asks each host for an explicit limit and window, and says the window under its title", async () => {
