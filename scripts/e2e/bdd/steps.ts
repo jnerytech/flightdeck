@@ -14,6 +14,7 @@ import { AWAY_KEY } from "../../../apps/desktop/src/features/needs-you/domain/aw
 import { VIEW_LABEL } from "../../../apps/desktop/src/features/sessions/domain/session-views.ts";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
+import { DEMO_SSH_PASSWORD, demoSshHost } from "../../lib/demo/fake-ssh.ts";
 import {
   DEMO_ACTIVE_TEAM,
   DEMO_AWAY_FAILING_CARD,
@@ -3449,6 +3450,70 @@ step(When, "I add the destination {string} as {string}", async (c, name = "", ad
   await c.page.getByLabel(c.t("connections.form.host"), { exact: true }).fill(host);
   await c.page.getByLabel(c.t("connections.form.user"), { exact: true }).fill(user);
   await c.page.getByRole("button", { name: c.t("connections.form.save"), exact: true }).click();
+});
+
+// A password destination (#3989): the demo's hosts run their ssh as a fake that asks for the password through
+// the host's askpass helper, so the prompt the person answers is the one the daemon raises.
+step(When, "I add the destination {string} that asks for a password", async (c, name = "") => {
+  await c.page.getByRole("button", { name: c.t("connections.newTarget"), exact: true }).click();
+  await c.page.getByLabel(c.t("connections.form.name"), { exact: true }).fill(sshName(c, name));
+  await c.page
+    .getByLabel(c.t("connections.form.host"), { exact: true })
+    .fill(demoSshHost(c.lang.toLowerCase()));
+  await c.page.getByLabel(c.t("connections.form.user"), { exact: true }).fill("ops");
+  await c.page
+    .getByLabel(c.t("connections.form.auth"), { exact: true })
+    .selectOption({ label: c.t("connections.form.authOption.password") });
+  await c.page.getByRole("button", { name: c.t("connections.form.save"), exact: true }).click();
+  await sshRow(c, name).waitFor({ timeout: WAIT });
+});
+
+step(When, "I connect to {string} and confirm its server key", async (c, name = "") => {
+  await c.page
+    .getByRole("button", {
+      name: c.t("connections.connectFor", { name: sshName(c, name) }),
+      exact: true,
+    })
+    .click();
+  await c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("connections.hostKey.confirm"), exact: true })
+    .click();
+});
+
+step(Then, "the host asks for the password of {string}", async (c, name = "") => {
+  await c.page
+    .getByRole("alertdialog")
+    .getByText(c.t("connections.askpass.title.password", { name: sshName(c, name) }), {
+      exact: true,
+    })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I send the password", async (c) => {
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog
+    .getByLabel(c.t("connections.askpass.label.password"), { exact: true })
+    .fill(DEMO_SSH_PASSWORD);
+  await dialog.getByRole("button", { name: c.t("connections.askpass.send"), exact: true }).click();
+});
+
+step(Then, "the terminal shows that the password was accepted", async (c) => {
+  const screen = c.page.locator(".xterm-rows").first();
+  await waitFor(
+    async () => ((await screen.textContent()) ?? "").includes("PASSWORD-OK FAKE-SSH-CONNECTED"),
+    "the fake ssh saying it took the password",
+    WAIT * 2,
+  );
+});
+
+step(When, "I end the terminal", async (c) => {
+  await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+  await c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("terminalUi.end"), exact: true })
+    .click();
+  await c.page.getByRole("alertdialog").waitFor({ state: "detached", timeout: WAIT });
 });
 
 step(Then, "the list shows {string} as {string}", async (c, name = "", address = "") => {

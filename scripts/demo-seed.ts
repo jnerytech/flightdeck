@@ -19,6 +19,7 @@ import { INSTRUCTIONS_VERSION } from "../apps/daemon/src/teams/domain/instructio
 import { commitWorkflow, sha256 } from "../apps/daemon/test/support/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { demoCardTemplates } from "./lib/demo/card-templates.ts";
+import { installDemoSsh } from "./lib/demo/fake-ssh.ts";
 import { writeDemoPlugins } from "./lib/demo/plugins.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo/ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo/secret.ts";
@@ -238,6 +239,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // answers of its prints. The real CLI is never run.
   const plugins = writeDemoPlugins(work);
   const claude = installFakeCli("claude", plugins.rules);
+  // #3989: the daemons find `ssh` and `ssh-keyscan` on this PATH, so a password destination can ask for its password.
+  const ssh = installDemoSsh(work);
 
   const alfa = await host(work, "alfa");
   const beta = await host(work, "beta");
@@ -917,6 +920,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.
+      ssh.restore();
       claude.restore();
       gh.restore();
       old.stop(true);

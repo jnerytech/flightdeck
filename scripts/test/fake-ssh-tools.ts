@@ -82,6 +82,7 @@ if (tool === "ssh") {
         : "PASSWORD-BAD";
   }
   console.log(`${status} FAKE-SSH-CONNECTED`);
-  await Bun.sleep(300);
+  // Long enough, when a caller asks, for a screen to read the line before the terminal's process ends.
+  await Bun.sleep(Number(process.env.FD_FAKE_HOLD_MS ?? 300));
   process.exit(0);
 }
