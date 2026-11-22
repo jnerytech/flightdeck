@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { Grid } from "@/shared/layout/index.ts";
+import { Meter } from "@/shared/status/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
 import { useNow } from "../hosts/index.ts";
@@ -16,14 +17,6 @@ import {
   SHOWN,
 } from "./domain/quota.ts";
 import { QuotaGuard } from "./quota-guard.tsx";
-
-// The native meter, drawn with the state tokens (WebKit/Blink and Gecko pseudo-elements).
-const METER =
-  "h-2 w-full [&::-webkit-meter-bar]:h-2 [&::-webkit-meter-bar]:rounded-full [&::-webkit-meter-bar]:border-0 [&::-webkit-meter-bar]:bg-muted";
-const METER_OK =
-  "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-running [&::-moz-meter-bar]:bg-status-running";
-const METER_HOT =
-  "[&::-webkit-meter-optimum-value]:rounded-full [&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
 
 const MINUTE_MS = 60_000;
 
@@ -110,12 +103,13 @@ function HostQuota(
             </div>
             {bar.hasReading ? (
               <>
-                <meter
-                  aria-label={t("quota.meter", { window: bar.label, host: names })}
-                  min={0}
-                  max={1}
+                <Meter
+                  label={t("quota.meter", { window: bar.label, host: names })}
                   value={bar.value}
-                  className={cn(METER, bar.hot ? METER_HOT : METER_OK)}
+                  max={1}
+                  valueText={`${bar.percent}%`}
+                  hot={bar.hot}
+                  className="w-full"
                 />
                 <div className="flex flex-wrap gap-x-3 text-muted-foreground text-xs">
                   {bar.reset && <span>{bar.reset}</span>}

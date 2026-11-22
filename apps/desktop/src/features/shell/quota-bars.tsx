@@ -32,6 +32,7 @@ export function QuotaBarList(
                 label={t("quota.meter", { window: bar.label, host: host.name })}
                 value={bar.value}
                 max={1}
+                valueText={`${bar.percent}%`}
                 hot={bar.hot}
                 className="w-full"
               />
