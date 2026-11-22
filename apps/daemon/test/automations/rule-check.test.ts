@@ -65,6 +65,13 @@ describe("rule-check: what an automation leaves alone", () => {
     expect([
       refusal(RULE, COMMENT(false), () => 2),
       refusal(RULE, COMMENT(false), () => 3),
-    ]).toEqual([null, { status: "limited", detail: "limit of 3 runs per day" }]);
+    ]).toEqual([
+      null,
+      {
+        status: "limited",
+        detail: "limit of 3 runs per day",
+        why: { code: "daily_limit", params: { max: 3 } },
+      },
+    ]);
   });
 });
