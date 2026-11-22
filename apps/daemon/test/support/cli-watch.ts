@@ -6,8 +6,8 @@ export interface WatchOptions {
   timeoutMs?: number;
   /** Ctrl-C is pressed once this many lines came (default 1). */
   lines?: number;
-  /** Runs once the daemon has the watch: pushes the frames. */
-  after?: () => unknown;
+  /** Runs once the daemon has the watch: pushes the frames. It gets the lines written so far, to wait for the first. */
+  after?: (lines: string[]) => unknown;
 }
 
 /** What a `watch` command is run with: the stop, the line sink and the time limit of the connect. */
@@ -35,7 +35,7 @@ export async function watchedCli(
     timeoutMs: options.timeoutMs ?? 2000,
   });
   await poll(() => daemon.calls.some((c) => c.type === request));
-  await options.after?.();
+  await options.after?.(lines);
   await poll(() => lines.length >= (options.lines ?? 1));
   stop.abort();
   return { result: await running, lines };

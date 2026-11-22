@@ -5,6 +5,7 @@ import { parseArgs } from "../../src/main.ts";
 import { config, fakeDaemon, type Handlers, stopAll } from "../board/card-cli-helpers.ts";
 import { flightdeckd } from "../support/cli-run.ts";
 import { watchedCli } from "../support/cli-watch.ts";
+import { poll } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 afterEach(stopAll);
@@ -175,7 +176,7 @@ describe("flightdeckd account watch (issue #3703)", () => {
 
   const watched = (
     daemon: ReturnType<typeof fakeDaemon>,
-    options: { lines?: number; json?: boolean; after?: () => unknown } = {},
+    options: { lines?: number; json?: boolean; after?: (lines: string[]) => unknown } = {},
   ) =>
     watchedCli(
       daemon,
@@ -194,7 +195,9 @@ describe("flightdeckd account watch (issue #3703)", () => {
     const daemon = fakeDaemon({ "account.watch": () => ({}), "account.get": () => SIGNED_IN });
     const { result, lines } = await watched(daemon, {
       lines: 3,
-      after: () => {
+      after: async (written) => {
+        // The current state is read after the watch is taken: a push that comes first would print before it (#4090).
+        await poll(() => written.length >= 1);
         daemon.push(updated(SIGNED_OUT));
         daemon.push(updated());
       },
@@ -214,7 +217,10 @@ describe("flightdeckd account watch (issue #3703)", () => {
     const { lines } = await watched(daemon, {
       json: true,
       lines: 2,
-      after: () => daemon.push(updated(SIGNED_OUT)),
+      after: async (written) => {
+        await poll(() => written.length >= 1);
+        daemon.push(updated(SIGNED_OUT));
+      },
     });
     expect(lines.map((line) => JSON.parse(line))).toEqual([SIGNED_IN, SIGNED_OUT]);
   });
@@ -223,7 +229,12 @@ describe("flightdeckd account watch (issue #3703)", () => {
     const refused = fakeDaemon({
       "account.watch": () => ({ error: { code: "unsupported", message: "no account here" } }),
     });
-    const { result } = await watched(refused, { lines: 0 });
+    // A refusal ends the command on its own: pressing Ctrl-C before it is read would end it with 0 instead (#4090).
+    const result = await runAccountCli({ action: "watch" }, config(refused.port), {
+      timeoutMs: 2000,
+      signal: new AbortController().signal,
+      write: () => undefined,
+    });
     expect(result.code).toBe(1);
     const silent = fakeDaemon({ "account.watch": () => undefined });
     const never = await runAccountCli({ action: "watch" }, config(silent.port), {
