@@ -28,7 +28,9 @@ function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: Host
   let shown = hosts;
   if (hostsAre === "none" || hostsAre === "unloaded") shown = [];
   else if (hostsAre === "connecting") shown = hosts.map((h) => ({ ...h, status: "connecting" }));
-  else if (hostsAre === "one-offline") {
+  else if (hostsAre === "one-online") {
+    shown = hosts.map((h, i) => ({ ...h, status: i === 0 ? "online" : "connecting" }));
+  } else if (hostsAre === "one-offline") {
     shown = hosts.map((h, i) => ({ ...h, status: i === 0 ? "offline" : "connecting" }));
   }
   (store as unknown as { update(patch: object): void }).update({
@@ -40,7 +42,7 @@ function feed(store: InstanceType<typeof AppStore>, specs: Specs, hostsAre: Host
 }
 
 /** What the roster holds: no host, hosts being reached, or hosts that answered. */
-type HostsAre = "none" | "unloaded" | "connecting" | "one-offline" | "online";
+type HostsAre = "none" | "unloaded" | "connecting" | "one-offline" | "one-online" | "online";
 
 function setup(
   _specs: Specs,
@@ -708,6 +710,67 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     const w = setup(SPECS, { hosts: "one-offline" });
     render(w.view([]));
     expect(has(screen.queryByText("Reaching your hosts…"))).toBe(true);
+  });
+
+  test("a host that answered with no session is a quiet day even while another is still being reached (#4241)", () => {
+    const w = setup(SPECS, { hosts: "one-online" });
+    render(w.view([]));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
+    expect(columnNames().length).toBe(3);
+  });
+
+  test("sessions that Idle hides are known sessions: no loading line while a host is still being reached (#4241)", () => {
+    const idleOnly: Specs = [{ id: "seen", name: "Old chat", status: "idle", agoMs: 40 * MIN }];
+    const w = setup(idleOnly, { hosts: "connecting" });
+    render(w.view(idleOnly));
+    expect(has(screen.queryByText("Reaching your hosts…"))).toBe(false);
+    expect(has(screen.queryByText("1 idle session hidden"))).toBe(true);
+  });
+
+  test("a failed answer does not disarm another answer still in flight (#4240)", async () => {
+    const two: Specs = [
+      ...SPECS,
+      { id: "ask2", name: "Second", status: "awaiting_permission", agoMs: 2 * MIN, request: "x" },
+    ];
+    const w = setup(two);
+    const pending: Array<(answer: { ok: boolean; reason?: string }) => void> = [];
+    w.store.respondTo = ((hostId: string, requestId: string, decision: string) => {
+      w.responded.push([hostId, requestId, decision]);
+      return new Promise((resolve) => void pending.push(resolve));
+    }) as never;
+    const view = render(w.view(two));
+    await act(async () => {
+      fireEvent.click(control(column("Needs you"), "Approve Fix login"));
+      fireEvent.click(control(column("Needs you"), "Approve Second"));
+    });
+    await act(async () => {
+      pending[0]?.({ ok: false, reason: "the host is not reachable" });
+    });
+    const second: Specs = two.map((s) =>
+      s.id === "ask2" ? { id: "ask2", name: "Second", status: "running", agoMs: 0 } : s,
+    );
+    await act(async () => {
+      pending[1]?.({ ok: true });
+      view.rerender(w.view(second));
+    });
+    expect(await settleMaybe(() => said().includes("Approved Second"))).toBe(true);
+  });
+
+  test("the focus is not pulled back to the button when the person has moved it to the page (#4240)", async () => {
+    const w = setup(SPECS);
+    w.answers.next = SEND_FAILED;
+    const view = render(w.view(SPECS));
+    const approve = control(column("Needs you"), "Approve Fix login");
+    approve.focus();
+    await act(async () => {
+      fireEvent.click(approve);
+    });
+    expect(await settleMaybe(() => alerts().length === 1)).toBe(true);
+    (document.activeElement as HTMLElement | null)?.blur();
+    await act(async () => {
+      view.rerender(w.view(SPECS));
+    });
+    expect(document.activeElement).toBe(document.body);
   });
 
   test("an answer that failed does not announce, or take the focus, when the request later leaves (#4240)", async () => {
