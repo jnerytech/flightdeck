@@ -5,7 +5,7 @@ import { tempDir } from "../../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { memoriaHost } from "../memoria-ui-setup.ts";
-import { settle, settleMaybe, uiIdle } from "../wait.ts";
+import { settle, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -349,14 +349,14 @@ describe("memoria-ui: quando a memória não pode ser lida", () => {
   });
 });
 
-describe("memoria-ui: gravar e as sugestões (#3938)", () => {
-  test("com a gravação em curso, Salvar fica ocupado e outro Salvar não envia nada nem acusa mudança no disco", async () => {
+describe("memoria-ui: saving and the suggestions (#3938)", () => {
+  test("while the write is out Save is busy, and a double confirm sends one write and no changed-on-disk notice", async () => {
     let writes = 0;
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await open(SEEDED, (door) => {
+    const { dir } = await open(SEEDED, (door) => {
       const real = door.hostCommand.bind(door);
       door.hostCommand = async (host, type, payload, options) => {
         if (type === "memory.write") {
@@ -370,22 +370,26 @@ describe("memoria-ui: gravar e as sugestões (#3938)", () => {
     await click("Abrir user_role.md");
     await fill("Conteúdo de user_role.md", EDITED);
     await click("Salvar");
-    await click("Salvar na memória", "button");
+    const confirm = screen.queryByRole("button", { name: "Salvar na memória" });
+    expect(confirm).not.toBeNull();
+    // Two presses of Confirm in one tick: both come before React draws the closed dialog.
+    await act(async () => {
+      fireEvent.click(confirm as HTMLElement);
+      fireEvent.click(confirm as HTMLElement);
+    });
+    await uiIdle();
     const save = () => screen.queryByRole("button", { name: /^Salvar/ }) as HTMLButtonElement;
     expect(save().getAttribute("aria-busy")).toBe("true");
-    await act(async () => {
-      fireEvent.click(save());
-    });
-    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(save().disabled).toBe(true);
     release();
-    await settle(() => box("user_role.md") === EDITED && writes >= 1);
+    await settle(() => readFileSync(join(dir, "user_role.md"), "utf8") === EDITED);
     await uiIdle();
     expect(writes).toBe(1);
     expect(screen.queryByRole("button", { name: "Recarregar" })).toBeNull();
     expect(save().getAttribute("aria-busy")).toBeNull();
   });
 
-  test("a linha de Salva fica na página antes do texto: o elemento é o mesmo quando o texto chega", async () => {
+  test("the saved line is in the page before its text: the same element holds the text when it comes", async () => {
     await open(SEEDED);
     await settle(() => names().length === 3);
     await click("Abrir user_role.md");
@@ -400,14 +404,14 @@ describe("memoria-ui: gravar e as sugestões (#3938)", () => {
     expect(line()).toBe(before);
   });
 
-  test("sugestões que não puderam ser lidas dizem isso, e não que a memória está em ordem", async () => {
+  test("suggestions that could not be read say so, not that the memory is in order", async () => {
     await open(SEEDED, (door) => {
       const real = door.hostCommand.bind(door);
       door.hostCommand = async (host, type, payload, options) =>
         type === "memory.suggest" ? null : real(host, type, payload, options);
     });
     await settle(() => names().length === 3);
-    await settleMaybe(() => screen.queryByText("Não foi possível ler as sugestões.") !== null);
+    await settle(() => screen.queryByText("Não foi possível ler as sugestões.") !== null);
     expect(screen.queryByText("Não foi possível ler as sugestões.")).not.toBeNull();
     expect(screen.queryByText("Nenhuma sugestão: a memória está em ordem.")).toBeNull();
   });
