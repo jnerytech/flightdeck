@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { useMinLoading } from "@/shared/hooks/index.ts";
-import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
+import { EmptyState, ErrorState, LoadingState, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { AutomationForm } from "./automation-form.tsx";
@@ -70,13 +70,17 @@ export function AutomationsPage(
   const [removing, setRemoving] = useState<Automation | null>(null);
   /** The firings of the automations whose history is open. */
   const [history, setHistory] = useState<Record<string, AutomationRun[]>>({});
-  const loading = useMinLoading(automations === null);
+  /** A load that the host refused: the page says so and offers Try again. */
+  const [failed, setFailed] = useState(false);
+  const loading = useMinLoading(automations === null && !failed);
 
   const load = useCallback(async () => {
+    // The page has its own error and Try again (the toast's retry would drop the answer).
     const [list, flows] = await Promise.all([
-      store.hostCommand(hostId, "automation.list", { projectId }),
-      store.hostCommand(hostId, "workflow.list", { projectId }),
+      store.hostCommand(hostId, "automation.list", { projectId }, { retry: false }),
+      store.hostCommand(hostId, "workflow.list", { projectId }, { retry: false }),
     ]);
+    setFailed(list === null || flows === null);
     if (list) setAutomations(list.automations);
     if (flows) setWorkflows(flows.workflows);
   }, [store, hostId, projectId]);
@@ -135,6 +139,13 @@ export function AutomationsPage(
       }
     >
       <div className="flex max-w-3xl flex-col gap-3">
+        {failed && (
+          <ErrorState
+            message={t("automationsUi.failed")}
+            retryLabel={t("automationsUi.retry")}
+            onRetry={() => void load()}
+          />
+        )}
         {loading && <LoadingState label={t("automationsUi.loading")} />}
         {automations?.length === 0 && (
           <EmptyState
@@ -187,17 +198,38 @@ export function AutomationsPage(
                   </Badge>
                 )}
                 <span className="ml-auto flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => void toggleHistory(automation)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-expanded={history[automation.id] !== undefined}
+                    aria-label={t(
+                      history[automation.id]
+                        ? "automationsUi.hideHistoryOf"
+                        : "automationsUi.historyOf",
+                      { name: automation.name },
+                    )}
+                    onClick={() => void toggleHistory(automation)}
+                  >
                     {t(
                       history[automation.id]
                         ? "automationsUi.hideHistory"
                         : "automationsUi.history",
                     )}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(automation)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("automationsUi.editOf", { name: automation.name })}
+                    onClick={() => setEditing(automation)}
+                  >
                     {t("automationsUi.edit")}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setRemoving(automation)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("automationsUi.removeOf", { name: automation.name })}
+                    onClick={() => setRemoving(automation)}
+                  >
                     {t("automationsUi.remove")}
                   </Button>
                 </span>
