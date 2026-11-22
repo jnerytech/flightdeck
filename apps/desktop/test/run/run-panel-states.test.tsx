@@ -135,15 +135,15 @@ describe("the run panel tells what happened to each process and what was pressed
   test("a refused Run is an alert, and the status is a live region that follows the run", async () => {
     const { store } = await panel("en", run({ error: "the port is taken" }));
     expect(screen.queryByRole("alert")?.textContent).toBe("the port is taken");
-    expect(screen.queryByRole("status")?.textContent).toBe("Not running");
+    expect(screen.queryAllByRole("status")[0]?.textContent).toBe("Not running");
     await act(async () => store.runEnv.updated("h", run({ status: "running" })));
-    expect(screen.queryByRole("status")?.textContent).toBe("Running");
+    expect(screen.queryAllByRole("status")[0]?.textContent).toBe("Running");
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
   test("the run status is an output element, so it reads as a status without a role attribute", async () => {
     await panel("en", run({ status: "running" }));
-    const line = screen.queryByRole("status");
+    const line = screen.queryAllByRole("status")[0];
     expect({
       tag: line?.tagName,
       role: line?.getAttribute("role"),
@@ -182,6 +182,64 @@ describe("the run panel tells what happened to each process and what was pressed
       store.runEnv.updated("h", run({ status: "ended", processes: [proc({ exitCode: 137 })] })),
     );
     expect(cls().includes("text-status-error")).toBe(true);
+  });
+});
+
+// #4285: a process that turns ready, times out or ends is said in its own polite region, by change only.
+describe("the run panel says what changed in a process (#4285)", () => {
+  const said = () => screen.queryAllByRole("status")[1]?.textContent;
+  const web = (over: Partial<RunProcessState>) =>
+    proc({ name: "api", status: "running", exitCode: null, ready: "waiting", ...over });
+  const live = (...processes: RunProcessState[]) => run({ status: "running", processes });
+
+  test("a panel that mounts with processes already ready or ended says nothing", async () => {
+    await panel(
+      "en",
+      live(web({ ready: "ready", url: "http://127.0.0.1:3000" }), proc({ terminalId: "t9" })),
+    );
+    expect(said()).toBe("");
+  });
+
+  test.each([
+    ["ready", web({ ready: "ready", url: "http://127.0.0.1:3000" }), "api is ready"],
+    ["timeout", web({ ready: "timeout" }), "api did not answer in time"],
+    ["ended with a code", web({ status: "exited", exitCode: 1 }), "api ended (code 1)"],
+    [
+      "ended with no code",
+      web({ status: "exited", exitCode: null }),
+      "api ended without an exit code",
+    ],
+  ])("a process that turns %s is said once it changes", async (_name, next, line) => {
+    const { store } = await panel("en", live(web({})));
+    expect(said()).toBe("");
+    await act(async () => store.runEnv.updated("h", live(next)));
+    expect(said()).toBe(line);
+  });
+
+  test("an update that changes nothing in the processes keeps the line, and several changes read in order", async () => {
+    const two = (a: Partial<RunProcessState>, b: Partial<RunProcessState>) =>
+      live(web({ terminalId: "t1", ...a }), web({ name: "web", terminalId: "t2", ...b }));
+    const { store } = await panel("en", two({}, {}));
+    await act(async () =>
+      store.runEnv.updated(
+        "h",
+        two({ ready: "ready" }, { status: "exited", exitCode: 2, ready: "none" }),
+      ),
+    );
+    expect(said()).toBe("api is ready. web ended (code 2)");
+    await act(async () =>
+      store.runEnv.updated(
+        "h",
+        two({ ready: "ready" }, { status: "exited", exitCode: 2, ready: "none" }),
+      ),
+    );
+    expect(said()).toBe("api is ready. web ended (code 2)");
+  });
+
+  test("it reads in pt-BR", async () => {
+    const { store } = await panel("pt-BR", live(web({})));
+    await act(async () => store.runEnv.updated("h", live(web({ ready: "ready" }))));
+    expect(said()).toBe("api está pronto");
   });
 });
 
