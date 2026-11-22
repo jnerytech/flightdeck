@@ -440,14 +440,14 @@ export function agentShots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // #4203: the host refuses the answer of the "web · tests" request: the row says "Not done" and keeps its buttons.
+      // #4203: the page answers a refusal to the Approve of the "web · tests" request: the row says "Not done" and keeps its buttons.
       name: "sino-recusa",
       inbox: true,
       route: { name: "hub" },
       wire: [
         {
           command: "permission.respond",
-          refuse: "The host could not take the answer: the request is not open here.",
+          reject: "The host could not take the answer: the request is not open here.",
         },
       ],
       prepare: async (page) => {
@@ -461,7 +461,7 @@ export function agentShots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // #4203: a high-risk request (a terminal session asks to run `rm -rf build`): Approve is a hold, the hint counts the denies.
+      // #4203: a high-risk request (a terminal session asks to run `rm -rf build`): Approve is a hold button with its hint.
       name: "sino-alto-risco",
       inbox: "danger",
       route: { name: "hub" },
@@ -478,7 +478,7 @@ export function agentShots(ids: DemoIds): Shot[] {
       name: "sino-respondendo",
       inbox: true,
       route: { name: "hub" },
-      wire: [{ command: "permission.respond", hold: true }],
+      wire: [{ command: "permission.respond", stall: true }],
       prepare: async (page) => {
         const panel = await openBellPanel(page);
         await panel

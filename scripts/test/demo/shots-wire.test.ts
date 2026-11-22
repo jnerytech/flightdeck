@@ -157,6 +157,51 @@ describe("shots-wire: a held, a replied, a sequenced and a trimmed command (#415
     ]);
   });
 
+  test("a rejected command is answered in the page with a refusal that carries the rule's text, and a stalled one is held back (#4203)", () => {
+    const wire = wireRewriter([
+      { command: "permission.respond", reject: "not open here" },
+      { command: "session.interrupt", stall: true },
+    ]);
+    const respond = ask("r1", "permission.respond");
+    const interrupt = ask("r2", "session.interrupt");
+    expect([
+      wire.answer?.(respond),
+      wire.answer?.(interrupt),
+      wire.swallows?.(interrupt),
+      wire.swallows?.(respond),
+      wire.swallows?.(ask("r3", "approval.list")),
+    ]).toEqual([
+      JSON.stringify({
+        type: "ack",
+        id: "r1",
+        ok: false,
+        error: { code: "unavailable", message: "not open here" },
+      }),
+      undefined,
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  test("the page's socket sends neither a rejected nor a stalled command, and only the rejected one is answered (#4203)", async () => {
+    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    new Function(
+      "window",
+      wireScript([
+        { command: "permission.respond", reject: "no" },
+        { command: "session.interrupt", stall: true },
+      ]),
+    )(page);
+    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "permission.respond"));
+    socket.send(ask("r2", "session.interrupt"));
+    await Promise.resolve();
+    expect([socket.sent, got.length]).toEqual([[], 1]);
+  });
+
   test("a rule with after answers the first read with its data and every later one with after", () => {
     const wire = wireRewriter([
       { command: "approval.list", data: { keys: ["a"] }, after: { keys: [] } },
@@ -298,12 +343,12 @@ describe("shots-wire: the states the table prints (#3982)", () => {
   test("the bell prints a refused answer and an answer on its way from the host's answer to Approve (#4203)", () => {
     expect(named("sino-recusa")?.inbox).toBe(true);
     expect(named("sino-recusa")?.wire?.map((rule) => rule.command)).toEqual(["permission.respond"]);
-    expect(named("sino-recusa")?.wire?.some((rule) => "refuse" in rule && rule.refuse !== "")).toBe(
+    expect(named("sino-recusa")?.wire?.some((rule) => "reject" in rule && rule.reject !== "")).toBe(
       true,
     );
     expect(named("sino-respondendo")?.inbox).toBe(true);
     expect(named("sino-respondendo")?.wire).toEqual([
-      { command: "permission.respond", hold: true },
+      { command: "permission.respond", stall: true },
     ]);
   });
 

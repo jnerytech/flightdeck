@@ -118,8 +118,9 @@ class Client {
       if (frame.type === "ack") this.acks.get(frame.id)?.(frame);
       else if (frame.type === "event" && frame.event.type === "session.summary") {
         this.requests.set(frame.sessionId, frame.event.pendingPermissions[0]?.requestId);
-      } else if (frame.type === "external.permission" && frame.state === "open") {
-        this.externals.set(frame.claudeSessionId, frame.requestId);
+      } else if (frame.type === "external.permission") {
+        if (frame.state === "open") this.externals.set(frame.claudeSessionId, frame.requestId);
+        else this.externals.delete(frame.claudeSessionId);
       } else if (frame.type === "ping")
         this.ws.send(JSON.stringify({ type: "pong", id: frame.id }));
     });

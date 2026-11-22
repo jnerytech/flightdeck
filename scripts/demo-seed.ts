@@ -909,7 +909,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     tool_name: "Bash",
     tool_input: { command: "rm -rf build" },
   });
-  const dangerRequest = await until(() => client.externals.get("ext-rm"), "pedido do rm -rf");
+  const dangerRequest = await until(() => client.externals.get("ext-rm"), "the rm -rf request");
   void hook("ext-edit", "PermissionRequest", {
     tool_name: "Edit",
     tool_input: { file_path: join(web, "app.ts"), old_string: "1", new_string: "2" },
