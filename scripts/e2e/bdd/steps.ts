@@ -3499,6 +3499,12 @@ step(When, "I import only {string}", async (c, name = "") => {
   // The panel ticks every name not yet saved, and the other language's run uses the same config.
   for (const box of await c.page.getByRole("checkbox").all()) {
     const label = (await box.evaluate((el) => el.parentElement?.textContent ?? "")).trim();
+    // A name already saved is a disabled box: if it is ours, a run before this one leaked it.
+    if (!(await box.isEnabled())) {
+      if (label.startsWith(wanted))
+        throw new Error(`"${wanted}" is already saved: an earlier run leaked it`);
+      continue;
+    }
     if ((await box.isChecked()) !== (label === wanted)) await box.setChecked(label === wanted);
   }
   await c.page.getByRole("button", { name: c.t("connections.import.apply"), exact: true }).click();
