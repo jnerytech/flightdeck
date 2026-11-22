@@ -272,10 +272,10 @@ export const hosts = {
     pairElsewhere: "O token não vai para outro endereço: cole o link desse host.",
     pairRefused: "Link de pareamento recusado. {reason}",
     probeTimeout:
-      "O host não respondeu a tempo: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
-    probeRefused: "token recusado: rode flightdeckd pair no host e cole o link novo",
+      "O host não respondeu a tempo: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor.",
+    probeRefused: "Token recusado: rode flightdeckd pair no host e cole o link novo.",
     probeUnreachable:
-      "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
+      "Não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor.",
   },
   hostHealth: {
     title: "Saúde e dependências",

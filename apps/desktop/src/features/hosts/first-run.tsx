@@ -29,6 +29,10 @@ export function FirstRun(props: Readonly<{ onCopy(text: string): void }>) {
         <li>{t("welcome.step4")}</li>
       </ol>
       <p className="text-muted-foreground">
+        {t("welcome.lost")}
+        <Command command="flightdeckd pair" onCopy={props.onCopy} />
+      </p>
+      <p className="text-muted-foreground">
         {t("welcome.trouble")}
         <Command command="flightdeckd doctor" onCopy={props.onCopy} />
       </p>

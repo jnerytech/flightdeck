@@ -28,6 +28,7 @@ export const firstrun = {
       "Done: the app opens the host page, where you check the host and choose the project folders.",
     trouble:
       "Not connecting? On that computer run the command below: it says what is missing and how to fix it.",
+    lost: "Lost the link? Run this on that computer and copy the new one:",
     copy: "Copy {command}",
   },
   setup: {
