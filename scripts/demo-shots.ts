@@ -24,6 +24,7 @@ import { holdsScript } from "./lib/shots/holds.ts";
 import { pendingSelectorFor } from "./lib/shots/loaded.ts";
 import { maintenanceScript } from "./lib/shots/maintenance.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
+import { releasesScript } from "./lib/shots/releases.ts";
 import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
@@ -156,6 +157,8 @@ interface StorageSeed {
   simple: boolean;
   /** The preview switch of Teleport is on (#3987). */
   teleportPreview: boolean;
+  /** The app's automatic update is off (#4059). */
+  autoUpdateOff: boolean;
 }
 
 /** Runs in the page before it loads (so it holds no outside names): the storage of a print. */
@@ -183,6 +186,10 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.personas",
       // The Teleport prints turn the preview on (#3987): not for the next print.
       "flightdeck.teleportPreview",
+      // The update banner's print turns the automatic update off (#4059): not for the next print, whose card needs it on.
+      "flightdeck.autoUpdate",
+      // Opening What's new marks this version as seen (#4059): the next print shows the account menu's dot as before.
+      "flightdeck.whatsNewSeen",
     ]) {
       localStorage.removeItem(key);
     }
@@ -202,6 +209,7 @@ function seedStorage(seed: StorageSeed): void {
     if (seed.vaultUsage) localStorage.setItem("flightdeck.vault-usage", seed.vaultUsage);
     if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
     if (seed.teleportPreview) localStorage.setItem("flightdeck.teleportPreview", "true");
+    if (seed.autoUpdateOff) localStorage.setItem("flightdeck.autoUpdate", "false");
   } catch {
     // No storage, no clients.
   }
@@ -257,6 +265,7 @@ async function printShot(
       away: shot.away ? DEMO_AWAY_SINCE : null,
       simple: shot.simple === true,
       teleportPreview: shot.teleportPreview === true,
+      autoUpdateOff: shot.autoUpdateOff === true,
     });
     const query = new URLSearchParams({
       theme,
@@ -269,6 +278,7 @@ async function printShot(
     if (shot.holds) await page.addInitScript({ content: holdsScript() });
     if (shot.maintenance)
       await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
+    if (shot.releases) await page.addInitScript({ content: releasesScript(shot.releases) });
     if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
     if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
     if (shot.teleport) {
