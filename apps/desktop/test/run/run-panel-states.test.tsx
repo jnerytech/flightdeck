@@ -57,8 +57,10 @@ async function panel(
     calls.push(what);
     return new Promise<void>((resolve) => answers.push(resolve as () => Promise<void>));
   };
-  store.runEnv.start = (() => asked("start")) as unknown as typeof store.runEnv.start;
-  store.runEnv.stop = (() => asked("stop")) as unknown as typeof store.runEnv.stop;
+  // The host's side of Run and Stop: the slice's own start and stop run, so what it remembers is real.
+  const core = (store.runEnv as unknown as { core: Record<string, unknown> }).core;
+  core.start = () => asked("start");
+  core.stop = () => asked("stop");
   render(
     <TContext.Provider value={store.i18n.t}>
       <RunPanel store={store} hostId="h" card={{ id: "c1", projectId: "p" } as Card} />
@@ -182,6 +184,45 @@ describe("the run panel tells what happened to each process and what was pressed
       store.runEnv.updated("h", run({ status: "ended", processes: [proc({ exitCode: 137 })] })),
     );
     expect(cls().includes("text-status-error")).toBe(true);
+  });
+});
+
+describe("a Stop outlives the card page (#4284)", () => {
+  const ended137 = run({ status: "ended", processes: [proc({ exitCode: 137 })] });
+  const crashed = () =>
+    (screen.queryByText("ended (code 137)")?.className ?? "").includes("text-status-error");
+
+  test("a process the person stopped is not red after the panel mounts again, but a crash after the next Run is", async () => {
+    const { store, answers } = await panel(
+      "en",
+      run({ status: "running", processes: [proc({ status: "running", exitCode: null })] }),
+    );
+    await click("Stop");
+    await act(async () => answers[0]?.());
+    await act(async () => store.runEnv.updated("h", ended137));
+    cleanup();
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <RunPanel store={store} hostId="h" card={{ id: "c1", projectId: "p" } as Card} />
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByRole("button", { name: "Run" }) !== null);
+    expect(crashed()).toBe(false);
+    await click("Run");
+    await act(async () => store.runEnv.updated("h", ended137));
+    expect(crashed()).toBe(true);
+  });
+
+  test("a run that ended with no Stop still reads as a crash after the panel mounts again", async () => {
+    const { store } = await panel("en", ended137);
+    cleanup();
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <RunPanel store={store} hostId="h" card={{ id: "c1", projectId: "p" } as Card} />
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByRole("button", { name: "Run" }) !== null);
+    expect(crashed()).toBe(true);
   });
 });
 
