@@ -152,4 +152,27 @@ describe("cofre-ui: the New secret Value hides what is typed for a password or a
     const [meta] = store.getState().secrets;
     expect(meta ? await store.vault.value(meta.id) : null).toBe(typed);
   });
+
+  test("the masked box asks the browser not to save or fill it", async () => {
+    const { words } = await openForm();
+    const el = screen.queryByLabelText(words.value) as HTMLInputElement;
+    expect(el.autocomplete).toBe("new-password");
+  });
+
+  test("a multi-line value is not carried into a masked box, which would join its lines on save", async () => {
+    const { store, words } = await openForm();
+    await change("Nome", "pem");
+    await change(words.type, "ssh-key");
+    await change(words.value, "line one\nline two");
+    await change(words.type, "token");
+    const kept = field(words.value).value;
+    await change(words.value, "one-line-token");
+    await press(words.save);
+    await settle(() => store.getState().secrets.length === 1);
+    const [meta] = store.getState().secrets;
+    expect({ kept, stored: meta ? await store.vault.value(meta.id) : null }).toEqual({
+      kept: "",
+      stored: "one-line-token",
+    });
+  });
 });
