@@ -185,7 +185,11 @@ export function BudgetsSection(
       return { key, label: shared ? `${name} · ${key}` : name };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
-  const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
+  // A change to the form starts something new: the line about the last change goes (#3913).
+  const set = (patch: Partial<Draft>) => {
+    setDone(null);
+    setDraft({ ...draft, ...patch });
+  };
   const save = async () => {
     const common = {
       ...(draft.id ? { id: draft.id } : {}),
@@ -222,6 +226,10 @@ export function BudgetsSection(
   const byShare = draft.unit !== "usd";
   const needs = missingOf(draft, t);
   const title = t("budgetsUi.title", { host: props.hostName });
+  /** The form's name, and its visible title while a budget is edited (#3913). */
+  const formName = editing
+    ? t("budgetsUi.formEdit", { label: budgetLabel(editing, t), host: props.hostName })
+    : t("budgetsUi.formNew", { host: props.hostName });
   return (
     <section ref={rootRef} aria-label={title}>
       <Panel
@@ -258,7 +266,14 @@ export function BudgetsSection(
             ) : (
               <Stack as="ul" gap={2}>
                 {visible.map((budget) => (
-                  <li key={budget.id} data-budget={budget.id}>
+                  <li
+                    key={budget.id}
+                    data-budget={budget.id}
+                    aria-current={editing?.id === budget.id ? "true" : undefined}
+                    className={
+                      editing?.id === budget.id ? "rounded-md ring-2 ring-ring" : undefined
+                    }
+                  >
                     <Stack gap={1}>
                       <ListRow
                         title={
@@ -282,6 +297,7 @@ export function BudgetsSection(
                               aria-label={t("budgetsUi.edit", { label: rowName(budget) })}
                               data-action="edit"
                               onClick={() => {
+                                setDone(null);
                                 setDraft(draftOf(budget));
                                 setFocus({ kind: "form" });
                               }}
@@ -321,18 +337,8 @@ export function BudgetsSection(
                   : t("clients.budgetsHiddenMany", { count: hidden })}
               </p>
             )}
-            <Form
-              variant="inline"
-              aria-label={
-                editing
-                  ? t("budgetsUi.formEdit", {
-                      label: budgetLabel(editing, t),
-                      host: props.hostName,
-                    })
-                  : t("budgetsUi.formNew", { host: props.hostName })
-              }
-              onSubmit={() => saving.run(save)}
-            >
+            <Form variant="inline" aria-label={formName} onSubmit={() => saving.run(save)}>
+              {editing && <p className="font-medium text-sm">{formName}</p>}
               <Grid cols={{ base: 1, sm: 2 }} gap={4}>
                 <Field label={t("budgetsUi.scope")}>
                   {(control) => (
@@ -477,7 +483,13 @@ export function BudgetsSection(
                 disabled={needs !== null}
                 disabledReason={needs}
                 {...(editing
-                  ? { cancel: t("budgetsUi.cancelEdit"), onCancel: () => setDraft(EMPTY) }
+                  ? {
+                      cancel: t("budgetsUi.cancelEdit"),
+                      onCancel: () => {
+                        setDone(null);
+                        setDraft(EMPTY);
+                      },
+                    }
                   : {})}
               />
             </Form>
@@ -496,6 +508,8 @@ export function BudgetsSection(
             const at = visible.findIndex((b) => b.id === gone.id);
             // A budget the list does not show (the client changed meanwhile) leaves the focus where it is.
             const next = at < 0 ? undefined : (visible[at + 1] ?? visible[at - 1]);
+            // The form held the budget just removed: it goes back to a new one.
+            if (draft.id === gone.id) setDraft(EMPTY);
             setDone(t("budgetsUi.done.removed", { label: budgetLabel(gone, t) }));
             setFocus({ kind: "gone", id: gone.id, next: next?.id ?? null });
           }}

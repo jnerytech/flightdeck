@@ -534,6 +534,69 @@ describe("orcamentos-ui", () => {
       expect(focusedOn(editButton("orçamento do host (dia)"))).toBe(true);
     });
 
+    const rowOf = (label: string) =>
+      [...document.querySelectorAll("[data-budget]")].find((row) =>
+        row.textContent?.includes(label),
+      ) ?? null;
+    const NAME = "Editar orçamento do host (dia) em alfa";
+
+    test("editar mostra um título visível e marca a linha; cancelar e salvar os tiram (#3913)", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      expect(within(form()).queryByText(NAME)).toBeNull();
+      expect(rowOf("orçamento do host")?.getAttribute("aria-current")).toBeNull();
+      await click("Editar orçamento do host (dia)");
+      expect(within(form()).queryByText(NAME)).not.toBeNull();
+      expect(rowOf("orçamento do host")?.getAttribute("aria-current")).toBe("true");
+      await click("Cancelar edição");
+      expect(within(form()).queryByText(NAME)).toBeNull();
+      expect(rowOf("orçamento do host")?.getAttribute("aria-current")).toBeNull();
+      await click("Editar orçamento do host (dia)");
+      await click("Salvar orçamento");
+      await uiIdle();
+      expect(within(form()).queryByText(NAME)).toBeNull();
+      expect(rowOf("orçamento do host")?.getAttribute("aria-current")).toBeNull();
+    });
+
+    test("a confirmação fica enquanto nada mais começou, e some ao mudar um campo (#3913)", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      expect(status()).toBe("Orçamento criado: orçamento do host (dia)");
+      await uiIdle();
+      expect(status()).toBe("Orçamento criado: orçamento do host (dia)");
+      await choose("Limite (US$)", "20");
+      expect(status()).toBeNull();
+    });
+
+    test("apertar Editar tira a confirmação da última mudança (#3913)", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      expect(status()).not.toBeNull();
+      await click("Editar orçamento do host (dia)");
+      expect(status()).toBeNull();
+    });
+
+    test("remover o orçamento que está em edição esvazia o formulário (#3913)", async () => {
+      await online();
+      await chooseFromAccountMenu("Configurações");
+      await settle(() => section() !== null);
+      await create("10");
+      await click("Editar orçamento do host (dia)");
+      expect((field("Limite (US$)") as HTMLInputElement).value).toBe("10");
+      await click("Remover orçamento do host (dia)");
+      await click("Remover orçamento");
+      await settle(() => rows().length === 0);
+      await uiIdle();
+      expect((field("Limite (US$)") as HTMLInputElement).value).toBe("");
+      expect(form().getAttribute("aria-label")).toBe("Novo orçamento em alfa");
+    });
+
     test("remover diz que o orçamento saiu e o foco vai ao botão Editar da linha seguinte", async () => {
       await online();
       await chooseFromAccountMenu("Configurações");
