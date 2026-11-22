@@ -184,9 +184,9 @@ describe("permitir-ui", () => {
       permission_suggestions: [],
     });
     await sidebar.openQueue();
-    await settle(() => screen.queryByRole("button", { name: "alfa · p: Read" }) !== null);
+    await settle(() => screen.queryByRole("button", { name: /^alfa · p: Read/ }) !== null); // weaker: the row's name ends with its risk word (#3918)
     // The queue shows the request; "Abrir sessão" opens the terminal session's view.
-    await sidebar.queueItem("alfa · p: Read");
+    await sidebar.queueItem(/^alfa · p: Read/);
     await click("Abrir sessão");
     await settle(() => screen.queryByRole("button", { name: "Aprovar" }) !== null);
     expect(screen.queryByRole("button", { name: "Permitir nesta sessão" })).toBeNull();
