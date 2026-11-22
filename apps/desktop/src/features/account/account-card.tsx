@@ -272,7 +272,7 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
     body = (
       <p className="text-muted-foreground text-sm">{t("account.offline", { host: hostName })}</p>
     );
-  } else if (isAccountPending(state) && props.timedOut) {
+  } else if (isAccountPending(state) && props.timedOut && !props.refreshing) {
     // The host has not answered in the time the screen waits: say so, and let the person ask again.
     body = (
       <>

@@ -222,8 +222,8 @@ describe("conta-cartao-acoes: the cooldown and a silent host (#4349)", () => {
     await settle(() => button("Try again") !== null);
     expect(screen.queryByText("Reading the account…")).toBeNull();
     await click("Try again");
-    // The host still says nothing: the button is off while the new ask is out.
-    await settle(() => button("Try again")?.getAttribute("aria-disabled") === "true");
-    expect(button("Try again")?.getAttribute("aria-disabled")).toBe("true");
+    // The host still says nothing: the card says it is reading again while the new ask is out.
+    await settle(() => screen.queryByText("Reading the account…") !== null);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
