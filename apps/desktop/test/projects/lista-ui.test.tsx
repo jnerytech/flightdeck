@@ -168,6 +168,14 @@ describe("projetos-lista-ui: the Projects overview", () => {
     expect(opened.map((c) => [c.hostId, c.projectId])).toEqual([["h1", "p-api"]]);
   });
 
+  test("a card's name carries its full text as a tooltip, since a long name is cut on the card", async () => {
+    const { view } = setup();
+    render(view());
+    await waitFor(() => expect(names().length).toBeGreaterThan(0));
+    const nameSpan = within(card("api")).getByText("api");
+    expect(nameSpan.getAttribute("title")).toBe("api");
+  });
+
   test("with no projects it says so", async () => {
     const { view, state } = setup();
     render(view({ ...state, projects: {} } as never));
