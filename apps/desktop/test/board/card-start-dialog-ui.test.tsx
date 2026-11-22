@@ -82,6 +82,15 @@ for (const [lang, t, start] of [
       await settle(() => starts(w.commands).length === 1);
     });
 
+    test("the workflow select has a visible label that names it (#3878)", async () => {
+      setup(lang, async () => ({ workflows: [WORKFLOW] }));
+      await settle(() => screen.queryByRole("combobox", { name: t.cardUi.workflow }) !== null);
+      const label = screen.queryByText(t.cardUi.workflow);
+      expect(label?.tagName).toBe("LABEL");
+      const select = screen.queryByRole("combobox", { name: t.cardUi.workflow });
+      expect(label?.getAttribute("for")).toBe(select?.id);
+    });
+
     test("a list that could not be read says so, keeps Start off and offers a retry or starting without", async () => {
       const answers: unknown[] = [null, { workflows: [WORKFLOW] }];
       const w = setup(lang, async () => answers.shift() ?? null);

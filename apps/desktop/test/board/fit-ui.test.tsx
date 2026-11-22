@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle, settleMaybe } from "../wait.ts";
@@ -38,8 +40,10 @@ function fakeResizeObserver() {
   };
 }
 
-function setup(options: { width?: number } = {}) {
-  const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+function setup(options: { width?: number; lang?: "en" | "pt-BR" } = {}) {
+  const store = new AppStore(memoryPlatform(false, options.lang ?? "en").platform, {
+    baseDelayMs: 600_000,
+  });
   store.i18n.start();
   (store as unknown as { update(p: object): void }).update({
     hosts: [
@@ -134,12 +138,31 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
     restore();
   });
 
-  test("a column's head never wraps: its name gives way, and the count and + stay on its line", async () => {
+  test("a column's head stays on one line: the count and + sit beside the name, which may take two lines", async () => {
     const { restore } = setup();
     await ready();
     const heads = [...document.querySelectorAll("[data-slot='board-columns'] .column-head")];
     expect(heads.length).toBe(5); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(heads.every((head) => head.classList.contains("flex-nowrap"))).toBe(true);
     restore();
+  });
+
+  for (const lang of ["en", "pt-BR"] as const) {
+    test(`a column's name can be read in full, by its title when the head is tight (${lang}, #3878)`, async () => {
+      const { restore } = setup({ lang });
+      await ready();
+      const names = [...document.querySelectorAll("[data-slot='board-columns'] .column-title")];
+      expect(names.length).toBe(5); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+      const untitled = names.filter((name) => name.getAttribute("title") !== name.textContent);
+      expect(untitled.length).toBe(0);
+      restore();
+    });
+  }
+
+  test("the column name may take a second line instead of being cut after a few letters (#3878)", () => {
+    const css = readFileSync(join(import.meta.dir, "../../src/styles/board.css"), "utf8");
+    const rule = /@utility column-title \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule.includes("white-space: nowrap")).toBe(false);
+    expect(rule.includes("-webkit-line-clamp: 2")).toBe(true);
   });
 });
