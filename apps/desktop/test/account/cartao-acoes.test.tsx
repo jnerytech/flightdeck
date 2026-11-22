@@ -138,10 +138,9 @@ describe("conta-cartao-acoes: refresh", () => {
     await click("Refresh the account of alfa");
     await settle(() => screen.queryByText("Pro") !== null);
     expect(reads()).toBe(2);
-    const off = button("Refresh the account of alfa") as HTMLButtonElement;
-    expect(off.disabled).toBe(true);
+    expect(button("Refresh the account of alfa")?.getAttribute("aria-disabled")).toBe("true");
     await settle(
-      () => (button("Refresh the account of alfa") as HTMLButtonElement).disabled === false,
+      () => button("Refresh the account of alfa")?.getAttribute("aria-disabled") === null,
     );
   });
 
