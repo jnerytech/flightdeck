@@ -29,6 +29,7 @@ import { automationShots } from "./lib/shots/table-automations.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
+import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { pickVariants } from "./lib/shots/variants.ts";
 import {
   type Finding,
@@ -71,6 +72,7 @@ function shots(ids: DemoIds): Shot[] {
     ...agentShots(ids),
     ...hostShots(ids),
     ...automationShots(ids),
+    ...snippetShots(ids),
   ];
 }
 

@@ -14,6 +14,7 @@ import { DEMO_AUTOMATIONS } from "./automations.ts";
 import { demoHostSetup } from "./hosts.ts";
 import { laggingBranches } from "./lagging.ts";
 import { git, writeHistory } from "./seed-files.ts";
+import { DEMO_FILE_SNIPPETS, DEMO_SHELL_HISTORY, DEMO_SNIPPETS } from "./snippets.ts";
 
 /**
  * #1406: the cards of `DEMO_UPDATE_CARDS`, each on a branch that lags behind main, the last in
@@ -73,6 +74,37 @@ export async function seedAutomations(
     }
   }
   db.close();
+}
+
+/**
+ * #3973: the snippets of `DEMO_SNIPPETS` on the host (the favorite marked), the project's versioned
+ * file with `DEMO_FILE_SNIPPETS` and trusted by its hash, and a bash history in the demo's home for
+ * the history import to read.
+ */
+export async function seedSnippets(
+  client: Client,
+  where: { projectPath: string; home: string },
+): Promise<void> {
+  for (const { favorite, ...input } of DEMO_SNIPPETS) {
+    const saved = await client.call<{ id: string }>("snippets.save", { scope: "host", ...input }); // NOSONAR: one after the other, so the list keeps this order
+    if (favorite) await client.call("snippets.favorite", { id: saved.id, favorite: true });
+  }
+  for (const input of DEMO_FILE_SNIPPETS) {
+    await client.call("snippets.save", {
+      scope: "project",
+      target: "file",
+      projectPath: where.projectPath,
+      ...input,
+    }); // NOSONAR: one after the other, as the file lists them
+  }
+  const listed = await client.call<{ file: { hash: string } | null }>("snippets.list", {
+    scope: "project",
+    projectPath: where.projectPath,
+  });
+  if (listed.file) {
+    await client.call("snippets.trust", { projectPath: where.projectPath, hash: listed.file.hash });
+  }
+  writeFileSync(join(where.home, ".bash_history"), DEMO_SHELL_HISTORY);
 }
 
 /** A protocol client that answers pings and keeps `external.watch` open (requests stay held). */

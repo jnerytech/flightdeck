@@ -128,7 +128,7 @@ export function HistoryImport(
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
       {lines === null ? null : (
-        <ul aria-label={t("snippets.history.list")} className="flex flex-col gap-1">
+        <ul aria-label={t("snippets.history.list")} className="flex flex-col gap-3">
           {lines.map((line) => (
             <li key={line.id} className="flex flex-wrap items-center gap-2">
               {line.kinds.length === 0 ? (
