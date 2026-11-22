@@ -22,7 +22,8 @@ export type ShortcutGroup =
   | "views"
   | "lists"
   | "approvals"
-  | "board";
+  | "board"
+  | "palette";
 
 /** One shortcut, for the cheat sheet and for the palette's hints. */
 export interface ShortcutDef {
@@ -82,6 +83,9 @@ export const SHORTCUTS: ShortcutDef[] = [
   def("board-move", "board", ["←↑↓→"], "shortcuts.boardMove"),
   def("board-start", "board", ["s"], "shortcuts.boardStart"),
   def("board-actions", "board", ["m"], "shortcuts.boardActions"),
+  def("palette-recent", "palette", ["Alt", "1…6"], "shortcuts.paletteRecent"),
+  def("palette-actions", "palette", ["Tab"], "shortcuts.paletteActions"),
+  def("palette-history", "palette", ["Enter"], "shortcuts.paletteHistory"),
 ];
 
 /** The shortcut that runs `action`, if there is one. */

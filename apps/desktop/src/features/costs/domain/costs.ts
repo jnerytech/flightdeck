@@ -12,11 +12,31 @@ export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Every day from `from` to `to`, inclusive. */
+/** The first year a range may start in: a date input emits 0002-11-22 while the year 2026 is being typed. */
+const FIRST_YEAR = 2000;
+
+/** Whether `day` is a real `YYYY-MM-DD` day (a cleared date input gives an empty string) in a year a person means. */
+const isDay = (day: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(day) &&
+  Number(day.slice(0, 4)) >= FIRST_YEAR &&
+  !Number.isNaN(Date.parse(day)) &&
+  addDays(day, 0) === day;
+
+/** Every day from `from` to `to`, inclusive; none when either is not a day. */
 export function daysBetween(from: string, to: string): string[] {
   const days: string[] = [];
+  if (!isDay(from) || !isDay(to)) return days;
   for (let day = from; day <= to; day = addDays(day, 1)) days.push(day);
   return days;
+}
+
+/** Why a custom range is not one: a date is missing, or From is after To. */
+export type RangeProblem = "empty" | "reversed";
+
+/** Whether a custom range can be asked for; null when it can. */
+export function rangeProblem(range: { from: string; to: string }): RangeProblem | null {
+  if (!isDay(range.from) || !isDay(range.to)) return "empty";
+  return range.from > range.to ? "reversed" : null;
 }
 
 /** The host choice that adds every host up (phase 29); a route can carry it too. */
