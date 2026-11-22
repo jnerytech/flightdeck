@@ -41,6 +41,7 @@ export const vault = {
     name: "Name",
     typeLabel: "Type",
     value: "Value",
+    showValue: "Show value",
     tags: "Tags (comma separated)",
     save: "Save",
     generate: "Generate SSH key",

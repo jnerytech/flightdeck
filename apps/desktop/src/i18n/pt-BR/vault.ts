@@ -40,6 +40,7 @@ export const vault = {
     name: "Nome",
     typeLabel: "Tipo",
     value: "Valor",
+    showValue: "Mostrar valor",
     tags: "Etiquetas (separadas por vírgula)",
     save: "Guardar",
     generate: "Gerar chave SSH",
