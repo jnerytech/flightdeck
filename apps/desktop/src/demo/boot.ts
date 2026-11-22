@@ -16,11 +16,25 @@ export type DemoHost = z.infer<typeof DemoHost>;
 
 /**
  * The hosts handed to the web entry (`VITE_DEMO_HOSTS`, JSON); none when absent or invalid, and none
- * when the address asks `?hosts=none` (the first-run screen's print, #1052).
+ * when the address asks `?hosts=none` (the first-run screen's print, #1052). `?hosts=<id>,<id>` keeps
+ * only those (a demo with nowhere to move a session to, #3987), and `?plain=<id>,<id>` reaches those
+ * over `<id>.localhost`: the same machine, but a name the app does not take for it, so the plain
+ * `ws://` note shows (#3987).
  */
 export function parseDemoHosts(json: string | undefined, search = ""): DemoHost[] {
-  if (new URLSearchParams(search).get("hosts") === "none") return [];
-  return parseJsonText(json ?? "[]", z.array(DemoHost), []);
+  const params = new URLSearchParams(search);
+  const only = params.get("hosts");
+  if (only === "none") return [];
+  const plain = (params.get("plain") ?? "").split(",");
+  const kept = parseJsonText(json ?? "[]", z.array(DemoHost), []).filter(
+    (host) => only === null || only === "all" || only.split(",").includes(host.id),
+  );
+  return kept.map((host) => {
+    if (!plain.includes(host.id)) return host;
+    const url = new URL(host.url);
+    url.hostname = `${host.id}.localhost`;
+    return { ...host, url: url.toString() };
+  });
 }
 
 /**
