@@ -19,6 +19,7 @@ import { INSTRUCTIONS_VERSION } from "../apps/daemon/src/teams/domain/instructio
 import { commitWorkflow, sha256 } from "../apps/daemon/test/support/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { demoCardTemplates } from "./lib/demo/card-templates.ts";
+import { writeDemoPlugins } from "./lib/demo/plugins.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo/ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo/secret.ts";
 import {
@@ -228,56 +229,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     { rejectCmdChars: false },
   );
 
-  // A `claude` for the Plugins page (phase 26), before any daemon: one installed plugin whose hook
-  // listens on PreToolUse, and one the marketplace offers. The real CLI is never run.
-  const plugin = join(work, "plugins", "deploy-tools");
-  mkdirSync(join(plugin, ".claude-plugin"), { recursive: true });
-  mkdirSync(join(plugin, "hooks"), { recursive: true });
-  mkdirSync(join(plugin, "skills", "deploy"), { recursive: true });
-  writeFileSync(
-    join(plugin, ".claude-plugin", "plugin.json"),
-    JSON.stringify({ name: "deploy-tools", version: "1.2.0", description: "Publica o app" }),
-  );
-  writeFileSync(
-    join(plugin, "hooks", "hooks.json"),
-    JSON.stringify({
-      hooks: {
-        PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "guard.sh" }] }],
-      },
-    }),
-  );
-  writeFileSync(join(plugin, "skills", "deploy", "SKILL.md"), SKILL_MD);
-  const claude = installFakeCli("claude", [
-    {
-      args: ["marketplace", "list"],
-      stdout: JSON.stringify([
-        { name: "acme", source: "github", repo: "acme/plugins", installLocation: plugin },
-      ]),
-    },
-    {
-      args: ["list", "--json"],
-      stdout: JSON.stringify({
-        installed: [
-          {
-            id: "deploy-tools@acme",
-            version: "1.2.0",
-            scope: "user",
-            enabled: true,
-            installPath: plugin,
-          },
-        ],
-        available: [
-          {
-            pluginId: "lint-rules@acme",
-            name: "lint-rules",
-            marketplaceName: "acme",
-            description: "Regras de lint para o time",
-            version: "0.4.0",
-          },
-        ],
-      }),
-    },
-  ]);
+  // A `claude` for the Plugins page (phase 26, #3956), before any daemon: the plugin folders and the
+  // answers of its prints. The real CLI is never run.
+  const plugins = writeDemoPlugins(work);
+  const claude = installFakeCli("claude", plugins.rules);
 
   const alfa = await host(work, "alfa");
   const beta = await host(work, "beta");
@@ -914,7 +869,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       knowledgeProject: projectIds["design-system"] as string,
       updateProject: projectIds.billing as string,
       contractCard: contractCard.id,
-      refusedPluginFolder: "",
+      refusedPluginFolder: plugins.refusedFolder,
       alfaPairing: {
         address: new URL(alfa.url).hostname,
         port: Number(new URL(alfa.url).port),
