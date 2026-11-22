@@ -290,7 +290,7 @@ describe("central-ui", () => {
     expect(screen.queryByRole("log", { name: "Transcrição" })).not.toBeNull();
     void hook("PermissionRequest", { tool_name: "Read", tool_input: {} });
     await sidebar.openQueue();
-    await settle(() => screen.queryByRole("button", { name: "alfa · repo: Read" }) !== null);
+    await settle(() => screen.queryByRole("button", { name: /^alfa · repo: Read/ }) !== null); // weaker: the row's name ends with its risk word (#3918)
     await sidebar.queueItem(/^alfa · repo: Read/);
     await click("Abrir sessão");
     await settle(() => screen.queryByRole("heading", { name: "repo" }) !== null);
