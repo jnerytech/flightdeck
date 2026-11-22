@@ -93,7 +93,7 @@ describe("memoria-ui: a memória do projeto", () => {
     const solta = screen.queryByRole("button", { name: "Abrir solta.md" })?.closest("li");
     expect(within(solta as HTMLElement).queryByText("Fora do índice")).not.toBeNull();
     const role = screen.queryByRole("button", { name: "Abrir user_role.md" })?.closest("li");
-    expect(within(role as HTMLElement).queryByText("user")).not.toBeNull();
+    expect(within(role as HTMLElement).queryByText("Usuário")).not.toBeNull();
     expect(within(role as HTMLElement).queryByText("Fora do índice")).toBeNull();
   });
 

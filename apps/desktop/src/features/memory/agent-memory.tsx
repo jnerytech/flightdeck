@@ -1,5 +1,5 @@
 import type { MemoryFile, MemorySuggestion } from "@flightdeck/protocol";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,9 @@ import {
 } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { nameProblem, newBaseName } from "./domain/memory-name.ts";
+
+/** The types Claude Code gives a memory file; any other type is shown as the file says it. */
+const TYPES = ["user", "feedback", "project", "reference"] as const;
 
 /** The file being edited; `hash` is `null` for one that does not exist yet. */
 interface Opened {
@@ -59,6 +62,11 @@ export function AgentMemory(
   const [discarding, setDiscarding] = useState<(() => void) | null>(null);
   /** The list could not be read: that is not the same as a project with no memory. */
   const [failed, setFailed] = useState(false);
+  /** Counts the files shown: each one moves the focus to the editor, a save does not. */
+  const [shown, setShown] = useState(0);
+  const editor = useRef<HTMLTextAreaElement>(null);
+  const nameField = useRef<HTMLInputElement>(null);
+  const newButton = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async () => {
     const listed = await store.hostCommand(hostId, "memory.list", { projectId });
@@ -76,6 +84,14 @@ export function AgentMemory(
     void load();
   }, [load]);
 
+  // A file that opens takes the focus: on a narrow window it shows below the list (#4230).
+  useEffect(() => {
+    if (shown > 0) editor.current?.focus();
+  }, [shown]);
+  useEffect(() => {
+    if (creating) nameField.current?.focus();
+  }, [creating]);
+
   /** Something that replaces the open file asks first when the person typed into it and has not saved. */
   const replacing = (action: () => void) => {
     if (opened && text !== opened.saved) setDiscarding(() => action);
@@ -87,6 +103,13 @@ export function AgentMemory(
     setText(content);
     setStale(null);
     setJustSaved(false);
+    setShown((n) => n + 1);
+  };
+
+  const cancelCreate = () => {
+    setCreating(false);
+    setTyped("");
+    newButton.current?.focus();
   };
 
   const open = (name: string) =>
@@ -157,12 +180,21 @@ export function AgentMemory(
 
   if (files === null) return <LoadingState label={t("agent.loading")} />;
   const dirty = opened ? opened.hash === null || text !== opened.saved : false;
+  const edited = opened ? text !== opened.saved : false;
+  // What sits beside Save: the text has changes the file does not, or the last save went through.
+  let note: string | null = null;
+  if (edited) note = t("memoryUi.unsaved");
+  else if (justSaved && !dirty) note = t("memoryUi.saved");
+  const typeWord = (type: string | undefined) =>
+    type !== undefined && (TYPES as readonly string[]).includes(type)
+      ? t(`memoryUi.type.${type as (typeof TYPES)[number]}`)
+      : type;
   const label = (suggestion: MemorySuggestion) => t(`memoryUi.suggestion.${suggestion.kind}`);
 
   const side = (
     <Stack gap={3}>
       <Inline>
-        <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
+        <Button ref={newButton} variant="outline" size="sm" onClick={() => setCreating(true)}>
           <Plus aria-hidden="true" />
           {t("memoryUi.new")}
         </Button>
@@ -176,10 +208,26 @@ export function AgentMemory(
               error={problem === null ? undefined : t(`memoryUi.name.${problem}`)}
             >
               {(control) => (
-                <Input {...control} value={typed} onChange={(e) => setTyped(e.target.value)} />
+                <Input
+                  {...control}
+                  ref={nameField}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape") return;
+                    // The form closes alone: a screen around it must not also close on this key.
+                    event.stopPropagation();
+                    cancelCreate();
+                  }}
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                />
               )}
             </Field>
-            <FormActions submit={t("memoryUi.create")} disabled={!canCreate} />
+            <FormActions
+              submit={t("memoryUi.create")}
+              disabled={!canCreate}
+              cancel={t("common.cancel")}
+              onCancel={cancelCreate}
+            />
           </Form>
         </Panel>
       )}
@@ -197,10 +245,16 @@ export function AgentMemory(
             <ListRow
               boxed
               selected={opened?.name === file.name}
+              leading={
+                opened?.name === file.name ? (
+                  <ChevronRight aria-hidden="true" className="size-4" />
+                ) : undefined
+              }
               title={
                 <button
                   type="button"
                   aria-label={t("memoryUi.open", { name: file.name })}
+                  aria-current={opened?.name === file.name ? "true" : undefined}
                   onClick={() => open(file.name)}
                   className="hit-inline text-left"
                 >
@@ -209,7 +263,7 @@ export function AgentMemory(
                   </span>
                 </button>
               }
-              meta={[file.type, file.inIndex ? null : t("memoryUi.outOfIndex")]
+              meta={[typeWord(file.type), file.inIndex ? null : t("memoryUi.outOfIndex")]
                 .filter(Boolean)
                 .join(" · ")}
               trailing={
@@ -239,6 +293,9 @@ export function AgentMemory(
           {opened && (
             <Stack gap={3}>
               <code className="break-all text-sm">{opened.name}</code>
+              {opened.hash === null && (
+                <p className="text-muted-foreground text-sm">{t("memoryUi.newFile")}</p>
+              )}
               {stale && (
                 <InlineNotice>
                   {t("memoryUi.stale")}{" "}
@@ -256,6 +313,7 @@ export function AgentMemory(
                 </InlineNotice>
               )}
               <Textarea
+                ref={editor}
                 aria-label={t("memoryUi.content", { name: opened.name })}
                 rows={14}
                 className="font-mono text-sm"
@@ -273,7 +331,7 @@ export function AgentMemory(
                 </ActionButton>
                 {/* Mounted before its text comes: a live region inserted with its text is often not read. */}
                 <output data-slot="memory-saved" className="text-muted-foreground text-sm">
-                  {justSaved && !dirty ? t("memoryUi.saved") : null}
+                  {note}
                 </output>
               </FieldRow>
             </Stack>
