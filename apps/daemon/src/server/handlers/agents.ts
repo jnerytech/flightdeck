@@ -282,7 +282,9 @@ export const agentsHandlers = {
   "personas.remove": async (payload, { server }) => {
     await server.needIn("personas", "store").remove(payload.scope, payload.id, payload.projectPath);
   },
-  "personas.trust": async (payload, { server }) => {
+  "personas.trust": async (payload, { ws, server }) => {
+    // A trusted persona of a repository is delivered to sessions as instructions: near only (#3815).
+    requireVaultTransport(ws.data.origin, "personas.trust", server.opts.log);
     return await server
       .needIn("personas", "store")
       .trust(payload.projectPath, payload.id, payload.hash);

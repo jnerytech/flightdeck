@@ -22,6 +22,9 @@ async function markdownOf(
   return templates.files(template);
 }
 
+const loosensAutoApprove = (auto: { enabled?: boolean; lowWithoutAi?: boolean } | undefined) =>
+  auto?.enabled === true || auto?.lowWithoutAi === true;
+
 export const projectHandlers = {
   "project.list": async (_payload, { server }) => {
     const board = server.need("board");
@@ -31,6 +34,8 @@ export const projectHandlers = {
     };
   },
   "project.add": async (payload, { ws, server }) => {
+    if (loosensAutoApprove(payload.autoApprove))
+      requireVaultTransport(ws.data.origin, "project.add", server.opts.log);
     // A setup script runs with `sh -c` on the host when a card starts: setting one is near only, as
     // trusting a run config is. Anything else about a project answers anywhere (#3807).
     if (payload.setupScript?.trim())
@@ -40,6 +45,10 @@ export const projectHandlers = {
   },
   "project.update": async (payload, { ws, server }) => {
     const { projectId, ...patch } = payload;
+    // Turning the automatic approval on, or letting it approve low risk without the AI, is near only;
+    // turning it off is not (#3815).
+    if (loosensAutoApprove(patch.autoApprove))
+      requireVaultTransport(ws.data.origin, "project.update", server.opts.log);
     // Setting a setup script is near only; clearing it (null or blank) is not (#3807).
     if (patch.setupScript?.trim())
       requireVaultTransport(ws.data.origin, "project.update", server.opts.log);

@@ -3,6 +3,7 @@
  * review's file tree, the editor and its search).
  */
 import { listDirs, listFiles } from "../../files/index.ts";
+import { requireVaultTransport } from "../../vault/index.ts";
 import type { Handlers } from "../domain/handler.ts";
 
 export const filesHandlers = {
@@ -34,8 +35,11 @@ export const filesHandlers = {
       if (ws.data.search === mine) ws.data.search = undefined;
     }
   },
-  "file.write": async (payload, { server }) => {
+  "file.write": async (payload, { ws, server }) => {
     const { target, path, text, expectedHash } = payload;
-    return await server.needIn("review", "files").write(target, path, text, expectedHash);
+    // Claude Code's settings can declare hooks that run a command in every session: writing them is
+    // near only, however the path is spelled or linked. Any other file is not (#3815).
+    const guard = () => requireVaultTransport(ws.data.origin, "file.write", server.opts.log);
+    return await server.needIn("review", "files").write(target, path, text, expectedHash, guard);
   },
 } satisfies Partial<Handlers>;

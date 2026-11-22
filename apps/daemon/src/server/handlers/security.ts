@@ -124,7 +124,11 @@ export const securityHandlers = {
   "ssh.list": (_payload, { server }) => {
     return { targets: server.needIn("ssh", "targets").list() };
   },
-  "ssh.save": (payload, { server }) => {
+  "ssh.save": (payload, { ws, server }) => {
+    // ForwardAgent hands the host's ssh agent to the remote machine: turning it on is near only; a
+    // save without it is not (#3815).
+    if (payload.options?.forwardAgent === true)
+      requireVaultTransport(ws.data.origin, "ssh.save", server.opts.log);
     return server.needIn("ssh", "targets").save(payload);
   },
   "ssh.remove": (payload, { server }) => {
