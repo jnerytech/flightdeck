@@ -43,6 +43,21 @@ export const refusals = {
     messaging_read_other_host:
       "The session is on another host: read_session only reads sessions of this host.",
     messaging_policy_invalid: "The messaging rules are not valid: {errors}",
+    messaging_text_empty: "The message is empty.",
+    messaging_text_too_big: "The message is above 32 KB.",
+    messaging_pair_paused:
+      "These two sessions are paused after a message loop: release the pair in Settings.",
+    messaging_limit_loop:
+      "More than {messages} messages in {minutes} minutes went back and forth between these sessions: the pair was paused.",
+    messaging_limit_pair:
+      "The limit of {limit} messages per hour between these two sessions was reached.",
+    messaging_limit_session: "The limit of {limit} messages per hour for this session was reached.",
+    messaging_session_ended: "The session has ended.",
+    messaging_restarted: "The daemon restarted before the message was delivered.",
+    messaging_relay_expired:
+      "The app did not carry the message to the other host within 24 hours: it was not sent.",
+    messaging_relay_session_only: "Only messages between sessions cross hosts.",
+    messaging_relay_other_host: "The message is for the host {host}, not this one.",
     project_no_issues: "This project has no issue integration: set it in the project's settings.",
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
     findings_missing: "The reply of step {step} has no list of findings, so no card was created.",

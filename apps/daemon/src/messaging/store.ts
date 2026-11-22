@@ -5,6 +5,7 @@
 import type { Database } from "bun:sqlite";
 import type { MessageInfo, MessageKind, RelayMessage } from "@flightdeck/protocol";
 import { addressParts, type History, type Party } from "./domain/policy.ts";
+import { paramsJson, paramsOf } from "./domain/refusal.ts";
 import { relayOf } from "./domain/relay.ts";
 
 /** A row of `session_messages`. */
@@ -17,6 +18,8 @@ export interface MessageRow {
   text: string;
   status: MessageInfo["status"];
   reason: string | null;
+  reason_key: string | null;
+  reason_params: string | null;
   created_at: string;
   created_ms: number;
   delivered_at: string | null;
@@ -35,6 +38,8 @@ export interface NewMessage {
   text: string;
   status: MessageInfo["status"];
   reason: string | null;
+  /** Why it was refused, for the app to translate (#4083). */
+  why?: Why;
   teamId: string | null;
   kind: MessageKind;
   untrusted: boolean;
@@ -46,8 +51,15 @@ export interface NewMessage {
 export interface MessagePatch {
   status: MessageInfo["status"];
   reason?: string | null;
+  why?: Why;
   at: number;
   relayed?: boolean;
+}
+
+/** A refusal's key and the values its text fills in. */
+export interface Why {
+  key?: string | null;
+  params?: Record<string, string | number> | null;
 }
 
 const iso = (ms: number): string => new Date(ms).toISOString();
@@ -61,6 +73,8 @@ const toInfo = (row: MessageRow): MessageInfo => ({
   text: row.text,
   status: row.status,
   reason: row.reason,
+  reasonKey: row.reason_key,
+  reasonParams: paramsOf(row.reason_params),
   createdAt: row.created_at,
   deliveredAt: row.delivered_at,
   teamId: row.team_id,
@@ -90,8 +104,9 @@ export class MessageStore {
       .query(
         `INSERT INTO session_messages
            (id, from_session, from_host, to_session, to_host, text, status, reason, created_at,
-            created_ms, delivered_at, team_id, kind, sender, untrusted, relayed)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+            created_ms, delivered_at, team_id, kind, sender, untrusted, relayed, reason_key,
+            reason_params)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
       )
       .run(
         input.id,
@@ -109,6 +124,8 @@ export class MessageStore {
         input.kind,
         JSON.stringify(input.sender),
         input.untrusted ? 1 : 0,
+        input.why?.key ?? null,
+        paramsJson(input.why?.params),
       );
     return toInfo(this.row(input.id) as MessageRow);
   }
@@ -120,10 +137,19 @@ export class MessageStore {
         `UPDATE session_messages
          SET status = ?1, reason = ?2,
              delivered_at = CASE WHEN ?1 = 'delivered' THEN ?3 ELSE delivered_at END,
-             relayed = CASE WHEN ?4 = 1 THEN 1 ELSE relayed END
+             relayed = CASE WHEN ?4 = 1 THEN 1 ELSE relayed END,
+             reason_key = ?6, reason_params = ?7
          WHERE id = ?5`,
       )
-      .run(patch.status, patch.reason ?? null, iso(patch.at), patch.relayed ? 1 : 0, id);
+      .run(
+        patch.status,
+        patch.reason ?? null,
+        iso(patch.at),
+        patch.relayed ? 1 : 0,
+        id,
+        patch.why?.key ?? null,
+        paramsJson(patch.why?.params),
+      );
     return toInfo(this.row(id) as MessageRow);
   }
 

@@ -211,13 +211,16 @@ export function access(from: Party, to: Party, policy: Policy): Access {
 }
 
 /** Why the text is refused, or null. */
-export function sizeError(text: string): string | null {
-  if (text.trim() === "") return "empty message";
+export function textRefusal(text: string): Refusal | null {
+  if (text.trim() === "") return { reason: "empty message", key: "messaging_text_empty" };
   if (new TextEncoder().encode(text).length > MAX_TEXT_BYTES) {
-    return "message above 32 KB";
+    return { reason: "message above 32 KB", key: "messaging_text_too_big" };
   }
   return null;
 }
+
+/** The English words of `textRefusal`. */
+export const sizeError = (text: string): string | null => textRefusal(text)?.reason ?? null;
 
 /** The messages exchanged by a pair or sent by a session, as the history can count them. */
 export interface History {
@@ -227,7 +230,16 @@ export interface History {
   sent(address: string, sinceMs: number): number;
 }
 
-export type Limit = { ok: true } | { ok: false; kind: "pair" | "session" | "loop"; reason: string };
+/** A refusal as the app reads it: the English words, and the key and values it translates from (#4083). */
+export interface Refusal {
+  reason: string;
+  key?: string;
+  params?: Record<string, string | number>;
+}
+
+export type Limit =
+  | { ok: true }
+  | ({ ok: false; kind: "pair" | "session" | "loop" } & Refusal & { key: string });
 
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
@@ -250,6 +262,8 @@ export function limits(
       ok: false,
       kind: "loop",
       reason: `loop: more than ${policy.loopMessages} messages in ${policy.loopMinutes} minutes going back and forth between the pair; the pair was paused`,
+      key: "messaging_limit_loop",
+      params: { messages: policy.loopMessages, minutes: policy.loopMinutes },
     };
   }
   const hour = history.pair(from, to, now - HOUR_MS);
@@ -258,6 +272,8 @@ export function limits(
       ok: false,
       kind: "pair",
       reason: `limit of ${policy.perPairPerHour} per hour per pair of sessions`,
+      key: "messaging_limit_pair",
+      params: { limit: policy.perPairPerHour },
     };
   }
   if (history.sent(from, now - HOUR_MS) >= policy.perSessionPerHour) {
@@ -265,6 +281,8 @@ export function limits(
       ok: false,
       kind: "session",
       reason: `limit of ${policy.perSessionPerHour} per hour per session`,
+      key: "messaging_limit_session",
+      params: { limit: policy.perSessionPerHour },
     };
   }
   return { ok: true };
