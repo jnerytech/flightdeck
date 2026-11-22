@@ -1,5 +1,5 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ApprovalActions, GateText } from "@/features/permissions/ui.ts";
@@ -7,6 +7,7 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/i18n/errors";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { useBusy } from "@/shared/hooks/index.ts";
+import { Inline } from "@/shared/layout/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { usd } from "../costs/index.ts";
@@ -53,7 +54,7 @@ export function GateCard(
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
-      <div className="flex gap-2">
+      <Inline>
         {/* Issue #182: a gate is answered with the same Approve and Deny as a request. */}
         <ApprovalActions
           size="sm"
@@ -63,7 +64,7 @@ export function GateCard(
           onApprove={() => run(() => props.onRespond(step, "approve", note))}
           onDeny={() => run(() => props.onRespond(step, "reject", note))}
         />
-      </div>
+      </Inline>
     </section>
   );
 }
@@ -92,6 +93,14 @@ export function RunTimeline(
 ) {
   const t = useT();
   const { run } = props;
+  // A step with no end is still running: its time follows the clock once a second.
+  const ticking = !run.endedAt && run.steps.some((step) => !step.endedAt);
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!ticking) return;
+    const id = setInterval(rerender, 1000);
+    return () => clearInterval(id);
+  }, [ticking]);
   return (
     <section aria-label={t("runUi.run")} className="flex flex-col gap-3">
       <h3 className="font-semibold text-sm">
@@ -125,7 +134,7 @@ export function RunTimeline(
             step.stepId,
             t("runUi.attempt", { n: step.attempt }),
             t(`runUi.step.${step.status}` as Key),
-            stepDuration(step, Date.now()),
+            stepDuration(step, Date.now(), t),
             ...(step.usage ? [stepUsage(step.usage, t)] : []),
           ].join(" · ");
           const opens = step.type === "check" || (step.type === "agent" && step.sessionId);
@@ -136,6 +145,8 @@ export function RunTimeline(
                 <Button
                   variant="ghost"
                   size="sm"
+                  // The shared button does not wrap: a long step id would push the page sideways.
+                  className="h-auto whitespace-normal text-left"
                   aria-label={t("runUi.openStep", { step: step.stepId, attempt })}
                   onClick={() => props.onOpenStep(step)}
                 >

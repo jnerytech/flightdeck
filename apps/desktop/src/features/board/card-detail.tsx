@@ -270,7 +270,12 @@ export const CardDetail = memo(function CardDetail(props: {
                   <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />
                 )}
                 {card.worktreePath && has("runenv") && (
-                  <RunPanel store={store} hostId={hostId} card={card} />
+                  <RunPanel
+                    key={`${hostId}:${card.id}`}
+                    store={store}
+                    hostId={hostId}
+                    card={card}
+                  />
                 )}
                 {arena.view}
               </>

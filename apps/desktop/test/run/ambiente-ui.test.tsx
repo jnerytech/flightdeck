@@ -349,7 +349,8 @@ describe("run-ui: Run e Stop no card", () => {
     expect(inPanel().queryByText("esperando web responder…")).not.toBeNull();
     expect(inPanel().queryByRole("button", { name: "Abrir preview de web" })).toBeNull();
     await show(state("timeout"));
-    expect(inPanel().queryByText("web não respondeu a tempo")).not.toBeNull();
+    // Once in the list and once in the polite line for a screen reader (#4285).
+    expect(inPanel().queryAllByText("web não respondeu a tempo").length).toBe(2);
     await press("Ver log de Setup");
     expect(store.router.current).toEqual({
       name: "terminal",
