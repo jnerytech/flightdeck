@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DemoIds } from "../../demo-seed.ts";
+import { NARROW_SHOTS } from "../../lib/shots/narrow.ts";
 import { quotaShots } from "../../lib/shots/table-quota.ts";
 
 const NAMES = [
@@ -30,6 +31,16 @@ describe("the Quota card prints (#4308)", () => {
       expect(named(name)?.route).toEqual({ name: "hub" });
       // The streams that would overwrite the faked answer are answered in the page.
       expect(named(name)?.wire?.map((r) => r.command)).toContain("quota.watch");
+    }
+  });
+
+  test("the card with a guard, the read-only guard and the shared card are measured at 390 px, where the guard row and its buttons must not overflow", () => {
+    for (const name of [
+      "cota-cartao-quente",
+      "cota-cartao-trava-leitura",
+      "cota-cartao-conta-compartilhada",
+    ]) {
+      expect(NARROW_SHOTS).toContain(name);
     }
   });
 
