@@ -42,6 +42,7 @@ import { harnessShots } from "./lib/shots/table-harness.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
 import { knowledgeShots, memoryShots } from "./lib/shots/table-knowledge.ts";
+import { messagingShots } from "./lib/shots/table-messaging.ts";
 import { permissionShots } from "./lib/shots/table-permissions.ts";
 import { personaShots } from "./lib/shots/table-personas.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
@@ -101,6 +102,7 @@ function shots(ids: DemoIds): Shot[] {
     ...knowledgeShots(ids),
     ...memoryShots(ids),
     ...issuesShots(ids),
+    ...messagingShots(ids),
     ...devicesShots(ids),
     ...permissionShots(ids),
     ...personaShots(ids),

@@ -96,6 +96,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "novidades",
   // #4243: the Activity board stacks its columns below 640 px.
   "atividade",
+  // #4297: Conversations (also cut), and the Messaging rules with a long project path and long session ids, at 390.
+  "conversas",
+  "conversas-cortada",
+  "configuracoes-mensagens-longos",
   // #4269: the Files tab's bad name, discard and stale states and the cut Context carry long text; they wrap at 390.
   "agente-skills-nome-invalido",
   "agente-agentes-descartar",
