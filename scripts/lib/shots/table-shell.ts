@@ -170,5 +170,16 @@ export function shellShots(ids: DemoIds): Shot[] {
         await page.getByRole("listbox", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
       },
     },
+    // #4122: the sheet of keyboard shortcuts, opened by the ? key as a person does, so axe and the layout checks see it.
+    {
+      name: "atalhos",
+      route: { name: "hub" },
+      async prepare(page) {
+        await page.keyboard.press("?");
+        await page
+          .getByRole("dialog", { name: /^(Keyboard shortcuts|Atalhos de teclado)$/ })
+          .waitFor({ timeout: 8000 });
+      },
+    },
   ];
 }
