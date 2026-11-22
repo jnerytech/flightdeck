@@ -60,15 +60,6 @@ export function activityShots(_ids: DemoIds): Shot[] {
       },
     },
     {
-      // No host at all: the board says so and Add a host leads on.
-      name: "atividade-sem-host",
-      route,
-      query: { hosts: "none" },
-      prepare: async (page) => {
-        await page.getByText(/^(No host yet\.|Nenhum host ainda\.)/).waitFor({ timeout: WAIT });
-      },
-    },
-    {
       // The host refuses the Approve: the card says why and keeps its buttons.
       name: "atividade-resposta-falhou",
       route,
