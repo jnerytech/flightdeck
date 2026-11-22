@@ -533,8 +533,11 @@ fn set_close_to_tray(state: State<TrayState>, enabled: bool) {
     state.close_to_tray.store(enabled, Ordering::Relaxed);
 }
 
+/// What the tray's first item says before the page has sent its translated labels (#4120).
+const STARTUP_OPEN_TEXT: &str = "Abrir";
+
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
-    let open = MenuItem::with_id(app, "open", "Abrir", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", STARTUP_OPEN_TEXT, true, None::<&str>)?;
     let needs_you = Submenu::with_id(app, "needs-you", "Precisa de você (0)", true)?;
     needs_you.append(&nothing_waiting(app.handle(), "Nada esperando você")?)?;
     let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
@@ -694,5 +697,15 @@ mod badge_tests {
         assert!(!badge_image_ok(1));
         assert!(!badge_image_ok(32 * 32 * 3));
         assert!(!badge_image_ok(32 * 32 * 4 + 1));
+    }
+}
+
+#[cfg(test)]
+mod tray_startup_tests {
+    use super::*;
+
+    #[test]
+    fn the_tray_starts_with_the_product_name_and_no_translated_text() {
+        assert_eq!(STARTUP_OPEN_TEXT, "Flightdeck");
     }
 }
