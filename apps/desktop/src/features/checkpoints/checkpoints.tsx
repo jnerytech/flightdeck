@@ -152,13 +152,14 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
       setFiles(({ [turn.n]: _closed, ...rest }) => rest);
       return;
     }
-    setFilesFailed(({ [turn.n]: _retried, ...rest }) => rest);
     const result = await store.hostCommand(hostId, "snapshots.files", {
       claudeSessionId,
       n: turn.n,
     });
-    if (result) setFiles((all) => ({ ...all, [turn.n]: result }));
-    else setFilesFailed((all) => ({ ...all, [turn.n]: true }));
+    if (result) {
+      setFiles((all) => ({ ...all, [turn.n]: result }));
+      setFilesFailed(({ [turn.n]: _read, ...rest }) => rest);
+    } else setFilesFailed((all) => ({ ...all, [turn.n]: true }));
   };
 
   const rewound = (turn: Turn) => {
