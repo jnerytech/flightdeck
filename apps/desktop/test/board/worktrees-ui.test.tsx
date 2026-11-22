@@ -206,6 +206,26 @@ describe("worktrees-ui: the Worktrees panel (issue #152)", () => {
     expect(w.asked.filter(([t]) => t === "worktree.list").length).toBeGreaterThanOrEqual(2);
   });
 
+  // #3999: at 390 px the reason hung from the Remove button, out of the flow, and covered the next
+  // group. It is a line of the panel now, tied to the button for a screen reader.
+  test.each([
+    ["en", "Tick the worktrees to remove."],
+    ["pt-BR", "Marque as worktrees a remover."],
+  ] as const)(
+    "the reason Remove is off is a line of the panel, tied to the button (%s)",
+    async (language, reason) => {
+      const w = setup({ language });
+      render(w.view());
+      await ready();
+      const remove = () => document.querySelector("button.self-start") as HTMLButtonElement;
+      const line = screen.queryByText(reason);
+      const tied = line !== null && remove().getAttribute("aria-describedby") === line.id;
+      const hung = line?.closest(".action-reason") !== null;
+      await click(box("merged"));
+      expect([tied, hung, screen.queryByText(reason) === null]).toEqual([true, false, true]);
+    },
+  );
+
   test("a ticked row can be unticked, and Scan again reads the list once more", async () => {
     const w = setup();
     render(w.view());
