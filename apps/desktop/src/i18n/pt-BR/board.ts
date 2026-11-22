@@ -621,5 +621,7 @@ export const board = {
     approved: "Aprovado: {title}",
     denied: "Negado: {title}",
     emptyAll: "Nada por aqui ainda. Inicie uma sessão e ela aparece neste quadro.",
+    emptyFiltered: "Nenhuma sessão atende a estes filtros.",
+    clearFilters: "Limpar filtros",
   },
 } as const;

@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { HubRow } from "@/features/sessions/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
@@ -167,6 +168,18 @@ export function ActivityBoard(
     >
       {data.total === 0 && state.hosts.length > 0 ? (
         <EmptyState title={t("activityBoard.emptyAll")} />
+      ) : null}
+      {/* Filters that match no card: say so and offer the way back (#3967). The idle switch is a view
+          choice, not a filter, so Clear filters leaves it. */}
+      {data.shown === 0 && data.total > 0 ? (
+        <EmptyState
+          title={t("activityBoard.emptyFiltered")}
+          action={
+            <Button variant="link" onClick={() => setFilter(NO_ACTIVITY_FILTER)}>
+              {t("activityBoard.clearFilters")}
+            </Button>
+          }
+        />
       ) : null}
       <output className="sr-only">{said}</output>
       <div className="activity-board">
