@@ -20,6 +20,7 @@ Um capítulo para cada grupo de comandos do `flightdeckd`. Escolha o grupo de qu
 [Ler o capítulo.](flightdeckd-session-commands.md) Suas seções:
 
 - [fd session](flightdeckd-session-commands.md#fd-session)
+- [fd session teleport](flightdeckd-session-commands.md#fd-session-teleport)
 
 ## Comandos do flightdeckd: destinos ssh
 

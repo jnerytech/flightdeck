@@ -7,7 +7,6 @@ import type { CliResult, RemoteTarget } from "../daemon-client/index.ts";
 import { type Logger, type OnProcessEvent, settled } from "../kernel/index.ts";
 import type { PersonaCliArgs } from "../personas/index.ts";
 import type { ResolveDeps } from "../remote-hosts/index.ts";
-import type { SessionCliArgs } from "../sessions/index.ts";
 import type { TeamCliArgs } from "../teams/index.ts";
 import { answerRun } from "./answer-run.ts";
 import { configPath } from "./config-path.ts";
@@ -39,6 +38,7 @@ import { watchCliArgs } from "./domain/watch-args.ts";
 import { fileRun } from "./file-run.ts";
 import type { MaintenanceCommandDeps } from "./maintenance.ts";
 import { messageAdminRun } from "./message-admin-run.ts";
+import { sessionRun } from "./session-run.ts";
 import type { SetupCommandDeps } from "./setup.ts";
 import { liveStream, watchStop } from "./watch-stop.ts";
 import { issuesRun, worktreeRun } from "./worktree-run.ts";
@@ -562,24 +562,12 @@ export const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const { runSessionsCli } = await import("../sessions/index.ts");
     return askingWith(args, deps, (a) => (a.json ? { json: true } : {}), runSessionsCli);
   },
-  session: async (args, deps) => {
-    const { runSessionCli } = await import("../sessions/index.ts");
-    return asking(args, deps, (config, remote) =>
-      runSessionCli(
-        {
-          action: args.action as SessionCliArgs["action"],
-          ...(args.sessionRef === undefined ? {} : { session: args.sessionRef }),
-          ...(args.sessionValue === undefined ? {} : { value: args.sessionValue }),
-          ...(args.sessionMeta === undefined ? {} : { meta: args.sessionMeta }),
-          ...(args.claudeSessionId === undefined ? {} : { claudeSessionId: args.claudeSessionId }),
-          ...(args.sessionStart === undefined ? {} : { start: args.sessionStart }),
-          ...(args.json ? { json: true } : {}),
-        },
-        config,
-        remote ? { remote } : {},
-      ),
-    );
-  },
+  session: (args, deps) =>
+    asking(
+      args,
+      deps,
+      sessionRun(args, deps, () => remoteDeps(deps)),
+    ),
   ssh: async (args, deps) => {
     const { runSshCli } = await import("../ssh/index.ts");
     return askingWith(args, deps, sshCliArgs, runSshCli);

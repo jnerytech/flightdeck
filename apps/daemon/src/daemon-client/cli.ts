@@ -71,7 +71,7 @@ const tokenRefused = (error: unknown) =>
   (error instanceof DaemonRefusal && error.code === "unauthorized");
 
 /** What went wrong with a host reached by name: its name and a stable reason, never its address or token. */
-function explainRemote(
+export function explainRemote(
   error: unknown,
   context: { name: string; timeoutMs: number; unsure: string },
   hide: (text: string) => string,

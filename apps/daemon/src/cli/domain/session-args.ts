@@ -24,6 +24,7 @@ const SESSION_ACTIONS = [
   "fork",
   "apply-persona",
   "clear-persona",
+  "teleport",
 ] as const;
 
 /** The levels of `set-effort` are the protocol's own; `default` gives the model's own back. */
@@ -98,6 +99,20 @@ export function takeSessionFlags(args: CliArgs): void {
     delete args[field];
   }
   if (Object.keys(start).length > 0) args.sessionStart = start;
+  // `--to` is the history range's flag too: on `session teleport` it names the host the session moves to.
+  if (args.action === "teleport" && args.until !== undefined) {
+    args.teleport = { ...args.teleport, to: args.until };
+    delete args.until;
+  }
+}
+
+/** What `session teleport` still needs, or the move it cannot make (issue #3704). */
+function teleportProblem(args: CliArgs): string | undefined {
+  if (args.teleport?.to === undefined) return "missing --to";
+  if (args.teleport.repo === undefined) return "missing --repo";
+  if (args.host !== undefined && args.host === args.teleport.to)
+    return "the session cannot move to the host it is on";
+  return undefined;
 }
 
 /** What is wrong with the flags of `session`, or of another command that was given one of them. */
@@ -107,6 +122,16 @@ export function sessionProblem(args: CliArgs): string | undefined {
     if (args.command !== "session" || !verbs.includes(args.action as string))
       return `${flag}: this flag only applies to flightdeckd session ${verbs.join(", ")}`;
   }
+  const moving = args.command === "session" && args.action === "teleport";
+  const teleportFlags: Array<[string, unknown]> = [
+    ["--to", args.command === "session" ? args.until : args.teleport?.to],
+    ["--repo", args.teleport?.repo],
+    ["--confirm", args.command === "session" ? args.confirm : undefined],
+  ];
+  for (const [flag, value] of teleportFlags)
+    if (value !== undefined && !moving)
+      return `${flag}: this flag only applies to flightdeckd session teleport`;
+  if (moving) return teleportProblem(args);
   const start = args.sessionStart;
   if (args.command !== "session" || (args.action !== "create" && args.action !== "fork"))
     return undefined;

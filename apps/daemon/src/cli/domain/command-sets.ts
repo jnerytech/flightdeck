@@ -147,6 +147,7 @@ export const CONFIRM_OWNERS = [
   "rewind",
   "rules",
   "runenv",
+  "session",
   "snippet",
   "ssh",
   "task",
