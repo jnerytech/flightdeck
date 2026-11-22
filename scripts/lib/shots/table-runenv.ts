@@ -210,13 +210,14 @@ export function runenvShots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // The host refuses to start the run at all: its words stay in the app's alert.
+      // The host refuses to start the run at all: a toast says so, and Details has the host's words.
       name: "card-ambiente-recusado",
       route: card,
       wire: [trusted, { command: "runenv.start", reject: "No free block of ports on this host." }],
       prepare: async (page) => {
         await clickRun(page);
-        // The refusal is a toast with the host's words, not an alert of the panel.
+        // The refusal is a toast: its title is the app's own, and the host's words are under Details.
+        await page.getByRole("button", { name: /^(Details|Detalhes)$/ }).click();
         await page
           .getByText("No free block of ports on this host.")
           .first()
