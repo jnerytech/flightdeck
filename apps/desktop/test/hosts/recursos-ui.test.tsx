@@ -127,6 +127,22 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     expect(panel().textContent).toContain("Load 35%");
   });
 
+  test.each([
+    ["en", "Load 110% (1-minute average per core; above 100% means more work than cores)"],
+    [
+      "pt-BR",
+      "Carga 110% (média de 1 minuto por núcleo; acima de 100% há mais trabalho que núcleos)",
+    ],
+  ] as const)(
+    "the load line says what it is, in %s, so 110%% does not read as a bug (#3871)",
+    async (language, line) => {
+      const w = setup({ language, snap: { ...snapshot(), loadPercent: 110 } });
+      render(w.view());
+      await settle(() => document.querySelector("[data-slot='resources-memory']") !== null);
+      expect(panel(language === "en" ? "Resources" : "Recursos").textContent).toContain(line);
+    },
+  );
+
   test("a table of sessions and terminals, the biggest memory first, with project, memory and CPU", async () => {
     const w = setup();
     render(w.view());

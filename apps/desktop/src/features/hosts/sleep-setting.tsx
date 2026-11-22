@@ -1,5 +1,6 @@
+import { useId } from "react";
 import { useT } from "@/i18n/context";
-import { Panel } from "@/shared/layout/index.ts";
+import { NativeSelect, Panel } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 
 /** The delays the select offers, in minutes; 0 is off. A delay the config holds outside these is added. */
@@ -12,6 +13,7 @@ const CHOICES = [0, 15, 30, 60, 240];
 export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
+  const id = useId();
   const current = host.hostInfo?.sleepAfterMinutes;
   if (current === undefined) return null;
   const choices = CHOICES.includes(current) ? CHOICES : [...CHOICES, current].sort((a, b) => a - b);
@@ -24,14 +26,20 @@ export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }
   return (
     <Panel title={t("sleep.title")}>
       <p className="text-muted-foreground text-xs">{t("sleep.hint")}</p>
-      <label className="flex items-center gap-2 text-sm">
+      <label htmlFor={id} className="flex items-center gap-2 text-sm">
         {t("sleep.label")}
-        <select
+        <NativeSelect
+          id={id}
+          inline
           aria-label={t("sleep.label")}
           value={current}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           onChange={async (e) => {
-            await store.hostCommand(host.id, "host.sleep", { minutes: Number(e.target.value) });
+            // A refusal goes to the banner: nothing is read back and the select keeps the host's value.
+            const answer = await store.hostCommand(host.id, "host.sleep", {
+              minutes: Number(e.target.value),
+            });
+            if (!answer) return;
+            store.success(t("sleep.saved", { host: host.name }));
             await store.reloadHostInfo(host.id);
           }}
         >
@@ -40,7 +48,7 @@ export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }
               {label(minutes)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
     </Panel>
   );

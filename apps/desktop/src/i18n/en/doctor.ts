@@ -53,6 +53,7 @@ export const doctor = {
     label: "Sleep idle sessions after",
     hint: "An idle session gives back its memory after this long. A message wakes it from where it was. Pinned sessions, a card's sessions and ones you have open stay awake.",
     off: "Off",
+    saved: "Sleep setting saved on {host}.",
     minutes: "{n} minutes",
     hour: "1 hour",
     hours: "{n} hours",
