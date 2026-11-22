@@ -123,15 +123,16 @@ export function UndoDialog(props: Target & { onClose(): void; onDone(): void }) 
   const { store, hostId, claudeSessionId } = props;
   const { t } = store.i18n;
   const [preview, setPreview] = useState<RewindPreview | null>(null);
-  // Why the host refused the preview or the undo: the dialog stays open and says it.
+  const [previewFailed, setPreviewFailed] = useState(false);
+  // Why the host refused the undo: the dialog stays open and says it.
   const [refusal, setRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     void store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId }).then((result) => {
       if (result.ok) setPreview(result.data);
-      else setRefusal(t("timeline.previewFailed"));
+      else setPreviewFailed(true);
     });
-  }, [store, hostId, claudeSessionId, t]);
+  }, [store, hostId, claudeSessionId]);
 
   const undo = async () => {
     setRefusal(null);
@@ -140,7 +141,7 @@ export function UndoDialog(props: Target & { onClose(): void; onDone(): void }) 
       confirm: true,
     });
     if (!result.ok) {
-      setRefusal(t("timeline.undoFailed", { reason: result.message }));
+      setRefusal(result.message);
       return;
     }
     props.onDone();
@@ -157,9 +158,14 @@ export function UndoDialog(props: Target & { onClose(): void; onDone(): void }) 
         {preview ? (
           <PreviewFiles store={store} preview={preview} empty={t("timeline.undoNothing")} />
         ) : (
-          refusal === null && <LoadingState label={t("timeline.previewing")} />
+          !previewFailed && <LoadingState label={t("timeline.previewing")} />
         )}
-        {refusal !== null && <InlineNotice tone="error">{refusal}</InlineNotice>}
+        {previewFailed && (
+          <InlineNotice tone="error">{t("timeline.undoPreviewFailed")}</InlineNotice>
+        )}
+        {refusal !== null && (
+          <InlineNotice tone="error">{t("timeline.undoFailed", { reason: refusal })}</InlineNotice>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={props.onClose}>
             {t("common.cancel")}

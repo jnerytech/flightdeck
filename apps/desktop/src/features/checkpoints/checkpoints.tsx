@@ -179,7 +179,10 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
   const scroll = useRef<HTMLDivElement>(null);
   const loaded = snapshots !== null;
 
+  const loads = useRef(0);
+
   const load = useCallback(async () => {
+    const id = ++loads.current;
     setFailed(false);
     const result = await store.hostCommand(hostId, "snapshots.list", { claudeSessionId });
     if (!result) {
@@ -187,14 +190,10 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
       return;
     }
     setSnapshots(result.snapshots);
-    // Only a session with a safety snapshot has a rewind to undo. A refusal (an older host, no
-    // rewind) is no error: there is just no Undo.
-    if (!result.snapshots.some((s) => s.kind === "safety")) {
-      setUndoPreview(null);
-      return;
-    }
+    // A refusal (an older host, a session with no rewind) is no error: there is just no Undo.
     const preview = await store.hostRequest(hostId, "rewind.undoPreview", { claudeSessionId });
-    setUndoPreview(preview.ok ? preview.data : null);
+    // An answer to an older load must not overwrite a newer one (a rewind or an undo reloads).
+    if (id === loads.current) setUndoPreview(preview.ok ? preview.data : null);
   }, [store, hostId, claudeSessionId]);
 
   useEffect(() => {
@@ -232,15 +231,23 @@ function TimelinePanel(props: Target & { busy: boolean; onOpenSession(sessionId:
     void load();
   };
 
+  const banner = notice ?? (undoable ? t("timeline.rewoundEarlier") : null);
+
   if (snapshots === null && !failed) return <LoadingState label={t("timeline.loading")} />;
   const turns = turnsOf(snapshots ?? []);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
-      {(notice ?? (undoable ? t("timeline.rewoundEarlier") : null)) && (
+      {banner && (
         <InlineNotice tone="info">
-          <span>{notice ?? t("timeline.rewoundEarlier")}</span>{" "}
+          <span>{banner}</span>{" "}
           {undoable && (
-            <Button variant="outline" size="sm" onClick={() => setUndoing(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={props.busy}
+              aria-describedby={props.busy ? busyId : undefined}
+              onClick={() => setUndoing(true)}
+            >
               {t("timeline.undo")}
             </Button>
           )}
