@@ -226,7 +226,23 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const busy = (p: AppPersona, action: Action) =>
     pending?.id === keyOf(p) && pending.action === action;
 
-  const projects = hostId ? (state.projects[hostId] ?? []) : [];
+  // No host, no personas: the app's own are edited through a host too, so no project choice would lead anywhere (#4214).
+  if (!hostId) {
+    return (
+      <Page title={t("personas.title")}>
+        <EmptyState
+          icon={Drama}
+          title={t("personas.noHost")}
+          action={
+            <Button variant="link" onClick={() => props.go({ name: "add-host" })}>
+              {t("personas.noHostLink")}
+            </Button>
+          }
+        />
+      </Page>
+    );
+  }
+  const projects = state.projects[hostId] ?? [];
   return (
     <Page
       title={t("personas.title")}

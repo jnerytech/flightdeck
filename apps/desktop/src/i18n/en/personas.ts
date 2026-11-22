@@ -37,6 +37,8 @@ export const personas = {
     list: "Personas",
     empty: "No persona.",
     loading: "Loading personas",
+    noHost: "No connected host with personas",
+    noHostLink: "Add a host",
     loadFailed: "Could not read this host's personas.",
     retry: "Try again",
     project: "Project",
