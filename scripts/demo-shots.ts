@@ -29,6 +29,7 @@ import { ALFA, DEMO_CLIENTS, DEMO_ROI, type Shot } from "./lib/shots/shot.ts";
 import { sshScript } from "./lib/shots/ssh-frames.ts";
 import { agentShots } from "./lib/shots/table-agent.ts";
 import { automationShots } from "./lib/shots/table-automations.ts";
+import { backgroundShots } from "./lib/shots/table-background.ts";
 import { boardShots } from "./lib/shots/table-board.ts";
 import { devicesShots } from "./lib/shots/table-devices.ts";
 import { harnessShots } from "./lib/shots/table-harness.ts";
@@ -88,6 +89,7 @@ function shots(ids: DemoIds): Shot[] {
     ...permissionShots(ids),
     ...snippetShots(ids),
     ...teleportShots(ids),
+    ...backgroundShots(ids),
   ];
 }
 
