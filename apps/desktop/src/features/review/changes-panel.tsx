@@ -1,6 +1,6 @@
 import type { ChangesResult, DiffFile, PrComment, ReviewComment } from "@flightdeck/protocol";
 import { reviewMessage } from "@flightdeck/protocol";
-import { Pencil, RotateCcw } from "lucide-react";
+import { Check, Pencil, RotateCcw } from "lucide-react";
 import {
   lazy,
   type ReactNode,
@@ -18,7 +18,8 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { cn } from "@/lib/utils";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { Stack } from "@/shared/layout/index.ts";
+import { useBreakpoint } from "@/shared/hooks/index.ts";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { DiffView } from "./diff-view.tsx";
@@ -71,11 +72,16 @@ export function ChangesPanel(
   const [changes, setChanges] = useState<ChangesResult | null>(null);
   const [unavailable, setUnavailable] = useState<string | null>(null);
   const [comments, setComments] = useState<ReviewComment[]>([]);
-  const [mode, setMode] = useState<"unified" | "split">("unified");
+  const [chosen, setMode] = useState<"unified" | "split">("unified");
+  // Two half-width columns do not fit a compact window: the diff stays in one column there, and
+  // the choice comes back with the width.
+  const compact = useBreakpoint() === "compact";
+  const mode = compact ? "unified" : chosen;
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
+  const splitOffId = useId();
   const panel = useRef<HTMLElement>(null);
   // Focus brings the draft into view: it sits after the whole diff (#1496). Once the drafts were
   // sent, the reviewer's first comment in the history is where they went.
@@ -315,48 +321,50 @@ export function ChangesPanel(
   );
 
   const fileRow = (file: DiffFile, root: string) => (
-    <li key={`${file.path}:${file.uncommitted}`} className="flex items-center gap-2">
-      <span className="font-mono text-xs">{file.path}</span>
-      {!file.secret && (
-        <span className="text-muted-foreground text-xs tabular-nums">
-          {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
-            ? formatBytes(file.bytes)
-            : `+${file.additions} −${file.deletions}`}
-        </span>
-      )}
-      <Badge variant="outline">{t(`changes.status.${file.status}`)}</Badge>
-      {file.secret && <Badge variant="outline">{t("changes.secret")}</Badge>}
-      {file.binary && <Badge variant="outline">{t("changes.binary")}</Badge>}
-      {file.tooLarge && <Badge variant="outline">{t("changes.tooLarge")}</Badge>}
-      {file.uncommitted && (
-        <Badge variant="outline" className="text-status-needs-you">
-          {t("diff.uncommitted")}
-        </Badge>
-      )}
-      <span className="ml-auto flex">
-        {!file.binary && !file.secret && file.status !== "deleted" && (
+    <li key={`${file.path}:${file.uncommitted}`}>
+      <Inline>
+        <span className="min-w-0 break-all font-mono text-xs">{file.path}</span>
+        {!file.secret && (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
+              ? formatBytes(file.bytes)
+              : `+${file.additions} −${file.deletions}`}
+          </span>
+        )}
+        <Badge variant="outline">{t(`changes.status.${file.status}`)}</Badge>
+        {file.secret && <Badge variant="outline">{t("changes.secret")}</Badge>}
+        {file.binary && <Badge variant="outline">{t("changes.binary")}</Badge>}
+        {file.tooLarge && <Badge variant="outline">{t("changes.tooLarge")}</Badge>}
+        {file.uncommitted && (
+          <Badge variant="outline" className="text-status-needs-you">
+            {t("diff.uncommitted")}
+          </Badge>
+        )}
+        <span className="ml-auto flex shrink-0">
+          {!file.binary && !file.secret && file.status !== "deleted" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={t("changes.edit", { path: file.path })}
+              onClick={() => setEditing(file.path)}
+            >
+              <Pencil aria-hidden="true" className="size-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            aria-label={t("changes.edit", { path: file.path })}
-            onClick={() => setEditing(file.path)}
+            aria-label={t("changes.revert", { path: file.path })}
+            onClick={(event) => {
+              opener.current = event.currentTarget;
+              setReverting(file.path);
+            }}
           >
-            <Pencil aria-hidden="true" className="size-4" />
+            <RotateCcw aria-hidden="true" className="size-4" />
           </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={t("changes.revert", { path: file.path })}
-          onClick={(event) => {
-            opener.current = event.currentTarget;
-            setReverting(file.path);
-          }}
-        >
-          <RotateCcw aria-hidden="true" className="size-4" />
-        </Button>
-        <FileSessions store={store} hostId={hostId} root={root} path={file.path} />
-      </span>
+          <FileSessions store={store} hostId={hostId} root={root} path={file.path} />
+        </span>
+      </Inline>
     </li>
   );
 
@@ -407,20 +415,30 @@ export function ChangesPanel(
           variant="outline"
           size="sm"
           aria-pressed={mode === "unified"}
-          className="aria-pressed:bg-accent"
+          className="aria-pressed:bg-accent aria-pressed:font-semibold"
           onClick={() => setMode("unified")}
         >
+          {mode === "unified" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.unified")}
         </Button>
         <Button
           variant="outline"
           size="sm"
           aria-pressed={mode === "split"}
-          className="aria-pressed:bg-accent"
+          aria-describedby={compact ? splitOffId : undefined}
+          className="aria-pressed:bg-accent aria-pressed:font-semibold"
+          disabled={compact}
           onClick={() => setMode("split")}
         >
+          {mode === "split" && <Check aria-hidden="true" className="size-4" />}
           {t("diff.split")}
         </Button>
+        {/* In the flow, not hung under the button: at 390 px a hanging line has no room to the right. */}
+        {compact && (
+          <p id={splitOffId} className="w-full text-muted-foreground text-xs">
+            {t("diff.splitOff")}
+          </p>
+        )}
       </div>
       {/* The words sit in a status line that is in the page before they arrive; the button stays out of it. */}
       <div

@@ -74,6 +74,9 @@ export const NARROW_SHOTS: readonly string[] = [
   "board-selecao-iniciar",
   // #1446: the second-opinion review on a card's Changes.
   "card-segunda-opiniao",
+  "card-mudancas",
+  "card-mudancas-dividido",
+  "sessao-mudancas",
   // #1406: the bar and the board's notice after Update N from the base.
   "board-atualizar",
   // #1501: the Compare hosts table on the host page, a wide table in a sideways frame at 390.
