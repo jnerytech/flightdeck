@@ -22,7 +22,7 @@ import { Meter } from "@/shared/status/index.ts";
 import { refusalText } from "../../i18n/errors.ts";
 import type { AppStore, HostResult } from "../../lib/app-store.ts";
 import { type Draft, draftOf, EMPTY, MIN_PCT, missingOf } from "./domain/budget-draft.ts";
-import { budgetLabel, budgetLine, projectName } from "./domain/budgets.ts";
+import { budgetLabel, budgetLine, budgetsSharingName, projectName } from "./domain/budgets.ts";
 import { periodRange } from "./domain/costs.ts";
 
 /** What the client filter reads: the selection, the clients and where each project belongs. */
@@ -103,6 +103,7 @@ export function BudgetsSection(
     (b) => b.scope === "host" || scope.includes(selection, b.projectKey ?? ""),
   );
   const hidden = budgets.length - visible.length;
+  const sameName = budgetsSharingName(visible);
   const [spentOn, setSpentOn] = useState<string[]>([]);
   // The keys a project budget can name are the ones the host has seen: those with usage in the
   // last 30 days and those a budget already uses.
@@ -228,6 +229,11 @@ export function BudgetsSection(
                           title={budget.projectKey ?? undefined}
                         >
                           {budgetLine(budget, t)}
+                          {sameName.has(budget.id) && (
+                            <span className="block text-muted-foreground text-xs">
+                              {budget.projectKey}
+                            </span>
+                          )}
                         </span>
                       }
                       trailing={
@@ -298,7 +304,10 @@ export function BudgetsSection(
                 )}
               </Field>
               {draft.scope === "project" && (
-                <Field label={t("budgetsUi.projectLabel")}>
+                <Field
+                  label={t("budgetsUi.projectLabel")}
+                  {...(projects.length === 0 ? { help: t("budgetsUi.keyHelp") } : {})}
+                >
                   {(control) =>
                     projects.length === 0 ? (
                       <Input

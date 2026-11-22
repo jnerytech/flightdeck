@@ -34,6 +34,21 @@ export function budgetLabel(
   });
 }
 
+/** The ids of the project budgets whose project shares its name with another listed project (told apart by key, #3911). */
+export function budgetsSharingName(budgets: readonly Budget[]): Set<string> {
+  const keysByName = new Map<string, Set<string>>();
+  for (const b of budgets) {
+    if (b.scope !== "project" || !b.projectKey) continue;
+    const name = projectName(b.projectKey);
+    keysByName.set(name, (keysByName.get(name) ?? new Set()).add(b.projectKey));
+  }
+  return new Set(
+    budgets
+      .filter((b) => b.projectKey && (keysByName.get(projectName(b.projectKey))?.size ?? 0) > 1)
+      .map((b) => b.id),
+  );
+}
+
 /** The note on a project's share of a window: the plan does not say who used it. */
 export const estimateNote = (budget: Budget, t: T) =>
   budget.estimated ? t("budgets.estimate") : "";
