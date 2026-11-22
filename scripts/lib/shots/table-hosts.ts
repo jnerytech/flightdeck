@@ -505,17 +505,18 @@ export function hostShots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // #4052: a query that matches rows: the status region counts them out of sight.
+      // #4052: a query that matches rows (the demo host's name is the same in both languages): the status region counts them out of sight.
       name: "paleta-busca",
       route: { name: "hub" },
       prepare: async (page) => {
-        await askPalette(page, "coordenadora");
+        await askPalette(page, "alfa");
         await page.locator("dialog[open]").getByRole("option").first().waitFor();
         await page.waitForTimeout(400);
       },
     },
     {
       // #4052: a query that matches nothing: the line below the input says so and offers the history.
+      // It needs the demo to have more than one online project; with one, a Start row would match any text.
       name: "paleta-sem-resultado",
       route: { name: "hub" },
       prepare: async (page) => {
@@ -536,6 +537,11 @@ export function hostShots(ids: DemoIds): Shot[] {
           .getByText(/(no answer|sem resposta)$/)
           .first()
           .waitFor();
+        // A host that is slow keeps its "searching" line until it answers: the print waits for it to go.
+        await page
+          .getByText(/(searching|buscando)…$/)
+          .first()
+          .waitFor({ state: "hidden" });
         await page.waitForTimeout(400);
       },
     },
