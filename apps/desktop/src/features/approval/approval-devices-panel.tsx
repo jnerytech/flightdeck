@@ -91,6 +91,7 @@ export function ApprovalDevicesPanel(props: Readonly<{ store: AppStore; host: Ho
     seen.current = 0;
     shown.current = false;
     setStale(false);
+    setAsking(false);
     setView({ kind: "loading" });
     setDone(null);
     setProblem(null);
