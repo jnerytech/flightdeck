@@ -54,6 +54,12 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(wand?.hasAttribute("disabled")).toBe(false);
   });
 
+  test("the line kept for a screen reader is fixed to the window, so it never makes a long page scroll", async () => {
+    await make();
+    const region = document.querySelector("[aria-live=polite]") as HTMLElement | null;
+    expect(region?.style.position).toBe("fixed");
+  });
+
   test("an empty box that cannot be written from nothing is disabled, and says why", async () => {
     await make();
     const wand = screen.queryByRole("button", { name: "Write something first" });
