@@ -123,6 +123,16 @@ describe("app update slice", () => {
     expect(w.state()).toEqual({ offer: null, upToDate: false, error: null, ready: "9.9.0" });
   });
 
+  test("dismissing the error clears it and leaves the offer; the next failure sets it again", async () => {
+    const w = appUpdate({ auto: true, fail: ["download"] });
+    await w.slice.check();
+    expect(w.state().error).toBe("messages.updateDownloadFailed: download refused");
+    w.slice.dismissError();
+    expect(w.state()).toEqual({ offer: OFFER, upToDate: false, error: null, ready: null });
+    await w.slice.check();
+    expect(w.state().error).toBe("messages.updateDownloadFailed: download refused");
+  });
+
   test("quitting installs a version downloaded in the background, then exits", async () => {
     const w = appUpdate({ auto: true });
     await w.slice.check();

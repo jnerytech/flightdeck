@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { memo, useId } from "react";
+import { memo, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
@@ -34,6 +34,21 @@ function liftToasts(card: HTMLElement | null): (() => void) | undefined {
 }
 
 /**
+ * Issue #4057: a polite live region that says the card is there. It mounts empty and is filled
+ * after the first paint, because a region that already holds its text when it appears is often
+ * not spoken. The focus stays where it was.
+ */
+function CardAnnouncement(props: { text: string }) {
+  const [said, setSaid] = useState(false);
+  useEffect(() => setSaid(true), []);
+  return (
+    <p role="status" className="sr-only">
+      {said ? props.text : ""}
+    </p>
+  );
+}
+
+/**
  * Issue #490: once a new version is downloaded, a card in the bottom-right corner (above the status
  * bar) offers to update, as Orca does. The sessions run in the hosts' daemons, so restarting the app
  * interrupts none of them. It is a labelled region, not a dialog: it never takes the focus.
@@ -53,6 +68,10 @@ export const UpdateCard = memo(function UpdateCard(props: { store: AppStore }) {
       aria-labelledby={titleId}
       className="update-card"
     >
+      <CardAnnouncement
+        key={offer.version}
+        text={`${t("update.cardTitle")}. ${t("update.cardReady", { version: offer.version })}`}
+      />
       <div className="update-card-head">
         <h2 id={titleId} className="update-card-title">
           {t("update.cardTitle")}

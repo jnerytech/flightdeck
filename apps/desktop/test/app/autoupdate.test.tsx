@@ -32,6 +32,9 @@ function setup(
     available?: string | null;
     downloadError?: string;
     installError?: string;
+    checkError?: string;
+    /** `install` (the banner's Install and restart) fails with this. */
+    installNowError?: string;
     auto?: "false";
   } = {},
 ) {
@@ -42,6 +45,7 @@ function setup(
     supported: true,
     check: async () => {
       calls.push("check");
+      if (opts.checkError) throw new Error(opts.checkError);
       return opts.available ? { version: opts.available, notes: "" } : null;
     },
     download: async () => {
@@ -50,6 +54,7 @@ function setup(
     },
     install: async () => {
       calls.push("install");
+      if (opts.installNowError) throw new Error(opts.installNowError);
     },
     installDownloaded: async () => {
       calls.push("installDownloaded");
@@ -86,7 +91,7 @@ const CARD = {
     ready: "Flightdeck v9.9.0 is ready.",
     safe: "Your sessions will not be interrupted.",
     notes: "Release notes",
-    update: "Update",
+    update: "Update and restart",
     close: "Close the update notice",
   },
   "pt-BR": {
@@ -94,7 +99,7 @@ const CARD = {
     ready: "O Flightdeck v9.9.0 está pronto.",
     safe: "Suas sessões não serão interrompidas.",
     notes: "Notas da versão",
-    update: "Atualizar",
+    update: "Atualizar e reiniciar",
     close: "Fechar o aviso de atualização",
   },
 } as const;
@@ -222,6 +227,105 @@ for (const [lang, dict] of [
         await seen(() => screen.queryByRole("button", { name: dict.update.install }) !== null),
       ).toBe(true);
       expect(mem.calls).toEqual(["check"]);
+    });
+
+    // #4056: the banner's error is an alert, can be dismissed and leads to Settings.
+    test("a failed check, download or install shows its error as an alert in the banner", async () => {
+      const banner = () => screen.queryByRole("region", { name: dict.update.label });
+      const alertText = () =>
+        (banner() && within(banner() as HTMLElement).queryByRole("alert")?.textContent) || "";
+      const check = setup(lang, { checkError: "no network" });
+      await start(check);
+      expect(await seen(() => alertText().includes("no network"))).toBe(true);
+      cleanup();
+      const download = setup(lang, { available: "9.9.0", downloadError: "bad signature" });
+      await start(download);
+      expect(await seen(() => alertText().includes("bad signature"))).toBe(true);
+      cleanup();
+      const install = setup(lang, { available: "9.9.0", auto: "false", installNowError: "locked" });
+      await start(install);
+      const button = () => screen.queryByRole("button", { name: dict.update.install });
+      expect(await seen(() => button() !== null)).toBe(true);
+      await act(async () => {
+        fireEvent.click(button() as HTMLElement);
+      });
+      expect(await seen(() => alertText().includes("locked"))).toBe(true);
+    });
+
+    test("Dismiss clears the error and leaves the offer; a new failure shows it again", async () => {
+      const mem = setup(lang, { available: "9.9.0", auto: "false", installNowError: "locked" });
+      const store = await start(mem);
+      const install = () => screen.queryByRole("button", { name: dict.update.install });
+      expect(await seen(() => install() !== null)).toBe(true);
+      await act(async () => {
+        fireEvent.click(install() as HTMLElement);
+      });
+      const dismiss = () => screen.queryByRole("button", { name: dict.update.dismissError });
+      expect(await seen(() => dismiss() !== null)).toBe(true);
+      await act(async () => {
+        fireEvent.click(dismiss() as HTMLElement);
+      });
+      expect(screen.queryByRole("alert") === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
+      expect(install() !== null).toBe(true);
+      await act(async () => {
+        fireEvent.click(install() as HTMLElement);
+      });
+      expect(await seen(() => screen.queryByRole("alert") !== null)).toBe(true);
+      expect(store.getState().appUpdate.error).not.toBeNull();
+    });
+
+    test("the error's Settings button opens the updates place of Settings", async () => {
+      const mem = setup(lang, { checkError: "no network" });
+      const store = await start(mem);
+      const open = () => screen.queryByRole("button", { name: dict.update.openSettings });
+      expect(await seen(() => open() !== null)).toBe(true);
+      await act(async () => {
+        fireEvent.click(open() as HTMLElement);
+      });
+      expect(await seen(() => store.router.current.name === "settings")).toBe(true);
+      expect(store.router.current).toEqual({ name: "settings", section: "updates" });
+    });
+
+    test("the three update error texts start with a capital, name the error and never use the first person", () => {
+      const texts = [
+        dict.messages.updateCheckFailed,
+        dict.messages.updateDownloadFailed,
+        dict.messages.updateInstallFailed,
+      ];
+      expect(texts.map((text) => /^\p{Lu}/u.test(text))).toEqual([true, true, true]);
+      expect(texts.map((text) => text.includes("{error}"))).toEqual([true, true, true]);
+      expect(texts.some((text) => /consegui|\bI\b|\bWe\b|\bwe\b/.test(text))).toBe(false);
+    });
+
+    // #4057: the card is announced politely, and its button says the app restarts.
+    test("the card's title and version are in a polite live region that goes with the card, and the focus stays", async () => {
+      const mem = setup(lang, { available: "9.9.0" });
+      await start(mem);
+      const words = CARD[lang];
+      const card = () => screen.queryByRole("region", { name: words.title });
+      expect(await seen(() => card() !== null)).toBe(true);
+      const before = document.activeElement;
+      const live = () => within(card() as HTMLElement).queryByRole("status");
+      expect(await seen(() => (live()?.textContent ?? "").includes("9.9.0"))).toBe(true);
+      expect(live()?.textContent ?? "").toContain(words.title);
+      expect(document.activeElement === before).toBe(true);
+      const close = within(card() as HTMLElement).queryByRole("button", { name: words.close });
+      await act(async () => {
+        fireEvent.click(close as HTMLElement);
+      });
+      expect(
+        screen.queryAllByRole("status").some((el) => (el.textContent ?? "").includes("9.9.0")),
+      ).toBe(false);
+    });
+
+    test("the card's button names the restart and no other button on the page has its name", async () => {
+      const mem = setup(lang, { available: "9.9.0" });
+      await start(mem);
+      const words = CARD[lang];
+      expect(await seen(() => screen.queryByRole("region", { name: words.title }) !== null)).toBe(
+        true,
+      );
+      expect(screen.queryAllByRole("button", { name: words.update }).length).toBe(1);
     });
 
     test("Settings has Update automatically, on by default, and turning it off is kept", async () => {
