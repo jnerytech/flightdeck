@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Automations } from "../../src/automations/automations.ts";
+import { DEFAULT_PROMPT_TEMPLATE } from "../../src/board/board.ts";
+import { ProjectMemory } from "../../src/memory/memory.ts";
 import { personaHash } from "../../src/personas/domain/model.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { Changes } from "../../src/review/changes.ts";
@@ -12,11 +14,13 @@ import { SecretScanner } from "../../src/snippets/domain/model.ts";
 import { SshTargets } from "../../src/ssh/targets.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import type { DaemonUpdater } from "../../src/updates/apply.ts";
+import { requireVaultTransport } from "../../src/vault/index.ts";
 import { SECURITY } from "../personas/model-setup.ts";
 import { SECURITY as HOST_PERSONA } from "../personas/subagent-setup.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 import { tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
+import { slugOf } from "../support/memory.ts";
 import { insertSession } from "../support/usage-helpers.ts";
 
 // Real git in a temporary repository: more than the default 5 s.
@@ -85,9 +89,12 @@ async function nearAndFar() {
       return { id, enabled };
     },
   } as unknown as Automations;
+  const claudeDir = tempDir("fd-claude-");
+  const memoryDir = join(claudeDir, "projects", slugOf(repo), "memory");
   const base = {
     manager,
     board,
+    agentSetup: { memory: new ProjectMemory({ claudeDir }) },
     review: { files },
     ssh: { targets: ssh },
     personas: { store: personas },
@@ -111,7 +118,19 @@ async function nearAndFar() {
   const [near, far] = clients as [FrameClient, FrameClient];
   const reasonOf = async (call: Promise<{ error?: unknown }>) =>
     ((await call).error as { reason?: string } | undefined)?.reason ?? null;
-  return { near, far, board, project, repo, applied, toggled, personas, published, reasonOf };
+  return {
+    near,
+    far,
+    board,
+    project,
+    repo,
+    memoryDir,
+    applied,
+    toggled,
+    personas,
+    published,
+    reasonOf,
+  };
 }
 
 describe("applying a daemon update needs a near connection (#3815)", () => {
@@ -383,6 +402,192 @@ describe("publishing a persona as a project agent needs a near connection (#3815
       [],
       null,
       ["persona-seg"],
+    ]);
+  });
+});
+
+/**
+ * Issue #3825: what #3815 left open. Each call that enables, loosens, installs or runs something is
+ * refused from a far connection; the direction that only disables or restricts stays open.
+ */
+describe("a project's auto memory needs a near connection to change (#3825)", () => {
+  test("a far connection cannot write or delete a memory file; a near one can", async () => {
+    const { near, far, project, memoryDir, reasonOf } = await nearAndFar();
+    const note = { projectId: project.id, name: "a.md", content: "x\n", confirm: true };
+    const farWrite = await reasonOf(far.request("memory.write", { ...note, expectedHash: null }));
+    const afterFar = existsSync(join(memoryDir, "a.md"));
+    const nearWrite = await reasonOf(near.request("memory.write", { ...note, expectedHash: null }));
+    const del = { projectId: project.id, name: "a.md", expectedHash: sha("x\n"), confirm: true };
+    const farDelete = await reasonOf(far.request("memory.delete", del));
+    const stillThere = existsSync(join(memoryDir, "a.md"));
+    const nearDelete = await reasonOf(near.request("memory.delete", del));
+    expect([farWrite, afterFar, nearWrite, farDelete, stillThere, nearDelete]).toEqual([
+      "transport_refused",
+      false,
+      null,
+      "transport_refused",
+      true,
+      null,
+    ]);
+  });
+});
+
+describe("updating a card from its base and merging it locally need a near connection (#3825)", () => {
+  test("a far connection is refused before the card is looked at; a near one reaches it", async () => {
+    const { near, far, reasonOf } = await nearAndFar();
+    const merge = { cardId: "nope", mode: "squash", confirm: true } as const;
+    const farUpdate = await reasonOf(far.request("card.updateFromBase", { cardId: "nope" }));
+    const farMerge = await reasonOf(far.request("card.mergeLocal", merge));
+    const nearUpdate = await reasonOf(near.request("card.updateFromBase", { cardId: "nope" }));
+    const nearMerge = await reasonOf(near.request("card.mergeLocal", merge));
+    expect([farUpdate, farMerge, nearUpdate, nearMerge]).toEqual([
+      "transport_refused",
+      "transport_refused",
+      "card_not_found",
+      "card_not_found",
+    ]);
+  });
+});
+
+describe("reverting Claude Code's settings needs a near connection (#3825)", () => {
+  test("a far connection cannot revert or undo them; any other file it can", async () => {
+    const { near, far, repo, reasonOf } = await nearAndFar();
+    const hook =
+      '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch pwned"}]}]}}\n';
+    const settings = join(repo, ".claude", "settings.json");
+    writeFileSync(settings, hook);
+    writeFileSync(join(repo, "a.txt"), "edited\n");
+    const ask = (path: string) => ({ target: "session:s-1", path, confirm: true });
+    const farRevert = await reasonOf(far.request("changes.revert", ask(".claude/settings.json")));
+    const afterFar = readFileSync(settings, "utf8");
+    const farOther = await reasonOf(far.request("changes.revert", ask("a.txt")));
+    const nearRevert = await reasonOf(near.request("changes.revert", ask(".claude/settings.json")));
+    const afterNear = readFileSync(settings, "utf8");
+    const farUndo = await reasonOf(far.request("changes.undoRevert", ask(".claude/settings.json")));
+    const afterUndoFar = readFileSync(settings, "utf8");
+    const nearUndo = await reasonOf(
+      near.request("changes.undoRevert", ask(".claude/settings.json")),
+    );
+    expect([farRevert, afterFar, farOther, nearRevert, afterNear, farUndo, afterUndoFar]).toEqual([
+      "transport_refused",
+      hook,
+      null,
+      null,
+      "{}\n",
+      "transport_refused",
+      "{}\n",
+    ]);
+    expect([nearUndo, readFileSync(settings, "utf8")]).toEqual([null, hook]);
+  });
+});
+
+describe("saving an ssh target that forwards a port beyond this computer needs a near connection (#3825)", () => {
+  test("a far connection cannot bind a forward to another address; loopback or none it can", async () => {
+    const { near, far, reasonOf } = await nearAndFar();
+    const target = { name: "vps", host: "vps.example.com", user: "deploy" };
+    const forward = (localForward: string[], name = "vps") =>
+      ({ ...target, name, options: { localForward } }) as const;
+    const farAll = await reasonOf(far.request("ssh.save", forward(["0.0.0.0:8080:internal:80"])));
+    const farStar = await reasonOf(far.request("ssh.save", forward(["*:8080:internal:80"])));
+    const farMixed = await reasonOf(
+      far.request("ssh.save", forward(["8081:internal:80", "192.168.1.5:8082:internal:80"])),
+    );
+    const farLoopback = [
+      await reasonOf(far.request("ssh.save", forward(["127.0.0.1:8080:internal:80"], "a"))),
+      await reasonOf(far.request("ssh.save", forward(["localhost:8080:internal:80"], "b"))),
+      await reasonOf(far.request("ssh.save", forward(["8080:internal:80"], "c"))),
+    ];
+    const nearAll = await reasonOf(
+      near.request("ssh.save", forward(["0.0.0.0:8080:internal:80"], "d")),
+    );
+    const saved = (await far.data("ssh.list", {})) as {
+      targets: Array<{ id: string; name: string }>;
+    };
+    const kept = saved.targets.find((t) => t.name === "d");
+    // The same forward sent back with an edit is no new exposure.
+    const farKeep = await reasonOf(
+      far.request("ssh.save", { ...forward(["0.0.0.0:8080:internal:80"], "d2"), id: kept?.id }),
+    );
+    expect([farAll, farStar, farMixed, farLoopback, nearAll, farKeep]).toEqual([
+      "transport_refused",
+      "transport_refused",
+      "transport_refused",
+      [null, null, null],
+      null,
+      null,
+    ]);
+  });
+});
+
+describe("a project's prompt template and approving model need a near connection to change (#3825)", () => {
+  test("a far connection cannot change them, can send the stored values back; a near one can", async () => {
+    const { near, far, board, project, repo, reasonOf } = await nearAndFar();
+    const stored = () => board.getProject(project.id);
+    const farTemplate = await reasonOf(
+      far.request("project.update", { projectId: project.id, promptTemplate: "do as asked" }),
+    );
+    const farAdd = await reasonOf(far.request("project.add", { path: repo, promptTemplate: "x" }));
+    const farSame = await reasonOf(
+      far.request("project.update", {
+        projectId: project.id,
+        promptTemplate: DEFAULT_PROMPT_TEMPLATE,
+        name: "renamed",
+      }),
+    );
+    const nearTemplate = await reasonOf(
+      near.request("project.update", { projectId: project.id, promptTemplate: "do as asked" }),
+    );
+    const model = { enabled: true, model: "claude-opus-5-5" };
+    const nearOn = await reasonOf(
+      near.request("project.update", { projectId: project.id, autoApprove: { enabled: true } }),
+    );
+    const farModel = await reasonOf(
+      far.request("project.update", { projectId: project.id, autoApprove: model }),
+    );
+    const afterFar = stored().autoApprove.model;
+    const farKeepModel = await reasonOf(
+      far.request("project.update", {
+        projectId: project.id,
+        autoApprove: { enabled: true, model: afterFar },
+      }),
+    );
+    const nearModel = await reasonOf(
+      near.request("project.update", { projectId: project.id, autoApprove: model }),
+    );
+    expect([
+      farTemplate,
+      farAdd,
+      farSame,
+      nearTemplate,
+      stored().promptTemplate,
+      nearOn,
+      farModel,
+      afterFar,
+      farKeepModel,
+      nearModel,
+      stored().autoApprove.model,
+    ]).toEqual([
+      "transport_refused",
+      "transport_refused",
+      null,
+      null,
+      "do as asked",
+      null,
+      "transport_refused",
+      "claude-haiku-5-5",
+      null,
+      null,
+      "claude-opus-5-5",
+    ]);
+  });
+});
+
+describe("the refusal log of a far connection is in English (#3825)", () => {
+  test("it names the command and the origin, and nothing else", () => {
+    const logged: string[] = [];
+    expect(() => requireVaultTransport("8.8.8.8", "memory.write", (m) => logged.push(m))).toThrow();
+    expect(logged).toEqual([
+      "vault: memory.write refused, origin 8.8.8.8: outside loopback and Tailscale",
     ]);
   });
 });
