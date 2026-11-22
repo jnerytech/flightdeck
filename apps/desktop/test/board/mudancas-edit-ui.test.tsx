@@ -142,6 +142,19 @@ describe("mudancas-edit-ui", () => {
     expect(readFileSync(join(ctx.repo, "novo.txt"), "utf8")).toBe("um\ndois\n");
   });
 
+  test("um arquivo com fim de linha do Windows fecha sem perguntar quando nada foi digitado", async () => {
+    const ctx = await setup();
+    writeFileSync(join(ctx.repo, "win.txt"), "um\r\ndois\r\n");
+    await openSession(ctx);
+    await openChanges();
+    await settle(() => files().includes("win.txt"));
+    await click("Editar arquivo win.txt");
+    await settle(() => document.querySelector(".cm-content") !== null);
+    await click("Fechar");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Editar win.txt" })).toBeNull();
+  });
+
   test("um arquivo grande demais para editar mostra o motivo no lugar do editor", async () => {
     const ctx = await setup();
     writeFileSync(join(ctx.repo, "grande.txt"), "x".repeat(1_100_000));
