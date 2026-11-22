@@ -2,7 +2,7 @@ import type { AccountState, QuotaWindow } from "@flightdeck/protocol";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { Panel } from "@/shared/layout/index.ts";
+import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import { formatAgo, formatDuration } from "../../i18n/format.ts";
 import type { Key } from "../../i18n/index.ts";
 
@@ -58,30 +58,47 @@ function WindowMeter(
   const t = useT();
   const { reading, hostName, now, formatTime } = props;
   const label = t(`account.windows.${reading.window}` as Key);
-  const value = reading.utilization ?? 0;
-  const percent = Math.round(value * 100);
+  const known = reading.utilization !== null;
+  const percent = Math.round((reading.utilization ?? 0) * 100);
   const left = reading.resetsAt ? Date.parse(reading.resetsAt) - now : null;
   const reset = left === null ? null : t("account.resetsIn", { d: formatDuration(left, t) });
+  const said =
+    reset === null
+      ? t("account.meterTextNoReset", { percent })
+      : t("account.meterText", { percent, reset });
+  const warned = reading.status === "allowed" ? null : reading.status;
   return (
     <div data-window={reading.window} data-status={reading.status} className="meter-line">
       <div className="row-baseline-spread">
         <span className="text-sm">{label}</span>
-        <span className={cn("font-medium text-sm", PERCENT_COLOR[reading.status])}>
-          {`${percent}%`}
-        </span>
+        <Inline gap={2} className="text-sm">
+          <span className={cn("font-medium", PERCENT_COLOR[reading.status])}>
+            {known ? `${percent}%` : t("account.unknownUsage")}
+          </span>
+          {warned && (
+            <span className={cn("text-xs", PERCENT_COLOR[warned])}>
+              {t(`account.statusLine.${warned}` as Key)}
+            </span>
+          )}
+        </Inline>
       </div>
-      <meter
-        aria-label={t("account.meter", { window: label, host: hostName })}
-        aria-valuetext={
-          reset === null
-            ? t("account.meterTextNoReset", { percent })
-            : t("account.meterText", { percent, reset })
-        }
-        min={0}
-        max={1}
-        value={value}
-        className={cn(METER, METER_COLOR[reading.status])}
-      />
+      {known && (
+        <meter
+          aria-label={t("account.meter", { window: label, host: hostName })}
+          aria-valuetext={
+            warned
+              ? t("account.meterWithStatus", {
+                  text: said,
+                  status: t(`account.statusText.${warned}` as Key),
+                })
+              : said
+          }
+          min={0}
+          max={1}
+          value={reading.utilization ?? 0}
+          className={cn(METER, METER_COLOR[reading.status])}
+        />
+      )}
       {reset !== null && reading.resetsAt && (
         <span
           className="text-muted-foreground text-xs"
@@ -110,9 +127,12 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
       type="button"
       variant="outline"
       size="sm"
-      disabled={props.refreshing}
+      aria-disabled={props.refreshing || undefined}
+      className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
       {...(named ? { "aria-label": t("account.refreshLabel", { host: hostName }) } : {})}
-      onClick={props.onRefresh}
+      onClick={() => {
+        if (!props.refreshing) props.onRefresh();
+      }}
     >
       {label}
     </Button>
@@ -124,13 +144,18 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
       <p className="text-muted-foreground text-sm">{t("account.offline", { host: hostName })}</p>
     );
   } else if (state === undefined || notReadYet(state)) {
-    body = <p className="text-muted-foreground text-sm">{t("account.loading")}</p>;
+    body = (
+      <p role="status" className="text-muted-foreground text-sm">
+        {t("account.loading")}
+      </p>
+    );
   } else if (state.status === "signed_out") {
     body = (
       <>
         <p className="font-medium text-sm">{t("account.signedOut.title")}</p>
         <p className="text-muted-foreground text-sm">{t("account.signedOut.steps")}</p>
         <code className="code-chip rounded bg-muted font-mono text-sm">{state.loginCommand}</code>
+        <output className="sr-only">{props.copied ? t("account.copied") : ""}</output>
         <div className="row-gap2">
           <Button type="button" variant="outline" size="sm" onClick={props.onCopy}>
             {props.copied ? t("account.copied") : t("account.copy")}
@@ -148,8 +173,14 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
   } else if (state.status === "unknown") {
     body = state.error ? (
       <>
-        <p className="font-medium text-sm">{t("account.unavailable")}</p>
-        <p className="text-muted-foreground text-sm">{t(`daemonRefusal.${state.error}` as Key)}</p>
+        <div role="alert">
+          <Stack gap={2}>
+            <p className="font-medium text-sm">{t("account.unavailable")}</p>
+            <p className="text-muted-foreground text-sm">
+              {t(`daemonRefusal.${state.error}` as Key)}
+            </p>
+          </Stack>
+        </div>
         {refresh(t("account.retry"), false)}
       </>
     ) : (
@@ -189,12 +220,13 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
         ))}
         {state.stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
         <div className="row-wrap-loose text-muted-foreground text-xs">
-          {state.readAt && (
-            <span>
-              {t("account.lastRead", { ago: formatAgo(now - Date.parse(state.readAt), t) })}
-            </span>
-          )}
-          {refresh(props.refreshing ? t("account.refreshing") : t("account.refresh"))}
+          <output>
+            {props.refreshing
+              ? t("account.refreshing")
+              : state.readAt &&
+                t("account.lastRead", { ago: formatAgo(now - Date.parse(state.readAt), t) })}
+          </output>
+          {refresh(t("account.refresh"))}
         </div>
       </>
     );

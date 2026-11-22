@@ -349,7 +349,7 @@ describe("conta-cartao-ui: what a screen reader and a colour-blind person get (i
     ).toBe("92%, resets in 1 h, close to the limit");
     expect(
       inCard().queryByRole("meter", { name: "7 days of alfa" })?.getAttribute("aria-valuetext"),
-    ).toBe("100%, resets in 2 d, limit reached");
+    ).toBe("100%, resets in 48 h, limit reached");
     cleanup();
     show({ state: state() });
     expect(inCard().queryByText("Close to the limit")).toBeNull();
