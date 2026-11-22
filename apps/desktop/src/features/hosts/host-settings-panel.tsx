@@ -14,6 +14,7 @@ import { BypassSwitch } from "./bypass-switch.tsx";
 import { DaemonUpdate } from "./daemon-update.tsx";
 import { GithubPanel } from "./github-panel.tsx";
 import { HostAutoUpdate } from "./host-auto-update.tsx";
+import { HostGate } from "./host-gate.tsx";
 import { HostLogs } from "./host-logs.tsx";
 import { HostPausePanel } from "./host-pause-panel.tsx";
 import { HostTerminal } from "./host-terminal.tsx";
@@ -84,15 +85,19 @@ export function HostSettingsPanel(
           {online && store.approval.supported(host.id) && (
             <ApprovalDevicesPanel store={store} host={host} />
           )}
-          <BypassSwitch store={store} host={host} />
+          <HostGate store={store} host={host} reason>
+            <BypassSwitch store={store} host={host} />
+          </HostGate>
         </SettingsGroup>
         <SettingsGroup name="sessions" shown={has("sessions")}>
-          <SleepSetting store={store} host={host} />
-          <SimpleModePanel store={store} host={host} />
-          <KeepAwakePanel store={store} host={host} />
-          <HostPausePanel store={store} host={host} />
-          <ResumePanel store={store} host={host} />
-          <HostWorktrees store={store} host={host} />
+          <HostGate store={store} host={host}>
+            <SleepSetting store={store} host={host} />
+            <SimpleModePanel store={store} host={host} />
+            <KeepAwakePanel store={store} host={host} />
+            <HostPausePanel store={store} host={host} />
+            <ResumePanel store={store} host={host} />
+            <HostWorktrees store={store} host={host} />
+          </HostGate>
           {props.hooksSection}
           {online && hasFeature(info?.features, "autoapprove", false) && (
             <Button variant="outline" className="self-start" onClick={props.onOpenAutoApprovals}>
@@ -108,8 +113,12 @@ export function HostSettingsPanel(
           )}
         </SettingsGroup>
         <SettingsGroup name="upkeep" shown={has("upkeep")}>
-          <HostAutoUpdate store={store} host={host} />
-          <DaemonUpdate store={store} host={host} />
+          <HostGate store={store} host={host}>
+            <HostAutoUpdate store={store} host={host} />
+          </HostGate>
+          <HostGate store={store} host={host} live={host.status === "incompatible"}>
+            <DaemonUpdate store={store} host={host} />
+          </HostGate>
           {online && hasFeature(info?.features, "telemetry", false) && (
             <TelemetrySection store={store} hostId={host.id} />
           )}
