@@ -61,6 +61,7 @@ export function maintenanceRewriter(options: MaintenanceOptions = {}): FrameRewr
       if (typeof type === "string" && type in answers && typeof message?.id === "string") {
         asked.set(message.id, type);
       }
+      return frame;
     },
     fromHost(frame) {
       const message = parse(frame);

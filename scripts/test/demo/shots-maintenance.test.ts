@@ -40,6 +40,11 @@ describe("the Maintenance prints (#4001)", () => {
     expect(waitsLess).toEqual(["host-manutencao-limpando"]);
   });
 
+  test("the app's requests go to the host as they were sent", () => {
+    const frame = ask("r9", "maintenance.status");
+    expect(maintenanceRewriter().fromApp(frame)).toBe(frame);
+  });
+
   test("the status reads the same facts on every machine, a backup and a real cleanup among them", () => {
     const out = heard(maintenanceRewriter(), "maintenance.status", { dbBytes: 1 });
     expect([
