@@ -97,13 +97,19 @@ export const hosts = {
     },
     hostKey: {
       confirmTitle: "Server key of {name}",
-      confirmMessage: "First connection to {name}. Check the fingerprint before trusting this key.",
+      confirmMessage:
+        "First connection to {name}. Compare the fingerprint with the one its owner gives you, or that ssh-keyscan prints on the server, before trusting this key.",
       confirm: "Confirm server key",
       changedTitle: "The server key changed",
       changedMessage:
-        "{name} showed a key different from the one kept. The connection was blocked.",
-      pinned: "Kept",
-      current: "Now",
+        "{name} showed a key different from the saved one. The connection was blocked.",
+      changedNext:
+        "To go on: edit the destination, choose Forget server key, then connect again and check the new fingerprint with the server's owner.",
+      pinned: "Saved key",
+      fingerprint: "Fingerprint (SHA256)",
+      copy: "Copy fingerprint",
+      edit: "Edit destination",
+      current: "Key offered now",
       close: "Close",
     },
   },
