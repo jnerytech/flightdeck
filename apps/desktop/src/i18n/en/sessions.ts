@@ -623,6 +623,9 @@ export const sessions = {
     fork: "Fork from here",
     forkTurn: "Fork from here (turn {n})",
     busy: "The session is in a turn: stop it before rewinding files.",
+    noPrompt: "(no prompt recorded)",
+    showMore: "Show more",
+    showLess: "Show less",
     noUuid:
       "Could not find this turn's message in the transcript, so it cannot be forked from here.",
     rewindTitle: "Rewind files to turn {n}",
