@@ -364,10 +364,14 @@ fn tray_set_menu(
         needs_you.append(&rest).map_err(err)?;
     }
     // The first labels: the submenu and Quit join the menu now that they are translated and complete.
-    if !state.labelled.load(Ordering::SeqCst) {
+    // The flag is taken first, so two calls never append the same items twice.
+    if state
+        .labelled
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
         state.menu.append(&state.needs_you).map_err(err)?;
         state.menu.append(&state.quit).map_err(err)?;
-        state.labelled.store(true, Ordering::SeqCst);
     }
     Ok(())
 }
@@ -549,8 +553,8 @@ const STARTUP_OPEN_TEXT: &str = "Flightdeck";
 
 /// Whether closing the window hides it to the tray. Before the page has sent its labels the tray has
 /// no Quit, so a close then exits instead of leaving the app with no way out (#4120).
-fn close_hides_to_tray(close_to_tray: bool, _labelled: bool) -> bool {
-    close_to_tray
+fn close_hides_to_tray(close_to_tray: bool, labelled: bool) -> bool {
+    close_to_tray && labelled
 }
 
 fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
@@ -650,7 +654,11 @@ pub fn run() {
             // Closing the window keeps the app running in the tray, unless turned off.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 let state = window.app_handle().state::<TrayState>();
-                if state.close_to_tray.load(Ordering::Relaxed) {
+                let hides = close_hides_to_tray(
+                    state.close_to_tray.load(Ordering::Relaxed),
+                    state.labelled.load(Ordering::SeqCst),
+                );
+                if hides {
                     api.prevent_close();
                     let _ = window.hide();
                 }
