@@ -39,6 +39,7 @@ import { harnessShots } from "./lib/shots/table-harness.ts";
 import { hostShots } from "./lib/shots/table-hosts.ts";
 import { issuesShots } from "./lib/shots/table-issues.ts";
 import { permissionShots } from "./lib/shots/table-permissions.ts";
+import { personaShots } from "./lib/shots/table-personas.ts";
 import { shellShots } from "./lib/shots/table-shell.ts";
 import { snippetShots } from "./lib/shots/table-snippets.ts";
 import { teleportShots } from "./lib/shots/table-teleport.ts";
@@ -90,6 +91,7 @@ function shots(ids: DemoIds): Shot[] {
     ...issuesShots(ids),
     ...devicesShots(ids),
     ...permissionShots(ids),
+    ...personaShots(ids),
     ...snippetShots(ids),
     ...teleportShots(ids),
     ...assistantShots(ids),
@@ -260,7 +262,13 @@ function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
   return {
     clients: shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
     roi: shot.roi ? DEMO_ROI : null,
-    inbox: shot.inbox ? demoInbox(lang, { hostId: ALFA, requestId: ids.waitingRequest }) : null,
+    inbox: shot.inbox
+      ? demoInbox(
+          lang,
+          { hostId: ALFA, requestId: ids.waitingRequest },
+          shot.inbox === "danger" ? { hostId: ALFA, requestId: ids.dangerRequest } : undefined,
+        )
+      : null,
     finished: shot.finished
       ? demoFinished(
           { hostId: ALFA, sessionId: ids.idleSession, name: "Revisão do PR 128" },

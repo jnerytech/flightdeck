@@ -260,6 +260,10 @@ export const board = {
     filter: "Filtrar issues",
     filterPlaceholder: "Título, rótulo ou autor",
     none: "Nenhuma issue encontrada",
+    noMatch: 'Nenhuma issue corresponde a "{filter}"',
+    clearFilter: "Limpar filtro",
+    count: { one: "{n} issue", other: "{n} issues" },
+    countOf: { one: "{shown} de {n} issue", other: "{shown} de {n} issues" },
     loading: "Carregando issues",
     reload: "Atualizar",
     retry: "Tentar de novo",
@@ -278,7 +282,10 @@ export const board = {
     github: "GitHub",
     azure: "Azure Boards",
     query: "Busca de issues",
-    queryHint: "Em branco: as abertas atribuídas a você",
+    queryHintGithub:
+      "Sintaxe de busca do GitHub, por exemplo label:bug is:open. Em branco: as issues abertas atribuídas a você.",
+    queryHintAzure:
+      "Uma consulta WIQL do Azure Boards, por exemplo SELECT [System.Id] FROM WorkItems WHERE [System.State] = 'Active'. Em branco: seus itens abertos.",
     commentOnPr: "Comentar na issue ao abrir o PR",
     commentOnPrHint: "Escreve no provedor. Vem desligado.",
     connectButton: "Conectar issues",
