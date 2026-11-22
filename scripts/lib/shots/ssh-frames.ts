@@ -76,7 +76,7 @@ export function sshRewriter(askpass = false): FrameRewriter {
     targetName: "staging",
     kind: "password",
     secretRef: null,
-    prompt: "deploy@203.0.113.30's password:",
+    prompt: "deploy@staging.example.test's password:",
   };
   const rewrite: Record<string, () => Record<string, unknown>> = {
     "ssh.list": () => ({ targets }),

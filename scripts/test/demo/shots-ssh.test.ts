@@ -79,7 +79,7 @@ describe("shots-ssh: the askpass prompt", () => {
     expect([
       request.kind,
       request.secretRef,
-      /^[^@\s]+@203\.0\.113\.\d+'s password:$/.test(request.prompt),
+      /^[^@\s]+@(203\.0\.113\.\d+|[a-z.-]+\.example\.test)'s password:$/.test(request.prompt),
     ]).toEqual(["password", null, true]);
   });
 
@@ -88,6 +88,13 @@ describe("shots-ssh: the askpass prompt", () => {
     const { out, after } = heard("ssh.list", { targets: [] }, rewriter);
     const names = targets(out.data).map((t) => t.name);
     expect(names).toContain(AskpassRequest.parse(after[0]).targetName);
+  });
+
+  test("the prompt asks for the host of the destino it names", () => {
+    const { out, after } = heard("ssh.list", { targets: [] });
+    const asked = AskpassRequest.parse(after[0]);
+    const named = targets(out.data).find((t) => t.name === asked.targetName);
+    expect(asked.prompt).toBe(`${named?.user}@${named?.host}'s password:`);
   });
 
   test("a second ssh.list answer brings no second prompt: the person has one to answer", () => {

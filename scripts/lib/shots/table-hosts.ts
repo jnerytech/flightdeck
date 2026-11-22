@@ -63,7 +63,7 @@ export function hostShots(ids: DemoIds): Shot[] {
       prepare: async (page) => {
         await listed(page);
         await page.getByRole("button", { name: /^(New destination|Novo destino)$/ }).click();
-        await page.getByRole("button", { name: /^(Test and add|Testar e adicionar)$/ }).waitFor();
+        await page.getByRole("button", { name: /^(Save destination|Salvar destino)$/ }).waitFor();
       },
     },
     {
@@ -126,6 +126,8 @@ export function hostShots(ids: DemoIds): Shot[] {
         await page.getByText(/^(Copied|Copiado)$/).waitFor();
         // timing: sonner's enter animation (400 ms) ends before the shot.
         await page.waitForTimeout(500);
+        // The permission was for the copy: the context's later prints do not keep it.
+        await page.context().clearPermissions();
       },
     },
     {

@@ -75,13 +75,23 @@ describe("the vault's prints (#3602)", () => {
   });
 
   test("the Usage lines name a purpose and a secret of the list, delivered or denied", () => {
-    const lines = JSON.parse(demoVaultUsage("demo-alfa")) as { purpose: string; kind: string }[];
-    expect(lines.every((l) => l.purpose !== "" && ["delivered", "denied"].includes(l.kind))).toBe(
-      true,
+    const listed = new Set(
+      (JSON.parse(demoSecrets("demo-alfa")) as { id: string }[]).map((s) => s.id),
     );
+    const lines = JSON.parse(demoVaultUsage("demo-alfa")) as {
+      secretId: string;
+      purpose: string;
+      kind: string;
+    }[];
+    expect(
+      lines.every(
+        (l) =>
+          l.purpose !== "" && listed.has(l.secretId) && ["delivered", "denied"].includes(l.kind),
+      ),
+    ).toBe(true);
   });
 
-  test("the Copy print starts with no secret in the list: it adds one, so there is a value to copy", () => {
+  test("the Copy print seeds no secrets and has a prepare step of its own", () => {
     const copy = vaultShots().find((s) => s.name === "cofre-copiar");
     expect([copy?.secrets, copy?.prepare === undefined]).toEqual([undefined, false]);
   });
