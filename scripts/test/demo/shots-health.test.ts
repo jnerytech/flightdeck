@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { safeFixCommand, safeFixUrl } from "@flightdeck/protocol";
 import type { DemoIds } from "../../demo-seed.ts";
 import { narrowSizes } from "../../lib/shots/narrow.ts";
 import { healthShots } from "../../lib/shots/table-health.ts";
@@ -102,6 +103,20 @@ describe("the Health & dependencies prints (#4325)", () => {
       reply: { startsAt: "boot", lingerOff: true, user: expect.any(String) },
     });
     expect(rule("host-saude-hooks-dialogo", "service.install")).toBeUndefined();
+  });
+
+  test("every command and page a print offers as a fix is one the app accepts, or the row shows no button for it", () => {
+    const fixes = NAMES.flatMap((name) => items(name).flatMap((item) => item.fix));
+    expect(fixes.length).toBeGreaterThan(0);
+    expect(fixes.filter((fix) => fix.command && !safeFixCommand(fix.command))).toEqual([]);
+    expect(fixes.filter((fix) => fix.url && !safeFixUrl(fix.url))).toEqual([]);
+  });
+
+  test("the boot print's re-read after the service is turned on has the service working and nothing else changed", () => {
+    const found = rule("host-saude-boot", "deps.check");
+    const later = found && "after" in found ? (found.after as { items: DepItem[] }) : { items: [] };
+    const now = Object.fromEntries(later.items.map((item) => [item.id, item.state]));
+    expect(now).toEqual({ ...states("host-saude-correcoes"), service: "ok" });
   });
 
   test("the folded-list print has nothing to fix and one path too long for a narrow row", () => {
