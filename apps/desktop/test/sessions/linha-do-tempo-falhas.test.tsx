@@ -9,6 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { CheckpointsButton } = await import("../../src/features/checkpoints/ui.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
+const { formatDateTime } = await import("../../src/i18n/format.ts");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
@@ -748,5 +749,90 @@ describe("linha-do-tempo-falhas", () => {
     await act(async () => older.settle(TURN_RUNNING));
     expect(alerts()).toEqual([]);
     expect(screen.queryByText("fix the README")).not.toBeNull();
+  });
+  // #4250: a dialog says which turn it acts on, and the forked command can be copied.
+  const LONG_PROMPT = `${"explain the whole design ".repeat(12)}and then fix the README`;
+  const withPrompt = (prompt: string | null) => ({
+    snapshots: SNAPSHOTS.snapshots.map((row) => (row.n === 1 ? { ...row, prompt } : row)),
+  });
+  const dialogOf = (name: string) => within(screen.queryByRole("dialog", { name }) as HTMLElement);
+
+  test("the Rewind and Fork dialogs show the turn's time and prompt", async () => {
+    const { names, store } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    const rewind = dialogOf("Rewind files to turn 1");
+    expect(rewind.queryByText("fix the README")).not.toBeNull();
+    expect(
+      rewind.queryByText(formatDateTime("2026-11-21T10:00:00.000Z", store.i18n.lang)),
+    ).not.toBeNull();
+    await click("Cancel");
+    await click(names.fork);
+    const fork = dialogOf("Fork from turn 1");
+    expect(fork.queryByText("fix the README")).not.toBeNull();
+    expect(
+      fork.queryByText(formatDateTime("2026-11-21T10:00:00.000Z", store.i18n.lang)),
+    ).not.toBeNull();
+  });
+
+  test("a long prompt is clamped in the dialog, with Show more", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => withPrompt(LONG_PROMPT),
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.fork);
+    const fork = dialogOf("Fork from turn 1");
+    const more = fork.queryByRole("button", { name: "Show more" });
+    expect(more?.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => {
+      fireEvent.click(more as HTMLElement);
+    });
+    expect(fork.queryByRole("button", { name: "Show less" })?.getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  test("a turn with no prompt says so in the dialog", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => withPrompt(null),
+      "rewind.preview": async () => PREVIEW,
+    });
+    await click(names.rewind);
+    expect(dialogOf("Rewind files to turn 1").queryByText("(no prompt recorded)")).not.toBeNull();
+  });
+
+  test("the forked command can be copied", async () => {
+    const { names, store } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () => ({ claudeSessionId: "c2", command: "claude --resume c2" }),
+    });
+    const copied: string[] = [];
+    store.system.copyText = (async (text: string) => {
+      copied.push(text);
+      return true;
+    }) as never;
+    await click(names.fork);
+    await tick("Open in the terminal");
+    await click("Fork");
+    await click("Copy the command");
+    expect(copied).toEqual(["claude --resume c2"]);
+  });
+
+  test("the dialog's time and the copy button read in Portuguese", async () => {
+    const { names, store } = await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "session.fork": async () => ({ claudeSessionId: "c2", command: "claude --resume c2" }),
+    });
+    await click(names.fork);
+    expect(
+      dialogOf("Bifurcar a partir do turno 1").queryByText(
+        formatDateTime("2026-11-21T10:00:00.000Z", store.i18n.lang),
+      ),
+    ).not.toBeNull();
+    await tick("Abrir no terminal");
+    await click("Bifurcar");
+    expect(screen.queryByRole("button", { name: "Copiar o comando" })).not.toBeNull();
   });
 });
