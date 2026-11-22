@@ -1,5 +1,13 @@
 import type { CliArgs } from "./domain/cli-args.ts";
-import { accountRun, daemonLifeRun, githubRun, resourcesRun, workflowRun } from "./domain-runs.ts";
+import {
+  accountRun,
+  daemonLifeRun,
+  githubRun,
+  harnessRun,
+  resourcesRun,
+  templatesRun,
+  workflowRun,
+} from "./domain-runs.ts";
 import { externalRun, namesRun } from "./external-run.ts";
 import { feedCommands } from "./feed-run.ts";
 import type { HostCommandDeps } from "./host.ts";
@@ -34,10 +42,13 @@ export const daemonRuns = <D extends Deps>(
   daemon: (args: CliArgs, deps: D) => asking(args, deps, daemonLifeRun(args)),
   external: (args: CliArgs, deps: D) =>
     asking(args, deps, externalRun(args, liveStream(args, deps))),
+  harness: (args: CliArgs, deps: D) => asking(args, deps, harnessRun(args)),
   github: (args: CliArgs, deps: D) => asking(args, deps, githubRun(args)),
   names: (args: CliArgs, deps: D) => asking(args, deps, namesRun(args)),
   ui: (args: CliArgs, deps: D) => asking(args, deps, uiRun(args)),
   resources: (args: CliArgs, deps: D) => asking(args, deps, resourcesRun(args)),
+  task: (args: CliArgs, deps: D) => asking(args, deps, templatesRun(args)),
+  template: (args: CliArgs, deps: D) => asking(args, deps, templatesRun(args)),
   workflow: (args: CliArgs, deps: D) =>
     asking(args, deps, workflowRun(args, liveStream(args, deps))),
 });

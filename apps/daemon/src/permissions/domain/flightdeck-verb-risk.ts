@@ -21,6 +21,7 @@ import { RUNENV_RULES } from "./runenv-risk.ts";
 import { SEND_RULES } from "./send-risk.ts";
 import { SNIPPET_RULES } from "./snippet-risk.ts";
 import { TELEMETRY_RULES } from "./telemetry-risk.ts";
+import { TEMPLATES_RULES } from "./templates-risk.ts";
 import { UI_RULES } from "./ui-risk.ts";
 import { WORKFLOW_RULES } from "./workflow-risk.ts";
 import { WORKTREE_RULES } from "./worktree-risk.ts";
@@ -50,6 +51,7 @@ export const FLIGHTDECK_VERB_RULES = [
   ...SEND_RULES,
   ...KNOWLEDGE_RULES,
   ...TELEMETRY_RULES,
+  ...TEMPLATES_RULES,
   ...DAEMON_RULES,
   ...MAINTENANCE_RULES,
   ...UI_RULES,
