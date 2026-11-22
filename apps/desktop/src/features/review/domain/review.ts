@@ -95,6 +95,13 @@ export function isExternalAuthor(comment: {
 export type PrCommentsByPath = Readonly<Record<string, { count: number; firstId: string }>>;
 
 /** Groups the inline comments of a PR by the file they are on; a review's summary has no file. */
-export function prCommentsByPath(_comments: readonly PrComment[]): PrCommentsByPath {
-  return {};
+export function prCommentsByPath(comments: readonly PrComment[]): PrCommentsByPath {
+  const byPath: Record<string, { count: number; firstId: string }> = {};
+  for (const comment of comments) {
+    if (comment.path === null) continue;
+    const found = byPath[comment.path];
+    if (found) found.count++;
+    else byPath[comment.path] = { count: 1, firstId: comment.id };
+  }
+  return byPath;
 }

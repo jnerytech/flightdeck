@@ -44,7 +44,10 @@ export function PrComments(
       if (!current) return;
       // A refusal is `null`: it is a failed read, not a PR with no comments.
       setFailed(result === null);
-      if (result) setComments(result.comments);
+      if (result) {
+        setComments(result.comments);
+        props.onRead?.(result.comments);
+      }
     });
     return () => {
       current = false;
@@ -92,7 +95,10 @@ export function PrComments(
               return (
                 <li
                   key={comment.id}
-                  className="flex items-start gap-2 rounded-md border p-3 text-sm"
+                  // The diff's count on a file leads here (#4228).
+                  id={`prc:${comment.id}`}
+                  tabIndex={-1}
+                  className="flex items-start gap-2 rounded-md border p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   <input
                     type="checkbox"

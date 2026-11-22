@@ -88,6 +88,10 @@ export const changes = {
     draft: "Draft",
     sent: "Sent",
     outdated: "Outdated",
+    prCommentsOn: {
+      one: "{n} PR comment on {path}",
+      other: "{n} PR comments on {path}",
+    },
     outdatedHint: "The code this comment was made on has changed since.",
     lines: "line {line}",
     linesRange: "lines {from}–{to}",

@@ -74,7 +74,7 @@ describe("the PR comments are marked on the files of the diff (#4228)", () => {
             composer={null}
             prComments={{ "src/a.ts": { count: 2, firstId: "k1" } }}
           />
-          <p id="pr-comment-k1" tabIndex={-1}>
+          <p id="prc:k1" tabIndex={-1}>
             the first comment
           </p>
         </TContext.Provider>,
@@ -83,7 +83,7 @@ describe("the PR comments are marked on the files of the diff (#4228)", () => {
       expect(mark).not.toBeNull();
       expect(screen.queryAllByRole("button", { name: /PR/ })).toHaveLength(1);
       fireEvent.click(mark);
-      expect(document.activeElement?.id).toBe("pr-comment-k1");
+      expect(document.activeElement?.id).toBe("prc:k1");
     });
   }
 
@@ -111,6 +111,6 @@ describe("the PR comments are marked on the files of the diff (#4228)", () => {
   test("the comments tell what they read, and each one can be reached by its id", async () => {
     const told = await read("en");
     expect(told).toEqual([["k1", "k2"]]);
-    expect(document.getElementById("pr-comment-k1")?.textContent).toContain("body k1");
+    expect(document.getElementById("prc:k1")?.textContent).toContain("body k1");
   });
 });

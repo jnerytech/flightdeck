@@ -1,9 +1,10 @@
 import type { DiffFile, ReviewComment } from "@flightdeck/protocol";
-import { MessageSquarePlus } from "lucide-react";
+import { MessageSquare, MessageSquarePlus } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { Inline } from "@/shared/layout/index.ts";
 import { formatBytes } from "@/shared/lib/index.ts";
 import {
   type DiffRow,
@@ -261,7 +262,10 @@ export function DiffView(
       )}
       {props.files.map((file) => (
         <div key={`${file.path}:${file.uncommitted}`} className="flex flex-col gap-2">
-          <h4 className="font-medium font-mono text-xs">{file.path}</h4>
+          <Inline>
+            <h4 className="font-medium font-mono text-xs">{file.path}</h4>
+            <PrCommentsMark path={file.path} marks={props.prComments} />
+          </Inline>
           <FileDiff
             file={file}
             mode={props.mode}
@@ -273,5 +277,30 @@ export function DiffView(
         </div>
       ))}
     </section>
+  );
+}
+
+/** The count of PR comments on a file, beside its name: it moves to the first of them (#4228). */
+function PrCommentsMark(props: Readonly<{ path: string; marks: PrCommentsByPath | undefined }>) {
+  const t = useT();
+  const mark = props.marks?.[props.path];
+  if (!mark) return null;
+  const label = t("changes.prCommentsOn", { n: mark.count, path: props.path });
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      aria-label={label}
+      title={label}
+      className="tabular-nums"
+      onClick={() => {
+        const target = document.getElementById(`prc:${mark.firstId}`);
+        target?.scrollIntoView({ block: "center" });
+        target?.focus();
+      }}
+    >
+      <MessageSquare aria-hidden="true" className="size-3.5" />
+      {mark.count}
+    </Button>
   );
 }
