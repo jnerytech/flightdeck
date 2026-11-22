@@ -162,12 +162,12 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
       blocked,
       blank,
       free: next()?.disabled,
-      said: screen.queryByText(w.labelMissing),
+      said: screen.queryByText(w.labelMissing) !== null,
     }).toEqual({
       blocked: [true, true],
       blank: true,
       free: false,
-      said: null,
+      said: false,
     });
   });
 
@@ -202,6 +202,7 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
     reason: "automation_tz_unknown",
     params: { tz: "Mars/Base" },
   };
+  const focused = (label: string) => document.activeElement === screen.queryByLabelText(label);
   const alertText = () => screen.queryByRole("alert")?.textContent ?? "";
 
   test("a refused cron goes back to the trigger step, says why on the cron field and focuses it (#4188)", async () => {
@@ -210,7 +211,7 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
       step: screen.queryByLabelText(w.cron) !== null,
       said: alertText().includes(w.cronRefused),
       invalid: screen.queryByLabelText(w.cron)?.getAttribute("aria-invalid"),
-      focused: document.activeElement === screen.queryByLabelText(w.cron),
+      focused: focused(w.cron),
       toasted: toasting.filter((a) => a.type === "automation.save").length,
     }).toEqual({ step: true, said: true, invalid: "true", focused: true, toasted: 0 });
   });
@@ -221,7 +222,7 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
       said: alertText().includes(w.tzRefused),
       invalid: screen.queryByLabelText(w.tz)?.getAttribute("aria-invalid"),
       cronFine: screen.queryByLabelText(w.cron)?.getAttribute("aria-invalid"),
-      focused: document.activeElement === screen.queryByLabelText(w.tz),
+      focused: focused(w.tz),
     }).toEqual({ said: true, invalid: "true", cronFine: null, focused: true });
   });
 
@@ -229,9 +230,9 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
     await refusedSave(CRON_REFUSED);
     const shown = [screen.queryByLabelText(w.cron) !== null, alertText().includes(w.cronRefused)];
     if (shown[0]) await type(w.cron, "0 8 * * *");
-    expect({ shown, after: screen.queryByRole("alert") }).toEqual({
+    expect({ shown, after: screen.queryByRole("alert") !== null }).toEqual({
       shown: [true, true],
-      after: null,
+      after: false,
     });
   });
 
