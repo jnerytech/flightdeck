@@ -13,6 +13,7 @@ const STATES = [
   "card-mudancas-editor",
   "card-mudancas-conflito",
   "card-mudancas-editor-recusado",
+  "card-mesclar-merge",
   "card-mesclar",
   "card-mesclar-recusado",
   "card-pr-comentarios",
@@ -97,6 +98,8 @@ describe("what each Changes state's print does on the page (#4229)", () => {
   });
 
   test("the merge dialog picks squash and writes a message; the refused one confirms it and waits for the alert", async () => {
+    // The dialog opens in merge-commit mode; the other print only opens it.
+    expect(await calls("card-mesclar-merge")).not.toMatch(/check\(\)/);
     expect(await calls("card-mesclar")).toMatch(/check\(\).*fill\(Fix the cart total\)/);
     expect(wireOf("card-mesclar-recusado").map((r) => r.command)).toEqual([
       "changes.get",
