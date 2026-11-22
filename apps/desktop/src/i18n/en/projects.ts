@@ -310,5 +310,9 @@ export const projects = {
     hostLimit: "Host limit",
     parallel: "Parallel runs",
     saveLimit: "Save limit",
+    limitInvalid: "The limit is a whole number of at least 1.",
+    limitSaved: "Parallel runs limit saved: {count}.",
+    readFailed: "Could not read this host's projects.",
+    retry: "Try again",
   },
 };
