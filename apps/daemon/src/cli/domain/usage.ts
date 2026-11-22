@@ -192,6 +192,7 @@ export const USAGE = [
   "     fd external list|watch [--host <name>] [--json] [--config <file>]   (the sessions of a plain claude in a terminal that this host sees; watch prints one line for each change until Ctrl-C)",
   "     fd external message <claude-session-id> --text <text> [--host <name>] [--json] [--config <file>]   (only a session opened with flightdeckd claude takes it)",
   "     fd names list [--host <name>] [--json] [--config <file>]   (the standard names of this host's sessions, with the aliases the app addresses them by)",
+  "     fd ui set [--mode full|simple] [--lock | --unlock] --confirm [--json] [--config <file>]   (the host's default mode and the lock on its switch; this machine's daemon only; a line with none of the three, or without --confirm, is refused)",
   "     fd action list [--project <id>] [--config <file>]   (raw JSON of the trusted actions, what the flightdeck mod reads)",
   "     fd action list --json|--plain [--project <name or id>] [--host <name>] [--config <file>]   (every action, trusted or not, with the hash `trust` takes and what changed; never the command, the environment or a secret)",
   "     fd action runs [<action>] [--project <name or id>] [--limit <1-500>] [--host <name>] [--json] [--config <file>]   (the runs of the actions, newest first, with the masked output; it changes nothing)",

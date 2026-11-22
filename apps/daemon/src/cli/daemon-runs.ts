@@ -9,6 +9,7 @@ import {
 import { externalRun, namesRun } from "./external-run.ts";
 import { feedCommands } from "./feed-run.ts";
 import type { HostCommandDeps } from "./host.ts";
+import { uiRun } from "./ui-run.ts";
 import { liveStream } from "./watch-stop.ts";
 
 type Run = ReturnType<typeof namesRun>;
@@ -40,6 +41,7 @@ export const daemonRuns = <D extends Deps>(
     asking(args, deps, externalRun(args, liveStream(args, deps))),
   harness: (args: CliArgs, deps: D) => asking(args, deps, harnessRun(args)),
   names: (args: CliArgs, deps: D) => asking(args, deps, namesRun(args)),
+  ui: (args: CliArgs, deps: D) => asking(args, deps, uiRun(args)),
   resources: (args: CliArgs, deps: D) => asking(args, deps, resourcesRun(args)),
   task: (args: CliArgs, deps: D) => asking(args, deps, templatesRun(args)),
   template: (args: CliArgs, deps: D) => asking(args, deps, templatesRun(args)),

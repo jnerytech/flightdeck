@@ -75,7 +75,7 @@ fd plugins marketplace-add acme/plugins --confirm
 - **`update <plugin>`:** o mesmo, com o hash que `preview-update` imprimiu. Um plugin fixado fica como está.
 - **`uninstall <plugin>`:** remove; pede `--confirm`. `--plugin-scope` diz qual cópia.
 - **`pin <plugin>`, `unpin <plugin>`:** fixam um plugin na versão dele, ou deixam as atualizações passarem de novo.
-- **`marketplace-add <origem>`, `marketplace-remove <nome>`:** pedem `--confirm`. `marketplace-update [<nome>]` atualiza a lista e não pede nada.
+- **`marketplace-add <origem>`, `marketplace-remove <nome>`:** pedem `--confirm`. `marketplace-update [<nome>]` atualiza a lista e não pede nada. `install`, `update` e um `marketplace-add` confirmado trazem código que roda em toda sessão, então por uma conexão distante (não este computador nem o Tailscale) o daemon os recusa com `transport_refused`; as prévias e os outros verbos respondem de qualquer lugar.
 
 `--confirm` e `--confirm-hash` são só palavras que você digita. Evitam um descuido, não uma sessão: uma sessão que roda `install`, `update`, `uninstall`, `marketplace-add` ou `marketplace-remove` no shell dela é consultada, como um comando de risco alto. Uma mudança sem resposta sai com `2` e diz que pode ou não ter acontecido: `fd plugins list` mostra qual.
 

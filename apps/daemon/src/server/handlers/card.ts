@@ -87,7 +87,9 @@ export const cardHandlers = {
   "card.message": (payload, { server }) => {
     return server.need("board").message(payload.cardId, payload.text);
   },
-  "card.pr.create": async (payload, { server }) => {
+  "card.pr.create": async (payload, { ws, server }) => {
+    // It pushes the card's branch, so the repository's pre-push hook runs: a near connection only (#3815).
+    requireVaultTransport(ws.data.origin, "card.pr.create", server.opts.log);
     return await server.need("board").createPr(payload.cardId, {
       ...(payload.description === undefined ? {} : { description: payload.description }),
       ...(payload.title === undefined ? {} : { title: payload.title }),

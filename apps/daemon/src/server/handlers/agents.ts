@@ -63,8 +63,11 @@ export const agentsHandlers = {
       .needIn("agentSetup", "agentcfg")
       .read(server.projectPath(projectId), kind, path, origin);
   },
-  "agentcfg.write": async (payload, { server }) => {
+  "agentcfg.write": async (payload, { ws, server }) => {
     const { projectId, confirm, ...input } = payload;
+    // An agent or a skill can declare `hooks` that run a command on every event of the session that uses it,
+    // and a CLAUDE.md steers every session of the project: writing any of them needs a near connection (#3815).
+    requireVaultTransport(ws.data.origin, "agentcfg.write", server.opts.log);
     const written = await server
       .needIn("agentSetup", "agentcfg")
       .write(server.projectPath(projectId), {
@@ -93,7 +96,9 @@ export const agentsHandlers = {
   "plugins.previewUpdate": async (payload, { server }) => {
     return await server.needIn("agentSetup", "plugins").previewUpdate(payload.plugin);
   },
-  "plugins.install": async (payload, { server }) => {
+  "plugins.install": async (payload, { ws, server }) => {
+    // The plugin brings hooks and MCP commands that run in every session (#3807).
+    requireVaultTransport(ws.data.origin, "plugins.install", server.opts.log);
     const { proof: _proof, ...request } = payload;
     // A folder to install from is read like a folder to preview: inside the allowed roots (#3516).
     const source =
@@ -120,7 +125,8 @@ export const agentsHandlers = {
       approvers?.requireCommandProof("plugins.install", payload, ["confirmHash"]);
     });
   },
-  "plugins.update": async (payload, { server }) => {
+  "plugins.update": async (payload, { ws, server }) => {
+    requireVaultTransport(ws.data.origin, "plugins.update", server.opts.log);
     const { proof: _proof, ...request } = payload;
     return await server.needIn("agentSetup", "plugins").update(request, () => {
       server.opts.approvers?.requireCommandProof("plugins.update", payload, ["confirmHash"]);
@@ -135,8 +141,11 @@ export const agentsHandlers = {
   "plugins.pin": async (payload, { server }) => {
     return await server.needIn("agentSetup", "plugins").pin(payload.plugin, payload.pinned);
   },
-  "plugins.marketplaceAdd": async (payload, { server }) => {
+  "plugins.marketplaceAdd": async (payload, { ws, server }) => {
     const { confirm, proof: _proof, ...input } = payload;
+    // Only the confirmed add changes anything: the preview answers anywhere (#3807).
+    if (confirm === true)
+      requireVaultTransport(ws.data.origin, "plugins.marketplaceAdd", server.opts.log);
     // The proof is checked once the request confirms (see `Plugins.marketplaceAdd`), over the request as sent (#3516).
     return await server
       .needIn("agentSetup", "plugins")
