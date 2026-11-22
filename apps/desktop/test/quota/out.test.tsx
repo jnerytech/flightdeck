@@ -51,7 +51,7 @@ function store(lang: Lang, quota: QuotaState) {
 
 const bars = (quota: QuotaState) =>
   quotaBars(quota, Date.parse("2026-11-22T10:05:00.000Z"), () => "16:00", translator("en"));
-const five = (quota: QuotaState) => bars(quota)[0];
+const five = (quota: QuotaState) => bars(quota)[0] as ReturnType<typeof bars>[number];
 
 // #4304: a window the plan rejected, or at 100%, says so whatever the guard; "hot" keeps its meaning.
 describe("a window that is out, whatever the guard (#4304)", () => {

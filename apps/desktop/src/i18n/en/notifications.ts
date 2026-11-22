@@ -11,6 +11,7 @@ export const notifications = {
     externalTitle: "Needs you",
     quotaTitle: "Plan quota",
     quotaBody: "{host}: {window} at {percent}%",
+    quotaRejected: "{host}: {window} refused by the plan",
     failed: "{label}: failed",
     failedBody: "The session ended with an error",
     teamDone: "Team {team}: {n} workers finished",

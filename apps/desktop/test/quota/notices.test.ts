@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { translator } from "../../src/i18n/index.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
@@ -153,7 +154,13 @@ describe("quota-notices: the guard on Never silences the thresholds, not the pla
     await refresh();
     expect(notices()).toBe(1);
     expect(bodies()[0]?.includes("0%")).toBe(false);
-    expect(bodies()[0]?.includes("refused")).toBe(true);
+    // The store speaks the platform's language: the text is the dictionary's, in either one.
+    const told = (lang: "en" | "pt-BR") =>
+      translator(lang)("notify.quotaRejected", {
+        host: "host-a",
+        window: translator(lang)("quota.windows.seven_day"),
+      });
+    expect([told("en"), told("pt-BR")]).toContain(bodies()[0] as string);
     store.dispose();
   });
 });

@@ -77,10 +77,14 @@ export class QuotaSlice {
       const known = window.window === "five_hour" || window.window === "seven_day";
       const label = known ? t(`quota.windows.${window.window}` as Key) : window.window;
       const percent = Math.round((window.utilization ?? 0) * 100);
+      // A rejected window the host gave no use for has no percent to tell (#4304).
+      const refused = window.status === "rejected" && window.utilization === null;
       this.core.notify(
         {
           title: t("notify.quotaTitle"),
-          body: t("notify.quotaBody", { host: hostName, window: label, percent }),
+          body: refused
+            ? t("notify.quotaRejected", { host: hostName, window: label })
+            : t("notify.quotaBody", { host: hostName, window: label, percent }),
         },
         hostId,
       );

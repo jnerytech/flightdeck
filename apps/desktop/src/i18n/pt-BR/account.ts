@@ -77,6 +77,10 @@ export const account = {
       openHostOf: "Abrir a página de {host}",
     },
     hotNotice: "{host}: cota acima de {pct}%: cards novos esperam a cota; sessões manuais seguem.",
+    out: {
+      full: "{window}: o plano está em 100%.",
+      rejected: "{window}: o plano recusou esta janela.",
+    },
     projection: {
       few: "poucas leituras para projetar",
       exhausts: "no ritmo atual, a janela de {window} esgota às {time}",
