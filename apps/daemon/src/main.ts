@@ -126,7 +126,8 @@ type StartOptions = {
   memoryReading?: NonNullable<MemoryGateDeps["reading"]>;
   /** How the project key asks git; the process itself when absent (tests hold it). */
   projectGit?: AsyncGitRunner;
-  /** This daemon's own command line, as the helpers it spawns call it back (#3989); the process's own when absent. */
+  /** This daemon's own command line, as the helpers it spawns call it back (#3989); the process's own when absent. For the demo and tests that run the
+   * daemon inside another program: never built from the config, the environment or a message, or a far connection would choose what a helper runs. */
   self?: string[];
   /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
   serviceSelf?: string[];
