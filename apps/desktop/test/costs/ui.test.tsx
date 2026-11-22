@@ -379,8 +379,22 @@ describe("custos-ui", () => {
     );
     mem.save.cancel = true;
     await click("Exportar CSV");
-    await settle(() => screen.queryByText(/^Salvo flightdeck-custos/) === null);
+    // The fake dialog resets the flag when it is asked: the cancel has been answered.
+    await settle(() => !mem.save.cancel);
+    await act(async () => {});
     expect(screen.queryByText(/^Salvo flightdeck-custos/)).toBeNull();
+  });
+
+  test("a linha do Exportar CSV some quando o período muda: ela descreve o arquivo daquele filtro", async () => {
+    const { mem } = await online();
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
+    await click("Exportar CSV");
+    await settle(() => screen.queryByText(/^Salvo flightdeck-custos/) !== null);
+    await click("Hoje");
+    await settle(() => text("Custo estimado") === "US$ 2,00");
+    expect(screen.queryByText(/^Salvo flightdeck-custos/)).toBeNull();
+    expect(mem.saved).toHaveLength(1);
   });
 
   test("o painel de uso do host passa a ler os custos quando o host anuncia costs", async () => {

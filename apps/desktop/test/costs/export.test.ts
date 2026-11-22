@@ -167,6 +167,31 @@ describe("costs-export: the result says what happened", () => {
     });
   });
 
+  test("two hosts with the same name: the one that failed is still named", async () => {
+    const { store } = fake({ a: fileOf("costs-a.csv", "2026-10-01,1"), b: null });
+    const twins = [
+      { id: "a", name: "build" },
+      { id: "b", name: "build" },
+    ];
+    expect(await exportCosts(store, { ...all, hosts: twins }, FILTER)).toEqual({
+      kind: "saved",
+      filename: "costs-a.csv",
+      left: ["build"],
+    });
+  });
+
+  test("a host that answers with an empty file is left out, not counted as given", async () => {
+    const { store } = fake({
+      a: { filename: "a.csv", csv: "" },
+      b: fileOf("costs-b.csv", "2026-10-01,2"),
+    });
+    expect(await exportCosts(store, all, FILTER)).toEqual({
+      kind: "saved",
+      filename: "costs-b.csv",
+      left: ["alfa"],
+    });
+  });
+
   test("no host to ask: nothing, and no host to name", async () => {
     const { store } = fake({});
     expect(await exportCosts(store, { ...all, hosts: [] }, FILTER)).toEqual({

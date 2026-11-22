@@ -241,7 +241,9 @@ for (const [lang, t] of [
       await act(async () => {
         fireEvent.click(exportButton());
       });
-      await settle(() => screen.queryByText(said) === null);
+      // The fake dialog resets the flag when it is asked: the cancel has been answered.
+      await settle(() => !mem.save.cancel);
+      await act(async () => {});
       expect(screen.queryByText(said)).toBeNull();
     });
   });
