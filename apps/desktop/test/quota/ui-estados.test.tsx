@@ -1,13 +1,14 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, jest, test } from "bun:test";
 import type { QuotaHistory, QuotaState } from "@flightdeck/protocol";
 import { registerDom } from "../dom.ts";
 import { settleMaybe, waiter } from "../wait.ts";
 
 registerDom();
-const { cleanup, render, screen } = await import("@testing-library/react");
+const { act, cleanup, render, screen } = await import("@testing-library/react");
 const { QuotaPanel } = await import("../../src/features/quota/quota-panel.tsx");
 const { QuotaCharts } = await import("../../src/features/costs/QuotaCharts.tsx");
 const { noPlanReason } = await import("../../src/features/quota/domain/quota.ts");
+const { formatAgo } = await import("../../src/i18n/format.ts");
 const { QuotaDetail } = await import("../../src/features/shell/quota-detail.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
@@ -78,6 +79,43 @@ function planlessStore(lang: Lang, account: Record<string, unknown>) {
     hosts: [{ id: "a", name: "a", status: "online", hostInfo: { features: ["quota"] } }],
     quota: {},
     account,
+  };
+  return {
+    i18n: { t: translator(lang) },
+    now: () => Date.now(),
+    formatTime: () => "16:00",
+    subscribe: () => () => undefined,
+    getState: () => state,
+    hostCommand: async () => null,
+    account: { watch: () => () => undefined },
+    router: { push: () => undefined },
+    quota: { setPause: async () => undefined },
+  } as never;
+}
+
+/** One online host with both plan windows read now, on an account that is `stale` or not. */
+function ageStore(lang: Lang, stale: boolean) {
+  const readAt = new Date(Date.now()).toISOString();
+  const windows = ["five_hour", "seven_day"].map((window) => ({
+    window,
+    utilization: 0.4,
+    resetsAt: null,
+    status: "allowed",
+    readAt,
+  }));
+  const state = {
+    hosts: [{ id: "a", name: "a", status: "online", hostInfo: { features: ["quota"] } }],
+    quota: { a: { windows, pauseAt: 0.9, readAt } },
+    account: {
+      a: {
+        status: "signed_in",
+        name: "ana@example.com",
+        error: null,
+        provider: null,
+        readAt,
+        stale,
+      },
+    },
   };
   return {
     i18n: { t: translator(lang) },
@@ -248,5 +286,60 @@ describe.each(["en", "pt-BR"] as const)("the quota screens, states (%s)", (lang)
       600,
     );
     expect(screen.queryByRole("status", { name: t("quotaCharts.loading") })).not.toBeNull();
+  });
+
+  // #4303: the age of a reading moves while the screen is open, shows in the popover, and a stale reading says so.
+  describe("the age of a reading (#4303)", () => {
+    const view = (node: React.ReactElement) =>
+      render(<TContext.Provider value={t}>{node}</TContext.Provider>);
+
+    test("the card's age moves with the clock, with no new reading", () => {
+      jest.useFakeTimers();
+      try {
+        view(<QuotaPanel store={ageStore(lang, false)} />);
+        const region = () => screen.queryByRole("region")?.textContent ?? "";
+        expect(region().includes(t("quota.read", { ago: formatAgo(5 * 60_000, t) }))).toBe(false);
+        act(() => {
+          jest.advanceTimersByTime(5 * 60_000);
+        });
+        expect(region().includes(t("quota.read", { ago: formatAgo(5 * 60_000, t) }))).toBe(true);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    test("the popover shows the age of each window and moves it too", () => {
+      jest.useFakeTimers();
+      try {
+        const { container } = view(
+          <QuotaDetail store={ageStore(lang, false)} onClose={() => undefined} />,
+        );
+        const text = () => container.textContent ?? "";
+        const aged = (ms: number) =>
+          text().split(t("quota.read", { ago: formatAgo(ms, t) })).length - 1;
+        expect(aged(0)).toBe(2);
+        act(() => {
+          jest.advanceTimersByTime(5 * 60_000);
+        });
+        expect(aged(5 * 60_000)).toBe(2);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    test.each([
+      ["the card", (stale: boolean) => <QuotaPanel store={ageStore(lang, stale)} />],
+      [
+        "the popover",
+        (stale: boolean) => <QuotaDetail store={ageStore(lang, stale)} onClose={() => undefined} />,
+      ],
+    ])("%s marks a stale reading in words and a fresh one not", (_name, node) => {
+      const stale = view(node(true));
+      const mark = t("account.stale");
+      expect((stale.container.textContent ?? "").includes(mark)).toBe(true);
+      stale.unmount();
+      const fresh = view(node(false));
+      expect((fresh.container.textContent ?? "").includes(mark)).toBe(false);
+    });
   });
 });
