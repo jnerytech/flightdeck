@@ -150,6 +150,8 @@ export function CardRunForm(
   /** The lead button, and whether the focus is owed to it: the press that found the provider removed the button it was on. */
   const leadRef = useRef<HTMLButtonElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
+  /** The dialogs this menu opens give the focus back here: its item is gone with the menu (#4262, #4272). */
+  const focusMenu = () => menuButton.current?.focus();
   const focusLead = useRef(false);
   useEffect(() => {
     if (noRemote || !focusLead.current) return;
@@ -317,14 +319,14 @@ export function CardRunForm(
           hostId={hostId}
           card={card}
           onClose={() => setStartingWith(false)}
-          returnFocus={() => menuButton.current?.focus()}
+          returnFocus={focusMenu}
           onStarted={() => {}}
         />
       )}
       {startAsk.dialog}
       {draft && (
         <PrDescriptionDialog
-          returnFocus={() => menuButton.current?.focus()}
+          returnFocus={focusMenu}
           text={draft.text}
           title={card.title}
           redacted={draft.redacted}
@@ -366,7 +368,7 @@ export function CardRunForm(
           hostId={hostId}
           card={card}
           onClose={() => setFinishing(false)}
-          returnFocus={() => menuButton.current?.focus()}
+          returnFocus={focusMenu}
           onComplete={() => setConfirming({ kind: "complete", warning: null })}
           onMerge={props.onShowDiff}
         />
@@ -387,7 +389,7 @@ export function CardRunForm(
           destructive={confirming.kind === "discard"}
           onConfirm={() => void confirm()}
           onCancel={() => setConfirming(null)}
-          onRestoreFocus={() => menuButton.current?.focus()}
+          onRestoreFocus={focusMenu}
         />
       )}
     </>

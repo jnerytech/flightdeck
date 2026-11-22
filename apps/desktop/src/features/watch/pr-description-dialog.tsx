@@ -23,7 +23,7 @@ export function PrDescriptionDialog(
     onConfirm(text: string, title: string): unknown;
     onCancel(): void;
     /** The dialog was opened from a menu item that is gone: the focus goes back to the menu's button (#4272). */
-    returnFocus?(): void;
+    returnFocus?: (() => void) | undefined;
     /** What the person reads before confirming, below the fields (where the push goes). */
     children?: ReactNode;
   }>,
@@ -33,10 +33,7 @@ export function PrDescriptionDialog(
   const [title, setTitle] = useState(props.title);
   return (
     <Dialog open onOpenChange={(open) => !open && props.onCancel()}>
-      <AppDialogContent
-        aria-describedby={undefined}
-        {...(props.returnFocus ? { returnFocus: props.returnFocus } : {})}
-      >
+      <AppDialogContent aria-describedby={undefined} returnFocus={props.returnFocus}>
         <DialogHeader>
           <DialogTitle>{t("watchUi.descriptionTitle")}</DialogTitle>
         </DialogHeader>
