@@ -67,8 +67,19 @@ export async function seedAutomations(
     }
     for (const [i, run] of runs.entries()) {
       db.query(
-        "INSERT INTO automation_runs (id, automation_id, fired_at, cause, status, detail) VALUES (?, ?, ?, ?, ?, ?)",
-      ).run(`${saved.id}-run-${i}`, saved.id, run.firedAt, run.cause, run.status, run.detail);
+        "INSERT INTO automation_runs (id, automation_id, fired_at, cause, cause_code, cause_params, status, detail, detail_code, detail_params) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      ).run(
+        `${saved.id}-run-${i}`,
+        saved.id,
+        run.firedAt,
+        run.cause,
+        run.causeCode,
+        JSON.stringify(run.causeParams),
+        run.status,
+        run.detail,
+        run.detailCode,
+        run.detailParams && JSON.stringify(run.detailParams),
+      );
     }
   }
   db.close();

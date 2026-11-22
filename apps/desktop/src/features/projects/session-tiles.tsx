@@ -168,7 +168,7 @@ function SessionTile(
           onOpen={props.onOpen}
         />
       )}
-      {wand && <WandPanel wand={wand} t={t} />}
+      {wand && <WandPanel wand={wand} t={t} focusField={() => box.current?.focus()} />}
       <div data-slot="composer-card" className="composer-card">
         {wand && <WandButton wand={wand} t={t} />}
         <Textarea

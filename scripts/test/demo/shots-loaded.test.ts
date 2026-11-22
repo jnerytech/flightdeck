@@ -18,6 +18,19 @@ describe("what a print waits out before the shot (#4001)", () => {
       wire: [{ command: "permission.respond", stall: true }],
     });
     expect(selector).toContain('[aria-busy="true"]:not(button)');
-    expect(pendingSelectorFor({ wire: [{ command: "x", hold: true }] })).toBe(PENDING_SELECTOR);
+  });
+
+  test("a print whose list is held on purpose (#4190) waits for a busy region that is not the loading status, and for no skeleton", () => {
+    const selector = pendingSelectorFor({ wire: [{ command: "automation.list", hold: true }] });
+    expect({
+      busyExceptStatus: selector.includes('[aria-busy="true"]:not([role="status"])'),
+      skeleton: selector.includes("skeleton"),
+    }).toEqual({ busyExceptStatus: true, skeleton: false });
+  });
+
+  test("a wire rule that is not a hold leaves the selector as it is", () => {
+    expect(pendingSelectorFor({ wire: [{ command: "automation.list", refuse: "no" }] })).toBe(
+      PENDING_SELECTOR,
+    );
   });
 });

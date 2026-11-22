@@ -37,9 +37,12 @@ export const personas = {
     list: "Personas",
     empty: "No persona.",
     loading: "Loading personas",
+    noHost: "No connected host with personas",
+    noHostLink: "Add a host",
     loadFailed: "Could not read this host's personas.",
     retry: "Try again",
     project: "Project",
+    projectLocked: "Finish or cancel the open editor to change the project.",
     hostOnly: "The host's",
     globals: "Global (this app)",
     origin: {
@@ -53,6 +56,8 @@ export const personas = {
     edit: "Edit",
     editFor: "Edit {name}",
     editor: {
+      discardMessage: "Discard what you typed? It will be lost.",
+      discardConfirm: "Discard",
       id: "Id",
       name: "Name",
       description: "Description",

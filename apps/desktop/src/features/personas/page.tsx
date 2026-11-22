@@ -226,13 +226,28 @@ export const PersonasPage = memo(function PersonasPage(props: {
   const busy = (p: AppPersona, action: Action) =>
     pending?.id === keyOf(p) && pending.action === action;
 
-  const projects = hostId ? (state.projects[hostId] ?? []) : [];
+  // No host, no personas: the app's own are edited through a host too, so no project choice would lead anywhere (#4214).
+  if (!hostId) {
+    return (
+      <Page title={t("personas.title")}>
+        <EmptyState
+          icon={Drama}
+          title={t("personas.noHost")}
+          action={
+            <Button variant="link" onClick={() => props.go({ name: "add-host" })}>
+              {t("personas.noHostLink")}
+            </Button>
+          }
+        />
+      </Page>
+    );
+  }
+  const projects = state.projects[hostId] ?? [];
   return (
     <Page
       title={t("personas.title")}
       subtitle={t("personas.subtitle", { host: host?.name ?? "" })}
       actions={
-        hostId &&
         editing === null && (
           <Button data-edit="new" onClick={() => openEditor("new")}>
             {t("personas.newPersona")}
@@ -240,7 +255,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
         )
       }
     >
-      {hostId && editing === "new" && (
+      {editing === "new" && (
         <PersonaEditor
           key="new"
           store={store}
@@ -256,9 +271,18 @@ export const PersonasPage = memo(function PersonasPage(props: {
         />
       )}
       <div className="flex flex-wrap gap-3">
-        <Field label={t("personas.project")}>
+        {/* Off while an editor is open: another project is another list, and the editor's typed text would go with it (#4212). */}
+        <Field
+          label={t("personas.project")}
+          help={editing === null ? undefined : t("personas.projectLocked")}
+        >
           {(control) => (
-            <NativeSelect {...control} value={project} onChange={(e) => setProject(e.target.value)}>
+            <NativeSelect
+              {...control}
+              value={project}
+              disabled={editing !== null}
+              onChange={(e) => setProject(e.target.value)}
+            >
               <option value="">{t("personas.hostOnly")}</option>
               <option value={APP}>{t("personas.globals")}</option>
               {projects.map((p) => (
@@ -287,8 +311,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
       {cards && cards.length > 0 && (
         <ul ref={list} aria-label={t("personas.list")} className="flex flex-col gap-2">
           {cards.map((p) => {
-            const inEditor =
-              hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
+            const inEditor = editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
             return (
               // A row puts its actions beside its text; the one being edited is a full-width card (#588).
               <li

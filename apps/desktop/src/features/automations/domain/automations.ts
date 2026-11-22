@@ -1,5 +1,11 @@
-import type { Automation, AutomationAction, AutomationTrigger } from "@flightdeck/protocol";
+import type {
+  Automation,
+  AutomationAction,
+  AutomationRun,
+  AutomationTrigger,
+} from "@flightdeck/protocol";
 import type { Key, T } from "../../../i18n/index.ts";
+import { ptBR } from "../../../i18n/pt-BR.ts";
 
 export type TriggerType = AutomationTrigger["type"];
 export type ActionType = AutomationAction["type"];
@@ -51,4 +57,35 @@ export function confirmOnText(t: T, automation: Automation): string {
     action: actionText(t, automation.action),
     limit: t("automationsUi.limit", { n: automation.maxRunsPerDay }),
   });
+}
+
+type Params = Record<string, string | number>;
+
+/** A sentence of the dictionary `group` for the run's `code`, or the text the host stored: a row from before the codes, or a code this app does not know yet. */
+function said(
+  t: T,
+  group: "runCause" | "runDetail",
+  code: string | null | undefined,
+  params: Params | null | undefined,
+  stored: string,
+): string {
+  const known = !!code && Object.hasOwn(ptBR.automationsUi[group], code);
+  if (!known) return stored;
+  const sentence = ptBR.automationsUi[group][code as never] as string;
+  // A sentence with a value to fill in and no values stored would show its bare placeholder.
+  if (!params && sentence.includes("{")) return stored;
+  return t(`automationsUi.${group}.${code}` as Key, params ?? {});
+}
+
+/** What fired a run, in the app's language; a time in it is shown in the app's format, not as the ISO text. */
+export function causeText(t: T, formatTime: (iso: string) => string, run: AutomationRun): string {
+  const at = run.causeParams?.at;
+  const params =
+    typeof at === "string" ? { ...run.causeParams, at: formatTime(at) } : run.causeParams;
+  return said(t, "runCause", run.causeCode, params, run.cause);
+}
+
+/** What a run did or why it did not, in the app's language; a failed run's own message stays as the host wrote it. */
+export function detailText(t: T, run: AutomationRun): string {
+  return said(t, "runDetail", run.detailCode, run.detailParams, run.detail ?? "");
 }

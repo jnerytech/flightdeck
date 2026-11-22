@@ -205,9 +205,10 @@ describe("times-ui: the wand on the goal of a new team (issue #160)", () => {
     await configure(store);
     await click("Novo time");
     expect(
-      (screen.queryByRole("button", { name: "Escreva algo primeiro" }) as HTMLButtonElement | null)
-        ?.disabled,
-    ).toBe(true);
+      screen
+        .queryByRole("button", { name: "Escreva algo primeiro" })
+        ?.getAttribute("aria-disabled"),
+    ).toBe("true");
     await change("Objetivo", "revisar login");
     await click("Melhorar com IA");
     await settle(() => screen.queryByRole("dialog", { name: "Sugestão da IA" }) !== null);

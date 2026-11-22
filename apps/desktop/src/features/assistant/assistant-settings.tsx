@@ -7,12 +7,13 @@ import {
 } from "@flightdeck/protocol";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { MORE_MODELS, modelName } from "@/features/models/index.ts";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { hostsWith } from "@/lib/version";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
-import { NativeSelect, Panel } from "@/shared/layout/index.ts";
+import { NativeSelect, Panel, Stack } from "@/shared/layout/index.ts";
 import {
   type AssistantPrefs,
   confirmHost,
@@ -29,12 +30,7 @@ const OPENROUTER_PRIVACY = "https://openrouter.ai/docs/guides/privacy/data-colle
 const PROFILES: AssistantProfile[] = ["quick", "careful"];
 
 /** The host provider's models: the Claude Code ids that are current, apart from what the host defaults to. */
-const HOST_MODELS: ModelOption[] = [
-  { id: "claude-fable-5-2", label: "Fable 5.2" },
-  { id: "claude-opus-5-5", label: "Opus 5.5" },
-  { id: "claude-sonnet-5-5", label: "Sonnet 5.5" },
-  { id: "claude-haiku-5-5", label: "Haiku 5.5" },
-];
+const HOST_MODELS: ModelOption[] = MORE_MODELS.map((id) => ({ id, label: modelName(id) ?? id }));
 
 /** A kind's name; a dictionary key has no dot, so `prompt.plain` is `prompt_plain` there. */
 const kindLabel = (t: T, kind: AssistantKind) =>
@@ -109,6 +105,7 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   const apiSupported = store.assistant.supported;
   const [confirming, setConfirming] = useState<{ hostId: string; provider: boolean } | null>(null);
   const [advanced, setAdvanced] = useState(false);
+  const advancedId = useId();
   const pickerId = useId();
   const privacyId = useId();
   // A wand that found no provider sent the person here: say why, once.
@@ -304,43 +301,46 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
           variant="outline"
           size="sm"
           aria-expanded={advanced}
+          aria-controls={advancedId}
           onClick={() => setAdvanced((open) => !open)}
         >
           {t("assistantSettings.advanced")}
         </Button>
         {advanced && (
-          <>
-            <p className="text-muted-foreground text-xs">{t("assistantSettings.advancedHint")}</p>
-            <table className="text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left">{t("assistantSettings.kind")}</th>
-                  <th className="text-left">{t("assistantSettings.profile")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(Object.keys(KIND_SPECS) as AssistantKind[]).map((kind) => (
-                  <tr key={kind}>
-                    <th scope="row" className="text-left font-normal">
-                      {kindLabel(t, kind)}
-                    </th>
-                    <td>
-                      <NativeSelect
-                        inline
-                        compact
-                        aria-label={kindLabel(t, kind)}
-                        value={profileFor(prefs, kind)}
-                        onChange={(e) => setProfile(kind, e.target.value as AssistantProfile)}
-                      >
-                        <option value="quick">{t("assistantSettings.profileQuick")}</option>
-                        <option value="careful">{t("assistantSettings.profileCareful")}</option>
-                      </NativeSelect>
-                    </td>
+          <div id={advancedId}>
+            <Stack gap={2}>
+              <p className="text-muted-foreground text-xs">{t("assistantSettings.advancedHint")}</p>
+              <table className="text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left">{t("assistantSettings.kind")}</th>
+                    <th className="text-left">{t("assistantSettings.profile")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
+                </thead>
+                <tbody>
+                  {(Object.keys(KIND_SPECS) as AssistantKind[]).map((kind) => (
+                    <tr key={kind}>
+                      <th scope="row" className="text-left font-normal">
+                        {kindLabel(t, kind)}
+                      </th>
+                      <td>
+                        <NativeSelect
+                          inline
+                          compact
+                          aria-label={kindLabel(t, kind)}
+                          value={profileFor(prefs, kind)}
+                          onChange={(e) => setProfile(kind, e.target.value as AssistantProfile)}
+                        >
+                          <option value="quick">{t("assistantSettings.profileQuick")}</option>
+                          <option value="careful">{t("assistantSettings.profileCareful")}</option>
+                        </NativeSelect>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Stack>
+          </div>
         )}
       </div>
       {confirming && (

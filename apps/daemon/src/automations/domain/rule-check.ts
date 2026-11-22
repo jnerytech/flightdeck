@@ -1,6 +1,6 @@
 import type { Automation, AutomationRun } from "@flightdeck/protocol";
 import { type CronError, parseCron, validTimeZone } from "./cron.ts";
-import { type AutomationEvent, isExternal } from "./event.ts";
+import { type AutomationEvent, isExternal, type Why } from "./event.ts";
 
 /** Why a rule can never work: the message, the dictionary key and what fills it in. */
 export interface RuleProblem {
@@ -13,6 +13,7 @@ export interface RuleProblem {
 export interface Refusal {
   status: Extract<AutomationRun["status"], "ignored" | "limited">;
   detail: string;
+  why: Why;
 }
 
 /** What the automation could never do: a cron or time zone that does not parse, or an action its trigger cannot feed. */
@@ -79,10 +80,15 @@ export function refusal(
     return {
       status: "ignored",
       detail: "external author: the automation does not act on third-party content",
+      why: { code: "external_author", params: {} },
     };
   }
   if (today() >= auto.maxRunsPerDay) {
-    return { status: "limited", detail: `limit of ${auto.maxRunsPerDay} runs per day` };
+    return {
+      status: "limited",
+      detail: `limit of ${auto.maxRunsPerDay} runs per day`,
+      why: { code: "daily_limit", params: { max: auto.maxRunsPerDay } },
+    };
   }
   return null;
 }

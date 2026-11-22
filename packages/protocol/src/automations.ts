@@ -41,15 +41,26 @@ export const Automation = z.object({
 });
 export type Automation = z.infer<typeof Automation>;
 
+/** The values a firing's cause or detail names (a card, a time, a limit), for the app to put in its own sentence. */
+export const AutomationRunParams = z.record(z.string(), z.union([z.string(), z.number()]));
+
 export const AutomationRun = z.object({
   id: z.string(),
   automationId: z.string(),
   firedAt: z.string(),
+  /** What happened, in English: the CLI prints it and a row from before the codes has only this. */
   cause: z.string(),
+  /** The cause as a code with its values, for the app to say in its language (#4185); null on an older row. */
+  causeCode: z.string().nullable().optional(),
+  causeParams: AutomationRunParams.nullable().optional(),
   status: z.enum(["ok", "failed", "ignored", "skipped", "limited", "missed"]),
   detail: z.string().nullable(),
+  /** The detail as a code with its values; null when it is a message the host could not name (a failed run). */
+  detailCode: z.string().nullable().optional(),
+  detailParams: AutomationRunParams.nullable().optional(),
 });
 export type AutomationRun = z.infer<typeof AutomationRun>;
+export type AutomationRunParams = z.infer<typeof AutomationRunParams>;
 
 /** The automations commands; index.ts spreads them into `Command`. */
 export const automationsCommands = [
