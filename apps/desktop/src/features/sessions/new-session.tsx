@@ -1,25 +1,35 @@
 import type { CommandPayload } from "@flightdeck/protocol";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { PersonaPicker } from "@/features/personas/ui.ts";
 import { useT } from "@/i18n/context";
+import { CheckField } from "@/shared/layout/index.ts";
+import { basename } from "@/shared/lib/index.ts";
+import type { T } from "../../i18n/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { NewSessionForm } from "./new-session-form.tsx";
 
-/** "Iniciar em segundo plano": the session runs under Claude Code's supervisor; the hub shows it. */
+/**
+ * "Iniciar em segundo plano": the session runs under Claude Code's supervisor; the hub shows it, and
+ * a notice says it started. False when the host refuses (the form stays and says so).
+ */
 async function startInBackground(
   store: AppStore,
+  t: T,
   hostId: string,
   payload: CommandPayload<"session.create">,
   persona: string,
-): Promise<void> {
+): Promise<boolean> {
   const id = await store.background.start(hostId, {
     cwd: payload.cwd,
     prompt: payload.prompt,
     ...(payload.name ? { name: payload.name } : {}),
     ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
   });
-  if (id) store.router.push({ name: "hub" });
+  if (!id) return false;
+  store.success(t("bg.started", { name: payload.name || basename(payload.cwd) }));
+  store.router.push({ name: "hub" });
+  return true;
 }
 
 /** The new-session form of a host; the created session opens. */
@@ -39,6 +49,8 @@ export function NewSession(
   const [cwd, setCwd] = useState("");
   const persona = picked ?? props.store.clientScope.get().defaultPersona(host.id, cwd);
   const [background, setBackground] = useState(false);
+  const [refused, setRefused] = useState(false);
+  const hintId = useId();
   const personas = hasFeature(host.hostInfo?.features, "personas", false);
   const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
   return (
@@ -66,15 +78,22 @@ export function NewSession(
           )}
           {withBackground && (
             <>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={background}
-                  onChange={(e) => setBackground(e.target.checked)}
-                />{" "}
+              <CheckField
+                checked={background}
+                describedBy={hintId}
+                onChange={(checked) => {
+                  setBackground(checked);
+                  setRefused(false);
+                }}
+              >
                 {t("bg.start")}
-              </label>
-              <span className="text-muted-foreground text-xs">{t("bg.startHint")}</span>
+              </CheckField>
+              <span id={hintId} className="text-muted-foreground text-xs">
+                {t("bg.startHint")}
+              </span>
+              <output className="text-destructive text-xs empty:sr-only">
+                {refused ? t("bg.startFailed") : ""}
+              </output>
             </>
           )}
         </>
@@ -82,7 +101,12 @@ export function NewSession(
       // The created session opens by itself (SessionCommandsSlice.create).
       onCreate={(payload) => {
         if (payload.runtime === "opencode") return props.store.commands.create(host.id, payload);
-        if (background) return startInBackground(props.store, host.id, payload, persona);
+        if (background) {
+          setRefused(false);
+          return startInBackground(props.store, t, host.id, payload, persona).then((started) =>
+            setRefused(!started),
+          );
+        }
         const ref = props.store.personas.ref(persona);
         return props.store.commands.create(host.id, {
           ...payload,

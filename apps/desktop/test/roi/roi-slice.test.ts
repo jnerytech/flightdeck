@@ -52,8 +52,25 @@ describe("roi slice", () => {
       answers: { bad: { ok: false, code: "internal" } as never },
     });
     const all = await slice.summaries("2026-10-01", "2026-10-14");
-    expect(all.map((a) => a.hostId)).toEqual(["on"]);
+    expect(all.filter((a) => a.result).map((a) => a.hostId)).toEqual(["on"]);
     expect(asked.sort()).toEqual(["bad:2026-10-01..2026-10-14", "on:2026-10-01..2026-10-14"]);
+  });
+
+  // #4192: a host that was asked and refused is told apart from a host with no data.
+  test("a host that refuses comes back as asked with no figures; a host not asked does not come back", async () => {
+    const { slice } = roi({
+      hosts: [
+        host("on", "online", ["roi"]),
+        host("bad", "online", ["roi"]),
+        host("old", "online", []),
+      ],
+      answers: { bad: { ok: false, code: "internal" } as never },
+    });
+    const all = await slice.summaries("2026-10-01", "2026-10-14");
+    expect(all.map((a) => [a.hostId, a.result === null])).toEqual([
+      ["on", false],
+      ["bad", true],
+    ]);
   });
 
   test("a project's money takes the typed rate of its project, else its client, else the app's, and the review settings", () => {

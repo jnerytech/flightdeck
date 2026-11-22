@@ -141,6 +141,9 @@ export const automations = {
       },
       workflow: "Workflow",
       noWorkflows: "This project has no valid workflows",
+      workflowMissing:
+        "This project has no valid workflow to start. Add one in the project's workflows, then come back.",
+      labelMissing: "Type the label to watch for before going on.",
       untrusted: "{name} (not trusted)",
       name: "Automation name",
       max: "Maximum firings per day",

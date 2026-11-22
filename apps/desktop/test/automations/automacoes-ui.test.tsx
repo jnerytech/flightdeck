@@ -185,6 +185,8 @@ describe("automacoes-ui: the guided creation", () => {
     await click("Nova automação");
     const actionsOf = async (trigger: string) => {
       await change("Gatilho", trigger);
+      // A label trigger needs its label before Próximo opens the action step.
+      if (trigger === "issue_label") await change("Rótulo", "auto");
       await click("Próximo");
       const list = options("Ação");
       await click("Voltar");
@@ -220,6 +222,8 @@ describe("automacoes-ui: the guided creation", () => {
     const reachStep3 = async (trigger: string) => {
       await change("Gatilho", trigger);
       await click("Próximo");
+      // The step with no valid workflow stays shut: the project's workflows load beside the list.
+      await settle(() => screen.queryByLabelText("Workflow") !== null);
       await click("Próximo");
     };
     await reachStep3("cron");
@@ -238,6 +242,7 @@ describe("automacoes-ui: the guided creation", () => {
     await click("Nova automação");
     await change("Expressão cron", "99 99 * * *");
     await click("Próximo");
+    await settle(() => screen.queryByLabelText("Workflow") !== null);
     await click("Próximo");
     await change("Nome da automação", "Ruim");
     await click("Salvar");

@@ -32,6 +32,22 @@ describe("rule-check: what an automation could never do", () => {
     ]);
   });
 
+  test("a workflow or a label that is empty or only blank says which one is missing (#4187)", () => {
+    expect([
+      ruleProblem(CRON, { type: "start_workflow", workflow: "" })?.reason,
+      ruleProblem(CRON, { type: "start_workflow", workflow: "  " })?.reason,
+      ruleProblem({ type: "issue_label", label: "" }, WORKFLOW)?.reason,
+      ruleProblem({ type: "issue_label", label: " \t" }, { type: "create_card" })?.reason,
+      ruleProblem({ type: "issue_label", label: "bug" }, WORKFLOW),
+    ]).toEqual([
+      "automation_workflow_missing",
+      "automation_workflow_missing",
+      "automation_label_missing",
+      "automation_label_missing",
+      null,
+    ]);
+  });
+
   test("an action that needs a card or an issue refuses a trigger that has none", () => {
     expect([
       ruleProblem(CRON, { type: "send_to_card" })?.reason,

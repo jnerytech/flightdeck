@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  commandCut,
   describeRequest,
   type InboxEntry,
   inboxRows,
@@ -107,6 +108,15 @@ describe("inbox-bell: a request in plain words", () => {
       "Wants to run: git push origin main",
     );
     expect(describeRequest("Bash", { command: "x".repeat(200) }, en).length).toBeLessThan(90);
+  });
+
+  test("a command is cut when it has a second line or is longer than 70 characters (#4199)", () => {
+    expect(commandCut("Bash", { command: "x".repeat(71) })).toBe(true);
+    expect(commandCut("Bash", { command: "npm test\nrm -rf build" })).toBe(true);
+    expect(commandCut("Bash", { command: "x".repeat(70) })).toBe(false);
+    expect(commandCut("Bash", { command: "npm test\n" })).toBe(false);
+    expect(commandCut("Edit", { file_path: "/srv/app/src/main.ts" })).toBe(false);
+    expect(commandCut("Bash", undefined)).toBe(false);
   });
 
   test("an edit says which file, by its name", () => {
