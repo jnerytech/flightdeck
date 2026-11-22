@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { SendResult } from "@flightdeck/protocol";
 import { MAX_TEXT_BYTES } from "../../src/messaging/domain/policy.ts";
-import { PROJECT, setup } from "../support/messaging-helpers.ts";
+import { PROJECT, setup, twoHosts } from "../support/messaging-helpers.ts";
 
 const OTHER = "github.com/acme/outro";
 
@@ -102,5 +102,41 @@ describe("a refused message carries a reason key (#4083)", () => {
     const again = setup({ db: first.store.db });
     const expired = again.messaging.list({}).find((m) => m.status === "expired");
     expect(why(expired ?? {}).key).toBe("messaging_restarted");
+  });
+
+  test("a key a remote host sends is kept only inside the messaging namespace, with plain values", () => {
+    const { a } = twoHosts();
+    a.endpoints.add("s1");
+    a.messaging.setPeers("wsl", [
+      {
+        id: "w1",
+        name: "w1",
+        persona: null,
+        projectKey: PROJECT,
+        teamId: null,
+        state: "idle",
+        kind: "managed",
+        receives: true,
+        reason: null,
+      },
+    ]);
+    const sent = (text: string) => a.messaging.send({ as: { session: "s1" }, to: "wsl/w1", text });
+    const keyOf = (id: string) => why(a.messaging.list({}).find((m) => m.id === id) ?? {});
+    const forged = sent("um");
+    a.messaging.relayed(forged.id, {
+      status: "refused",
+      reason: "refused over there",
+      reasonKey: "constructor",
+      reasonParams: { limit: 3 },
+    });
+    expect(keyOf(forged.id)).toEqual({ key: null, params: null });
+    const real = sent("dois");
+    a.messaging.relayed(real.id, {
+      status: "refused",
+      reason: "refused over there",
+      reasonKey: "messaging_limit_session",
+      reasonParams: { limit: 3 },
+    });
+    expect(keyOf(real.id)).toEqual({ key: "messaging_limit_session", params: { limit: 3 } });
   });
 });
