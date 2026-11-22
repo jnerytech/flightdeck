@@ -209,6 +209,8 @@ export const hosts = {
     first: "Update the app first, then the hosts' daemons.",
     install: "Install and restart",
     later: "Later",
+    dismissError: "Dismiss",
+    openSettings: "Open Settings",
   },
   hostAutoUpdate: {
     label: "Update this host automatically",
