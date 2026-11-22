@@ -3,7 +3,7 @@ import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, highlightActiveLine, lineNumbers } from "@codemirror/view";
 import type { DiffFile } from "@flightdeck/protocol";
 import { tags } from "@lezer/highlight";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useFollow } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
@@ -81,9 +81,27 @@ export function FileViewer(
   const full =
     phase.name === "ready" && props.full && store.system.canOpenPaths(hostId) ? props.full : null;
 
-  useEffect(() => {
+  // What the last platform call (Open in its app, Show in folder) could not do, until the next read.
+  const [failed, setFailed] = useState<"openFailed" | "revealFailed" | null>(null);
+  // The read that is current: a new one (a retry, another file) drops the answer of the old one.
+  const cancel = useRef<() => void>(() => {});
+  // Counts the reads: a platform call that answers after another read began says nothing about it.
+  const reads = useRef(0);
+  const platformCall = (call: Promise<boolean>, failure: "openFailed" | "revealFailed") => {
+    const mine = reads.current;
+    void call.then((ok) => {
+      if (reads.current === mine) setFailed(ok ? null : failure);
+    });
+  };
+  const read = useCallback(() => {
+    cancel.current();
+    reads.current += 1;
     let alive = true;
+    cancel.current = () => {
+      alive = false;
+    };
     setPhase({ name: "opening" });
+    setFailed(null);
     void store.hostRequest(hostId, "file.read", { target, path }).then((result) => {
       if (!alive) return;
       setPhase(
@@ -92,10 +110,11 @@ export function FileViewer(
           : { name: "refused", message: refusalText(result.code, result.message, t, result) },
       );
     });
-    return () => {
-      alive = false;
-    };
   }, [store, hostId, target, path, t]);
+  useEffect(() => {
+    read();
+    return () => cancel.current();
+  }, [read]);
 
   const text = phase.name === "ready" && !diff ? phase.text : null;
   const { line, col } = props;
@@ -167,7 +186,7 @@ export function FileViewer(
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => void store.system.openPath(hostId, full)}
+                onClick={() => platformCall(store.system.openPath(hostId, full), "openFailed")}
               >
                 {t("files.openOutside")}
               </Button>
@@ -175,7 +194,7 @@ export function FileViewer(
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => void store.system.revealPath(hostId, full)}
+                onClick={() => platformCall(store.system.revealPath(hostId, full), "revealFailed")}
               >
                 {t("files.reveal")}
               </Button>
@@ -185,6 +204,11 @@ export function FileViewer(
             {t("files.close")}
           </Button>
         </Inline>
+        {failed && (
+          <p role="alert" className="text-destructive text-xs">
+            {t(`files.${failed}`)}
+          </p>
+        )}
         {diff && (
           <div data-follow="" ref={follow.box} onScroll={follow.onScroll} className="diff-follow">
             <DiffView files={[diff]} mode="unified" selection={null} composer={null} />
@@ -200,7 +224,14 @@ export function FileViewer(
         {phase.name === "opening" && (
           <p className="text-muted-foreground text-sm">{t("files.opening")}</p>
         )}
-        {phase.name === "refused" && <InlineNotice>{phase.message}</InlineNotice>}
+        {phase.name === "refused" && (
+          <Inline gap={2}>
+            <InlineNotice>{phase.message}</InlineNotice>
+            <Button type="button" variant="outline" size="sm" onClick={read}>
+              {t("files.readRetry")}
+            </Button>
+          </Inline>
+        )}
         {phase.name === "ready" && !diff && (
           <div ref={parent} className="rounded-md border text-sm" />
         )}
