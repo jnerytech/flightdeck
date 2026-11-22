@@ -248,6 +248,15 @@ describe.each(["en", "pt-BR"] as const)("teams-actions (%s)", (language) => {
     expect(calls).toEqual(["teams.pause", "teams.resume"]);
   });
 
+  test("a refused Pause gives the button back, enabled and focused (#3933)", async () => {
+    const { words } = await openTeam(language, "teams.pause");
+    await click(words.pause);
+    await settleMaybe(() => said(words.notDone), 3000);
+    await settleMaybe(() => focused() === words.pause, 3000);
+    expect(focused()).toBe(words.pause);
+    expect((button(words.pause) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   test("a refused command says it was refused with the host's reason, and the team is unchanged", async () => {
     const { words } = await openTeam(language, "teams.pause");
     await click(words.pause);
