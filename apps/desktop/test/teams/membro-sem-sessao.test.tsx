@@ -63,6 +63,11 @@ describe.each(["en", "pt-BR"] as const)("teams: a worker with no session yet (%s
     expect(end()?.textContent).toContain(w.waiting);
   });
 
+  test("a coordinator with no session id does not say it waits for one: only a worker's card queues", () => {
+    show(language, { ...WORKER, role: "coordinator", cardId: null, number: null });
+    expect(end()?.textContent ?? "").not.toContain(w.waiting);
+  });
+
   test("a member with a session shows its state and not the waiting word", () => {
     show(language, { ...WORKER, sessionId: "01JABCDEFGHJKMNPQRSTVWXYZ0", sessionState: "running" });
     expect(end()?.textContent).toContain(w.running);
