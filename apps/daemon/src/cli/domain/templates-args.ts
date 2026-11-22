@@ -19,7 +19,7 @@ const TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const NAME_MAX = 100;
 
 /** `template list` or `template start <template>`. */
-export function readTemplate(args: CliArgs, reader: ArgReader): void {
+function readTemplate(args: CliArgs, reader: ArgReader): void {
   args.command = "template";
   const verb = subAction(reader, ["list", "start"] as const, "invalid template action");
   args.action = verb;
@@ -27,7 +27,7 @@ export function readTemplate(args: CliArgs, reader: ArgReader): void {
 }
 
 /** `task results <session>` or `task preview <session> <path>`. */
-export function readTask(args: CliArgs, reader: ArgReader): void {
+function readTask(args: CliArgs, reader: ArgReader): void {
   args.command = "task";
   const verb = subAction(reader, ["results", "preview"] as const, "invalid task action");
   args.action = verb;
@@ -37,13 +37,20 @@ export function readTask(args: CliArgs, reader: ArgReader): void {
 }
 
 /** `harness templates list` or `harness templates delete <template>`. */
-export function readHarness(args: CliArgs, reader: ArgReader): void {
+function readHarness(args: CliArgs, reader: ArgReader): void {
   args.command = "harness";
   subAction(reader, ["templates"] as const, "invalid harness action");
   const verb = subAction(reader, ["list", "delete"] as const, "invalid harness templates action");
   args.action = verb === "list" ? "templates-list" : "templates-delete";
   if (verb === "delete") args.harnessWords = [operand(reader, "the harness template")];
 }
+
+/** The three commands of this file, for the parser's table of handlers. */
+export const TEMPLATE_COMMANDS: Record<string, (args: CliArgs, reader: ArgReader) => void> = {
+  template: readTemplate,
+  task: readTask,
+  harness: readHarness,
+};
 
 /** The flag of `template start` that can come more than once: `--field <id>=<value>`, one per field. */
 export const TEMPLATE_FLAGS: Record<
