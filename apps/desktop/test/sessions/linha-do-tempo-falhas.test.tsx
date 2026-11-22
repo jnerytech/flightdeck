@@ -835,4 +835,44 @@ describe("linha-do-tempo-falhas", () => {
     await click("Bifurcar");
     expect(screen.queryByRole("button", { name: "Copiar o comando" })).not.toBeNull();
   });
+  // #4251: what a screen reader hears of the files and of a disabled checkbox.
+  test("Show files says whether the files are shown, and points at their list", async () => {
+    const { names } = await timeline("en", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": async () => PREVIEW,
+    });
+    const toggle = () => screen.queryByRole("button", { name: /files of turn 1$/ });
+    expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
+    await click("Show files of turn 1");
+    expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+    const list = screen.queryByRole("list", { name: "Files of turn 1" });
+    expect(list).not.toBeNull();
+    expect(toggle()?.getAttribute("aria-controls")).toBe(list?.id);
+    expect(names.open).toBe("Timeline");
+  });
+
+  test("the files list is named in Portuguese", async () => {
+    await timeline("pt-BR", {
+      "snapshots.list": async () => SNAPSHOTS,
+      "snapshots.files": async () => PREVIEW,
+    });
+    await click("Ver arquivos do turno 1");
+    expect(screen.queryByRole("list", { name: "Arquivos do turno 1" })).not.toBeNull();
+  });
+
+  test("the Fork checkbox is described by the busy text, and only while busy", async () => {
+    const busy = await timeline("en", { "snapshots.list": async () => SNAPSHOTS }, true);
+    await click(busy.names.fork);
+    const box = () =>
+      within(screen.queryByRole("dialog", { name: "Fork from turn 1" }) as HTMLElement).queryByRole(
+        "checkbox",
+        { name: "Also rewind the files" },
+      );
+    const reason = document.getElementById(box()?.getAttribute("aria-describedby") ?? "");
+    expect(reason?.textContent).toBe(busy.store.i18n.t("timeline.busy"));
+    cleanup();
+    const idle = await timeline("en", { "snapshots.list": async () => SNAPSHOTS });
+    await click(idle.names.fork);
+    expect(box()?.hasAttribute("aria-describedby")).toBe(false);
+  });
 });

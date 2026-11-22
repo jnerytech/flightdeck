@@ -44,6 +44,7 @@ function TurnRow(
   const { store, turn } = props;
   const { t } = store.i18n;
   const noUuidId = useId();
+  const filesId = useId();
   const summary = {
     changed: t("timeline.changed"),
     unchanged: t("timeline.unchanged"),
@@ -62,7 +63,14 @@ function TurnRow(
       <TurnPrompt store={store} prompt={turn.prompt} />
       {turn.files === "changed" && (
         <div className="flex flex-col gap-1">
-          <ActionButton variant="ghost" size="sm" className="self-start" onClick={props.onToggle}>
+          <ActionButton
+            variant="ghost"
+            size="sm"
+            className="self-start"
+            aria-expanded={Boolean(props.files)}
+            aria-controls={props.files ? filesId : undefined}
+            onClick={props.onToggle}
+          >
             {props.files
               ? t("timeline.hideFiles", { n: turn.ordinal })
               : t("timeline.showFiles", { n: turn.ordinal })}
@@ -76,7 +84,11 @@ function TurnRow(
             </InlineNotice>
           )}
           {props.files && (
-            <ul className="flex flex-col gap-1">
+            <ul
+              id={filesId}
+              aria-label={t("timeline.filesOf", { n: turn.ordinal })}
+              className="flex flex-col gap-1"
+            >
               {props.files.files.map((file) => (
                 <li key={file.path} className="flex flex-wrap items-center gap-2">
                   <code className="break-all">{file.path}</code>
