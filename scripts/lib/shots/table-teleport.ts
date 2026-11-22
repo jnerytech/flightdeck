@@ -32,9 +32,9 @@ async function openMove(page: Page): Promise<void> {
         await page.getByRole("dialog").waitFor();
         return;
       }
-      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape"); // NOSONAR: one row's menu at a time, closed before the next opens
     }
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(500); // NOSONAR: a pause between turns, so the hosts can answer
   }
   throw new Error("no session's menu offers to move it to another host");
 }

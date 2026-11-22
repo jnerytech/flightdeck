@@ -60,12 +60,10 @@ export async function seedAutomations(
 ): Promise<void> {
   const db = new Database(where.db);
   for (const { enabled, runs, ...input } of DEMO_AUTOMATIONS) {
-    const saved = await client.call<{ id: string }>("automation.save", {
-      projectId: where.projectId,
-      ...input,
-    }); // NOSONAR: one after the other, so the list shows them in this order
+    const request = { projectId: where.projectId, ...input };
+    const saved = await client.call<{ id: string }>("automation.save", request); // NOSONAR: one after the other, so the list shows them in this order
     if (enabled) {
-      await client.call("automation.toggle", { id: saved.id, enabled: true, confirm: true });
+      await client.call("automation.toggle", { id: saved.id, enabled: true, confirm: true }); // NOSONAR: after its own save
     }
     for (const [i, run] of runs.entries()) {
       db.query(
@@ -87,15 +85,11 @@ export async function seedSnippets(
 ): Promise<void> {
   for (const { favorite, ...input } of DEMO_SNIPPETS) {
     const saved = await client.call<{ id: string }>("snippets.save", { scope: "host", ...input }); // NOSONAR: one after the other, so the list keeps this order
-    if (favorite) await client.call("snippets.favorite", { id: saved.id, favorite: true });
+    if (favorite) await client.call("snippets.favorite", { id: saved.id, favorite: true }); // NOSONAR: after its own save
   }
   for (const input of DEMO_FILE_SNIPPETS) {
-    await client.call("snippets.save", {
-      scope: "project",
-      target: "file",
-      projectPath: where.projectPath,
-      ...input,
-    }); // NOSONAR: one after the other, as the file lists them
+    const request = { scope: "project", target: "file", projectPath: where.projectPath, ...input };
+    await client.call("snippets.save", request); // NOSONAR: one after the other, as the file lists them
   }
   const listed = await client.call<{ file: { hash: string } | null }>("snippets.list", {
     scope: "project",

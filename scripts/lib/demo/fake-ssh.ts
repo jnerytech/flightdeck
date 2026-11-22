@@ -12,8 +12,10 @@ export function demoSshHost(lang: string): string {
 }
 
 /** One key per language run, as a server would show it: the bytes only have to be stable. */
-const hostKey = (host: string) =>
-  `ssh-ed25519 ${Buffer.from(`demo-host-key-${host}`).toString("base64")}`;
+const hostKey = (host: string) => {
+  const bytes = Buffer.from(`demo-host-key-${host}`).toString("base64");
+  return `ssh-ed25519 ${bytes}`;
+};
 
 export interface DemoSsh {
   /** The fake `ssh`, for a host's `ssh.path`. */

@@ -235,6 +235,42 @@ interface PrintSetup {
   ids: DemoIds;
 }
 
+/** What the storage starts with for one print: only what the print asks for, the rest empty. */
+function storageSeed(shot: Shot, lang: string, ids: DemoIds): StorageSeed {
+  return {
+    clients: shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
+    roi: shot.roi ? DEMO_ROI : null,
+    inbox: shot.inbox ? demoInbox(lang, { hostId: ALFA, requestId: ids.waitingRequest }) : null,
+    finished: shot.finished
+      ? demoFinished(
+          { hostId: ALFA, sessionId: ids.idleSession, name: "Revisão do PR 128" },
+          new Date(),
+        )
+      : null,
+    secrets: shot.secrets ? demoSecrets(ALFA) : null,
+    vaultUsage: shot.vaultUsage ? demoVaultUsage(ALFA) : null,
+    away: shot.away ? DEMO_AWAY_SINCE : null,
+    simple: shot.simple === true,
+    teleportPreview: shot.teleportPreview === true,
+    autoUpdateOff: shot.autoUpdateOff === true,
+  };
+}
+
+/**
+ * The scripts a print puts in the page before it loads. Playwright's routeWebSocket never saw the
+ * app's sockets under Bun: the page's own WebSocket is wrapped instead.
+ */
+async function installScripts(page: Page, shot: Shot): Promise<void> {
+  if (shot.holds) await page.addInitScript({ content: holdsScript() });
+  if (shot.maintenance) await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
+  if (shot.releases) await page.addInitScript({ content: releasesScript(shot.releases) });
+  if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
+  if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
+  if (shot.teleport) {
+    await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
+  }
+}
+
 /** One print and its checks (theme, layout, accessibility); what is wrong goes to `problems`. */
 async function printShot(
   context: BrowserContext,
@@ -248,25 +284,7 @@ async function printShot(
   // A print that throws or times out still closes its page (#677).
   try {
     // The storage is the context's: a print with no clients clears what an earlier one kept.
-    await page.addInitScript(seedStorage, {
-      clients: shot.clients
-        ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
-        : null,
-      roi: shot.roi ? DEMO_ROI : null,
-      inbox: shot.inbox ? demoInbox(lang, { hostId: ALFA, requestId: ids.waitingRequest }) : null,
-      finished: shot.finished
-        ? demoFinished(
-            { hostId: ALFA, sessionId: ids.idleSession, name: "Revisão do PR 128" },
-            new Date(),
-          )
-        : null,
-      secrets: shot.secrets ? demoSecrets(ALFA) : null,
-      vaultUsage: shot.vaultUsage ? demoVaultUsage(ALFA) : null,
-      away: shot.away ? DEMO_AWAY_SINCE : null,
-      simple: shot.simple === true,
-      teleportPreview: shot.teleportPreview === true,
-      autoUpdateOff: shot.autoUpdateOff === true,
-    });
+    await page.addInitScript(seedStorage, storageSeed(shot, lang, ids));
     const query = new URLSearchParams({
       theme,
       lang,
@@ -275,15 +293,7 @@ async function printShot(
     });
     // Playwright's routeWebSocket never saw the app's sockets under Bun: the page's own WebSocket is
     // wrapped instead.
-    if (shot.holds) await page.addInitScript({ content: holdsScript() });
-    if (shot.maintenance)
-      await page.addInitScript({ content: maintenanceScript(shot.maintenance) });
-    if (shot.releases) await page.addInitScript({ content: releasesScript(shot.releases) });
-    if (shot.wire) await page.addInitScript({ content: wireScript(shot.wire) });
-    if (shot.ssh) await page.addInitScript({ content: sshScript(shot.askpass === true) });
-    if (shot.teleport) {
-      await page.addInitScript({ content: teleportScript(shot.teleport === "refuses") });
-    }
+    await installScripts(page, shot);
     await page.goto(`${url}?${query}`);
     // The hosts connect and the screen loads its data.
     await page.waitForTimeout(1500);
