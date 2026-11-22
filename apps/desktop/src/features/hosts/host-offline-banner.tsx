@@ -11,18 +11,26 @@ const COMMAND = "rounded bg-muted px-1 font-mono text-xs";
 // Commands, not prose: the same in every language.
 const CHECK_DAEMON = "systemctl --user status flightdeckd";
 const ENABLE_LINGER = "sudo loginctl enable-linger $USER";
-const WSL_SYSTEMD = "systemd=true";
+// A file snippet, not a command: the key works only under its [boot] header.
+const WSL_SYSTEMD = "[boot]\nsystemd=true";
 const SERVICE_STATUS = "flightdeckd service status";
 const SERVICE_START = "flightdeckd service start";
 
-/** A command to type on the host, with a button that copies exactly that text. */
-function CopyCommand(props: Readonly<{ command: string; onCopy(command: string): void }>) {
+/**
+ * A command to type on the host, or (`snippet`) lines to put in a file there, with a button that
+ * copies exactly that text and is named for what it is.
+ */
+function CopyCommand(
+  props: Readonly<{ command: string; snippet?: boolean; onCopy(command: string): void }>,
+) {
   const t = useT();
   return (
     <Inline gap={2}>
-      <code className={COMMAND}>{props.command}</code>
+      <code className={props.snippet ? `${COMMAND} whitespace-pre` : COMMAND}>{props.command}</code>
       <Button type="button" variant="outline" size="xs" onClick={() => props.onCopy(props.command)}>
-        {t("hostOffline.copy", { command: props.command })}
+        {props.snippet
+          ? t("hostOffline.copyWsl")
+          : t("hostOffline.copy", { command: props.command })}
       </Button>
     </Inline>
   );
@@ -163,7 +171,7 @@ export function HostOfflineBanner(
             <CopyCommand command={CHECK_DAEMON} onCopy={copy} />
             <CopyCommand command={ENABLE_LINGER} onCopy={copy} />
             <p>{t("hostOffline.hintWsl")}</p>
-            <CopyCommand command={WSL_SYSTEMD} onCopy={copy} />
+            <CopyCommand command={WSL_SYSTEMD} snippet onCopy={copy} />
           </Stack>
         )}
         {hint === "windows" && (
