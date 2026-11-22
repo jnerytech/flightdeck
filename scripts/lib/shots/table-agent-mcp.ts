@@ -104,8 +104,12 @@ export function mcpShots(ids: DemoIds): Shot[] {
       wire: [{ command: "mcp.list", hold: true }],
       prepare: async (page) => {
         await page
-          .getByText(/^(Loading the configuration…|Carregando a configuração…)$/)
+          .getByRole("status", {
+            name: /^(Loading the configuration…|Carregando a configuração…)$/,
+          })
           .waitFor({ timeout: 15_000 });
+        // The placeholders come 200 ms after the label: wait for them so the print shows them.
+        await page.locator('[role="status"][aria-busy="true"] > *').first().waitFor();
       },
     },
     { name: "agente-mcp-novo", route, wire: [SEEDED, NO_SAVE], prepare: openAdd },
