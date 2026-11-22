@@ -443,6 +443,21 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     expect((labelled("Host") as HTMLSelectElement).value).toBe("");
   });
 
+  test("Clear filters puts the focus on the search field, since the button is gone", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    await act(async () => {
+      fireEvent.change(field("searchbox", "Search sessions"), { target: { value: "zzz" } });
+    });
+    const clear = screen.queryByRole("button", { name: "Clear filters" });
+    expect(has(clear)).toBe(true);
+    await act(async () => {
+      (clear as HTMLElement).focus();
+      fireEvent.click(clear as HTMLElement);
+    });
+    expect(document.activeElement === field("searchbox", "Search sessions")).toBe(true);
+  });
+
   test("Clear filters keeps the idle switch, which is a view choice", async () => {
     const w = setup(SPECS);
     render(w.view(SPECS));
