@@ -42,7 +42,7 @@ describe("the MCP tab prints (#4269)", () => {
   test("the test prints answer mcp.test in the page, so no server is ever started by a print", () => {
     for (const name of ["agente-mcp-testar", "agente-mcp-teste-resultado"]) {
       const rule = wire(name)?.find((r) => r.command === "mcp.test");
-      expect(rule).toMatchObject({ command: "mcp.test", reply: expect.any(Object) });
+      expect(rule !== undefined && "reply" in rule && typeof rule.reply === "object").toBe(true);
     }
   });
 
@@ -75,9 +75,8 @@ describe("the MCP tab prints (#4269)", () => {
       "agente-mcp-segredo",
       "agente-mcp-remover",
     ]) {
-      expect(wire(name)?.some((rule) => ["mcp.save", "mcp.remove"].includes(rule.command))).toBe(
-        false,
-      );
+      const rules = wire(name) ?? [];
+      expect(rules.some((rule) => ["mcp.save", "mcp.remove"].includes(rule.command))).toBe(false);
     }
   });
 

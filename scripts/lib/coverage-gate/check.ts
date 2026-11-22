@@ -28,6 +28,7 @@ export const ENTRY_POINTS: ReadonlySet<string> = new Set([
   // a real browser against fake-runtime daemons, not the unit tests.
   "scripts/lib/shots/shot.ts",
   "scripts/lib/shots/table-agent.ts",
+  "scripts/lib/shots/table-agent-mcp.ts",
   "scripts/lib/shots/table-assistant.ts",
   "scripts/lib/shots/table-automations.ts",
   "scripts/lib/shots/table-background.ts",

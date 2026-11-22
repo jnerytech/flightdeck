@@ -96,6 +96,10 @@ export const NARROW_SHOTS: readonly string[] = [
   "novidades",
   // #4243: the Activity board stacks its columns below 640 px.
   "atividade",
+  // #4269: the MCP tab's form, test dialog and a long row must wrap at 390.
+  "agente-mcp-novo",
+  "agente-mcp-testar",
+  "agente-mcp-linha-longa",
   // #4163: the permission screens; a long rule or reason must wrap at 390.
   "sessao-aprovacao-risco-alto",
   "projeto-regras",
