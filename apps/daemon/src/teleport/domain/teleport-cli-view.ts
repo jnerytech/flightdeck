@@ -30,7 +30,7 @@ export function summaryLines(
       : "code: none",
     secrets.lines === 0
       ? "secrets: no line looks like one"
-      : `secrets: ${count(secrets.lines, "line", "lines")} look like one${secrets.labels.length > 0 ? ` (${secrets.labels.join(", ")})` : ""}: they move with the session`,
+      : `secrets: ${count(secrets.lines, "line", "lines")} ${secrets.lines === 1 ? "looks" : "look"} like one${secrets.labels.length > 0 ? ` (${secrets.labels.join(", ")})` : ""}: they move with the session`,
   ];
 }
 
