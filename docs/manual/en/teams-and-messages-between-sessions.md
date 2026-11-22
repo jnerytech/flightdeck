@@ -98,9 +98,12 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   5. integrate in the agreed order;
   6. tell you when something is your decision;
   7. report the team's outcome.
+- **The team's goal:** the card opens with the goal, under **Goal**, before the outcome. A long word
+  breaks inside the card, and a goal longer than three lines is cut there, with **Show more** to read
+  all of it and **Show less** to fold it again.
 - **The team's outcome:** the coordinator reports it with the `team_report` tool (up to 4000
-  characters); the host refuses any other session. Its last report heads the team's card under
-  **Outcome**, marked **Done** or **In progress**, as plain text; a long one scrolls in a box the
+  characters); the host refuses any other session. Its last report follows the goal on the team's
+  card under **Outcome**, marked **Done** or **In progress**, as plain text; a long one scrolls in a box the
   keyboard can reach. Below it, each worker's row shows its **Last report**, its card's branch and
   how many files the card changed. When the coordinator reports the goal done, a notification says
   so and opens the team.
@@ -121,8 +124,8 @@ Claude Code sessions can message each other through Flightdeck, on the same host
     board;
   - close the team, with a confirmation.
 - **Deleting a closed team:** a closed team keeps its card until you delete it. Its card's **⋯**
-  menu has **Delete team**: off on an open team (it says "Close the team first"), and on a closed
-  one it asks first, naming the team. What goes is the team record and its card on the Teams page.
+  menu appears once the team is closed, and holds **Delete team**: it asks first, naming the team. An
+  open team has no such menu; Pause, Add worker and Close are under its members. What goes is the team record and its card on the Teams page.
   What stays is every member's session, with its transcript and history, and their board cards:
   they are only taken out of the team. The host refuses while a member is at work (running, or
   waiting for an answer); try again once they rest. Every connected app drops the card.

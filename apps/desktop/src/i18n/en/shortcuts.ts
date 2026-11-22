@@ -84,11 +84,15 @@ export const shortcuts = {
   searchUi: {
     label: "Global search",
     input: "Search the history",
-    placeholder: "Sessions, cards, projects, actions… (Enter searches the history)",
+    placeholder: "Sessions, cards, projects, actions…",
+    hint: "Enter searches the history.",
+    historyNone: "Nothing in the history matches “{query}”.",
     history: "History",
     searching: "{host}: searching…",
     silent: "{host}: no answer",
     results: "Search results",
+    noMatch: "Nothing matches “{query}”. Press Enter to search the history.",
+    found: "Results: {n}",
   },
   folderPicker: {
     title: "Choose folder",

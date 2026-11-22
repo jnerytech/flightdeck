@@ -135,16 +135,11 @@ describe("times-apagar-ui: Delete team", () => {
     expect(screen.queryByRole("listitem", { name: "Team live-crew" })).not.toBeNull();
   });
 
-  test("an open team's Delete team is off, and the menu says to close it first", async () => {
+  test("an open team has no Actions menu, so nothing can delete it (#4021)", async () => {
     const w = setup();
     await ready("live-crew");
-    await openMenu("Actions for live-crew");
-    const item = screen.queryByRole("menuitem", { name: /Delete team/ });
-    expect(item).not.toBeNull();
-    expect(item?.getAttribute("aria-disabled")).toBe("true");
-    expect(item?.textContent).toContain("Close the team first");
-    await click(item as Element);
-    expect(screen.queryByRole("alertdialog") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(screen.queryByRole("button", { name: "Actions for live-crew" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
+    expect(screen.queryByRole("button", { name: "Actions for old-crew" }) !== null).toBe(true);
     expect(w.deletes()).toEqual([]);
   });
 

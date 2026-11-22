@@ -241,6 +241,15 @@ describe.each(["en", "pt-BR"] as const)("teams-actions (%s)", (language) => {
     expect(focused()).toBe(words.addWorker);
   });
 
+  test("an open team has no Actions menu, which only appears once the team is closed (#4021)", async () => {
+    const { words } = await openTeam(language);
+    expect(button(words.menu) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await click(words.close);
+    await confirm(words.closeConfirm);
+    await settleMaybe(() => button(words.menu) !== null, 3000);
+    expect(button(words.menu) !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
   test("Delete team says so and the focus lands on New team", async () => {
     const { words } = await openTeam(language);
     await click(words.close);
