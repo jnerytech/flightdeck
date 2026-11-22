@@ -5,11 +5,15 @@
  * timeline's states are the page's own answers to `run.get`, and `run.watch` is answered in the
  * page too, so the host's own pushes never replace them.
  */
+import { createRequire } from "node:module";
 import type { RunStatus, StepRun, WorkflowRun } from "@flightdeck/protocol";
 import type { Page } from "playwright-core";
 import type { DemoIds } from "../../demo-seed.ts";
 import { ALFA, type Shot } from "./shot.ts";
 import type { WireRule } from "./wire.ts";
+
+/** axe-core's browser bundle: the print's axe run waits for a frame that has none. */
+const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
 
 const RUN_REGION = /^(Workflow run|Execução do workflow)$/;
 const STATUS_WORDS: Record<string, string> = {
@@ -110,6 +114,9 @@ export function runViewShots(ids: DemoIds): Shot[] {
           .frameLocator("iframe")
           .getByRole("heading", { name: "Cart" })
           .waitFor({ timeout: 15_000 });
+        // The print's axe run asks every frame, and waits a minute for one without axe.
+        const inner = page.frames().find((frame) => frame !== page.mainFrame());
+        await inner?.addScriptTag({ path: AXE });
       },
     },
     {

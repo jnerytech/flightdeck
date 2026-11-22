@@ -375,6 +375,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     cardId: gated.id,
     workflow: "feature",
   });
+  // The timeline prints answer for this run: without it none would show, and each would time out.
+  const gateRunId = gatedStart.workflowRunId;
+  if (!gateRunId) throw new Error("the gate card started with no workflow run");
   // Created in Review: a person's move there would ask for a PR (issue #78), and the demo has none.
   const inReview = await client.call<{ id: string }>("card.create", {
     projectId: project.id,
@@ -1033,7 +1036,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       diffCard: diff.id,
       prCard: inReview.id,
       gateCard: gated.id,
-      gateRunId: gatedStart.workflowRunId ?? "",
+      gateRunId,
       projectName: "flightdeck-web",
       rewindSession: rewind.sessionId,
       telemetrySession,
