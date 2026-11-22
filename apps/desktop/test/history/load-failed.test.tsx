@@ -49,11 +49,6 @@ async function history(answers: Array<typeof LIST | null>) {
   return { asked };
 }
 
-/** Lets the pending reads answer and the screen draw, so an assertion reads the result, not a wait. */
-const flush = () =>
-  act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 60));
-  });
 const text = () => document.body.textContent ?? "";
 const tryAgain = () => screen.queryByRole("button", { name: "Try again" });
 const listShown = () => screen.queryByRole("list", { name: en.historyUi.list }) !== null;
@@ -75,15 +70,14 @@ async function filterByFolder(folder: string) {
 describe("history-load-failed: a refused read says so and can be tried again", () => {
   test("a refused first read shows what happened and Try again, then the list when it works", async () => {
     const { asked } = await history([null, LIST]);
-    await settle(() => asked.length === 1);
-    await flush();
+    await settle(() => tryAgain() !== null);
     expect(text()).toContain("Could not read the history.");
     expect(tryAgain()).not.toBeNull();
     await act(async () => {
       fireEvent.click(tryAgain() as HTMLElement);
     });
-    await settle(() => asked.length === 2);
-    await flush();
+    await settle(listShown);
+    expect(asked).toHaveLength(2);
     expect(listShown()).toBe(true);
     expect(text()).not.toContain("Could not read the history.");
   });
@@ -92,8 +86,8 @@ describe("history-load-failed: a refused read says so and can be tried again", (
     const { asked } = await history([LIST, null]);
     await settle(listShown);
     await filterByFolder("/home/ana/other");
-    await settle(() => asked.length === 2);
-    await flush();
+    await settle(() => tryAgain() !== null);
+    expect(asked).toHaveLength(2);
     expect(listShown()).toBe(false);
     expect(tryAgain()).not.toBeNull();
   });
