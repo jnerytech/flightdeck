@@ -1,9 +1,9 @@
 import { inSequence, type SnippetInput, SnippetModelError } from "@flightdeck/protocol";
 import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 
@@ -25,8 +25,11 @@ export function FileImport(
   const read = async (file: File | undefined) => {
     if (!file) return;
     setMessage([]);
-    const parsed = await store.hostCommand(hostId, "snippets.parse", { text: await file.text() });
-    if (parsed) setFound(parsed);
+    // A file the host cannot read says why here, where the person is looking, not only in the banner.
+    const parsed = await store.hostRequest(hostId, "snippets.parse", { text: await file.text() });
+    if (parsed.ok) return setFound(parsed.data);
+    setFound(null);
+    setMessage([refusalText(parsed.code, parsed.message, t, parsed)]);
   };
 
   /** Saves one snippet where the person chose; the refusal in words, or null once it is saved. */
@@ -96,9 +99,9 @@ export function FileImport(
                 <option value="global">{t("snippets.globals")}</option>
               </select>
             </div>
-            <Button disabled={found.snippets.length === 0} onClick={() => void importAll()}>
+            <ActionButton disabled={found.snippets.length === 0} onClick={importAll}>
               {t("snippets.file.import")}
-            </Button>
+            </ActionButton>
           </div>
         </>
       )}

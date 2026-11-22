@@ -124,9 +124,9 @@ describe("direcao-visual: três colunas", () => {
     expect(section?.querySelector("[data-slot='group-meta']")?.className ?? "").toContain(
       "text-muted-foreground",
     );
-    // #4015: at 80% it falls under AA once a dialog dims the page behind it (axe on the Teleport prints).
-    expect(section?.querySelector("[data-slot='group-meta']")?.className.includes("/80")).toBe(
-      false,
+    // Drawn at full strength: at 80% over a dialog's backdrop it falls under 4.5:1 (#4015).
+    expect(section?.querySelector("[data-slot='group-meta']")?.className ?? "").not.toContain(
+      "text-muted-foreground/",
     );
     expect(within(alpha).queryByText(/^alfa/)).toBeNull();
     const time = alpha.querySelector("time");

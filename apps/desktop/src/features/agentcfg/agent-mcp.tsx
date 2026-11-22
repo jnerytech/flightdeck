@@ -175,7 +175,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
   return (
     <div className="flex flex-col gap-4">
       <InlineNotice>{t("agent.mcp.versioned")}</InlineNotice>
-      {liveSession && (
+      {liveSession && live.length > 0 && (
         <p className="text-muted-foreground text-xs">
           {t("agent.mcp.live.session", { name: liveSession.name ?? liveSession.id })}
         </p>

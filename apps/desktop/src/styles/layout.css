@@ -89,6 +89,14 @@
   gap: 0.25rem;
 }
 
+/*
+ * A button in a row of Fields aligned by the top: it starts below a Field's label (text-sm line
+ * height 1.25rem plus the Field's gap of 0.25rem), so it sits level with the inputs.
+ */
+@utility field-action {
+  margin-top: 1.5rem;
+}
+
 @utility field-help {
   color: var(--color-muted-foreground);
   font-size: 0.75rem;

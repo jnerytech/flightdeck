@@ -26,6 +26,7 @@ function setup(updater = true, logs = false) {
       onCloseToTray={() => {}}
       onAutostart={() => {}}
       onGlobalShortcut={() => {}}
+      onShortcuts={() => {}}
       appUpdate={{ upToDate: false } as never}
       onCheckUpdate={() => {}}
       onNotifyUpdates={() => {}}

@@ -106,8 +106,8 @@ export function Breadcrumb(
                   />
                 </>
               )}
-              {/* The earlier steps give way first (a factor 100 times larger), down to 1rem; then the current one, which keeps 4rem. The floors of three steps and their chevrons (140 px) fit the slot of a 720 px window (156 px). Factors under 1 in total would shrink only that share of the overflow. */}
-              <li className={isLast ? "min-w-[4rem] shrink" : "min-w-[1rem] shrink-[100]"}>
+              {/* The current step gives way first (a factor 100 times larger), down to its 4rem floor, and its full name is in its tooltip; then the earlier ones, down to 1rem, so the step back to the list (Hosts, Projects) stays readable beside a long name (#4011). The floors of three steps and their chevrons (140 px) fit the slot of a 720 px window (156 px). Factors under 1 in total would shrink only that share of the overflow. */}
+              <li className={isLast ? "min-w-[4rem] shrink-[100]" : "min-w-[1rem] shrink"}>
                 {crumb.route ? (
                   <IconTip label={crumb.label}>
                     <button

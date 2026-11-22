@@ -19,19 +19,39 @@ const WORDS = {
     title: "Maintenance",
     failed: "Could not read this host's maintenance data.",
     retry: "Try again",
-    backup: "Back up now",
+    backup: "Back up this host's database",
     dry: "Simulate",
-    clean: "Clean",
+    clean: "Clean up old data",
     sessions: "Sessions",
+    db: "Database",
+    events: "Events",
+    lastBackup: "Last backup",
+    lastCleanup: "Last cleanup",
+    unrecorded: "not recorded",
+    backupDone: "Backup created at /data/backup-1.db on this host.",
+    simulated: "Simulation: a cleanup would delete these rows: events 5. Nothing was deleted.",
+    cleaned: "Cleanup done. Rows deleted: events 5.",
+    point: ".",
+    thousands: "12,345",
   },
   "pt-BR": {
     title: "Manutenção",
     failed: "Não foi possível ler os dados de manutenção deste host.",
     retry: "Tentar de novo",
-    backup: "Fazer backup agora",
+    backup: "Fazer backup do banco deste host",
     dry: "Simular",
-    clean: "Limpar",
+    clean: "Limpar dados antigos",
     sessions: "Sessões",
+    db: "Banco",
+    events: "Eventos",
+    lastBackup: "Último backup",
+    lastCleanup: "Última limpeza",
+    unrecorded: "não registrada",
+    backupDone: "Backup criado em /data/backup-1.db neste host.",
+    simulated: "Simulação: uma limpeza apagaria estas linhas: eventos 5. Nada foi apagado.",
+    cleaned: "Limpeza concluída. Linhas apagadas: eventos 5.",
+    point: ",",
+    thousands: "12.345",
   },
 } as const;
 
@@ -81,6 +101,22 @@ const click = async (name: string) => {
     fireEvent.click(button as HTMLElement);
   });
 };
+
+/** What the panel says next to a label: the description that follows its term. */
+const fact = (label: string) =>
+  [...document.querySelectorAll("dt")].find((dt) => dt.textContent === label)?.nextElementSibling
+    ?.textContent;
+const outcome = () => screen.queryByRole("status")?.textContent ?? "";
+/** Clean's confirmation, answered with the same button label. */
+async function confirmClean(name: string) {
+  const dialog = screen.queryByRole("alertdialog");
+  expect(dialog).not.toBeNull();
+  const confirm = within(dialog as HTMLElement).queryByRole("button", { name });
+  expect(confirm).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(confirm as HTMLElement);
+  });
+}
 const alertText = () =>
   screen
     .queryAllByRole("alert")
@@ -139,6 +175,78 @@ describe.each(["en", "pt-BR"] as const)("the Maintenance panel (%s)", (lang) => 
     await click(w.backup);
     await act(async () => {});
     expect(screen.queryByText(/backup-1\.db/)).toBeNull();
+  });
+
+  test("the sizes and counts follow the language: a decimal mark, a unit up to GB and a thousands separator", async () => {
+    await section(lang, (type) =>
+      type === "maintenance.status"
+        ? {
+            ...STATUS,
+            dbBytes: 1.5 * 1024 ** 3,
+            lastBackup: { path: "/b.db", at: "2026-11-10T12:00:00Z", bytes: 709_120 },
+            counts: { sessions: 7, events: 12_345, externalSessions: 2 },
+          }
+        : null,
+    );
+    await settle(() => screen.queryByText(w.sessions) !== null);
+    expect(fact(w.db)).toBe(`1${w.point}5 GB`);
+    expect(fact(w.lastBackup)?.endsWith(`(692${w.point}5 KB)`)).toBe(true);
+    expect(fact(w.events)).toBe(w.thousands);
+  });
+
+  test("a simulation never replaces the date of the last real cleanup", async () => {
+    const real = "2026-11-10T09:00:00Z";
+    const simulated = "2026-11-20T09:00:00Z";
+    let simulating = false;
+    const { store } = await section(lang, (type) =>
+      type === "maintenance.status"
+        ? {
+            ...STATUS,
+            lastPrune: simulating
+              ? { at: simulated, dryRun: true, counts: { events: 5 } }
+              : { at: real, dryRun: false, counts: { events: 9 } },
+          }
+        : { events: 5 },
+    );
+    await settle(() => screen.queryByText(w.sessions) !== null);
+    expect(fact(w.lastCleanup)).toBe(store.formatDateTime(real));
+    simulating = true;
+    await click(w.dry);
+    await settle(() => outcome() !== "");
+    expect(fact(w.lastCleanup)).toBe(store.formatDateTime(real));
+  });
+
+  test("a host that only recorded a simulation says its last cleanup is not recorded", async () => {
+    const simulated = "2026-11-20T09:00:00Z";
+    await section(lang, (type) =>
+      type === "maintenance.status"
+        ? { ...STATUS, lastPrune: { at: simulated, dryRun: true, counts: { events: 5 } } }
+        : null,
+    );
+    await settle(() => screen.queryByText(w.sessions) !== null);
+    expect(fact(w.lastCleanup)).toBe(w.unrecorded);
+  });
+
+  test("the three outcomes are sentences", async () => {
+    await section(lang, (type) => {
+      if (type === "maintenance.status") return STATUS;
+      return type === "maintenance.backup" ? { path: "/data/backup-1.db" } : { events: 5 };
+    });
+    await click(w.backup);
+    await settle(() => outcome() === w.backupDone);
+    await click(w.dry);
+    await settle(() => outcome() === w.simulated);
+    await click(w.clean);
+    await confirmClean(w.clean);
+    await settle(() => outcome() === w.cleaned);
+    expect(outcome()).toBe(w.cleaned);
+  });
+
+  test("the three buttons sit in one row that wraps when the panel is narrow", async () => {
+    await section(lang, (type) => (type === "maintenance.status" ? STATUS : null));
+    const row = screen.queryByRole("button", { name: w.backup })?.parentElement;
+    expect(row?.className.includes("flex-wrap")).toBe(true);
+    expect(row?.querySelectorAll("button").length).toBe(3);
   });
 
   test("Clean is busy while the prune runs, and a second click starts no second prune", async () => {

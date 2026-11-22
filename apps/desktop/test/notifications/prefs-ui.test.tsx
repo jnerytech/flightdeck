@@ -47,6 +47,7 @@ function settings(language: "en" | "pt-BR" = "en") {
       onCloseToTray={() => {}}
       onAutostart={() => {}}
       onGlobalShortcut={() => {}}
+      onShortcuts={() => {}}
       appUpdate={{ upToDate: false } as never}
       onCheckUpdate={() => {}}
       onNotifyUpdates={() => {}}

@@ -139,6 +139,7 @@ describe("telas-rotas: routes that open a screen", () => {
             density: "comfortable",
             go: noop,
             onOpenRequest: noop,
+            onShortcuts: noop,
           })}
         </TooltipProvider>
       </TContext.Provider>,

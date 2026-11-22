@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index.ts";
 import { InlineNotice } from "@/shared/feedback/index.ts";
@@ -15,6 +16,8 @@ export function ShortcutSection(
     draft: string;
     onDraft(text: string): void;
     onGlobalShortcut(text: string): void;
+    /** Opens the keyboard shortcut list: the same sheet the `?` key opens. */
+    onShortcuts(): void;
   }>,
 ) {
   const { settings, t, draft: shortcut } = props;
@@ -24,7 +27,7 @@ export function ShortcutSection(
       {settings.shortcutProblem && <InlineNotice>{settings.shortcutProblem}</InlineNotice>}
       <Form variant="inline" onSubmit={() => props.onGlobalShortcut(shortcut)}>
         <Field
-          label={t("prefs.shortcut")}
+          label={t("prefs.shortcutKeys")}
           help={t("prefs.shortcutNote")}
           error={settings.shortcutError}
         >
@@ -46,6 +49,11 @@ export function ShortcutSection(
           }
         />
       </Form>
+      <div>
+        <Button variant="outline" onClick={props.onShortcuts}>
+          {t("prefs.showShortcuts")}
+        </Button>
+      </div>
     </Panel>
   );
 }
