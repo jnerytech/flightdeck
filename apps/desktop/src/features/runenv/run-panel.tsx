@@ -77,6 +77,9 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
   useEffect(() => {
     if (!trusted || !focusRun.current) return;
     focusRun.current = false;
+    // The person may have moved on while the host answered: only the page body gives the focus up.
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
     section.current?.querySelector<HTMLElement>('[data-action="run"]')?.focus();
   }, [trusted]);
 
@@ -85,8 +88,8 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
     setTrusting(false);
     if (!info.hash) return;
     const accepted = await store.runEnv.trust(hostId, card.projectId, info.hash);
-    setTrustRefused(accepted === null);
-    if (accepted) {
+    setTrustRefused(accepted?.trusted !== true);
+    if (accepted?.trusted) {
       focusRun.current = true;
       setInfo(accepted);
       return;
