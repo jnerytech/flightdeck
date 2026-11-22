@@ -9,6 +9,7 @@ import {
   type NotifySource,
   playNotifySound,
 } from "../../src/features/notifications/index.ts";
+import { unlistedMutes } from "../../src/features/notifications/domain/unlisted-mutes.ts";
 import type { Platform } from "../../src/platform/types.ts";
 
 const NOW = Date.parse("2026-11-04T10:00:00.000Z");
@@ -388,5 +389,26 @@ describe("notify-prefs: mark as unread (issue #149, shared with #137)", () => {
     const out = markUnread(list, "a");
     expect(out.map((e) => e.read)).toEqual([false, true, false]);
     expect(unreadCount(out)).toBe(2);
+  });
+});
+
+describe("unlistedMutes: the saved mutes the lists cannot show (issue #4007)", () => {
+  const hosts = [{ id: "h1" }, { id: "h2" }];
+  const projects = { h1: [{ id: "p-api" }], h2: [] };
+
+  test("a mute whose host or project is in the lists is not unlisted", () => {
+    expect(
+      unlistedMutes({ mutedHosts: ["h1"], mutedProjects: ["h1/p-api"] }, hosts, projects),
+    ).toEqual({ hosts: [], projects: [] });
+  });
+
+  test("a removed host, and a project that is not loaded, are unlisted", () => {
+    expect(
+      unlistedMutes(
+        { mutedHosts: ["h1", "gone"], mutedProjects: ["h1/p-old", "gone/p1", "h2/p9"] },
+        hosts,
+        projects,
+      ),
+    ).toEqual({ hosts: ["gone"], projects: ["h1/p-old", "gone/p1", "h2/p9"] });
   });
 });
