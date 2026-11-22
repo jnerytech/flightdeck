@@ -6,6 +6,7 @@
 import type { RoiPeriod } from "@flightdeck/protocol";
 import { formatDecimal } from "../../../i18n/format.ts";
 import type { Lang } from "../../../i18n/types.ts";
+import { usd } from "../../costs/index.ts";
 
 export const EMPTY_PERIOD: RoiPeriod = {
   costUsd: 0,
@@ -62,10 +63,6 @@ export interface Figures {
   /** How each figure was made: a dictionary key and the numbers, one line per figure. */
   derivation: Array<{ key: string; vars: Record<string, string | number> }>;
 }
-
-/** A cost as a number in the language's own marks (`1.234,50`); the dictionary adds the unit. */
-const money2 = (n: number, lang: string) =>
-  new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 const SUMMED = [
   "costUsd",
@@ -134,23 +131,23 @@ function derivationOf(
     {
       key: "roiUi.derive.cost",
       vars: {
-        total: money2(costUsd, lang),
-        agents: money2(agentsCostUsd, lang),
-        plan: money2(planShareUsd, lang),
-        review: money2(reviewCostUsd, lang),
+        total: usd(costUsd, lang),
+        agents: usd(agentsCostUsd, lang),
+        plan: usd(planShareUsd, lang),
+        review: usd(reviewCostUsd, lang),
       },
     },
   ];
   if (costPerCard !== null) {
     derivation.push({
       key: "roiUi.derive.costPerCard",
-      vars: { cost: money2(costUsd, lang), n: period.cards, each: money2(costPerCard, lang) },
+      vars: { cost: usd(costUsd, lang), n: period.cards, each: usd(costPerCard, lang) },
     });
   }
   if (costPerPr !== null) {
     derivation.push({
       key: "roiUi.derive.costPerPr",
-      vars: { cost: money2(costUsd, lang), n: period.prsMerged, each: money2(costPerPr, lang) },
+      vars: { cost: usd(costUsd, lang), n: period.prsMerged, each: usd(costPerPr, lang) },
     });
   }
   derivation.push({ key: "roiUi.derive.hours", vars: { hours: period.hours } });
@@ -162,9 +159,9 @@ function derivationOf(
       key: "roiUi.derive.value",
       vars: {
         hours: period.hours,
-        rate: money2(money.rate ?? 0, lang),
-        billed: money2(money.billed ?? 0, lang),
-        value: money2(valueUsd, lang),
+        rate: usd(money.rate ?? 0, lang),
+        billed: usd(money.billed ?? 0, lang),
+        value: usd(valueUsd, lang),
       },
     });
   }
@@ -172,8 +169,8 @@ function derivationOf(
     derivation.push({
       key: "roiUi.derive.roi",
       vars: {
-        value: money2(valueUsd, lang),
-        cost: money2(costUsd, lang),
+        value: usd(valueUsd, lang),
+        cost: usd(costUsd, lang),
         roi: formatDecimal(roi, lang),
       },
     });
@@ -294,14 +291,14 @@ export function headline(
 ): { key: string; vars: Record<string, string | number> } {
   const c = compare(current, previous);
   if (c.verdict === "none")
-    return { key: "roiUi.headline.none", vars: { cost: money2(current.costUsd, lang) } };
+    return { key: "roiUi.headline.none", vars: { cost: usd(current.costUsd, lang) } };
   return {
     key: `roiUi.headline.${c.verdict}`,
     vars: {
       n: current.cards,
       planned: current.planned,
       unplanned: current.unplanned,
-      cost: money2(current.costUsd, lang),
+      cost: usd(current.costUsd, lang),
       previous: previous.cards,
       moved: c.costPerItemMoved ?? "none",
     },

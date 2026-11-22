@@ -22,6 +22,8 @@ export const costs = {
       label: "Valor da hora deste cliente (US$)",
       help: "Vale para todo projeto do cliente que não tenha valor próprio. Vazio quer dizer nenhum.",
       save: "Salvar o valor",
+      saved: "Valor da hora salvo",
+      cleared: "Valor da hora removido",
       invalid: "O valor deve ser um número de 0 a 1.000.000.",
     },
     settingsPanel: {

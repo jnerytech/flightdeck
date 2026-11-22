@@ -233,4 +233,37 @@ describe("clients-defaults: setting them on the Clients screen", () => {
     await open();
     expect(select("Persona padrão")).not.toBeNull();
   });
+
+  describe("Save answers (#3875)", () => {
+    const save = () =>
+      screen.queryByRole("button", { name: "Salvar padrões" }) as HTMLButtonElement;
+    const type = async (value: string) => {
+      await act(async () => {
+        fireEvent.change(screen.queryByLabelText("Tag dos snippets") as HTMLElement, {
+          target: { value },
+        });
+      });
+    };
+
+    test("Save is off, with its reason, until a field differs from what is saved", async () => {
+      await open();
+      expect(save().disabled).toBe(true);
+      expect(screen.queryByText("Altere um campo para salvar.")).not.toBeNull();
+      await type("acme");
+      expect(save().disabled).toBe(false);
+      expect(screen.queryByText("Altere um campo para salvar.")).toBeNull();
+      await type("  ");
+      expect(save().disabled).toBe(true);
+    });
+
+    test("a save says so in a polite line, which goes away with the next edit, and Save is off again", async () => {
+      await open();
+      await type("acme ");
+      await click("Salvar padrões");
+      expect(screen.queryByText("Padrões salvos")).not.toBeNull();
+      expect(save().disabled).toBe(true);
+      await type("acme2");
+      expect(screen.queryByText("Padrões salvos")).toBeNull();
+    });
+  });
 });
