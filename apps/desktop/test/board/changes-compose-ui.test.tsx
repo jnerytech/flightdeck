@@ -69,6 +69,8 @@ function fakeStore(comments: ReviewComment[] = []) {
       if (type === "review.send")
         return { via: "session", text: "sent", comments: comments.length };
       if (type === "review.update") {
+        // A host that refuses this text: the answer is null, as a refused command's is.
+        if (payload.body === "refused") return null;
         const found = comments.find((c) => c.id === payload.id);
         if (found) found.body = String(payload.body);
         return found ?? null;
@@ -296,6 +298,27 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     await pick("Edit the comment on app.ts, line 2");
     await pick("Cancel");
     expect(document.activeElement === pencil()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+  });
+
+  test("a refused save keeps the edit box and the text, and the status line stays an empty live region until something happens (#3890)", async () => {
+    await show({ comments: [draft("c1", "app.ts", 2, "use total")] });
+    // The live region is there before its first words, or a screen reader may miss them.
+    expect(screen.queryAllByRole("status").length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("status").map((el) => el.textContent)).toEqual([""]);
+    await pick("Edit the comment on app.ts, line 2");
+    await act(async () => {
+      fireEvent.change(screen.getByRole("textbox", { name: "Comment text" }), {
+        target: { value: "refused" },
+      });
+    });
+    await pick("Save comment");
+    await act(async () => {});
+    const box = screen.queryByRole("textbox", {
+      name: "Comment text",
+    }) as HTMLTextAreaElement | null;
+    expect(box !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(box?.value).toBe("refused");
+    expect(screen.queryAllByRole("status").map((el) => el.textContent)).toEqual([""]);
   });
 
   test("after Remove the focus is on the drafts list, or on the panel when none is left (#3890)", async () => {
