@@ -33,6 +33,7 @@ function HostQuota(
   const quota = props.quota[host.id];
   const bars = quotaBars(quota, store.now(), (iso) => store.formatTime(iso), t);
   // Each host decides on its own whether new cards wait, so the notice speaks for the hosts that are over their guard.
+  const guarded = props.hosts.filter((h) => props.quota[h.id]);
   const hotHosts = props.hosts.filter((h) =>
     quotaBars(props.quota[h.id], store.now(), (iso) => store.formatTime(iso), t).some(
       (bar) => bar.hot,
@@ -120,18 +121,15 @@ function HostQuota(
               })}
             </p>
           ))}
-          {props.hosts.map(
-            (h) =>
-              props.quota[h.id] && (
-                <QuotaGuard
-                  key={h.id}
-                  store={store}
-                  host={h}
-                  pauseAt={props.quota[h.id]?.pauseAt ?? null}
-                  named={props.hosts.length > 1}
-                />
-              ),
-          )}
+          {guarded.map((h) => (
+            <QuotaGuard
+              key={h.id}
+              store={store}
+              host={h}
+              pauseAt={props.quota[h.id]?.pauseAt ?? null}
+              named={guarded.length > 1}
+            />
+          ))}
           <Button
             variant="outline"
             size="sm"

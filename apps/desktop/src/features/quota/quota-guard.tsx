@@ -30,8 +30,13 @@ export function QuotaGuard(
     return (
       <p className="text-muted-foreground text-xs">
         {pauseAt === null
-          ? t("quota.guard.readOnlyOff")
-          : t("quota.guard.readOnly", { pct: Math.round(pauseAt * 100) })}
+          ? t(props.named ? "quota.guard.readOnlyOffFor" : "quota.guard.readOnlyOff", {
+              host: host.name,
+            })
+          : t(props.named ? "quota.guard.readOnlyFor" : "quota.guard.readOnly", {
+              host: host.name,
+              pct: Math.round(pauseAt * 100),
+            })}
       </p>
     );
   }
