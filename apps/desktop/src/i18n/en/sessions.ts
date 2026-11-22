@@ -395,7 +395,9 @@ export const sessions = {
     export: "Export trace",
     includeContent: "Include content",
     contentNote: "The content goes through the secret scan before it leaves.",
-    exported: "Exported: {n} fields hidden because they held secrets.",
+    saved: "Trace saved.",
+    notSaved: "Nothing was saved.",
+    exported: "{n} fields hidden because they held secrets.",
     structureNote: "Without the content, only the structure and the numbers leave.",
   },
   recap: {

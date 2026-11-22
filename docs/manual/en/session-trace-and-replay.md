@@ -26,6 +26,7 @@ from the transcripts the host already reads (the session's, and the subagents' i
 - **Export:** **Export trace** saves a JSON with the structure and the numbers only: no prompt,
   tool input, result or thought. With **Include content** the text comes too, and every field goes
   through the secret scan first: a field that holds a secret is replaced by `[redacted: ...]` and
-  the number of such fields is shown.
+  the number of such fields is shown. A status line under the button says that the trace was saved,
+  or that nothing was saved when the save dialog was dismissed.
 - **Limits:** the transcript format belongs to Claude Code and changes, so a line or field this
   does not know is skipped; a thought appears only when the transcript has it as text.

@@ -394,7 +394,9 @@ export const sessions = {
     export: "Exportar rastro",
     includeContent: "Incluir conteúdo",
     contentNote: "O conteúdo passa pela varredura de segredos antes de sair.",
-    exported: "Exportado: {n} campos ocultados por conterem segredos.",
+    saved: "Rastro salvo.",
+    notSaved: "Nada foi salvo.",
+    exported: "{n} campos ocultados por conterem segredos.",
     structureNote: "Sem o conteúdo, só a estrutura e os números saem.",
   },
   recap: {

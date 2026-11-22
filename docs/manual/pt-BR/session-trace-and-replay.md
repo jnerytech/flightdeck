@@ -26,6 +26,7 @@ montado dos transcripts que o host já lê (o da sessão e os dos subagentes, em
 - **Exportar:** **Exportar rastro** salva um JSON só com a estrutura e os números: sem prompt,
   entrada de ferramenta, resultado nem pensamento. Com **Incluir conteúdo** o texto vai junto, e
   cada campo passa antes pela varredura de segredos: um campo com um segredo vira
-  `[redacted: ...]` e mostra-se quantos foram.
+  `[redacted: ...]` e mostra-se quantos foram. Uma linha de status sob o botão diz que o rastro foi
+  salvo, ou que nada foi salvo quando a janela de salvar foi dispensada.
 - **Limites:** o formato do transcript é do Claude Code e muda, então uma linha ou campo que isto
   não conhece é pulado; um pensamento só aparece quando o transcript o traz em texto.
