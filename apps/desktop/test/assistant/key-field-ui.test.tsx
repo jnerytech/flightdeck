@@ -153,9 +153,7 @@ describe("key-field-ui: removing", () => {
       await settle(() => button("Remove") !== null);
       await click(button("Remove"));
       await click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove" }));
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
+      await settle(() => screen.queryByRole("alert") !== null);
       expect(screen.queryByRole("alert")).not.toBeNull();
       expect(screen.queryByRole("alert")?.textContent).toContain(
         "The system's credential store could not be reached.",
@@ -205,9 +203,7 @@ describe("key-field-ui: a status that cannot be read", () => {
           if (attempts === 1) throw { reason: "assistant_key_store" };
         },
       });
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
+      await settle(() => screen.queryByRole("alert") !== null);
       expect(screen.queryByRole("alert")).not.toBeNull();
       expect(screen.queryByRole("alert")?.textContent).toContain(
         "The system's credential store could not be reached.",
