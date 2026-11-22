@@ -53,12 +53,19 @@ async function panel(
   })) as unknown as typeof store.runEnv.config;
   store.runEnv.updated("h", state);
   const answers: Array<() => Promise<void>> = [];
-  const asked = (what: string) => {
-    calls.push(what);
-    return new Promise<void>((resolve) => answers.push(resolve as () => Promise<void>));
-  };
   // The host's side of Run and Stop: the slice's own start and stop run, so what it remembers is real.
   const core = (store.runEnv as unknown as { core: Record<string, unknown> }).core;
+  // The host accepts: it answers with the run as the app holds it (a null answer is a refusal).
+  const held = () =>
+    (
+      store.runEnv as unknown as { core: { state: () => { runEnvs: Record<string, RunState> } } }
+    ).core.state().runEnvs[(core.key as (h: string, c: string) => string)("h", "c1")] ?? state;
+  const asked = (what: string) => {
+    calls.push(what);
+    return new Promise<RunState>((resolve) =>
+      answers.push((() => resolve(held())) as unknown as () => Promise<void>),
+    );
+  };
   core.start = () => asked("start");
   core.stop = () => asked("stop");
   render(
@@ -223,6 +230,58 @@ describe("a Stop outlives the card page (#4284)", () => {
     );
     await settle(() => screen.queryByRole("button", { name: "Run" }) !== null);
     expect(crashed()).toBe(true);
+  });
+});
+
+describe("a refused Stop or Run leaves what the person pressed before as it was (#4284)", () => {
+  const slice = (answer: RunState | null) => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    const core = (store.runEnv as unknown as { core: Record<string, unknown> }).core;
+    core.start = async () => answer;
+    core.stop = async () => answer;
+    return store;
+  };
+
+  test("a refused Stop does not make a later crash read as a stop", async () => {
+    const store = slice(null);
+    await store.runEnv.stop("h", "c1");
+    expect(store.runEnv.stoppedByPerson("h", "c1")).toBe(false);
+  });
+
+  test("a refused Run keeps the last Stop, an accepted one clears it", async () => {
+    const refused = slice(null);
+    await slice(run({})).runEnv.stop("h", "c1");
+    const kept = slice(run({}));
+    await kept.runEnv.stop("h", "c1");
+    await kept.runEnv.start("h", "c1");
+    await refused.runEnv.stop("h", "c1");
+    const core = (refused.runEnv as unknown as { core: Record<string, unknown> }).core;
+    core.stop = async () => run({});
+    await refused.runEnv.stop("h", "c1");
+    core.start = async () => null;
+    await refused.runEnv.start("h", "c1");
+    expect({
+      refusedRun: refused.runEnv.stoppedByPerson("h", "c1"),
+      acceptedRun: kept.runEnv.stoppedByPerson("h", "c1"),
+    }).toEqual({ refusedRun: true, acceptedRun: false });
+  });
+});
+
+describe("a run the host starts after a Stop clears the Stop (#4284)", () => {
+  test("a run started from elsewhere is not muted when it crashes, and a Stop while it runs stays", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    const core = (store.runEnv as unknown as { core: Record<string, unknown> }).core;
+    core.stop = async () => run({ status: "running" });
+    store.runEnv.updated("h", run({ status: "running" }));
+    await store.runEnv.stop("h", "c1");
+    store.runEnv.updated("h", run({ status: "running" }));
+    const whileRunning = store.runEnv.stoppedByPerson("h", "c1");
+    store.runEnv.updated("h", run({ status: "ended" }));
+    store.runEnv.updated("h", run({ status: "running" }));
+    expect({ whileRunning, afterNewRun: store.runEnv.stoppedByPerson("h", "c1") }).toEqual({
+      whileRunning: true,
+      afterNewRun: false,
+    });
   });
 });
 
