@@ -1063,17 +1063,21 @@ step(
 // Add a host: the first-run guide is on the page when a host exists too, and a pairing link fills the form (issue #1199).
 step(When, "I open the Add a host page", async (c) => open(c, { name: "add-host" }));
 
-step(Then, "the page lists the first steps with copy buttons for setup and doctor", async (c) => {
-  const steps = c.page.getByRole("list", { name: c.t("welcome.stepsLabel"), exact: true });
-  await steps.waitFor({ timeout: WAIT });
-  const count = await steps.getByRole("listitem").count();
-  if (count !== 4) throw new Error(`the guide has ${count} steps, not 4`);
-  for (const command of ["flightdeckd setup", "flightdeckd doctor"]) {
-    await c.page
-      .getByRole("button", { name: c.t("welcome.copy", { command }), exact: true })
-      .waitFor({ timeout: WAIT });
-  }
-});
+step(
+  Then,
+  "the page lists the first steps with copy buttons for setup, doctor and pair",
+  async (c) => {
+    const steps = c.page.getByRole("list", { name: c.t("welcome.stepsLabel"), exact: true });
+    await steps.waitFor({ timeout: WAIT });
+    const count = await steps.getByRole("listitem").count();
+    if (count !== 4) throw new Error(`the guide has ${count} steps, not 4`);
+    for (const command of ["flightdeckd setup", "flightdeckd doctor", "flightdeckd pair"]) {
+      await c.page
+        .getByRole("button", { name: c.t("welcome.copy", { command }), exact: true })
+        .waitFor({ timeout: WAIT });
+    }
+  },
+);
 
 /** The fold around the four manual fields, found by its summary. */
 const manualFold = (c: Context) =>

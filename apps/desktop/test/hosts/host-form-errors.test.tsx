@@ -139,6 +139,24 @@ for (const [lang, t] of [
   });
 
   describe(`host-form-errors (${lang}): the result of the connection test`, () => {
+    test("each message of the test is a sentence: a capital letter and a full stop (#3885)", () => {
+      const sentences = [
+        t.hostForm.probeTimeout,
+        t.hostForm.probeRefused,
+        t.hostForm.probeUnreachable,
+      ];
+      expect(
+        sentences.map((text) => [
+          text.charAt(0) === text.charAt(0).toUpperCase(),
+          text.endsWith("."),
+        ]),
+      ).toEqual([
+        [true, true],
+        [true, true],
+        [true, true],
+      ]);
+    });
+
     test("an error of the test stays in one alert line and marks no field", () => {
       form(lang, t.hostForm.probeUnreachable);
       // Texts, not nodes: a failed diff of happy-dom nodes can take gigabytes.

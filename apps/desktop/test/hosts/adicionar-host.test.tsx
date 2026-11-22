@@ -59,12 +59,12 @@ describe("adicionar-host", () => {
     expect(ok.ok && typeof ok.info.arch).toBe("string");
     expect(await probeHost(server.url, "errado")).toEqual({
       ok: false,
-      error: "token recusado: rode flightdeckd pair no host e cole o link novo",
+      error: "Token recusado: rode flightdeckd pair no host e cole o link novo.",
     });
     expect(await probeHost("ws://127.0.0.1:1/v1/ws", TOKEN)).toEqual({
       ok: false,
       error:
-        "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
+        "Não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor.",
     });
   });
 
@@ -138,12 +138,12 @@ describe("adicionar-host", () => {
     type("Porta", port);
     type("Token", "errado");
     await submit();
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("token recusado"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Token recusado"));
     type("Porta", "1");
     type("Token", TOKEN);
     await submit();
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain("não foi possível conectar"),
+      expect(screen.getByRole("alert").textContent).toContain("Não foi possível conectar"),
     );
     expect(store.getState().hosts).toEqual([]);
     expect(items.has("flightdeck.hosts")).toBe(false);

@@ -24,6 +24,8 @@ const TEXT = {
     name: "Name",
     copySetup: "Copy flightdeckd setup",
     copyDoctor: "Copy flightdeckd doctor",
+    copyPair: "Copy flightdeckd pair",
+    lost: "Lost the link? Run this on that computer and copy the new one:",
     submit: "Test and add",
     missing: "Fill in the name.",
   },
@@ -34,6 +36,8 @@ const TEXT = {
     name: "Nome",
     copySetup: "Copiar flightdeckd setup",
     copyDoctor: "Copiar flightdeckd doctor",
+    copyPair: "Copiar flightdeckd pair",
+    lost: "Perdeu o link? No mesmo computador, rode o comando abaixo e copie o novo:",
     submit: "Testar e adicionar",
     missing: "Preencha o nome.",
   },
@@ -72,9 +76,11 @@ describe("host-guide: Add a host (issue #1199)", () => {
       const list = screen.queryByRole("list", { name: text.steps });
       expect(list).not.toBeNull();
       expect(within(list as HTMLElement).queryAllByRole("listitem")).toHaveLength(4);
+      expect(screen.queryByText(text.lost)).not.toBeNull();
       for (const [name, command] of [
         [text.copySetup, "flightdeckd setup"],
         [text.copyDoctor, "flightdeckd doctor"],
+        [text.copyPair, "flightdeckd pair"],
       ] as const) {
         const copy = screen.queryByRole("button", { name });
         expect(copy).not.toBeNull();
