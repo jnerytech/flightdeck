@@ -152,3 +152,37 @@ describe("the Memory prints (#4236)", () => {
     expect(narrowSizes("dark", "agente-memoria-nome-erro")).toHaveLength(3);
   });
 });
+
+describe("the prints never let a command that writes reach the host (#4236)", () => {
+  /** The commands that change the demo's hosts: a print that shows them must answer in the page, or a pass would write. */
+  const WRITES = ["knowledge.create", "knowledge.setStatus", "memory.write", "memory.delete"];
+
+  test("a rule on a command that writes is a denial, a pending answer or a reply: never a rewritten answer of the host", () => {
+    const rules = [...KNOWLEDGE(), ...MEMORY()].flatMap((shot) =>
+      (shot.wire ?? [])
+        .filter((rule) => WRITES.includes(rule.command))
+        .map((rule) => ({
+          print: shot.name,
+          kind: Object.keys(rule).filter((k) => k !== "command")[0],
+        })),
+    );
+    expect(rules.filter((rule) => !["deny", "pending", "reply"].includes(rule.kind ?? ""))).toEqual(
+      [],
+    );
+    expect(rules.map((rule) => rule.print).sort()).toEqual([
+      "agente-memoria-desatualizado",
+      "projeto-conhecimento-criar-erro",
+      "projeto-conhecimento-ocupado",
+    ]);
+  });
+
+  test("the create print denies the title with its reason, and the busy print leaves the status change pending", () => {
+    expect([
+      wire(KNOWLEDGE(), "projeto-conhecimento-criar-erro"),
+      wire(KNOWLEDGE(), "projeto-conhecimento-ocupado"),
+    ]).toEqual([
+      [{ command: "knowledge.create", deny: expect.stringContaining("already exists") }],
+      [{ command: "knowledge.setStatus", pending: true }],
+    ]);
+  });
+});
