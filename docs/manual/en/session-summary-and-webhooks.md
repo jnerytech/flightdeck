@@ -15,7 +15,7 @@ Discord or any HTTPS endpoint** when something needs you.
   on the line, a vault value) is replaced by `[secret hidden]`, in the app and in every message.
 - **Copy summary** puts the lines on the clipboard. A host without the feature shows no panel.
 - It is a card in the session's header: **open the first time** you see a session, then **folded to
-  one line** (the done text, cut) until you open it with the arrow. It pushes the conversation down and never overlaps it.
+  one line** (the done text, cut) until you open it with the arrow. In a window that is not tall (the default 1200x800 one included) it starts folded from the first time, so the conversation keeps its room. It pushes the conversation down and never overlaps it.
 - It shows on terminal sessions and on the sessions Flightdeck starts (once Claude Code has named the session).
 
 ## Webhooks

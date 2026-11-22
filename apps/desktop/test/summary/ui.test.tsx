@@ -430,4 +430,38 @@ describe("resumo-ui: the summary in a short area", () => {
     await expand();
     expect(toggle().getAttribute("aria-expanded")).toBe("true");
   });
+
+  // Issue #3835: a 640x800 window's area is about 642 px. The notice and the open summary left the
+  // conversation about 210 px, so a short conversation scrolled past its first message. Under 700 px
+  // the summary starts folded; the header and the composer keep their roomy form (the area is not short).
+  for (const [height, folded] of [
+    [642, true],
+    [699, true],
+    [700, false],
+  ] as const) {
+    test(`a session seen for the first time in an area ${height} px high shows its summary ${folded ? "folded" : "open"} (#3835)`, async () => {
+      const { store } = await online("en");
+      const hostId = store.getState().hosts[0]?.id as string;
+      const recap = await store.sessionRecap(hostId, SESSION, {});
+      store.sessionRecap = (async () => recap) as typeof store.sessionRecap;
+      globalThis.ResizeObserver = class {
+        constructor(private readonly callback: (entries: unknown[]) => void) {}
+        observe() {
+          this.callback([{ contentRect: { width: 664, height } }]);
+        }
+        disconnect() {}
+        unobserve() {}
+      } as unknown as typeof ResizeObserver;
+      render(
+        <TContext.Provider value={store.i18n.t}>
+          <SessionPane>
+            <RecapPanel store={store} hostId={hostId} claudeSessionId={`never-seen-${height}`} />
+          </SessionPane>
+        </TContext.Provider>,
+      );
+      await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+      const toggle = screen.queryByRole("button", { name: "Session summary" });
+      expect(toggle?.getAttribute("aria-expanded")).toBe(folded ? "false" : "true");
+    });
+  }
 });

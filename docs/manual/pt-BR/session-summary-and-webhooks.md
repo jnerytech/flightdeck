@@ -16,7 +16,7 @@ A página de uma sessão de terminal mostra um **resumo** curto, e o app pode ma
   mensagem.
 - **Copiar resumo** põe as linhas na área de transferência. Um host sem o recurso não mostra o painel.
 - É um cartão no cabeçalho da sessão: **aberto na primeira vez** que você vê a sessão, depois
-  **recolhido numa linha** (o texto do que foi feito, cortado) até você abrir com a seta. Empurra a conversa para baixo e nunca passa por cima dela.
+  **recolhido numa linha** (o texto do que foi feito, cortado) até você abrir com a seta. Numa janela que não é alta (a padrão de 1200x800 inclusive) ele já começa recolhido na primeira vez, para a conversa manter o seu espaço. Empurra a conversa para baixo e nunca passa por cima dela.
 - Aparece nas sessões de terminal e nas que o Flightdeck inicia (depois que o Claude Code dá nome à sessão).
 
 ## Webhooks

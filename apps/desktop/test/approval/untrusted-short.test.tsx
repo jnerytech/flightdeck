@@ -13,7 +13,23 @@ const { UntrustedNotice } = await import("../../src/features/trust/untrusted-not
 const { ShortArea } = await import("../../src/shared/layout/index.ts");
 const { SessionPane } = await import("../../src/features/sessions/parts.tsx");
 
-afterEach(() => cleanup());
+const realObserver = globalThis.ResizeObserver;
+afterEach(() => {
+  cleanup();
+  globalThis.ResizeObserver = realObserver;
+});
+
+/** Reports a height to every observed box, as a real layout would: the session's area. */
+function useAreaHeight(height: number) {
+  globalThis.ResizeObserver = class {
+    constructor(private readonly callback: (entries: unknown[]) => void) {}
+    observe() {
+      this.callback([{ contentRect: { width: 664, height } }]);
+    }
+    disconnect() {}
+    unobserve() {}
+  } as unknown as typeof ResizeObserver;
+}
 
 /** Whether `check` comes true within the wait. */
 const seen = (check: () => boolean) =>
@@ -64,6 +80,42 @@ for (const [lang, dict] of [
       expect(
         await seen(() => screen.queryByText(trust.sessionNoticeShort, { exact: false }) !== null),
       ).toBe(true);
+    });
+
+    // Issue #3835: a 640x800 window's session area is about 642 px; with the long notice and the
+    // open summary the conversation was left about 210 px.
+    test("in an area under 700 px high it is the one short line, as the summary folds too (#3835)", async () => {
+      useAreaHeight(642);
+      const store = {
+        i18n: { t: translator(lang) },
+        hostCommand: async () => ({ items: [{ trusted: false }] }),
+      } as never;
+      render(
+        <SessionPane>
+          <UntrustedNotice store={store} hostId="h" announced cwd="/p" />
+        </SessionPane>,
+      );
+      expect(
+        await seen(() => screen.queryByText(trust.sessionNoticeShort, { exact: false }) !== null),
+      ).toBe(true);
+      expect(screen.queryByText(trust.sessionNotice, { exact: false })).toBeNull();
+    });
+
+    test("in an area of 700 px or more it says everything, as before (#3835)", async () => {
+      useAreaHeight(700);
+      const store = {
+        i18n: { t: translator(lang) },
+        hostCommand: async () => ({ items: [{ trusted: false }] }),
+      } as never;
+      render(
+        <SessionPane>
+          <UntrustedNotice store={store} hostId="h" announced cwd="/p" />
+        </SessionPane>,
+      );
+      expect(
+        await seen(() => screen.queryByText(trust.sessionNotice, { exact: false }) !== null),
+      ).toBe(true);
+      expect(screen.queryByText(trust.sessionNoticeShort, { exact: false })).toBeNull();
     });
 
     test("in a tall area it says everything that did not load, as before", async () => {
