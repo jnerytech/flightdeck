@@ -352,6 +352,64 @@ describe("conversas-ui: the open button names its recipient (#4084)", () => {
   });
 });
 
+describe("conversas-ui: a row names its sessions (#4294)", () => {
+  const managed = (id: string, name: string) => ({
+    id,
+    name,
+    cwd: `/r/${id}`,
+    status: "idle",
+    permissionMode: "default",
+    model: null,
+    claudeSessionId: null,
+    lastSeq: 0,
+    createdAt: "2026-10-30T10:00:00.000Z",
+    updatedAt: "2026-10-30T11:00:00.000Z",
+  });
+  const goToList = async (list: () => HTMLElement | null, count: number) => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (list()?.children.length ?? 0) === count);
+  };
+
+  test("both sides show the session's name where the hub knows it, with the address in a title", async () => {
+    const { daemon, list } = await open();
+    daemon.hub.managed = [managed("s1", "revisor"), managed("s2", "autor")];
+    daemon.messaging.messages = [message({ id: "m1" })];
+    await goToList(list, 1);
+    const row = list()?.children[0] as HTMLElement;
+    await settleMaybe(() => (row.textContent ?? "").includes("revisor"));
+    expect(row.textContent).toContain("revisor");
+    expect(row.textContent).toContain("autor");
+    expect(row.querySelector('[title="h/s1"]') !== null).toBe(true);
+    expect(row.querySelector('[title="h/s2"]') !== null).toBe(true);
+  });
+
+  test("two ends with the same name keep their addresses visible, so the row still tells them apart", async () => {
+    const { daemon, list } = await open();
+    daemon.hub.managed = [managed("s1", "api"), managed("s2", "api")];
+    daemon.messaging.messages = [message({ id: "m1" })];
+    await goToList(list, 1);
+    const row = list()?.children[0] as HTMLElement;
+    await settleMaybe(() => (row.textContent ?? "").includes("api"));
+    expect(row.textContent).toContain("api");
+    expect(row.textContent).toContain("h/s1");
+    expect(row.textContent).toContain("h/s2");
+  });
+
+  test("a session the hub does not know keeps its address, and the Open button's name is unchanged", async () => {
+    const { daemon, list } = await open();
+    daemon.hub.managed = [managed("s1", "revisor")];
+    daemon.messaging.messages = [message({ id: "m1" })];
+    await goToList(list, 1);
+    const row = list()?.children[0] as HTMLElement;
+    await settleMaybe(() => (row.textContent ?? "").includes("revisor"));
+    expect(row.textContent).toContain("revisor");
+    expect(row.textContent).toContain("h/s2");
+    expect(screen.queryByRole("button", { name: "Abrir a sessão de h/s2" }) !== null).toBe(true);
+  });
+});
+
 describe("conversas-ui: a paused pair (#4086)", () => {
   const LOOP = {
     type: "messaging.alert",

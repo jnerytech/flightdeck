@@ -142,15 +142,33 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   /** The host a message's recipient lives on, when the app has it. */
   const hostOf = (message: MessageInfo) =>
     state.hosts.find((h) => h.hostInfo?.hostName === message.toHost) ?? null;
-  /** The recipient's name where the hub knows the session, else its address. */
-  const recipientName = (message: MessageInfo) => {
-    const host = hostOf(message);
-    const known = hubs.find(
-      (r) =>
-        r.hostId === host?.id &&
-        (r.sessionId === message.toSession || r.claudeSessionId === message.toSession),
+  /** A session's name where the hub knows it on that host, else null. */
+  const knownName = (hostName: string, sessionId: string) => {
+    const host = state.hosts.find((h) => h.hostInfo?.hostName === hostName);
+    return (
+      hubs.find(
+        (r) =>
+          r.hostId === host?.id && (r.sessionId === sessionId || r.claudeSessionId === sessionId),
+      )?.title || null
     );
-    return known?.title ?? `${message.toHost}/${message.toSession}`;
+  };
+  /** The recipient's name where the hub knows the session, else its address. */
+  const recipientName = (message: MessageInfo) =>
+    knownName(message.toHost, message.toSession) ?? `${message.toHost}/${message.toSession}`;
+  /**
+   * One end of a row: the session's name with its address as a title, or the address alone. When both
+   * ends read the same name (two sessions of one folder), the address stays on screen too.
+   */
+  const endOf = (hostName: string, sessionId: string, showAddress: boolean) => {
+    const address = `${hostName}/${sessionId}`;
+    const name = knownName(hostName, sessionId);
+    if (name === null) return <span className="font-mono">{address}</span>;
+    return (
+      <span title={address}>
+        {name}
+        {showAddress && <span className="font-mono text-muted-foreground">{` ${address}`}</span>}
+      </span>
+    );
   };
   // The pairs a host paused for a loop, on the hosts this page lists (#4086).
   const paused = state.loopAlerts.filter((a) => hosts.some((h) => h.id === a.hostId));
@@ -258,15 +276,17 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         <Stack as="ul" label={t("conversationsUi.list")} gap={2} className="max-w-3xl">
           {shown.map((row) => {
             const m = row.message;
+            const fromName = knownName(m.fromHost, m.fromSession);
+            const twins = fromName !== null && fromName === knownName(m.toHost, m.toSession);
             return (
               <li key={m.id} data-slot="message-row" className="message-row">
                 <div data-slot="message-meta" className="message-meta">
                   <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
                     {store.formatDateTime(m.createdAt)}
                   </time>
-                  <span className="font-mono">{`${m.fromHost}/${m.fromSession}`}</span>
+                  {endOf(m.fromHost, m.fromSession, twins)}
                   <span className="text-muted-foreground">{t("conversationsUi.to")}</span>
-                  <span className="font-mono">{`${m.toHost}/${m.toSession}`}</span>
+                  {endOf(m.toHost, m.toSession, twins)}
                   <Badge variant="outline">{row.hostName}</Badge>
                   {m.teamId && <Badge variant="outline">{m.teamId}</Badge>}
                   <strong className={TONE[m.status]}>
