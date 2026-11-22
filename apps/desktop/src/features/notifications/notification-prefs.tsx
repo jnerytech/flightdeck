@@ -115,7 +115,7 @@ export function NotificationPrefs(
           <p className="text-muted-foreground text-sm">{t("notifyPrefs.muteNone")}</p>
         )}
         {props.hosts.map((host) => (
-          <fieldset key={host.id} className="m-0 flex flex-col gap-1 border-0 p-0">
+          <fieldset key={host.id} className="m-0 border-0 p-0">
             <legend className="font-medium text-muted-foreground text-xs">{host.name}</legend>
             <label className={check}>
               <input

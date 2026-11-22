@@ -20,8 +20,13 @@ export function unlistedMutes(
   const listedProjects = new Set(
     hosts.flatMap((host) => (projects[host.id] ?? []).map((project) => `${host.id}/${project.id}`)),
   );
+  // A listed host whose projects have not arrived yet (no entry) says nothing about its mutes.
+  const loadedHosts = new Set(hosts.filter((host) => projects[host.id]).map((host) => host.id));
   return {
     hosts: saved.mutedHosts.filter((id) => !listedHosts.has(id)),
-    projects: saved.mutedProjects.filter((key) => !listedProjects.has(key)),
+    projects: saved.mutedProjects.filter((key) => {
+      const host = key.slice(0, key.indexOf("/"));
+      return !listedProjects.has(key) && (loadedHosts.has(host) || !listedHosts.has(host));
+    }),
   };
 }
