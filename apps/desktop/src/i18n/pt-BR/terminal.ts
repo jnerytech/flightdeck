@@ -23,6 +23,7 @@ export const terminal = {
     },
     reopen: "Reabrir",
     close: "Fechar terminal",
+    closeFailed: "Não foi possível fechar o terminal, que continua aberto: {reason}",
     closeMessage: "Desanexar deixa o processo rodando no host. Encerrar processo o interrompe.",
     pasteTitle: "Colar {n} linhas?",
     pasteMessage:

@@ -1,6 +1,9 @@
 import { Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { RequestError } from "@/features/hosts/index.ts";
 import { SnippetPicker } from "@/features/snippets/ui.ts";
+import { refusalText } from "@/i18n/errors.ts";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreState } from "../../lib/use-store.ts";
@@ -195,10 +198,23 @@ export function TerminalPage(
   useEffect(() => screen.current?.setScreenReader(reader), [reader]);
   useEffect(() => screen.current?.setTheme(terminalTheme(theme)), [theme]);
 
+  /** Why the host did not close the terminal: the person stays, and Close can be pressed again (#3949). */
+  const [closeFailed, setCloseFailed] = useState<string | null>(null);
   const close = async (kill: boolean) => {
     setClosing(false);
-    await session.current?.close(kill);
-    props.onClosed();
+    setCloseFailed(null);
+    const refused = await session.current?.close(kill);
+    // A terminal the host no longer has is already closed: there is nothing left to keep the person for.
+    if (refused === null || (refused instanceof RequestError && refused.code === "not_found")) {
+      return props.onClosed();
+    }
+    setCloseFailed(
+      refused instanceof RequestError
+        ? refusalText(refused.code, refused.message, t, refused)
+        : refused instanceof Error
+          ? refused.message
+          : String(refused),
+    );
   };
   const stopSearch = () => {
     setSearching(false);
@@ -264,6 +280,11 @@ export function TerminalPage(
         )
       }
     >
+      {closeFailed && (
+        <InlineNotice tone="error">
+          {t("terminalUi.closeFailed", { reason: closeFailed })}
+        </InlineNotice>
+      )}
       <div
         ref={area}
         data-terminal-area
