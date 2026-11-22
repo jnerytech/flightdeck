@@ -86,9 +86,9 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
       <Panel title={t("harnessTemplates.title")} label={t("harnessTemplates.title")}>
         <p className="text-muted-foreground text-sm">{t("harnessTemplates.hint")}</p>
         {templates === null && !failed && (
-          <p role="status" className="text-muted-foreground text-sm">
+          <output className="block text-muted-foreground text-sm">
             {t("harnessTemplates.asking")}
-          </p>
+          </output>
         )}
         {failed && (
           <Inline>
