@@ -85,7 +85,7 @@ export function HostSettingsPanel(
           {online && store.approval.supported(host.id) && (
             <ApprovalDevicesPanel store={store} host={host} />
           )}
-          <HostGate store={store} host={host}>
+          <HostGate store={store} host={host} reason>
             <BypassSwitch store={store} host={host} />
           </HostGate>
         </SettingsGroup>
