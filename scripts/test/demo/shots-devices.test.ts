@@ -83,6 +83,14 @@ describe("the approving-devices panel prints (#4154)", () => {
     expect(keyIds("aprovacao-aguardando")).not.toContain(DEMO_NEW_KEY.keyId);
   });
 
+  test("every replied command keeps its reply when the rules travel into the page as JSON", () => {
+    const rules = devicesShots(IDS).flatMap((shot) => shot.wire ?? []);
+    const travelled = JSON.parse(JSON.stringify(rules)) as Array<Record<string, unknown>>;
+    expect(
+      travelled.filter((rule, i) => "reply" in (rules[i] ?? {}) && !("reply" in rule)),
+    ).toEqual([]);
+  });
+
   test("a print that drives the panel has a step to prepare it", () => {
     expect(
       devicesShots(IDS)
