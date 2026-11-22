@@ -57,7 +57,10 @@ export const hostHandlers = {
     await keepAwake.set(payload.enabled);
     return keepAwake.status();
   },
-  "daemon.update.apply": async (payload, { server }) => {
+  "daemon.update.apply": async (payload, { ws, server }) => {
+    // It downloads a build, replaces the daemon's binary and restarts it, so what it installs runs
+    // as this user: near only, as the vault is (#3815).
+    requireVaultTransport(ws.data.origin, "daemon.update.apply", server.opts.log);
     return await server.needIn("updates", "apply").apply(payload.confirm === true);
   },
   "daemon.update.check": async (_payload, { server }) => {

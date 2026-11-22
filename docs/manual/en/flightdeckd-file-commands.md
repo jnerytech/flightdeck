@@ -38,7 +38,10 @@ hash, which the next write repeats; `--json` prints `path`, `hash` and `size`. I
 write was sent, the command exits `2` and says the file may or may not have changed: read it again before writing.
 `read` is not a copy to edit and send back, since it cleans control characters from what it prints: write from your
 own file. A session's own shell cannot run `write` without the person approving it, since the app asks the person
-to open the file and save it.
+to open the file and save it. Writing anything that steers a session (a file inside any `.claude` folder, such as its settings, agents,
+skills, commands and rules, or a `CLAUDE.md` or `CLAUDE.local.md`, however the path is spelled or linked) needs a
+near connection (this computer or Tailscale), since it can declare hooks that run in every session: over a far one the daemon refuses with
+`transport_refused`. Any other file writes from anywhere.
 
 `search <target> --mode name|content --query <text>` finds files by name or by what they hold. The text has 1 to 200
 characters and no control character. `--limit` (1 to 200) caps the matches. Each match is one line: the path, and for

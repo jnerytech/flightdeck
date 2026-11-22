@@ -225,7 +225,7 @@ mostra um CLAUDE.md rascunhado (uma chamada ao modelo; não grava nada), e `fd p
 salva a configuração de agentes da pasta como um modelo naquele host. Um script de preparação roda em todo card e
 `--auto-approve` muda o que é aprovado sem perguntar, então uma sessão que executa isso pelo shell para até você
 aprovar. Definir um script de preparação exige uma conexão próxima (este computador ou a Tailscale): por uma conexão
-distante o daemon recusa. Limpá-lo não tem esse limite.
+distante o daemon recusa. Limpá-lo não tem esse limite. Ligar `--auto-approve` também exige uma conexão próxima; `--auto-approve off` responde de qualquer lugar.
 
 Para gravar o harness por um terminal, salve a prévia (`fd project harness-preview <pasta> --parts claudeMd,hooks
 --json > preview.json`), leia-a e rode `fd project harness-apply <pasta> --parts claudeMd,hooks --digests preview.json

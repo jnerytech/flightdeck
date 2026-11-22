@@ -42,7 +42,8 @@ automation instead of making a new one. `save` always leaves the automation off,
 
 `enable <automation> --confirm` turns it on: from then on it fires on its own. `--confirm` is required, and it is only
 your own word that you read the trigger and the action (`automation list` prints what fires it and what it does).
-`disable <automation>` turns it off and needs nothing. `remove <automation> --confirm` deletes it and its runs, and
+Turning it on needs a near connection (this computer or Tailscale): over a far one the daemon refuses with `transport_refused`.
+`disable <automation>` turns it off, answers anywhere and needs nothing. `remove <automation> --confirm` deletes it and its runs, and
 `--json` prints the automations the project has left.
 
 A host that does not answer after one of these was sent leaves its result unknown: exit `2`, and the message says to
