@@ -238,6 +238,14 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     expect([noFolder, shown("Next backup: waiting for the passphrase.")]).toEqual([true, true]);
   });
 
+  // The scheduler falls back to the folder in a build with no Google client: so does the line.
+  test("a saved Drive target in a build without Google is read as the folder it runs in", () => {
+    open({ saved: { cadence: "daily", target: "drive", lastRunAt: Date.now() - 3_600_000 } });
+    expect([shown("Next backup: waiting for a folder."), shown("sign in to Google Drive")]).toEqual(
+      [true, false],
+    );
+  });
+
   test("a schedule that is off shows no next-backup line", () => {
     open();
     expect(shown("Next backup")).toBe(false);
