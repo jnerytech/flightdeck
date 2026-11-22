@@ -241,6 +241,22 @@ describe.skipIf(me === null)("flightdeckd session teleport (issue #3704)", () =>
     expect(types(src)).not.toContain("session.meta.set");
   });
 
+  test("a target that puts its own token in what it answers never has it printed, plain or --json", async () => {
+    const leaky = {
+      ...TARGET,
+      "teleport.finish": () => ({
+        sessionId: "t-s1",
+        worktree: `/srv/${TARGET_TOKEN}/wt`,
+        branch: `tp/${TARGET_TOKEN}`,
+      }),
+    };
+    for (const extra of [["--confirm"], ["--confirm", "--json"]]) {
+      const { run, text } = await move(extra, SOURCE, leaky);
+      expect(run.code).toBe(0);
+      expect(text).not.toContain(TARGET_TOKEN);
+    }
+  });
+
   test("an unknown host name is refused before the source is asked anything", async () => {
     const { run, src } = await move(["--confirm"], SOURCE, TARGET, [
       "session",
