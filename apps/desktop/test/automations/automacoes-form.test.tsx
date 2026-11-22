@@ -25,6 +25,10 @@ const WORDS = {
     max: "Maximum firings per day",
     hint: "minute hour day month weekday. Example: 0 9 * * 1-5 is weekdays at 09:00.",
     nameMissing: "Give the automation a name.",
+    label: "Label",
+    labelMissing: "Type the label to watch for before going on.",
+    workflowMissing:
+      "This project has no valid workflow to start. Add one in the project's workflows, then come back.",
     maxBad: "The limit is a whole number of at least 1.",
     next: "Next",
     save: "Save",
@@ -39,6 +43,10 @@ const WORDS = {
     max: "Máximo de disparos por dia",
     hint: "minuto hora dia mês dia-da-semana. Exemplo: 0 9 * * 1-5 é de segunda a sexta às 09:00.",
     nameMissing: "Dê um nome à automação.",
+    label: "Rótulo",
+    labelMissing: "Digite o rótulo a observar antes de continuar.",
+    workflowMissing:
+      "Este projeto não tem um workflow válido para iniciar. Crie um nos workflows do projeto e volte.",
     maxBad: "O limite é um número inteiro de pelo menos 1.",
     next: "Próximo",
     save: "Salvar",
@@ -50,7 +58,7 @@ const WORKFLOW = { name: "feature", hash: "h", trusted: true, checks: [], errors
 type Asked = Array<{ type: string; payload: Record<string, unknown> }>;
 
 /** The form on a store whose `automation.save` is recorded and answers with the saved automation. */
-async function form(lang: Lang) {
+async function form(lang: Lang, workflows = [WORKFLOW]) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   await store.i18n.setLang(lang);
   seedHosts(store, [{ id: "h1", name: "pc", online: true, features: ["automations"] }]);
@@ -65,7 +73,7 @@ async function form(lang: Lang) {
         store={store}
         hostId="h1"
         projectId="p1"
-        workflows={[WORKFLOW]}
+        workflows={workflows}
         initial={null}
         onClose={() => {}}
         onSaved={() => {}}
@@ -112,6 +120,49 @@ describe.each(["en", "pt-BR"] as const)("the automation form, its fields (%s)", 
     await form(lang);
     await lastStep();
     expect([w.name, w.max].every((label) => labels().includes(label))).toBe(true);
+  });
+
+  const next = () => screen.queryByRole("button", { name: w.next }) as HTMLButtonElement | null;
+  const pickTrigger = (value: string) =>
+    act(async () => {
+      fireEvent.change(screen.queryByLabelText(w.trigger) as HTMLSelectElement, {
+        target: { value },
+      });
+    });
+
+  test("a label trigger with no label blocks Next and says why, and a label lets it go (#4187)", async () => {
+    await form(lang);
+    await pickTrigger("issue_label");
+    const blocked = [next()?.disabled, screen.queryByText(w.labelMissing) !== null];
+    await type(w.label, "   ");
+    const blank = next()?.disabled;
+    await type(w.label, "auto");
+    expect({
+      blocked,
+      blank,
+      free: next()?.disabled,
+      said: screen.queryByText(w.labelMissing),
+    }).toEqual({
+      blocked: [true, true],
+      blank: true,
+      free: false,
+      said: null,
+    });
+  });
+
+  test("a workflow action with no valid workflow blocks Next on step 2 and says why (#4187)", async () => {
+    await form(lang, []);
+    await press(w.next);
+    expect([next()?.disabled, screen.queryByText(w.workflowMissing) !== null]).toEqual([
+      true,
+      true,
+    ]);
+  });
+
+  test("a workflow that has errors does not count as valid (#4187)", async () => {
+    await form(lang, [{ ...WORKFLOW, errors: ["bad"] } as never]);
+    await press(w.next);
+    expect(next()?.disabled).toBe(true);
   });
 
   test("an empty name is said on the field and nothing is sent", async () => {
