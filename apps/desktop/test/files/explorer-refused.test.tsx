@@ -115,10 +115,10 @@ describe("file-explorer-refused: a folder shows a chevron that turns when open (
     await show(store);
     const folder = screen.queryByRole("button", { name: "src" });
     const file = screen.queryByRole("button", { name: "README.md" });
-    expect(folder?.querySelector("svg.lucide-chevron-right") !== null).toBe(true);
-    expect(file?.querySelector("svg") === null).toBe(true);
+    expect(folder?.querySelector("svg.lucide-chevron-right")).not.toBeNull();
+    expect(file?.querySelector("svg") === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
     await press("src");
-    expect(folder?.querySelector("svg.lucide-chevron-down") !== null).toBe(true);
-    expect(folder?.querySelector("svg.lucide-chevron-right") === null).toBe(true);
+    expect(folder?.querySelector("svg.lucide-chevron-down")).not.toBeNull();
+    expect(folder?.querySelector("svg.lucide-chevron-right") === null).toBe(true); // NOSONAR: a boolean keeps a DOM node out of the failure diff
   });
 });
