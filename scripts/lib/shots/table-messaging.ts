@@ -92,16 +92,10 @@ export function messagingShots(ids: DemoIds): Shot[] {
       },
     },
     {
-      // The first host answers as it is; every host after it refuses.
+      // A rule is per command, not per host, so every host refuses: the page names them all and lists nothing.
       name: "conversas-host-mudo",
       route: conversationsRoute,
-      wire: [
-        {
-          command: "messages.list",
-          as: "messages.list",
-          afterRefuse: "The host did not answer in time.",
-        },
-      ],
+      wire: [{ command: "messages.list", refuse: "The host did not answer in time." }],
       prepare: async (page) => {
         await page
           .getByText(/(No answer from|Sem resposta de)/)
@@ -125,7 +119,13 @@ export function messagingShots(ids: DemoIds): Shot[] {
       name: "sessao-mensagens-carregando",
       route: session,
       wire: [{ command: "messages.list", stall: true }],
-      prepare: messagesTab(/^(Loading messages|Carregando mensagens)$/),
+      prepare: async (page) => {
+        await page.getByRole("tab", { name: /^(Mensagens|Messages)$/ }).click();
+        // The loading state has an accessible name and no text.
+        await page
+          .getByRole("status", { name: /^(Loading messages|Carregando mensagens)$/ })
+          .waitFor({ timeout: 15_000 });
+      },
     },
     {
       name: "sessao-mensagens-falhou",
@@ -148,7 +148,14 @@ export function messagingShots(ids: DemoIds): Shot[] {
       name: "configuracoes-mensagens-longos",
       route: { name: "settings" },
       wire: [{ command: "messaging.rules.get", data: LONG_RULES }],
-      prepare: showSection(/^(Messages between sessions on|Mensagens entre sessões em) /),
+      prepare: async (page) => {
+        await showSection(/^(Messages between sessions on|Mensagens entre sessões em) /)(page);
+        // The card shows its title while the rules load: the print waits for the long value.
+        await page
+          .getByText(/billing-reconciliation-worker/)
+          .first()
+          .waitFor({ timeout: 15_000 });
+      },
     },
   ];
 }
