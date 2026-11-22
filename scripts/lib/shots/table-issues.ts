@@ -48,11 +48,19 @@ async function startScreen(page: Page): Promise<void> {
     .first();
   await close.waitFor({ state: "attached", timeout: 15_000 });
   await close.click({ force: true });
-  await page
+  const note = page
     .getByRole("note")
     .filter({ hasText: /GitHub CLI|Git\b/ })
-    .first()
-    .waitFor({ timeout: 15_000 });
+    .first();
+  try {
+    await note.waitFor({ timeout: 15_000 });
+  } catch (error) {
+    // A print that cannot show its card says what the page held instead.
+    const held = (await page.locator("body").textContent()) ?? "";
+    throw new Error(`no tool note on the page; it holds: ${held.slice(0, 600)}`, {
+      cause: error,
+    });
+  }
 }
 
 export function issuesShots(ids: DemoIds): Shot[] {
