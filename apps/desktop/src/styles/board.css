@@ -102,11 +102,15 @@
 @utility column-title {
   font-size: 0.75rem;
   font-weight: 500;
-  /* Five columns share a 1280 px window (#1030): a long name gives way, the count and the + stay. */
+  /* Five columns share a 1280 px window (#1030): the name takes up to two lines (a longer one is cut,
+     and carries its full text as a title); the count and the + stay on the head's line (#3878). */
   min-width: 0;
+  line-height: 1.2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* The count of a column, a small pill. */

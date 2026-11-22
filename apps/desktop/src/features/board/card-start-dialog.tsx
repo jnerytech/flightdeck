@@ -15,7 +15,7 @@ import { AlertPicker } from "@/features/workflows/ui.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "@/shared/feedback/index.ts";
-import { Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
+import { Field, Inline, NativeSelect, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { startPersonaOf, startWorkflowOf } from "./domain/card-template.ts";
@@ -111,21 +111,25 @@ export function CardStartDialog(
           <DialogDescription>{t("board.startFor", { title: card.title })}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <NativeSelect
-            aria-label={t("cardUi.workflow")}
-            value={workflow}
-            onChange={(e) => {
-              setPickedWorkflow(e.target.value);
-              setInputs({});
-            }}
-          >
-            <option value="">{t("cardUi.noWorkflow")}</option>
-            {workflows.map((w) => (
-              <option key={w.name} value={w.name}>
-                {w.name}
-              </option>
-            ))}
-          </NativeSelect>
+          <Field label={t("cardUi.workflow")}>
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={workflow}
+                onChange={(e) => {
+                  setPickedWorkflow(e.target.value);
+                  setInputs({});
+                }}
+              >
+                <option value="">{t("cardUi.noWorkflow")}</option>
+                {workflows.map((w) => (
+                  <option key={w.name} value={w.name}>
+                    {w.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </Field>
           {chosen?.inputs.map((name) => (
             <Fragment key={name}>
               {/* The alert is several lines (what, where, why): one line would glue them together. */}
