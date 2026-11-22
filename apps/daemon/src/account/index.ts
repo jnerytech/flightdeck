@@ -4,6 +4,7 @@
  * never a file inside.
  */
 export { Account } from "./account.ts";
+export { type AccountCliArgs, runAccountCli } from "./account-cli.ts";
 export { demoAccountReaders } from "./domain/demo.ts";
 export type { AuthStatus } from "./domain/readings.ts";
 export { type AccountReaders, accountReaders } from "./readers.ts";
