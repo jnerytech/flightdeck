@@ -48,6 +48,9 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
   // the focus goes to the next row, the previous one, the empty note or the failure, never the page.
   useEffect(() => {
     if (refocus.round === 0) return;
+    // Only a focus the delete left on the page is taken: a person who moved on keeps theirs.
+    const now = document.activeElement;
+    if (now !== null && now !== document.body) return;
     const row = refocus.order.map((id) => rows.current.get(id)).find((el) => el !== undefined);
     (row ?? emptyNote.current ?? failureNote.current)?.focus();
   }, [refocus]);
@@ -65,7 +68,8 @@ export function HarnessTemplatesSection(props: Readonly<{ store: AppStore; hostI
     );
     await refresh();
     // A refused delete keeps its row: that row first. A done one: the rows after it, then before it.
-    const order = done ? [...ids.slice(at + 1), ...ids.slice(0, at).reverse()] : [template.id];
+    const around = [...ids.slice(at + 1), ...ids.slice(0, at).reverse()];
+    const order = done ? around : [template.id, ...around];
     setRefocus((now) => ({ round: now.round + 1, order }));
     if (done) store.success(t("harnessTemplates.deleted", { title: template.title }));
   };
