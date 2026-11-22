@@ -119,6 +119,7 @@ export function NotificationBell(
         </Button>
       </PopoverTrigger>
       <NotificationCenter
+        open={open}
         entries={inbox}
         unread={unreadCount(inbox)}
         t={t}
@@ -132,6 +133,7 @@ export function NotificationBell(
         onDismiss={(row) => store.inbox.dismiss(row.ids)}
         onMarkAll={() => store.inbox.markAllRead()}
         onClear={() => store.inbox.clear()}
+        onRestore={(entries) => store.inbox.restore(entries)}
       />
     </Popover>
   );

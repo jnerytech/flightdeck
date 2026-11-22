@@ -182,8 +182,8 @@ export class InboxSlice {
   }
 
   /** Puts back what a Clear dropped (the Undo of the panel), behind what arrived since. */
-  restore(_entries: InboxEntry[]): void {
-    this.setEntries(restoreEntries(this.core.entries(), []));
+  restore(entries: InboxEntry[]): void {
+    this.setEntries(restoreEntries(this.core.entries(), entries));
   }
 
   private setEntries(entries: InboxEntry[]): void {
