@@ -86,6 +86,7 @@ export const hosts = {
       save: "Salvar destino",
       test: "Testar conexão",
       testOk: "Conexão ok.",
+      saveToTest: "Salve para testar estes valores",
     },
     viaOffline: "O host {host} não está conectado.",
     viaNoSsh: "O host {host} não tem o recurso de SSH.",
