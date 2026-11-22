@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { chmodSync, readdirSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
 import { DEMO_SSH_PASSWORD, demoSshHost, installDemoSsh } from "../../lib/demo/fake-ssh.ts";
+import { cmdWrapper, shWrapper } from "../../lib/smoke/ssh-tools.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 /**
@@ -111,6 +112,18 @@ describe("demo-ssh-tools: the fake ssh the demo's SSH journey connects with", ()
       code: 0,
       error: "",
     });
+  });
+
+  test("a Windows wrapper sets each value, then runs the program with the arguments it was given", () => {
+    expect(cmdWrapper('"bun" "tools.ts" ssh', [["FD_FAKE_HOLD_MS", "10000"]])).toBe(
+      '@echo off\r\nset "FD_FAKE_HOLD_MS=10000"\r\n"bun" "tools.ts" ssh %*\r\n',
+    );
+  });
+
+  test("a POSIX wrapper exports each value quoted, so a quote in it cannot end the word", () => {
+    expect(shWrapper('"bun" "tools.ts" ssh', [["K", "it's"]])).toBe(
+      `#!/bin/sh\nexport K='it'\\''s'\nexec "bun" "tools.ts" ssh "$@"\n`,
+    );
   });
 
   test("only ssh and ssh-keyscan are put on the PATH: the demo's other ssh tools stay the machine's", () => {

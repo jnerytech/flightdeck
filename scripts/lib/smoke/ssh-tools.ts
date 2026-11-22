@@ -8,6 +8,16 @@ const WIN = process.platform === "win32";
 /** A word `sh` reads back as it is. */
 const shQuote = (word: string) => `'${word.replaceAll("'", String.raw`'\''`)}'`;
 
+/** The text of a Windows wrapper: `set` lines for `entries`, then `call` with the arguments passed on. */
+export function cmdWrapper(call: string, entries: Array<[string, string]>): string {
+  return "";
+}
+
+/** The text of a POSIX wrapper: `export` lines for `entries`, then `call` with the arguments passed on. */
+export function shWrapper(call: string, entries: Array<[string, string]>): string {
+  return "";
+}
+
 /**
  * Writes `ssh`, `ssh-keyscan` and, off Windows unless `agent` is false, `ssh-agent` and `ssh-add` into `bin`, each a wrapper
  * that runs the fake program in its mode. `options.env` is written into each wrapper, for a caller whose process
@@ -30,11 +40,9 @@ export function installSshTools(
   for (const name of tools) {
     const call = `"${process.execPath}" "${TOOLS}" ${mode[name]}`;
     if (WIN) {
-      const sets = entries.map(([key, value]) => `set "${key}=${value}"\r\n`).join("");
-      writeFileSync(join(bin, `${name}.cmd`), `@echo off\r\n${sets}${call} %*\r\n`);
+      writeFileSync(join(bin, `${name}.cmd`), cmdWrapper(call, entries));
     } else {
-      const exports = entries.map(([key, value]) => `export ${key}=${shQuote(value)}\n`).join("");
-      writeFileSync(join(bin, name), `#!/bin/sh\n${exports}exec ${call} "$@"\n`);
+      writeFileSync(join(bin, name), shWrapper(call, entries));
       chmodSync(join(bin, name), 0o755);
     }
   }
