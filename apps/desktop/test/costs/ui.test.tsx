@@ -368,6 +368,21 @@ describe("custos-ui", () => {
     expect(store.getState().error).toBeNull();
   });
 
+  // Issue #3897: a press is answered; a cancel clears the answer of the earlier press.
+  test("Exportar CSV diz o arquivo salvo e some quando a pessoa cancela o diálogo", async () => {
+    const { mem } = await online();
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
+    await click("Exportar CSV");
+    await settle(
+      () => screen.queryByText("Salvo flightdeck-custos-2026-10-09-a-2026-10-15.csv.") !== null,
+    );
+    mem.save.cancel = true;
+    await click("Exportar CSV");
+    await settle(() => screen.queryByText(/^Salvo flightdeck-custos/) === null);
+    expect(screen.queryByText(/^Salvo flightdeck-custos/)).toBeNull();
+  });
+
   test("o painel de uso do host passa a ler os custos quando o host anuncia costs", async () => {
     await online();
     await click("Abrir host alfa");

@@ -1,6 +1,7 @@
 import type { CostsFilter } from "@flightdeck/protocol";
 import type { AppStore } from "../../lib/app-store.ts";
 import { mergeHostCsv } from "./domain/costs-csv.ts";
+import type { CostsExport } from "./domain/costs-export-note.ts";
 
 /**
  * The Costs export. One host: the file its daemon built. Several hosts: one file with the host as
@@ -15,11 +16,11 @@ export async function exportCosts(
     hosts: ReadonlyArray<{ id: string; name: string }>;
   },
   filter: CostsFilter,
-): Promise<void> {
+): Promise<CostsExport> {
   if (!scope.acrossHosts) {
     const file = await store.hostCommand(scope.hostId, "costs.export", filter);
     if (file) await store.system.saveFile(file.filename, file.csv);
-    return;
+    return { kind: "cancelled" };
   }
   const answers = await Promise.allSettled(
     scope.hosts.map(async (h) => ({
@@ -34,4 +35,5 @@ export async function exportCosts(
   const csv = mergeHostCsv(files);
   const first = files[0];
   if (first && csv !== "") await store.system.saveFile(first.filename, csv);
+  return { kind: "cancelled" };
 }
