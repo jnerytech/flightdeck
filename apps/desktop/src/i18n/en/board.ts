@@ -238,6 +238,7 @@ export const board = {
     procRunning: "running",
     procExited: "ended (code {code})",
     procEndedNoCode: "ended without an exit code",
+    procChanged: "{name} {state}",
     procReady: "{name} is ready",
     ports: "Ports: {ports}",
     viewLog: "View log of {name}",

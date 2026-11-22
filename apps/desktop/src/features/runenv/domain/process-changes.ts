@@ -24,7 +24,9 @@ export function processChanges(
     const old = known.get(process.terminalId);
     const { name } = process;
     if (process.status === "exited" && old?.status !== "exited") {
-      lines.push(`${name} ${processState(process, t)}`);
+      lines.push(t("runEnv.procChanged", { name, state: processState(process, t) }));
+    } else if (process.status === "exited") {
+      // A late ready or timeout report on a process that is over adds nothing to its end.
     } else if (process.ready === "ready" && old?.ready !== "ready") {
       lines.push(t("runEnv.procReady", { name }));
     } else if (process.ready === "timeout" && old?.ready !== "timeout") {

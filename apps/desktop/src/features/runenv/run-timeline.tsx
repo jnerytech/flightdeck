@@ -94,7 +94,7 @@ export function RunTimeline(
   const t = useT();
   const { run } = props;
   // A step with no end is still running: its time follows the clock once a second.
-  const ticking = run.steps.some((step) => !step.endedAt);
+  const ticking = !run.endedAt && run.steps.some((step) => !step.endedAt);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
     if (!ticking) return;
