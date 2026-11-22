@@ -14,7 +14,7 @@ button: **Connect issues** asks for the provider and an optional search (blank m
 assigned to you), and can allow the daemon to comment on the issue when the PR opens (off by
 default, because it writes to the provider).
 
-- **Filter issues** narrows the list by title, label or author.
+- **Filter issues** narrows the list by title, label or author. A line under the field counts the issues ("3 of 12 issues" while a filter is typed), **Clear filter** empties the field, and a filter that matches nothing says so by name. Under **Configure issues**, a hint under the search shows the syntax of the chosen provider.
 - **Create card** makes a card in Backlog from the issue and keeps its link: the row then offers
   **Open card**, the card shows the issue (a button that opens it in the browser) and a PR that
   closes the card closes the issue (`Fixes #n` or `AB#id`).

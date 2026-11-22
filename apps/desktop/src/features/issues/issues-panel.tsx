@@ -359,7 +359,7 @@ export function IssuesPanel(
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 />
-                {filtering && shown.length > 0 && (
+                {filter !== "" && shown.length > 0 && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -378,13 +378,14 @@ export function IssuesPanel(
                   onRetry={() => void load()}
                 />
               )}
-              {issues && issues.length > 0 && (
-                <p role="status" className="text-muted-foreground text-xs">
-                  {filtering
+              {/* Always mounted: a live region that appears already filled is not announced. */}
+              <p role="status" className="text-muted-foreground text-xs empty:sr-only">
+                {issues &&
+                  issues.length > 0 &&
+                  (filtering
                     ? t("issuesUi.countOf", { shown: shown.length, n: issues.length })
-                    : t("issuesUi.count", { n: issues.length })}
-                </p>
-              )}
+                    : t("issuesUi.count", { n: issues.length }))}
+              </p>
               {issues && shown.length === 0 && (
                 <EmptyState
                   title={
