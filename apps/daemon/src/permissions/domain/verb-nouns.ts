@@ -43,6 +43,7 @@ export const VERB_NOUNS = new Set([
   "ssh",
   "team",
   "telemetry",
+  "ui",
   "update",
   "watch",
   "workflow",

@@ -78,7 +78,8 @@ flightdeckd daemon stop --confirm [--json]
   `update started` (`{"started":true}`) as soon as the daemon has downloaded and verified the binary (it can take
   a minute on a slow link) and accepts, and does not wait for the restart: run `update check` or `host` afterwards
   to see the new version. The daemon refuses until it has checked the release server once, so run `update check`
-  first on a daemon that just started.
+  first on a daemon that just started. It replaces the daemon's own binary, so over a far connection (not this computer
+  or Tailscale) the daemon refuses it with `transport_refused`.
 - `daemon stop --confirm` makes the daemon exit, so every session and terminal it runs ends. It prints `stopping`
   (`{"stopping":true}`) on the daemon's answer. Under an installed service the service starts it again about 5 s
   later; to keep it down, stop the service with `flightdeckd service stop`.
@@ -202,9 +203,12 @@ binary to update, and the default `manifestUrl` is `null`.
 
 - **Automatic:** once a day, `VACUUM INTO <dataDir>/backups/flightdeck-<YYYYMMDD-HHmmss>.db`
   (UTC time), keeping the last `keep`. Works with the daemon running.
-- **By hand:** `flightdeckd backup [--out <file>]`, or **Back up now** in the Maintenance
+- **By hand:** `flightdeckd backup [--out <file>] [--force]`, or **Back up now** in the Maintenance
   section. The files are owner-only (0600 outside Windows). `--json` prints
-  `{ "path", "at", "bytes" }` instead of the line.
+  `{ "path", "at", "bytes" }` instead of the line. A `--out` path that is already taken (a file, a
+  link, a folder) is refused with exit 1 and the reason `target_exists`, and the file stays as it
+  was; `--force` replaces a file there, or the link itself and never what it points to, and a
+  folder is refused even with it.
 - **Restoring:** `flightdeckd service stop`, then `flightdeckd restore <file>`, then
   `flightdeckd service start`. Without a service, stop the daemon by hand before `restore`. The
   command refuses to run with the daemon up, checks integrity and that the backup does not come

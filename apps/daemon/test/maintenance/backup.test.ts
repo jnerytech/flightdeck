@@ -64,10 +64,10 @@ describe("backup", () => {
     expect(copy.query("PRAGMA user_version").get()).toEqual({ user_version: MIGRATIONS.length });
     expect(copy.query("SELECT name FROM sessions").all()).toEqual([{ name: "guardada" }]);
     if (process.platform !== "win32") expect(statSync(info.path).mode & 0o777).toBe(0o600);
-    // An explicit destination is used as is (and replaced when it exists).
+    // An explicit destination is used as is, and replaced when it exists only with force (#3809).
     const out = join(tempDir(), "manual.db");
     writeFileSync(out, "velho");
-    expect((await backupNow(store.db, join(dataDir, "backups"), NOW, out)).path).toBe(out);
+    expect((await backupNow(store.db, join(dataDir, "backups"), NOW, out, true)).path).toBe(out);
     expect(open(out).query("PRAGMA integrity_check").get()).toEqual({ integrity_check: "ok" });
   });
 

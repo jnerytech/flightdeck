@@ -7,6 +7,9 @@ const PRUNE =
 const RESTORE =
   "replaces the host's whole database with a backup file, so everything recorded since the backup is gone (flightdeckd restore)";
 
+const REPLACES =
+  "replaces an existing file with a copy of the host's database (flightdeckd backup --force)";
+
 const HIDDEN =
   "runs a flightdeckd command whose name, noun or verb the shell expands before it runs (a variable, a glob, a brace list or an ANSI-C quote), so the line does not say what it does";
 
@@ -33,6 +36,42 @@ describe("risk rules: the maintenance commands from a session's shell (#3756)", 
         ["flightdeckd restore /tmp/flightdeck-20261030-120000.db --config /tmp/c.json", RESTORE],
         ["bunx flightdeckd restore backup.db", RESTORE],
         ['bash -c "fd restore backup.db"', RESTORE],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("backup --force replaces whatever is at the path, so it is high, however the CLI is reached (#3809)", () => {
+    expect(
+      wrongReasons([
+        ["fd backup --out /tmp/c.db --force", REPLACES],
+        ["fd backup --force --out /tmp/c.db", REPLACES],
+        ["flightdeckd --config /tmp/c.json backup --out /tmp/c.db --force --json", REPLACES],
+        ["bunx flightdeckd backup --out /tmp/c.db --force", REPLACES],
+        ['bash -c "fd backup --out /tmp/c.db --force"', REPLACES],
+        ["fd backup --out /tmp/c.db --force=true", REPLACES],
+        ["fd backup --out /tmp/c.db --config --out --force", REPLACES],
+        ["fd backup --out /tmp/c.db --host --config --force", REPLACES],
+        ["fd backup --out /tmp/c.db $X", REPLACES],
+        ["fd backup --out /tmp/c.db && fd backup --out /tmp/c.db --force", REPLACES],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a --force that xargs adds to a backup line is high too (#3809)", () => {
+    expect(
+      wrongReasons([
+        ["echo --force | xargs fd backup --out /tmp/c.db", HIDDEN],
+        ["printf -- --force | xargs flightdeckd backup --out /tmp/c.db", HIDDEN],
+      ]),
+    ).toEqual([]);
+  });
+
+  test("a backup whose path is named --force, or a card named backup, is not a forced backup", () => {
+    expect(
+      notHigh([
+        "fd backup --out --force",
+        "fd card show backup --force-nothing",
+        "fd card show backup",
       ]),
     ).toEqual([]);
   });

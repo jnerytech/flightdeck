@@ -42,6 +42,7 @@ export interface CliArgs {
     | "action"
     | "external"
     | "names"
+    | "ui"
     | "snippet"
     | "message"
     | "card"
@@ -369,6 +370,9 @@ export interface CliArgs {
   /** `file search --query`, `--mode` and `--limit`. */
   fileQuery?: string;
   fileMode?: "name" | "content";
+  /** `ui set --mode` and `--lock` (true) or `--unlock` (false): what to change; what is not given stays as it is. */
+  uiMode?: "full" | "simple";
+  uiLock?: boolean;
   fileLimit?: number;
   /** `file dirs|files --hidden`. */
   fileHidden?: true;

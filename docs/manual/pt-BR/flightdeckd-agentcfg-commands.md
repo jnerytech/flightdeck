@@ -29,7 +29,9 @@ host pareado e `--json` para um valor com chaves estáveis.
   `agentcfg_changed` quando o arquivo mudou desde então, então você nunca sobrescreve uma mudança que não viu.
   O CLI nunca lê o hash por você. Para criar um arquivo que ainda não pode existir, passe `--new` no lugar do
   hash; um arquivo que já existe é recusado com `agentcfg_exists`. Imprime o hash novo; com `--json`, `kind`,
-  `path` e `hash`.
+  `path` e `hash`. Uma escrita pede uma conexão próxima: um agente ou uma skill pode declarar hooks que rodam um
+  comando, e um `CLAUDE.md` orienta toda sessão do projeto, então por uma conexão distante (não este computador nem o
+  Tailscale) o daemon a recusa com `transport_refused`. A leitura responde de qualquer lugar.
 
 O daemon guarda todas as regras: um caminho fora do projeto ou fora das pastas daquele tipo, um frontmatter
 ausente ou inválido e os arquivos somente leitura do `~/.claude` são recusados com as palavras dele, e o CLI
