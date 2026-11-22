@@ -3,5 +3,5 @@ export function parseLimit(text: string): number | null {
   const digits = text.trim();
   if (!/^\d+$/.test(digits)) return null;
   const limit = Number(digits);
-  return limit >= 1 ? limit : null;
+  return Number.isSafeInteger(limit) && limit >= 1 ? limit : null;
 }

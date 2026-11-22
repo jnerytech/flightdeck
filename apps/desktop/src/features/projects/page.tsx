@@ -56,8 +56,12 @@ export function ProjectsPage(
   const pathField = useRef<HTMLInputElement>(null);
   const host = store.getState().hosts.find((h) => h.id === hostId);
 
+  // Reads can overlap (a retry, then a project added): only the latest one to start is heard.
+  const latest = useRef(0);
   const reload = useCallback(async () => {
+    const mine = ++latest.current;
     const result = await store.hostCommand(hostId, "project.list", {});
+    if (mine !== latest.current) return;
     setFailed(!result);
     if (result) {
       setList(result);
@@ -95,7 +99,7 @@ export function ProjectsPage(
       <div className="flex max-w-3xl flex-col gap-6">
         {loading && <LoadingState label={t("states.loadingProjects")} />}
         {failed && <ReadFailed store={store} onRetry={reload} />}
-        {!loading && list?.projects.length === 0 && (
+        {!loading && !failed && list?.projects.length === 0 && (
           <EmptyState
             icon={FolderGit2}
             title={t("states.emptyProjects")}
@@ -163,8 +167,9 @@ export function ProjectsPage(
             />
             <ActionButton
               variant="outline"
-              disabled={wholeLimit === null}
-              disabledReason={t("projectsUi.limitInvalid")}
+              // Until the host has said its limit, the field is not the problem: no reason is given.
+              disabled={list === null || wholeLimit === null}
+              disabledReason={list ? t("projectsUi.limitInvalid") : undefined}
               onClick={async () => {
                 if (wholeLimit === null) return;
                 const saved = await store.hostCommand(hostId, "board.settings", {
