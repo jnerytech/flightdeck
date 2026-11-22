@@ -292,9 +292,10 @@ export function startQuotaLines(
   if (!onSubscription(input.quota, input.account)) return { lines: [], holds: [] };
   const bars = quotaBars(input.quota, input.now, input.formatTime, t);
   const fiveHour = bars[0];
-  const lines = fiveHour?.hasReading
-    ? [t("board.startQuota", { host, percent: fiveHour.percent, reset: fiveHour.reset })]
-    : [];
+  const lines =
+    fiveHour?.hasReading && fiveHour.percentKnown
+      ? [t("board.startQuota", { host, percent: fiveHour.percent, reset: fiveHour.reset })]
+      : [];
   const holds = bars.some((bar) => bar.hot) ? [t("board.startQuotaHold", { host })] : [];
   return { lines, holds };
 }
