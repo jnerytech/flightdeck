@@ -39,6 +39,7 @@ function show(language: "en" | "pt-BR", member: TeamMember) {
             member={member}
             report={null}
             open
+            removing={false}
             onPersona={async () => true}
             onRemove={() => {}}
           />

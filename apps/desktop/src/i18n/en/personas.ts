@@ -199,6 +199,7 @@ export const personas = {
     persona: "Persona of {name}",
     setPersona: "Change persona of {name}",
     setPersonaButton: "Change persona",
+    personaUnchanged: "Pick another persona to change it.",
     remove: "Remove {name}",
     removeButton: "Remove",
     removeMessage:

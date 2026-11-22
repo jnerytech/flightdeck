@@ -147,6 +147,10 @@ export const DEMO_PR_BETA_URL = "https://github.com/acme/flightdeck-api/pull/57"
 /** The active team the demo keeps, with its members' last reports (issue #1222). */
 export const DEMO_ACTIVE_TEAM = "checkout-crew";
 
+/** The teams the demo keeps paused: by the person, and by the plan quota (issue #4025). */
+export const DEMO_PAUSED_TEAM = "paused-crew";
+export const DEMO_QUOTA_TEAM = "quota-crew";
+
 /** The last report of the active team's first worker, as its team page shows it (issue #1222). */
 export const DEMO_TEAM_REPORT = "Somei o frete no total do carrinho; os testes passam.";
 
