@@ -2362,6 +2362,15 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await tree.getByRole("button", { name: /fd\/revisar-o-fluxo-de-login/ }).click();
     const panel = c.page.locator("[data-slot='board-files']");
     await panel.getByText("app.ts").first().waitFor({ timeout: WAIT });
+    // Beside the panel the columns scroll sideways: when one is cut at the edge, a fade says so (#3972).
+    const columns = c.page.locator("[data-slot='board-columns']");
+    const cut = await columns.evaluate((box) => ({
+      cut: box.scrollWidth > box.clientWidth,
+      fade: getComputedStyle(box).maskImage !== "none",
+    }));
+    if (cut.cut && !cut.fade) {
+      throw new Error("a board column is cut at the Files panel edge with no cue that it scrolls");
+    }
     const results = panel.getByRole("list", { name: c.t("files.results"), exact: true });
     // By name: the file is found; a credential is listed as hidden and cannot be opened.
     const names = panel.getByRole("searchbox", { name: c.t("files.searchNames"), exact: true });
