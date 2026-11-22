@@ -1,4 +1,6 @@
 import type { CostsSummary } from "@flightdeck/protocol";
+import { ChevronRight } from "lucide-react";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
@@ -108,6 +110,7 @@ export function CostsTopSessions(
   }>,
 ) {
   const t = useT();
+  const opensId = useId();
   // The same session can come from two hosts: each row needs a key of its own.
   const keys = uniqueKeys(props.sessions.map((s) => s.claudeSessionId));
   return (
@@ -119,14 +122,19 @@ export function CostsTopSessions(
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto w-full justify-start whitespace-normal py-1 text-left"
+                className="h-auto w-full justify-between whitespace-normal py-1 text-left"
+                aria-describedby={opensId}
                 onClick={() => props.onOpen(s)}
               >
                 {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${props.projectName(s.projectKey)} · ${usd(s.costUsd, t.lang)}`}
+                <ChevronRight aria-hidden="true" className="text-muted-foreground" />
               </Button>
             </li>
           ))}
         </ul>
+        <span id={opensId} className="sr-only">
+          {t("costsUi.opensSession")}
+        </span>
       </Panel>
     </section>
   );

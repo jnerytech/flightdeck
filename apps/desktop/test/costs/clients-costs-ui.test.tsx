@@ -71,7 +71,7 @@ async function setup(clients: unknown[] = TWO) {
 const total = () =>
   (screen.queryByLabelText("Custo estimado") as HTMLElement | null)?.textContent ?? null;
 const rowsOf = (name: string) =>
-  [...(screen.queryByRole("region", { name })?.querySelectorAll("tr") ?? [])].map(
+  [...(screen.queryByRole("region", { name })?.querySelectorAll("tbody tr") ?? [])].map(
     (tr) => tr.textContent ?? "",
   );
 /** The data scope menu in the Costs toolbar (#126): "Dados de Todos os hosts", "Dados de alfa"... */

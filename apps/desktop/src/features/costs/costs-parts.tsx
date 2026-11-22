@@ -17,7 +17,18 @@ export function Breakdown(
   return (
     <section aria-label={props.name}>
       <Panel title={props.name}>
-        <table className="w-full text-left text-sm tabular-nums">
+        <table aria-label={props.name} className="w-full text-left text-sm tabular-nums">
+          <thead>
+            <tr>
+              {/* The text is hidden, not the cell: a cell taken out of the flow loses its header role. */}
+              <th scope="col">
+                <span className="sr-only">{t("costsUi.colName")}</span>
+              </th>
+              <th scope="col">
+                <span className="sr-only">{t("costsUi.colCost")}</span>
+              </th>
+            </tr>
+          </thead>
           <tbody>
             {props.rows.map((row) => (
               <tr key={row.id ?? row.label} className="border-t first:border-t-0">
