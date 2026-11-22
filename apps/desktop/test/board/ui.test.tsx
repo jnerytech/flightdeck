@@ -269,10 +269,13 @@ describe("board-ui: projects, columns, filters, drag and the card menu", () => {
     await cardMenu("Sobrando", "Excluir…");
     await click("Cancelar");
     await settle(() => dialog() === null);
+    // Radix moves the focus a tick after the dialog unmounts.
+    await settle(insideBoard);
     expect(insideBoard()).toBe(true);
     await cardMenu("Sobrando", "Excluir…");
     await click("Excluir card");
     await settle(() => cardItem("Sobrando") === null);
+    await settle(insideBoard);
     expect(insideBoard()).toBe(true);
   });
 
