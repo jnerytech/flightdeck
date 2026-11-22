@@ -194,6 +194,10 @@ describe("botao-motivo-linha: in a dialog's footer the reason is a line of the f
       new RegExp(`(?:^|\\n)\\s*${selector.replace(/[[\]().>*:]/g, "\\$&")} \\{([^}]*)\\}`),
     )?.[1] ?? "";
   const BOX = '[data-slot="dialog-footer"] > .action-button-box:has(> .action-reason)';
+  // Only a footer that holds a reason wraps; the others keep their row as it was.
+  const WITH_REASON = '[data-slot="dialog-footer"]:has(> .action-button-box > .action-reason)';
+  // The last button is at the dialog's right edge, its reason under it; a first button's reason is at the left.
+  const LAST = '[data-slot="dialog-footer"] > .action-button-box:has(> .action-reason):last-child';
 
   test("the reasons sit in the footer's own flow, under its buttons, in the order of the buttons", () => {
     render(
@@ -218,14 +222,16 @@ describe("botao-motivo-linha: in a dialog's footer the reason is a line of the f
       box("Pick or type a folder.") === footer?.lastElementChild,
       box("Run needs a folder.") === footer?.firstElementChild,
       /display: contents;/.test(rule(BOX)),
-      /flex-wrap: wrap;/.test(rule('[data-slot="dialog-footer"]')),
+      /flex-wrap: wrap;/.test(rule(WITH_REASON)),
+      /flex-wrap/.test(rule('[data-slot="dialog-footer"]')),
       /position: static;/.test(reason),
       /flex-basis: 100%;/.test(reason),
       /order: 1;/.test(reason),
-      /text-align: right;/.test(reason),
+      /text-align: left;/.test(reason),
+      /text-align: right;/.test(rule(`${LAST} > .action-reason`)),
       /max-width: none;/.test(reason),
       css.includes('[data-slot="dialog-footer"] > .action-button-box:last-child .action-reason {'),
-    ]).toEqual([true, true, true, true, true, true, true, true, true, false]);
+    ]).toEqual([true, true, true, true, false, true, true, true, true, true, true, false]);
   });
 
   // The box gives way, so the button is the footer's own item: the stack's flex: 1 (a width in a
