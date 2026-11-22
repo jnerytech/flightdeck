@@ -8,27 +8,21 @@ import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField } from "@/features/assistant/ui.ts";
+import { MAIN_MODELS, MORE_MODELS, modelName } from "@/features/models/index.ts";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/i18n/errors.ts";
 import type { AppStore } from "@/lib/app-store";
 import { useBusy } from "@/shared/hooks/index.ts";
 import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import { type AppPersona, personaInput } from "./domain/global-personas.ts";
-import { MODELS } from "./model-select.tsx";
 
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 const MODES = ["default", "acceptEdits", "plan", "dontAsk", "auto"] as const;
 
 type Place = "host" | "app" | "project";
 
-/** The models the select offers: the aliases and the ids the pack's personas use. */
-const KNOWN_MODELS: readonly string[] = [
-  ...MODELS,
-  "claude-opus-5-5",
-  "claude-sonnet-5-5",
-  "claude-haiku-5-5",
-  "claude-fable-5-1",
-];
+/** The models the select offers: the aliases, then the current versions. */
+const KNOWN_MODELS: readonly string[] = [...MAIN_MODELS, ...MORE_MODELS];
 const OTHER = "__other__";
 
 /** The tools the checkboxes offer; a persona's own extra ones are kept among them too. */
@@ -259,7 +253,7 @@ export function PersonaEditor(
             <option value="">{t("personas.editor.none")}</option>
             {KNOWN_MODELS.map((m) => (
               <option key={m} value={m}>
-                {m}
+                {modelName(m) ?? m}
               </option>
             ))}
             <option value={OTHER}>{t("personas.editor.otherModel")}</option>
