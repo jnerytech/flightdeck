@@ -372,6 +372,66 @@ describe("assistant-settings-ui: the models and the profiles", () => {
     expect(fake.calls.filter((c) => c[0] === "models").length).toBeGreaterThanOrEqual(2);
   });
 
+  test("a list that cannot be read gives the reason, and with no key says to save one", async () => {
+    setup({
+      api: {
+        models: () => {
+          throw { reason: "assistant_offline" };
+        },
+      },
+    });
+    await click(radio("Anthropic (API key)"));
+    await settle(() => screen.queryAllByRole("alert").length > 0);
+    const offline = screen.getAllByRole("alert")[0]?.textContent ?? "";
+    expect(offline).toContain("Could not load the models.");
+    expect(offline).toContain("The provider cannot be reached. Check the connection.");
+    cleanup();
+    setup({
+      api: {
+        models: () => {
+          throw { reason: "assistant_not_configured" };
+        },
+      },
+    });
+    await click(radio("Anthropic (API key)"));
+    await settle(() => screen.queryAllByRole("alert").length > 0);
+    const none = screen.getAllByRole("alert")[0]?.textContent ?? "";
+    expect(none).toContain("Save a key above to see the models.");
+    expect(none).not.toContain("Choose an AI provider");
+  });
+
+  test("each profile says what it is used for and which model is in use", async () => {
+    const { store } = setup();
+    await click(radio("Anthropic (API key)"));
+    await settle(() => screen.queryByRole("combobox", { name: "Quick model" }) !== null);
+    const hints = () => document.body.textContent ?? "";
+    expect(hints()).toContain("Used for: Prompt for a session, Request in Simple mode, Card title");
+    expect(hints()).toContain("Commit message");
+    expect(hints()).toContain("Model in use: Haiku 5.5");
+    expect(hints()).toContain("Model in use: Sonnet 5.5");
+    await click(screen.getAllByRole("option", { name: /Sonnet 5.5/ })[0] as HTMLElement);
+    expect(store.assistant.prefs().models.anthropic?.quick).toBe("claude-sonnet-5-5");
+    expect(hints()).not.toContain("Model in use: Haiku 5.5");
+  });
+
+  test("a profile that moves in Advanced moves in the hints too", async () => {
+    setup();
+    await click(radio("Anthropic (API key)"));
+    await settle(() => screen.queryByRole("combobox", { name: "Quick model" }) !== null);
+    await click(button("Advanced"));
+    await act(async () => {
+      fireEvent.change(within(screen.getByRole("table")).getByLabelText("Card title"), {
+        target: { value: "careful" },
+      });
+    });
+    const used = Array.from(document.querySelectorAll("p"))
+      .map((p) => p.textContent ?? "")
+      .filter((text) => text.startsWith("Used for:"));
+    expect(used.length).toBe(2);
+    expect(used[0]?.includes("Card title")).toBe(false);
+    expect(used[1]?.includes("Card title")).toBe(true);
+  });
+
   test("a host that was agreed to already is chosen from the picker without asking again", async () => {
     const { store } = setup();
     await act(async () => {
@@ -391,6 +451,9 @@ describe("assistant-settings-ui: the models and the profiles", () => {
     await click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Use alfa" }));
     expect(screen.getAllByRole("option", { name: /Haiku 5.5/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("option", { name: /Opus 5.5/ }).length).toBeGreaterThan(0);
+    // The newest Fable is offered, not the one it replaced.
+    expect(screen.getAllByRole("option", { name: /Fable 5.2/ }).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("option", { name: /Fable 5.1/ }).length).toBe(0);
     expect(screen.queryByLabelText("Effort")).toBeNull();
   });
 
