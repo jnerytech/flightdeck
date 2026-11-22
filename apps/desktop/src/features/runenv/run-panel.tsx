@@ -30,7 +30,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
   // A Trust the person confirmed: once it is accepted, the Trust button is gone and Run takes the focus.
   const focusRun = useRef(false);
   // Stop kills the processes, so their codes are not a crash: only the run after the last Stop can crash.
-  const [stoppedByPerson, setStoppedByPerson] = useState(false);
+  const stoppedByPerson = store.runEnv.stoppedByPerson(hostId, card.id);
 
   useEffect(() => {
     let alive = true;
@@ -161,10 +161,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                   data-action="stop"
                   size="sm"
                   variant="outline"
-                  onClick={(event) => {
-                    setStoppedByPerson(true);
-                    return press(event, false, () => store.runEnv.stop(hostId, card.id));
-                  }}
+                  onClick={(event) => press(event, false, () => store.runEnv.stop(hostId, card.id))}
                 >
                   {t("runEnv.stop")}
                 </ActionButton>
@@ -173,10 +170,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                   key="run"
                   data-action="run"
                   size="sm"
-                  onClick={(event) => {
-                    setStoppedByPerson(false);
-                    return press(event, true, () => store.runEnv.start(hostId, card.id));
-                  }}
+                  onClick={(event) => press(event, true, () => store.runEnv.start(hostId, card.id))}
                 >
                   {t("runEnv.run")}
                 </ActionButton>
