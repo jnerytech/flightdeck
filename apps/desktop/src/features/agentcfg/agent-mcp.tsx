@@ -12,6 +12,7 @@ import { useBusy } from "@/shared/hooks/index.ts";
 import {
   EmptyState,
   ErrorState,
+  Field,
   Form,
   FormActions,
   LoadingState,
@@ -296,37 +297,48 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
           </DialogHeader>
           <Form variant="dialog" onSubmit={() => saving.run(save)}>
             <InlineNotice>{t("agent.mcp.versioned")}</InlineNotice>
-            <Input
-              aria-label={t("agent.mcp.name")}
-              disabled={draft?.editing}
-              placeholder={t("agent.mcp.name")}
-              {...field("name")}
-            />
-            <NativeSelect
-              aria-label={t("agent.mcp.transport")}
-              value={draft?.transport ?? "stdio"}
-              onChange={(e) =>
-                setDraft((d) =>
-                  d ? { ...d, transport: e.target.value as McpDraft["transport"] } : d,
-                )
-              }
-            >
-              {TRANSPORTS.map((transport) => (
-                <option key={transport} value={transport}>
-                  {transport}
-                </option>
-              ))}
-            </NativeSelect>
+            <Field label={t("agent.mcp.name")}>
+              {(control) => <Input {...control} disabled={draft?.editing} {...field("name")} />}
+            </Field>
+            <Field label={t("agent.mcp.transport")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  value={draft?.transport ?? "stdio"}
+                  onChange={(e) =>
+                    setDraft((d) =>
+                      d ? { ...d, transport: e.target.value as McpDraft["transport"] } : d,
+                    )
+                  }
+                >
+                  {TRANSPORTS.map((transport) => (
+                    <option key={transport} value={transport}>
+                      {transport}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
             {draft?.transport === "stdio" ? (
               <>
-                <Input aria-label={t("agent.mcp.command")} {...field("command")} />
-                <Textarea aria-label={t("agent.mcp.args")} {...area("args")} />
-                <Textarea aria-label={t("agent.mcp.env")} {...area("env")} />
+                <Field label={t("agent.mcp.command")}>
+                  {(control) => <Input {...control} {...field("command")} />}
+                </Field>
+                <Field label={t("agent.mcp.args")}>
+                  {(control) => <Textarea {...control} {...area("args")} />}
+                </Field>
+                <Field label={t("agent.mcp.env")}>
+                  {(control) => <Textarea {...control} {...area("env")} />}
+                </Field>
               </>
             ) : (
               <>
-                <Input aria-label={t("agent.mcp.url")} {...field("url")} />
-                <Textarea aria-label={t("agent.mcp.headers")} {...area("headers")} />
+                <Field label={t("agent.mcp.url")}>
+                  {(control) => <Input {...control} {...field("url")} />}
+                </Field>
+                <Field label={t("agent.mcp.headers")}>
+                  {(control) => <Textarea {...control} {...area("headers")} />}
+                </Field>
               </>
             )}
             {problem && (

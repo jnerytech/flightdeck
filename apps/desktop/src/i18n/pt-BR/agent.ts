@@ -15,7 +15,10 @@ export const agent = {
       skills: "Skills",
       memory: "Memória",
     },
-    index: "Entram {loaded} de {total} linhas do MEMORY.md ({bytes} de {limit} KB).",
+    index: "{loaded} de {total} linhas do MEMORY.md são carregadas ({used} de {limit} KB).",
+    indexAll: "Todas as {total} linhas do MEMORY.md são carregadas ({used} de {limit} KB).",
+    size: "{kb} KB",
+    underOne: "menos de 1 KB",
     cutLines:
       "Só as primeiras {limit} linhas do MEMORY.md entram na partida. O resto fica de fora:",
     cutBytes: "Só os primeiros {limit} KB do MEMORY.md entram na partida. O resto fica de fora:",
@@ -157,6 +160,7 @@ export const agent = {
       edit: "Editar",
       save: "Salvar",
       saved: "Salvo.",
+      nothingChanged: "Nada mudou",
       stale:
         "O arquivo mudou no disco depois que você o abriu. O que você escreveu continua aqui; recarregue para ver a versão atual.",
       reload: "Recarregar",
