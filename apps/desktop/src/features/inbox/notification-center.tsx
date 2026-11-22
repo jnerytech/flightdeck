@@ -261,8 +261,10 @@ export function NotificationCenter(
     run();
   };
   const titleOf = (row: InboxRow) => row.entry.subject ?? row.entry.title;
-  const answer = (row: InboxRow, decision: "allow" | "deny", run: () => void) =>
-    settle(row, `${titleOf(row)}: ${t(`approval.resolved.${decision}` as Key)}`, { decision }, run);
+  const answer = (row: InboxRow, decision: "allow" | "deny", run: () => void) => {
+    const resolved = t(`approval.resolved.${decision}` as Key);
+    return settle(row, `${titleOf(row)}: ${resolved}`, { decision }, run);
+  };
   useEffect(() => {
     const waiting = settling.current;
     if (!waiting) return;
