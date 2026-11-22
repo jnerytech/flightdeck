@@ -77,6 +77,10 @@ describe.each(["en", "pt-BR"] as const)("the dates of a custom range, in %s (#38
     await type(words.from, "2026-11-20");
     expect(asked.length).toBe(0);
     expect(screen.queryByText(words.reversed)).not.toBeNull();
+    const input = screen.queryByLabelText(words.from) as HTMLInputElement;
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    const note = screen.queryByText(words.reversed) as HTMLElement;
+    expect((input.getAttribute("aria-describedby") ?? "").split(" ").includes(note.id)).toBe(true);
   });
 
   test("a good pair is asked for and the notice goes", async () => {
